@@ -545,7 +545,9 @@ Search Manager includes two caching layers for optimal performance:
 - Improves response times for all backends
 - Optional "Popular Queries Only" mode - only cache queries searched ≥ N times
 - Configurable cache duration (default: 1 hour)
-- Stored in: `@storage/runtime/search-manager/cache/search/`
+- **Storage options:**
+  - **File** (default): `@storage/runtime/search-manager/cache/search/`
+  - **Redis**: Uses Craft's Redis cache (recommended for edge networks)
 
 **Device Detection Cache:**
 - Caches parsed user-agent strings (device, browser, OS info)
@@ -560,6 +562,7 @@ Search Manager includes two caching layers for optimal performance:
 return [
     // Search results caching
     'enableCache' => true,
+    'cacheStorageMethod' => 'file', // 'file' or 'redis' (use 'redis' for edge networks)
     'cacheDuration' => 3600, // 1 hour
     'cachePopularQueriesOnly' => false,
     'popularQueryThreshold' => 5, // Cache after 5 searches
@@ -569,6 +572,18 @@ return [
     'deviceDetectionCacheDuration' => 3600, // 1 hour
 ];
 ```
+
+**When to Use Redis Cache:**
+- ✅ Edge networks (Servd, Platform.sh, AWS with ElastiCache)
+- ✅ Multi-server setups (shared cache across servers)
+- ✅ High traffic sites (faster than file I/O)
+- ✅ When Craft already uses Redis cache (reuses connection)
+
+**When to Use File Cache:**
+- ✅ Single-server setups
+- ✅ Shared hosting without Redis
+- ✅ Development environments
+- ✅ Simple deployments
 
 **Popular Queries Example:**
 ```
@@ -1097,6 +1112,7 @@ return [
 
         // Cache settings
         'enableCache' => true, // Enable search results caching
+        'cacheStorageMethod' => 'file', // Storage: 'file' or 'redis'
         'cacheDuration' => 3600, // Cache TTL in seconds (3600 = 1 hour)
         'cachePopularQueriesOnly' => false, // Only cache frequently-searched queries
         'popularQueryThreshold' => 5, // Minimum search count before caching
@@ -1120,6 +1136,9 @@ return [
         'logLevel' => 'debug',
         'indexPrefix' => 'dev_',
         'queueEnabled' => false,
+        'enableCache' => false, // Disable cache for testing
+        'cacheDuration' => 300, // 5 minutes (if enabled)
+        'deviceDetectionCacheDuration' => 1800, // 30 minutes
         'analyticsRetention' => 30,
         'backends' => [
             'mysql' => ['enabled' => true],
@@ -1130,6 +1149,10 @@ return [
     'staging' => [
         'logLevel' => 'info',
         'indexPrefix' => 'staging_',
+        'enableCache' => true,
+        'cacheStorageMethod' => 'redis', // Use Redis for edge networks
+        'cacheDuration' => 1800, // 30 minutes
+        'deviceDetectionCacheDuration' => 3600, // 1 hour
         'analyticsRetention' => 90,
         'backends' => [
             'redis' => ['enabled' => true],
@@ -1140,6 +1163,12 @@ return [
         'logLevel' => 'error',
         'indexPrefix' => 'prod_',
         'queueEnabled' => true,
+        'enableCache' => true,
+        'cacheStorageMethod' => 'redis', // Use Redis for edge networks (Servd/AWS/Platform.sh)
+        'cacheDuration' => 7200, // 2 hours (optimize for performance)
+        'deviceDetectionCacheDuration' => 86400, // 24 hours
+        'cachePopularQueriesOnly' => true, // Save cache space
+        'popularQueryThreshold' => 3, // Cache after 3 searches
         'analyticsRetention' => 365,
         'enableGeoDetection' => true,
         'backends' => [
