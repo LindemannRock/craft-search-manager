@@ -67,8 +67,12 @@ class TransformerService extends Component
      */
     public function getTransformer(ElementInterface $element, ?string $transformerClass = null): ?TransformerInterface
     {
-        // If transformer class specified, use it
-        if ($transformerClass) {
+        // If transformer class specified, use it (empty string = null)
+        if ($transformerClass && $transformerClass !== '') {
+            $this->logDebug('Using transformer from index config', [
+                'transformer' => $transformerClass,
+                'elementType' => get_class($element),
+            ]);
             return $this->createTransformer($transformerClass);
         }
 
