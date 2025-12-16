@@ -417,6 +417,21 @@ class MySqlStorage implements StorageInterface
         $searchNgramCount = count($ngrams);
 
         // Find terms with matching n-grams and calculate Jaccard similarity
+        // Use named parameters for ngrams to avoid PDO binding issues
+        $ngramPlaceholders = [];
+        $params = [
+            ':indexHandle' => $this->indexHandle,
+            ':siteId' => $siteId,
+            ':searchCount' => $searchNgramCount,
+            ':threshold' => $threshold,
+        ];
+
+        foreach ($ngrams as $i => $ngram) {
+            $placeholder = ':ngram' . $i;
+            $ngramPlaceholders[] = $placeholder;
+            $params[$placeholder] = $ngram;
+        }
+
         $sql = "
             SELECT
                 term,
@@ -431,21 +446,11 @@ class MySqlStorage implements StorageInterface
             WHERE
                 n.indexHandle = :indexHandle
                 AND n.siteId = :siteId
-                AND n.ngram IN (" . implode(',', array_fill(0, count($ngrams), '?')) . ")
+                AND n.ngram IN (" . implode(',', $ngramPlaceholders) . ")
             GROUP BY term, ngramCount
             HAVING similarity >= :threshold
             ORDER BY similarity DESC
         ";
-
-        $params = array_merge(
-            [
-                ':indexHandle' => $this->indexHandle,
-                ':siteId' => $siteId,
-                ':searchCount' => $searchNgramCount,
-                ':threshold' => $threshold,
-            ],
-            $ngrams
-        );
 
         $rows = $this->db->createCommand($sql, $params)->queryAll();
 

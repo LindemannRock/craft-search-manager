@@ -74,16 +74,24 @@ class RebuildIndexJob extends BaseJob
                 ->drafts(false)
                 ->revisions(false);
 
-            // Re-apply criteria
+            // Apply criteria
             if (!empty($index->criteria)) {
-                if ($elementType === \craft\elements\Entry::class && !empty($index->criteria['sections'])) {
-                    $siteQuery->section($index->criteria['sections']);
+                // Config indices: criteria is a Closure to apply to query
+                if ($index->criteria instanceof \Closure) {
+                    $criteriaCallback = $index->criteria;
+                    $siteQuery = $criteriaCallback($siteQuery);
                 }
-                if ($elementType === \craft\elements\Asset::class && !empty($index->criteria['volumes'])) {
-                    $siteQuery->volume($index->criteria['volumes']);
-                }
-                if ($elementType === \craft\elements\Category::class && !empty($index->criteria['groups'])) {
-                    $siteQuery->group($index->criteria['groups']);
+                // Database indices: criteria is an array with section/volume/group filters
+                elseif (is_array($index->criteria)) {
+                    if ($elementType === \craft\elements\Entry::class && !empty($index->criteria['sections'])) {
+                        $siteQuery->section($index->criteria['sections']);
+                    }
+                    if ($elementType === \craft\elements\Asset::class && !empty($index->criteria['volumes'])) {
+                        $siteQuery->volume($index->criteria['volumes']);
+                    }
+                    if ($elementType === \craft\elements\Category::class && !empty($index->criteria['groups'])) {
+                        $siteQuery->group($index->criteria['groups']);
+                    }
                 }
             }
 

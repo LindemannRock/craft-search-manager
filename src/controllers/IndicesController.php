@@ -119,7 +119,13 @@ class IndicesController extends Controller
         $this->requirePostRequest();
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
-        $index = SearchIndex::findById($indexId);
+
+        // Support both numeric IDs (database indices) and string handles (config indices)
+        if (is_numeric($indexId)) {
+            $index = SearchIndex::findById((int)$indexId);
+        } else {
+            $index = SearchIndex::findByHandle($indexId);
+        }
 
         if (!$index) {
             throw new NotFoundHttpException('Index not found');
@@ -154,9 +160,25 @@ class IndicesController extends Controller
         $this->requirePostRequest();
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
-        $index = SearchIndex::findById($indexId);
+
+        $this->logDebug('Rebuilding index', [
+            'indexId' => $indexId,
+            'type' => gettype($indexId),
+            'isNumeric' => is_numeric($indexId),
+        ]);
+
+        // Support both numeric IDs (database indices) and string handles (config indices)
+        if (is_numeric($indexId)) {
+            $index = SearchIndex::findById((int)$indexId);
+        } else {
+            $index = SearchIndex::findByHandle($indexId);
+        }
 
         if (!$index) {
+            $this->logError('Index not found', [
+                'indexId' => $indexId,
+                'type' => gettype($indexId),
+            ]);
             throw new NotFoundHttpException('Index not found');
         }
 
@@ -178,7 +200,13 @@ class IndicesController extends Controller
         $this->requirePostRequest();
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
-        $index = SearchIndex::findById($indexId);
+
+        // Support both numeric IDs (database indices) and string handles (config indices)
+        if (is_numeric($indexId)) {
+            $index = SearchIndex::findById((int)$indexId);
+        } else {
+            $index = SearchIndex::findByHandle($indexId);
+        }
 
         if (!$index) {
             throw new NotFoundHttpException('Index not found');

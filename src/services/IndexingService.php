@@ -342,27 +342,31 @@ class IndexingService extends Component
             return true; // No criteria = matches all
         }
 
-        // Check sections filter for entries
-        if ($element instanceof \craft\elements\Entry && !empty($index->criteria['sections'])) {
-            $sectionHandle = $element->section->handle ?? null;
-            if ($sectionHandle && !in_array($sectionHandle, $index->criteria['sections'])) {
-                return false;
+        // Criteria filtering only applies to database indices (stored as array)
+        // Config indices use Closures that are applied when building queries
+        if (is_array($index->criteria)) {
+            // Check sections filter for entries
+            if ($element instanceof \craft\elements\Entry && !empty($index->criteria['sections'])) {
+                $sectionHandle = $element->section->handle ?? null;
+                if ($sectionHandle && !in_array($sectionHandle, $index->criteria['sections'])) {
+                    return false;
+                }
             }
-        }
 
-        // Check volume filter for assets
-        if ($element instanceof \craft\elements\Asset && !empty($index->criteria['volumes'])) {
-            $volumeHandle = $element->volume->handle ?? null;
-            if ($volumeHandle && !in_array($volumeHandle, $index->criteria['volumes'])) {
-                return false;
+            // Check volume filter for assets
+            if ($element instanceof \craft\elements\Asset && !empty($index->criteria['volumes'])) {
+                $volumeHandle = $element->volume->handle ?? null;
+                if ($volumeHandle && !in_array($volumeHandle, $index->criteria['volumes'])) {
+                    return false;
+                }
             }
-        }
 
-        // Check group filter for categories
-        if ($element instanceof \craft\elements\Category && !empty($index->criteria['groups'])) {
-            $groupHandle = $element->group->handle ?? null;
-            if ($groupHandle && !in_array($groupHandle, $index->criteria['groups'])) {
-                return false;
+            // Check group filter for categories
+            if ($element instanceof \craft\elements\Category && !empty($index->criteria['groups'])) {
+                $groupHandle = $element->group->handle ?? null;
+                if ($groupHandle && !in_array($groupHandle, $index->criteria['groups'])) {
+                    return false;
+                }
             }
         }
 

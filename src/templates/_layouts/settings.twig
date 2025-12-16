@@ -61,6 +61,11 @@
                     {{ 'Interface'|t('search-manager') }}
                 </a>
             </li>
+            <li>
+                <a href="{{ url('search-manager/settings/test') }}" {% if selectedSettingsItem == 'test' %}class="sel"{% endif %}>
+                    {{ 'Test'|t('search-manager') }}
+                </a>
+            </li>
         </ul>
     </nav>
 {% endblock %}

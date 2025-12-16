@@ -69,7 +69,7 @@
                                 <form method="post" accept-charset="UTF-8">
                                     {{ actionInput('search-manager/indices/rebuild') }}
                                     {{ csrfInput() }}
-                                    {{ hiddenInput('indexId', index.id) }}
+                                    {{ hiddenInput('indexId', index.id ?: index.handle) }}
                                     <button type="submit" class="btn small" title="{{ 'Rebuild'|t('search-manager') }}">
                                         {{ "Rebuild"|t('search-manager') }}
                                     </button>
@@ -80,7 +80,7 @@
                                 <form method="post" accept-charset="UTF-8">
                                     {{ actionInput('search-manager/indices/delete') }}
                                     {{ csrfInput() }}
-                                    {{ hiddenInput('indexId', index.id) }}
+                                    {{ hiddenInput('indexId', index.id ?: index.handle) }}
                                     <button type="submit" class="btn small" title="{{ 'Delete'|t('search-manager') }}"
                                             onclick="return confirm('{{ 'Are you sure you want to delete this index?'|t('search-manager') }}')">
                                         {{ "Delete"|t('search-manager') }}

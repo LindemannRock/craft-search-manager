@@ -1,0 +1,182 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Test Search"|t('search-manager') %}
+{% set selectedSettingsItem = 'test' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Test'|t('search-manager'),
+        url: url('search-manager/settings/test'),
+    },
+] %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+
+    <h2 style="margin-top: 0px;">{{ "Test Search Engine"|t('search-manager') }}</h2>
+
+    <p>{{ "Test your search configuration with real queries. Supports all advanced operators (phrase search, NOT, field-specific, wildcards, boosting)."|t('search-manager') }}</p>
+
+    {# Get available indices #}
+    {% set allIndices = craft.searchManager.getIndices() %}
+    {% set enabledIndices = [] %}
+    {% for index in allIndices %}
+        {% if index.enabled %}
+            {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' (' ~ index.handle ~ ')'}]) %}
+        {% endif %}
+    {% endfor %}
+
+    {{ forms.selectField({
+        label: 'Search Index'|t('search-manager'),
+        instructions: 'Select which index to search'|t('search-manager'),
+        id: 'testIndex',
+        name: 'testIndex',
+        options: enabledIndices,
+        value: enabledIndices[0].value ?? '',
+    }) }}
+
+    {{ forms.textField({
+        label: 'Search Query'|t('search-manager'),
+        instructions: 'Enter a search query to test. Supports all operators: <code>"exact phrase"</code>, <code>test NOT spam</code>, <code>title:blog</code>, <code>test*</code>, <code>craft^2 cms</code>'|t('search-manager'),
+        id: 'testQuery',
+        name: 'testQuery',
+        value: 'test',
+        placeholder: 'Try: "craft cms", test NOT spam, title:blog, test*',
+    }) }}
+
+    <button type="button" id="testButton" class="btn submit">{{ "Run Search Test"|t('search-manager') }}</button>
+
+    <div id="testResults" style="display: none; margin-top: 30px;">
+        <hr>
+        <h3 id="resultsTitle"></h3>
+        <div id="resultsContent"></div>
+    </div>
+
+    {% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}
+
+{% js %}
+const testButton = document.getElementById('testButton');
+const testQueryInput = document.getElementById('testQuery');
+const testIndexSelect = document.getElementById('testIndex');
+const testResults = document.getElementById('testResults');
+const resultsTitle = document.getElementById('resultsTitle');
+const resultsContent = document.getElementById('resultsContent');
+
+testButton.addEventListener('click', function() {
+    const query = testQueryInput.value.trim();
+    const indexHandle = testIndexSelect.value;
+
+    if (!query) {
+        testResults.style.display = 'block';
+        resultsTitle.innerHTML = '⚠️ Validation Error';
+        resultsTitle.style.color = '#dc3545';
+        resultsContent.innerHTML = '<p style="color: #dc3545;">Please enter a search query</p>';
+        return;
+    }
+
+    testButton.disabled = true;
+    testButton.textContent = 'Searching...';
+
+    fetch('{{ actionUrl('search-manager/settings/test-search') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+        },
+        body: JSON.stringify({
+            query: query,
+            indexHandle: indexHandle
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        testButton.disabled = false;
+        testButton.textContent = 'Run Search Test';
+
+        testResults.style.display = 'block';
+
+        if (data.success) {
+            // Show results
+            resultsTitle.innerHTML = `✅ Found ${data.total} result${data.total !== 1 ? 's' : ''}`;
+            resultsTitle.style.color = '#28a745';
+
+            let html = `
+<div style="padding: 15px; background: #e8f5e9; border-left: 4px solid #28a745; margin: 15px 0;">
+    <strong>Search Metrics:</strong><br>
+    <strong>Backend:</strong> ${Craft.escapeHtml(data.backend)}<br>
+    <strong>Execution Time:</strong> ${data.executionTime}ms<br>
+    <strong>Cache Status:</strong> ${data.cached ? '✅ Cached' : '❌ Not cached'}<br>
+    <strong>Query Parsed As:</strong> <code>${Craft.escapeHtml(query)}</code>
+</div>
+
+<h4 style="margin-top: 20px;">Results (Top ${Math.min(data.total, data.hits.length)}):</h4>
+`;
+
+            if (data.total > 0) {
+                html += '<div style="display: grid; gap: 16px;">';
+                data.hits.forEach((hit, index) => {
+                    html += `
+<div style="padding: 16px; border: 1px solid #e3e5e8; border-radius: 4px; background: #fff;">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+        <strong style="color: #0d78f2;">${hit.title || 'Element #' + hit.objectID}</strong>
+        <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
+            Score: ${hit.score ? hit.score.toFixed(2) : 'N/A'}
+        </span>
+    </div>
+    <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
+        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}
+    </div>
+    ${hit.excerpt ? '<div style="color: #4b5563; line-height: 1.6;">' + hit.excerpt + '</div>' : ''}
+</div>
+`;
+                });
+                html += '</div>';
+            } else {
+                html += `
+<div style="text-align: center; padding: 40px; color: #9ca3af;">
+    <p style="font-size: 18px; margin: 0;">No results found for "${Craft.escapeHtml(query)}"</p>
+    <p style="font-size: 14px; margin: 8px 0 0;">Try different keywords or operators</p>
+</div>
+`;
+            }
+
+            resultsContent.innerHTML = html;
+        } else {
+            // Error
+            resultsTitle.innerHTML = '❌ Search Failed';
+            resultsTitle.style.color = '#dc3545';
+            resultsContent.innerHTML = `<p style="color: #dc3545;">${Craft.escapeHtml(data.error || 'Unknown error')}</p>`;
+        }
+    })
+    .catch(error => {
+        testButton.disabled = false;
+        testButton.textContent = 'Run Search Test';
+
+        testResults.style.display = 'block';
+        resultsTitle.innerHTML = '⚠️ Error';
+        resultsTitle.style.color = '#dc3545';
+        resultsContent.innerHTML = `<p style="color: #dc3545;">${error.message}</p>`;
+    });
+});
+
+// Allow Enter key to trigger test
+testQueryInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        testButton.click();
+    }
+});
+{% endjs %}

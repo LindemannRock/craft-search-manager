@@ -142,6 +142,49 @@ class SettingsController extends Controller
         ]);
     }
 
+    public function actionTest(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+
+        return $this->renderTemplate('search-manager/settings/test', []);
+    }
+
+    public function actionTestSearch(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $query = Craft::$app->getRequest()->getRequiredBodyParam('query');
+        $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
+
+        try {
+            $startTime = microtime(true);
+            $results = SearchManager::$plugin->backend->search($indexHandle, $query, []);
+            $executionTime = round((microtime(true) - $startTime) * 1000, 2);
+
+            $backend = SearchManager::$plugin->backend->getActiveBackend();
+            $backendName = $backend ? $backend->getName() : 'unknown';
+
+            // Check if result was cached (execution time near 0)
+            $cached = $executionTime < 5;
+
+            return $this->asJson([
+                'success' => true,
+                'total' => $results['total'] ?? 0,
+                'hits' => $results['hits'] ?? [],
+                'backend' => $backendName,
+                'executionTime' => $executionTime,
+                'cached' => $cached,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->asJson([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function actionSave(): ?Response
     {
         $this->requirePermission('searchManager:manageSettings');

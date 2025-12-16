@@ -272,6 +272,7 @@ class SearchManager extends Plugin
                     'search-manager/settings/analytics' => 'search-manager/settings/analytics',
                     'search-manager/settings/cache' => 'search-manager/settings/cache',
                     'search-manager/settings/interface' => 'search-manager/settings/interface',
+                    'search-manager/settings/test' => 'search-manager/settings/test',
                     'search-manager/utilities/rebuild-all-indices' => 'search-manager/utilities/rebuild-all-indices',
                     'search-manager/utilities/clear-backend-storage' => 'search-manager/utilities/clear-backend-storage',
                     'search-manager/utilities/clear-device-cache' => 'search-manager/utilities/clear-device-cache',
