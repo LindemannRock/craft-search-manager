@@ -92,20 +92,23 @@ class ClearSearchCache extends Utility
                 break;
         }
 
-        // Count device cache files
+        // Count cache files (only for file storage)
         $deviceCacheFiles = 0;
-        $deviceCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
-        if (is_dir($deviceCachePath)) {
-            $files = glob($deviceCachePath . '/*.cache');
-            $deviceCacheFiles = count($files ?: []);
-        }
-
-        // Count search cache files
         $searchCacheFiles = 0;
-        $searchCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
-        if (is_dir($searchCachePath)) {
-            $files = glob($searchCachePath . '/*.cache');
-            $searchCacheFiles = count($files ?: []);
+
+        // Only count files when using file storage (Redis counts are not displayed)
+        if ($settings->cacheStorageMethod === 'file') {
+            $deviceCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
+            if (is_dir($deviceCachePath)) {
+                $files = glob($deviceCachePath . '/*.cache');
+                $deviceCacheFiles = count($files ?: []);
+            }
+
+            $searchCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
+            if (is_dir($searchCachePath)) {
+                $files = glob($searchCachePath . '/*.cache');
+                $searchCacheFiles = count($files ?: []);
+            }
         }
 
         return Craft::$app->getView()->renderTemplate('search-manager/utilities/index', [
@@ -116,6 +119,7 @@ class ClearSearchCache extends Utility
             'indices' => $indices,
             'deviceCacheFiles' => $deviceCacheFiles,
             'searchCacheFiles' => $searchCacheFiles,
+            'storageMethod' => $settings->cacheStorageMethod,
             'settings' => $settings,
         ]);
     }

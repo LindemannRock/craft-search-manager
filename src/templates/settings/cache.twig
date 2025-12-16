@@ -38,10 +38,52 @@
 		{{ redirectInput('search-manager/settings/cache') }}
 		{{ hiddenInput('section', 'cache') }}
 
-		<h2 style="margin-top: 0px;">{{ "Search Results Cache"|t('search-manager') }}</h2>
+		<h2 style="margin-top: 0px;">{{ "Cache Storage Settings"|t('search-manager') }}</h2>
+
+		{{ forms.selectField({
+			label: 'Cache Storage Method'|t('search-manager'),
+			instructions: 'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.'|t('search-manager'),
+			id: 'cacheStorageMethod',
+			name: 'settings[cacheStorageMethod]',
+			value: settings.cacheStorageMethod ?? 'file',
+			options: [
+				{ value: 'file', label: 'File System (default, single server)'|t('search-manager') },
+				{ value: 'redis', label: 'Redis/Database (load-balanced, multi-server, cloud hosting)'|t('search-manager') },
+			],
+			disabled: settings.isOverriddenByConfig('cacheStorageMethod'),
+			warning: settings.isOverriddenByConfig('cacheStorageMethod') ?
+				"This is being overridden by the <code>cacheStorageMethod</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+		}) }}
+
+		{% set craftUsesRedis = craft.app.cache is defined and craft.app.cache.className is defined and craft.app.cache.className == 'yii\\redis\\Cache' %}
+
+		<div id="cache-location-file" class="{{ (settings.cacheStorageMethod ?? 'file') == 'redis' ? 'hidden' }}">
+			{% include 'search-manager/_components/info-box' with {
+				message: '<strong>Cache Location:</strong> <code>storage/runtime/search-manager/cache/</code>',
+				type: 'info'
+			} %}
+		</div>
+
+		<div id="cache-location-redis" class="{{ (settings.cacheStorageMethod ?? 'file') == 'file' ? 'hidden' }}">
+			{% if craftUsesRedis %}
+				{% include 'search-manager/_components/info-box' with {
+					type: 'success',
+					message: '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>'
+				} %}
+			{% else %}
+				{% include 'search-manager/_components/info-box' with {
+					type: 'warning',
+					message: '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>'
+				} %}
+			{% endif %}
+		</div>
+
+		<hr>
+
+		<h2>{{ "Search Results Caching"|t('search-manager') }}</h2>
 
 		{{ forms.lightswitchField({
-            label: 'Enable Cache'|t('search-manager'),
+            label: 'Cache Search Results'|t('search-manager'),
             instructions: 'Cache search results to improve performance and reduce backend load'|t('search-manager'),
             id: 'enableCache',
             name: 'settings[enableCache]',
@@ -49,14 +91,10 @@
             disabled: settings.isOverriddenByConfig('enableCache'),
             warning: settings.isOverriddenByConfig('enableCache') ?
                 "This is being overridden by the <code>enableCache</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-        }) }}
-
-		{% include 'search-manager/_components/info-box' with {
-			message: '<strong>Storage Location:</strong> <code>@storage/runtime/search-manager/cache/search/</code>'
-		} %}
+          }) }}
 
 		{{ forms.textField({
-            label: 'Cache Duration'|t('search-manager'),
+            label: 'Search Results Cache Duration'|t('search-manager'),
             instructions: 'How long to cache search results (in seconds)'|t('search-manager'),
             id: 'cacheDuration',
             name: 'settings[cacheDuration]',
@@ -64,7 +102,6 @@
             type: 'number',
             min: '60',
             max: '86400',
-            required: true,
             tip: '3600 = 1 hour, 86400 = 24 hours'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('cacheDuration'),
             warning: settings.isOverriddenByConfig('cacheDuration') ?
@@ -93,7 +130,6 @@
             type: 'number',
             min: '2',
             max: '100',
-            required: true,
             tip: 'Only applies when "Cache Popular Queries Only" is enabled'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('popularQueryThreshold'),
             warning: settings.isOverriddenByConfig('popularQueryThreshold') ?
@@ -138,10 +174,6 @@
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites'
                 } %}
-
-                {% include 'search-manager/_components/info-box' with {
-                    message: '<strong>Storage Location:</strong> <code>@storage/runtime/search-manager/cache/device/</code>'
-                } %}
             </div>
         {% else %}
             <hr>
@@ -164,4 +196,18 @@
 
 	{% include 'search-manager/_components/plugin-credit.twig' %}
 {% endblock %}
+
+{% js %}
+// Toggle cache location info boxes based on storage method selection
+$('#cacheStorageMethod').on('change', function() {
+	const value = $(this).val();
+	if (value === 'redis') {
+		$('#cache-location-file').addClass('hidden');
+		$('#cache-location-redis').removeClass('hidden');
+	} else {
+		$('#cache-location-redis').addClass('hidden');
+		$('#cache-location-file').removeClass('hidden');
+	}
+});
+{% endjs %}
 

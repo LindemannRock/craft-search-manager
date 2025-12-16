@@ -161,6 +161,11 @@ class Settings extends Model
     public int $cacheDuration = 3600;
 
     /**
+     * @var string Cache storage method (file or redis)
+     */
+    public string $cacheStorageMethod = 'file';
+
+    /**
      * @var bool Only cache popular queries
      */
     public bool $cachePopularQueriesOnly = false;
@@ -277,6 +282,7 @@ class Settings extends Model
             [['indexPrefix'], 'string', 'max' => 50],
             [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy'], 'boolean'],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
+            [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
             [['itemsPerPage', 'batchSize', 'analyticsRetention', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
             [['itemsPerPage'], 'integer', 'max' => 500],
             [['batchSize'], 'integer', 'max' => 1000],

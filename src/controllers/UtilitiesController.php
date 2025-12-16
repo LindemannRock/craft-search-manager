@@ -116,25 +116,44 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
-            $fileCount = 0;
+            $settings = SearchManager::$plugin->getSettings();
 
-            if (is_dir($cachePath)) {
-                $files = glob($cachePath . '/*.cache');
-                $fileCount = count($files ?: []);
-                FileHelper::clearDirectory($cachePath);
+            if ($settings->cacheStorageMethod === 'redis') {
+                $cache = Craft::$app->cache;
+                if ($cache instanceof \yii\redis\Cache) {
+                    $redis = $cache->redis;
 
-                $this->logInfo('Device cache cleared via utility', [
-                    'path' => $cachePath,
-                    'filesCleared' => $fileCount,
-                ]);
+                    // Get all device cache keys from tracking set
+                    $keys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
+
+                    // Delete device cache keys
+                    foreach ($keys as $key) {
+                        $cache->delete($key);
+                    }
+
+                    // Clear the tracking set
+                    $redis->executeCommand('DEL', ['searchmanager-device-keys']);
+                }
+
+                $message = Craft::t('search-manager', 'Device cache cleared successfully.');
+            } else {
+                $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
+                $fileCount = 0;
+
+                if (is_dir($cachePath)) {
+                    $files = glob($cachePath . '/*.cache');
+                    $fileCount = count($files ?: []);
+                    FileHelper::clearDirectory($cachePath);
+                }
+
+                $message = Craft::t('search-manager', 'Device cache cleared successfully ({count} files).', ['count' => $fileCount]);
             }
+
+            $this->logInfo('Device cache cleared via utility');
 
             return $this->asJson([
                 'success' => true,
-                'message' => Craft::t('search-manager', 'Device cache cleared successfully ({count} files).', [
-                    'count' => $fileCount,
-                ]),
+                'message' => $message,
             ]);
         } catch (\Throwable $e) {
             $this->logError('Failed to clear device cache', [
@@ -157,25 +176,29 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
-            $fileCount = 0;
+            $settings = SearchManager::$plugin->getSettings();
 
-            if (is_dir($cachePath)) {
-                $files = glob($cachePath . '/*.cache');
-                $fileCount = count($files ?: []);
-                FileHelper::clearDirectory($cachePath);
+            if ($settings->cacheStorageMethod === 'redis') {
+                SearchManager::$plugin->backend->clearAllSearchCache();
+                $message = Craft::t('search-manager', 'Search cache cleared successfully.');
+            } else {
+                $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
+                $fileCount = 0;
 
-                $this->logInfo('Search cache cleared via utility', [
-                    'path' => $cachePath,
-                    'filesCleared' => $fileCount,
-                ]);
+                if (is_dir($cachePath)) {
+                    $files = glob($cachePath . '/*.cache');
+                    $fileCount = count($files ?: []);
+                    FileHelper::clearDirectory($cachePath);
+                }
+
+                $message = Craft::t('search-manager', 'Search cache cleared successfully ({count} files).', ['count' => $fileCount]);
             }
+
+            $this->logInfo('Search cache cleared via utility');
 
             return $this->asJson([
                 'success' => true,
-                'message' => Craft::t('search-manager', 'Search cache cleared successfully ({count} files).', [
-                    'count' => $fileCount,
-                ]),
+                'message' => $message,
             ]);
         } catch (\Throwable $e) {
             $this->logError('Failed to clear search cache', [
@@ -198,33 +221,60 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $totalFiles = 0;
+            $settings = SearchManager::$plugin->getSettings();
 
-            // Clear device cache
-            $deviceCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
-            if (is_dir($deviceCachePath)) {
-                $files = glob($deviceCachePath . '/*.cache');
-                $totalFiles += count($files ?: []);
-                FileHelper::clearDirectory($deviceCachePath);
+            if ($settings->cacheStorageMethod === 'redis') {
+                $cache = Craft::$app->cache;
+                if ($cache instanceof \yii\redis\Cache) {
+                    $redis = $cache->redis;
+
+                    // Get all cache keys from tracking sets
+                    $searchKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
+                    $deviceKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
+
+                    // Delete search cache keys
+                    foreach ($searchKeys as $key) {
+                        $cache->delete($key);
+                    }
+
+                    // Delete device cache keys
+                    foreach ($deviceKeys as $key) {
+                        $cache->delete($key);
+                    }
+
+                    // Clear the tracking sets
+                    $redis->executeCommand('DEL', ['searchmanager-search-keys']);
+                    $redis->executeCommand('DEL', ['searchmanager-device-keys']);
+                }
+
+                $message = Craft::t('search-manager', 'All caches cleared successfully.');
+            } else {
+                $totalFiles = 0;
+
+                // Clear device cache
+                $deviceCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
+                if (is_dir($deviceCachePath)) {
+                    $files = glob($deviceCachePath . '/*.cache');
+                    $totalFiles += count($files ?: []);
+                    FileHelper::clearDirectory($deviceCachePath);
+                }
+
+                // Clear search cache
+                $searchCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
+                if (is_dir($searchCachePath)) {
+                    $files = glob($searchCachePath . '/*.cache');
+                    $totalFiles += count($files ?: []);
+                    FileHelper::clearDirectory($searchCachePath);
+                }
+
+                $message = Craft::t('search-manager', 'All caches cleared successfully ({count} files).', ['count' => $totalFiles]);
             }
 
-            // Clear search cache
-            $searchCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
-            if (is_dir($searchCachePath)) {
-                $files = glob($searchCachePath . '/*.cache');
-                $totalFiles += count($files ?: []);
-                FileHelper::clearDirectory($searchCachePath);
-            }
-
-            $this->logInfo('All caches cleared via utility', [
-                'filesCleared' => $totalFiles,
-            ]);
+            $this->logInfo('All caches cleared via utility');
 
             return $this->asJson([
                 'success' => true,
-                'message' => Craft::t('search-manager', 'All caches cleared successfully ({count} files).', [
-                    'count' => $totalFiles,
-                ]),
+                'message' => $message,
             ]);
         } catch (\Throwable $e) {
             $this->logError('Failed to clear all caches', [

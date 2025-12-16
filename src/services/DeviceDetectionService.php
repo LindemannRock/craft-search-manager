@@ -183,6 +183,16 @@ class DeviceDetectionService extends Component
      */
     private function _getCachedDeviceInfo(string $userAgent): ?array
     {
+        $settings = SearchManager::$plugin->getSettings();
+        $cacheKey = 'searchmanager:device:' . md5($userAgent);
+
+        // Use Redis/database cache if configured
+        if ($settings->cacheStorageMethod === 'redis') {
+            $cached = Craft::$app->cache->get($cacheKey);
+            return $cached !== false ? $cached : null;
+        }
+
+        // Use file-based cache (default)
         $cachePath = Craft::$app->path->getRuntimePath() . '/search-manager/cache/device/';
         $cacheFile = $cachePath . md5($userAgent) . '.cache';
 
@@ -192,7 +202,6 @@ class DeviceDetectionService extends Component
 
         // Check if cache is expired
         $mtime = filemtime($cacheFile);
-        $settings = SearchManager::$plugin->getSettings();
         if (time() - $mtime > $settings->deviceDetectionCacheDuration) {
             @unlink($cacheFile);
             return null;
@@ -203,7 +212,7 @@ class DeviceDetectionService extends Component
     }
 
     /**
-     * Cache device info to file storage
+     * Cache device info to storage (file or Redis)
      *
      * @param string $userAgent
      * @param array $data
@@ -212,6 +221,24 @@ class DeviceDetectionService extends Component
      */
     private function _cacheDeviceInfo(string $userAgent, array $data, int $duration): void
     {
+        $settings = SearchManager::$plugin->getSettings();
+        $cacheKey = 'searchmanager:device:' . md5($userAgent);
+
+        // Use Redis/database cache if configured
+        if ($settings->cacheStorageMethod === 'redis') {
+            $cache = Craft::$app->cache;
+            $cache->set($cacheKey, $data, $duration);
+
+            // Track key in set for selective deletion
+            if ($cache instanceof \yii\redis\Cache) {
+                $redis = $cache->redis;
+                $redis->executeCommand('SADD', ['searchmanager-device-keys', $cacheKey]);
+            }
+
+            return;
+        }
+
+        // Use file-based cache (default)
         $cachePath = Craft::$app->path->getRuntimePath() . '/search-manager/cache/device/';
 
         // Create directory if it doesn't exist

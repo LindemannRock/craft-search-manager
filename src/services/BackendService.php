@@ -339,7 +339,21 @@ class BackendService extends Component
      */
     private function _getFromCache(string $indexName, string $query, array $options): ?array
     {
+        $settings = SearchManager::$plugin->getSettings();
         $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
+        $fullCacheKey = 'searchmanager:search:' . $cacheKey;
+
+        // Use Redis/database cache if configured
+        if ($settings->cacheStorageMethod === 'redis') {
+            $cached = Craft::$app->cache->get($fullCacheKey);
+            if ($cached !== false) {
+                $this->logDebug('Cache hit (Redis)', ['cacheKey' => $cacheKey, 'query' => $query]);
+                return $cached;
+            }
+            return null;
+        }
+
+        // Use file-based cache (default)
         $cachePath = $this->_getCachePath($indexName);
         $cacheFile = $cachePath . $cacheKey . '.cache';
 
@@ -348,7 +362,6 @@ class BackendService extends Component
         }
 
         // Check if cache is expired
-        $settings = SearchManager::$plugin->getSettings();
         $mtime = filemtime($cacheFile);
         if (time() - $mtime > $settings->cacheDuration) {
             @unlink($cacheFile);
@@ -357,7 +370,7 @@ class BackendService extends Component
         }
 
         $data = file_get_contents($cacheFile);
-        $this->logDebug('Cache hit', ['cacheKey' => $cacheKey, 'query' => $query]);
+        $this->logDebug('Cache hit (File)', ['cacheKey' => $cacheKey, 'query' => $query]);
         return unserialize($data);
     }
 
@@ -372,7 +385,26 @@ class BackendService extends Component
      */
     private function _saveToCache(string $indexName, string $query, array $options, array $results): void
     {
+        $settings = SearchManager::$plugin->getSettings();
         $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
+        $fullCacheKey = 'searchmanager:search:' . $cacheKey;
+
+        // Use Redis/database cache if configured
+        if ($settings->cacheStorageMethod === 'redis') {
+            $cache = Craft::$app->cache;
+            $cache->set($fullCacheKey, $results, $settings->cacheDuration);
+
+            // Track key in set for selective deletion
+            if ($cache instanceof \yii\redis\Cache) {
+                $redis = $cache->redis;
+                $redis->executeCommand('SADD', ['searchmanager-search-keys', $fullCacheKey]);
+            }
+
+            $this->logDebug('Results cached (Redis)', ['cacheKey' => $cacheKey, 'query' => $query]);
+            return;
+        }
+
+        // Use file-based cache (default)
         $cachePath = $this->_getCachePath($indexName);
 
         // Create directory if it doesn't exist
@@ -382,7 +414,7 @@ class BackendService extends Component
 
         $cacheFile = $cachePath . $cacheKey . '.cache';
         file_put_contents($cacheFile, serialize($results));
-        $this->logDebug('Results cached', ['cacheKey' => $cacheKey, 'query' => $query]);
+        $this->logDebug('Results cached (File)', ['cacheKey' => $cacheKey, 'query' => $query]);
     }
 
     /**
@@ -404,11 +436,37 @@ class BackendService extends Component
      */
     public function clearSearchCache(string $indexName): void
     {
-        $cachePath = $this->_getCachePath($indexName);
+        $settings = SearchManager::$plugin->getSettings();
 
-        if (is_dir($cachePath)) {
-            \craft\helpers\FileHelper::clearDirectory($cachePath);
-            $this->logInfo('Cleared search cache for index', ['index' => $indexName]);
+        if ($settings->cacheStorageMethod === 'redis') {
+            // Clear Redis cache for specific index
+            $cache = Craft::$app->cache;
+            if ($cache instanceof \yii\redis\Cache) {
+                $redis = $cache->redis;
+
+                // Get all search cache keys from tracking set
+                $allKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
+
+                // Filter keys for this specific index (keys contain index name)
+                foreach ($allKeys as $key) {
+                    if (strpos($key, 'searchmanager:search:') === 0) {
+                        // Delete individual key
+                        $cache->delete($key);
+                        // Remove from tracking set
+                        $redis->executeCommand('SREM', ['searchmanager-search-keys', $key]);
+                    }
+                }
+            }
+
+            $this->logInfo('Cleared search cache for index (Redis)', ['index' => $indexName]);
+        } else {
+            // Clear file cache
+            $cachePath = $this->_getCachePath($indexName);
+
+            if (is_dir($cachePath)) {
+                \craft\helpers\FileHelper::clearDirectory($cachePath);
+                $this->logInfo('Cleared search cache for index (File)', ['index' => $indexName]);
+            }
         }
     }
 
@@ -419,11 +477,35 @@ class BackendService extends Component
      */
     public function clearAllSearchCache(): void
     {
-        $cachePath = Craft::$app->path->getRuntimePath() . '/search-manager/cache/search/';
+        $settings = SearchManager::$plugin->getSettings();
 
-        if (is_dir($cachePath)) {
-            \craft\helpers\FileHelper::clearDirectory($cachePath);
-            $this->logInfo('Cleared all search cache');
+        if ($settings->cacheStorageMethod === 'redis') {
+            // Clear Redis cache
+            $cache = Craft::$app->cache;
+            if ($cache instanceof \yii\redis\Cache) {
+                $redis = $cache->redis;
+
+                // Get all search cache keys from tracking set
+                $keys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
+
+                // Delete all search cache keys
+                foreach ($keys as $key) {
+                    $cache->delete($key);
+                }
+
+                // Clear the tracking set
+                $redis->executeCommand('DEL', ['searchmanager-search-keys']);
+            }
+
+            $this->logInfo('Cleared all search cache (Redis)');
+        } else {
+            // Clear file cache
+            $cachePath = Craft::$app->path->getRuntimePath() . '/search-manager/cache/search/';
+
+            if (is_dir($cachePath)) {
+                \craft\helpers\FileHelper::clearDirectory($cachePath);
+                $this->logInfo('Cleared all search cache (File)');
+            }
         }
     }
 

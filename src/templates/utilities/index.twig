@@ -176,19 +176,19 @@
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 {% if settings.cacheDeviceDetection %}
                     <button type="button" class="btn" id="clear-device-cache">
-                        {{ "Clear Device Cache"|t('search-manager') }} ({{ deviceCacheFiles }})
+                        {{ "Clear Device Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ deviceCacheFiles }}){% endif %}
                     </button>
                 {% endif %}
 
                 {% if settings.enableCache %}
                     <button type="button" class="btn" id="clear-search-cache">
-                        {{ "Clear Search Cache"|t('search-manager') }} ({{ searchCacheFiles }})
+                        {{ "Clear Search Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ searchCacheFiles }}){% endif %}
                     </button>
                 {% endif %}
 
                 {% if settings.cacheDeviceDetection and settings.enableCache %}
                     <button type="button" class="btn secondary" id="clear-all-caches">
-                        {{ "Clear All Caches"|t('search-manager') }} ({{ (deviceCacheFiles + searchCacheFiles) }})
+                        {{ "Clear All Caches"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ (deviceCacheFiles + searchCacheFiles) }}){% endif %}
                     </button>
                 {% endif %}
             </div>
