@@ -1,0 +1,652 @@
+{% extends "_layouts/cp" %}
+{% set title = "Analytics"|t('search-manager') %}
+{% set selectedSubnavItem = 'analytics' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Analytics'|t('search-manager'),
+        url: url('search-manager/analytics'),
+    },
+] %}
+
+{% block actionButton %}
+	<div id="action-button" class="btngroup">
+		<button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+		<div class="menu" data-align="right">
+			<ul>
+				<li>
+					<a href="#" class="export-link" data-format="csv" data-action="search-manager/analytics/export-csv">{{ "Export as CSV"|t('search-manager') }}</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+{% endblock %}
+
+{% block toolbar %}
+	<div class="flex">
+		<div>
+			<div class="btngroup">
+				<button type="button" class="btn menubtn">
+					<span id="dateRangeLabel">{{ dateRange == 'today' ? 'Today' : (dateRange == 'last7days' ? 'Last 7 days' : (dateRange == 'last30days' ? 'Last 30 days' : (dateRange == 'last90days' ? 'Last 90 days' : 'All time'))) }}</span>
+				</button>
+				<div class="menu">
+					<ul>
+						<li><a href="#" data-range="today" class="main-date-range-option {{ dateRange == 'today' ? 'sel' : '' }}">{{ "Today"|t('search-manager') }}</a></li>
+						<li><a href="#" data-range="last7days" class="main-date-range-option {{ dateRange == 'last7days' ? 'sel' : '' }}">{{ "Last 7 days"|t('search-manager') }}</a></li>
+						<li><a href="#" data-range="last30days" class="main-date-range-option {{ dateRange == 'last30days' ? 'sel' : '' }}">{{ "Last 30 days"|t('search-manager') }}</a></li>
+						<li><a href="#" data-range="last90days" class="main-date-range-option {{ dateRange == 'last90days' ? 'sel' : '' }}">{{ "Last 90 days"|t('search-manager') }}</a></li>
+						<li><a href="#" data-range="all" class="main-date-range-option {{ dateRange == 'all' ? 'sel' : '' }}">{{ "All time"|t('search-manager') }}</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block content %}
+    <div id="analytics-dashboard">
+        <div class="analytics-stats">
+            <div class="stat-box">
+                <div class="stat-value" id="total-404s">{{ (totalCount ?? 0)|number }}</div>
+                <div class="stat-label">{{ "Total Searches"|t('search-manager') }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="handled-404s">{{ (handledCount ?? 0)|number }}</div>
+                <div class="stat-label">{{ "With Results"|t('search-manager') }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="unhandled-404s">{{ (unhandledCount ?? 0)|number }}</div>
+                <div class="stat-label">{{ "Zero Results"|t('search-manager') }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value" id="success-rate">{{ totalCount > 0 ? ((handledCount / totalCount * 100)|round) : 0 }}%</div>
+                <div class="stat-label">{{ "Success Rate"|t('search-manager') }}</div>
+            </div>
+        </div>
+
+        <h2 style="margin: 30px 0 20px;">{{ "Search Trend"|t('search-manager') }}</h2>
+
+        <div class="analytics-charts">
+            <div class="chart-container full-width">
+                <canvas id="404-trend-chart"></canvas>
+            </div>
+        </div>
+
+        <h2 style="margin: 30px 0 20px;">{{ "Most Common Queries (Top 15)"|t('search-manager') }}</h2>
+
+        <div class="analytics-charts">
+            <div class="chart-container full-width">
+                <div class="table-scroll-container">
+                    <table class="data fullwidth">
+                        <thead>
+                            <tr>
+                                <th>{{ 'Query'|t('search-manager') }}</th>
+                                <th>{{ 'Searches'|t('search-manager') }}</th>
+                                <th>{{ 'Avg Results'|t('search-manager') }}</th>
+                                <th>{{ 'Date'|t('search-manager') }}</th>
+                                <th>{{ 'Time'|t('search-manager') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in mostCommon %}
+                                <tr>
+                                    <td>
+                                        <span><code>{{ stat.query }}</code></span>
+                                    </td>
+                                    <td><strong>{{ stat.count|number }}</strong></td>
+                                    <td>
+                                        {{ (stat.totalResults / stat.count)|round(1) }}
+                                    </td>
+                                    <td>{{ stat.lastSearched|date('short') }}</td>
+                                    <td>{{ stat.lastSearched|time('short') }}</td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <h2 style="margin: 30px 0 20px;">{{ "Traffic Analysis"|t('search-manager') }}</h2>
+
+        <div class="analytics-charts two-columns">
+            <div class="chart-container">
+                <h3>{{ "Bot vs Human Traffic"|t('search-manager') }}</h3>
+                <canvas id="bot-chart"></canvas>
+                <div style="text-align: center; margin-top: 10px; color: #666;">
+                    <strong>{{ botStats.botPercentage }}%</strong> of traffic is from bots
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h3>{{ "Top Bots"|t('search-manager') }}</h3>
+                <div class="table-scroll-container">
+                    <table class="data fullwidth">
+                        <thead>
+                            <tr>
+                                <th>{{ "Bot Name"|t('search-manager') }}</th>
+                                <th>{{ "Searches"|t('search-manager') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if botStats.topBots|length > 0 %}
+                                {% for bot in botStats.topBots %}
+                                    <tr>
+                                        <td>{{ bot.botName }}</td>
+                                        <td>{{ bot.count|number }}</td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="2" style="text-align: center; color: #999;">
+                                        {{ "No bot data available"|t('search-manager') }}
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <h2 style="margin: 30px 0 20px;">{{ "Device Analytics"|t('search-manager') }}</h2>
+
+        <div class="analytics-charts two-columns">
+            <div class="chart-container">
+                <h3>{{ "Device Types"|t('search-manager') }}</h3>
+                <canvas id="device-chart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <h3>{{ "Browser Usage"|t('search-manager') }}</h3>
+                <canvas id="browser-chart"></canvas>
+            </div>
+        </div>
+
+        <div class="analytics-charts" style="margin-top: 30px;">
+            <div class="chart-container">
+                <h3>{{ "Operating Systems"|t('search-manager') }}</h3>
+                <canvas id="os-chart"></canvas>
+            </div>
+        </div>
+
+        <h2 style="margin: 30px 0 20px;">{{ "Recent Zero-Result Queries"|t('search-manager') }}</h2>
+
+        <div class="analytics-charts">
+            <div class="chart-container full-width">
+                <div class="table-scroll-container">
+                    <table class="data fullwidth">
+                        <thead>
+                            <tr>
+                                <th>{{ 'Query'|t('search-manager') }}</th>
+                                <th>{{ 'Index'|t('search-manager') }}</th>
+                                <th>{{ 'Backend'|t('search-manager') }}</th>
+                                <th>{{ 'Date'|t('search-manager') }}</th>
+                                <th>{{ 'Time'|t('search-manager') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stat in recentUnhandled %}
+                                <tr>
+                                    <td><code>{{ stat.query }}</code></td>
+                                    <td>{{ stat.indexHandle }}</td>
+                                    <td>{{ stat.backend|title }}</td>
+                                    <td>{{ stat.dateCreated|date('short') }}</td>
+                                    <td>{{ stat.dateCreated|time('short') }}</td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="thin light">{{ "All searches have results!"|t('search-manager') }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}
+
+{% css %}
+    #analytics-dashboard {
+        padding: 24px;
+    }
+
+    .analytics-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
+
+    .stat-box {
+        background: #f3f7fc;
+        padding: 24px;
+        border-radius: 4px;
+        text-align: center;
+        border: 1px solid var(--border-hairline);
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: 600;
+        color: #0d78f2;
+        margin-bottom: 8px;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: #596673;
+    }
+
+    .analytics-charts {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 30px;
+        margin-bottom: 30px;
+    }
+
+    .analytics-charts.two-columns {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 1024px) {
+        .analytics-charts.two-columns {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .chart-container.full-width {
+        grid-column: 1 / -1;
+    }
+
+    .chart-container h3 {
+        margin: 0 0 20px;
+        font-size: 16px;
+    }
+
+    .chart-container {
+        background: #fff;
+        border: 1px solid #e3e5e8;
+        border-radius: 4px;
+        padding: 24px;
+        min-width: 0; /* Allow flex/grid item to shrink below content size */
+        overflow: hidden; /* Prevent content from pushing out */
+    }
+
+    .chart-container canvas {
+        max-height: 300px;
+        max-width: 100%;
+    }
+
+    /* Ensure chart wrapper respects container size */
+    .chart-container > canvas {
+        display: block;
+        box-sizing: border-box;
+    }
+
+    .table-scroll-container {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -24px;
+        padding: 0 24px;
+    }
+
+    .table-scroll-container table {
+        min-width: 100%;
+        width: 100%;
+    }
+{% endcss %}
+
+{% js %}
+    // Load Chart.js if not already loaded
+    if (typeof Chart === 'undefined') {
+        var script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
+        script.onload = initCharts;
+        document.head.appendChild(script);
+    } else {
+        initCharts();
+    }
+
+    // Store chart instances globally to destroy them before creating new ones
+    window.searchManagerCharts = window.searchManagerCharts || {};
+
+    function initCharts(data) {
+        // Destroy existing charts if they exist
+        if (window.searchManagerCharts.trendChart) {
+            window.searchManagerCharts.trendChart.destroy();
+        }
+        if (window.searchManagerCharts.botChart) {
+            window.searchManagerCharts.botChart.destroy();
+        }
+        if (window.searchManagerCharts.deviceChart) {
+            window.searchManagerCharts.deviceChart.destroy();
+        }
+        if (window.searchManagerCharts.browserChart) {
+            window.searchManagerCharts.browserChart.destroy();
+        }
+        if (window.searchManagerCharts.osChart) {
+            window.searchManagerCharts.osChart.destroy();
+        }
+
+        // Chart colors
+        const chartColors = [
+            '#0d78f2', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c',
+            '#34495e', '#e67e22', '#3498db', '#2ecc71', '#c0392b', '#f1c40f'
+        ];
+
+        // Use provided data or fall back to initial page data
+        const chartData = data ? data.chartData : {{ chartData|json_encode|raw }};
+        const botStats = data ? data.botStats : {{ botStats|json_encode|raw }};
+        const deviceBreakdown = data ? data.deviceBreakdown : {{ deviceBreakdown|json_encode|raw }};
+        const browserBreakdown = data ? data.browserBreakdown : {{ browserBreakdown|json_encode|raw }};
+        const osBreakdown = data ? data.osBreakdown : {{ osBreakdown|json_encode|raw }};
+
+        if (chartData && chartData.length > 0) {
+            // 404 Trend Chart
+            window.searchManagerCharts.trendChart = new Chart(document.getElementById('404-trend-chart'), {
+                type: 'line',
+                data: {
+                    labels: chartData.map(d => d.date),
+                    datasets: [
+                        {
+                            label: '{{ "With Results"|t('search-manager') }}',
+                            data: chartData.map(d => d.withResults),
+                            borderColor: '#10B981',
+                            backgroundColor: '#10B981',
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: '{{ "Zero Results"|t('search-manager') }}',
+                            data: chartData.map(d => d.zeroResults),
+                            borderColor: '#EF4444',
+                            backgroundColor: '#EF4444',
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            align: 'center',
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 20
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Bot vs Human Traffic Chart
+        if (botStats && botStats.chart) {
+            window.searchManagerCharts.botChart = new Chart(document.getElementById('bot-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: botStats.chart.labels,
+                    datasets: [{
+                        data: botStats.chart.values,
+                        backgroundColor: [chartColors[1], chartColors[2]]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Device Types Chart
+        if (deviceBreakdown && deviceBreakdown.labels && deviceBreakdown.labels.length > 0) {
+            window.searchManagerCharts.deviceChart = new Chart(document.getElementById('device-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: deviceBreakdown.labels,
+                    datasets: [{
+                        data: deviceBreakdown.values,
+                        backgroundColor: chartColors.slice(0, deviceBreakdown.labels.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Browser Usage Chart
+        if (browserBreakdown && browserBreakdown.labels && browserBreakdown.labels.length > 0) {
+            const browserCtx = document.getElementById('browser-chart');
+            if (browserCtx) {
+                browserCtx.parentElement.style.minHeight = '300px';
+            }
+            window.searchManagerCharts.browserChart = new Chart(browserCtx, {
+                type: 'bar',
+                data: {
+                    labels: browserBreakdown.labels,
+                    datasets: [{
+                        label: '{{ "Searches"|t('search-manager') }}',
+                        data: browserBreakdown.values,
+                        backgroundColor: chartColors[0],
+                        borderColor: chartColors[0],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1,
+                                precision: 0
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+
+        // Operating Systems Chart
+        if (osBreakdown && osBreakdown.labels && osBreakdown.labels.length > 0) {
+            window.searchManagerCharts.osChart = new Chart(document.getElementById('os-chart'), {
+                type: 'doughnut',
+                data: {
+                    labels: osBreakdown.labels,
+                    datasets: [{
+                        data: osBreakdown.values,
+                        backgroundColor: chartColors
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    // Handle date range selection via AJAX
+    $(document).on('click', '.main-date-range-option', function(e) {
+        e.preventDefault();
+
+        const $link = $(this);
+        const range = $link.data('range');
+
+        // Update the button text
+        const rangeLabels = {
+            'today': '{{ "Today"|t('search-manager')|e('js') }}',
+            'last7days': '{{ "Last 7 days"|t('search-manager')|e('js') }}',
+            'last30days': '{{ "Last 30 days"|t('search-manager')|e('js') }}',
+            'last90days': '{{ "Last 90 days"|t('search-manager')|e('js') }}',
+            'all': '{{ "All time"|t('search-manager')|e('js') }}'
+        };
+
+        // Update button text immediately
+        $('#dateRangeLabel').text(rangeLabels[range] || range);
+
+        // Update selected state
+        $link.closest('ul').find('.sel').removeClass('sel');
+        $link.addClass('sel');
+
+        // Close the menu
+        $link.closest('.menu').removeClass('active');
+        $link.closest('.btngroup').find('.menubtn').removeClass('active');
+
+        // Show loading state
+        $('#analytics-dashboard').css('opacity', '0.5');
+
+        // Update URL without reload
+        const url = new URL(window.location);
+        url.searchParams.set('dateRange', range);
+        window.history.pushState({}, '', url);
+
+        // Load analytics data via AJAX
+        loadAnalyticsData(range);
+    });
+
+    // Load analytics data via AJAX
+    function loadAnalyticsData(dateRange) {
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                dateRange: dateRange,
+                {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
+            },
+            success: function(response) {
+                if (response.success && response.data) {
+                    // Update stat boxes with number formatting
+                    $('#total-404s').text((response.data.totalCount || 0).toLocaleString());
+                    $('#handled-404s').text((response.data.handledCount || 0).toLocaleString());
+                    $('#unhandled-404s').text((response.data.unhandledCount || 0).toLocaleString());
+                    const successRate = response.data.totalCount > 0 ? Math.round((response.data.handledCount / response.data.totalCount) * 100) : 0;
+                    $('#success-rate').text(successRate + '%');
+
+                    // Update tables
+                    updateMostCommonTable(response.data.mostCommon || []);
+                    updateRecentUnhandledTable(response.data.recentUnhandled || []);
+
+                    // Re-initialize charts with new data
+                    initCharts(response.data);
+                } else {
+                    Craft.cp.displayError(response.error || '{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
+                }
+
+                // Restore opacity
+                $('#analytics-dashboard').css('opacity', '1');
+            },
+            error: function() {
+                $('#analytics-dashboard').css('opacity', '1');
+                Craft.cp.displayError('{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
+            }
+        });
+    }
+
+    // Update most common table
+    function updateMostCommonTable(data) {
+        let html = '';
+        if (data.length === 0) {
+            html = '<tr><td colspan="5" class="thin light">{{ "No searches recorded yet"|t('search-manager')|e('js') }}</td></tr>';
+        } else {
+            data.forEach(function(stat) {
+                html += '<tr>';
+                html += '<td><span><code>' + Craft.escapeHtml(stat.query) + '</code></span></td>';
+                html += '<td><strong>' + (stat.count || 0).toLocaleString() + '</strong></td>';
+                html += '<td>' + (stat.totalResults / stat.count).toFixed(1) + '</td>';
+                const date = new Date(stat.lastSearched.date || stat.lastSearched);
+                html += '<td>' + Craft.formatDate(date, 'short') + '</td>';
+                html += '<td>' + Craft.formatTime(date, 'short') + '</td>';
+                html += '</tr>';
+            });
+        }
+        $('h2:contains("Most Common Queries")').next('.analytics-charts').find('tbody').html(html);
+    }
+
+    // Update recent unhandled table
+    function updateRecentUnhandledTable(data) {
+        let html = '';
+        if (data.length === 0) {
+            html = '<tr><td colspan="5" class="thin light">{{ "All searches have results!"|t('search-manager')|e('js') }}</td></tr>';
+        } else {
+            data.forEach(function(stat) {
+                html += '<tr>';
+                html += '<td><code>' + Craft.escapeHtml(stat.query) + '</code></td>';
+                html += '<td>' + Craft.escapeHtml(stat.indexHandle) + '</td>';
+                html += '<td>' + Craft.escapeHtml(stat.backend.charAt(0).toUpperCase() + stat.backend.slice(1)) + '</td>';
+                const date = new Date(stat.dateCreated.date || stat.dateCreated);
+                html += '<td>' + Craft.formatDate(date, 'short') + '</td>';
+                html += '<td>' + Craft.formatTime(date, 'short') + '</td>';
+                html += '</tr>';
+            });
+        }
+        $('h2:contains("Recent Zero-Result Queries")').next('.analytics-charts').find('tbody').html(html);
+    }
+
+    // Handle export link clicks
+    $(document).on('click', '.export-link', function(e) {
+        e.preventDefault();
+        const action = $(this).data('action');
+        const format = $(this).data('format') || 'csv';
+        const dateRange = '{{ dateRange }}';
+
+        // Build export URL
+        const exportUrl = Craft.getActionUrl(action, {
+            dateRange: dateRange,
+            format: format
+        });
+
+        // Trigger download
+        window.location.href = exportUrl;
+    });
+{% endjs %}

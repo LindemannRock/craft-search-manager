@@ -1,0 +1,260 @@
+{% extends "_layouts/cp" %}
+{% set title = isNew ? "Create Index"|t('search-manager') : "Edit Index: {name}"|t('search-manager', { name: index.name }) %}
+{% set selectedSubnavItem = 'indices' %}
+{% set fullPageForm = true %}
+
+{% import "_includes/forms" as forms %}
+
+{% block content %}
+
+<form method="post" accept-charset="UTF-8">
+    {{ actionInput('search-manager/indices/save') }}
+    {{ csrfInput() }}
+    {{ redirectInput('search-manager/indices') }}
+
+    {% if not isNew %}
+        {{ hiddenInput('indexId', index.id) }}
+    {% endif %}
+
+    {{ forms.textField({
+        first: true,
+        label: "Name"|t('search-manager'),
+        instructions: "The display name for this index"|t('search-manager'),
+        id: 'name',
+        name: 'name',
+        value: index.name,
+        required: true,
+        autofocus: true,
+    }) }}
+
+    {{ forms.textField({
+        label: "Handle"|t('search-manager'),
+        instructions: "Unique identifier for this index (used in code)"|t('search-manager'),
+        id: 'handle',
+        name: 'handle',
+        value: index.handle,
+        required: true,
+        class: 'code',
+    }) }}
+
+    {{ forms.selectField({
+        label: "Element Type"|t('search-manager'),
+        instructions: "The type of elements to index"|t('search-manager'),
+        id: 'elementType',
+        name: 'elementType',
+        value: index.elementType,
+        required: true,
+        options: {
+            'craft\\elements\\Entry': 'Entries',
+            'craft\\elements\\Asset': 'Assets',
+            'craft\\elements\\Category': 'Categories',
+            'craft\\elements\\User': 'Users',
+        }
+    }) }}
+
+    <div id="entry-criteria" {% if index.elementType != 'craft\\elements\\Entry' %}style="display:none;"{% endif %}>
+        {% set sectionOptions = [] %}
+        {% for section in craft.app.entries.getAllSections() %}
+            {% set sectionOptions = sectionOptions|merge([{
+                label: section.name,
+                value: section.handle
+            }]) %}
+        {% endfor %}
+
+        {{ forms.checkboxGroupField({
+            label: "Sections"|t('search-manager'),
+            instructions: "Which sections to index (leave all unchecked for all sections)"|t('search-manager'),
+            id: 'sections',
+            name: 'criteria[sections]',
+            options: sectionOptions,
+            values: index.criteria.sections ?? [],
+        }) }}
+    </div>
+
+    {{ forms.selectField({
+        label: "Site"|t('search-manager'),
+        instructions: "Which site to index (select 'All Sites' to index all sites)"|t('search-manager'),
+        id: 'siteId',
+        name: 'siteId',
+        value: index.siteId,
+        options: [{ label: 'All Sites'|t('search-manager'), value: '' }]|merge(craft.app.sites.getAllSites()|map(s => { label: s.name, value: s.id })),
+    }) }}
+
+    {% set settings = craft.searchManager.getSettings() %}
+    {% if settings.enableStopWords %}
+        {% set languageOptions = { '': 'Auto-detect from site (recommended)'|t('search-manager') } %}
+        {% for site in craft.app.sites.getAllSites() %}
+            {% set langCode = site.language|lower %}
+            {% set languageOptions = languageOptions|merge({ (langCode): site.name ~ ' (' ~ langCode ~ ')' }) %}
+        {% endfor %}
+
+        {{ forms.selectField({
+            label: "Language"|t('search-manager'),
+            instructions: "Select 'Auto-detect from site' to automatically use the site's language setting. Only override if you need different stop words than the site language."|t('search-manager'),
+            id: 'language',
+            name: 'language',
+            value: index.language,
+            options: languageOptions,
+            warning: index.language ? 'Manual override active. Language will NOT auto-detect from site.'|t('search-manager') : null,
+        }) }}
+    {% else %}
+        <div class="field">
+            <div class="heading">
+                <label>{{ "Language"|t('search-manager') }}</label>
+            </div>
+            <div class="notice" style="margin-top: 5px;">
+                {{ "Stop words filtering is currently disabled in plugin settings. Language selection is not available."|t('search-manager') }}
+                <a href="{{ cpUrl('search-manager/settings/language') }}">{{ "Enable stop words"|t('search-manager') }}</a>
+            </div>
+        </div>
+        {{ hiddenInput('language', '') }}
+    {% endif %}
+
+    <div id="language-preview" style="margin-top: -15px; margin-bottom: 20px; padding: 10px; background: #f9fafb; border-left: 3px solid #0d78f2; display: none;">
+        <strong>{{ "Auto-detected language:"|t('search-manager') }}</strong> <span id="detected-language">-</span><br>
+        <small style="color: #666;">{{ "Stop words file:"|t('search-manager') }} <code id="stopwords-file">-</code></small>
+    </div>
+
+    {{ forms.textField({
+        label: "Transformer Class"|t('search-manager'),
+        instructions: "Fully qualified class name of the transformer (optional - leave blank to auto-index searchable fields)"|t('search-manager'),
+        id: 'transformerClass',
+        name: 'transformerClass',
+        value: index.transformerClass,
+        required: false,
+        class: 'code',
+        placeholder: 'Leave blank for automatic, or: modules\\transformers\\EntryTransformer',
+        tip: "Leave blank to automatically index all fields marked as searchable in Craft. Specify a custom class for advanced control."|t('search-manager'),
+    }) }}
+
+    {{ forms.lightswitchField({
+        label: "Enabled"|t('search-manager'),
+        instructions: "Whether this index is active"|t('search-manager'),
+        id: 'enabled',
+        name: 'enabled',
+        on: index.enabled ?? true,
+    }) }}
+
+    <div class="buttons">
+        <button type="submit" class="btn submit">{{ "Save"|t('search-manager') }}</button>
+
+        {% if not isNew and index.canEdit() %}
+            <button type="button" class="btn" onclick="if(confirm('{{ 'Are you sure you want to delete this index?'|t('search-manager') }}')) {
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.innerHTML = '{{ actionInput('search-manager/indices/delete')|e('js') }}' +
+                                 '{{ csrfInput()|e('js') }}' +
+                                 '{{ hiddenInput('indexId', index.id)|e('js') }}';
+                document.body.appendChild(form);
+                form.submit();
+            }">{{ "Delete"|t('search-manager') }}</button>
+        {% endif %}
+    </div>
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    const handleInput = document.getElementById('handle');
+    const elementTypeSelect = document.getElementById('elementType');
+    const entryCriteria = document.getElementById('entry-criteria');
+    const siteSelect = document.getElementById('siteId');
+    const languageSelect = document.getElementById('language');
+    const languagePreview = document.getElementById('language-preview');
+    const detectedLanguageSpan = document.getElementById('detected-language');
+    const stopwordsFileSpan = document.getElementById('stopwords-file');
+    const isNew = {{ isNew ? 'true' : 'false' }};
+    let handleModifiedManually = !isNew; // Don't auto-update existing handles
+
+    // Site ID to language mapping
+    const siteLanguages = {
+        {% for site in craft.app.sites.getAllSites() %}
+        '{{ site.id }}': '{{ site.language|lower }}',
+        {% endfor %}
+    };
+
+    // Convert name to handle format
+    function nameToHandle(name) {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+
+    // Update language preview based on selected site
+    function updateLanguagePreview() {
+        const selectedSiteId = siteSelect.value;
+        const manualLanguage = languageSelect.value;
+
+        if (!selectedSiteId || manualLanguage) {
+            // Hide preview if All Sites or manual language selected
+            languagePreview.style.display = 'none';
+            return;
+        }
+
+        const siteLanguage = siteLanguages[selectedSiteId];
+        if (siteLanguage) {
+            detectedLanguageSpan.textContent = siteLanguage;
+
+            // Show fallback chain
+            const baseLang = siteLanguage.split('-')[0];
+            if (siteLanguage.includes('-')) {
+                stopwordsFileSpan.textContent = siteLanguage + '.php → ' + baseLang + '.php';
+            } else {
+                stopwordsFileSpan.textContent = siteLanguage + '.php';
+            }
+
+            languagePreview.style.display = 'block';
+        }
+    }
+
+    // Only auto-generate handle for new indices
+    if (isNew && nameInput && handleInput) {
+        nameInput.addEventListener('input', function() {
+            if (!handleModifiedManually) {
+                handleInput.value = nameToHandle(this.value);
+            }
+        });
+
+        // If user manually edits handle, stop auto-generation
+        handleInput.addEventListener('input', function() {
+            handleModifiedManually = true;
+        });
+    }
+
+    // Show/hide criteria based on element type
+    if (elementTypeSelect && entryCriteria) {
+        function updateCriteriaVisibility() {
+            if (elementTypeSelect.value === 'craft\\elements\\Entry') {
+                entryCriteria.style.display = 'block';
+            } else {
+                entryCriteria.style.display = 'none';
+            }
+        }
+
+        // Update on change
+        elementTypeSelect.addEventListener('change', updateCriteriaVisibility);
+
+        // Initial state
+        updateCriteriaVisibility();
+    }
+
+    // Language preview updates (only if stop words enabled)
+    if (siteSelect && languageSelect && languagePreview) {
+        const stopWordsEnabled = {{ settings.enableStopWords ? 'true' : 'false' }};
+
+        if (stopWordsEnabled) {
+            siteSelect.addEventListener('change', updateLanguagePreview);
+            languageSelect.addEventListener('change', updateLanguagePreview);
+
+            // Initial state
+            updateLanguagePreview();
+        } else {
+            // Hide preview if stop words disabled
+            languagePreview.style.display = 'none';
+        }
+    }
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Interface Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'interface' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Interface'|t('search-manager'),
+        url: url('search-manager/settings/interface'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+    
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/interface') }}
+		{{ hiddenInput('section', 'interface') }}
+
+		<h2 style="margin-top: 0px;">{{ "Interface Settings"|t('search-manager') }}</h2>
+
+		{{ forms.textField({
+            label: "Items Per Page"|t('search-manager'),
+            instructions: "Number of {pluginName} to show per page"|t('search-manager', {pluginName: searchHelper.pluralLowerDisplayName}),
+            id: 'itemsPerPage',
+            name: 'settings[itemsPerPage]',
+            value: settings.itemsPerPage ?? 100,
+            type: 'number',
+            min: 10,
+            max: 500,
+            required: true,
+            disabled: settings.isOverriddenByConfig('itemsPerPage'),
+            warning: settings.isOverriddenByConfig('itemsPerPage') ?
+                "This is being overridden by the <code>itemsPerPage</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('itemsPerPage')
+        }) }}
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}

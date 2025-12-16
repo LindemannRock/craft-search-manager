@@ -1,0 +1,66 @@
+{% extends "_layouts/cp" %}
+
+{% set title = title ?? 'Settings'|t('search-manager') %}
+{% set docTitle =  title ~  ' - ' ~ searchHelper.fullName %}
+{% set selectedSettingsItem = selectedSettingsItem ?? 'general' %}
+{% set selectedSubnavItem = 'settings' %}
+
+{% block sidebar %}
+    {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
+    {% set isBuiltinBackend = settings.searchBackend in ['mysql', 'redis', 'file'] %}
+
+    <nav id="settings-nav">
+        <ul>
+            <li>
+                <a href="{{ url('search-manager/settings/general') }}" {% if selectedSettingsItem == 'general' %}class="sel"{% endif %}>
+                    {{ 'General'|t('search-manager') }}
+                </a>
+            </li>
+            <li>
+                <a href="{{ url('search-manager/settings/backend') }}" {% if selectedSettingsItem == 'backend' %}class="sel"{% endif %}>
+                    {{ 'Backend'|t('search-manager') }}
+                </a>
+            </li>
+            <li>
+                <a href="{{ url('search-manager/settings/indexing') }}" {% if selectedSettingsItem == 'indexing' %}class="sel"{% endif %}>
+                    {{ 'Indexing'|t('search-manager') }}
+                </a>
+            </li>
+
+            {# Only show Search/Language/Highlighting for built-in backends #}
+            {% if isBuiltinBackend %}
+                <li>
+                    <a href="{{ url('search-manager/settings/search') }}" {% if selectedSettingsItem == 'search' %}class="sel"{% endif %}>
+                        {{ 'Search'|t('search-manager') }}
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url('search-manager/settings/language') }}" {% if selectedSettingsItem == 'language' %}class="sel"{% endif %}>
+                        {{ 'Language'|t('search-manager') }}
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url('search-manager/settings/highlighting') }}" {% if selectedSettingsItem == 'highlighting' %}class="sel"{% endif %}>
+                        {{ 'Highlighting'|t('search-manager') }}
+                    </a>
+                </li>
+            {% endif %}
+
+            <li>
+                <a href="{{ url('search-manager/settings/analytics') }}" {% if selectedSettingsItem == 'analytics' %}class="sel"{% endif %}>
+                    {{ 'Analytics'|t('search-manager') }}
+                </a>
+            </li>
+            <li>
+                <a href="{{ url('search-manager/settings/cache') }}" {% if selectedSettingsItem == 'cache' %}class="sel"{% endif %}>
+                    {{ 'Cache'|t('search-manager') }}
+                </a>
+            </li>
+            <li>
+                <a href="{{ url('search-manager/settings/interface') }}" {% if selectedSettingsItem == 'interface' %}class="sel"{% endif %}>
+                    {{ 'Interface'|t('search-manager') }}
+                </a>
+            </li>
+        </ul>
+    </nav>
+{% endblock %}

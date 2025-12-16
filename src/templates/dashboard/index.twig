@@ -1,0 +1,104 @@
+{% extends "_layouts/cp" %}
+{% set title = "Search Manager"|t('search-manager') %}
+{% set selectedSubnavItem = 'dashboard' %}
+
+{% block content %}
+
+<h1>{{ searchHelper.fullName }}</h1>
+
+<div class="readable">
+    <p>{{ "Advanced multi-backend search management for Craft CMS"|t('search-manager') }}</p>
+</div>
+
+<hr>
+
+<h2>{{ "Backend Status"|t('search-manager') }}</h2>
+
+{% if backendStatus %}
+    <table class="data fullwidth">
+        <tbody>
+            <tr>
+                <th>{{ "Active Backend"|t('search-manager') }}</th>
+                <td><strong>{{ backendStatus.name }}</strong></td>
+            </tr>
+            <tr>
+                <th>{{ "Status"|t('search-manager') }}</th>
+                <td>
+                    {% if backendStatus.available %}
+                        <span class="status green"></span> {{ "Available"|t('search-manager') }}
+                    {% else %}
+                        <span class="status red"></span> {{ "Unavailable"|t('search-manager') }}
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>{{ "Configuration"|t('search-manager') }}</th>
+                <td>
+                    {% if backendStatus.configured %}
+                        <span class="status green"></span> {{ "Configured"|t('search-manager') }}
+                    {% else %}
+                        <span class="status orange"></span> {{ "Not Configured"|t('search-manager') }}
+                    {% endif %}
+                </td>
+            </tr>
+        </tbody>
+    </table>
+{% endif %}
+
+<hr>
+
+<h2>{{ "Indices"|t('search-manager') }}</h2>
+
+{% if indices %}
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ "Name"|t('search-manager') }}</th>
+                <th>{{ "Handle"|t('search-manager') }}</th>
+                <th>{{ "Elements"|t('search-manager') }}</th>
+                <th>{{ "Documents"|t('search-manager') }}</th>
+                <th>{{ "Last Indexed"|t('search-manager') }}</th>
+                <th>{{ "Status"|t('search-manager') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for index in indices %}
+                <tr>
+                    <td>
+                        <a href="{{ url('search-manager/indices/edit/' ~ index.id) }}">
+                            {{ index.name }}
+                        </a>
+                    </td>
+                    <td><code>{{ index.handle }}</code></td>
+                    <td>{{ index.elementType|split('\\')|last }}</td>
+                    <td>{{ index.documentCount }}</td>
+                    <td>
+                        {% if index.lastIndexed %}
+                            {{ index.lastIndexed|datetime('short') }}
+                        {% else %}
+                            <span class="light">{{ "Never"|t('search-manager') }}</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if index.enabled %}
+                            <span class="status green"></span>
+                        {% else %}
+                            <span class="status"></span>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="buttons">
+        <a href="{{ url('search-manager/indices') }}" class="btn">{{ "Manage Indices"|t('search-manager') }}</a>
+    </div>
+{% else %}
+    <p class="light">{{ "No indices configured yet."|t('search-manager') }}</p>
+    <div class="buttons">
+        <a href="{{ url('search-manager/indices/create') }}" class="btn submit">{{ "Create Index"|t('search-manager') }}</a>
+    </div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,12 @@
+includes:
+    - ../../vendor/craftcms/phpstan/phpstan.neon
+
+parameters:
+    level: 5
+    phpVersion: 80300
+    paths:
+        - src
+    ignoreErrors:
+        # Optional dependencies for third-party search services
+        - '#AlgoliaSearch#'
+        - '#Meilisearch#'

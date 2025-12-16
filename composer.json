@@ -1,0 +1,76 @@
+{
+    "name": "lindemannrock/craft-search-manager",
+    "description": "Advanced multi-backend search management for Craft CMS - supports Algolia, File, Meilisearch, MySQL, Redis, and Typesense",
+    "type": "craft-plugin",
+    "version": "5.0.0",
+    "keywords": [
+        "craft",
+        "cms",
+        "craftcms",
+        "craft-plugin",
+        "search",
+        "algolia",
+        "meilisearch",
+        "mysql",
+        "redis",
+        "typesense",
+        "full-text search",
+        "search engine"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Bilal Hary Lindemann",
+            "email": "bh@lindemannrock.com",
+            "homepage": "https://lindemannrock.com",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "email": "support@lindemannrock.com",
+        "issues": "https://github.com/LindemannRock/craft-search-manager/issues",
+        "source": "https://github.com/LindemannRock/craft-search-manager",
+        "docs": "https://github.com/LindemannRock/craft-search-manager/blob/main/README.md",
+        "rss": "https://github.com/LindemannRock/craft-search-manager/commits/main.atom"
+    },
+    "require": {
+        "php": "^8.2",
+        "craftcms/cms": "^5.0.0",
+        "lindemannrock/craft-logging-library": "^5.0",
+        "algolia/algoliasearch-client-php": "^4.0",
+        "meilisearch/meilisearch-php": "^1.0",
+        "typesense/typesense-php": "^4.0",
+        "matomo/device-detector": "^6.4"
+    },
+    "require-dev": {
+        "craftcms/ecs": "dev-main",
+        "craftcms/phpstan": "dev-main",
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "lindemannrock\\searchmanager\\": "src/"
+        }
+    },
+    "scripts": {
+        "phpstan": "phpstan --ansi --memory-limit=1G",
+        "check-cs": "ecs check --ansi",
+        "fix-cs": "ecs check --fix --ansi"
+    },
+    "extra": {
+        "name": "Search Manager",
+        "handle": "search-manager",
+        "developer": "LindemannRock",
+        "developerUrl": "https://lindemannrock.com",
+        "documentationUrl": "https://github.com/LindemannRock/craft-search-manager/blob/main/README.md",
+        "changelogUrl": "https://github.com/LindemannRock/craft-search-manager/blob/main/CHANGELOG.md",
+        "class": "lindemannrock\\searchmanager\\SearchManager"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true,
+            "craftcms/plugin-installer": true
+        }
+    }
+}

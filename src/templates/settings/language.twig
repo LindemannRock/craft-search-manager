@@ -1,0 +1,163 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Language Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'language' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Language'|t('search-manager'),
+        url: url('search-manager/settings/language'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/language') }}
+		{{ hiddenInput('section', 'language') }}
+
+		<h2 style="margin-top: 0px;">{{ "Language & Stop Words"|t('search-manager') }}</h2>
+
+        <div class="field">
+            <p class="light">
+                <strong>How language detection works:</strong><br>
+                • Language is auto-detected from each element's site language during indexing<br>
+                • Example: en-US → en, ar-SA → ar, fr-FR → fr<br>
+                • Documents are stored with their language for filtering and analytics<br>
+                • You can override language per-index in config file
+            </p>
+        </div>
+
+		{{ forms.textField({
+            label: 'Default Language'|t('search-manager'),
+            instructions: 'Fallback language when auto-detection fails (leave empty to use "en")'|t('search-manager'),
+            id: 'defaultLanguage',
+            name: 'settings[defaultLanguage]',
+            value: settings.defaultLanguage,
+            type: 'text',
+            placeholder: 'en',
+            tip: 'Examples: en, ar, de, fr, es, ar-sa (regional variant)'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('defaultLanguage'),
+            warning: settings.isOverriddenByConfig('defaultLanguage') ?
+                "This is being overridden by the <code>defaultLanguage</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('defaultLanguage')
+        }) }}
+
+        <hr>
+
+        <h2>{{ "Stop Words Filtering"|t('search-manager') }}</h2>
+
+        <div class="field">
+            <p class="light">
+                Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance.
+                Search Manager includes stop words for: English, Arabic, German, French, Spanish.
+            </p>
+        </div>
+
+		{{ forms.lightswitchField({
+            label: 'Enable Stop Words'|t('search-manager'),
+            instructions: 'Filter common words during indexing and searching'|t('search-manager'),
+            id: 'enableStopWords',
+            name: 'settings[enableStopWords]',
+            on: settings.enableStopWords ?? true,
+            toggle: 'stopwords-info',
+            disabled: settings.isOverriddenByConfig('enableStopWords'),
+            warning: settings.isOverriddenByConfig('enableStopWords') ?
+                "This is being overridden by the <code>enableStopWords</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+        <div id="stopwords-info" class="{{ not (settings.enableStopWords ?? true) ? 'hidden' }}">
+            <div class="field">
+                <div class="heading">
+                    <label>{{ "Available Languages"|t('search-manager') }}</label>
+                </div>
+                <div class="instructions">
+                    <p>
+                        Stop words are automatically loaded based on language:
+                    </p>
+                </div>
+                <div class="input">
+                    <table class="data fullwidth">
+                        <thead>
+                            <tr>
+                                <th>Language</th>
+                                <th>Stop Words File</th>
+                                <th>Word Count</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set stopWordFiles = [
+                                {code: 'en', name: 'English', file: 'en.php', count: 297},
+                                {code: 'ar', name: 'Arabic (MSA)', file: 'ar.php', count: 122},
+                                {code: 'de', name: 'German', file: 'de.php', count: 130},
+                                {code: 'fr', name: 'French', file: 'fr.php', count: 140},
+                                {code: 'es', name: 'Spanish', file: 'es.php', count: 135},
+                            ] %}
+                            {% for lang in stopWordFiles %}
+                                <tr>
+                                    <td><strong>{{ lang.name }}</strong> ({{ lang.code }})</td>
+                                    <td><code>src/search/stopwords/{{ lang.file }}</code></td>
+                                    <td>{{ lang.count }} words</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="field">
+                <div class="heading">
+                    <label>{{ "Regional Customization"|t('search-manager') }}</label>
+                </div>
+                <div class="instructions">
+                    <p>
+                        To customize stop words for specific regions (e.g., Saudi Arabic vs Egyptian Arabic):
+                    </p>
+                </div>
+                <div class="input">
+                    <ol style="margin-left: 20px;">
+                        <li>Create directory: <code>config/search-manager/stopwords/</code></li>
+                        <li>Copy default file:
+                            <pre style="background: #f5f5f5; padding: 10px; margin: 5px 0;">cp vendor/lindemannrock/craft-search-manager/src/search/stopwords/ar.php \
+   config/search-manager/stopwords/ar-sa.php</pre>
+                        </li>
+                        <li>Edit <code>ar-sa.php</code> to add Saudi-specific terms</li>
+                        <li>Configure index: <code>'language' => 'ar-sa'</code></li>
+                    </ol>
+                    <p class="light" style="margin-top: 10px;">
+                        <strong>Fallback chain:</strong> ar-sa.php → ar.php → empty (no filtering)<br>
+                        <strong>Regional variants:</strong> ar-sa (Saudi), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico), etc.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}

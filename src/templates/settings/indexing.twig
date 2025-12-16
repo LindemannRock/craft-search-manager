@@ -1,0 +1,127 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Indexing Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'indexing' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Indexing'|t('search-manager'),
+        url: url('search-manager/settings/indexing'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+    
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/indexing') }}
+		{{ hiddenInput('section', 'indexing') }}
+
+		<h2 style="margin-top: 0px;">{{ "Indexing Settings"|t('search-manager') }}</h2>
+
+		{{ forms.lightswitchField({
+            label: 'Auto-Index Elements'|t('search-manager'),
+            instructions: 'Automatically index elements when they are saved'|t('search-manager'),
+            id: 'autoIndex',
+            name: 'settings[autoIndex]',
+            on: settings.autoIndex,
+            disabled: settings.isOverriddenByConfig('autoIndex'),
+            warning: settings.isOverriddenByConfig('autoIndex') ?
+                "This is being overridden by the <code>autoIndex</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+		{{ forms.lightswitchField({
+            label: 'Queue Enabled'|t('search-manager'),
+            instructions: 'Use queue for indexing operations (recommended for production)'|t('search-manager'),
+            id: 'queueEnabled',
+            name: 'settings[queueEnabled]',
+            on: settings.queueEnabled,
+            disabled: settings.isOverriddenByConfig('queueEnabled'),
+            warning: settings.isOverriddenByConfig('queueEnabled') ?
+                "This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+		{% set isBuiltinBackend = settings.searchBackend in ['mysql', 'redis', 'file'] %}
+		{% if isBuiltinBackend %}
+			{{ forms.lightswitchField({
+				label: 'Replace Native Search'|t('search-manager'),
+				instructions: 'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.'|t('search-manager'),
+				id: 'replaceNativeSearch',
+				name: 'settings[replaceNativeSearch]',
+				on: settings.replaceNativeSearch,
+				tip: "When disabled, use craft.searchManager.search() in templates instead."|t('search-manager'),
+				disabled: settings.isOverriddenByConfig('replaceNativeSearch'),
+				warning: settings.isOverriddenByConfig('replaceNativeSearch') ?
+					"This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+			}) }}
+		{% else %}
+			<div class="field">
+				<div class="heading">
+					<label>Replace Native Search</label>
+				</div>
+				<div class="instructions">
+					<p>Replace Craft's native search with Search Manager throughout the Control Panel and templates.</p>
+				</div>
+			</div>
+			{% include 'search-manager/_components/info-box' with {
+				type: 'warning',
+				message: '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>' ~ settings.searchBackend|upper ~ '</strong>, which handles search via its own API. For ' ~ settings.searchBackend|capitalize ~ ', use <code>craft.searchManager.search()</code> in templates instead of native search replacement.'
+			} %}
+		{% endif %}
+
+		{{ forms.textField({
+            label: 'Batch Size'|t('search-manager'),
+            instructions: 'Number of elements to index in each batch'|t('search-manager'),
+            id: 'batchSize',
+            name: 'settings[batchSize]',
+            value: settings.batchSize,
+            type: 'number',
+            min: 10,
+            max: 1000,
+            required: true,
+            disabled: settings.isOverriddenByConfig('batchSize'),
+            warning: settings.isOverriddenByConfig('batchSize') ?
+                "This is being overridden by the <code>batchSize</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('batchSize')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Index Prefix'|t('search-manager'),
+            instructions: 'Prefix for index names (useful for multi-environment setups)'|t('search-manager'),
+            id: 'indexPrefix',
+            name: 'settings[indexPrefix]',
+            value: settings.indexPrefix,
+            placeholder: 'e.g., dev_, staging_, prod_',
+            disabled: settings.isOverriddenByConfig('indexPrefix'),
+            warning: settings.isOverriddenByConfig('indexPrefix') ?
+                "This is being overridden by the <code>indexPrefix</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}

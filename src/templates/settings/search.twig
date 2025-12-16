@@ -1,0 +1,222 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Search Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'search' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Search'|t('search-manager'),
+        url: url('search-manager/settings/search'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/search') }}
+		{{ hiddenInput('section', 'search') }}
+
+		<h2 style="margin-top: 0px;">{{ "BM25 Ranking Algorithm"|t('search-manager') }}</h2>
+
+        <div class="field">
+            <p class="light">
+                BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines.
+                These parameters control how search results are scored and ranked.
+                <a href="https://en.wikipedia.org/wiki/Okapi_BM25" target="_blank" rel="noopener">Learn about BM25</a>
+            </p>
+        </div>
+
+		{{ forms.textField({
+            label: 'Term Frequency Weight (K1)'|t('search-manager'),
+            instructions: 'How much weight to give repeated search terms. Higher = repeated terms matter more. <a href="https://en.wikipedia.org/wiki/Okapi_BM25#The_ranking_function" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')|raw,
+            id: 'bm25K1',
+            name: 'settings[bm25K1]',
+            value: settings.bm25K1 ?? 1.5,
+            type: 'number',
+            step: '0.1',
+            min: '0.1',
+            max: '5.0',
+            required: true,
+            tip: 'Default: 1.5. Use 0.5-1.0 for keyword-heavy content, 2.0-5.0 for diverse vocabulary.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('bm25K1'),
+            warning: settings.isOverriddenByConfig('bm25K1') ?
+                "This is being overridden by the <code>bm25K1</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('bm25K1')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Document Length Impact (B)'|t('search-manager'),
+            instructions: 'How much document length affects ranking. 0 = length ignored, 1 = shorter docs heavily favored. <a href="https://en.wikipedia.org/wiki/Okapi_BM25#The_ranking_function" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')|raw,
+            id: 'bm25B',
+            name: 'settings[bm25B]',
+            value: settings.bm25B ?? 0.75,
+            type: 'number',
+            step: '0.01',
+            min: '0.0',
+            max: '1.0',
+            required: true,
+            tip: 'Default: 0.75. Use 0 when all docs are similar length, 1 when length is critical.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('bm25B'),
+            warning: settings.isOverriddenByConfig('bm25B') ?
+                "This is being overridden by the <code>bm25B</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('bm25B')
+        }) }}
+
+        <hr>
+
+		<h2>{{ "Boost Factors"|t('search-manager') }}</h2>
+
+        <div class="field">
+            <p class="light">
+                Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.
+            </p>
+        </div>
+
+		{{ forms.textField({
+            label: 'Title Boost'|t('search-manager'),
+            instructions: 'Multiplier when search terms appear in document titles. Range: 1.0 - 20.0. Higher = titles rank much higher than body content.'|t('search-manager'),
+            id: 'titleBoostFactor',
+            name: 'settings[titleBoostFactor]',
+            value: settings.titleBoostFactor ?? 5.0,
+            type: 'number',
+            step: '0.5',
+            min: '1.0',
+            max: '20.0',
+            required: true,
+            tip: 'Default: 5.0x. Example: If body match scores 10, title match scores 50.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('titleBoostFactor'),
+            warning: settings.isOverriddenByConfig('titleBoostFactor') ?
+                "This is being overridden by the <code>titleBoostFactor</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('titleBoostFactor')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Exact Match Boost'|t('search-manager'),
+            instructions: 'Multiplier when ALL search terms are found (AND logic). Range: 1.0 - 20.0. Example: "test entry" must match both words.'|t('search-manager'),
+            id: 'exactMatchBoostFactor',
+            name: 'settings[exactMatchBoostFactor]',
+            value: settings.exactMatchBoostFactor ?? 3.0,
+            type: 'number',
+            step: '0.5',
+            min: '1.0',
+            max: '20.0',
+            required: true,
+            tip: 'Default: 3.0x. Documents matching all search terms rank 3x higher than partial matches.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('exactMatchBoostFactor'),
+            warning: settings.isOverriddenByConfig('exactMatchBoostFactor') ?
+                "This is being overridden by the <code>exactMatchBoostFactor</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('exactMatchBoostFactor')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Phrase Boost'|t('search-manager'),
+            instructions: 'Multiplier for exact phrase searches with "quotes". Range: 1.0 - 20.0. Example: "test entry" with quotes requires exact sequence.'|t('search-manager'),
+            id: 'phraseBoostFactor',
+            name: 'settings[phraseBoostFactor]',
+            value: settings.phraseBoostFactor ?? 4.0,
+            type: 'number',
+            step: '0.5',
+            min: '1.0',
+            max: '20.0',
+            required: true,
+            tip: 'Default: 4.0x. Phrase searches are most specific, so they rank highest.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('phraseBoostFactor'),
+            warning: settings.isOverriddenByConfig('phraseBoostFactor') ?
+                "This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('phraseBoostFactor')
+        }) }}
+
+        <hr>
+
+		<h2>{{ "Fuzzy Matching"|t('search-manager') }}</h2>
+
+        <div class="field">
+            <p class="light">
+                Fuzzy matching enables typo-tolerance using n-gram similarity.
+                Searches like "tst" can find "test", "javascirpt" finds "javascript".
+            </p>
+        </div>
+
+		{{ forms.textField({
+            label: 'Fuzzy Match Threshold'|t('search-manager'),
+            instructions: 'Minimum similarity required for fuzzy matches (0 = very loose, 1 = exact only). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')|raw,
+            id: 'similarityThreshold',
+            name: 'settings[similarityThreshold]',
+            value: settings.similarityThreshold ?? 0.25,
+            type: 'number',
+            step: '0.01',
+            min: '0.0',
+            max: '1.0',
+            required: true,
+            tip: 'Default: 0.25. Lower (0.1-0.2) = more matches but less relevant, higher (0.4-0.6) = strict matching.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('similarityThreshold'),
+            warning: settings.isOverriddenByConfig('similarityThreshold') ?
+                "This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('similarityThreshold')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Fuzzy Candidate Limit'|t('search-manager'),
+            instructions: 'Maximum candidates to check for typo corrections. Higher = more accurate but slower.'|t('search-manager'),
+            id: 'maxFuzzyCandidates',
+            name: 'settings[maxFuzzyCandidates]',
+            value: settings.maxFuzzyCandidates ?? 100,
+            type: 'number',
+            min: '10',
+            max: '1000',
+            required: true,
+            tip: 'Default: 100. Increase for better typo tolerance, decrease for faster search performance.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('maxFuzzyCandidates'),
+            warning: settings.isOverriddenByConfig('maxFuzzyCandidates') ?
+                "This is being overridden by the <code>maxFuzzyCandidates</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('maxFuzzyCandidates')
+        }) }}
+
+		{{ forms.checkboxGroupField({
+            label: 'Fuzzy Match Precision'|t('search-manager'),
+            instructions: 'N-gram sizes for typo-tolerant search. More selections = better accuracy but slower. <a href="https://en.wikipedia.org/wiki/N-gram" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')|raw,
+            id: 'ngramSizes',
+            name: 'ngramSizes',
+            options: [
+                {label: '1-gram - Best for single characters'|t('search-manager'), value: '1'},
+                {label: '2-gram - Fast matching'|t('search-manager'), value: '2'},
+                {label: '3-gram - Balanced (recommended)'|t('search-manager'), value: '3'},
+                {label: '4-gram - More precise'|t('search-manager'), value: '4'},
+                {label: '5-gram - Most precise'|t('search-manager'), value: '5'},
+            ],
+            values: settings.ngramSizes|split(','),
+            tip: 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate.'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('ngramSizes'),
+            warning: settings.isOverriddenByConfig('ngramSizes') ?
+                "This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}

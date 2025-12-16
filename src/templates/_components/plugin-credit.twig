@@ -1,0 +1,213 @@
+{#
+ # Plugin Credit Component
+ # Reusable LindemannRock logo credit for plugin settings pages
+ #
+ # @link      https://lindemannrock.com
+ # @copyright Copyright (c) 2025 LindemannRock
+ #}
+<hr/>
+<div id="lr-plugin-footer">
+	<div class="lr-footer-left"></div>
+	<div class="lr-footer-right">
+		<a class="lr-brand-credit" href="https://lindemannrock.com" target="_blank">
+			<div class="lr-brand-pill">
+				<div class="lr-brand-mask">
+					<div class="lr-brand-wrap">
+						<span class="lr-brand-text">LINDEMANN ROCK</span>
+					</div>
+					<div class="lr-brand-logo">
+						<svg width="25px" height="13px" xmlns="http://www.w3.org/2000/svg" viewbox="0 -.186 1350.04 682.02">
+							<g>
+								<path d="M1.01 19.05l262.32 653.89c2.11 5.26 7.21 8.71 12.88 8.71h256.56c5.73 0 10.87-3.52 12.94-8.86l126.36-325.54c1.25-3.22 1.25-6.79.01-10.01L545.71 8.9c-2.06-5.36-7.21-8.9-12.96-8.9H13.9c-9.83 0-16.55 9.93-12.89 19.05Z"></path>
+								<path d="M1073.82 0H817.26c-5.73 0-10.87 3.52-12.94 8.86L677.96 334.4c-1.25 3.22-1.25 6.79-.01 10.01l126.39 328.35c2.06 5.36 7.21 8.9 12.96 8.9h518.86c9.83 0 16.54-9.93 12.88-19.05L1086.71 8.71C1084.6 3.45 1079.5 0 1073.82 0Z"></path>
+							</g>
+						</svg>
+					</div>
+				</div>
+			</div>
+		</a>
+	</div>
+</div>
+
+<style>
+	#lr-plugin-footer {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+	}
+
+	.lr-footer-left {
+		flex: 1;
+	}
+
+	.lr-footer-right {
+		display: flex;
+		align-items: center;
+	}
+
+	.lr-brand-credit {
+		position: relative;
+		width: 46px;
+		height: 38px;
+		display: block;
+		text-decoration: none;
+		overflow: visible;
+		transition: width 0.3s ease;
+	}
+
+	.lr-brand-credit:hover {
+		width: 195px;
+		text-decoration: none;
+	}
+
+	.lr-brand-pill {
+		width: 100%;
+		height: 38px;
+		background: #e5e7eb;
+		border-radius: 0.6rem;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.3s ease;
+		overflow: hidden;
+	}
+
+	.lr-brand-credit:hover .lr-brand-pill {
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+	}
+
+	.lr-brand-mask {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		position: relative;
+		padding: 0 12px;
+		white-space: nowrap;
+	}
+
+	.lr-brand-wrap {
+		display: flex;
+		align-items: center;
+		justify-content: flex-start;
+		flex: 1;
+		padding-left: 0;
+	}
+
+	.lr-brand-logo {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		position: absolute;
+		right: 11px;
+		top: 50%;
+		transform: translateY(-50%);
+	}
+
+	.lr-brand-text {
+		font-size: 15px;
+		font-weight: 600;
+		color: #4b5563;
+		opacity: 0;
+		transform: translateX(-10px);
+		transition: opacity 0.15s ease, transform 0.3s ease 0.1s;
+		font-family: system-ui, -apple-system, sans-serif;
+		white-space: nowrap;
+		text-transform: uppercase;
+		text-decoration: none;
+		padding-right: 40px;
+	}
+
+	.lr-brand-credit:hover .lr-brand-text {
+		opacity: 1;
+		transform: translateX(0);
+		transition: all 0.3s ease 0.1s;
+	}
+
+	.lr-brand-logo svg {
+		width: 25px;
+		height: 13px;
+	}
+
+	.lr-brand-logo svg g {
+		fill: #6b7280;
+		transition: fill 0.3s ease;
+	}
+</style>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () {
+		// Bright colors that look good as backgrounds
+		const brightColors = [
+			'#E52521', // LindemannRock Red
+			'#3B82F6', // Blue
+			'#10B981', // Emerald
+			'#8B5CF6', // Purple
+			'#F59E0B', // Amber
+			'#EF4444', // Red
+			'#EC4899', // Pink
+			'#06B6D4', // Cyan
+			'#84CC16', // Lime
+			'#F97316', // Orange
+			'#6366F1', // Indigo
+			'#14B8A6', // Teal
+			'#F43F5E', // Rose
+			'#A855F7', // Violet
+			'#EAB308', // Yellow
+			'#DC2626', // Dark Red
+			'#7C3AED', // Purple Alt
+			'#059669', // Dark Green
+			'#0EA5E9', // Sky Blue
+			'#D97706'  // Dark Orange
+		];
+
+		// Function to calculate luminance
+		function getLuminance(hex) {
+			const rgb = parseInt(hex.slice(1), 16);
+			const r = (rgb >> 16) & 0xff;
+			const g = (rgb >> 8) & 0xff;
+			const b = (rgb >> 0) & 0xff;
+
+			const [rs, gs, bs] = [r, g, b].map(c => {
+				c = c / 255;
+				return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+			});
+
+			return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+		}
+
+		// Function to get accessible text color (WCAG AA compliant)
+		function getAccessibleTextColor(bgColor) {
+			const bgLuminance = getLuminance(bgColor);
+			const whiteContrast = (1 + 0.05) / (bgLuminance + 0.05);
+			const blackContrast = (bgLuminance + 0.05) / (0 + 0.05);
+			return whiteContrast >= 4.5 ? '#ffffff' : '#000000';
+		}
+
+		const pluginCredit = document.querySelector('.lr-brand-credit');
+		if (pluginCredit) {
+			const pill = pluginCredit.querySelector('.lr-brand-pill');
+			const text = pluginCredit.querySelector('.lr-brand-text');
+			const svg = pluginCredit.querySelector('.lr-brand-logo svg g');
+
+			pluginCredit.addEventListener('mouseenter', function () {
+				// Pick random color
+				const randomColor = brightColors[Math.floor(Math.random() * brightColors.length)];
+				const textColor = getAccessibleTextColor(randomColor);
+
+				// Apply colors
+				pill.style.backgroundColor = randomColor;
+				if (text) text.style.color = textColor;
+				if (svg) svg.style.fill = textColor;
+			});
+
+			pluginCredit.addEventListener('mouseleave', function () {
+				// Reset to default colors
+				pill.style.backgroundColor = '';
+				if (text) text.style.color = '';
+				if (svg) svg.style.fill = '';
+			});
+		}
+	});
+</script>

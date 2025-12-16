@@ -1,0 +1,244 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Highlighting & Autocomplete"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'highlighting' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Highlighting'|t('search-manager'),
+        url: url('search-manager/settings/highlighting'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/highlighting') }}
+		{{ hiddenInput('section', 'highlighting') }}
+
+		<h2 style="margin-top: 0px;">{{ "Search Result Highlighting"|t('search-manager') }}</h2>
+
+        <div class="field">
+            <p class="light">
+                Highlighting shows users which terms matched in search results.
+                Use in templates: <code>craft.searchManager.highlight(text, query)</code>
+            </p>
+        </div>
+
+		{{ forms.lightswitchField({
+            label: 'Enable Highlighting'|t('search-manager'),
+            instructions: 'Enable search term highlighting in results'|t('search-manager'),
+            id: 'enableHighlighting',
+            name: 'settings[enableHighlighting]',
+            on: settings.enableHighlighting ?? true,
+            toggle: 'highlighting-settings',
+            disabled: settings.isOverriddenByConfig('enableHighlighting'),
+            warning: settings.isOverriddenByConfig('enableHighlighting') ?
+                "This is being overridden by the <code>enableHighlighting</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+        <div id="highlighting-settings" class="{{ not (settings.enableHighlighting ?? true) ? 'hidden' }}">
+
+            {{ forms.selectField({
+                label: 'HTML Tag'|t('search-manager'),
+                instructions: 'HTML tag to wrap highlighted terms. Each tag has different semantic meaning and default browser styling.'|t('search-manager'),
+                id: 'highlightTag',
+                name: 'settings[highlightTag]',
+                value: settings.highlightTag ?? 'mark',
+                required: true,
+                options: [
+                    {value: 'mark', label: '<mark> - Highlighted text (yellow background)'},
+                    {value: 'em', label: '<em> - Emphasized text (italic)'},
+                    {value: 'strong', label: '<strong> - Strong importance (bold)'},
+                    {value: 'span', label: '<span> - Generic container (no default style)'},
+                    {value: 'b', label: '<b> - Bold text'},
+                    {value: 'i', label: '<i> - Italic text'},
+                ],
+                tip: 'Default: <mark>. Recommended for search highlighting due to semantic meaning and yellow background.'|t('search-manager'),
+                disabled: settings.isOverriddenByConfig('highlightTag'),
+                warning: settings.isOverriddenByConfig('highlightTag') ?
+                    "This is being overridden by the <code>highlightTag</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                errors: settings.getErrors('highlightTag')
+            }) }}
+
+            {{ forms.textField({
+                label: 'CSS Class'|t('search-manager'),
+                instructions: 'Optional CSS class for highlighted terms (leave empty for none)'|t('search-manager'),
+                id: 'highlightClass',
+                name: 'settings[highlightClass]',
+                value: settings.highlightClass,
+                type: 'text',
+                placeholder: 'search-highlight',
+                tip: 'Use for custom styling via CSS'|t('search-manager'),
+                disabled: settings.isOverriddenByConfig('highlightClass'),
+                warning: settings.isOverriddenByConfig('highlightClass') ?
+                    "This is being overridden by the <code>highlightClass</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                errors: settings.getErrors('highlightClass')
+            }) }}
+
+            <div class="field">
+                <div class="heading">
+                    <label>{{ "Highlighting Example"|t('search-manager') }}</label>
+                </div>
+                <div class="instructions">
+                    <p>Preview of how highlighted text will appear:</p>
+                </div>
+                <div class="input">
+                    <div style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
+                        This is a <{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}>highlighted term</{{ settings.highlightTag ?? 'mark' }}> in search results.
+                    </div>
+                    <p class="light" style="margin-top: 10px;">
+                        HTML output: <code>&lt;{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}&gt;term&lt;/{{ settings.highlightTag ?? 'mark' }}&gt;</code>
+                    </p>
+                </div>
+            </div>
+
+            <hr>
+
+            <h3>{{ "Snippets"|t('search-manager') }}</h3>
+
+            <div class="field">
+                <p class="light">
+                    Snippets show contextual excerpts around matched terms.
+                    Use in templates: <code>craft.searchManager.snippets(text, query)</code>
+                </p>
+            </div>
+
+            {{ forms.textField({
+                label: 'Snippet Length'|t('search-manager'),
+                instructions: 'Maximum characters per snippet. Range: 50 - 1000. Snippets show context around matched terms.'|t('search-manager'),
+                id: 'snippetLength',
+                name: 'settings[snippetLength]',
+                value: settings.snippetLength ?? 200,
+                type: 'number',
+                min: '50',
+                max: '1000',
+                required: true,
+                tip: 'Default: 200 characters (~30-40 words).'|t('search-manager'),
+                disabled: settings.isOverriddenByConfig('snippetLength'),
+                warning: settings.isOverriddenByConfig('snippetLength') ?
+                    "This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                errors: settings.getErrors('snippetLength')
+            }) }}
+
+            {{ forms.textField({
+                label: 'Max Snippets'|t('search-manager'),
+                instructions: 'Maximum snippets per result. Range: 1 - 10. Multiple snippets show different sections where terms matched.'|t('search-manager'),
+                id: 'maxSnippets',
+                name: 'settings[maxSnippets]',
+                value: settings.maxSnippets ?? 3,
+                type: 'number',
+                min: '1',
+                max: '10',
+                required: true,
+                tip: 'Default: 3 snippets. Shows up to 3 different matched sections per document.'|t('search-manager'),
+                disabled: settings.isOverriddenByConfig('maxSnippets'),
+                warning: settings.isOverriddenByConfig('maxSnippets') ?
+                    "This is being overridden by the <code>maxSnippets</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                errors: settings.getErrors('maxSnippets')
+            }) }}
+
+        </div>
+
+        <hr>
+
+		<h2>{{ "Autocomplete / Suggestions"|t('search-manager') }}</h2>
+
+        <div class="field">
+            <p class="light">
+                Autocomplete provides search-as-you-type suggestions based on indexed terms.
+                Use in templates: <code>craft.searchManager.suggest(query)</code>
+            </p>
+        </div>
+
+		{{ forms.lightswitchField({
+            label: 'Enable Autocomplete'|t('search-manager'),
+            instructions: 'Enable search suggestions based on indexed terms'|t('search-manager'),
+            id: 'enableAutocomplete',
+            name: 'settings[enableAutocomplete]',
+            on: settings.enableAutocomplete ?? true,
+            toggle: 'autocomplete-settings',
+            disabled: settings.isOverriddenByConfig('enableAutocomplete'),
+            warning: settings.isOverriddenByConfig('enableAutocomplete') ?
+                "This is being overridden by the <code>enableAutocomplete</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+        <div id="autocomplete-settings" class="{{ not (settings.enableAutocomplete ?? true) ? 'hidden' }}">
+
+            {{ forms.textField({
+                label: 'Minimum Length'|t('search-manager'),
+                instructions: 'Minimum characters before showing suggestions. Range: 1 - 5. Lower = more suggestions but slower performance.'|t('search-manager'),
+                id: 'autocompleteMinLength',
+                name: 'settings[autocompleteMinLength]',
+                value: settings.autocompleteMinLength ?? 2,
+                type: 'number',
+                min: '1',
+                max: '5',
+                required: true,
+                tip: 'Default: 2 characters. User types "te" → shows "test", "testing".'|t('search-manager'),
+                disabled: settings.isOverriddenByConfig('autocompleteMinLength'),
+                warning: settings.isOverriddenByConfig('autocompleteMinLength') ?
+                    "This is being overridden by the <code>autocompleteMinLength</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                errors: settings.getErrors('autocompleteMinLength')
+            }) }}
+
+            {{ forms.textField({
+                label: 'Suggestion Limit'|t('search-manager'),
+                instructions: 'Maximum suggestions to return. Range: 1 - 50. More = more choice, but can overwhelm users.'|t('search-manager'),
+                id: 'autocompleteLimit',
+                name: 'settings[autocompleteLimit]',
+                value: settings.autocompleteLimit ?? 10,
+                type: 'number',
+                min: '1',
+                max: '50',
+                required: true,
+                tip: 'Default: 10 suggestions. Returns top 10 most frequent/relevant terms.'|t('search-manager'),
+                disabled: settings.isOverriddenByConfig('autocompleteLimit'),
+                warning: settings.isOverriddenByConfig('autocompleteLimit') ?
+                    "This is being overridden by the <code>autocompleteLimit</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                errors: settings.getErrors('autocompleteLimit')
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Fuzzy Autocomplete'|t('search-manager'),
+                instructions: 'Enable typo-tolerance in autocomplete suggestions'|t('search-manager'),
+                id: 'autocompleteFuzzy',
+                name: 'settings[autocompleteFuzzy]',
+                on: settings.autocompleteFuzzy ?? false,
+                tip: 'May be slower but finds suggestions even with typos'|t('search-manager'),
+                disabled: settings.isOverriddenByConfig('autocompleteFuzzy'),
+                warning: settings.isOverriddenByConfig('autocompleteFuzzy') ?
+                    "This is being overridden by the <code>autocompleteFuzzy</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            }) }}
+
+        </div>
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}

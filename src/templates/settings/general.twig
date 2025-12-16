@@ -1,0 +1,85 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "General Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'general' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/general') }}
+		{{ hiddenInput('section', 'general') }}
+
+		<h2 style="margin-top: 0px;">{{ "Plugin Settings"|t('search-manager') }}</h2>
+
+		{{ forms.textField({
+            label: "Plugin Name"|t('search-manager'),
+            instructions: "The name of the plugin as it appears in the Control Panel menu"|t('search-manager'),
+            id: 'pluginName',
+            name: 'settings[pluginName]',
+            value: settings.pluginName,
+            required: true,
+            disabled: settings.isOverriddenByConfig('pluginName'),
+            warning: settings.isOverriddenByConfig('pluginName') ?
+                "This is being overridden by the <code>pluginName</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+		<hr>
+
+		<h2>{{ "Logging Settings"|t('search-manager') }}</h2>
+
+		{% set logOptions = [
+            {value: 'error', label: 'Error (Critical errors only)'|t('search-manager')},
+            {value: 'warning', label: 'Warning (Errors and warnings)'|t('search-manager')},
+            {value: 'info', label: 'Info (General information)'|t('search-manager')},
+        ] %}
+
+		{% if craft.app.config.general.devMode %}
+			{% set logOptions = logOptions|merge([
+                {value: 'debug', label: 'Debug (Detailed debugging)'|t('search-manager')}
+            ]) %}
+		{% endif %}
+
+		{{ forms.selectField({
+            label: 'Log Level'|t('search-manager'),
+            instructions: 'Choose what types of messages to log. Debug level requires devMode to be enabled.'|t('search-manager'),
+            id: 'logLevel',
+            name: 'settings[logLevel]',
+            value: settings.logLevel,
+            options: logOptions,
+            disabled: settings.isOverriddenByConfig('logLevel'),
+            warning: settings.isOverriddenByConfig('logLevel') ?
+                "This is being overridden by the <code>logLevel</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}

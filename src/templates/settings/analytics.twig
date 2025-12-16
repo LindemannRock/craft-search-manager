@@ -1,0 +1,182 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Analytics Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'analytics' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Analytics'|t('search-manager'),
+        url: url('search-manager/settings/analytics'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/analytics') }}
+		{{ hiddenInput('section', 'analytics') }}
+
+		<h2 style="margin-top: 0px;">{{ "Analytics Settings"|t('search-manager') }}</h2>
+
+		{{ forms.lightswitchField({
+            label: 'Enable Analytics'|t('search-manager'),
+            instructions: 'Track search queries, results, and performance metrics'|t('search-manager'),
+            id: 'enableAnalytics',
+            name: 'settings[enableAnalytics]',
+            on: settings.enableAnalytics ?? true,
+            toggle: 'analytics-settings',
+            disabled: settings.isOverriddenByConfig('enableAnalytics'),
+            warning: settings.isOverriddenByConfig('enableAnalytics') ?
+                "This is being overridden by the <code>enableAnalytics</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+        <div id="analytics-settings" class="{{ not (settings.enableAnalytics ?? true) ? 'hidden' }}">
+            <div class="field">
+                <p class="light">{{ "When enabled, Search Manager will track search queries, device types, geographic data, and performance metrics."|t('search-manager') }}</p>
+            </div>
+
+            <hr>
+
+        <h2>{{ "Geographic Detection"|t('search-manager') }}</h2>
+
+        {{ forms.lightswitchField({
+            label: "Enable Geographic Detection"|t('search-manager'),
+            instructions: "Detect user location for analytics"|t('search-manager'),
+            id: 'enableGeoDetection',
+            name: 'settings[enableGeoDetection]',
+            on: settings.enableGeoDetection ?? false,
+            disabled: settings.isOverriddenByConfig('enableGeoDetection'),
+            warning: settings.isOverriddenByConfig('enableGeoDetection') ?
+                "This is being overridden by the <code>enableGeoDetection</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+        <hr>
+
+        <h2>{{ "IP Address Privacy"|t('search-manager') }}</h2>
+
+        {{ forms.lightswitchField({
+            label: "Anonymize IP Addresses"|t('search-manager'),
+            instructions: "Mask IP addresses before storage for maximum privacy. <strong>IPv4</strong>: masks last octet (192.168.1.123 → 192.168.1.0). <strong>IPv6</strong>: masks last 80 bits. <strong>Trade-off</strong>: Reduces unique visitor accuracy (users on same subnet counted as one visitor). Geo-location still works normally."|t('search-manager')|raw,
+            id: 'anonymizeIpAddress',
+            name: 'settings[anonymizeIpAddress]',
+            on: settings.anonymizeIpAddress ?? false,
+            disabled: settings.isOverriddenByConfig('anonymizeIpAddress'),
+            warning: settings.isOverriddenByConfig('anonymizeIpAddress') ?
+                "This is being overridden by the <code>anonymizeIpAddress</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+        <div class="field">
+            <p class="light">
+                <strong>Privacy Levels:</strong><br>
+                • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+                • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)
+            </p>
+        </div>
+
+        <hr>
+
+        <h2>{{ "Data Retention"|t('search-manager') }}</h2>
+
+		{{ forms.textField({
+            label: 'Analytics Retention'|t('search-manager'),
+            instructions: 'How many days to keep analytics data (0 for unlimited, max 3650)'|t('search-manager'),
+            id: 'analyticsRetention',
+            name: 'settings[analyticsRetention]',
+            value: settings.analyticsRetention ?? 90,
+            type: 'number',
+            min: 0,
+            max: 3650,
+            disabled: settings.isOverriddenByConfig('analyticsRetention'),
+            warning: settings.isOverriddenByConfig('analyticsRetention') ?
+                "This is being overridden by the <code>analyticsRetention</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('analyticsRetention')
+        }) }}
+
+        {% if (settings.analyticsRetention ?? 90) > 0 %}
+            <div class="field" style="margin-top: 20px;">
+                <div class="heading">
+                    <label>{{ "Analytics Cleanup"|t('search-manager') }}</label>
+                    <div class="instructions">
+                        <p>{{ "Analytics data older than {days} days will be automatically cleaned up daily."|t('search-manager', {days: settings.analyticsRetention ?? 90}) }}</p>
+                    </div>
+                </div>
+                <button type="button" class="btn" id="cleanup-analytics-now">
+                    {{ "Clean Up Now"|t('search-manager') }}
+                </button>
+            </div>
+        {% elseif (settings.analyticsRetention ?? 90) == 0 %}
+            <div class="field" style="margin-top: 20px;">
+                <div class="heading">
+                    <label>{{ "Unlimited Retention Warning"|t('search-manager') }}</label>
+                    <div class="instructions" style="color: #da5a47;">
+                        <p><strong>{{ "Warning"|t('search-manager') }}:</strong> {{ "Analytics data will be retained indefinitely. This could result in large database size, slower performance, and increased storage costs over time. Consider setting a retention period (recommended: 90-365 days) for production sites."|t('search-manager') }}</p>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+    </div>{# end #analytics-settings #}
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}
+
+{% js %}
+    $('#cleanup-analytics-now').on('click', function() {
+        if (!confirm('{{ "Are you sure you want to clean up old analytics data now?"|t('search-manager')|e('js') }}')) {
+            return;
+        }
+
+        const $btn = $(this);
+        $btn.addClass('loading').prop('disabled', true);
+
+        $.ajax({
+            url: '{{ actionUrl('search-manager/settings/cleanup-analytics')|raw }}',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
+            },
+            success: function(response) {
+                if (response.success) {
+                    Craft.cp.displayNotice(response.message || '{{ "Analytics cleanup job queued"|t('search-manager')|e('js') }}');
+                } else {
+                    Craft.cp.displayError(response.error || '{{ "Failed to queue cleanup job"|t('search-manager')|e('js') }}');
+                }
+            },
+            error: function() {
+                Craft.cp.displayError('{{ "Failed to queue cleanup job"|t('search-manager')|e('js') }}');
+            },
+            complete: function() {
+                $btn.removeClass('loading').prop('disabled', false);
+            }
+        });
+    });
+{% endjs %}
+

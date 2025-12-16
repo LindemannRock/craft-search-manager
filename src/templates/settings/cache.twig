@@ -1,0 +1,167 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Cache Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'cache' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Cache'|t('search-manager'),
+        url: url('search-manager/settings/cache'),
+    },
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+
+    {% include 'search-manager/_components/ip-salt-error' %}
+
+	<form method="post" accept-charset="UTF-8">
+		<input type="hidden" name="action" value="search-manager/settings/save">
+		{{ csrfInput() }}
+		{{ redirectInput('search-manager/settings/cache') }}
+		{{ hiddenInput('section', 'cache') }}
+
+		<h2 style="margin-top: 0px;">{{ "Search Results Cache"|t('search-manager') }}</h2>
+
+		{{ forms.lightswitchField({
+            label: 'Enable Cache'|t('search-manager'),
+            instructions: 'Cache search results to improve performance and reduce backend load'|t('search-manager'),
+            id: 'enableCache',
+            name: 'settings[enableCache]',
+            on: settings.enableCache,
+            disabled: settings.isOverriddenByConfig('enableCache'),
+            warning: settings.isOverriddenByConfig('enableCache') ?
+                "This is being overridden by the <code>enableCache</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+        }) }}
+
+		{% include 'search-manager/_components/info-box' with {
+			message: '<strong>Storage Location:</strong> <code>@storage/runtime/search-manager/cache/search/</code>'
+		} %}
+
+		{{ forms.textField({
+            label: 'Cache Duration'|t('search-manager'),
+            instructions: 'How long to cache search results (in seconds)'|t('search-manager'),
+            id: 'cacheDuration',
+            name: 'settings[cacheDuration]',
+            value: settings.cacheDuration ?? 3600,
+            type: 'number',
+            min: '60',
+            max: '86400',
+            required: true,
+            tip: '3600 = 1 hour, 86400 = 24 hours'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('cacheDuration'),
+            warning: settings.isOverriddenByConfig('cacheDuration') ?
+                "This is being overridden by the <code>cacheDuration</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('cacheDuration')
+        }) }}
+
+		{{ forms.lightswitchField({
+            label: 'Cache Popular Queries Only'|t('search-manager'),
+            instructions: 'Only cache queries that have been searched multiple times'|t('search-manager'),
+            id: 'cachePopularQueriesOnly',
+            name: 'settings[cachePopularQueriesOnly]',
+            on: settings.cachePopularQueriesOnly,
+            tip: 'Saves cache space by only caching frequently-used queries'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('cachePopularQueriesOnly'),
+            warning: settings.isOverriddenByConfig('cachePopularQueriesOnly') ?
+                "This is being overridden by config file."|t('search-manager')|raw : null,
+        }) }}
+
+		{{ forms.textField({
+            label: 'Popular Query Threshold'|t('search-manager'),
+            instructions: 'Number of times a query must be searched before it gets cached'|t('search-manager'),
+            id: 'popularQueryThreshold',
+            name: 'settings[popularQueryThreshold]',
+            value: settings.popularQueryThreshold ?? 5,
+            type: 'number',
+            min: '2',
+            max: '100',
+            required: true,
+            tip: 'Only applies when "Cache Popular Queries Only" is enabled'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('popularQueryThreshold'),
+            warning: settings.isOverriddenByConfig('popularQueryThreshold') ?
+                "This is being overridden by config file."|t('search-manager')|raw : null,
+            errors: settings.getErrors('popularQueryThreshold')
+        }) }}
+
+        {% if settings.enableAnalytics ?? true %}
+            <hr>
+
+            <h2>{{ "Device Detection Caching"|t('search-manager') }}</h2>
+
+            {{ forms.lightswitchField({
+                label: "Cache Device Detection"|t('search-manager'),
+                instructions: "Cache device detection results for better performance"|t('search-manager'),
+                id: 'cacheDeviceDetection',
+                name: 'settings[cacheDeviceDetection]',
+                on: settings.cacheDeviceDetection ?? true,
+                toggle: 'device-cache-settings',
+                disabled: settings.isOverriddenByConfig('cacheDeviceDetection'),
+                warning: settings.isOverriddenByConfig('cacheDeviceDetection') ?
+                    "This is being overridden by the <code>cacheDeviceDetection</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            }) }}
+
+            <div id="device-cache-settings" class="{{ not (settings.cacheDeviceDetection ?? true) ? 'hidden' }}">
+                {{ forms.textField({
+                    label: "Device Detection Cache Duration"|t('search-manager'),
+                    instructions: "Cache duration in seconds. Default: 3600 (1 hour)"|t('search-manager'),
+                    id: 'deviceDetectionCacheDuration',
+                    name: 'settings[deviceDetectionCacheDuration]',
+                    value: settings.deviceDetectionCacheDuration ?? 3600,
+                    type: 'number',
+                    min: 0,
+                    disabled: settings.isOverriddenByConfig('deviceDetectionCacheDuration'),
+                    warning: settings.isOverriddenByConfig('deviceDetectionCacheDuration') ?
+                        "This is being overridden by the <code>deviceDetectionCacheDuration</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                }) }}
+
+                {% include 'search-manager/_components/info-box' with {
+                    message: '<strong>How it works:</strong><br>
+• Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
+• Results are cached to avoid re-parsing the same user-agent repeatedly<br>
+• Recommended to keep enabled for production sites'
+                } %}
+
+                {% include 'search-manager/_components/info-box' with {
+                    message: '<strong>Storage Location:</strong> <code>@storage/runtime/search-manager/cache/device/</code>'
+                } %}
+            </div>
+        {% else %}
+            <hr>
+
+            <h2>{{ "Device Detection Caching"|t('search-manager') }}</h2>
+
+            <div class="field">
+                <p class="light" style="color: #999;">
+                    {{ "Device detection caching is only available when Analytics is enabled. Go to"|t('search-manager') }}
+                    <a href="{{ url('search-manager/settings/analytics') }}">{{ "Analytics Settings"|t('search-manager') }}</a>
+                    {{ "to enable analytics."|t('search-manager') }}
+                </p>
+            </div>
+        {% endif %}
+
+		<div class="buttons">
+			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+		</div>
+	</form>
+
+	{% include 'search-manager/_components/plugin-credit.twig' %}
+{% endblock %}
+
