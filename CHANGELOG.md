@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.0...v5.2.1) (2025-12-16)
+
+
+### Bug Fixes
+
+* improve analytics display and error handling for Chart.js loading ([9210a33](https://github.com/LindemannRock/craft-search-manager/commit/9210a3330b37f2ea68a597178436c8724f56b39f))
+
 ## [5.2.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.1.0...v5.2.0) (2025-12-16)
 
 
