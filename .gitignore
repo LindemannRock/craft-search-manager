@@ -1,0 +1,47 @@
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Dependencies
+/node_modules/
+/vendor/
+
+# Build artifacts
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Temporary files
+/tmp/
+/temp/
+
+# Development files
+TODO.md
+ANALYTICS-ROADMAP.md
+MIGRATION-LANGUAGE-SUPPORT.sql
+MIGRATION-NEW-SETTINGS.sql
+FREEMIUM_PLAN.md
+README.md.backup
+
+# Plugin releases
+*.zip
+/releases/
+/backups/
