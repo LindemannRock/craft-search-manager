@@ -195,7 +195,7 @@ class BackendService extends Component
                     $query,
                     $cached['total'] ?? 0,
                     0, // Cache hit = 0ms execution time
-                    $backend->getName() . ' (cached)',
+                    $backend->getName(), // Don't append "(cached)" - breaks analytics grouping
                     $siteId
                 );
                 return $cached;

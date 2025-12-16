@@ -314,9 +314,16 @@
     if (typeof Chart === 'undefined') {
         var script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
-        script.onload = initCharts;
+        script.onload = function() {
+            console.log('Chart.js loaded successfully');
+            initCharts();
+        };
+        script.onerror = function() {
+            console.error('Failed to load Chart.js from CDN');
+        };
         document.head.appendChild(script);
     } else {
+        console.log('Chart.js already loaded');
         initCharts();
     }
 
@@ -606,7 +613,7 @@
                 html += '<td>' + (stat.totalResults / stat.count).toFixed(1) + '</td>';
                 const date = new Date(stat.lastSearched.date || stat.lastSearched);
                 html += '<td>' + Craft.formatDate(date, 'short') + '</td>';
-                html += '<td>' + Craft.formatTime(date, 'short') + '</td>';
+                html += '<td>' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) + '</td>';
                 html += '</tr>';
             });
         }
@@ -626,7 +633,7 @@
                 html += '<td>' + Craft.escapeHtml(stat.backend.charAt(0).toUpperCase() + stat.backend.slice(1)) + '</td>';
                 const date = new Date(stat.dateCreated.date || stat.dateCreated);
                 html += '<td>' + Craft.formatDate(date, 'short') + '</td>';
-                html += '<td>' + Craft.formatTime(date, 'short') + '</td>';
+                html += '<td>' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) + '</td>';
                 html += '</tr>';
             });
         }
