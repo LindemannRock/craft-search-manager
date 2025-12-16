@@ -363,9 +363,9 @@ class AutocompleteService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $backendName = $settings->searchBackend;
 
-        // Only support built-in backends (MySQL, Redis, File)
-        if (!in_array($backendName, ['mysql', 'redis', 'file'])) {
-            $this->logWarning('Autocomplete only supported for MySQL, Redis, and File backends', [
+        // Only support built-in backends (MySQL, PostgreSQL, Redis, File)
+        if (!in_array($backendName, ['mysql', 'pgsql', 'redis', 'file'])) {
+            $this->logWarning('Autocomplete only supported for MySQL, PostgreSQL, Redis, and File backends', [
                 'backend' => $backendName,
             ]);
             return null;
@@ -380,8 +380,10 @@ class AutocompleteService extends Component
                 return null;
             }
 
-            // All built-in backends now have getStorage() method
+            // All built-in backends have getStorage() method
+            // Type assertion for PHPStan since BackendInterface doesn't define getStorage()
             if (method_exists($backend, 'getStorage')) {
+                /** @var \lindemannrock\searchmanager\backends\MySqlBackend|\lindemannrock\searchmanager\backends\PostgreSqlBackend|\lindemannrock\searchmanager\backends\RedisBackend|\lindemannrock\searchmanager\backends\FileBackend $backend */
                 $storage = $backend->getStorage($indexHandle);
 
                 $this->logDebug('Retrieved storage from backend', [

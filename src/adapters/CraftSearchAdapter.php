@@ -43,9 +43,9 @@ class CraftSearchAdapter extends \craft\services\Search
      */
     public function searchElements(ElementQuery $query): array
     {
-        // Only works for built-in backends (MySQL, Redis, File)
+        // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
         $settings = SearchManager::$plugin->getSettings();
-        if (!in_array($settings->searchBackend, ['mysql', 'redis', 'file'])) {
+        if (!in_array($settings->searchBackend, ['mysql', 'pgsql', 'redis', 'file'])) {
             $this->logDebug('Native search replacement not supported for external backends, falling back', [
                 'backend' => $settings->searchBackend,
             ]);
@@ -141,9 +141,9 @@ class CraftSearchAdapter extends \craft\services\Search
      */
     public function indexElementAttributes(ElementInterface $element, ?array $fieldHandles = null): bool
     {
-        // Only works for built-in backends (MySQL, Redis, File)
+        // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
         $settings = SearchManager::$plugin->getSettings();
-        if (!in_array($settings->searchBackend, ['mysql', 'redis', 'file'])) {
+        if (!in_array($settings->searchBackend, ['mysql', 'pgsql', 'redis', 'file'])) {
             $this->logDebug('Native search replacement not supported for external backends, falling back', [
                 'backend' => $settings->searchBackend,
             ]);

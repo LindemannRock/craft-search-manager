@@ -7,7 +7,7 @@
 
 {% block sidebar %}
     {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
-    {% set isBuiltinBackend = settings.searchBackend in ['mysql', 'redis', 'file'] %}
+    {% set isBuiltinBackend = settings.searchBackend in ['mysql', 'pgsql', 'redis', 'file'] %}
 
     <nav id="settings-nav">
         <ul>
