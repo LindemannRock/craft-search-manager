@@ -359,10 +359,21 @@ class SearchIndex extends Model
         }
 
         try {
+            // Clear backend storage first (MySQL tables, Redis keys, files, etc.)
+            \lindemannrock\searchmanager\SearchManager::$plugin->backend->clearIndex($this->handle);
+
+            // Then delete the database record
             $result = Craft::$app->getDb()
                 ->createCommand()
                 ->delete('{{%searchmanager_indices}}', ['id' => $this->id])
                 ->execute();
+
+            if ($result > 0) {
+                $this->logInfo('Index deleted successfully', [
+                    'handle' => $this->handle,
+                    'name' => $this->name,
+                ]);
+            }
 
             return $result > 0;
         } catch (\Throwable $e) {
