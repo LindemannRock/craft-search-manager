@@ -94,6 +94,14 @@ return [
         // ========================================
 
         /**
+         * Cache Storage Method
+         * 'file' = File system (default, single server)
+         * 'redis' = Redis/Database (load-balanced, multi-server, cloud hosting)
+         * Default: 'file'
+         */
+        // 'cacheStorageMethod' => 'file',
+
+        /**
          * Enable search results caching
          * Default: true
          */
@@ -463,6 +471,9 @@ return [
         'logLevel' => 'debug',
         'indexPrefix' => 'dev_',
         'queueEnabled' => false, // Process immediately in dev
+        'enableCache' => false, // Disable cache for testing
+        'cacheDuration' => 300, // 5 minutes (if enabled)
+        'deviceDetectionCacheDuration' => 1800, // 30 minutes
         'backends' => [
             'meilisearch' => [
                 'enabled' => true,
@@ -477,6 +488,9 @@ return [
     'staging' => [
         'logLevel' => 'info',
         'indexPrefix' => 'staging_',
+        'enableCache' => true,
+        'cacheDuration' => 1800, // 30 minutes
+        'deviceDetectionCacheDuration' => 3600, // 1 hour
         'backends' => [
             'meilisearch' => [
                 'enabled' => true,
@@ -491,6 +505,12 @@ return [
         'logLevel' => 'error',
         'indexPrefix' => 'prod_',
         'queueEnabled' => true,
+        'enableCache' => true,
+        'cacheStorageMethod' => 'redis',  // Use Redis for production (Servd/AWS/Platform.sh)
+        'cacheDuration' => 7200, // 2 hours (optimize for performance)
+        'deviceDetectionCacheDuration' => 86400, // 24 hours (user agents rarely change)
+        'cachePopularQueriesOnly' => true, // Save cache space
+        'popularQueryThreshold' => 3, // Cache after 3 searches
         'backends' => [
             'algolia' => [
                 'enabled' => true,
