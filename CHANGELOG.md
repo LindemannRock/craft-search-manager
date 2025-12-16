@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.2.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.1...v5.2.2) (2025-12-16)
+
+
+### Bug Fixes
+
+* critical backend bugs and add PostgreSQL support ([e1e81fa](https://github.com/LindemannRock/craft-search-manager/commit/e1e81fa5b4b061db9d6cfc2780898a20db4360dc))
+
 ## [5.2.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.0...v5.2.1) (2025-12-16)
 
 
