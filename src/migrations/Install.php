@@ -110,6 +110,7 @@ class Install extends Migration
             // Cache Settings
             'enableCache' => $this->boolean()->notNull()->defaultValue(true),
             'cacheDuration' => $this->integer()->notNull()->defaultValue(3600),
+            'cacheStorageMethod' => $this->string(10)->notNull()->defaultValue('file')->comment('Cache storage method: file or redis'),
             'cachePopularQueriesOnly' => $this->boolean()->notNull()->defaultValue(false),
             'popularQueryThreshold' => $this->integer()->notNull()->defaultValue(5),
             'dateCreated' => $this->dateTime()->notNull(),
