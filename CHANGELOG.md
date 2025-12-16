@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.3.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.2...v5.3.0) (2025-12-16)
+
+
+### Features
+
+* enhance index deletion process by clearing backend storage before database record removal ([4ab91e9](https://github.com/LindemannRock/craft-search-manager/commit/4ab91e9212648930101e9812b6fac00ee2d58f8e))
+
+
+### Bug Fixes
+
+* improve transformer selection logic to handle empty string cases ([9d31c48](https://github.com/LindemannRock/craft-search-manager/commit/9d31c48f5d59469a9efb0e3b75e418ea06ba5177))
+
 ## [5.2.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.1...v5.2.2) (2025-12-16)
 
 
