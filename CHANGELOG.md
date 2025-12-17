@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.4.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.3.0...v5.4.0) (2025-12-17)
+
+
+### Features
+
+* Fix config index metadata sync and optimize SearchIndex model ([94dce2d](https://github.com/LindemannRock/craft-search-manager/commit/94dce2d347188e25dfa466c6370d1d10cb965f65))
+
 ## [5.3.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.2...v5.3.0) (2025-12-16)
 
 
