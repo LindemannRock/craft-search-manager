@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.6](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.5...v5.5.6) (2025-12-17)
+
+
+### Bug Fixes
+
+* Make fuzzy matching limit configurable and fix n-gram settings save bug ([872cf0a](https://github.com/LindemannRock/craft-search-manager/commit/872cf0ab85d83da2956b7814c2e66ee44a6842f5))
+
 ## [5.5.5](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.4...v5.5.5) (2025-12-17)
 
 
