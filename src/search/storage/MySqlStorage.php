@@ -481,6 +481,7 @@ class MySqlStorage implements StorageInterface
             GROUP BY n.term, nc.ngramCount
             HAVING similarity >= :threshold
             ORDER BY similarity DESC
+            LIMIT 50
         ";
 
         $rows = $this->db->createCommand($sql, $params)->queryAll();
