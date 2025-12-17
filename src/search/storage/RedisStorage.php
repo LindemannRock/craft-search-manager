@@ -161,10 +161,15 @@ class RedisStorage implements StorageInterface
      */
     public function deleteDocument(int $siteId, int $elementId): void
     {
-        $key = $this->getDocKey($siteId, $elementId);
-        $this->redis->del($key);
+        // Delete document data
+        $docKey = $this->getDocKey($siteId, $elementId);
+        $this->redis->del($docKey);
 
-        $this->logDebug('Deleted document', [
+        // Delete title terms
+        $titleKey = $this->getTitleKey($siteId, $elementId);
+        $this->redis->del($titleKey);
+
+        $this->logDebug('Deleted document and title terms', [
             'site_id' => $siteId,
             'element_id' => $elementId,
         ]);

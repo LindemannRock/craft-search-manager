@@ -149,16 +149,25 @@ class MySqlStorage implements StorageInterface
      */
     public function deleteDocument(int $siteId, int $elementId): void
     {
-        $this->db->createCommand()->delete(
+        // Delete from all tables that have elementId-specific data
+        $tables = [
             '{{%searchmanager_search_documents}}',
-            [
-                'indexHandle' => $this->indexHandle,
-                'siteId' => $siteId,
-                'elementId' => $elementId,
-            ]
-        )->execute();
+            '{{%searchmanager_search_terms}}',
+            '{{%searchmanager_search_titles}}',
+        ];
 
-        $this->logDebug('Deleted document', [
+        foreach ($tables as $table) {
+            $this->db->createCommand()->delete(
+                $table,
+                [
+                    'indexHandle' => $this->indexHandle,
+                    'siteId' => $siteId,
+                    'elementId' => $elementId,
+                ]
+            )->execute();
+        }
+
+        $this->logDebug('Deleted document from all tables', [
             'site_id' => $siteId,
             'element_id' => $elementId,
         ]);
@@ -352,6 +361,11 @@ class MySqlStorage implements StorageInterface
             return;
         }
 
+        // Check if n-grams already exist for this term (prevents duplicates)
+        if ($this->termHasNgrams($term, $siteId)) {
+            return; // N-grams already stored, skip
+        }
+
         // Store n-grams
         $values = [];
         foreach ($ngrams as $ngram) {
@@ -369,14 +383,17 @@ class MySqlStorage implements StorageInterface
             $values
         )->execute();
 
-        // Store n-gram count
-        $this->db->createCommand()->insert(
+        // Store n-gram count (use upsert to handle duplicates gracefully)
+        $this->db->createCommand()->upsert(
             '{{%searchmanager_search_ngram_counts}}',
             [
                 'indexHandle' => $this->indexHandle,
                 'term' => $term,
                 'siteId' => $siteId,
                 'ngramCount' => count($ngrams),
+            ],
+            [
+                'ngramCount' => count($ngrams), // Update if exists
             ]
         )->execute();
 

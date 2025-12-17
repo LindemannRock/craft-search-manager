@@ -140,13 +140,19 @@ class FileStorage implements StorageInterface
      */
     public function deleteDocument(int $siteId, int $elementId): void
     {
+        // Delete document data file
         $docPath = $this->getDocPath($siteId, $elementId);
-
         if (file_exists($docPath)) {
             @unlink($docPath);
         }
 
-        $this->logDebug('Deleted document', [
+        // Delete title terms file
+        $titlePath = $this->getTitlePath($siteId, $elementId);
+        if (file_exists($titlePath)) {
+            @unlink($titlePath);
+        }
+
+        $this->logDebug('Deleted document and title files', [
             'site_id' => $siteId,
             'element_id' => $elementId,
         ]);

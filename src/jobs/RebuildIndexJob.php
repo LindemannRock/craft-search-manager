@@ -28,6 +28,12 @@ class RebuildIndexJob extends BaseJob
 
     public function execute($queue): void
     {
+        // Increase memory limit for rebuild jobs (handles large relational data)
+        $currentLimit = ini_get('memory_limit');
+        if ($currentLimit !== '-1') {
+            ini_set('memory_limit', '1G');
+        }
+
         if ($this->indexHandle) {
             $this->rebuildSingleIndex($queue, $this->indexHandle);
         } else {
@@ -147,8 +153,16 @@ class RebuildIndexJob extends BaseJob
                 if (!empty($elements)) {
                     SearchManager::$plugin->indexing->batchIndex($elements, $indexHandle);
                     $totalIndexed += count($elements);
+
+                    // Free memory after each batch to prevent exhaustion
+                    unset($elements);
+                    gc_collect_cycles();
                 }
             }
+
+            // Free memory after processing all batches for this site
+            unset($elementIds, $batches);
+            gc_collect_cycles();
         }
 
         // Update index stats
