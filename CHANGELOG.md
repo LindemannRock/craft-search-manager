@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.8](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.7...v5.5.8) (2025-12-17)
+
+
+### Bug Fixes
+
+* Update similarity threshold to improve fuzzy matching accuracy ([e473f01](https://github.com/LindemannRock/craft-search-manager/commit/e473f014aceee2d916af506a26d5304a131952dc))
+
 ## [5.5.7](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.6...v5.5.7) (2025-12-17)
 
 
