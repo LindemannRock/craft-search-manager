@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.3](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.2...v5.5.3) (2025-12-17)
+
+
+### Bug Fixes
+
+* Prevent duplicate key errors and add comprehensive cleanup across all storage backends ([7a4fe0a](https://github.com/LindemannRock/craft-search-manager/commit/7a4fe0a2f1b6b4670c9c5acf0a40e777c11096ee))
+
 ## [5.5.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.1...v5.5.2) (2025-12-17)
 
 
