@@ -1084,6 +1084,7 @@ return [
         'replaceNativeSearch' => false,
 
         // Batch size for bulk operations
+        // Reduce if experiencing memory issues with large relational data
         'batchSize' => 100,
 
         // Prefix for index names (useful for multi-environment)
@@ -1177,6 +1178,122 @@ return [
     ],
 ];
 ```
+
+## Performance & Troubleshooting
+
+### Memory Issues During Indexing
+
+⚠️ **If you experience memory exhaustion errors during index rebuilds:**
+
+**Symptoms:**
+```
+PHP Fatal error: Allowed memory size of 536870912 bytes exhausted
+Queue job failed with memory error
+```
+
+**Common Causes:**
+- AutoTransformer loading large amounts of relational data (Entries, Categories, Matrix blocks)
+- Products with many related entries (20+ relations per product)
+- Batch size too large for available memory
+- Deeply nested Matrix fields
+
+**Solutions:**
+
+**1. Reduce Batch Size (Recommended)**
+```php
+// config/search-manager.php
+return [
+    '*' => [
+        'batchSize' => 100, // Default
+    ],
+    'staging' => [
+        'batchSize' => 10, // Smaller for memory-constrained environments
+    ],
+    'production' => [
+        'batchSize' => 25, // Balance between speed and memory
+    ],
+];
+```
+
+**Guidelines:**
+- ✅ **Default (100):** Works for simple entries without many relations
+- ✅ **Medium (25-50):** Good for entries with moderate relational fields
+- ✅ **Small (10-25):** Use when entries have extensive relational data
+- ✅ **Very Small (5-10):** Last resort for extremely complex data structures
+
+**2. Increase PHP Memory Limit**
+
+The rebuild job automatically increases memory to 1GB, but you may need more:
+
+```php
+// In your .env or php.ini
+memory_limit = 2G
+```
+
+**3. Optimize AutoTransformer**
+
+If you don't need to index all relational field data, create a custom transformer:
+
+```php
+class ProductTransformer extends BaseTransformer
+{
+    public function transform(ElementInterface $element): array
+    {
+        $data = $this->getCommonData($element);
+
+        // Only index specific fields (avoid loading all relations)
+        $data['content'] = $element->description;
+        $data['sku'] = $element->sku;
+
+        // Don't traverse deep relational fields
+        // $data['related'] = ... // Skip if causing memory issues
+
+        return $data;
+    }
+}
+```
+
+**Memory Usage Reference:**
+- 100 simple entries: ~50-100MB
+- 100 entries with 5-10 relations each: ~200-400MB
+- 100 entries with 20+ relations each: ~500MB-1GB
+- 341 products with extensive relations: ~500MB+ (reduce batch size to 10-25)
+
+**Best Practices:**
+- Monitor memory usage in production logs
+- Start with default batch size (100)
+- Reduce if seeing memory errors
+- Use staging environment to test optimal batch size
+- Consider custom transformers for complex data
+
+### Fuzzy Search Tuning
+
+**Fuzzy matching uses n-gram similarity for typo tolerance.** Default threshold (0.25) may produce too many false positives.
+
+**Symptoms:**
+- "freezab" finds "free" (too different)
+- "suga" finds unrelated terms
+- Search results include irrelevant matches
+
+**Solution - Increase Similarity Threshold:**
+
+```php
+// config/search-manager.php
+return [
+    '*' => [
+        'similarityThreshold' => 0.5, // Default: 0.25
+    ],
+];
+```
+
+**Threshold Guidelines:**
+- ✅ **0.25 (Default):** Maximum typo tolerance, more false positives
+- ✅ **0.35:** Good typo tolerance, some false positives
+- ✅ **0.5 (Recommended):** Balanced - good typos, fewer false positives
+- ✅ **0.6:** Strict - only very similar terms
+- ✅ **0.75:** Very strict - almost exact matches only
+
+**Test and adjust based on your content and search behavior.**
 
 ## Migrating from Scout
 
