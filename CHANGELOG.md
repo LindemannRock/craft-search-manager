@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.0...v5.5.1) (2025-12-17)
+
+
+### Bug Fixes
+
+* Implement proper wildcard search and fix fuzzy matching across all backends ([07ccbad](https://github.com/LindemannRock/craft-search-manager/commit/07ccbad063fc50f6fdea0c6574717ab5ca166e7a))
+
 ## [5.5.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.4.0...v5.5.0) (2025-12-17)
 
 
