@@ -439,7 +439,7 @@ class MySqlStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold): array
+    public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array
     {
         if (empty($ngrams)) {
             return [];
@@ -463,6 +463,7 @@ class MySqlStorage implements StorageInterface
             $params[$placeholder] = $ngram;
         }
 
+        // Use configurable limit from settings (maxFuzzyCandidates)
         $sql = "
             SELECT
                 n.term,
@@ -481,7 +482,7 @@ class MySqlStorage implements StorageInterface
             GROUP BY n.term, nc.ngramCount
             HAVING similarity >= :threshold
             ORDER BY similarity DESC
-            LIMIT 50
+            LIMIT " . (int)$limit . "
         ";
 
         $rows = $this->db->createCommand($sql, $params)->queryAll();

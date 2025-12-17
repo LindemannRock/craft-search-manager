@@ -417,6 +417,8 @@ class Install extends Migration
             $this->addPrimaryKey(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'elementId', 'term']);
             $this->createIndex(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'elementId'], false);
             $this->createIndex(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'language'], false);
+            // Performance index for term lookups (search queries)
+            $this->createIndex('idx_term_lookup', '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'term'], false);
         }
 
         // Terms table: inverted index mapping terms to documents
@@ -459,6 +461,8 @@ class Install extends Migration
 
             $this->addPrimaryKey(null, '{{%searchmanager_search_ngrams}}', ['indexHandle', 'ngram', 'term', 'siteId']);
             $this->createIndex(null, '{{%searchmanager_search_ngrams}}', ['indexHandle', 'ngram', 'siteId'], false);
+            // Performance index for n-gram lookups (fuzzy search)
+            $this->createIndex('idx_ngram_lookup', '{{%searchmanager_search_ngrams}}', ['indexHandle', 'siteId', 'ngram'], false);
         }
 
         // N-gram counts table: stores n-gram count per term for Jaccard similarity
@@ -471,6 +475,8 @@ class Install extends Migration
             ]);
 
             $this->addPrimaryKey(null, '{{%searchmanager_search_ngram_counts}}', ['indexHandle', 'term', 'siteId']);
+            // Performance index for fuzzy matching JOIN optimization
+            $this->createIndex('idx_ngram_count_lookup', '{{%searchmanager_search_ngram_counts}}', ['indexHandle', 'siteId', 'term', 'ngramCount'], false);
         }
 
         // Metadata table: stores global statistics (doc count, total length, etc.)

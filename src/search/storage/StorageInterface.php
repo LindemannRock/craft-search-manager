@@ -171,9 +171,10 @@ interface StorageInterface
      * @param array $ngrams N-grams to match
      * @param int $siteId Site ID
      * @param float $threshold Minimum similarity threshold
+     * @param int $limit Maximum candidates to return (default: 100)
      * @return array [term => similarity_score]
      */
-    public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold): array;
+    public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array;
 
     /**
      * Get terms by prefix (for wildcard search)

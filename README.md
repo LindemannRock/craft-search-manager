@@ -761,6 +761,37 @@ input.addEventListener('input', (e) => {
 - ✅ Language-aware (auto-detects from current site)
 - ✅ Respects all configured settings (min length, limits, etc.)
 
+**API Response Structure:**
+
+Search response:
+```json
+{
+  "hits": [
+    {
+      "objectID": 123,
+      "id": 123,
+      "score": 45.23,
+      "title": "Product Title",
+      "excerpt": "Highlighted excerpt..."
+    }
+  ],
+  "total": 150
+}
+```
+
+**Default Limits:**
+- Search API: 20 results (use `limit=0` for unlimited)
+- Suggest API: 10 suggestions
+
+**All search operators work:**
+- Phrase: `?q="exact phrase"`
+- Boolean: `?q=coffee OR tea`, `?q=coffee NOT decaf`
+- Wildcards: `?q=coff*`
+- Field-specific: `?q=title:muesli`
+- Boosting: `?q=coffee^2 beans`
+
+⚠️ **Note:** Default API limit (20) is hardcoded. TODO: Make configurable via settings.
+
 ### Multi-Language Support
 
 Search Manager automatically handles multiple languages:

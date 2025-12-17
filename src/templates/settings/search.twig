@@ -198,7 +198,7 @@
             label: 'Fuzzy Match Precision'|t('search-manager'),
             instructions: 'N-gram sizes for typo-tolerant search. More selections = better accuracy but slower. <a href="https://en.wikipedia.org/wiki/N-gram" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')|raw,
             id: 'ngramSizes',
-            name: 'ngramSizes',
+            name: 'settings[ngramSizes]',
             options: [
                 {label: '1-gram - Best for single characters'|t('search-manager'), value: '1'},
                 {label: '2-gram - Fast matching'|t('search-manager'), value: '2'},
@@ -206,8 +206,8 @@
                 {label: '4-gram - More precise'|t('search-manager'), value: '4'},
                 {label: '5-gram - Most precise'|t('search-manager'), value: '5'},
             ],
-            values: settings.ngramSizes|split(','),
-            tip: 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate.'|t('search-manager'),
+            values: settings.ngramSizes ? settings.ngramSizes|split(',') : [],
+            tip: 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('ngramSizes'),
             warning: settings.isOverriddenByConfig('ngramSizes') ?
                 "This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

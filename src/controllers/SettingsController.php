@@ -245,6 +245,15 @@ class SettingsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
         $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
 
+        // Convert ngramSizes array to comma-separated string
+        if (isset($postedSettings['ngramSizes'])) {
+            if (is_array($postedSettings['ngramSizes'])) {
+                $postedSettings['ngramSizes'] = !empty($postedSettings['ngramSizes'])
+                    ? implode(',', $postedSettings['ngramSizes'])
+                    : ''; // Empty array = disable fuzzy
+            }
+        }
+
         $settings->setAttributes($postedSettings, false);
 
         if (!$settings->validate()) {

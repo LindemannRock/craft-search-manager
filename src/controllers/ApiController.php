@@ -54,6 +54,7 @@ class ApiController extends Controller
     {
         $query = Craft::$app->getRequest()->getParam('q', '');
         $indexHandle = Craft::$app->getRequest()->getParam('index', 'all-sites');
+        // TODO: Make default limit configurable via settings (add 'apiDefaultLimit' config option)
         $limit = (int)Craft::$app->getRequest()->getParam('limit', 20);
 
         if (empty($query)) {

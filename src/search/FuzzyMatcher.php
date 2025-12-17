@@ -85,32 +85,20 @@ class FuzzyMatcher
             'threshold' => $adaptiveThreshold,
         ]);
 
-        // Query storage for similar terms based on n-gram overlap
+        // Query storage for similar terms (storage layer applies maxCandidates limit)
         $candidates = $storage->getTermsByNgramSimilarity(
             $searchNgrams,
             $siteId,
-            $adaptiveThreshold
+            $adaptiveThreshold,
+            $this->maxCandidates // Pass configurable limit to storage
         );
-
-        $this->logInfo('Initial fuzzy candidates from storage', [
-            'term' => $searchTerm,
-            'candidate_count' => count($candidates),
-            'candidates' => array_slice($candidates, 0, 10, true), // First 10 with scores
-        ]);
-
-        // Limit candidates for performance
-        if (count($candidates) > $this->maxCandidates) {
-            $candidates = array_slice($candidates, 0, $this->maxCandidates, true);
-            $this->logInfo('Limited fuzzy candidates', [
-                'max_candidates' => $this->maxCandidates,
-            ]);
-        }
 
         $matchedTerms = array_keys($candidates);
 
-        $this->logInfo('Final fuzzy match candidates', [
+        $this->logInfo('Fuzzy match candidates found', [
             'term' => $searchTerm,
             'candidate_count' => count($candidates),
+            'max_limit' => $this->maxCandidates,
             'matched_terms' => array_slice($matchedTerms, 0, 10), // First 10
         ]);
 

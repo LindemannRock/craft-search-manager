@@ -364,7 +364,7 @@ class RedisStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold): array
+    public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array
     {
         if (empty($ngrams)) {
             return [];
@@ -421,7 +421,8 @@ class RedisStorage implements StorageInterface
         // Sort by similarity (highest first)
         arsort($similarities);
 
-        return $similarities;
+        // Apply limit
+        return array_slice($similarities, 0, $limit, true);
     }
 
     /**
