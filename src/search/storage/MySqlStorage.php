@@ -86,11 +86,24 @@ class MySqlStorage implements StorageInterface
             $language,
         ];
 
-        $this->db->createCommand()->batchInsert(
-            '{{%searchmanager_search_documents}}',
-            ['indexHandle', 'siteId', 'elementId', 'term', 'frequency', 'language'],
-            $values
-        )->execute();
+        // Use REPLACE INTO to handle duplicates (deletes old, inserts new)
+        $sql = "REPLACE INTO {{%searchmanager_search_documents}}
+                (`indexHandle`, `siteId`, `elementId`, `term`, `frequency`, `language`) VALUES ";
+
+        $valueStrings = [];
+        foreach ($values as $value) {
+            $valueStrings[] = "("
+                . $this->db->quoteValue($value[0]) . ", "
+                . (int)$value[1] . ", "
+                . (int)$value[2] . ", "
+                . $this->db->quoteValue($value[3]) . ", "
+                . (int)$value[4] . ", "
+                . $this->db->quoteValue($value[5]) . ")";
+        }
+
+        $sql .= implode(', ', $valueStrings);
+
+        $this->db->createCommand($sql)->execute();
 
         $this->logDebug('Stored document', [
             'site_id' => $siteId,
@@ -294,21 +307,22 @@ class MySqlStorage implements StorageInterface
             return;
         }
 
-        $values = [];
+        // Use REPLACE INTO to handle duplicates
+        $sql = "REPLACE INTO {{%searchmanager_search_titles}}
+                (`indexHandle`, `siteId`, `elementId`, `term`) VALUES ";
+
+        $valueStrings = [];
         foreach ($titleTerms as $term) {
-            $values[] = [
-                $this->indexHandle,
-                $siteId,
-                $elementId,
-                $term,
-            ];
+            $valueStrings[] = "("
+                . $this->db->quoteValue($this->indexHandle) . ", "
+                . (int)$siteId . ", "
+                . (int)$elementId . ", "
+                . $this->db->quoteValue($term) . ")";
         }
 
-        $this->db->createCommand()->batchInsert(
-            '{{%searchmanager_search_titles}}',
-            ['indexHandle', 'siteId', 'elementId', 'term'],
-            $values
-        )->execute();
+        $sql .= implode(', ', $valueStrings);
+
+        $this->db->createCommand($sql)->execute();
 
         $this->logDebug('Stored title terms', [
             'site_id' => $siteId,
@@ -366,22 +380,22 @@ class MySqlStorage implements StorageInterface
             return; // N-grams already stored, skip
         }
 
-        // Store n-grams
-        $values = [];
+        // Store n-grams using INSERT IGNORE to handle race conditions
+        $sql = "INSERT IGNORE INTO {{%searchmanager_search_ngrams}}
+                (`indexHandle`, `ngram`, `term`, `siteId`) VALUES ";
+
+        $valueStrings = [];
         foreach ($ngrams as $ngram) {
-            $values[] = [
-                $this->indexHandle,
-                $ngram,
-                $term,
-                $siteId,
-            ];
+            $valueStrings[] = "("
+                . $this->db->quoteValue($this->indexHandle) . ", "
+                . $this->db->quoteValue($ngram) . ", "
+                . $this->db->quoteValue($term) . ", "
+                . (int)$siteId . ")";
         }
 
-        $this->db->createCommand()->batchInsert(
-            '{{%searchmanager_search_ngrams}}',
-            ['indexHandle', 'ngram', 'term', 'siteId'],
-            $values
-        )->execute();
+        $sql .= implode(', ', $valueStrings);
+
+        $this->db->createCommand($sql)->execute();
 
         // Store n-gram count (use upsert to handle duplicates gracefully)
         $this->db->createCommand()->upsert(
