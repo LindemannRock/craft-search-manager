@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.5](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.4...v5.5.5) (2025-12-17)
+
+
+### Bug Fixes
+
+* Limit results in similarity query to improve performance ([dc3572a](https://github.com/LindemannRock/craft-search-manager/commit/dc3572a79bc9b6ee9298ab67b9bd953c061fa47e))
+
 ## [5.5.4](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.3...v5.5.4) (2025-12-17)
 
 
