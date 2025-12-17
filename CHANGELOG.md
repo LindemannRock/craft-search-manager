@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.1...v5.5.2) (2025-12-17)
+
+
+### Bug Fixes
+
+* Clear storage now handles orphaned indices and resets metadata ([7050d63](https://github.com/LindemannRock/craft-search-manager/commit/7050d63b29b51d5d93c99156268d3632e011c8ff))
+
 ## [5.5.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.0...v5.5.1) (2025-12-17)
 
 
