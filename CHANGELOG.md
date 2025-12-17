@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.9](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.8...v5.5.9) (2025-12-17)
+
+
+### Bug Fixes
+
+* Enable plugin name setting in configuration ([a24c9fa](https://github.com/LindemannRock/craft-search-manager/commit/a24c9fae0086b076280ba1c4b4b47f9730a9baa6))
+
 ## [5.5.8](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.7...v5.5.8) (2025-12-17)
 
 
