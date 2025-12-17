@@ -44,6 +44,18 @@ class RebuildIndexJob extends BaseJob
             return;
         }
 
+        // Sync config indices metadata before rebuilding
+        if ($index->source === 'config') {
+            $this->logInfo('Config index detected - syncing metadata', [
+                'handle' => $indexHandle,
+                'hasId' => $index->id ? 'YES' : 'NO',
+                'name' => $index->name,
+                'transformer' => $index->transformerClass,
+            ]);
+            $synced = $index->syncMetadataFromConfig();
+            $this->logInfo('Sync result: ' . ($synced ? 'SUCCESS' : 'FAILED'));
+        }
+
         $this->logInfo('Rebuilding index', ['handle' => $indexHandle]);
 
         // Clear existing index

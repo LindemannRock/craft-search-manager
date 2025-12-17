@@ -218,8 +218,12 @@ class IndexingService extends Component
     {
         $items = [];
 
+        // Get transformer from index config (same as indexElementNow does)
+        $index = SearchIndex::findByHandle($indexHandle);
+        $transformerClass = $index?->transformerClass;
+
         foreach ($elements as $element) {
-            $transformer = SearchManager::$plugin->transformers->getTransformer($element);
+            $transformer = SearchManager::$plugin->transformers->getTransformer($element, $transformerClass);
             if (!$transformer) {
                 continue;
             }

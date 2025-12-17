@@ -152,6 +152,43 @@ class IndicesController extends Controller
     }
 
     /**
+     * Clear an index (remove all indexed data but keep index definition)
+     */
+    public function actionClear(): Response
+    {
+        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePostRequest();
+
+        $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
+
+        // Support both numeric IDs (database indices) and string handles (config indices)
+        if (is_numeric($indexId)) {
+            $index = SearchIndex::findById((int)$indexId);
+        } else {
+            $index = SearchIndex::findByHandle($indexId);
+        }
+
+        if (!$index) {
+            throw new NotFoundHttpException('Index not found');
+        }
+
+        // Clear backend storage
+        SearchManager::$plugin->backend->clearIndex($index->handle);
+
+        // Update stats to 0
+        $index->updateStats(0);
+
+        // Clear search cache
+        SearchManager::$plugin->backend->clearSearchCache($index->handle);
+
+        Craft::$app->getSession()->setNotice(
+            Craft::t('search-manager', 'Index data cleared.')
+        );
+
+        return $this->redirect('search-manager/indices');
+    }
+
+    /**
      * Rebuild an index
      */
     public function actionRebuild(): Response
@@ -186,36 +223,6 @@ class IndicesController extends Controller
 
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', 'Index rebuild queued.')
-        );
-
-        return $this->redirect('search-manager/indices');
-    }
-
-    /**
-     * Clear an index
-     */
-    public function actionClear(): Response
-    {
-        $this->requirePermission('searchManager:rebuildIndices');
-        $this->requirePostRequest();
-
-        $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
-
-        // Support both numeric IDs (database indices) and string handles (config indices)
-        if (is_numeric($indexId)) {
-            $index = SearchIndex::findById((int)$indexId);
-        } else {
-            $index = SearchIndex::findByHandle($indexId);
-        }
-
-        if (!$index) {
-            throw new NotFoundHttpException('Index not found');
-        }
-
-        SearchManager::$plugin->backend->clearIndex($index->handle);
-
-        Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Index cleared.')
         );
 
         return $this->redirect('search-manager/indices');

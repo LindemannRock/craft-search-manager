@@ -53,6 +53,11 @@ class SearchIndex extends Model
     public int $documentCount = 0;
     public int $sortOrder = 0;
 
+    /**
+     * @var array|null Cached parsed config to avoid re-parsing file
+     */
+    private static ?array $_configCache = null;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -79,7 +84,27 @@ class SearchIndex extends Model
             [['siteId', 'documentCount', 'sortOrder'], 'integer'],
             [['source'], 'in', 'range' => ['config', 'database']],
             [['criteria'], 'safe'],
+            [['transformerClass'], 'validateTransformerClass'],
         ];
+    }
+
+    /**
+     * Validate transformer class exists
+     */
+    public function validateTransformerClass($attribute): void
+    {
+        if (empty($this->$attribute)) {
+            return; // Null/empty is allowed
+        }
+
+        // Check if class exists
+        if (!class_exists($this->$attribute)) {
+            $this->addError($attribute, "Transformer class does not exist: {$this->$attribute}");
+            $this->logWarning('Invalid transformer class in config', [
+                'handle' => $this->handle,
+                'transformer' => $this->$attribute,
+            ]);
+        }
     }
 
     // =========================================================================
@@ -110,10 +135,49 @@ class SearchIndex extends Model
 
     /**
      * Find index by handle
+     * For config indices, config is the source of truth
      */
     public static function findByHandle(string $handle): ?self
     {
-        // 1. Check database first
+        // 1. Check config file FIRST (prevents loading stale database metadata)
+        $configData = self::loadConfigForHandle($handle);
+
+        if ($configData) {
+            // This is a config index - build from config (source of truth)
+            $model = new self();
+            $model->handle = $handle;
+            $model->name = $configData['name'] ?? $handle;
+            $model->elementType = $configData['elementType'] ?? \craft\elements\Entry::class;
+            $model->siteId = $configData['siteId'] ?? null;
+            $model->criteria = $configData['criteria'] ?? [];
+            $model->transformerClass = $configData['transformer'] ?? null;
+            $model->language = $configData['language'] ?? null;
+            $model->enabled = $configData['enabled'] ?? true;
+            $model->source = 'config';
+
+            // Load stats from database if metadata record exists
+            try {
+                $metadataRow = (new Query())
+                    ->from('{{%searchmanager_indices}}')
+                    ->where(['handle' => $handle, 'source' => 'config'])
+                    ->one();
+
+                if ($metadataRow) {
+                    $model->id = (int)$metadataRow['id'];
+                    $model->lastIndexed = self::convertToLocalTime($metadataRow['lastIndexed']);
+                    $model->documentCount = (int)$metadataRow['documentCount'];
+                }
+            } catch (\Throwable $e) {
+                LoggingService::log('Failed to load metadata for config index', 'error', 'search-manager', [
+                    'handle' => $handle,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return $model;
+        }
+
+        // 2. Not in config - check database for database-source indices
         try {
             $row = (new Query())
                 ->from('{{%searchmanager_indices}}')
@@ -124,15 +188,10 @@ class SearchIndex extends Model
                 return self::fromRow($row);
             }
         } catch (\Throwable $e) {
-            LoggingService::log('Failed to load index from database', 'error', 'search-manager', ['error' => $e->getMessage()]);
-        }
-
-        // 2. Check config file
-        $configIndices = self::loadFromConfig();
-        foreach ($configIndices as $index) {
-            if ($index->handle === $handle) {
-                return $index;
-            }
+            LoggingService::log('Failed to load index from database', 'error', 'search-manager', [
+                'handle' => $handle,
+                'error' => $e->getMessage(),
+            ]);
         }
 
         return null;
@@ -193,24 +252,17 @@ class SearchIndex extends Model
      */
     public static function loadFromConfig(): array
     {
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-
-        if (!file_exists($configPath)) {
-            return [];
-        }
-
         try {
-            $config = require $configPath;
-            $env = Craft::$app->getConfig()->env;
-
-            // Merge environment config
-            $mergedConfig = $config['*'] ?? [];
-            if ($env && isset($config[$env])) {
-                $mergedConfig = array_merge($mergedConfig, $config[$env]);
-            }
-
-            $configIndices = $mergedConfig['indices'] ?? [];
+            $config = self::getConfig();
+            $configIndices = $config['indices'] ?? [];
             $indices = [];
+
+            // Fetch ALL config metadata in one query (instead of N queries)
+            $allMetadata = (new Query())
+                ->from('{{%searchmanager_indices}}')
+                ->where(['source' => 'config'])
+                ->indexBy('handle')
+                ->all();
 
             foreach ($configIndices as $handle => $indexConfig) {
                 $model = new self();
@@ -224,23 +276,13 @@ class SearchIndex extends Model
                 $model->enabled = $indexConfig['enabled'] ?? true;
                 $model->source = 'config';
 
-                // Check if database metadata exists for this config index
-                $metadataRow = (new Query())
-                    ->from('{{%searchmanager_indices}}')
-                    ->where(['handle' => $handle, 'source' => 'config'])
-                    ->one();
+                // Check if database metadata exists for this config index (array lookup)
+                if (isset($allMetadata[$handle])) {
+                    $metadataRow = $allMetadata[$handle];
 
-                if ($metadataRow) {
                     // Use database metadata for stats
                     $model->id = (int)$metadataRow['id'];
-                    // Convert from UTC to user's timezone
-                    if ($metadataRow['lastIndexed']) {
-                        $utcDate = new \DateTime($metadataRow['lastIndexed'], new \DateTimeZone('UTC'));
-                        $utcDate->setTimezone(new \DateTimeZone(Craft::$app->getTimeZone()));
-                        $model->lastIndexed = $utcDate;
-                    } else {
-                        $model->lastIndexed = null;
-                    }
+                    $model->lastIndexed = self::convertToLocalTime($metadataRow['lastIndexed']);
                     $model->documentCount = (int)$metadataRow['documentCount'];
                 } else {
                     // No metadata yet - will be created on first rebuild
@@ -259,6 +301,83 @@ class SearchIndex extends Model
     }
 
     /**
+     * Get parsed and cached config
+     * Caches result to avoid re-parsing file on every call
+     *
+     * @return array Merged config array
+     */
+    private static function getConfig(): array
+    {
+        if (self::$_configCache === null) {
+            $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
+
+            if (!file_exists($configPath)) {
+                self::$_configCache = [];
+                return self::$_configCache;
+            }
+
+            try {
+                $config = require $configPath;
+                $env = Craft::$app->getConfig()->env;
+
+                // Merge environment config
+                self::$_configCache = $config['*'] ?? [];
+                if ($env && isset($config[$env])) {
+                    self::$_configCache = array_merge(self::$_configCache, $config[$env]);
+                }
+            } catch (\Throwable $e) {
+                LoggingService::log('Failed to parse config file', 'error', 'search-manager', [
+                    'error' => $e->getMessage(),
+                ]);
+                self::$_configCache = [];
+            }
+        }
+
+        return self::$_configCache;
+    }
+
+    /**
+     * Clear the config cache
+     * Useful for testing or when config file changes during runtime
+     */
+    public static function clearConfigCache(): void
+    {
+        self::$_configCache = null;
+    }
+
+    /**
+     * Load a specific index configuration by handle (efficient version)
+     * Only parses config file once, no database queries
+     *
+     * @param string $handle Index handle to load
+     * @return array|null Config array or null if not found
+     */
+    private static function loadConfigForHandle(string $handle): ?array
+    {
+        $config = self::getConfig();
+        $configIndices = $config['indices'] ?? [];
+
+        return $configIndices[$handle] ?? null;
+    }
+
+    /**
+     * Convert UTC datetime string to local timezone
+     *
+     * @param string|null $utcDateTime UTC datetime string or null
+     * @return \DateTime|null Datetime in user's timezone or null
+     */
+    private static function convertToLocalTime(?string $utcDateTime): ?\DateTime
+    {
+        if (!$utcDateTime) {
+            return null;
+        }
+
+        $utcDate = new \DateTime($utcDateTime, new \DateTimeZone('UTC'));
+        $utcDate->setTimezone(new \DateTimeZone(Craft::$app->getTimeZone()));
+        return $utcDate;
+    }
+
+    /**
      * Create model from database row
      */
     private static function fromRow(array $row): self
@@ -274,14 +393,7 @@ class SearchIndex extends Model
         $model->language = $row['language'] ?? null;
         $model->enabled = (bool)$row['enabled'];
         $model->source = $row['source'];
-        // Convert from UTC to user's timezone
-        if ($row['lastIndexed']) {
-            $utcDate = new \DateTime($row['lastIndexed'], new \DateTimeZone('UTC'));
-            $utcDate->setTimezone(new \DateTimeZone(Craft::$app->getTimeZone()));
-            $model->lastIndexed = $utcDate;
-        } else {
-            $model->lastIndexed = null;
-        }
+        $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
         $model->documentCount = (int)$row['documentCount'];
         $model->sortOrder = (int)$row['sortOrder'];
 
@@ -293,6 +405,15 @@ class SearchIndex extends Model
      */
     public function save(): bool
     {
+        // Prevent saving config indices - they should only be modified via config file
+        if ($this->source === 'config') {
+            $this->logError('Cannot save config index - modify config file instead', [
+                'handle' => $this->handle,
+                'source' => $this->source,
+            ]);
+            return false;
+        }
+
         if (!$this->validate()) {
             $this->logError('Index validation failed', [
                 'handle' => $this->handle ?? 'unknown',
@@ -358,6 +479,15 @@ class SearchIndex extends Model
             return false;
         }
 
+        // Prevent deleting config index metadata - remove from config file instead
+        if ($this->source === 'config') {
+            $this->logError('Cannot delete config index - remove from config file instead', [
+                'handle' => $this->handle,
+                'source' => $this->source,
+            ]);
+            return false;
+        }
+
         try {
             // Clear backend storage first (MySQL tables, Redis keys, files, etc.)
             \lindemannrock\searchmanager\SearchManager::$plugin->backend->clearIndex($this->handle);
@@ -387,12 +517,114 @@ class SearchIndex extends Model
     }
 
     /**
+     * Sync metadata from config file (for config indices)
+     * Updates name, transformer, language from config without changing stats
+     */
+    public function syncMetadataFromConfig(): bool
+    {
+        if ($this->source !== 'config' || !$this->id) {
+            $this->logDebug('Sync skipped - not config or no ID', [
+                'source' => $this->source,
+                'id' => $this->id,
+                'handle' => $this->handle,
+            ]);
+            return false;
+        }
+
+        try {
+            // Load fresh config values efficiently (no database queries, targeted config load)
+            $configData = self::loadConfigForHandle($this->handle);
+
+            if (!$configData) {
+                $this->logError('Config not found for handle', ['handle' => $this->handle]);
+                return false;
+            }
+
+            // Extract fresh values from config
+            $freshName = $configData['name'] ?? $this->handle;
+            $freshTransformer = $configData['transformer'] ?? null;
+            $freshLanguage = $configData['language'] ?? null;
+            $freshEnabled = $configData['enabled'] ?? true;
+
+            // Validate transformer class before syncing
+            if ($freshTransformer && !class_exists($freshTransformer)) {
+                $this->logError('Invalid transformer class in config', [
+                    'handle' => $this->handle,
+                    'transformer' => $freshTransformer,
+                ]);
+                return false;
+            }
+
+            $this->logInfo('Syncing metadata from config', [
+                'handle' => $this->handle,
+                'old_name' => $this->name,
+                'new_name' => $freshName,
+                'old_transformer' => $this->transformerClass,
+                'new_transformer' => $freshTransformer,
+            ]);
+
+            Craft::$app->getDb()
+                ->createCommand()
+                ->update(
+                    '{{%searchmanager_indices}}',
+                    [
+                        'name' => $freshName,
+                        'transformerClass' => $freshTransformer ?: '',
+                        'language' => $freshLanguage,
+                        'enabled' => (int)$freshEnabled,
+                        'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+                    ],
+                    ['id' => $this->id]
+                )
+                ->execute();
+
+            // Update current object with fresh values
+            $this->name = $freshName;
+            $this->transformerClass = $freshTransformer;
+            $this->language = $freshLanguage;
+            $this->enabled = $freshEnabled;
+
+            $this->logInfo('Metadata synced successfully', ['handle' => $this->handle]);
+            return true;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to sync config metadata', [
+                'handle' => $this->handle,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Update last indexed timestamp and document count
      */
     public function updateStats(int $documentCount): bool
     {
         // Config indices: create/update database record for stats only
         if (!$this->id && $this->source === 'config') {
+            // Load fresh config values to avoid saving stale metadata
+            $configData = self::loadConfigForHandle($this->handle);
+
+            if (!$configData) {
+                $this->logError('Config not found for handle in updateStats', ['handle' => $this->handle]);
+                return false;
+            }
+
+            // Extract fresh values from config
+            $freshName = $configData['name'] ?? $this->handle;
+            $freshTransformer = $configData['transformer'] ?? null;
+            $freshLanguage = $configData['language'] ?? null;
+            $freshEnabled = $configData['enabled'] ?? true;
+
+            // Validate transformer class before updating stats
+            if ($freshTransformer && !class_exists($freshTransformer)) {
+                $this->logError('Invalid transformer class in config', [
+                    'handle' => $this->handle,
+                    'transformer' => $freshTransformer,
+                ]);
+                return false;
+            }
+
             // Check if database record exists for this config index
             $row = (new Query())
                 ->from('{{%searchmanager_indices}}')
@@ -400,12 +632,16 @@ class SearchIndex extends Model
                 ->one();
 
             if ($row) {
-                // Update existing metadata record
+                // Update existing metadata record - use FRESH config values
                 Craft::$app->getDb()
                     ->createCommand()
                     ->update(
                         '{{%searchmanager_indices}}',
                         [
+                            'name' => $freshName,
+                            'transformerClass' => $freshTransformer ?: '',
+                            'language' => $freshLanguage,
+                            'enabled' => (int)$freshEnabled,
                             'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
                             'documentCount' => $documentCount,
                             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
@@ -418,14 +654,14 @@ class SearchIndex extends Model
                 Craft::$app->getDb()
                     ->createCommand()
                     ->insert('{{%searchmanager_indices}}', [
-                        'name' => $this->name,
+                        'name' => $freshName,
                         'handle' => $this->handle,
                         'elementType' => $this->elementType,
                         'siteId' => $this->siteId,
                         'criteriaJson' => '{}', // Empty - actual criteria is in config
-                        'transformerClass' => $this->transformerClass ?: '', // Empty string if null
-                        'language' => $this->language,
-                        'enabled' => (int)$this->enabled,
+                        'transformerClass' => $freshTransformer ?: '',
+                        'language' => $freshLanguage,
+                        'enabled' => (int)$freshEnabled,
                         'source' => 'config',
                         'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
                         'documentCount' => $documentCount,
@@ -437,6 +673,11 @@ class SearchIndex extends Model
                     ->execute();
             }
 
+            // Update current object with fresh values
+            $this->name = $freshName;
+            $this->transformerClass = $freshTransformer;
+            $this->language = $freshLanguage;
+            $this->enabled = $freshEnabled;
             $this->lastIndexed = new \DateTime();
             $this->documentCount = $documentCount;
             return true;
