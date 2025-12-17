@@ -37,7 +37,11 @@ class TransformerService extends Component
      */
     private function registerDefaultTransformers(): void
     {
-        $this->registerTransformer(\craft\elements\Entry::class, EntryTransformer::class);
+        // AutoTransformer is now the default for all element types (fallback at line 99)
+        // No need to register specific transformers - AutoTransformer handles everything
+
+        // If you want element-specific defaults, register them here:
+        // $this->registerTransformer(\craft\elements\Entry::class, EntryTransformer::class);
     }
 
     // =========================================================================
