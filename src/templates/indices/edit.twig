@@ -117,15 +117,47 @@
 
     {{ forms.textField({
         label: "Transformer Class"|t('search-manager'),
-        instructions: "Fully qualified class name of the transformer (optional - leave blank to auto-index searchable fields)"|t('search-manager'),
+        instructions: "Custom transformer class (optional - AutoTransformer is used by default)"|t('search-manager'),
         id: 'transformerClass',
         name: 'transformerClass',
         value: index.transformerClass,
         required: false,
         class: 'code',
-        placeholder: 'Leave blank for automatic, or: modules\\transformers\\EntryTransformer',
-        tip: "Leave blank to automatically index all fields marked as searchable in Craft. Specify a custom class for advanced control."|t('search-manager'),
+        placeholder: 'lindemannrock\\searchmanager\\transformers\\AutoTransformer',
+        tip: "Leave blank to use AutoTransformer (automatically indexes all fields including Entries, Categories, Tags, Matrix, Table, and custom fields). Only specify a custom class for advanced requirements."|t('search-manager'),
+        warning: index.transformerClass ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
     }) }}
+
+    {# Helpful transformer examples #}
+    <div class="field" style="margin-top: -10px;">
+        <div class="heading">
+            <label style="font-size: 0.9em; font-weight: normal; color: #596673;">{{ "Available Transformers"|t('search-manager') }}</label>
+        </div>
+        <div style="font-size: 0.85em; color: #596673; line-height: 1.6;">
+            <div style="margin-bottom: 8px;">
+                <strong style="color: #0d78f2;">Recommended:</strong> Leave blank for <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">AutoTransformer</code> (default)
+            </div>
+            <div style="padding-left: 20px; border-left: 2px solid #e3e5e8; margin-bottom: 12px;">
+                <div style="margin-bottom: 4px;">✓ Automatically handles all field types</div>
+                <div style="margin-bottom: 4px;">✓ Traverses relational fields (Entries, Categories, Tags, Assets)</div>
+                <div style="margin-bottom: 4px;">✓ Indexes Matrix blocks, Table fields, and custom fields</div>
+                <div>✓ No configuration needed</div>
+            </div>
+            <details style="margin-top: 10px;">
+                <summary style="cursor: pointer; color: #0d78f2; font-weight: 500;">Custom transformer examples</summary>
+                <ul style="margin: 8px 0 0 20px; padding: 0;">
+                    <li style="margin-bottom: 6px;">
+                        <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">lindemannrock\searchmanager\transformers\EntryTransformer</code>
+                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">Basic entry fields only</span>
+                    </li>
+                    <li style="margin-bottom: 6px;">
+                        <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">modules\transformers\MyCustomTransformer</code>
+                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">Your custom transformer class</span>
+                    </li>
+                </ul>
+            </details>
+        </div>
+    </div>
 
     {{ forms.lightswitchField({
         label: "Enabled"|t('search-manager'),
