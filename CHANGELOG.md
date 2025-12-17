@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.5.4](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.3...v5.5.4) (2025-12-17)
+
+
+### Bug Fixes
+
+* Use REPLACE INTO for document storage to handle duplicates and improve data integrity ([ffe33c4](https://github.com/LindemannRock/craft-search-manager/commit/ffe33c4ee4f23fa211884b81427d7468fccc3d7a))
+
 ## [5.5.3](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.2...v5.5.3) (2025-12-17)
 
 
