@@ -35,7 +35,7 @@ return [
          * Plugin name (displayed in Control Panel)
          * Default: 'Search Manager'
          */
-        // 'pluginName' => 'Search Manager',
+        'pluginName' => 'Search Manager',
 
         /**
          * Log level for plugin operations
