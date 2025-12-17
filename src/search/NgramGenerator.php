@@ -134,10 +134,10 @@ class NgramGenerator
      * making it harder to achieve high similarity scores.
      *
      * @param string $term The search term
-     * @param float $baseThreshold Base similarity threshold (default: 0.25)
+     * @param float $baseThreshold Base similarity threshold (default: 0.50)
      * @return float Adjusted threshold
      */
-    public function getAdaptiveThreshold(string $term, float $baseThreshold = 0.25): float
+    public function getAdaptiveThreshold(string $term, float $baseThreshold = 0.50): float
     {
         $termLength = mb_strlen($term);
 

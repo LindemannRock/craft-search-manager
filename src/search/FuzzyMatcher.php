@@ -38,12 +38,12 @@ class FuzzyMatcher
      * Constructor
      *
      * @param NgramGenerator $ngramGenerator N-gram generator instance
-     * @param float $similarityThreshold Minimum similarity threshold (default: 0.25)
+     * @param float $similarityThreshold Minimum similarity threshold (default: 0.50)
      * @param int $maxCandidates Maximum fuzzy candidates to process (default: 100)
      */
     public function __construct(
         NgramGenerator $ngramGenerator,
-        float $similarityThreshold = 0.25,
+        float $similarityThreshold = 0.50,
         int $maxCandidates = 100,
     ) {
         $this->setLoggingHandle('search-manager');

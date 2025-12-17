@@ -91,7 +91,7 @@ class Install extends Migration
             'exactMatchBoostFactor' => $this->decimal(4, 1)->notNull()->defaultValue(3.0),
             'phraseBoostFactor' => $this->decimal(4, 1)->notNull()->defaultValue(4.0),
             'ngramSizes' => $this->string(50)->notNull()->defaultValue('2,3'),
-            'similarityThreshold' => $this->decimal(3, 2)->notNull()->defaultValue(0.25),
+            'similarityThreshold' => $this->decimal(3, 2)->notNull()->defaultValue(0.50),
             'maxFuzzyCandidates' => $this->integer()->notNull()->defaultValue(100),
             // Language & Stop Words
             'enableStopWords' => $this->boolean()->notNull()->defaultValue(true),
@@ -295,7 +295,7 @@ class Install extends Migration
             'exactMatchBoostFactor' => 3.0,
             'phraseBoostFactor' => 4.0,
             'ngramSizes' => '2,3',
-            'similarityThreshold' => 0.25,
+            'similarityThreshold' => 0.50,
             'maxFuzzyCandidates' => 100,
             'enableStopWords' => 1,
             'defaultLanguage' => null,

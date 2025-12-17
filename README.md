@@ -524,7 +524,7 @@ Search Manager supports powerful query operators for precise search control:
 
 **Fuzzy Matching:**
 - Automatically finds similar terms using n-gram similarity
-- Configurable similarity threshold (default: 0.25)
+- Configurable similarity threshold (default: 0.50)
 - Works with typos, missing letters, transpositions
 - Examples: "tst" finds "test", "craaft" finds "craft"
 
@@ -1139,7 +1139,7 @@ return [
         'titleBoostFactor' => 5.0,
         'exactMatchBoostFactor' => 3.0,
         'ngramSizes' => '2,3',
-        'similarityThreshold' => 0.25,
+        'similarityThreshold' => 0.50,
         'maxFuzzyCandidates' => 100,
 
         // Cache settings
@@ -1299,7 +1299,9 @@ class ProductTransformer extends BaseTransformer
 
 ### Fuzzy Search Tuning
 
-**Fuzzy matching uses n-gram similarity for typo tolerance.** Default threshold (0.25) may produce too many false positives.
+**Fuzzy matching uses n-gram similarity for typo tolerance.** Default threshold is 0.50 (balanced).
+
+**If you see too many false positives:**
 
 **Symptoms:**
 - "freezab" finds "free" (too different)
@@ -1312,16 +1314,34 @@ class ProductTransformer extends BaseTransformer
 // config/search-manager.php
 return [
     '*' => [
-        'similarityThreshold' => 0.5, // Default: 0.25
+        'similarityThreshold' => 0.60, // Stricter matching
+    ],
+];
+```
+
+**If you want more lenient matching:**
+
+**Symptoms:**
+- Common typos not found ("teh" doesn't find "the")
+- Missing relevant results
+- Need more typo tolerance
+
+**Solution - Decrease Similarity Threshold:**
+
+```php
+// config/search-manager.php
+return [
+    '*' => [
+        'similarityThreshold' => 0.35, // More lenient
     ],
 ];
 ```
 
 **Threshold Guidelines:**
-- ✅ **0.25 (Default):** Maximum typo tolerance, more false positives
+- ✅ **0.25:** Maximum typo tolerance, more false positives
 - ✅ **0.35:** Good typo tolerance, some false positives
-- ✅ **0.5 (Recommended):** Balanced - good typos, fewer false positives
-- ✅ **0.6:** Strict - only very similar terms
+- ✅ **0.50 (Default):** Balanced - good typos, fewer false positives
+- ✅ **0.60:** Strict - only very similar terms
 - ✅ **0.75:** Very strict - almost exact matches only
 
 **Test and adjust based on your content and search behavior.**
