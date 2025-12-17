@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.5.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.4.0...v5.5.0) (2025-12-17)
+
+
+### Features
+
+* Enhance AutoTransformer to automatically handle all field types ([b09a4e5](https://github.com/LindemannRock/craft-search-manager/commit/b09a4e5b3d4bd37c2afa14eb81ab6435bbb1cb0a))
+* Update transformer class instructions and examples in edit template; remove unused index copy template ([e3fddcc](https://github.com/LindemannRock/craft-search-manager/commit/e3fddcc75891fb1a9d14b28d6973f760749d79d1))
+
 ## [5.4.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.3.0...v5.4.0) (2025-12-17)
 
 
