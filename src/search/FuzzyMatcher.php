@@ -78,9 +78,10 @@ class FuzzyMatcher
             $this->similarityThreshold
         );
 
-        $this->logDebug('Finding fuzzy matches', [
+        $this->logInfo('Finding fuzzy matches', [
             'term' => $searchTerm,
             'ngram_count' => count($searchNgrams),
+            'ngrams' => $searchNgrams,
             'threshold' => $adaptiveThreshold,
         ]);
 
@@ -91,20 +92,26 @@ class FuzzyMatcher
             $adaptiveThreshold
         );
 
+        $this->logInfo('Initial fuzzy candidates from storage', [
+            'term' => $searchTerm,
+            'candidate_count' => count($candidates),
+            'candidates' => array_slice($candidates, 0, 10, true), // First 10 with scores
+        ]);
+
         // Limit candidates for performance
         if (count($candidates) > $this->maxCandidates) {
             $candidates = array_slice($candidates, 0, $this->maxCandidates, true);
-            $this->logDebug('Limited fuzzy candidates', [
+            $this->logInfo('Limited fuzzy candidates', [
                 'max_candidates' => $this->maxCandidates,
             ]);
         }
 
         $matchedTerms = array_keys($candidates);
 
-        $this->logDebug('Found fuzzy match candidates', [
+        $this->logInfo('Final fuzzy match candidates', [
             'term' => $searchTerm,
             'candidate_count' => count($candidates),
-            'matched_terms' => $matchedTerms,
+            'matched_terms' => array_slice($matchedTerms, 0, 10), // First 10
         ]);
 
         // Return terms sorted by similarity (already sorted by storage layer)

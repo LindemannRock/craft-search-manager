@@ -175,6 +175,18 @@ interface StorageInterface
      */
     public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold): array;
 
+    /**
+     * Get terms by prefix (for wildcard search)
+     *
+     * Returns all terms that start with the given prefix.
+     * Used for wildcard searches like "test*" to match "test", "testing", "tested", etc.
+     *
+     * @param string $prefix Prefix to match
+     * @param int $siteId Site ID
+     * @return array Array of matching terms
+     */
+    public function getTermsByPrefix(string $prefix, int $siteId): array;
+
     // =========================================================================
     // METADATA OPERATIONS
     // =========================================================================

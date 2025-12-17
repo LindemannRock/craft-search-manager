@@ -55,7 +55,36 @@
         placeholder: 'Try: "craft cms", test NOT spam, title:blog, test*',
     }) }}
 
-    <button type="button" id="testButton" class="btn submit">{{ "Run Search Test"|t('search-manager') }}</button>
+    {# Search options #}
+    <div class="field">
+        <div class="heading">
+            <label>{{ "Search Options"|t('search-manager') }}</label>
+        </div>
+        <div style="margin-top: 5px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 10px;">
+                <input type="checkbox" id="enableWildcard" name="enableWildcard">
+                <span style="font-weight: 500;">{{ "Auto-add Wildcards (Prefix Matching)"|t('search-manager') }}</span>
+            </label>
+            <div style="padding-left: 28px; font-size: 0.85em; color: #666; line-height: 1.5; margin-top: -8px;">
+                Automatically adds <code>*</code> to search terms for prefix matching.<br>
+                Example: "freez" becomes "freez*" and matches "freeze", "freezable", "freezing"<br>
+                <span style="color: #f59e0b;">⚠️ Manual wildcards in query (like "test*") always work regardless of this setting</span>
+            </div>
+            <div style="padding: 10px; background: #f3f7fc; border-left: 3px solid #0d78f2; margin-top: 10px; font-size: 0.85em;">
+                <strong>Note:</strong> Fuzzy matching is always enabled automatically as a fallback when exact matches fail.
+            </div>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center;">
+        <button type="button" id="testButton" class="btn submit">{{ "Run Search Test"|t('search-manager') }}</button>
+        {% if cacheEnabled %}
+            <button type="button" id="clearCacheButton" class="btn">{{ "Clear Search Cache"|t('search-manager') }}</button>
+            <span id="cacheStatus" style="font-size: 0.9em; color: #666;"></span>
+        {% else %}
+            <button type="button" class="btn" disabled title="Search cache is disabled in settings">{{ "Search Cache Disabled"|t('search-manager') }}</button>
+        {% endif %}
+    </div>
 
     <div id="testResults" style="display: none; margin-top: 30px;">
         <hr>
@@ -68,15 +97,64 @@
 
 {% js %}
 const testButton = document.getElementById('testButton');
+const clearCacheButton = document.getElementById('clearCacheButton');
+const cacheStatus = document.getElementById('cacheStatus');
 const testQueryInput = document.getElementById('testQuery');
 const testIndexSelect = document.getElementById('testIndex');
 const testResults = document.getElementById('testResults');
 const resultsTitle = document.getElementById('resultsTitle');
 const resultsContent = document.getElementById('resultsContent');
 
+// Clear cache button handler (only if cache is enabled)
+if (clearCacheButton) {
+    clearCacheButton.addEventListener('click', function() {
+    const indexHandle = testIndexSelect.value;
+
+    clearCacheButton.disabled = true;
+    clearCacheButton.textContent = 'Clearing...';
+
+    fetch('{{ actionUrl('search-manager/settings/clear-test-cache') }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+        },
+        body: JSON.stringify({
+            indexHandle: indexHandle
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        clearCacheButton.disabled = false;
+        clearCacheButton.textContent = 'Clear Search Cache';
+
+        if (data.success) {
+            cacheStatus.textContent = '✅ ' + data.message;
+            cacheStatus.style.color = '#28a745';
+
+            // Clear status after 3 seconds
+            setTimeout(() => {
+                cacheStatus.textContent = '';
+            }, 3000);
+        } else {
+            cacheStatus.textContent = '❌ ' + (data.error || 'Failed to clear cache');
+            cacheStatus.style.color = '#dc3545';
+        }
+    })
+    .catch(error => {
+        clearCacheButton.disabled = false;
+        clearCacheButton.textContent = 'Clear Search Cache';
+        cacheStatus.textContent = '❌ ' + error.message;
+        cacheStatus.style.color = '#dc3545';
+    });
+    });
+}
+
 testButton.addEventListener('click', function() {
     const query = testQueryInput.value.trim();
     const indexHandle = testIndexSelect.value;
+    const enableWildcard = document.getElementById('enableWildcard').checked;
 
     if (!query) {
         testResults.style.display = 'block';
@@ -98,7 +176,8 @@ testButton.addEventListener('click', function() {
         },
         body: JSON.stringify({
             query: query,
-            indexHandle: indexHandle
+            indexHandle: indexHandle,
+            wildcard: enableWildcard
         })
     })
     .then(response => response.json())
@@ -119,7 +198,8 @@ testButton.addEventListener('click', function() {
     <strong>Backend:</strong> ${Craft.escapeHtml(data.backend)}<br>
     <strong>Execution Time:</strong> ${data.executionTime}ms<br>
     <strong>Cache Status:</strong> ${data.cached ? '✅ Cached' : '❌ Not cached'}<br>
-    <strong>Query Parsed As:</strong> <code>${Craft.escapeHtml(query)}</code>
+    <strong>Query Parsed As:</strong> <code>${Craft.escapeHtml(data.queryUsed || query)}</code><br>
+    <strong>Options:</strong> ✅ Fuzzy (always on) ${data.wildcard ? '| ✅ Wildcard (auto-added)' : '| ❌ Wildcard'}
 </div>
 
 <h4 style="margin-top: 20px;">Results (Top ${Math.min(data.total, data.hits.length)}):</h4>

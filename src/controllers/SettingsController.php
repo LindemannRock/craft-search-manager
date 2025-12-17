@@ -146,7 +146,11 @@ class SettingsController extends Controller
     {
         $this->requirePermission('searchManager:manageSettings');
 
-        return $this->renderTemplate('search-manager/settings/test', []);
+        $settings = SearchManager::$plugin->getSettings();
+
+        return $this->renderTemplate('search-manager/settings/test', [
+            'cacheEnabled' => $settings->enableCache ?? true,
+        ]);
     }
 
     public function actionTestSearch(): Response
@@ -157,17 +161,27 @@ class SettingsController extends Controller
 
         $query = Craft::$app->getRequest()->getRequiredBodyParam('query');
         $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
+        $wildcard = Craft::$app->getRequest()->getBodyParam('wildcard', false);
 
         try {
+            $searchOptions = [];
+            $originalQuery = $query;
+
+            // Add wildcard support (auto-append * if enabled and no wildcard present)
+            if ($wildcard && !str_contains($query, '*')) {
+                // For testing: add * to each term to enable prefix matching
+                $query = implode('* ', explode(' ', $query)) . '*';
+            }
+
             $startTime = microtime(true);
-            $results = SearchManager::$plugin->backend->search($indexHandle, $query, []);
+            $results = SearchManager::$plugin->backend->search($indexHandle, $query, $searchOptions);
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
             $backend = SearchManager::$plugin->backend->getActiveBackend();
             $backendName = $backend ? $backend->getName() : 'unknown';
 
-            // Check if result was cached (execution time near 0)
-            $cached = $executionTime < 5;
+            // Check if result was actually cached from metadata
+            $cached = $results['cached'] ?? false;
 
             return $this->asJson([
                 'success' => true,
@@ -176,11 +190,49 @@ class SettingsController extends Controller
                 'backend' => $backendName,
                 'executionTime' => $executionTime,
                 'cached' => $cached,
+                'wildcard' => $wildcard,
+                'queryUsed' => $query,
+                'originalQuery' => $originalQuery,
             ]);
         } catch (\Throwable $e) {
             return $this->asJson([
                 'success' => false,
                 'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function actionClearTestCache(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $indexHandle = Craft::$app->getRequest()->getBodyParam('indexHandle');
+
+        try {
+            if ($indexHandle) {
+                // Clear cache for specific index
+                SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                $message = Craft::t('search-manager', 'Search cache cleared for index: {handle}', ['handle' => $indexHandle]);
+            } else {
+                // Clear all search caches
+                Craft::$app->getCache()->flush();
+                $message = Craft::t('search-manager', 'All search caches cleared');
+            }
+
+            $this->logInfo('Test page cache cleared', ['indexHandle' => $indexHandle ?: 'all']);
+
+            return $this->asJson([
+                'success' => true,
+                'message' => $message,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logError('Failed to clear test cache', ['error' => $e->getMessage()]);
+
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Failed to clear cache: {error}', ['error' => $e->getMessage()]),
             ]);
         }
     }

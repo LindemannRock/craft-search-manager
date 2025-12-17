@@ -358,6 +358,34 @@ class FileStorage implements StorageInterface
         return $similarities;
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function getTermsByPrefix(string $prefix, int $siteId): array
+    {
+        if (empty($prefix)) {
+            return [];
+        }
+
+        $termsDir = $this->basePath . '/terms/site' . $siteId;
+
+        if (!is_dir($termsDir)) {
+            return [];
+        }
+
+        $matchingTerms = [];
+        $files = glob($termsDir . '/*.dat');
+
+        foreach ($files as $file) {
+            $term = $this->extractTermFromFilename(basename($file));
+            if (str_starts_with($term, $prefix)) {
+                $matchingTerms[] = $term;
+            }
+        }
+
+        return $matchingTerms;
+    }
+
     // =========================================================================
     // METADATA OPERATIONS
     // =========================================================================

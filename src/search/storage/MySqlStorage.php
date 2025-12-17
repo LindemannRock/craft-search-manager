@@ -434,10 +434,10 @@ class MySqlStorage implements StorageInterface
 
         $sql = "
             SELECT
-                term,
-                COUNT(DISTINCT ngram) as intersection,
-                ngramCount as union_count,
-                (COUNT(DISTINCT ngram) * 1.0) / (ngramCount + :searchCount - COUNT(DISTINCT ngram)) as similarity
+                n.term,
+                COUNT(DISTINCT n.ngram) as intersection,
+                nc.ngramCount as union_count,
+                (COUNT(DISTINCT n.ngram) * 1.0) / (nc.ngramCount + :searchCount - COUNT(DISTINCT n.ngram)) as similarity
             FROM {{%searchmanager_search_ngrams}} n
             JOIN {{%searchmanager_search_ngram_counts}} nc
                 ON nc.indexHandle = n.indexHandle
@@ -447,7 +447,7 @@ class MySqlStorage implements StorageInterface
                 n.indexHandle = :indexHandle
                 AND n.siteId = :siteId
                 AND n.ngram IN (" . implode(',', $ngramPlaceholders) . ")
-            GROUP BY term, ngramCount
+            GROUP BY n.term, nc.ngramCount
             HAVING similarity >= :threshold
             ORDER BY similarity DESC
         ";
@@ -460,6 +460,29 @@ class MySqlStorage implements StorageInterface
         }
 
         return $results;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getTermsByPrefix(string $prefix, int $siteId): array
+    {
+        if (empty($prefix)) {
+            return [];
+        }
+
+        $terms = (new Query())
+            ->select(['term'])
+            ->distinct()
+            ->from('{{%searchmanager_search_terms}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+            ])
+            ->andWhere(['like', 'term', $prefix . '%', false])
+            ->column();
+
+        return $terms ?: [];
     }
 
     // =========================================================================

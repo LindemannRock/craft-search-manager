@@ -419,6 +419,39 @@ class RedisStorage implements StorageInterface
         return $similarities;
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function getTermsByPrefix(string $prefix, int $siteId): array
+    {
+        if (empty($prefix)) {
+            return [];
+        }
+
+        // Use SCAN to find all term keys matching the prefix pattern
+        // Redis key format: {indexHandle}:term:{term}:site{siteId}
+        $pattern = $this->indexHandle . ':term:' . $prefix . '*:site' . $siteId;
+
+        $matchingTerms = [];
+        $iterator = null;
+
+        // SCAN returns keys in batches to avoid blocking
+        do {
+            $keys = $this->redis->scan($iterator, $pattern, 100);
+
+            if ($keys !== false) {
+                foreach ($keys as $key) {
+                    // Extract term from key: {indexHandle}:term:{TERM}:site{siteId}
+                    if (preg_match('/^' . preg_quote($this->indexHandle, '/') . ':term:(.+?):site' . $siteId . '$/', $key, $matches)) {
+                        $matchingTerms[] = $matches[1];
+                    }
+                }
+            }
+        } while ($iterator > 0);
+
+        return array_unique($matchingTerms);
+    }
+
     // =========================================================================
     // METADATA OPERATIONS
     // =========================================================================

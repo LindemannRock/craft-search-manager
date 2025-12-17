@@ -413,8 +413,9 @@ class SearchEngine
                     // Fuzzy fallback
                     $fuzzyTerms = $this->fuzzyMatcher->findMatches($term, $this->storage, $siteId);
 
-                    $this->logDebug('Fuzzy terms found for query term', [
+                    $this->logInfo('Fuzzy fallback activated', [
                         'query_term' => $term,
+                        'fuzzy_matches_found' => count($fuzzyTerms),
                         'fuzzy_terms' => $fuzzyTerms,
                     ]);
 
@@ -710,24 +711,35 @@ class SearchEngine
         $expandedTerms = [];
 
         foreach ($wildcards as $prefix) {
-            // Use fuzzy matcher to find terms starting with prefix
-            // For now, use n-gram similarity to find matching terms
-            $matches = $this->fuzzyMatcher->findMatches($prefix, $this->storage, $siteId);
+            // Use proper prefix search from storage layer
+            $matches = $this->storage->getTermsByPrefix($prefix, $siteId);
 
-            // Filter to only terms that actually start with the prefix
+            $this->logDebug('Wildcard prefix expanded', [
+                'prefix' => $prefix,
+                'matches_count' => count($matches),
+                'matches' => array_slice($matches, 0, 10), // Log first 10 for debugging
+            ]);
+
+            // Add all matching terms
             foreach ($matches as $match) {
-                if (str_starts_with($match, $prefix)) {
-                    $expandedTerms[] = $match;
-                }
+                $expandedTerms[] = $match;
             }
-
-            // Also try direct prefix in case there are exact matches
-            $expandedTerms[] = $prefix;
         }
 
         if (empty($expandedTerms)) {
+            $this->logDebug('No wildcard matches found', [
+                'wildcards' => $wildcards,
+            ]);
             return [];
         }
+
+        // Remove duplicates
+        $expandedTerms = array_unique($expandedTerms);
+
+        $this->logDebug('Searching with expanded wildcard terms', [
+            'term_count' => count($expandedTerms),
+            'terms' => array_slice($expandedTerms, 0, 20), // Log first 20
+        ]);
 
         // Search with expanded terms
         return $this->searchTerms($expandedTerms, 'OR', $siteId, $totalDocs, $avgDocLength);
