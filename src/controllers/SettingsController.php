@@ -149,6 +149,7 @@ class SettingsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         return $this->renderTemplate('search-manager/settings/test', [
+            'settings' => $settings,
             'cacheEnabled' => $settings->enableCache ?? true,
         ]);
     }
@@ -191,16 +192,119 @@ class SettingsController extends Controller
             // Check if result was actually cached from metadata
             $cached = $results['cached'] ?? false;
 
+            // Hydrate element data for display (title, url, type, section)
+            $elementType = $index->elementType ?? \craft\elements\Entry::class;
+            $elementIds = array_column($results['hits'] ?? [], 'objectID');
+            $indexSiteId = $index->siteId ?? null;
+
+            if (!empty($elementIds)) {
+                // Load elements from the correct site
+                $query = $elementType::find()
+                    ->id($elementIds)
+                    ->status(null);
+
+                if ($indexSiteId) {
+                    $query->siteId($indexSiteId);
+                } else {
+                    $query->site('*');
+                }
+
+                $elements = $query->all();
+
+                $elementsById = [];
+                foreach ($elements as $element) {
+                    $elementsById[$element->id] = $element;
+                }
+
+                // Get site language from index or element
+                $siteLang = 'unknown';
+                if ($indexSiteId) {
+                    $site = Craft::$app->getSites()->getSiteById($indexSiteId);
+                    $siteLang = $site ? strtoupper(substr($site->language, 0, 2)) : 'unknown';
+                }
+
+                // Enhance hits with element data
+                foreach ($results['hits'] as &$hit) {
+                    $element = $elementsById[$hit['objectID']] ?? null;
+                    if ($element) {
+                        $hit['title'] = $element->title ?? 'Untitled';
+                        $hit['url'] = $element->url ?? '';
+                        $hit['type'] = (new \ReflectionClass($element))->getShortName();
+                        $hit['language'] = $siteLang;
+                        if (method_exists($element, 'getSection') && $element->getSection()) {
+                            $hit['section'] = $element->getSection()->name;
+                        }
+                    }
+                }
+                unset($hit);
+            }
+
+            // Get highlighting settings
+            $settings = SearchManager::$plugin->getSettings();
+
+            // Enhance results with highlighted content
+            $enhancedHits = [];
+            if ($settings->enableHighlighting) {
+                $highlighter = new \lindemannrock\searchmanager\search\Highlighter([
+                    'tag' => $settings->highlightTag ?? 'mark',
+                    'class' => $settings->highlightClass ?? '',
+                ]);
+
+                // Tokenize query into search terms
+                $searchTerms = preg_split('/\s+/', trim($originalQuery), -1, PREG_SPLIT_NO_EMPTY);
+                // Remove operators
+                $searchTerms = array_filter($searchTerms, fn($t) => !in_array(strtoupper($t), ['AND', 'OR', 'NOT']));
+                // Remove quotes and wildcards for highlighting
+                $searchTerms = array_map(fn($t) => trim($t, '"*'), $searchTerms);
+
+                foreach ($results['hits'] ?? [] as $hit) {
+                    $enhancedHit = $hit;
+
+                    // Add highlighted title if available
+                    if (isset($hit['title'])) {
+                        $enhancedHit['titleHighlighted'] = $highlighter->highlight(
+                            $hit['title'],
+                            $searchTerms,
+                            false // Don't strip tags from title
+                        );
+                    }
+
+                    // Add highlighted excerpt if available
+                    if (isset($hit['excerpt'])) {
+                        $enhancedHit['excerptHighlighted'] = $highlighter->highlight(
+                            $hit['excerpt'],
+                            $searchTerms,
+                            true
+                        );
+                    } elseif (isset($hit['content'])) {
+                        // Generate excerpt from content if no excerpt exists
+                        $excerptText = strip_tags($hit['content']);
+                        $excerptText = mb_substr($excerptText, 0, 200);
+                        $enhancedHit['excerptHighlighted'] = $highlighter->highlight(
+                            $excerptText,
+                            $searchTerms,
+                            false // Already stripped
+                        );
+                    }
+
+                    $enhancedHits[] = $enhancedHit;
+                }
+            } else {
+                $enhancedHits = $results['hits'] ?? [];
+            }
+
             return $this->asJson([
                 'success' => true,
                 'total' => $results['total'] ?? 0,
-                'hits' => $results['hits'] ?? [],
+                'hits' => $enhancedHits,
                 'backend' => $backendName,
                 'executionTime' => $executionTime,
-                'cached' => $cached,
+                'cacheEnabled' => $settings->enableCache ?? false,
                 'wildcard' => $wildcard,
                 'queryUsed' => $query,
                 'originalQuery' => $originalQuery,
+                'highlightingEnabled' => $settings->enableHighlighting,
+                'indexSiteId' => $index->siteId ?? null,
             ]);
         } catch (\Throwable $e) {
             return $this->asJson([

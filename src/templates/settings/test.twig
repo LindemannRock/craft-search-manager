@@ -86,6 +86,11 @@
         {% endif %}
     </div>
 
+    <div id="suggestions" style="display: none; margin-top: 15px;">
+        <h4>{{ "Autocomplete Suggestions"|t('search-manager') }}</h4>
+        <div id="suggestionsContent" style="display: flex; gap: 8px; flex-wrap: wrap;"></div>
+    </div>
+
     <div id="testResults" style="display: none; margin-top: 30px;">
         <hr>
         <h3 id="resultsTitle"></h3>
@@ -104,6 +109,13 @@ const testIndexSelect = document.getElementById('testIndex');
 const testResults = document.getElementById('testResults');
 const resultsTitle = document.getElementById('resultsTitle');
 const resultsContent = document.getElementById('resultsContent');
+const suggestionsDiv = document.getElementById('suggestions');
+const suggestionsContent = document.getElementById('suggestionsContent');
+
+// Autocomplete settings
+const autocompleteEnabled = {{ settings.enableAutocomplete ? 'true' : 'false' }};
+const autocompleteMinLength = {{ settings.autocompleteMinLength ?? 2 }};
+let autocompleteTimer;
 
 // Clear cache button handler (only if cache is enabled)
 if (clearCacheButton) {
@@ -148,6 +160,37 @@ if (clearCacheButton) {
         cacheStatus.textContent = '❌ ' + error.message;
         cacheStatus.style.color = '#dc3545';
     });
+    });
+}
+
+// Autocomplete as user types (if enabled)
+if (autocompleteEnabled) {
+    testQueryInput.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        if (query.length < autocompleteMinLength) {
+            suggestionsDiv.style.display = 'none';
+            return;
+        }
+
+        clearTimeout(autocompleteTimer);
+        autocompleteTimer = setTimeout(() => {
+            fetch('{{ actionUrl('search-manager/api/suggest') }}?q=' + encodeURIComponent(query) + '&index=' + testIndexSelect.value + '&limit=10')
+                .then(response => response.json())
+                .then(suggestions => {
+                    if (suggestions.length > 0) {
+                        suggestionsContent.innerHTML = suggestions.map(term =>
+                            `<span style="background: #f3f4f6; padding: 6px 12px; border-radius: 16px; font-size: 13px; cursor: pointer; border: 1px solid #e3e5e8;" onclick="testQueryInput.value='${term}'; suggestionsDiv.style.display='none';">${term}</span>`
+                        ).join('');
+                        suggestionsDiv.style.display = 'block';
+                    } else {
+                        suggestionsDiv.style.display = 'none';
+                    }
+                })
+                .catch(() => {
+                    suggestionsDiv.style.display = 'none';
+                });
+        }, 300); // Debounce 300ms
     });
 }
 
@@ -197,9 +240,11 @@ testButton.addEventListener('click', function() {
     <strong>Search Metrics:</strong><br>
     <strong>Backend:</strong> ${Craft.escapeHtml(data.backend)}<br>
     <strong>Execution Time:</strong> ${data.executionTime}ms<br>
-    <strong>Cache Status:</strong> ${data.cached ? '✅ Cached' : '❌ Not cached'}<br>
+    <strong>Search Cache:</strong> ${data.cacheEnabled ? '✅ Enabled' : '❌ Disabled'}<br>
     <strong>Query Parsed As:</strong> <code>${Craft.escapeHtml(data.queryUsed || query)}</code><br>
-    <strong>Options:</strong> ✅ Fuzzy (always on) ${data.wildcard ? '| ✅ Wildcard (auto-added)' : '| ❌ Wildcard'}
+    <strong>Options:</strong> ✅ Fuzzy (always on) ${data.wildcard ? '| ✅ Wildcard (auto-added)' : '| ❌ Wildcard'}<br>
+    ${data.indexSiteId ? `<strong>Site ID:</strong> ${data.indexSiteId}<br>` : ''}
+    ${data.highlightingEnabled ? `<strong>Highlighting:</strong> ✅ Enabled<br>` : ''}
 </div>
 
 <h4 style="margin-top: 20px;">Results (Top ${Math.min(data.total, data.hits.length)}):</h4>
@@ -208,18 +253,32 @@ testButton.addEventListener('click', function() {
             if (data.total > 0) {
                 html += '<div style="display: grid; gap: 16px;">';
                 data.hits.forEach((hit, index) => {
+                    const title = hit.titleHighlighted || hit.title || 'Untitled';
+                    const excerpt = hit.excerptHighlighted || hit.excerpt || hit.content || '';
+                    const language = hit.language || hit._language || 'unknown';
+                    const url = hit.url || '';
+
                     html += `
 <div style="padding: 16px; border: 1px solid #e3e5e8; border-radius: 4px; background: #fff;">
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-        <strong style="color: #0d78f2;">${hit.title || 'Element #' + hit.objectID}</strong>
-        <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: 600;">
-            Score: ${hit.score ? hit.score.toFixed(2) : 'N/A'}
-        </span>
+        <div style="flex: 1;">
+            <strong style="color: #0d78f2; font-size: 15px;">${title}</strong>
+            ${url ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><a href="${url}" target="_blank" style="color: #0d78f2;">${url}</a></div>` : ''}
+        </div>
+        <div style="display: flex; gap: 8px; margin-left: 12px;">
+            <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap;">
+                Score: ${hit.score ? hit.score.toFixed(2) : 'N/A'}
+            </span>
+            ${language !== 'unknown' ? `<span style="background: #e0e7ff; color: #3730a3; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; text-transform: uppercase;">${language}</span>` : ''}
+        </div>
     </div>
-    <div style="font-size: 13px; color: #6b7280; margin-bottom: 8px;">
-        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}
+    <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px; display: flex; gap: 12px;">
+        <span>ID: #${hit.objectID}</span>
+        <span>•</span>
+        <span>Type: ${hit.type || 'Entry'}</span>
+        ${hit.section ? `<span>•</span><span>Section: ${hit.section}</span>` : ''}
     </div>
-    ${hit.excerpt ? '<div style="color: #4b5563; line-height: 1.6;">' + hit.excerpt + '</div>' : ''}
+    ${excerpt ? `<div style="color: #4b5563; line-height: 1.6; font-size: 14px; margin-top: 8px;">${excerpt.substring(0, 300)}${excerpt.length > 300 ? '...' : ''}</div>` : ''}
 </div>
 `;
                 });
