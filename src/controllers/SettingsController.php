@@ -164,8 +164,16 @@ class SettingsController extends Controller
         $wildcard = Craft::$app->getRequest()->getBodyParam('wildcard', false);
 
         try {
+            // Get the index to determine correct siteId
+            $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+
             $searchOptions = [];
             $originalQuery = $query;
+
+            // Use index's configured siteId (not current CP site)
+            if ($index && $index->siteId) {
+                $searchOptions['siteId'] = $index->siteId;
+            }
 
             // Add wildcard support (auto-append * if enabled and no wildcard present)
             if ($wildcard && !str_contains($query, '*')) {
