@@ -76,10 +76,57 @@ class UtilitiesController extends Controller
             foreach ($indices as $index) {
                 if ($backend->clearIndex($index->handle)) {
                     $clearedCount++;
-                    $this->logDebug('Cleared index via backend', [
+
+                    // Reset index metadata to reflect empty state
+                    $index->updateStats(0);
+
+                    $this->logDebug('Cleared index via backend and reset metadata', [
                         'index' => $index->handle,
                         'backend' => $backendName,
                     ]);
+                }
+            }
+
+            // Clean up orphaned data (indices that exist in storage but not in config/database)
+            // This handles cases where prefix changed or indices were deleted
+            if ($backendName === 'mysql' || $backendName === 'pgsql') {
+                $orphanedHandles = Craft::$app->getDb()->createCommand(
+                    'SELECT DISTINCT indexHandle FROM {{%searchmanager_search_documents}}'
+                )->queryColumn();
+
+                $knownHandles = array_map(fn($idx) => $idx->handle, $indices);
+                $prefix = $settings->indexPrefix ?? '';
+
+                // Also include prefixed versions of known handles
+                $allKnownHandles = $knownHandles;
+                if ($prefix) {
+                    foreach ($knownHandles as $handle) {
+                        $allKnownHandles[] = $prefix . $handle;
+                    }
+                }
+
+                foreach ($orphanedHandles as $orphanedHandle) {
+                    if (!in_array($orphanedHandle, $allKnownHandles)) {
+                        // This is orphaned data - delete directly from tables
+                        $tables = [
+                            '{{%searchmanager_search_documents}}',
+                            '{{%searchmanager_search_terms}}',
+                            '{{%searchmanager_search_titles}}',
+                            '{{%searchmanager_search_ngrams}}',
+                            '{{%searchmanager_search_ngram_counts}}',
+                            '{{%searchmanager_search_metadata}}',
+                        ];
+
+                        foreach ($tables as $table) {
+                            Craft::$app->getDb()->createCommand()
+                                ->delete($table, ['indexHandle' => $orphanedHandle])
+                                ->execute();
+                        }
+
+                        $this->logDebug('Cleared orphaned index data', [
+                            'index' => $orphanedHandle,
+                        ]);
+                    }
                 }
             }
 
