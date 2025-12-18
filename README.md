@@ -44,9 +44,11 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 
 **Multi-Language:**
 - **5 Languages Supported** - English, Arabic, German, French, Spanish stop words
+- **Localized Boolean Operators** - AND/OR/NOT in all 5 languages (UND/ODER/NICHT, ET/OU/SAUF, etc.)
 - **Auto-Detection** - Language detected from element's site automatically
 - **Regional Variants** - Support for ar-SA (Saudi), ar-EG (Egypt), fr-CA (Quebec), etc.
 - **Language Filtering** - Filter results by language for multi-site indices
+- **API Language Override** - Mobile apps can specify language for localized operators
 
 ### 📊 Comprehensive Analytics
 - **Search Tracking** - Track every search query with results count and execution time
@@ -56,9 +58,11 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - **Geographic Detection** - Track visitor location (country, city, region) via ip-api.com
 - **Bot Filtering** - Identify and filter bot traffic (GoogleBot, BingBot, etc.)
 - **Zero-Result Tracking** - Identify queries that return no results for optimization
-- **Performance Metrics** - Track search execution time and backend performance
+- **Performance Metrics** - Dedicated Performance tab with cache hit rate, response time trends, fastest/slowest queries
+- **Intent & Source Charts** - Visual breakdown of search intent and source distribution
 - **Privacy-First** - IP hashing with salt, optional subnet masking, GDPR-friendly
 - **Referrer Tracking** - See where search traffic is coming from
+- **Export Options** - CSV and JSON export formats
 - **Automatic Cleanup** - Configurable retention period (0-3650 days)
 
 ### ⚡ Performance Caching
@@ -510,6 +514,30 @@ Search Manager supports powerful query operators for precise search control:
 {% set results = craft.searchManager.search('entries', 'craft cms') %} {# Same as above #}
 ```
 
+**Localized Boolean Operators:**
+
+Operators work in 5 languages (case-insensitive). Language is auto-detected from site settings:
+
+| Language | AND | OR | NOT |
+|----------|-----|-----|-----|
+| English | AND | OR | NOT |
+| German | UND | ODER | NICHT |
+| French | ET | OU | SAUF |
+| Spanish | Y | O | NO |
+| Arabic | و | أو | ليس |
+
+```twig
+{# German site - both work #}
+{% set results = craft.searchManager.search('products', 'kaffee ODER tee') %}
+{% set results = craft.searchManager.search('products', 'kaffee OR tee') %} {# English fallback #}
+
+{# French site #}
+{% set results = craft.searchManager.search('products', 'café OU thé') %}
+{% set results = craft.searchManager.search('products', 'café SAUF décaféiné') %}
+```
+
+**Note:** English operators always work as fallback regardless of site language.
+
 #### **7. Combined Operators (Power Queries)**
 ```twig
 {# Complex query combining multiple operators #}
@@ -818,6 +846,10 @@ const results = await response.json();
 // Filter by element type
 const response = await fetch('/actions/search-manager/api/search?q=bread&index=all-sites&type=product,category');
 // Returns only products and categories
+
+// Mobile app with localized operators (German)
+const response = await fetch('/actions/search-manager/api/search?q=kaffee+ODER+tee&index=products&language=de');
+// German OR operator works!
 ```
 
 **Search API Parameters:**
@@ -828,6 +860,10 @@ const response = await fetch('/actions/search-manager/api/search?q=bread&index=a
 | `index` | `all-sites` | Index handle to search |
 | `limit` | `20` | Maximum results (use `0` for unlimited) |
 | `type` | (none) | Filter by element type (e.g., `product`, `category`, `product,category`) |
+| `language` | (site default) | Language code for localized operators (`en`, `de`, `fr`, `es`, `ar`) |
+| `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`, `android-app`) |
+| `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`, `Android 14`) |
+| `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
 
 **Example: Instant Search with Type Icons**
 ```html
@@ -914,9 +950,24 @@ Search response:
 **All search operators work:**
 - Phrase: `?q="exact phrase"`
 - Boolean: `?q=coffee OR tea`, `?q=coffee NOT decaf`
+- Localized Boolean: `?q=kaffee ODER tee&language=de` (German)
 - Wildcards: `?q=coff*`
 - Field-specific: `?q=title:muesli`
 - Boosting: `?q=coffee^2 beans`
+
+**Mobile App Example (German):**
+```javascript
+// iOS app searching in German
+const response = await fetch('/actions/search-manager/api/search?' + new URLSearchParams({
+    q: 'kaffee ODER tee NICHT entkoffeiniert',
+    index: 'products',
+    language: 'de',
+    source: 'ios-app',
+    platform: 'iOS 17.2',
+    appVersion: '2.1.0'
+}));
+// Uses German operators: ODER (OR), NICHT (NOT)
+```
 
 ⚠️ **Note:** Default API limit (20) is hardcoded. TODO: Make configurable via settings.
 
@@ -1002,11 +1053,25 @@ Search Manager automatically handles multiple languages:
 ```
 
 **Supported Languages:**
-- **English** (en) - 297 stop words
-- **Arabic** (ar) - 122 stop words (Modern Standard Arabic)
-- **German** (de) - 130+ stop words
-- **French** (fr) - 140+ stop words
-- **Spanish** (es) - 135+ stop words
+- **English** (en) - 297 stop words + AND/OR/NOT operators
+- **Arabic** (ar) - 122 stop words + و/أو/ليس operators
+- **German** (de) - 130+ stop words + UND/ODER/NICHT operators
+- **French** (fr) - 140+ stop words + ET/OU/SAUF operators
+- **Spanish** (es) - 135+ stop words + Y/O/NO operators
+
+**Localized Boolean Operators:**
+
+Each language supports native boolean operators (case-insensitive):
+
+| Language | AND | OR | NOT | Example |
+|----------|-----|-----|-----|---------|
+| English | AND | OR | NOT | `coffee OR tea NOT decaf` |
+| German | UND | ODER | NICHT | `kaffee ODER tee NICHT entkoffeiniert` |
+| French | ET | OU | SAUF | `café OU thé SAUF décaféiné` |
+| Spanish | Y | O | NO | `café O té NO descafeinado` |
+| Arabic | و | أو | ليس | `قهوة أو شاي ليس منزوع` |
+
+**Note:** English operators always work as fallback regardless of site language.
 
 **Regional Variants:**
 ```bash

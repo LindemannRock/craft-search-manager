@@ -98,6 +98,9 @@ class ApiController extends Controller
      * - index: Index handle (default: all-sites)
      * - limit: Max results (default: 20)
      * - type: Filter by element type (optional, e.g., 'product', 'category', 'product,category')
+     * - language: Language code for localized operators (optional, e.g., 'de', 'fr', 'es', 'ar')
+     *             Supports: AND/OR/NOT in English, UND/ODER/NICHT (German), ET/OU/SAUF (French),
+     *             Y/O/NO (Spanish), و/أو/ليس (Arabic). Defaults to site language.
      * - source: Analytics source identifier (optional, e.g., 'ios-app', 'android-app')
      * - platform: Platform info (optional, e.g., 'iOS 17.2', 'Android 14')
      * - appVersion: App version (optional, e.g., '2.1.0')
@@ -115,6 +118,7 @@ class ApiController extends Controller
         // TODO: Make default limit configurable via settings (add 'apiDefaultLimit' config option)
         $limit = (int)$request->getParam('limit', 20);
         $typeFilter = $request->getParam('type', null);
+        $language = $request->getParam('language', null);
 
         // Analytics options (for mobile apps and custom integrations)
         $source = $request->getParam('source', null);
@@ -132,6 +136,11 @@ class ApiController extends Controller
             'limit' => $limit,
             'type' => $typeFilter,
         ];
+
+        // Add language if provided (for localized boolean operators)
+        if ($language !== null) {
+            $options['language'] = $language;
+        }
 
         // Add analytics options if provided
         if ($source !== null) {

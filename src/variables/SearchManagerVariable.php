@@ -91,7 +91,9 @@ class SearchManagerVariable
 
         // If terms is a string (query), parse it
         if (is_string($terms)) {
-            $parsed = \lindemannrock\searchmanager\search\QueryParser::parse($terms);
+            // Get current site's language for localized operators
+            $language = \Craft::$app->getSites()->getCurrentSite()->language ?? 'en';
+            $parsed = \lindemannrock\searchmanager\search\QueryParser::parse($terms, $language);
             $terms = $highlighter->extractTermsFromParsedQuery($parsed);
         }
 
@@ -127,7 +129,9 @@ class SearchManagerVariable
 
         // If terms is a string (query), parse it
         if (is_string($terms)) {
-            $parsed = \lindemannrock\searchmanager\search\QueryParser::parse($terms);
+            // Get current site's language for localized operators
+            $language = \Craft::$app->getSites()->getCurrentSite()->language ?? 'en';
+            $parsed = \lindemannrock\searchmanager\search\QueryParser::parse($terms, $language);
             $terms = $highlighter->extractTermsFromParsedQuery($parsed);
         }
 

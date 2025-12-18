@@ -230,7 +230,9 @@ class SearchEngine
         try {
             // Check if query has advanced operators - use new parser
             if (QueryParser::hasAdvancedOperators($query)) {
-                $parsed = QueryParser::parse($query);
+                // Get language for localized operators (API can override site language)
+                $language = $options['language'] ?? $this->getSiteLanguage($siteId);
+                $parsed = QueryParser::parse($query, $language);
                 return $this->searchWithParsedQuery($parsed, $siteId, $limit, $options);
             }
 
@@ -1093,5 +1095,32 @@ class SearchEngine
         }
 
         return $grouped;
+    }
+
+    /**
+     * Get the language code for a site
+     *
+     * @param int $siteId Site ID
+     * @return string Language code (e.g., 'en', 'de', 'fr')
+     */
+    private function getSiteLanguage(int $siteId): string
+    {
+        try {
+            $site = \Craft::$app->getSites()->getSiteById($siteId);
+            if ($site) {
+                // Get language from site (e.g., 'de-DE' → 'de')
+                $language = $site->language;
+                return str_contains($language, '-')
+                    ? substr($language, 0, 2)
+                    : $language;
+            }
+        } catch (\Throwable $e) {
+            $this->logWarning('Could not get site language', [
+                'siteId' => $siteId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        return 'en'; // Default to English
     }
 }

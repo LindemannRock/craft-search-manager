@@ -15,6 +15,8 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * - Boosting: test^2 entry
  * - Boolean: test OR entry, test AND entry
  *
+ * Supports localized operators for: English, German, French, Spanish, Arabic
+ *
  * Query parsing order:
  * 1. Extract quoted phrases → "exact phrase"
  * 2. Extract field filters → title:test
@@ -31,15 +33,40 @@ class QueryParser
     use LoggingTrait;
 
     /**
+     * Localized boolean operators by language
+     * All operators are case-insensitive
+     */
+    private const LOCALIZED_OPERATORS = [
+        'en' => ['and' => 'AND', 'or' => 'OR', 'not' => 'NOT'],
+        'de' => ['and' => 'UND', 'or' => 'ODER', 'not' => 'NICHT'],
+        'fr' => ['and' => 'ET', 'or' => 'OU', 'not' => 'SAUF'],
+        'es' => ['and' => 'Y', 'or' => 'O', 'not' => 'NO'],
+        'ar' => ['and' => 'و', 'or' => 'أو', 'not' => 'ليس'],
+    ];
+
+    /**
+     * @var string Current language for localized operators
+     */
+    private string $language = 'en';
+
+    /**
      * Parse a search query string into structured components
      *
      * @param string $query Raw search query
+     * @param string|null $language Language code for localized operators (default: 'en')
      * @return ParsedQuery Structured query object
      */
-    public static function parse(string $query): ParsedQuery
+    public static function parse(string $query, ?string $language = null): ParsedQuery
     {
         $parser = new self();
         $parser->setLoggingHandle('search-manager');
+
+        // Set language (use generic code if regional variant, e.g., de-DE → de)
+        if ($language) {
+            $parser->language = str_contains($language, '-')
+                ? substr($language, 0, 2)
+                : $language;
+        }
 
         $parsed = new ParsedQuery();
         $parsed->originalQuery = $query;
@@ -51,7 +78,7 @@ class QueryParser
             return $parsed;
         }
 
-        $parser->logDebug('Parsing query', ['query' => $query]);
+        $parser->logDebug('Parsing query', ['query' => $query, 'language' => $parser->language]);
 
         // Step 1: Extract quoted phrases first (they take precedence)
         $query = $parser->extractPhrases($query, $parsed);
@@ -93,6 +120,70 @@ class QueryParser
                str_contains($query, ':') ||         // Field filters
                str_contains($query, '*') ||         // Wildcards
                str_contains($query, '^');           // Boosts
+    }
+
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
+
+    /**
+     * Get all NOT operators (English + localized)
+     *
+     * @return array Array of NOT operator strings
+     */
+    private function getNotOperators(): array
+    {
+        $operators = ['NOT']; // Always include English
+
+        // Add localized operator if available and different from English
+        if (isset(self::LOCALIZED_OPERATORS[$this->language])) {
+            $localized = self::LOCALIZED_OPERATORS[$this->language]['not'];
+            if ($localized !== 'NOT') {
+                $operators[] = $localized;
+            }
+        }
+
+        return $operators;
+    }
+
+    /**
+     * Get all OR operators (English + localized)
+     *
+     * @return array Array of OR operator strings
+     */
+    private function getOrOperators(): array
+    {
+        $operators = ['OR']; // Always include English
+
+        // Add localized operator if available and different from English
+        if (isset(self::LOCALIZED_OPERATORS[$this->language])) {
+            $localized = self::LOCALIZED_OPERATORS[$this->language]['or'];
+            if ($localized !== 'OR') {
+                $operators[] = $localized;
+            }
+        }
+
+        return $operators;
+    }
+
+    /**
+     * Get all AND operators (English + localized)
+     *
+     * @return array Array of AND operator strings
+     */
+    private function getAndOperators(): array
+    {
+        $operators = ['AND']; // Always include English
+
+        // Add localized operator if available and different from English
+        if (isset(self::LOCALIZED_OPERATORS[$this->language])) {
+            $localized = self::LOCALIZED_OPERATORS[$this->language]['and'];
+            if ($localized !== 'AND') {
+                $operators[] = $localized;
+            }
+        }
+
+        return $operators;
     }
 
     // =========================================================================
@@ -181,6 +272,7 @@ class QueryParser
      * Extract NOT terms from query
      *
      * Example: 'test NOT spam NOT unwanted' → notTerms: ['spam', 'unwanted']
+     * Supports localized NOT operators (e.g., NICHT for German, SAUF for French)
      *
      * @param string $query Query string
      * @param ParsedQuery $parsed Parsed query object to populate
@@ -188,18 +280,26 @@ class QueryParser
      */
     private function extractNotTerms(string $query, ParsedQuery $parsed): string
     {
-        // Match "NOT term" patterns
-        if (preg_match_all('/\s+NOT\s+(\S+)/i', $query, $matches)) {
-            foreach ($matches[1] as $notTerm) {
-                $notTerm = trim($notTerm);
+        // Build regex pattern for all NOT operators (English + localized)
+        $notOperators = $this->getNotOperators();
+        $pattern = '/\s+(' . implode('|', array_map('preg_quote', $notOperators)) . ')\s+(\S+)/iu';
+
+        // Match "NOT term" patterns (case-insensitive, unicode)
+        if (preg_match_all($pattern, $query, $matches, PREG_SET_ORDER)) {
+            foreach ($matches as $match) {
+                $notTerm = trim($match[2]);
                 if (!empty($notTerm)) {
                     $parsed->notTerms[] = $notTerm;
-                    $this->logDebug('Extracted NOT term', ['term' => $notTerm]);
+                    $this->logDebug('Extracted NOT term', [
+                        'operator' => $match[1],
+                        'term' => $notTerm,
+                    ]);
                 }
             }
 
             // Remove NOT terms from query
-            $query = preg_replace('/\s+NOT\s+\S+/i', '', $query);
+            $removePattern = '/\s+(' . implode('|', array_map('preg_quote', $notOperators)) . ')\s+\S+/iu';
+            $query = preg_replace($removePattern, '', $query);
         }
 
         return $query;
@@ -270,6 +370,7 @@ class QueryParser
      * Detect boolean operator (OR/AND)
      *
      * Example: 'test OR entry' → operator: 'OR'
+     * Supports localized operators (e.g., ODER for German, OU for French)
      *
      * @param string $query Query string
      * @param ParsedQuery $parsed Parsed query object to populate
@@ -277,17 +378,24 @@ class QueryParser
      */
     private function detectOperator(string $query, ParsedQuery $parsed): string
     {
-        // Check for OR operator (case-insensitive)
-        if (preg_match('/\s+OR\s+/i', $query)) {
+        // Build regex patterns for OR and AND operators (English + localized)
+        $orOperators = $this->getOrOperators();
+        $andOperators = $this->getAndOperators();
+
+        $orPattern = '/\s+(' . implode('|', array_map('preg_quote', $orOperators)) . ')\s+/iu';
+        $andPattern = '/\s+(' . implode('|', array_map('preg_quote', $andOperators)) . ')\s+/iu';
+
+        // Check for OR operator (case-insensitive, unicode)
+        if (preg_match($orPattern, $query, $match)) {
             $parsed->operator = 'OR';
-            $query = preg_replace('/\s+OR\s+/i', ' ', $query);
-            $this->logDebug('Detected OR operator');
+            $query = preg_replace($orPattern, ' ', $query);
+            $this->logDebug('Detected OR operator', ['matched' => $match[1]]);
         }
-        // Check for explicit AND operator (case-insensitive)
-        elseif (preg_match('/\s+AND\s+/i', $query)) {
+        // Check for explicit AND operator (case-insensitive, unicode)
+        elseif (preg_match($andPattern, $query, $match)) {
             $parsed->operator = 'AND';
-            $query = preg_replace('/\s+AND\s+/i', ' ', $query);
-            $this->logDebug('Detected AND operator');
+            $query = preg_replace($andPattern, ' ', $query);
+            $this->logDebug('Detected AND operator', ['matched' => $match[1]]);
         }
         // Default to AND
         else {

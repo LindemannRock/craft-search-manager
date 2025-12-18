@@ -222,8 +222,14 @@ class MySqlBackend extends BaseBackend
             $limit = $options['limit'] ?? 0;
             $typeFilter = $options['type'] ?? null;
 
+            // Build search options (pass language for localized operators)
+            $searchOptions = [];
+            if (isset($options['language'])) {
+                $searchOptions['language'] = $options['language'];
+            }
+
             // Use SearchEngine to search
-            $results = $engine->search($query, $siteId, $limit);
+            $results = $engine->search($query, $siteId, $limit, $searchOptions);
 
             // Get element IDs for enrichment
             $elementIds = array_keys($results);
