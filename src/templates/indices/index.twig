@@ -99,7 +99,8 @@
 						<th scope="col">{{ "Handle"|t('search-manager') }}</th>
 						<th scope="col">{{ "Element Type"|t('search-manager') }}</th>
 						<th scope="col">{{ "Backend"|t('search-manager') }}</th>
-						<th scope="col">{{ "Documents"|t('search-manager') }}</th>
+						<th scope="col">{{ "Craft"|t('search-manager') }}</th>
+						<th scope="col">{{ "Indexed"|t('search-manager') }}</th>
 						<th scope="col">{{ "Last Indexed"|t('search-manager') }}</th>
 						<th scope="col">{{ "Config Source"|t('search-manager') }}</th>
 						<th scope="col">{{ "Status"|t('search-manager') }}</th>
@@ -126,7 +127,17 @@
 								<td><code>{{ index.handle }}</code></td>
 								<td>{{ index.elementType|split('\\')|last }}</td>
 								<td><span class="status" style="background: #0ea5e9;"></span> {{ craft.searchManager.settings.searchBackend|title }}</td>
-								<td>{{ index.documentCount }}</td>
+								{% set expected = index.expectedCount %}
+								<td>{{ expected }}</td>
+								<td>
+									{% if index.documentCount == expected %}
+										<span style="color: #059669;">{{ index.documentCount }}</span>
+									{% elseif index.documentCount < expected %}
+										<span style="color: #d97706;" title="{{ expected - index.documentCount }} missing">{{ index.documentCount }}</span>
+									{% else %}
+										<span style="color: #dc2626;" title="{{ index.documentCount - expected }} stale">{{ index.documentCount }}</span>
+									{% endif %}
+								</td>
 								<td>
 									{% if index.lastIndexed %}
 										{{ index.lastIndexed|datetime('short') }}
@@ -181,7 +192,7 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="10" style="text-align: center; padding: 2em;">
+							<td colspan="11" style="text-align: center; padding: 2em;">
 								{{ 'No indices found.'|t('search-manager') }}
 							</td>
 						</tr>

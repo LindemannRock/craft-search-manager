@@ -742,4 +742,83 @@ class SearchIndex extends Model
     {
         return $this->source === 'database';
     }
+
+    /**
+     * Get expected element count based on index criteria
+     * Runs the element query with count() to determine how many elements should be indexed
+     * Matches the logic in RebuildIndexJob for accurate comparison
+     *
+     * @return int Expected number of elements matching the index criteria
+     */
+    public function getExpectedCount(): int
+    {
+        try {
+            // Get the element type class
+            $elementType = $this->elementType;
+            if (!class_exists($elementType)) {
+                $this->logError('Element type class not found', ['elementType' => $elementType]);
+                return 0;
+            }
+
+            $totalCount = 0;
+
+            // Handle multi-site indices (siteId = null means all sites)
+            $sitesToCount = [];
+            if ($this->siteId) {
+                $sitesToCount[] = $this->siteId;
+            } else {
+                foreach (Craft::$app->getSites()->getAllSites() as $site) {
+                    $sitesToCount[] = $site->id;
+                }
+            }
+
+            foreach ($sitesToCount as $siteId) {
+                // Create base query matching RebuildIndexJob logic
+                /** @var \craft\elements\db\ElementQuery $query */
+                $query = $elementType::find()
+                    ->siteId($siteId)
+                    ->drafts(false)
+                    ->revisions(false);
+
+                // Apply criteria
+                if (!empty($this->criteria)) {
+                    // Config indices: criteria is a Closure that returns the modified query
+                    if ($this->criteria instanceof \Closure) {
+                        $criteriaCallback = $this->criteria;
+                        $query = $criteriaCallback($query);
+                    }
+                    // Database indices: criteria is an array with section/volume/group filters
+                    elseif (is_array($this->criteria)) {
+                        if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections'])) {
+                            /** @var \craft\elements\db\EntryQuery $query */
+                            $query->section($this->criteria['sections']);
+                        }
+                        if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes'])) {
+                            /** @var \craft\elements\db\AssetQuery $query */
+                            $query->volume($this->criteria['volumes']);
+                        }
+                        if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups'])) {
+                            /** @var \craft\elements\db\CategoryQuery $query */
+                            $query->group($this->criteria['groups']);
+                        }
+                    }
+                }
+
+                // For entries, only count live status (matching RebuildIndexJob filtering)
+                if ($elementType === \craft\elements\Entry::class) {
+                    $query->status(\craft\elements\Entry::STATUS_LIVE);
+                }
+
+                $totalCount += $query->count();
+            }
+
+            return $totalCount;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to get expected count', [
+                'handle' => $this->handle,
+                'error' => $e->getMessage(),
+            ]);
+            return 0;
+        }
+    }
 }
