@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.9.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.8.0...v5.9.0) (2025-12-18)
+
+
+### Features
+
+* add expected element count calculation and update indices template ([2e8dc85](https://github.com/LindemannRock/craft-search-manager/commit/2e8dc851d090108298675b635151e84ae722b913))
+* Add localized boolean operators for 5 languages ([ac6fe32](https://github.com/LindemannRock/craft-search-manager/commit/ac6fe3205fefad91b99ba6d2dbbc4e17ca7941e9))
+* Add source detection, performance tab, and analytics improvements ([efd0d49](https://github.com/LindemannRock/craft-search-manager/commit/efd0d491d19348d29bfb94cf9db43b3438929da0))
+
 ## [5.8.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.7.0...v5.8.0) (2025-12-18)
 
 
