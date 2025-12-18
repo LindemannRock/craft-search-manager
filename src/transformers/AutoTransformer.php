@@ -50,6 +50,9 @@ class AutoTransformer extends BaseTransformer
         // Start with common data
         $data = $this->getCommonData($element);
 
+        // Derive element type from section handle (for Entries) or element class
+        $data['elementType'] = $this->deriveElementType($element);
+
         // Collect searchable content
         $searchableContent = [];
 
@@ -105,6 +108,102 @@ class AutoTransformer extends BaseTransformer
         $data['excerpt'] = $this->getExcerpt($data['content'], 200);
 
         return $data;
+    }
+
+    // =========================================================================
+    // ELEMENT TYPE DERIVATION
+    // =========================================================================
+
+    /**
+     * Derive element type from section handle (for Entries) or element class
+     *
+     * For Entries: uses section handle, singularized (products → product)
+     * For Categories: returns 'category'
+     * For Assets: returns 'asset'
+     * For other elements: derives from class name
+     *
+     * @param ElementInterface $element
+     * @return string Element type for search results
+     */
+    protected function deriveElementType(ElementInterface $element): string
+    {
+        // For Entries: use section handle (singularized)
+        if ($element instanceof \craft\elements\Entry && $element->section) {
+            return $this->singularize($element->section->handle);
+        }
+
+        // For Categories: return 'category'
+        if ($element instanceof \craft\elements\Category) {
+            return 'category';
+        }
+
+        // For Assets: return 'asset'
+        if ($element instanceof \craft\elements\Asset) {
+            return 'asset';
+        }
+
+        // For Users: return 'user'
+        if ($element instanceof \craft\elements\User) {
+            return 'user';
+        }
+
+        // For Tags: return 'tag'
+        if ($element instanceof \craft\elements\Tag) {
+            return 'tag';
+        }
+
+        // Fallback: derive from class name
+        $className = get_class($element);
+        $shortName = basename(str_replace('\\', '/', $className));
+        return strtolower($shortName);
+    }
+
+    /**
+     * Singularize a word (simple English rules)
+     *
+     * products → product
+     * categories → category
+     * entries → entry
+     * stores → store
+     *
+     * @param string $word
+     * @return string
+     */
+    protected function singularize(string $word): string
+    {
+        $word = strtolower($word);
+
+        // Common irregular plurals
+        $irregulars = [
+            'categories' => 'category',
+            'entries' => 'entry',
+            'stories' => 'story',
+            'series' => 'series',
+            'news' => 'news',
+        ];
+
+        if (isset($irregulars[$word])) {
+            return $irregulars[$word];
+        }
+
+        // Words ending in 'ies' → 'y' (but not 'ies' at start)
+        if (strlen($word) > 3 && str_ends_with($word, 'ies')) {
+            return substr($word, 0, -3) . 'y';
+        }
+
+        // Words ending in 'es' after s, x, z, ch, sh → remove 'es'
+        if (str_ends_with($word, 'ses') || str_ends_with($word, 'xes') ||
+            str_ends_with($word, 'zes') || str_ends_with($word, 'ches') ||
+            str_ends_with($word, 'shes')) {
+            return substr($word, 0, -2);
+        }
+
+        // Words ending in 's' → remove 's'
+        if (strlen($word) > 1 && str_ends_with($word, 's') && !str_ends_with($word, 'ss')) {
+            return substr($word, 0, -1);
+        }
+
+        return $word;
     }
 
     // =========================================================================

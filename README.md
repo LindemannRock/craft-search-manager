@@ -755,14 +755,34 @@ Detailed format (`format=detailed`):
 ```
 
 **Element Type Detection:**
-The `type` field is automatically derived from the index name:
-- Index `products-ar` → type: `product`
-- Index `categories-en` → type: `category`
-- Index `blog-posts` → type: `article`
-- Index `pages` → type: `page`
-- Other indices → type: `entry` (default)
+The `type` field is automatically derived from the element's section handle (singularized):
 
-You can also explicitly set `elementType` in your transformer data.
+| Section Handle | Type |
+|----------------|------|
+| `products` | `product` |
+| `categories` | `category` |
+| `stores` | `store` |
+| `blog-posts` | `blog-post` |
+
+For non-Entry elements:
+- Craft Categories → `category`
+- Assets → `asset`
+- Users → `user`
+- Tags → `tag`
+
+**Multi-section indices work correctly:**
+```php
+// all-ar index with multiple sections
+'criteria' => fn($q) => $q->section(['products', 'categories', 'stores']),
+// Each entry gets type from its own section:
+// - Entry from products → type: "product"
+// - Entry from stores → type: "store"
+```
+
+**Override in custom transformer:**
+```php
+$data['elementType'] = 'custom-type';
+```
 
 **Search Endpoint:**
 ```javascript
