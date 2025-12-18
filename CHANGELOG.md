@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.8.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.7.0...v5.8.0) (2025-12-18)
+
+
+### Features
+
+* add unified autocomplete endpoint with suggestions and results ([35e7ddb](https://github.com/LindemannRock/craft-search-manager/commit/35e7ddbecee80e373f189631a0e9782fac2d4741))
+
 ## [5.7.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.6.0...v5.7.0) (2025-12-18)
 
 
