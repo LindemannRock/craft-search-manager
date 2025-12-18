@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.7.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.6.0...v5.7.0) (2025-12-18)
+
+
+### Features
+
+* add type filtering and enrichment to search API ([85f8fc3](https://github.com/LindemannRock/craft-search-manager/commit/85f8fc316c7d4d09e81248eb2dee7f7bc5229cd2))
+* derive element type from section handle in AutoTransformer ([8a26963](https://github.com/LindemannRock/craft-search-manager/commit/8a269630b6269d3781475aba855fd4463dde64ac))
+
 ## [5.6.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.9...v5.6.0) (2025-12-18)
 
 
