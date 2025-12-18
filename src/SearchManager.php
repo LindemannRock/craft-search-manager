@@ -366,7 +366,7 @@ class SearchManager extends Plugin
 
                 $event->options[] = [
                     'key' => 'search-manager-search-cache',
-                    'label' => Craft::t('search-manager', '{pluginName} search caches', ['pluginName' => $pluginName]),
+                    'label' => Craft::t('search-manager', '{pluginName} caches', ['pluginName' => $pluginName]),
                     'action' => function() {
                         $this->backend->clearAllSearchCache();
                     },

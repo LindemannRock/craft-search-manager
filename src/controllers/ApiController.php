@@ -20,50 +20,72 @@ class ApiController extends Controller
     protected array|bool|int $allowAnonymous = true;
 
     /**
-     * Get autocomplete suggestions
+     * Get autocomplete suggestions and/or element results
      *
-     * GET /actions/search-manager/api/suggest?q=test&index=all-sites
+     * GET /actions/search-manager/api/autocomplete?q=test&index=all-sites
      *
      * Parameters:
      * - q: Search query (required)
      * - index: Index handle (default: all-sites)
      * - limit: Max results (default: 10)
-     * - format: Response format - 'simple' (default, string[]) or 'detailed' (objects with type)
-     * - type: Filter by element type (optional, e.g., 'product', 'category')
+     * - only: Return only 'suggestions' or 'results' (optional, default returns both)
+     * - type: Filter results by element type (optional, e.g., 'product', 'category')
      *
-     * Simple format response: ["term1", "term2", ...]
-     * Detailed format response: [{text: "Product Name", type: "product", id: 123}, ...]
+     * Response formats:
+     * - Default: {suggestions: ["term1", ...], results: [{text, type, id}, ...]}
+     * - only=suggestions: ["term1", "term2", ...]
+     * - only=results: [{text: "Product Name", type: "product", id: 123}, ...]
      *
      * @return Response
      */
-    public function actionSuggest(): Response
+    public function actionAutocomplete(): Response
     {
         $query = Craft::$app->getRequest()->getParam('q', '');
         $indexHandle = Craft::$app->getRequest()->getParam('index', 'all-sites');
         $limit = (int)Craft::$app->getRequest()->getParam('limit', 10);
-        $format = Craft::$app->getRequest()->getParam('format', 'simple');
+        $only = Craft::$app->getRequest()->getParam('only', null);
         $typeFilter = Craft::$app->getRequest()->getParam('type', null);
 
         if (empty($query)) {
-            return $this->asJson([]);
+            if ($only === 'suggestions') {
+                return $this->asJson([]);
+            }
+            if ($only === 'results') {
+                return $this->asJson([]);
+            }
+            return $this->asJson([
+                'suggestions' => [],
+                'results' => [],
+            ]);
         }
 
-        // Detailed format: return element objects with type info
-        if ($format === 'detailed') {
-            $suggestions = SearchManager::$plugin->autocomplete->suggestElements($query, $indexHandle, [
+        $autocomplete = SearchManager::$plugin->autocomplete;
+
+        // Only suggestions: return plain strings
+        if ($only === 'suggestions') {
+            return $this->asJson($autocomplete->suggest($query, $indexHandle, [
+                'limit' => $limit,
+            ]));
+        }
+
+        // Only results: return element objects with type info
+        if ($only === 'results') {
+            return $this->asJson($autocomplete->suggestElements($query, $indexHandle, [
                 'limit' => $limit,
                 'type' => $typeFilter,
-            ]);
-
-            return $this->asJson($suggestions);
+            ]));
         }
 
-        // Simple format (default): return plain strings for backward compatibility
-        $suggestions = SearchManager::$plugin->autocomplete->suggest($query, $indexHandle, [
-            'limit' => $limit,
+        // Default: return both
+        return $this->asJson([
+            'suggestions' => $autocomplete->suggest($query, $indexHandle, [
+                'limit' => $limit,
+            ]),
+            'results' => $autocomplete->suggestElements($query, $indexHandle, [
+                'limit' => $limit,
+                'type' => $typeFilter,
+            ]),
         ]);
-
-        return $this->asJson($suggestions);
     }
 
     /**

@@ -685,7 +685,7 @@ document.getElementById('search-input').addEventListener('input', async (e) => {
     const query = e.target.value;
     if (query.length < 2) return;
 
-    const response = await fetch(`/actions/search-manager/api/suggest?q=${query}&index=entries`);
+    const response = await fetch(`/actions/search-manager/api/autocomplete?q=${query}&index=entries&only=suggestions`);
     const suggestions = await response.json();
     // Display suggestions...
 });
@@ -709,43 +709,65 @@ Build instant search interfaces with AJAX endpoints:
 
 **Autocomplete Endpoint:**
 ```javascript
-// GET /actions/search-manager/api/suggest
-// Simple format (default) - returns term strings
-const response = await fetch('/actions/search-manager/api/suggest?q=test&index=all-sites&limit=10');
+// GET /actions/search-manager/api/autocomplete
+// Default - returns both suggestions and element results
+const response = await fetch('/actions/search-manager/api/autocomplete?q=test&index=all-sites&limit=10');
+const data = await response.json();
+// Returns: {
+//   "suggestions": ["test", "testing", "tested"],
+//   "results": [
+//     {"text": "Test Product", "type": "product", "id": 123},
+//     {"text": "Testing Guide", "type": "article", "id": 456}
+//   ]
+// }
+
+// Only suggestions - returns term strings
+const response = await fetch('/actions/search-manager/api/autocomplete?q=test&index=all-sites&only=suggestions');
 const suggestions = await response.json();
 // Returns: ["test", "testing", "tested"]
 
-// Detailed format - returns element objects with type info
-const response = await fetch('/actions/search-manager/api/suggest?q=test&index=all-sites&limit=10&format=detailed');
-const suggestions = await response.json();
+// Only results - returns element objects with type info
+const response = await fetch('/actions/search-manager/api/autocomplete?q=test&index=all-sites&only=results');
+const results = await response.json();
 // Returns: [
 //   {"text": "Test Product", "type": "product", "id": 123},
 //   {"text": "Testing Guide", "type": "article", "id": 456}
 // ]
 
-// Filter by element type
-const response = await fetch('/actions/search-manager/api/suggest?q=test&index=all-sites&format=detailed&type=product');
-// Returns only product suggestions
+// Filter results by element type
+const response = await fetch('/actions/search-manager/api/autocomplete?q=test&index=all-sites&only=results&type=product');
+// Returns only product results
 ```
 
-**Suggest API Parameters:**
+**Autocomplete API Parameters:**
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
 | `index` | `all-sites` | Index handle to search |
-| `limit` | `10` | Maximum suggestions |
-| `format` | `simple` | Response format: `simple` (strings) or `detailed` (objects with type) |
-| `type` | (none) | Filter by element type (only with `format=detailed`) |
+| `limit` | `10` | Maximum suggestions/results |
+| `only` | (none) | Return only `suggestions` or `results` (default returns both) |
+| `type` | (none) | Filter results by element type (only affects `results`) |
 
-**Suggest Response Formats:**
+**Autocomplete Response Formats:**
 
-Simple format (`format=simple` or omitted):
+Default (no `only` param):
+```json
+{
+  "suggestions": ["test", "testing", "tested"],
+  "results": [
+    {"text": "Test Product", "type": "product", "id": 123},
+    {"text": "Test Category", "type": "category", "id": 45}
+  ]
+}
+```
+
+Only suggestions (`only=suggestions`):
 ```json
 ["test", "testing", "tested"]
 ```
 
-Detailed format (`format=detailed`):
+Only results (`only=results`):
 ```json
 [
   {"text": "Test Product", "type": "product", "id": 123},
@@ -832,14 +854,14 @@ input.addEventListener('input', (e) => {
     if (query.length < 2) return;
 
     debounceTimer = setTimeout(async () => {
-        // Fetch detailed suggestions with type info
-        const suggestResponse = await fetch(
-            `/actions/search-manager/api/suggest?q=${query}&index=all-sites&format=detailed`
+        // Fetch both suggestions and results in one call
+        const response = await fetch(
+            `/actions/search-manager/api/autocomplete?q=${query}&index=all-sites`
         );
-        const suggestions = await suggestResponse.json();
+        const data = await response.json();
 
-        // Display with icons
-        suggestionsDiv.innerHTML = suggestions.map(s => `
+        // Display suggestions with icons
+        suggestionsDiv.innerHTML = data.results.map(s => `
             <div class="suggestion" data-id="${s.id}">
                 <span class="icon">${typeIcons[s.type] || '📝'}</span>
                 <span class="text">${s.text}</span>
@@ -847,7 +869,7 @@ input.addEventListener('input', (e) => {
             </div>
         `).join('');
 
-        // Fetch search results
+        // Fetch full search results
         const searchResponse = await fetch(
             `/actions/search-manager/api/search?q=${query}&index=all-sites`
         );
