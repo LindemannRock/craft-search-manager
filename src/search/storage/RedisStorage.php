@@ -382,6 +382,43 @@ class RedisStorage implements StorageInterface
     }
 
     /**
+     * Get element info for a list of element IDs
+     *
+     * @param int $siteId Site ID
+     * @param array $elementIds Array of element IDs
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     */
+    public function getElementsByIds(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        // Use pipeline to batch fetch element data
+        $this->redis->multi(\Redis::PIPELINE);
+
+        foreach ($elementIds as $elementId) {
+            $key = $this->getElementKey($siteId, (int)$elementId);
+            $this->redis->hGetAll($key);
+        }
+
+        $elementsData = $this->redis->exec();
+
+        $result = [];
+        foreach ($elementIds as $index => $elementId) {
+            $data = $elementsData[$index] ?? null;
+            if (!empty($data)) {
+                $result[(int)$elementId] = [
+                    'title' => $data['title'] ?? '',
+                    'elementType' => $data['elementType'] ?? 'entry',
+                ];
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Get element suggestions by prefix
      *
      * @param string $query Search query (prefix)

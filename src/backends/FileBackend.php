@@ -260,21 +260,41 @@ class FileBackend extends BaseBackend
         try {
             $fullIndexName = $this->getFullIndexName($indexName);
             $engine = $this->getSearchEngine($fullIndexName);
+            $storage = $this->getStorage($fullIndexName);
 
             // Get site ID from options or use current site
             $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
             $limit = $options['limit'] ?? 0;
+            $typeFilter = $options['type'] ?? null;
 
             // Use SearchEngine to search
             $results = $engine->search($query, $siteId, $limit);
 
-            // Convert to backend format
+            // Get element IDs for enrichment
+            $elementIds = array_keys($results);
+
+            // Fetch element info (type, title) for all results
+            $elementInfo = $storage->getElementsByIds($siteId, $elementIds);
+
+            // Convert to backend format with type info
             $hits = [];
             foreach ($results as $elementId => $score) {
+                $info = $elementInfo[$elementId] ?? null;
+                $elementType = $info['elementType'] ?? 'entry';
+
+                // Filter by type if specified
+                if ($typeFilter !== null) {
+                    $allowedTypes = is_array($typeFilter) ? $typeFilter : explode(',', $typeFilter);
+                    if (!in_array($elementType, $allowedTypes, true)) {
+                        continue; // Skip this result
+                    }
+                }
+
                 $hits[] = [
                     'objectID' => $elementId,
                     'id' => $elementId,
                     'score' => $score,
+                    'type' => $elementType,
                 ];
             }
 
@@ -282,6 +302,7 @@ class FileBackend extends BaseBackend
                 'index' => $fullIndexName,
                 'query' => $query,
                 'result_count' => count($hits),
+                'type_filter' => $typeFilter,
             ]);
 
             return ['hits' => $hits, 'total' => count($hits)];

@@ -769,8 +769,21 @@ You can also explicitly set `elementType` in your transformer data.
 // GET /actions/search-manager/api/search
 const response = await fetch('/actions/search-manager/api/search?q=craft cms&index=all-sites&limit=20');
 const results = await response.json();
-// Returns: {hits: [{objectID: 123, score: 45.2}, ...], total: 15}
+// Returns: {hits: [{objectID: 123, id: 123, score: 45.2, type: "product"}, ...], total: 15}
+
+// Filter by element type
+const response = await fetch('/actions/search-manager/api/search?q=bread&index=all-sites&type=product,category');
+// Returns only products and categories
 ```
+
+**Search API Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `q` | (required) | Search query |
+| `index` | `all-sites` | Index handle to search |
+| `limit` | `20` | Maximum results (use `0` for unlimited) |
+| `type` | (none) | Filter by element type (e.g., `product`, `category`, `product,category`) |
 
 **Example: Instant Search with Type Icons**
 ```html
@@ -843,8 +856,7 @@ Search response:
       "objectID": 123,
       "id": 123,
       "score": 45.23,
-      "title": "Product Title",
-      "excerpt": "Highlighted excerpt..."
+      "type": "product"
     }
   ],
   "total": 150

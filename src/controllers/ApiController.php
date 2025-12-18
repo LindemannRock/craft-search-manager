@@ -71,6 +71,15 @@ class ApiController extends Controller
      *
      * GET /actions/search-manager/api/search?q=test&index=all-sites
      *
+     * Parameters:
+     * - q: Search query (required)
+     * - index: Index handle (default: all-sites)
+     * - limit: Max results (default: 20)
+     * - type: Filter by element type (optional, e.g., 'product', 'category', 'product,category')
+     *
+     * Response includes type field for each hit:
+     * {hits: [{objectID, id, score, type}, ...], total: N}
+     *
      * @return Response
      */
     public function actionSearch(): Response
@@ -79,6 +88,7 @@ class ApiController extends Controller
         $indexHandle = Craft::$app->getRequest()->getParam('index', 'all-sites');
         // TODO: Make default limit configurable via settings (add 'apiDefaultLimit' config option)
         $limit = (int)Craft::$app->getRequest()->getParam('limit', 20);
+        $typeFilter = Craft::$app->getRequest()->getParam('type', null);
 
         if (empty($query)) {
             return $this->asJson([
@@ -89,6 +99,7 @@ class ApiController extends Controller
 
         $results = SearchManager::$plugin->backend->search($indexHandle, $query, [
             'limit' => $limit,
+            'type' => $typeFilter,
         ]);
 
         return $this->asJson($results);

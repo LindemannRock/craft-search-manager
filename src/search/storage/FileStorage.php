@@ -342,6 +342,38 @@ class FileStorage implements StorageInterface
     }
 
     /**
+     * Get element info for a list of element IDs
+     *
+     * @param int $siteId Site ID
+     * @param array $elementIds Array of element IDs
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     */
+    public function getElementsByIds(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        $result = [];
+
+        foreach ($elementIds as $elementId) {
+            $elementPath = $this->getElementPath($siteId, (int)$elementId);
+
+            if (file_exists($elementPath)) {
+                $data = $this->readFile($elementPath);
+                if (!empty($data)) {
+                    $result[(int)$elementId] = [
+                        'title' => $data['title'] ?? '',
+                        'elementType' => $data['elementType'] ?? 'entry',
+                    ];
+                }
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Get element suggestions by prefix
      *
      * @param string $query Search query (prefix)

@@ -351,6 +351,40 @@ class MySqlStorage implements StorageInterface
     }
 
     /**
+     * Get element info for a list of element IDs
+     *
+     * @param int $siteId Site ID
+     * @param array $elementIds Array of element IDs
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     */
+    public function getElementsByIds(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        $rows = (new Query())
+            ->select(['elementId', 'title', 'elementType'])
+            ->from('{{%searchmanager_search_elements}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'elementId' => $elementIds,
+            ])
+            ->all();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(int)$row['elementId']] = [
+                'title' => $row['title'],
+                'elementType' => $row['elementType'],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Get element suggestions by prefix
      *
      * @param string $query Search query (prefix)
