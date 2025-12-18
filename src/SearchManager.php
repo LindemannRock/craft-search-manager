@@ -261,7 +261,7 @@ class SearchManager extends Plugin
                     'search-manager/indices/clear/<indexId:\d+>' => 'search-manager/indices/clear',
                     'search-manager/indices/delete/<indexId:\d+>' => 'search-manager/indices/delete',
                     'search-manager/analytics' => 'search-manager/analytics/index',
-                    'search-manager/analytics/export-csv' => 'search-manager/analytics/export-csv',
+                    'search-manager/analytics/export' => 'search-manager/analytics/export',
                     'search-manager/settings' => 'search-manager/settings/general',
                     'search-manager/settings/general' => 'search-manager/settings/general',
                     'search-manager/settings/backend' => 'search-manager/settings/backend',
@@ -499,8 +499,8 @@ class SearchManager extends Plugin
             ];
         }
 
-        // Analytics
-        if (Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics')) {
+        // Analytics (only show if enabled in settings)
+        if ($this->getSettings()->enableAnalytics && Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics')) {
             $item['subnav']['analytics'] = [
                 'label' => Craft::t('search-manager', 'Analytics'),
                 'url' => 'search-manager/analytics',

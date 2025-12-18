@@ -98,6 +98,9 @@ class ApiController extends Controller
      * - index: Index handle (default: all-sites)
      * - limit: Max results (default: 20)
      * - type: Filter by element type (optional, e.g., 'product', 'category', 'product,category')
+     * - source: Analytics source identifier (optional, e.g., 'ios-app', 'android-app')
+     * - platform: Platform info (optional, e.g., 'iOS 17.2', 'Android 14')
+     * - appVersion: App version (optional, e.g., '2.1.0')
      *
      * Response includes type field for each hit:
      * {hits: [{objectID, id, score, type}, ...], total: N}
@@ -106,11 +109,17 @@ class ApiController extends Controller
      */
     public function actionSearch(): Response
     {
-        $query = Craft::$app->getRequest()->getParam('q', '');
-        $indexHandle = Craft::$app->getRequest()->getParam('index', 'all-sites');
+        $request = Craft::$app->getRequest();
+        $query = $request->getParam('q', '');
+        $indexHandle = $request->getParam('index', 'all-sites');
         // TODO: Make default limit configurable via settings (add 'apiDefaultLimit' config option)
-        $limit = (int)Craft::$app->getRequest()->getParam('limit', 20);
-        $typeFilter = Craft::$app->getRequest()->getParam('type', null);
+        $limit = (int)$request->getParam('limit', 20);
+        $typeFilter = $request->getParam('type', null);
+
+        // Analytics options (for mobile apps and custom integrations)
+        $source = $request->getParam('source', null);
+        $platform = $request->getParam('platform', null);
+        $appVersion = $request->getParam('appVersion', null);
 
         if (empty($query)) {
             return $this->asJson([
@@ -119,10 +128,23 @@ class ApiController extends Controller
             ]);
         }
 
-        $results = SearchManager::$plugin->backend->search($indexHandle, $query, [
+        $options = [
             'limit' => $limit,
             'type' => $typeFilter,
-        ]);
+        ];
+
+        // Add analytics options if provided
+        if ($source !== null) {
+            $options['source'] = $source;
+        }
+        if ($platform !== null) {
+            $options['platform'] = $platform;
+        }
+        if ($appVersion !== null) {
+            $options['appVersion'] = $appVersion;
+        }
+
+        $results = SearchManager::$plugin->backend->search($indexHandle, $query, $options);
 
         return $this->asJson($results);
     }

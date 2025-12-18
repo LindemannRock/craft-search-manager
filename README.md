@@ -50,6 +50,8 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 
 ### 📊 Comprehensive Analytics
 - **Search Tracking** - Track every search query with results count and execution time
+- **Source Detection** - Auto-detect search origin (frontend, CP, API) or pass custom sources
+- **Platform & App Tracking** - Track platform (iOS 17, Android 14) and app version for mobile apps
 - **Device Detection** - Powered by Matomo DeviceDetector for accurate device, browser, and OS identification
 - **Geographic Detection** - Track visitor location (country, city, region) via ip-api.com
 - **Bot Filtering** - Identify and filter bot traffic (GoogleBot, BingBot, etc.)
@@ -917,6 +919,66 @@ Search response:
 - Boosting: `?q=coffee^2 beans`
 
 ⚠️ **Note:** Default API limit (20) is hardcoded. TODO: Make configurable via settings.
+
+### Analytics Source Detection
+
+Search Manager automatically detects the source of search requests and tracks analytics accordingly.
+
+**Auto-Detection Logic:**
+- **CP** - Craft Control Panel requests (detected via `getIsCpRequest()`)
+- **Frontend** - Referrer from same host (same-site search forms)
+- **API** - No referrer or external referrer (direct API calls)
+
+**Custom Source Tracking:**
+
+For mobile apps or custom integrations, you can pass custom analytics data:
+
+```php
+// PHP - Pass custom analytics options
+$results = SearchManager::$plugin->backend->search('products', 'shoes', [
+    'siteId' => 1,
+    'source' => 'ios-app',           // Custom source identifier
+    'platform' => 'iOS 17.2',        // Platform/OS version
+    'appVersion' => '2.1.0',         // Your app version
+]);
+
+// Or via Twig
+{% set results = craft.searchManager.search('products', 'shoes', {
+    source: 'android-app',
+    platform: 'Android 14',
+    appVersion: '1.5.2'
+}) %}
+```
+
+**Example Source Values:**
+- `frontend` - Website search (auto-detected)
+- `cp` - Control Panel search (auto-detected)
+- `api` - Direct API calls (auto-detected)
+- `ios-app` - iOS mobile app
+- `android-app` - Android mobile app
+- `mobile-web` - Mobile web PWA
+- `partner-api` - Third-party integrations
+
+**What Gets Tracked:**
+| Field | Auto-Detected | Can Override |
+|-------|---------------|--------------|
+| `source` | Yes (frontend/cp/api) | Yes |
+| `platform` | No | Yes |
+| `appVersion` | No | Yes |
+| `ip` | Yes | No (security) |
+| `country/city` | Yes | No (security) |
+| `device/browser/os` | Yes (from User-Agent) | No |
+
+**Analytics Dashboard:**
+
+The Recent Searches tab displays source information:
+- Source type (Frontend, CP, API, or custom)
+- Platform and app version (when provided)
+- Device, browser, and OS details
+
+**CSV Export:**
+
+Exported analytics include Platform and App Version columns for detailed analysis.
 
 ### Multi-Language Support
 

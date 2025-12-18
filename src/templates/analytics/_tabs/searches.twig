@@ -1,0 +1,95 @@
+<h2 style="margin: 0 0 20px;">{{ "Recent Searches"|t('search-manager') }}</h2>
+
+<div class="analytics-charts">
+    <div class="chart-container full-width">
+        <div class="table-scroll-container">
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th>{{ 'Date'|t('search-manager') }}</th>
+                        <th>{{ 'Time'|t('search-manager') }}</th>
+                        <th>{{ 'Query'|t('search-manager') }}</th>
+                        <th>{{ 'Site'|t('search-manager') }}</th>
+                        <th>{{ 'Results'|t('search-manager') }}</th>
+                        <th>{{ 'Index'|t('search-manager') }}</th>
+                        <th>{{ 'Backend'|t('search-manager') }}</th>
+                        <th>{{ 'Intent'|t('search-manager') }}</th>
+                        <th>{{ 'Source'|t('search-manager') }}</th>
+                        <th>{{ 'Platform'|t('search-manager') }}</th>
+                        <th>{{ 'App'|t('search-manager') }}</th>
+                        <th>{{ 'Device'|t('search-manager') }}</th>
+                        <th>{{ 'Browser'|t('search-manager') }}</th>
+                        <th>{{ 'OS'|t('search-manager') }}</th>
+                        {% if settings.enableGeoDetection %}
+                            <th>{{ 'Location'|t('search-manager') }}</th>
+                        {% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for search in recentSearches %}
+                        <tr>
+                            <td>{{ search.dateCreated|date('short') }}</td>
+                            <td>{{ search.dateCreated|time('short') }}</td>
+                            <td><code>{{ search.query }}</code></td>
+                            <td>
+                                {% if search.siteId %}
+                                    {% set site = craft.app.sites.getSiteById(search.siteId) %}
+                                    {{ site ? site.name : '—' }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if search.resultsCount > 0 %}
+                                    <span style="color: #27ae60;">{{ search.resultsCount }}</span>
+                                {% else %}
+                                    <span style="color: #e74c3c;">0</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ search.indexHandle }}</td>
+                            <td>{{ search.backend|title }}</td>
+                            <td>
+                                {% if search.intent %}
+                                    {{ search.intent|title }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if search.source == 'cp' %}
+                                    CP
+                                {% elseif search.source == 'frontend' %}
+                                    Frontend
+                                {% elseif search.source == 'api' %}
+                                    API
+                                {% else %}
+                                    {{ search.source|title }}
+                                {% endif %}
+                            </td>
+                            <td>{{ search.platform ?? '—' }}</td>
+                            <td>{{ search.appVersion ?? '—' }}</td>
+                            <td>{{ search.deviceType ? search.deviceType|title : '—' }}</td>
+                            <td>{{ search.browser ?? '—' }}</td>
+                            <td>{{ search.osName ?? '—' }}</td>
+                            {% if settings.enableGeoDetection %}
+                                <td>
+                                    {% if search.city and search.country %}
+                                        {{ search.city }}, {{ search.country }}
+                                    {% elseif search.country %}
+                                        {{ search.country }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="{{ settings.enableGeoDetection ? 15 : 14 }}" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

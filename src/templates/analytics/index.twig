@@ -17,8 +17,9 @@
 {# Define Tabs #}
 {% set tabs = {
     overview: { label: "Overview"|t('search-manager'), url: '#overview' },
-    queries: { label: "Query Analysis"|t('search-manager'), url: '#queries' },
+    searches: { label: "Recent Searches"|t('search-manager'), url: '#searches' },
     contentGaps: { label: "Content Gaps"|t('search-manager'), url: '#content-gaps' },
+    performance: { label: "Performance"|t('search-manager'), url: '#performance' },
     audience: { label: "Audience"|t('search-manager'), url: '#audience' }
 } %}
 
@@ -30,7 +31,10 @@
 		<div class="menu" data-align="right">
 			<ul>
 				<li>
-					<a href="#" class="export-link" data-format="csv" data-action="search-manager/analytics/export-csv">{{ "Export as CSV"|t('search-manager') }}</a>
+					<a href="#" class="export-link" data-format="csv" data-action="search-manager/analytics/export">{{ "Export as CSV"|t('search-manager') }}</a>
+				</li>
+				<li>
+					<a href="#" class="export-link" data-format="json" data-action="search-manager/analytics/export">{{ "Export as JSON"|t('search-manager') }}</a>
 				</li>
 			</ul>
 		</div>
@@ -39,14 +43,32 @@
 
 {% block toolbar %}
 	<div class="flex">
+		{% if sites|length > 1 %}
 		<div>
 			<div class="btngroup">
 				<button type="button" class="btn menubtn">
-					<span id="dateRangeLabel">{{ dateRange == 'today' ? 'Today' : (dateRange == 'last7days' ? 'Last 7 days' : (dateRange == 'last30days' ? 'Last 30 days' : (dateRange == 'last90days' ? 'Last 90 days' : 'All time'))) }}</span>
+					<span id="siteLabel">{{ siteId ? sites|filter(s => s.id == siteId)|first.name : 'All Sites'|t('search-manager') }}</span>
+				</button>
+				<div class="menu">
+					<ul>
+						<li><a href="#" data-site="" class="site-option {{ not siteId ? 'sel' : '' }}">{{ "All Sites"|t('search-manager') }}</a></li>
+						{% for site in sites %}
+							<li><a href="#" data-site="{{ site.id }}" class="site-option {{ siteId == site.id ? 'sel' : '' }}">{{ site.name }}</a></li>
+						{% endfor %}
+					</ul>
+				</div>
+			</div>
+		</div>
+		{% endif %}
+		<div>
+			<div class="btngroup">
+				<button type="button" class="btn menubtn">
+					<span id="dateRangeLabel">{{ dateRange == 'today' ? 'Today' : (dateRange == 'yesterday' ? 'Yesterday' : (dateRange == 'last7days' ? 'Last 7 days' : (dateRange == 'last30days' ? 'Last 30 days' : (dateRange == 'last90days' ? 'Last 90 days' : 'All time')))) }}</span>
 				</button>
 				<div class="menu">
 					<ul>
 						<li><a href="#" data-range="today" class="main-date-range-option {{ dateRange == 'today' ? 'sel' : '' }}">{{ "Today"|t('search-manager') }}</a></li>
+						<li><a href="#" data-range="yesterday" class="main-date-range-option {{ dateRange == 'yesterday' ? 'sel' : '' }}">{{ "Yesterday"|t('search-manager') }}</a></li>
 						<li><a href="#" data-range="last7days" class="main-date-range-option {{ dateRange == 'last7days' ? 'sel' : '' }}">{{ "Last 7 days"|t('search-manager') }}</a></li>
 						<li><a href="#" data-range="last30days" class="main-date-range-option {{ dateRange == 'last30days' ? 'sel' : '' }}">{{ "Last 30 days"|t('search-manager') }}</a></li>
 						<li><a href="#" data-range="last90days" class="main-date-range-option {{ dateRange == 'last90days' ? 'sel' : '' }}">{{ "Last 90 days"|t('search-manager') }}</a></li>
@@ -59,35 +81,34 @@
 {% endblock %}
 
 {% block content %}
-    <div id="analytics-dashboard">
-        {# Tab Content Containers #}
-        <div id="tab-overview" class="tab-content">
-            {% include 'search-manager/analytics/_tabs/overview' %}
-        </div>
-        
-        <div id="tab-queries" class="tab-content hidden">
-             {% include 'search-manager/analytics/_tabs/queries' %}
-        </div>
+    {# Tab Content - IDs must match tab URLs #}
+    <div id="overview">
+        {% include 'search-manager/analytics/_tabs/overview' %}
+    </div>
 
-        <div id="tab-content-gaps" class="tab-content hidden">
-             {% include 'search-manager/analytics/_tabs/content-gaps' %}
-        </div>
+    <div id="searches" class="hidden">
+         {% include 'search-manager/analytics/_tabs/searches' %}
+    </div>
 
-        <div id="tab-audience" class="tab-content hidden">
-             {% include 'search-manager/analytics/_tabs/audience' %}
-        </div>
+    <div id="content-gaps" class="hidden">
+         {% include 'search-manager/analytics/_tabs/content-gaps' %}
+    </div>
+
+    <div id="performance" class="hidden">
+         {% include 'search-manager/analytics/_tabs/performance' %}
+    </div>
+
+    <div id="audience" class="hidden">
+         {% include 'search-manager/analytics/_tabs/audience' %}
     </div>
 
     {% include 'search-manager/_components/plugin-credit.twig' %}
 {% endblock %}
 
 {% css %}
-    #analytics-dashboard {
+    /* Tab content padding */
+    #overview, #searches, #content-gaps, #performance, #audience {
         padding: 24px;
-    }
-    
-    .tab-content.hidden {
-        display: none;
     }
 
     .analytics-stats {
@@ -270,61 +291,191 @@
         }
     }
 
-    // Tab Switching Logic
-    $(document).on('click', '.tab', function(e) {
-        e.preventDefault();
-        const $tab = $(this);
-        const targetId = $tab.attr('href').substring(1); // remove #
-        
-        // Update UI
-        $('.tab').removeClass('sel');
-        $tab.addClass('sel');
-        $('.tab-content').addClass('hidden');
-        $('#tab-' + targetId).removeClass('hidden');
+    // Tab Switching - show/hide content and load data
+    function switchTab(tabId) {
+        if (!tabId) tabId = 'overview';
 
-        window.currentTab = targetId;
-        
+        // Hide all tab content
+        $('#content > div[id]').addClass('hidden');
+        // Show selected tab content
+        $('#' + tabId).removeClass('hidden');
+
+        window.currentTab = tabId;
+
         // Lazy Load Data for specific tabs
-        if (targetId === 'queries' || targetId === 'content-gaps') {
-             loadTabData(targetId);
+        if (tabId === 'overview' || tabId === 'content-gaps' || tabId === 'performance' || tabId === 'audience') {
+             loadTabData(tabId);
         }
-    });
-    
-    // Handle initial hash
-    if(window.location.hash) {
-        const hash = window.location.hash.substring(1);
-        $(`.tab[href="#${hash}"]`).trigger('click');
     }
+
+    // Handle hash changes (when Craft switches tabs)
+    window.addEventListener('hashchange', function() {
+        var hash = window.location.hash.substring(1);
+        switchTab(hash);
+    });
+
+    // Handle initial tab and clicks
+    $(document).ready(function() {
+        // Handle clicks on tab links
+        $(document).on('click', 'a[href^="#"]', function() {
+            var href = $(this).attr('href');
+            if (href && href.startsWith('#')) {
+                setTimeout(function() {
+                    var hash = window.location.hash.substring(1);
+                    switchTab(hash);
+                }, 10);
+            }
+        });
+
+        // Handle initial tab
+        var hash = window.location.hash.substring(1) || 'overview';
+        switchTab(hash);
+    });
 
     // AJAX Data Loading for Tabs
     function loadTabData(tabName) {
         const mapping = {
-            'queries': 'query-analysis',
+            'overview': 'query-analysis',
             'content-gaps': 'content-gaps'
         };
-        
+
         // Don't reload if already populated (simple check)
-        if (tabName === 'queries' && $('#word-cloud-container').children().length > 0) return;
+        if (tabName === 'overview' && $('#word-cloud-container').children().length > 0) return;
         if (tabName === 'content-gaps' && $('#content-gaps-body tr').length > 1) return;
+        if (tabName === 'performance' && window.performanceLoaded) return;
+        if (tabName === 'audience' && window.audienceLoaded) return;
 
         const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
-        
-        $('#analytics-dashboard').css('opacity', '0.5');
+        const siteId = new URLSearchParams(window.location.search).get('siteId') || '';
+
+        if (tabName === 'performance') {
+            // Load performance data (cache stats, chart, top/worst queries)
+            loadPerformanceData(dateRange, siteId);
+            return;
+        }
+
+        if (tabName === 'audience') {
+            // Load audience data (countries, cities, hourly)
+            loadAudienceData(dateRange, siteId);
+            return;
+        }
 
         $.ajax({
             url: Craft.getActionUrl('search-manager/analytics/get-data'),
             type: 'POST',
+            dataType: 'json',
             data: {
                 dateRange: dateRange,
+                siteId: siteId,
                 type: mapping[tabName],
                 {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
             },
             success: function(res) {
                 if(res.success) {
-                    if (tabName === 'queries') renderQueryAnalysis(res.data.queryAnalysis);
+                    if (tabName === 'overview') {
+                        renderQueryAnalysis(res.data.queryAnalysis);
+                        // Also load breakdown charts
+                        loadBreakdownCharts(dateRange, siteId);
+                    }
                     if (tabName === 'content-gaps') renderContentGaps(res.data.contentGaps);
                 }
+            },
+            error: function() {
+                console.error('Failed to load tab data');
+            }
+        });
+    }
+
+    function loadAudienceData(dateRange, siteId) {
+        const csrfToken = '{{ craft.app.request.csrfToken }}';
+        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
+
+        // Load countries
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'countries', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderCountries(res.data);
+            }
+        });
+
+        // Load cities
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'cities', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderCities(res.data);
+            }
+        });
+
+        // Load hourly data
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderHourlyChart(res.data);
                 $('#analytics-dashboard').css('opacity', '1');
+                window.audienceLoaded = true;
+            }
+        });
+    }
+
+    function renderCountries(data) {
+        const tbody = $('#countries-body');
+        tbody.empty();
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No data available</td></tr>');
+            return;
+        }
+        data.forEach(c => {
+            tbody.append(`<tr><td>${Craft.escapeHtml(c.name)}</td><td>${c.count}</td><td>${c.percentage}%</td></tr>`);
+        });
+    }
+
+    function renderCities(data) {
+        const tbody = $('#cities-body');
+        tbody.empty();
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No data available</td></tr>');
+            return;
+        }
+        data.forEach(c => {
+            tbody.append(`<tr><td>${Craft.escapeHtml(c.city)}</td><td>${Craft.escapeHtml(c.countryName)}</td><td>${c.count}</td></tr>`);
+        });
+    }
+
+    function renderHourlyChart(data) {
+        if (!data || !data.data) return;
+        const ctx = document.getElementById('hourly-chart');
+        if (!ctx) return;
+
+        if (window.smCharts.hourly) window.smCharts.hourly.destroy();
+
+        window.smCharts.hourly = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Searches',
+                    data: data.data,
+                    backgroundColor: '#0d78f2'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Peak Hour: ' + data.peakHourFormatted
+                    }
+                }
             }
         });
     }
@@ -366,9 +517,9 @@
     function renderContentGaps(data) {
         const tbody = $('#content-gaps-body');
         tbody.empty();
-        
+
         if (!data.clusters || data.clusters.length === 0) {
-            tbody.html('<tr><td colspan="5" class="thin light">No content gaps found!</td></tr>');
+            tbody.html('<tr><td colspan="4" class="thin light">No content gaps found!</td></tr>');
             return;
         }
 
@@ -376,24 +527,277 @@
             let row = `<tr>
                 <td><strong>${Craft.escapeHtml(c.representative)}</strong></td>
                 <td>${c.count}</td>
-                <td><small class="light">${c.queries.slice(0, 3).join(', ')}</small></td>
+                <td>${c.queries.slice(0, 3).join(', ')}</td>
                 <td>${c.lastSearched}</td>
-                <td><a href="#" class="btn small">Create Content</a></td>
             </tr>`;
             tbody.append(row);
         });
     }
 
+    // Load breakdown charts (Intent, Source)
+    function loadBreakdownCharts(dateRange, siteId) {
+        const csrfToken = '{{ craft.app.request.csrfToken }}';
+        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
+
+        // Load Intent breakdown
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'intent', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderIntentChart(res.data);
+            }
+        });
+
+        // Load Source breakdown
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'source', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderSourceChart(res.data);
+            }
+        });
+    }
+
+    // Load Performance tab data
+    function loadPerformanceData(dateRange, siteId) {
+        const csrfToken = '{{ craft.app.request.csrfToken }}';
+        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
+
+        // Load Cache stats
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'cache-stats', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderCacheStats(res.data);
+            }
+        });
+
+        // Load Performance chart
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'performance', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderPerformanceChart(res.data);
+            }
+        });
+
+        // Load Top queries
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'top-queries', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderTopQueries(res.data);
+            }
+        });
+
+        // Load Worst queries
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'worst-queries', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderWorstQueries(res.data);
+            }
+        });
+
+        window.performanceLoaded = true;
+    }
+
+    function renderCacheStats(data) {
+        $('#cache-hit-rate').text(data.hitRate + '%');
+        $('#cache-hits').text(data.cacheHits.toLocaleString());
+        $('#cache-misses').text(data.cacheMisses.toLocaleString());
+        $('#total-searches-perf').text(data.total.toLocaleString());
+    }
+
+    function renderTopQueries(data) {
+        const tbody = $('#top-queries-body');
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="4" class="thin light">Not enough data (min 3 searches per query)</td></tr>');
+            return;
+        }
+
+        data.forEach(q => {
+            tbody.append(`<tr>
+                <td><code>${Craft.escapeHtml(q.query)}</code></td>
+                <td>${q.siteName || '—'}</td>
+                <td><strong>${q.avgTime}ms</strong></td>
+                <td>${q.searches}</td>
+            </tr>`);
+        });
+    }
+
+    function renderWorstQueries(data) {
+        const tbody = $('#worst-queries-body');
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="4" class="thin light">Not enough data (min 3 searches per query)</td></tr>');
+            return;
+        }
+
+        data.forEach(q => {
+            tbody.append(`<tr>
+                <td><code>${Craft.escapeHtml(q.query)}</code></td>
+                <td>${q.siteName || '—'}</td>
+                <td><strong style="color: ${q.avgTime > 100 ? '#e74c3c' : 'inherit'}">${q.avgTime}ms</strong></td>
+                <td>${q.searches}</td>
+            </tr>`);
+        });
+    }
+
+    function renderIntentChart(data) {
+        if (window.smCharts.intent) {
+            window.smCharts.intent.destroy();
+        }
+        const ctx = document.getElementById('intent-chart');
+        if (!ctx) return;
+
+        if (!data.labels || data.labels.length === 0) {
+            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No intent data available</p>');
+            return;
+        }
+
+        const colors = ['#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e74c3c'];
+        window.smCharts.intent = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: colors.slice(0, data.labels.length)
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    function renderSourceChart(data) {
+        if (window.smCharts.source) {
+            window.smCharts.source.destroy();
+        }
+        const ctx = document.getElementById('source-chart');
+        if (!ctx) return;
+
+        if (!data.labels || data.labels.length === 0) {
+            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No source data available</p>');
+            return;
+        }
+
+        const colors = ['#27ae60', '#3498db', '#e67e22', '#9b59b6', '#1abc9c', '#e74c3c'];
+        window.smCharts.source = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: colors.slice(0, data.labels.length)
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    }
+
+    function renderPerformanceChart(data) {
+        if (window.smCharts.performance) {
+            window.smCharts.performance.destroy();
+        }
+        const ctx = document.getElementById('performance-chart');
+        if (!ctx) return;
+
+        if (!data.labels || data.labels.length === 0) {
+            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No performance data available</p>');
+            return;
+        }
+
+        window.smCharts.performance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: 'Avg Response Time (ms)',
+                    data: data.avgTime,
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'ms' }
+                    }
+                }
+            }
+        });
+    }
+
     // Date Range Handler (Reloads all data)
     $(document).on('click', '.main-date-range-option', function(e) {
-        // ... (Existing logic, but simplified to just reload page for now to be safe with tabs)
-        // Or re-implement to reload active tab
-        // For V1, let's keep the existing logic but ensure it updates the current view
          e.preventDefault();
          const range = $(this).data('range');
          const url = new URL(window.location);
          url.searchParams.set('dateRange', range);
-         window.location = url; // Simple reload to ensure all tabs get fresh data context
+         window.location = url;
+    });
+
+    // Site Filter Handler
+    $(document).on('click', '.site-option', function(e) {
+         e.preventDefault();
+         const siteId = $(this).data('site');
+         const url = new URL(window.location);
+         if (siteId) {
+             url.searchParams.set('siteId', siteId);
+         } else {
+             url.searchParams.delete('siteId');
+         }
+         window.location = url;
+    });
+
+    // Export Handler
+    $(document).on('click', '.export-link', function(e) {
+        e.preventDefault();
+        const action = $(this).data('action');
+        const format = $(this).data('format') || 'csv';
+        const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
+        const siteId = new URLSearchParams(window.location.search).get('siteId') || '';
+
+        const exportUrl = Craft.getActionUrl(action, {
+            dateRange: dateRange,
+            siteId: siteId,
+            format: format
+        });
+
+        window.location.href = exportUrl;
     });
 
 {% endjs %}

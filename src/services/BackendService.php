@@ -184,6 +184,13 @@ class BackendService extends Component
 
         $settings = SearchManager::$plugin->getSettings();
 
+        // Extract analytics options from search options (API callers can pass these)
+        $analyticsOptions = [
+            'source' => $options['source'] ?? null,
+            'platform' => $options['platform'] ?? null,
+            'appVersion' => $options['appVersion'] ?? null,
+        ];
+
         // 1. Check cache first (if caching enabled)
         if ($settings->enableCache) {
             $cached = $this->_getFromCache($indexName, $query, $options);
@@ -196,7 +203,8 @@ class BackendService extends Component
                     $cached['total'] ?? 0,
                     0, // Cache hit = 0ms execution time
                     $backend->getName(), // Don't append "(cached)" - breaks analytics grouping
-                    $siteId
+                    $siteId,
+                    $analyticsOptions
                 );
                 return $cached;
             }
@@ -215,7 +223,8 @@ class BackendService extends Component
             $results['total'] ?? 0,
             $executionTime,
             $backend->getName(),
-            $siteId
+            $siteId,
+            $analyticsOptions
         );
 
         // 4. Decide whether to cache

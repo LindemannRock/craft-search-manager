@@ -46,6 +46,10 @@ class AnalyticsService extends Component
      * @param float|null $executionTime Query execution time in milliseconds
      * @param string $backend The search backend used (algolia, mysql, etc.)
      * @param int|null $siteId The site ID
+     * @param array $analyticsOptions Optional analytics options:
+     *   - source: The source of the search (frontend, cp, api, ios-app, android-app, etc.)
+     *   - platform: The platform info (iOS 17, Android 14, Windows 11, etc.)
+     *   - appVersion: The app version (1.0.0, 2.3.1, etc.)
      * @return void
      */
     public function trackSearch(
@@ -55,6 +59,7 @@ class AnalyticsService extends Component
         ?float $executionTime,
         string $backend,
         ?int $siteId = null,
+        array $analyticsOptions = [],
     ): void {
         $settings = SearchManager::$plugin->getSettings();
 
@@ -68,10 +73,20 @@ class AnalyticsService extends Component
             $siteId = Craft::$app->getSites()->getCurrentSite()->id;
         }
 
+        // Extract analytics options
+        $source = $analyticsOptions['source'] ?? null;
+        $platform = $analyticsOptions['platform'] ?? null;
+        $appVersion = $analyticsOptions['appVersion'] ?? null;
+
         // Get referrer, IP, and user agent
         $request = Craft::$app->getRequest();
         $referer = $request->getReferrer();
         $userAgent = $request->getUserAgent();
+
+        // Auto-detect source if not provided
+        if ($source === null) {
+            $source = $this->_detectSource($request, $referer);
+        }
 
         // Detect device information using Matomo DeviceDetector
         $deviceInfo = SearchManager::$plugin->deviceDetection->detectDevice($userAgent);
@@ -104,6 +119,9 @@ class AnalyticsService extends Component
         // Determine if this is a hit (results found)
         $isHit = $resultsCount > 0;
 
+        // Classify search intent
+        $intent = $this->classifyIntent($query);
+
         // Insert analytics record directly
         try {
             Craft::$app->getDb()->createCommand()
@@ -114,6 +132,10 @@ class AnalyticsService extends Component
                     'executionTime' => $executionTime,
                     'backend' => $backend,
                     'siteId' => $siteId,
+                    'intent' => $intent,
+                    'source' => $source,
+                    'platform' => $platform,
+                    'appVersion' => $appVersion,
                     'ip' => $ip,
                     'userAgent' => $userAgent,
                     'referer' => $referer,
@@ -357,9 +379,9 @@ class AnalyticsService extends Component
     public function getMostCommon404s(?int $siteId, int $limit = 10): array
     {
         $query = (new Query())
-            ->select(['query', 'COUNT(*) as count', 'SUM(resultsCount) as totalResults', 'MAX(dateCreated) as lastSearched'])
+            ->select(['query', 'siteId', 'COUNT(*) as count', 'SUM(resultsCount) as totalResults', 'MAX(dateCreated) as lastSearched'])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy('query')
+            ->groupBy(['query', 'siteId'])
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
 
@@ -384,7 +406,7 @@ class AnalyticsService extends Component
     /**
      * Get recent searches
      */
-    public function getRecent404s(?int $siteId, int $limit = 5, ?bool $hasResults = null): array
+    public function getRecent404s(?int $siteId, int $limit = 5, ?bool $hasResults = null, ?int $days = null): array
     {
         $query = (new Query())
             ->from('{{%searchmanager_analytics}}')
@@ -397,6 +419,10 @@ class AnalyticsService extends Component
 
         if ($hasResults !== null) {
             $query->andWhere(['isHit' => $hasResults ? 1 : 0]);
+        }
+
+        if ($days !== null) {
+            $query->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
         }
 
         $results = $query->all();
@@ -416,7 +442,7 @@ class AnalyticsService extends Component
     /**
      * Get analytics count
      */
-    public function getAnalyticsCount(?int $siteId = null, ?bool $hasResults = null): int
+    public function getAnalyticsCount(?int $siteId = null, ?bool $hasResults = null, ?int $days = null): int
     {
         $query = (new Query())->from('{{%searchmanager_analytics}}');
 
@@ -426,6 +452,10 @@ class AnalyticsService extends Component
 
         if ($hasResults !== null) {
             $query->andWhere(['isHit' => $hasResults ? 1 : 0]);
+        }
+
+        if ($days !== null) {
+            $query->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
         }
 
         return (int)$query->count();
@@ -541,9 +571,14 @@ class AnalyticsService extends Component
     }
 
     /**
-     * Export to CSV
+     * Export analytics data
+     *
+     * @param int|null $siteId Optional site ID to filter by
+     * @param string $dateRange Date range to filter
+     * @param string $format Export format ('csv' or 'json')
+     * @return string CSV or JSON content
      */
-    public function exportToCsv(?int $siteId, ?array $analyticsIds = null): string
+    public function exportAnalytics(?int $siteId, string $dateRange, string $format): string
     {
         $query = (new Query())
             ->from('{{%searchmanager_analytics}}')
@@ -555,6 +590,10 @@ class AnalyticsService extends Component
                 'executionTime',
                 'backend',
                 'siteId',
+                'intent',
+                'source',
+                'platform',
+                'appVersion',
                 'deviceType',
                 'deviceBrand',
                 'deviceModel',
@@ -573,12 +612,11 @@ class AnalyticsService extends Component
             ])
             ->orderBy(['dateCreated' => SORT_DESC]);
 
+        // Apply date range filter
+        $this->applyDateRangeFilter($query, $dateRange);
+
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
-        }
-
-        if ($analyticsIds) {
-            $query->andWhere(['id' => $analyticsIds]);
         }
 
         $results = $query->all();
@@ -592,11 +630,16 @@ class AnalyticsService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $geoEnabled = $settings->enableGeoDetection ?? false;
 
+        // Handle JSON format
+        if ($format === 'json') {
+            return $this->_exportAsJson($results, $geoEnabled);
+        }
+
         // CSV headers - conditionally include geo columns
         if ($geoEnabled) {
-            $csv = "Date,Time,Query,Results,Execution Time (ms),Backend,Index,Site,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Country,City,Region,Language,Is Bot,Bot Name,User Agent\n";
+            $csv = "Date,Time,Query,Results,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Country,City,Region,Language,Is Bot,Bot Name,User Agent\n";
         } else {
-            $csv = "Date,Time,Query,Results,Execution Time (ms),Backend,Index,Site,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Language,Is Bot,Bot Name,User Agent\n";
+            $csv = "Date,Time,Query,Results,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Language,Is Bot,Bot Name,User Agent\n";
         }
 
         foreach ($results as $row) {
@@ -613,7 +656,7 @@ class AnalyticsService extends Component
 
             if ($geoEnabled) {
                 $csv .= sprintf(
-                    '"%s","%s","%s",%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
+                    '"%s","%s","%s",%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
                     $dateStr,
                     $timeStr,
                     $row['query'],
@@ -622,6 +665,10 @@ class AnalyticsService extends Component
                     $row['backend'],
                     $row['indexHandle'],
                     $siteName,
+                    $row['intent'] ?? '',
+                    $row['source'] ?? 'frontend',
+                    $row['platform'] ?? '',
+                    $row['appVersion'] ?? '',
                     $row['referrer'] ?? '',
                     $row['deviceType'] ?? '',
                     $row['deviceBrand'] ?? '',
@@ -640,7 +687,7 @@ class AnalyticsService extends Component
                 );
             } else {
                 $csv .= sprintf(
-                    '"%s","%s","%s",%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
+                    '"%s","%s","%s",%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
                     $dateStr,
                     $timeStr,
                     $row['query'],
@@ -649,6 +696,10 @@ class AnalyticsService extends Component
                     $row['backend'],
                     $row['indexHandle'],
                     $siteName,
+                    $row['intent'] ?? '',
+                    $row['source'] ?? 'frontend',
+                    $row['platform'] ?? '',
+                    $row['appVersion'] ?? '',
                     $row['referrer'] ?? '',
                     $row['deviceType'] ?? '',
                     $row['deviceBrand'] ?? '',
@@ -666,6 +717,81 @@ class AnalyticsService extends Component
         }
 
         return $csv;
+    }
+
+    /**
+     * Export analytics data as JSON
+     *
+     * @param array $results Raw query results
+     * @param bool $geoEnabled Whether geo detection is enabled
+     * @return string JSON content
+     */
+    private function _exportAsJson(array $results, bool $geoEnabled): string
+    {
+        $data = [];
+
+        foreach ($results as $row) {
+            $date = \craft\helpers\DateTimeHelper::toDateTime($row['dateCreated']);
+
+            // Get site name
+            $siteName = null;
+            if (!empty($row['siteId'])) {
+                $site = Craft::$app->getSites()->getSiteById($row['siteId']);
+                $siteName = $site ? $site->name : null;
+            }
+
+            $item = [
+                'date' => $date ? $date->format('Y-m-d') : null,
+                'time' => $date ? $date->format('H:i:s') : null,
+                'datetime' => $date ? $date->format('c') : null,
+                'query' => $row['query'],
+                'resultsCount' => (int)$row['resultsCount'],
+                'executionTime' => $row['executionTime'] ? (float)$row['executionTime'] : null,
+                'backend' => $row['backend'],
+                'indexHandle' => $row['indexHandle'],
+                'siteId' => $row['siteId'] ? (int)$row['siteId'] : null,
+                'siteName' => $siteName,
+                'intent' => $row['intent'],
+                'source' => $row['source'] ?? 'frontend',
+                'platform' => $row['platform'],
+                'appVersion' => $row['appVersion'],
+                'referrer' => $row['referrer'],
+                'device' => [
+                    'type' => $row['deviceType'],
+                    'brand' => $row['deviceBrand'],
+                    'model' => $row['deviceModel'],
+                ],
+                'os' => [
+                    'name' => $row['osName'],
+                    'version' => $row['osVersion'],
+                ],
+                'browser' => [
+                    'name' => $row['browser'],
+                    'version' => $row['browserVersion'],
+                ],
+                'language' => $row['language'],
+                'isBot' => (bool)$row['isRobot'],
+                'botName' => $row['botName'],
+                'userAgent' => $row['userAgent'],
+            ];
+
+            // Add geo data if enabled
+            if ($geoEnabled) {
+                $item['location'] = [
+                    'country' => $row['country'],
+                    'city' => $row['city'],
+                    'region' => $row['region'],
+                ];
+            }
+
+            $data[] = $item;
+        }
+
+        return json_encode([
+            'exported' => date('c'),
+            'count' => count($data),
+            'data' => $data,
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -862,6 +988,41 @@ class AnalyticsService extends Component
     }
 
     /**
+     * Detect the source of the search request
+     *
+     * Detection logic:
+     * - CP request: Craft::$app->getRequest()->getIsCpRequest() returns true
+     * - Frontend: Referrer is from same site (same host as current request)
+     * - API: No referrer or referrer is from different host
+     *
+     * @param \craft\web\Request $request
+     * @param string|null $referer
+     * @return string The detected source (frontend, cp, or api)
+     */
+    private function _detectSource(\craft\web\Request $request, ?string $referer): string
+    {
+        // Check if this is a CP request
+        if ($request->getIsCpRequest()) {
+            return 'cp';
+        }
+
+        // Check referrer to determine frontend vs API
+        if ($referer) {
+            // Parse the referrer URL
+            $referrerHost = parse_url($referer, PHP_URL_HOST);
+            $currentHost = $request->getHostName();
+
+            // If referrer is from same host, it's a frontend search
+            if ($referrerHost && $currentHost && strcasecmp($referrerHost, $currentHost) === 0) {
+                return 'frontend';
+            }
+        }
+
+        // No referrer or external referrer = likely API call
+        return 'api';
+    }
+
+    /**
      * Anonymize IP address (keep first 3 octets for IPv4, first 4 segments for IPv6)
      *
      * @param string|null $ip
@@ -915,5 +1076,522 @@ class AnalyticsService extends Component
         }
 
         return hash('sha256', $ip . $salt);
+    }
+
+    /**
+     * Classify search intent based on query patterns
+     *
+     * @param string $query The search query
+     * @return string|null The classified intent
+     */
+    // TODO: Consider expanding intent categories later:
+    // - 'local' for "near me", "[city]" queries
+    // - 'support' for "help", "support", "problem", "issue" queries
+    public function classifyIntent(string $query): ?string
+    {
+        $query = strtolower(trim($query));
+
+        // Question patterns (informational questions)
+        $questionPatterns = [
+            '/^(what|how|why|when|where|who|which|can|does|is|are|do|will|should)\b/',
+            '/\?$/',
+        ];
+        foreach ($questionPatterns as $pattern) {
+            if (preg_match($pattern, $query)) {
+                return 'question';
+            }
+        }
+
+        // Product patterns (shopping intent)
+        $productPatterns = [
+            '/\b(buy|price|cost|cheap|discount|sale|order|shop|store|deal)\b/',
+            '/\b(review|compare|best|top|vs|versus)\b/',
+            '/\b(shipping|delivery|return|warranty)\b/',
+            '/\$\d+/',
+        ];
+        foreach ($productPatterns as $pattern) {
+            if (preg_match($pattern, $query)) {
+                return 'product';
+            }
+        }
+
+        // Navigational patterns (looking for specific page/brand)
+        $navigationalPatterns = [
+            '/\b(login|signin|sign in|account|dashboard|contact|about|home|page)\b/',
+            '/\b(\.com|\.org|\.net|\.io)\b/',
+        ];
+        foreach ($navigationalPatterns as $pattern) {
+            if (preg_match($pattern, $query)) {
+                return 'navigational';
+            }
+        }
+
+        // Default to informational for general queries
+        return 'informational';
+    }
+
+    /**
+     * Get intent breakdown
+     */
+    public function getIntentBreakdown(?int $siteId, int $days = 30): array
+    {
+        $query = (new Query())
+            ->select(['intent', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['not', ['intent' => null]])
+            ->andWhere(['source' => 'frontend']) // Only frontend searches
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('intent')
+            ->orderBy(['count' => SORT_DESC]);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+        $total = array_sum(array_column($results, 'count'));
+
+        $data = [];
+        foreach ($results as $row) {
+            $data[] = [
+                'intent' => $row['intent'],
+                'count' => (int)$row['count'],
+                'percentage' => $total > 0 ? round(($row['count'] / $total) * 100, 1) : 0,
+            ];
+        }
+
+        return [
+            'data' => $data,
+            'labels' => array_column($data, 'intent'),
+            'values' => array_column($data, 'count'),
+            'percentages' => array_column($data, 'percentage'),
+        ];
+    }
+
+    /**
+     * Get source breakdown (frontend, cp, api, custom sources)
+     */
+    public function getSourceBreakdown(?int $siteId, int $days = 30): array
+    {
+        $query = (new Query())
+            ->select(['source', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('source')
+            ->orderBy(['count' => SORT_DESC]);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+        $total = array_sum(array_column($results, 'count'));
+
+        $data = [];
+        foreach ($results as $row) {
+            // Format source label
+            $sourceLabel = match ($row['source']) {
+                'frontend' => 'Frontend',
+                'cp' => 'Control Panel',
+                'api' => 'API',
+                default => ucfirst($row['source']),
+            };
+
+            $data[] = [
+                'source' => $row['source'],
+                'label' => $sourceLabel,
+                'count' => (int)$row['count'],
+                'percentage' => $total > 0 ? round(($row['count'] / $total) * 100, 1) : 0,
+            ];
+        }
+
+        return [
+            'data' => $data,
+            'labels' => array_column($data, 'label'),
+            'values' => array_column($data, 'count'),
+            'percentages' => array_column($data, 'percentage'),
+        ];
+    }
+
+    /**
+     * Get average execution time over time for performance chart
+     */
+    public function getPerformanceData(?int $siteId, int $days = 30): array
+    {
+        $query = (new Query())
+            ->select([
+                'DATE(dateCreated) as date',
+                'AVG(executionTime) as avgTime',
+                'MIN(executionTime) as minTime',
+                'MAX(executionTime) as maxTime',
+                'COUNT(*) as searches',
+            ])
+            ->from('{{%searchmanager_analytics}}')
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('DATE(dateCreated)')
+            ->orderBy(['date' => SORT_ASC]);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return [
+            'labels' => array_column($results, 'date'),
+            'avgTime' => array_map(fn($r) => round((float)$r['avgTime'], 2), $results),
+            'minTime' => array_map(fn($r) => round((float)$r['minTime'], 2), $results),
+            'maxTime' => array_map(fn($r) => round((float)$r['maxTime'], 2), $results),
+            'searches' => array_map(fn($r) => (int)$r['searches'], $results),
+        ];
+    }
+
+    /**
+     * Get cache hit statistics
+     * Note: Cache hits are identified by executionTime = 0
+     */
+    public function getCacheStats(?int $siteId, int $days = 30): array
+    {
+        $dateThreshold = Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"));
+
+        // Total searches
+        $totalQuery = (new Query())
+            ->from('{{%searchmanager_analytics}}')
+            ->andWhere(['>=', 'dateCreated', $dateThreshold]);
+
+        if ($siteId) {
+            $totalQuery->andWhere(['siteId' => $siteId]);
+        }
+
+        $total = (int)$totalQuery->count();
+
+        // Cache hits (executionTime = 0)
+        $cacheHitQuery = (new Query())
+            ->from('{{%searchmanager_analytics}}')
+            ->andWhere(['>=', 'dateCreated', $dateThreshold])
+            ->andWhere(['executionTime' => 0]);
+
+        if ($siteId) {
+            $cacheHitQuery->andWhere(['siteId' => $siteId]);
+        }
+
+        $cacheHits = (int)$cacheHitQuery->count();
+        $cacheMisses = $total - $cacheHits;
+
+        return [
+            'total' => $total,
+            'cacheHits' => $cacheHits,
+            'cacheMisses' => $cacheMisses,
+            'hitRate' => $total > 0 ? round(($cacheHits / $total) * 100, 1) : 0,
+            'missRate' => $total > 0 ? round(($cacheMisses / $total) * 100, 1) : 0,
+        ];
+    }
+
+    /**
+     * Get top performing queries (fastest response time)
+     */
+    public function getTopPerformingQueries(?int $siteId, int $days = 30, int $limit = 10): array
+    {
+        $query = (new Query())
+            ->select([
+                'query',
+                'siteId',
+                'AVG(executionTime) as avgTime',
+                'MIN(executionTime) as minTime',
+                'MAX(executionTime) as maxTime',
+                'COUNT(*) as searches',
+                'AVG(resultsCount) as avgResults',
+            ])
+            ->from('{{%searchmanager_analytics}}')
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
+            ->andWhere(['>', 'resultsCount', 0]) // Only queries with results
+            ->groupBy(['query', 'siteId'])
+            ->having(['>=', 'COUNT(*)', 3]) // At least 3 searches for reliable avg
+            ->orderBy(['avgTime' => SORT_ASC])
+            ->limit($limit);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return array_map(function($r) {
+            $siteName = null;
+            if (!empty($r['siteId'])) {
+                $site = Craft::$app->getSites()->getSiteById($r['siteId']);
+                $siteName = $site ? $site->name : null;
+            }
+            return [
+                'query' => $r['query'],
+                'siteId' => $r['siteId'],
+                'siteName' => $siteName,
+                'avgTime' => round((float)$r['avgTime'], 2),
+                'minTime' => round((float)$r['minTime'], 2),
+                'maxTime' => round((float)$r['maxTime'], 2),
+                'searches' => (int)$r['searches'],
+                'avgResults' => round((float)$r['avgResults'], 1),
+            ];
+        }, $results);
+    }
+
+    /**
+     * Get worst performing queries (slowest response time)
+     */
+    public function getWorstPerformingQueries(?int $siteId, int $days = 30, int $limit = 10): array
+    {
+        $query = (new Query())
+            ->select([
+                'query',
+                'siteId',
+                'AVG(executionTime) as avgTime',
+                'MIN(executionTime) as minTime',
+                'MAX(executionTime) as maxTime',
+                'COUNT(*) as searches',
+                'AVG(resultsCount) as avgResults',
+            ])
+            ->from('{{%searchmanager_analytics}}')
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
+            ->groupBy(['query', 'siteId'])
+            ->having(['>=', 'COUNT(*)', 3]) // At least 3 searches for reliable avg
+            ->orderBy(['avgTime' => SORT_DESC])
+            ->limit($limit);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return array_map(function($r) {
+            $siteName = null;
+            if (!empty($r['siteId'])) {
+                $site = Craft::$app->getSites()->getSiteById($r['siteId']);
+                $siteName = $site ? $site->name : null;
+            }
+            return [
+                'query' => $r['query'],
+                'siteId' => $r['siteId'],
+                'siteName' => $siteName,
+                'avgTime' => round((float)$r['avgTime'], 2),
+                'minTime' => round((float)$r['minTime'], 2),
+                'maxTime' => round((float)$r['maxTime'], 2),
+                'searches' => (int)$r['searches'],
+                'avgResults' => round((float)$r['avgResults'], 1),
+            ];
+        }, $results);
+    }
+
+    /**
+     * Get country breakdown
+     */
+    public function getCountryBreakdown(?int $siteId, int $days = 30, int $limit = 10): array
+    {
+        $query = (new Query())
+            ->select(['country', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['not', ['country' => null]])
+            ->andWhere(['!=', 'country', ''])
+            ->andWhere(['source' => 'frontend'])
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('country')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+        $total = array_sum(array_column($results, 'count'));
+
+        $data = [];
+        foreach ($results as $row) {
+            $code = $row['country'];
+            $data[] = [
+                'code' => $code,
+                'name' => $this->_getCountryName($code),
+                'count' => (int)$row['count'],
+                'percentage' => $total > 0 ? round(($row['count'] / $total) * 100, 1) : 0,
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get city breakdown
+     */
+    public function getCityBreakdown(?int $siteId, int $days = 30, int $limit = 10): array
+    {
+        $query = (new Query())
+            ->select(['city', 'country', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['not', ['city' => null]])
+            ->andWhere(['!=', 'city', ''])
+            ->andWhere(['source' => 'frontend'])
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy(['city', 'country'])
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+        $total = array_sum(array_column($results, 'count'));
+
+        $data = [];
+        foreach ($results as $row) {
+            $data[] = [
+                'city' => $row['city'],
+                'country' => $row['country'],
+                'countryName' => $this->_getCountryName($row['country'] ?? ''),
+                'count' => (int)$row['count'],
+                'percentage' => $total > 0 ? round(($row['count'] / $total) * 100, 1) : 0,
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Get peak usage hours
+     */
+    public function getPeakUsageHours(?int $siteId, int $days = 30): array
+    {
+        $query = (new Query())
+            ->select(['HOUR(dateCreated) as hour', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['source' => 'frontend'])
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('HOUR(dateCreated)')
+            ->orderBy(['hour' => SORT_ASC]);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        // Initialize all 24 hours with 0
+        $hourlyData = array_fill(0, 24, 0);
+        foreach ($results as $row) {
+            $hourlyData[(int)$row['hour']] = (int)$row['count'];
+        }
+
+        // Find peak hour
+        $peakHour = array_search(max($hourlyData), $hourlyData);
+        $peakHourFormatted = sprintf('%02d:00', $peakHour);
+
+        return [
+            'data' => array_values($hourlyData),
+            'labels' => array_map(fn($h) => sprintf('%02d:00', $h), range(0, 23)),
+            'peakHour' => $peakHour,
+            'peakHourFormatted' => $peakHourFormatted,
+        ];
+    }
+
+    /**
+     * Get average execution time
+     */
+    public function getAverageExecutionTime(?int $siteId, int $days = 30): float
+    {
+        $query = (new Query())
+            ->select(['AVG(executionTime) as avgTime'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['not', ['executionTime' => null]])
+            ->andWhere(['source' => 'frontend'])
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $result = $query->scalar();
+        return round((float)$result, 2);
+    }
+
+    /**
+     * Get unique queries count
+     */
+    public function getUniqueQueriesCount(?int $siteId, int $days = 30): int
+    {
+        $query = (new Query())
+            ->select(['COUNT(DISTINCT query) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['source' => 'frontend'])
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        return (int)$query->scalar();
+    }
+
+    /**
+     * Get country name from country code
+     */
+    private function _getCountryName(string $countryCode): string
+    {
+        if (empty($countryCode)) {
+            return '';
+        }
+
+        $countries = [
+            'AF' => 'Afghanistan', 'AL' => 'Albania', 'DZ' => 'Algeria', 'AS' => 'American Samoa',
+            'AD' => 'Andorra', 'AO' => 'Angola', 'AI' => 'Anguilla', 'AQ' => 'Antarctica',
+            'AG' => 'Antigua and Barbuda', 'AR' => 'Argentina', 'AM' => 'Armenia', 'AW' => 'Aruba',
+            'AU' => 'Australia', 'AT' => 'Austria', 'AZ' => 'Azerbaijan', 'BS' => 'Bahamas',
+            'BH' => 'Bahrain', 'BD' => 'Bangladesh', 'BB' => 'Barbados', 'BY' => 'Belarus',
+            'BE' => 'Belgium', 'BZ' => 'Belize', 'BJ' => 'Benin', 'BM' => 'Bermuda',
+            'BT' => 'Bhutan', 'BO' => 'Bolivia', 'BA' => 'Bosnia and Herzegovina', 'BW' => 'Botswana',
+            'BR' => 'Brazil', 'BN' => 'Brunei', 'BG' => 'Bulgaria', 'BF' => 'Burkina Faso',
+            'BI' => 'Burundi', 'KH' => 'Cambodia', 'CM' => 'Cameroon', 'CA' => 'Canada',
+            'CV' => 'Cape Verde', 'KY' => 'Cayman Islands', 'CF' => 'Central African Republic',
+            'TD' => 'Chad', 'CL' => 'Chile', 'CN' => 'China', 'CO' => 'Colombia',
+            'CG' => 'Congo', 'CD' => 'Congo (DRC)', 'CR' => 'Costa Rica', 'HR' => 'Croatia',
+            'CU' => 'Cuba', 'CY' => 'Cyprus', 'CZ' => 'Czech Republic', 'DK' => 'Denmark',
+            'DJ' => 'Djibouti', 'DM' => 'Dominica', 'DO' => 'Dominican Republic', 'EC' => 'Ecuador',
+            'EG' => 'Egypt', 'SV' => 'El Salvador', 'GQ' => 'Equatorial Guinea', 'ER' => 'Eritrea',
+            'EE' => 'Estonia', 'ET' => 'Ethiopia', 'FJ' => 'Fiji', 'FI' => 'Finland',
+            'FR' => 'France', 'GA' => 'Gabon', 'GM' => 'Gambia', 'GE' => 'Georgia',
+            'DE' => 'Germany', 'GH' => 'Ghana', 'GR' => 'Greece', 'GD' => 'Grenada',
+            'GT' => 'Guatemala', 'GN' => 'Guinea', 'GW' => 'Guinea-Bissau', 'GY' => 'Guyana',
+            'HT' => 'Haiti', 'HN' => 'Honduras', 'HK' => 'Hong Kong', 'HU' => 'Hungary',
+            'IS' => 'Iceland', 'IN' => 'India', 'ID' => 'Indonesia', 'IR' => 'Iran',
+            'IQ' => 'Iraq', 'IE' => 'Ireland', 'IL' => 'Israel', 'IT' => 'Italy',
+            'JM' => 'Jamaica', 'JP' => 'Japan', 'JO' => 'Jordan', 'KZ' => 'Kazakhstan',
+            'KE' => 'Kenya', 'KW' => 'Kuwait', 'KG' => 'Kyrgyzstan', 'LA' => 'Laos',
+            'LV' => 'Latvia', 'LB' => 'Lebanon', 'LS' => 'Lesotho', 'LR' => 'Liberia',
+            'LY' => 'Libya', 'LI' => 'Liechtenstein', 'LT' => 'Lithuania', 'LU' => 'Luxembourg',
+            'MK' => 'Macedonia', 'MG' => 'Madagascar', 'MW' => 'Malawi', 'MY' => 'Malaysia',
+            'MV' => 'Maldives', 'ML' => 'Mali', 'MT' => 'Malta', 'MR' => 'Mauritania',
+            'MU' => 'Mauritius', 'MX' => 'Mexico', 'MD' => 'Moldova', 'MC' => 'Monaco',
+            'MN' => 'Mongolia', 'ME' => 'Montenegro', 'MA' => 'Morocco', 'MZ' => 'Mozambique',
+            'MM' => 'Myanmar', 'NA' => 'Namibia', 'NP' => 'Nepal', 'NL' => 'Netherlands',
+            'NZ' => 'New Zealand', 'NI' => 'Nicaragua', 'NE' => 'Niger', 'NG' => 'Nigeria',
+            'NO' => 'Norway', 'OM' => 'Oman', 'PK' => 'Pakistan', 'PA' => 'Panama',
+            'PG' => 'Papua New Guinea', 'PY' => 'Paraguay', 'PE' => 'Peru', 'PH' => 'Philippines',
+            'PL' => 'Poland', 'PT' => 'Portugal', 'PR' => 'Puerto Rico', 'QA' => 'Qatar',
+            'RO' => 'Romania', 'RU' => 'Russia', 'RW' => 'Rwanda', 'SA' => 'Saudi Arabia',
+            'SN' => 'Senegal', 'RS' => 'Serbia', 'SC' => 'Seychelles', 'SL' => 'Sierra Leone',
+            'SG' => 'Singapore', 'SK' => 'Slovakia', 'SI' => 'Slovenia', 'SO' => 'Somalia',
+            'ZA' => 'South Africa', 'KR' => 'South Korea', 'ES' => 'Spain', 'LK' => 'Sri Lanka',
+            'SD' => 'Sudan', 'SR' => 'Suriname', 'SZ' => 'Swaziland', 'SE' => 'Sweden',
+            'CH' => 'Switzerland', 'SY' => 'Syria', 'TW' => 'Taiwan', 'TJ' => 'Tajikistan',
+            'TZ' => 'Tanzania', 'TH' => 'Thailand', 'TG' => 'Togo', 'TO' => 'Tonga',
+            'TT' => 'Trinidad and Tobago', 'TN' => 'Tunisia', 'TR' => 'Turkey', 'TM' => 'Turkmenistan',
+            'UG' => 'Uganda', 'UA' => 'Ukraine', 'AE' => 'United Arab Emirates', 'GB' => 'United Kingdom',
+            'US' => 'United States', 'UY' => 'Uruguay', 'UZ' => 'Uzbekistan', 'VU' => 'Vanuatu',
+            'VE' => 'Venezuela', 'VN' => 'Vietnam', 'YE' => 'Yemen', 'ZM' => 'Zambia',
+            'ZW' => 'Zimbabwe',
+        ];
+
+        return $countries[$countryCode] ?? $countryCode;
     }
 }

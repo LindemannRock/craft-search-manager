@@ -13,12 +13,11 @@
                         <th>{{ 'Total Searches'|t('search-manager') }}</th>
                         <th>{{ 'Related Queries'|t('search-manager') }}</th>
                         <th>{{ 'Last Searched'|t('search-manager') }}</th>
-                        <th></th>
                     </tr>
                 </thead>
                 <tbody id="content-gaps-body">
                     {# Populated via JS #}
-                    <tr><td colspan="5" class="thin light">{{ "Loading content gaps..."|t('search-manager') }}</td></tr>
+                    <tr><td colspan="4" class="thin light">{{ "Loading content gaps..."|t('search-manager') }}</td></tr>
                 </tbody>
             </table>
         </div>
@@ -34,6 +33,7 @@
                 <thead>
                     <tr>
                         <th>{{ 'Query'|t('search-manager') }}</th>
+                        <th>{{ 'Site'|t('search-manager') }}</th>
                         <th>{{ 'Index'|t('search-manager') }}</th>
                         <th>{{ 'Backend'|t('search-manager') }}</th>
                         <th>{{ 'Date'|t('search-manager') }}</th>
@@ -44,6 +44,14 @@
                     {% for stat in recentUnhandled %}
                         <tr>
                             <td><code>{{ stat.query }}</code></td>
+                            <td>
+                                {% if stat.siteId %}
+                                    {% set site = craft.app.sites.getSiteById(stat.siteId) %}
+                                    {{ site ? site.name : '—' }}
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
                             <td>{{ stat.indexHandle }}</td>
                             <td>{{ stat.backend|title }}</td>
                             <td>{{ stat.dateCreated|date('short') }}</td>
@@ -51,7 +59,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="5" class="thin light">{{ "All searches have results!"|t('search-manager') }}</td>
+                            <td colspan="6" class="thin light">{{ "All searches have results!"|t('search-manager') }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>
