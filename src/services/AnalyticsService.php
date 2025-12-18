@@ -156,6 +156,153 @@ class AnalyticsService extends Component
     }
 
     /**
+     * Get query length distribution
+     */
+    public function getQueryLengthDistribution(?int $siteId, int $days = 30): array
+    {
+        $query = (new Query())
+            ->select(['query', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('query');
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        $distribution = [
+            '1 word' => 0,
+            '2-3 words' => 0,
+            '4+ words' => 0,
+        ];
+
+        foreach ($results as $row) {
+            $wordCount = str_word_count($row['query']);
+            $count = (int)$row['count'];
+
+            if ($wordCount === 1) {
+                $distribution['1 word'] += $count;
+            } elseif ($wordCount >= 2 && $wordCount <= 3) {
+                $distribution['2-3 words'] += $count;
+            } else {
+                $distribution['4+ words'] += $count;
+            }
+        }
+
+        return [
+            'labels' => array_keys($distribution),
+            'values' => array_values($distribution),
+        ];
+    }
+
+    /**
+     * Get word cloud data
+     */
+    public function getWordCloudData(?int $siteId, int $days = 30, int $limit = 50): array
+    {
+        $query = (new Query())
+            ->select(['query', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('query');
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+        $words = [];
+        $stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were'];
+
+        foreach ($results as $row) {
+            // Simple tokenization
+            $tokens = explode(' ', strtolower(trim($row['query'])));
+            foreach ($tokens as $token) {
+                $token = trim($token);
+                // Skip empty or stop words
+                if ($token === '' || in_array($token, $stopWords)) {
+                    continue;
+                }
+                // Skip numbers/symbols if desired, or keep them
+                $words[$token] = ($words[$token] ?? 0) + (int)$row['count'];
+            }
+        }
+
+        arsort($words);
+        $topWords = array_slice($words, 0, $limit);
+
+        $cloudData = [];
+        foreach ($topWords as $word => $count) {
+            $cloudData[] = [
+                'text' => $word,
+                'weight' => $count,
+            ];
+        }
+
+        return $cloudData;
+    }
+
+    /**
+     * Get zero-result clusters (content gaps)
+     * Groups similar failed queries together
+     */
+    public function getZeroResultClusters(?int $siteId, int $days = 30, int $limit = 20): array
+    {
+        // 1. Get all zero-result queries
+        $query = (new Query())
+            ->select(['query', 'COUNT(*) as count', 'MAX(dateCreated) as lastSearched'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['isHit' => 0])
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
+            ->groupBy('query')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit * 3); // Get more candidates for clustering
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $failedQueries = $query->all();
+        $clusters = [];
+
+        foreach ($failedQueries as $row) {
+            $term = strtolower(trim($row['query']));
+            $matched = false;
+
+            // Try to add to an existing cluster
+            foreach ($clusters as &$cluster) {
+                // Simple similarity check: contains or is contained by representative
+                // or Levenshtein distance is small
+                $rep = $cluster['representative'];
+
+                if (str_contains($rep, $term) || str_contains($term, $rep) || levenshtein($term, $rep) <= 2) {
+                    $cluster['count'] += (int)$row['count'];
+                    $cluster['queries'][] = $row['query'];
+                    // Update representative if this term is more frequent (handled by sorting order)
+                    $matched = true;
+                    break;
+                }
+            }
+
+            if (!$matched) {
+                $clusters[] = [
+                    'representative' => $term,
+                    'count' => (int)$row['count'],
+                    'queries' => [$row['query']],
+                    'lastSearched' => $row['lastSearched'],
+                ];
+            }
+        }
+
+        // Sort clusters by count
+        usort($clusters, fn($a, $b) => $b['count'] <=> $a['count']);
+
+        return array_slice($clusters, 0, $limit);
+    }
+
+    /**
      * Get analytics summary
      *
      * @param string $dateRange Date range filter

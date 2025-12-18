@@ -710,10 +710,59 @@ Build instant search interfaces with AJAX endpoints:
 **Autocomplete Endpoint:**
 ```javascript
 // GET /actions/search-manager/api/suggest
+// Simple format (default) - returns term strings
 const response = await fetch('/actions/search-manager/api/suggest?q=test&index=all-sites&limit=10');
 const suggestions = await response.json();
 // Returns: ["test", "testing", "tested"]
+
+// Detailed format - returns element objects with type info
+const response = await fetch('/actions/search-manager/api/suggest?q=test&index=all-sites&limit=10&format=detailed');
+const suggestions = await response.json();
+// Returns: [
+//   {"text": "Test Product", "type": "product", "id": 123},
+//   {"text": "Testing Guide", "type": "article", "id": 456}
+// ]
+
+// Filter by element type
+const response = await fetch('/actions/search-manager/api/suggest?q=test&index=all-sites&format=detailed&type=product');
+// Returns only product suggestions
 ```
+
+**Suggest API Parameters:**
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `q` | (required) | Search query |
+| `index` | `all-sites` | Index handle to search |
+| `limit` | `10` | Maximum suggestions |
+| `format` | `simple` | Response format: `simple` (strings) or `detailed` (objects with type) |
+| `type` | (none) | Filter by element type (only with `format=detailed`) |
+
+**Suggest Response Formats:**
+
+Simple format (`format=simple` or omitted):
+```json
+["test", "testing", "tested"]
+```
+
+Detailed format (`format=detailed`):
+```json
+[
+  {"text": "Test Product", "type": "product", "id": 123},
+  {"text": "Test Category", "type": "category", "id": 45},
+  {"text": "Testing Guide", "type": "article", "id": 789}
+]
+```
+
+**Element Type Detection:**
+The `type` field is automatically derived from the index name:
+- Index `products-ar` → type: `product`
+- Index `categories-en` → type: `category`
+- Index `blog-posts` → type: `article`
+- Index `pages` → type: `page`
+- Other indices → type: `entry` (default)
+
+You can also explicitly set `elementType` in your transformer data.
 
 **Search Endpoint:**
 ```javascript
@@ -723,7 +772,7 @@ const results = await response.json();
 // Returns: {hits: [{objectID: 123, score: 45.2}, ...], total: 15}
 ```
 
-**Example: Instant Search Component**
+**Example: Instant Search with Type Icons**
 ```html
 <input type="search" id="instant-search" placeholder="Search...">
 <div id="suggestions"></div>
@@ -731,7 +780,17 @@ const results = await response.json();
 
 <script>
 const input = document.getElementById('instant-search');
+const suggestionsDiv = document.getElementById('suggestions');
 let debounceTimer;
+
+// Type to icon mapping
+const typeIcons = {
+    'product': '📦',
+    'category': '🏷️',
+    'article': '📄',
+    'page': '📃',
+    'entry': '📝'
+};
 
 input.addEventListener('input', (e) => {
     clearTimeout(debounceTimer);
@@ -740,13 +799,25 @@ input.addEventListener('input', (e) => {
     if (query.length < 2) return;
 
     debounceTimer = setTimeout(async () => {
-        // Fetch autocomplete
-        const suggestResponse = await fetch(`/actions/search-manager/api/suggest?q=${query}&index=all-sites`);
+        // Fetch detailed suggestions with type info
+        const suggestResponse = await fetch(
+            `/actions/search-manager/api/suggest?q=${query}&index=all-sites&format=detailed`
+        );
         const suggestions = await suggestResponse.json();
-        displaySuggestions(suggestions);
 
-        // Fetch results
-        const searchResponse = await fetch(`/actions/search-manager/api/search?q=${query}&index=all-sites`);
+        // Display with icons
+        suggestionsDiv.innerHTML = suggestions.map(s => `
+            <div class="suggestion" data-id="${s.id}">
+                <span class="icon">${typeIcons[s.type] || '📝'}</span>
+                <span class="text">${s.text}</span>
+                <span class="type">${s.type}</span>
+            </div>
+        `).join('');
+
+        // Fetch search results
+        const searchResponse = await fetch(
+            `/actions/search-manager/api/search?q=${query}&index=all-sites`
+        );
         const results = await searchResponse.json();
         displayResults(results.hits);
     }, 300);
@@ -755,11 +826,12 @@ input.addEventListener('input', (e) => {
 ```
 
 **Features:**
-- ✅ Works with MySQL, Redis, and File backends
+- ✅ Works with MySQL, PostgreSQL, Redis, and File backends
 - ✅ Returns real indexed terms and search results
 - ✅ Supports all search operators in queries
 - ✅ Language-aware (auto-detects from current site)
 - ✅ Respects all configured settings (min length, limits, etc.)
+- ✅ Element type detection for rich UI (icons, filtering)
 
 **API Response Structure:**
 

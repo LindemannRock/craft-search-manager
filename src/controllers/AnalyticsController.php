@@ -194,6 +194,7 @@ class AnalyticsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = $request->getParam('siteId');
         $dateRange = $request->getParam('dateRange', 'last7days');
+        $type = $request->getParam('type', 'all'); // 'all', 'summary', 'chart', 'query-analysis', 'content-gaps', 'device-stats'
 
         try {
             // Determine days based on date range
@@ -206,54 +207,84 @@ class AnalyticsController extends Controller
                 default => 7,
             };
 
-            // Get chart data
-            $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $days);
+            $data = [];
 
-            // Get most common searches
-            $mostCommon = SearchManager::$plugin->analytics->getMostCommon404s($siteId, 15);
+            // Summary Stats (Header)
+            if ($type === 'all' || $type === 'summary') {
+                $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId);
+                $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true);
+                $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false);
+                $mostCommon = SearchManager::$plugin->analytics->getMostCommon404s($siteId, 15);
+                $recentUnhandled = SearchManager::$plugin->analytics->getRecent404s($siteId, 5, false);
 
-            // Get recent searches
-            $recentUnhandled = SearchManager::$plugin->analytics->getRecent404s($siteId, 5, false);
-
-            // Get counts
-            $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId);
-            $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true);
-            $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false);
-
-            // Get device analytics
-            $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $days);
-            $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $days);
-            $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $days);
-            $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $days);
-
-            // Transform data for charts
-            $deviceBreakdown = [
-                'labels' => array_column($deviceData, 'deviceType'),
-                'values' => array_column($deviceData, 'count'),
-            ];
-            $browserBreakdown = [
-                'labels' => array_column($browserData, 'browser'),
-                'values' => array_column($browserData, 'count'),
-            ];
-            $osBreakdown = [
-                'labels' => array_column($osData, 'osName'),
-                'values' => array_column($osData, 'count'),
-            ];
-
-            return $this->asJson([
-                'success' => true,
-                'data' => [
-                    'chartData' => $chartData,
-                    'mostCommon' => $mostCommon,
-                    'recentUnhandled' => $recentUnhandled,
+                $data['summary'] = [
                     'totalCount' => $totalCount,
                     'handledCount' => $handledCount,
                     'unhandledCount' => $unhandledCount,
-                    'deviceBreakdown' => $deviceBreakdown,
-                    'browserBreakdown' => $browserBreakdown,
-                    'osBreakdown' => $osBreakdown,
+                    'mostCommon' => $mostCommon,
+                    'recentUnhandled' => $recentUnhandled,
+                ];
+            }
+
+            // Main Chart
+            if ($type === 'all' || $type === 'chart') {
+                $data['chartData'] = SearchManager::$plugin->analytics->getChartData($siteId, $days);
+            }
+
+            // Query Analysis Tab
+            if ($type === 'all' || $type === 'query-analysis') {
+                $data['queryAnalysis'] = [
+                    'lengthDistribution' => SearchManager::$plugin->analytics->getQueryLengthDistribution($siteId, $days),
+                    'wordCloud' => SearchManager::$plugin->analytics->getWordCloudData($siteId, $days),
+                ];
+            }
+
+            // Content Gaps Tab
+            if ($type === 'all' || $type === 'content-gaps') {
+                $data['contentGaps'] = [
+                    'clusters' => SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $days),
+                ];
+            }
+
+            // Audience/Device Stats
+            if ($type === 'all' || $type === 'device-stats') {
+                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $days);
+                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $days);
+                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $days);
+                $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $days);
+
+                $data['deviceStats'] = [
+                    'deviceBreakdown' => [
+                        'labels' => array_column($deviceData, 'deviceType'),
+                        'values' => array_column($deviceData, 'count'),
+                    ],
+                    'browserBreakdown' => [
+                        'labels' => array_column($browserData, 'browser'),
+                        'values' => array_column($browserData, 'count'),
+                    ],
+                    'osBreakdown' => [
+                        'labels' => array_column($osData, 'osName'),
+                        'values' => array_column($osData, 'count'),
+                    ],
                     'botStats' => $botStats,
-                ],
+                ];
+            }
+
+            // Flatten structure for backward compatibility if 'all' is requested
+            if ($type === 'all') {
+                return $this->asJson([
+                    'success' => true,
+                    'data' => array_merge(
+                        $data['summary'],
+                        ['chartData' => $data['chartData']],
+                        $data['deviceStats']
+                    ),
+                ]);
+            }
+
+            return $this->asJson([
+                'success' => true,
+                'data' => $data,
             ]);
         } catch (\Exception $e) {
             return $this->asJson([

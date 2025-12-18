@@ -1,0 +1,65 @@
+<div class="analytics-stats">
+    <div class="stat-box">
+        <div class="stat-value" id="total-404s">{{ (totalCount ?? 0)|number }}</div>
+        <div class="stat-label">{{ "Total Searches"|t('search-manager') }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value" id="handled-404s">{{ (handledCount ?? 0)|number }}</div>
+        <div class="stat-label">{{ "With Results"|t('search-manager') }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value" id="unhandled-404s">{{ (unhandledCount ?? 0)|number }}</div>
+        <div class="stat-label">{{ "Zero Results"|t('search-manager') }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value" id="success-rate">{{ totalCount > 0 ? ((handledCount / totalCount * 100)|round) : 0 }}%</div>
+        <div class="stat-label">{{ "Success Rate"|t('search-manager') }}</div>
+    </div>
+</div>
+
+<h2 style="margin: 30px 0 20px;">{{ "Search Trend"|t('search-manager') }}</h2>
+
+<div class="analytics-charts">
+    <div class="chart-container full-width">
+        <canvas id="404-trend-chart"></canvas>
+    </div>
+</div>
+
+<h2 style="margin: 30px 0 20px;">{{ "Most Common Queries (Top 15)"|t('search-manager') }}</h2>
+
+<div class="analytics-charts">
+    <div class="chart-container full-width">
+        <div class="table-scroll-container">
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th>{{ 'Query'|t('search-manager') }}</th>
+                        <th>{{ 'Searches'|t('search-manager') }}</th>
+                        <th>{{ 'Avg Results'|t('search-manager') }}</th>
+                        <th>{{ 'Date'|t('search-manager') }}</th>
+                        <th>{{ 'Time'|t('search-manager') }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in mostCommon %}
+                        <tr>
+                            <td>
+                                <span><code>{{ stat.query }}</code></span>
+                            </td>
+                            <td><strong>{{ stat.count|number }}</strong></td>
+                            <td>
+                                {{ (stat.totalResults / stat.count)|round(1) }}
+                            </td>
+                            <td>{{ stat.lastSearched|date('short') }}</td>
+                            <td>{{ stat.lastSearched|time('short') }}</td>
+                        </tr>
+                    {% else %}
+                        <tr>
+                            <td colspan="5" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

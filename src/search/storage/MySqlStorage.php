@@ -167,6 +167,7 @@ class MySqlStorage implements StorageInterface
             '{{%searchmanager_search_documents}}',
             '{{%searchmanager_search_terms}}',
             '{{%searchmanager_search_titles}}',
+            '{{%searchmanager_search_elements}}',
         ];
 
         foreach ($tables as $table) {
@@ -292,6 +293,91 @@ class MySqlStorage implements StorageInterface
                 'elementId' => $elementId,
             ]
         )->execute();
+    }
+
+    // =========================================================================
+    // ELEMENT OPERATIONS (for rich autocomplete suggestions)
+    // =========================================================================
+
+    /**
+     * Store element metadata for autocomplete suggestions
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @param string $title Full title for display
+     * @param string $elementType Element type (product, category, etc.)
+     * @return void
+     */
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void
+    {
+        // Normalize searchText for prefix matching (lowercase)
+        $searchText = mb_strtolower(trim($title));
+
+        $sql = "REPLACE INTO {{%searchmanager_search_elements}}
+                (`indexHandle`, `siteId`, `elementId`, `title`, `elementType`, `searchText`) VALUES
+                (" . $this->db->quoteValue($this->indexHandle) . ", "
+                . (int)$siteId . ", "
+                . (int)$elementId . ", "
+                . $this->db->quoteValue($title) . ", "
+                . $this->db->quoteValue($elementType) . ", "
+                . $this->db->quoteValue($searchText) . ")";
+
+        $this->db->createCommand($sql)->execute();
+
+        $this->logDebug('Stored element for suggestions', [
+            'site_id' => $siteId,
+            'element_id' => $elementId,
+            'type' => $elementType,
+        ]);
+    }
+
+    /**
+     * Delete element metadata
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @return void
+     */
+    public function deleteElement(int $siteId, int $elementId): void
+    {
+        $this->db->createCommand()->delete(
+            '{{%searchmanager_search_elements}}',
+            [
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'elementId' => $elementId,
+            ]
+        )->execute();
+    }
+
+    /**
+     * Get element suggestions by prefix
+     *
+     * @param string $query Search query (prefix)
+     * @param int $siteId Site ID
+     * @param int $limit Maximum results
+     * @param string|null $elementType Filter by element type (null = all types)
+     * @return array Array of suggestions [{title, elementType, elementId}, ...]
+     */
+    public function getElementSuggestions(string $query, int $siteId, int $limit = 10, ?string $elementType = null): array
+    {
+        $searchText = mb_strtolower(trim($query));
+
+        $dbQuery = (new Query())
+            ->select(['title', 'elementType', 'elementId'])
+            ->from('{{%searchmanager_search_elements}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+            ])
+            ->andWhere(['like', 'searchText', $searchText . '%', false])
+            ->limit($limit);
+
+        if ($elementType !== null) {
+            $dbQuery->andWhere(['elementType' => $elementType]);
+        }
+
+        return $dbQuery->all();
     }
 
     // =========================================================================
@@ -648,6 +734,7 @@ class MySqlStorage implements StorageInterface
             '{{%searchmanager_search_ngrams}}',
             '{{%searchmanager_search_ngram_counts}}',
             '{{%searchmanager_search_metadata}}',
+            '{{%searchmanager_search_elements}}',
         ];
 
         foreach ($tables as $table) {
@@ -678,6 +765,7 @@ class MySqlStorage implements StorageInterface
             '{{%searchmanager_search_ngrams}}',
             '{{%searchmanager_search_ngram_counts}}',
             '{{%searchmanager_search_metadata}}',
+            '{{%searchmanager_search_elements}}',
         ];
 
         foreach ($tables as $table) {

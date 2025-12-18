@@ -56,16 +56,19 @@ class PostgreSqlBackend extends BaseBackend
     /**
      * Get or create storage instance (public for autocomplete/other services)
      *
-     * @param string $indexHandle Index handle
+     * @param string $indexHandle Index handle (without prefix)
      * @return MySqlStorage
      */
     public function getStorage(string $indexHandle): MySqlStorage
     {
-        if (!isset($this->storages[$indexHandle])) {
-            $this->storages[$indexHandle] = new MySqlStorage($indexHandle);
+        // Apply index prefix to get the full index name
+        $fullIndexName = $this->getFullIndexName($indexHandle);
+
+        if (!isset($this->storages[$fullIndexName])) {
+            $this->storages[$fullIndexName] = new MySqlStorage($fullIndexName);
         }
 
-        return $this->storages[$indexHandle];
+        return $this->storages[$fullIndexName];
     }
 
     public function getName(): string
@@ -95,6 +98,7 @@ class PostgreSqlBackend extends BaseBackend
         try {
             $fullIndexName = $this->getFullIndexName($indexName);
             $engine = $this->getSearchEngine($fullIndexName);
+            $storage = new MySqlStorage($fullIndexName);
 
             // Extract title and content
             $title = $data['title'] ?? '';
@@ -108,13 +112,20 @@ class PostgreSqlBackend extends BaseBackend
             $siteId = $data['siteId'] ?? 1;
             $elementId = $data['objectID'] ?? $data['id'];
 
+            // Get element type: from data, or derive from index name
+            $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
+
             // Use SearchEngine to index
             $success = $engine->indexDocument($siteId, $elementId, $title, $content);
 
             if ($success) {
+                // Store element metadata for rich autocomplete suggestions
+                $storage->storeElement($siteId, $elementId, $title, $elementType);
+
                 $this->logDebug('Document indexed with SearchEngine', [
                     'index' => $fullIndexName,
                     'element_id' => $elementId,
+                    'element_type' => $elementType,
                 ]);
             }
 
@@ -123,6 +134,51 @@ class PostgreSqlBackend extends BaseBackend
             $this->logError('Failed to index in PostgreSQL', ['error' => $e->getMessage()]);
             return false;
         }
+    }
+
+    /**
+     * Derive element type from index name or data
+     *
+     * @param string $indexName Index name
+     * @param array $data Element data
+     * @return string Element type (product, category, etc.)
+     */
+    private function deriveElementType(string $indexName, array $data): string
+    {
+        // Check for common patterns in index name
+        $indexLower = strtolower($indexName);
+
+        if (str_contains($indexLower, 'product')) {
+            return 'product';
+        }
+
+        if (str_contains($indexLower, 'categor')) {
+            return 'category';
+        }
+
+        if (str_contains($indexLower, 'article') || str_contains($indexLower, 'blog') || str_contains($indexLower, 'post')) {
+            return 'article';
+        }
+
+        if (str_contains($indexLower, 'page')) {
+            return 'page';
+        }
+
+        // Fallback: check Craft element class if available
+        if (isset($data['_elementType'])) {
+            $elementClass = $data['_elementType'];
+            if (str_contains($elementClass, 'Category')) {
+                return 'category';
+            }
+            if (str_contains($elementClass, 'Entry')) {
+                return 'entry';
+            }
+            if (str_contains($elementClass, 'Asset')) {
+                return 'asset';
+            }
+        }
+
+        return 'entry'; // Default fallback
     }
 
     public function batchIndex(string $indexName, array $items): bool

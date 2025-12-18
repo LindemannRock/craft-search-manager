@@ -169,7 +169,10 @@ class RedisStorage implements StorageInterface
         $titleKey = $this->getTitleKey($siteId, $elementId);
         $this->redis->del($titleKey);
 
-        $this->logDebug('Deleted document and title terms', [
+        // Delete element metadata
+        $this->deleteElement($siteId, $elementId);
+
+        $this->logDebug('Deleted document, title terms, and element', [
             'site_id' => $siteId,
             'element_id' => $elementId,
         ]);
@@ -314,6 +317,137 @@ class RedisStorage implements StorageInterface
     {
         $key = $this->getTitleKey($siteId, $elementId);
         $this->redis->del($key);
+    }
+
+    // =========================================================================
+    // ELEMENT OPERATIONS (for rich autocomplete suggestions)
+    // =========================================================================
+
+    /**
+     * Store element metadata for autocomplete suggestions
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @param string $title Full title for display
+     * @param string $elementType Element type (product, category, etc.)
+     * @return void
+     */
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void
+    {
+        $key = $this->getElementKey($siteId, $elementId);
+
+        // Normalize searchText for prefix matching (lowercase)
+        $searchText = mb_strtolower(trim($title));
+
+        $data = [
+            'title' => $title,
+            'elementType' => $elementType,
+            'searchText' => $searchText,
+        ];
+
+        $this->redis->hMSet($key, $data);
+
+        // Also add to a sorted set for prefix searching
+        $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
+        $this->redis->zAdd($indexKey, 0, $elementId . ':' . $searchText);
+
+        $this->logDebug('Stored element for suggestions', [
+            'site_id' => $siteId,
+            'element_id' => $elementId,
+            'type' => $elementType,
+        ]);
+    }
+
+    /**
+     * Delete element metadata
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @return void
+     */
+    public function deleteElement(int $siteId, int $elementId): void
+    {
+        // Get element data first to remove from index
+        $key = $this->getElementKey($siteId, $elementId);
+        $data = $this->redis->hGetAll($key);
+
+        if (!empty($data['searchText'])) {
+            // Remove from sorted set index
+            $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
+            $this->redis->zRem($indexKey, $elementId . ':' . $data['searchText']);
+        }
+
+        // Delete element hash
+        $this->redis->del($key);
+    }
+
+    /**
+     * Get element suggestions by prefix
+     *
+     * @param string $query Search query (prefix)
+     * @param int $siteId Site ID
+     * @param int $limit Maximum results
+     * @param string|null $elementType Filter by element type (null = all types)
+     * @return array Array of suggestions [{title, elementType, elementId}, ...]
+     */
+    public function getElementSuggestions(string $query, int $siteId, int $limit = 10, ?string $elementType = null): array
+    {
+        $searchText = mb_strtolower(trim($query));
+        $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
+
+        // Use ZRANGEBYLEX for prefix matching
+        $min = '[' . $searchText;
+        $max = '[' . $searchText . "\xff";
+
+        // Get more results to account for type filtering
+        $fetchLimit = $elementType ? $limit * 3 : $limit;
+        $matches = $this->redis->zRangeByLex($indexKey, $min, $max, 0, $fetchLimit);
+
+        if (empty($matches)) {
+            return [];
+        }
+
+        $results = [];
+
+        // Use pipeline to batch fetch element data
+        $this->redis->multi(\Redis::PIPELINE);
+        $elementIds = [];
+
+        foreach ($matches as $match) {
+            // Extract elementId from "elementId:searchText"
+            $parts = explode(':', $match, 2);
+            $elemId = (int)$parts[0];
+            $elementIds[] = $elemId;
+
+            $key = $this->getElementKey($siteId, $elemId);
+            $this->redis->hGetAll($key);
+        }
+
+        $elementsData = $this->redis->exec();
+
+        // Build results
+        foreach ($elementsData as $index => $data) {
+            if (empty($data)) {
+                continue;
+            }
+
+            // Apply type filter if specified
+            if ($elementType !== null && ($data['elementType'] ?? '') !== $elementType) {
+                continue;
+            }
+
+            $results[] = [
+                'title' => $data['title'] ?? '',
+                'elementType' => $data['elementType'] ?? 'entry',
+                'elementId' => $elementIds[$index],
+            ];
+
+            if (count($results) >= $limit) {
+                break;
+            }
+        }
+
+        return $results;
     }
 
     // =========================================================================
@@ -540,6 +674,8 @@ class RedisStorage implements StorageInterface
             $this->keyPrefix . 'ngram:' . $siteId . ':*',
             $this->keyPrefix . 'ngramcount:' . $siteId . ':*',
             $this->keyPrefix . 'meta:' . $siteId . ':*',
+            $this->keyPrefix . 'elem:' . $siteId . ':*',
+            $this->keyPrefix . 'elemindex:' . $siteId,
         ];
 
         foreach ($patterns as $pattern) {
@@ -611,6 +747,18 @@ class RedisStorage implements StorageInterface
     private function getTitleKey(int $siteId, int $elementId): string
     {
         return $this->keyPrefix . 'title:' . $siteId . ':' . $elementId;
+    }
+
+    /**
+     * Get element key (for autocomplete suggestions)
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @return string Redis key
+     */
+    private function getElementKey(int $siteId, int $elementId): string
+    {
+        return $this->keyPrefix . 'elem:' . $siteId . ':' . $elementId;
     }
 
     /**

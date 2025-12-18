@@ -14,6 +14,16 @@
     },
 ] %}
 
+{# Define Tabs #}
+{% set tabs = {
+    overview: { label: "Overview"|t('search-manager'), url: '#overview' },
+    queries: { label: "Query Analysis"|t('search-manager'), url: '#queries' },
+    contentGaps: { label: "Content Gaps"|t('search-manager'), url: '#content-gaps' },
+    audience: { label: "Audience"|t('search-manager'), url: '#audience' }
+} %}
+
+{% set selectedTab = 'overview' %}
+
 {% block actionButton %}
 	<div id="action-button" class="btngroup">
 		<button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
@@ -50,168 +60,21 @@
 
 {% block content %}
     <div id="analytics-dashboard">
-        <div class="analytics-stats">
-            <div class="stat-box">
-                <div class="stat-value" id="total-404s">{{ (totalCount ?? 0)|number }}</div>
-                <div class="stat-label">{{ "Total Searches"|t('search-manager') }}</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value" id="handled-404s">{{ (handledCount ?? 0)|number }}</div>
-                <div class="stat-label">{{ "With Results"|t('search-manager') }}</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value" id="unhandled-404s">{{ (unhandledCount ?? 0)|number }}</div>
-                <div class="stat-label">{{ "Zero Results"|t('search-manager') }}</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-value" id="success-rate">{{ totalCount > 0 ? ((handledCount / totalCount * 100)|round) : 0 }}%</div>
-                <div class="stat-label">{{ "Success Rate"|t('search-manager') }}</div>
-            </div>
+        {# Tab Content Containers #}
+        <div id="tab-overview" class="tab-content">
+            {% include 'search-manager/analytics/_tabs/overview' %}
+        </div>
+        
+        <div id="tab-queries" class="tab-content hidden">
+             {% include 'search-manager/analytics/_tabs/queries' %}
         </div>
 
-        <h2 style="margin: 30px 0 20px;">{{ "Search Trend"|t('search-manager') }}</h2>
-
-        <div class="analytics-charts">
-            <div class="chart-container full-width">
-                <canvas id="404-trend-chart"></canvas>
-            </div>
+        <div id="tab-content-gaps" class="tab-content hidden">
+             {% include 'search-manager/analytics/_tabs/content-gaps' %}
         </div>
 
-        <h2 style="margin: 30px 0 20px;">{{ "Most Common Queries (Top 15)"|t('search-manager') }}</h2>
-
-        <div class="analytics-charts">
-            <div class="chart-container full-width">
-                <div class="table-scroll-container">
-                    <table class="data fullwidth">
-                        <thead>
-                            <tr>
-                                <th>{{ 'Query'|t('search-manager') }}</th>
-                                <th>{{ 'Searches'|t('search-manager') }}</th>
-                                <th>{{ 'Avg Results'|t('search-manager') }}</th>
-                                <th>{{ 'Date'|t('search-manager') }}</th>
-                                <th>{{ 'Time'|t('search-manager') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for stat in mostCommon %}
-                                <tr>
-                                    <td>
-                                        <span><code>{{ stat.query }}</code></span>
-                                    </td>
-                                    <td><strong>{{ stat.count|number }}</strong></td>
-                                    <td>
-                                        {{ (stat.totalResults / stat.count)|round(1) }}
-                                    </td>
-                                    <td>{{ stat.lastSearched|date('short') }}</td>
-                                    <td>{{ stat.lastSearched|time('short') }}</td>
-                                </tr>
-                            {% else %}
-                                <tr>
-                                    <td colspan="5" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <h2 style="margin: 30px 0 20px;">{{ "Traffic Analysis"|t('search-manager') }}</h2>
-
-        <div class="analytics-charts two-columns">
-            <div class="chart-container">
-                <h3>{{ "Bot vs Human Traffic"|t('search-manager') }}</h3>
-                <canvas id="bot-chart"></canvas>
-                <div style="text-align: center; margin-top: 10px; color: #666;">
-                    <strong>{{ botStats.botPercentage }}%</strong> of traffic is from bots
-                </div>
-            </div>
-
-            <div class="chart-container">
-                <h3>{{ "Top Bots"|t('search-manager') }}</h3>
-                <div class="table-scroll-container">
-                    <table class="data fullwidth">
-                        <thead>
-                            <tr>
-                                <th>{{ "Bot Name"|t('search-manager') }}</th>
-                                <th>{{ "Searches"|t('search-manager') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if botStats.topBots|length > 0 %}
-                                {% for bot in botStats.topBots %}
-                                    <tr>
-                                        <td>{{ bot.botName }}</td>
-                                        <td>{{ bot.count|number }}</td>
-                                    </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="2" style="text-align: center; color: #999;">
-                                        {{ "No bot data available"|t('search-manager') }}
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <h2 style="margin: 30px 0 20px;">{{ "Device Analytics"|t('search-manager') }}</h2>
-
-        <div class="analytics-charts two-columns">
-            <div class="chart-container">
-                <h3>{{ "Device Types"|t('search-manager') }}</h3>
-                <canvas id="device-chart"></canvas>
-            </div>
-
-            <div class="chart-container">
-                <h3>{{ "Browser Usage"|t('search-manager') }}</h3>
-                <canvas id="browser-chart"></canvas>
-            </div>
-        </div>
-
-        <div class="analytics-charts" style="margin-top: 30px;">
-            <div class="chart-container">
-                <h3>{{ "Operating Systems"|t('search-manager') }}</h3>
-                <canvas id="os-chart"></canvas>
-            </div>
-        </div>
-
-        <h2 style="margin: 30px 0 20px;">{{ "Recent Zero-Result Queries"|t('search-manager') }}</h2>
-
-        <div class="analytics-charts">
-            <div class="chart-container full-width">
-                <div class="table-scroll-container">
-                    <table class="data fullwidth">
-                        <thead>
-                            <tr>
-                                <th>{{ 'Query'|t('search-manager') }}</th>
-                                <th>{{ 'Index'|t('search-manager') }}</th>
-                                <th>{{ 'Backend'|t('search-manager') }}</th>
-                                <th>{{ 'Date'|t('search-manager') }}</th>
-                                <th>{{ 'Time'|t('search-manager') }}</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for stat in recentUnhandled %}
-                                <tr>
-                                    <td><code>{{ stat.query }}</code></td>
-                                    <td>{{ stat.indexHandle }}</td>
-                                    <td>{{ stat.backend|title }}</td>
-                                    <td>{{ stat.dateCreated|date('short') }}</td>
-                                    <td>{{ stat.dateCreated|time('short') }}</td>
-                                </tr>
-                            {% else %}
-                                <tr>
-                                    <td colspan="5" class="thin light">{{ "All searches have results!"|t('search-manager') }}</td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        <div id="tab-audience" class="tab-content hidden">
+             {% include 'search-manager/analytics/_tabs/audience' %}
         </div>
     </div>
 
@@ -221,6 +84,10 @@
 {% css %}
     #analytics-dashboard {
         padding: 24px;
+    }
+    
+    .tab-content.hidden {
+        display: none;
     }
 
     .analytics-stats {
@@ -281,19 +148,13 @@
         border: 1px solid #e3e5e8;
         border-radius: 4px;
         padding: 24px;
-        min-width: 0; /* Allow flex/grid item to shrink below content size */
-        overflow: hidden; /* Prevent content from pushing out */
+        min-width: 0;
+        overflow: hidden;
     }
 
     .chart-container canvas {
         max-height: 300px;
         max-width: 100%;
-    }
-
-    /* Ensure chart wrapper respects container size */
-    .chart-container > canvas {
-        display: block;
-        box-sizing: border-box;
     }
 
     .table-scroll-container {
@@ -307,353 +168,232 @@
         min-width: 100%;
         width: 100%;
     }
+
+    /* Word Cloud Styles */
+    .word-cloud-item {
+        display: inline-block;
+        padding: 5px;
+        color: #0d78f2;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .word-cloud-item:hover {
+        color: #d35400;
+        transform: scale(1.1);
+    }
 {% endcss %}
 
 {% js %}
-    // Load Chart.js if not already loaded
+    // Global Chart Instances
+    window.smCharts = {};
+    window.currentTab = 'overview';
+
+    // Load Chart.js
     if (typeof Chart === 'undefined') {
         var script = document.createElement('script');
         script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
-        script.onload = function() {
-            console.log('Chart.js loaded successfully');
-            initCharts();
-        };
-        script.onerror = function() {
-            console.error('Failed to load Chart.js from CDN');
-        };
+        script.onload = function() { initCharts(); };
         document.head.appendChild(script);
     } else {
-        console.log('Chart.js already loaded');
         initCharts();
     }
 
-    // Store chart instances globally to destroy them before creating new ones
-    window.searchManagerCharts = window.searchManagerCharts || {};
-
+    // Initialize Charts based on initial data
     function initCharts(data) {
-        // Destroy existing charts if they exist
-        if (window.searchManagerCharts.trendChart) {
-            window.searchManagerCharts.trendChart.destroy();
-        }
-        if (window.searchManagerCharts.botChart) {
-            window.searchManagerCharts.botChart.destroy();
-        }
-        if (window.searchManagerCharts.deviceChart) {
-            window.searchManagerCharts.deviceChart.destroy();
-        }
-        if (window.searchManagerCharts.browserChart) {
-            window.searchManagerCharts.browserChart.destroy();
-        }
-        if (window.searchManagerCharts.osChart) {
-            window.searchManagerCharts.osChart.destroy();
-        }
+        // Destroy existing
+        Object.values(window.smCharts).forEach(c => c.destroy());
+        window.smCharts = {};
 
-        // Chart colors
-        const chartColors = [
-            '#0d78f2', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c',
-            '#34495e', '#e67e22', '#3498db', '#2ecc71', '#c0392b', '#f1c40f'
-        ];
-
-        // Use provided data or fall back to initial page data
+        const chartColors = ['#0d78f2', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6'];
+        
+        // Data sources (either passed or from server-rendered variables)
         const chartData = data ? data.chartData : {{ chartData|json_encode|raw }};
         const botStats = data ? data.botStats : {{ botStats|json_encode|raw }};
         const deviceBreakdown = data ? data.deviceBreakdown : {{ deviceBreakdown|json_encode|raw }};
         const browserBreakdown = data ? data.browserBreakdown : {{ browserBreakdown|json_encode|raw }};
         const osBreakdown = data ? data.osBreakdown : {{ osBreakdown|json_encode|raw }};
 
-        if (chartData && chartData.length > 0) {
-            // 404 Trend Chart
-            window.searchManagerCharts.trendChart = new Chart(document.getElementById('404-trend-chart'), {
+        // 1. Overview Tab Charts
+        if (document.getElementById('404-trend-chart') && chartData) {
+            window.smCharts.trend = new Chart(document.getElementById('404-trend-chart'), {
                 type: 'line',
                 data: {
                     labels: chartData.map(d => d.date),
                     datasets: [
-                        {
-                            label: '{{ "With Results"|t('search-manager') }}',
-                            data: chartData.map(d => d.withResults),
-                            borderColor: '#10B981',
-                            backgroundColor: '#10B981',
-                            tension: 0.1,
-                            fill: false
-                        },
-                        {
-                            label: '{{ "Zero Results"|t('search-manager') }}',
-                            data: chartData.map(d => d.zeroResults),
-                            borderColor: '#EF4444',
-                            backgroundColor: '#EF4444',
-                            tension: 0.1,
-                            fill: false
-                        }
+                        { label: 'With Results', data: chartData.map(d => d.withResults), borderColor: '#10B981', tension: 0.1 },
+                        { label: 'Zero Results', data: chartData.map(d => d.zeroResults), borderColor: '#EF4444', tension: 0.1 }
                     ]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1,
-                                precision: 0
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            align: 'center',
-                            labels: {
-                                usePointStyle: true,
-                                pointStyle: 'circle',
-                                padding: 20
-                            }
-                        }
-                    }
-                }
+                options: { responsive: true, maintainAspectRatio: false }
             });
         }
 
-        // Bot vs Human Traffic Chart
+        // 2. Audience Tab Charts (Only init if tab is active or data is ready)
         if (botStats && botStats.chart) {
-            window.searchManagerCharts.botChart = new Chart(document.getElementById('bot-chart'), {
+             window.smCharts.bot = new Chart(document.getElementById('bot-chart'), {
                 type: 'doughnut',
                 data: {
                     labels: botStats.chart.labels,
-                    datasets: [{
-                        data: botStats.chart.values,
-                        backgroundColor: [chartColors[1], chartColors[2]]
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
+                    datasets: [{ data: botStats.chart.values, backgroundColor: ['#27ae60', '#e74c3c'] }]
                 }
             });
         }
 
-        // Device Types Chart
-        if (deviceBreakdown && deviceBreakdown.labels && deviceBreakdown.labels.length > 0) {
-            window.searchManagerCharts.deviceChart = new Chart(document.getElementById('device-chart'), {
+        if (deviceBreakdown && deviceBreakdown.labels) {
+            window.smCharts.device = new Chart(document.getElementById('device-chart'), {
                 type: 'doughnut',
                 data: {
                     labels: deviceBreakdown.labels,
-                    datasets: [{
-                        data: deviceBreakdown.values,
-                        backgroundColor: chartColors.slice(0, deviceBreakdown.labels.length)
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
+                    datasets: [{ data: deviceBreakdown.values, backgroundColor: chartColors }]
                 }
             });
         }
 
-        // Browser Usage Chart
-        if (browserBreakdown && browserBreakdown.labels && browserBreakdown.labels.length > 0) {
-            const browserCtx = document.getElementById('browser-chart');
-            if (browserCtx) {
-                browserCtx.parentElement.style.minHeight = '300px';
-            }
-            window.searchManagerCharts.browserChart = new Chart(browserCtx, {
+        if (browserBreakdown && browserBreakdown.labels) {
+             window.smCharts.browser = new Chart(document.getElementById('browser-chart'), {
                 type: 'bar',
                 data: {
                     labels: browserBreakdown.labels,
-                    datasets: [{
-                        label: '{{ "Searches"|t('search-manager') }}',
-                        data: browserBreakdown.values,
-                        backgroundColor: chartColors[0],
-                        borderColor: chartColors[0],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                stepSize: 1,
-                                precision: 0
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        }
-                    }
+                    datasets: [{ label: 'Searches', data: browserBreakdown.values, backgroundColor: '#0d78f2' }]
                 }
             });
         }
-
-        // Operating Systems Chart
-        if (osBreakdown && osBreakdown.labels && osBreakdown.labels.length > 0) {
-            window.searchManagerCharts.osChart = new Chart(document.getElementById('os-chart'), {
+        
+        if (osBreakdown && osBreakdown.labels) {
+             window.smCharts.os = new Chart(document.getElementById('os-chart'), {
                 type: 'doughnut',
                 data: {
                     labels: osBreakdown.labels,
-                    datasets: [{
-                        data: osBreakdown.values,
-                        backgroundColor: chartColors
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom'
-                        }
-                    }
+                    datasets: [{ data: osBreakdown.values, backgroundColor: chartColors }]
                 }
             });
         }
     }
 
-    // Handle date range selection via AJAX
-    $(document).on('click', '.main-date-range-option', function(e) {
+    // Tab Switching Logic
+    $(document).on('click', '.tab', function(e) {
         e.preventDefault();
+        const $tab = $(this);
+        const targetId = $tab.attr('href').substring(1); // remove #
+        
+        // Update UI
+        $('.tab').removeClass('sel');
+        $tab.addClass('sel');
+        $('.tab-content').addClass('hidden');
+        $('#tab-' + targetId).removeClass('hidden');
 
-        const $link = $(this);
-        const range = $link.data('range');
+        window.currentTab = targetId;
+        
+        // Lazy Load Data for specific tabs
+        if (targetId === 'queries' || targetId === 'content-gaps') {
+             loadTabData(targetId);
+        }
+    });
+    
+    // Handle initial hash
+    if(window.location.hash) {
+        const hash = window.location.hash.substring(1);
+        $(`.tab[href="#${hash}"]`).trigger('click');
+    }
 
-        // Update the button text
-        const rangeLabels = {
-            'today': '{{ "Today"|t('search-manager')|e('js') }}',
-            'last7days': '{{ "Last 7 days"|t('search-manager')|e('js') }}',
-            'last30days': '{{ "Last 30 days"|t('search-manager')|e('js') }}',
-            'last90days': '{{ "Last 90 days"|t('search-manager')|e('js') }}',
-            'all': '{{ "All time"|t('search-manager')|e('js') }}'
+    // AJAX Data Loading for Tabs
+    function loadTabData(tabName) {
+        const mapping = {
+            'queries': 'query-analysis',
+            'content-gaps': 'content-gaps'
         };
+        
+        // Don't reload if already populated (simple check)
+        if (tabName === 'queries' && $('#word-cloud-container').children().length > 0) return;
+        if (tabName === 'content-gaps' && $('#content-gaps-body tr').length > 1) return;
 
-        // Update button text immediately
-        $('#dateRangeLabel').text(rangeLabels[range] || range);
-
-        // Update selected state
-        $link.closest('ul').find('.sel').removeClass('sel');
-        $link.addClass('sel');
-
-        // Close the menu
-        $link.closest('.menu').removeClass('active');
-        $link.closest('.btngroup').find('.menubtn').removeClass('active');
-
-        // Show loading state
+        const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
+        
         $('#analytics-dashboard').css('opacity', '0.5');
 
-        // Update URL without reload
-        const url = new URL(window.location);
-        url.searchParams.set('dateRange', range);
-        window.history.pushState({}, '', url);
-
-        // Load analytics data via AJAX
-        loadAnalyticsData(range);
-    });
-
-    // Load analytics data via AJAX
-    function loadAnalyticsData(dateRange) {
         $.ajax({
             url: Craft.getActionUrl('search-manager/analytics/get-data'),
             type: 'POST',
-            dataType: 'json',
             data: {
                 dateRange: dateRange,
+                type: mapping[tabName],
                 {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
             },
-            success: function(response) {
-                if (response.success && response.data) {
-                    // Update stat boxes with number formatting
-                    $('#total-404s').text((response.data.totalCount || 0).toLocaleString());
-                    $('#handled-404s').text((response.data.handledCount || 0).toLocaleString());
-                    $('#unhandled-404s').text((response.data.unhandledCount || 0).toLocaleString());
-                    const successRate = response.data.totalCount > 0 ? Math.round((response.data.handledCount / response.data.totalCount) * 100) : 0;
-                    $('#success-rate').text(successRate + '%');
-
-                    // Update tables
-                    updateMostCommonTable(response.data.mostCommon || []);
-                    updateRecentUnhandledTable(response.data.recentUnhandled || []);
-
-                    // Re-initialize charts with new data
-                    initCharts(response.data);
-                } else {
-                    Craft.cp.displayError(response.error || '{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
+            success: function(res) {
+                if(res.success) {
+                    if (tabName === 'queries') renderQueryAnalysis(res.data.queryAnalysis);
+                    if (tabName === 'content-gaps') renderContentGaps(res.data.contentGaps);
                 }
-
-                // Restore opacity
                 $('#analytics-dashboard').css('opacity', '1');
-            },
-            error: function() {
-                $('#analytics-dashboard').css('opacity', '1');
-                Craft.cp.displayError('{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
             }
         });
     }
 
-    // Update most common table
-    function updateMostCommonTable(data) {
-        let html = '';
-        if (data.length === 0) {
-            html = '<tr><td colspan="5" class="thin light">{{ "No searches recorded yet"|t('search-manager')|e('js') }}</td></tr>';
-        } else {
-            data.forEach(function(stat) {
-                html += '<tr>';
-                html += '<td><span><code>' + Craft.escapeHtml(stat.query) + '</code></span></td>';
-                html += '<td><strong>' + (stat.count || 0).toLocaleString() + '</strong></td>';
-                html += '<td>' + (stat.totalResults / stat.count).toFixed(1) + '</td>';
-                const date = new Date(stat.lastSearched.date || stat.lastSearched);
-                html += '<td>' + Craft.formatDate(date, 'short') + '</td>';
-                html += '<td>' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) + '</td>';
-                html += '</tr>';
+    function renderQueryAnalysis(data) {
+        // Render Length Chart
+        if (data.lengthDistribution) {
+             window.smCharts.length = new Chart(document.getElementById('query-length-chart'), {
+                type: 'pie',
+                data: {
+                    labels: data.lengthDistribution.labels,
+                    datasets: [{ data: data.lengthDistribution.values, backgroundColor: ['#3498db', '#9b59b6', '#34495e'] }]
+                }
             });
         }
-        $('h2:contains("Most Common Queries")').next('.analytics-charts').find('tbody').html(html);
-    }
 
-    // Update recent unhandled table
-    function updateRecentUnhandledTable(data) {
-        let html = '';
-        if (data.length === 0) {
-            html = '<tr><td colspan="5" class="thin light">{{ "All searches have results!"|t('search-manager')|e('js') }}</td></tr>';
-        } else {
-            data.forEach(function(stat) {
-                html += '<tr>';
-                html += '<td><code>' + Craft.escapeHtml(stat.query) + '</code></td>';
-                html += '<td>' + Craft.escapeHtml(stat.indexHandle) + '</td>';
-                html += '<td>' + Craft.escapeHtml(stat.backend.charAt(0).toUpperCase() + stat.backend.slice(1)) + '</td>';
-                const date = new Date(stat.dateCreated.date || stat.dateCreated);
-                html += '<td>' + Craft.formatDate(date, 'short') + '</td>';
-                html += '<td>' + date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) + '</td>';
-                html += '</tr>';
+        // Render Word Cloud
+        const container = $('#word-cloud-container');
+        container.empty();
+        if (data.wordCloud && data.wordCloud.length) {
+            const maxWeight = Math.max(...data.wordCloud.map(w => w.weight));
+            const minSize = 12;
+            const maxSize = 48;
+            
+            data.wordCloud.forEach(w => {
+                const size = minSize + ((w.weight / maxWeight) * (maxSize - minSize));
+                const span = $('<span>')
+                    .text(w.text)
+                    .addClass('word-cloud-item')
+                    .css('fontSize', size + 'px')
+                    .attr('title', w.weight + ' searches');
+                container.append(span).append(' ');
             });
+        } else {
+            container.html('<p class="light">No data available for word cloud.</p>');
         }
-        $('h2:contains("Recent Zero-Result Queries")').next('.analytics-charts').find('tbody').html(html);
     }
 
-    // Handle export link clicks
-    $(document).on('click', '.export-link', function(e) {
-        e.preventDefault();
-        const action = $(this).data('action');
-        const format = $(this).data('format') || 'csv';
-        const dateRange = '{{ dateRange }}';
+    function renderContentGaps(data) {
+        const tbody = $('#content-gaps-body');
+        tbody.empty();
+        
+        if (!data.clusters || data.clusters.length === 0) {
+            tbody.html('<tr><td colspan="5" class="thin light">No content gaps found!</td></tr>');
+            return;
+        }
 
-        // Build export URL
-        const exportUrl = Craft.getActionUrl(action, {
-            dateRange: dateRange,
-            format: format
+        data.clusters.forEach(c => {
+            let row = `<tr>
+                <td><strong>${Craft.escapeHtml(c.representative)}</strong></td>
+                <td>${c.count}</td>
+                <td><small class="light">${c.queries.slice(0, 3).join(', ')}</small></td>
+                <td>${c.lastSearched}</td>
+                <td><a href="#" class="btn small">Create Content</a></td>
+            </tr>`;
+            tbody.append(row);
         });
+    }
 
-        // Trigger download
-        window.location.href = exportUrl;
+    // Date Range Handler (Reloads all data)
+    $(document).on('click', '.main-date-range-option', function(e) {
+        // ... (Existing logic, but simplified to just reload page for now to be safe with tabs)
+        // Or re-implement to reload active tab
+        // For V1, let's keep the existing logic but ensure it updates the current view
+         e.preventDefault();
+         const range = $(this).data('range');
+         const url = new URL(window.location);
+         url.searchParams.set('dateRange', range);
+         window.location = url; // Simple reload to ensure all tabs get fresh data context
     });
+
 {% endjs %}

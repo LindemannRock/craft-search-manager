@@ -74,9 +74,13 @@ class AutocompleteService extends Component
         // Normalize query
         $query = mb_strtolower(trim($query));
 
+        // Apply index prefix to get full index name (matches how data is stored)
+        $indexPrefix = $settings->indexPrefix ?? '';
+        $fullIndexHandle = $indexPrefix . $indexHandle;
+
         $this->logDebug('Generating suggestions', [
             'query' => $query,
-            'index' => $indexHandle,
+            'index' => $fullIndexHandle,
             'language' => $language,
             'fuzzy' => $fuzzy,
         ]);
@@ -90,7 +94,7 @@ class AutocompleteService extends Component
         $suggestions = [];
 
         // Method 1: Prefix matching (fast, exact)
-        $prefixMatches = $this->getPrefixMatches($storage, $query, $siteId, $limit, $language);
+        $prefixMatches = $this->getPrefixMatches($storage, $query, $siteId, $limit, $language, $fullIndexHandle);
         $suggestions = array_merge($suggestions, $prefixMatches);
 
         // Method 2: Fuzzy matching (slower, typo-tolerant)
@@ -121,14 +125,15 @@ class AutocompleteService extends Component
      * @param int $siteId Site ID
      * @param int $limit Maximum suggestions
      * @param string|null $language Language filter
+     * @param string|null $indexHandle Full index handle (with prefix) to filter by
      * @return array Matching terms
      */
-    private function getPrefixMatches($storage, string $query, int $siteId, int $limit, ?string $language = null): array
+    private function getPrefixMatches($storage, string $query, int $siteId, int $limit, ?string $language = null, ?string $indexHandle = null): array
     {
         $matches = [];
 
-        // Get all terms from storage (filtered by language)
-        $allTerms = $this->getAllTerms($storage, $siteId, $language);
+        // Get all terms from storage (filtered by language and index)
+        $allTerms = $this->getAllTerms($storage, $siteId, $language, $indexHandle);
 
         foreach ($allTerms as $term => $frequency) {
             if (str_starts_with($term, $query)) {
@@ -179,16 +184,17 @@ class AutocompleteService extends Component
      * @param mixed $storage Storage instance
      * @param int $siteId Site ID
      * @param string|null $language Language filter
+     * @param string|null $indexHandle Full index handle (with prefix) to filter by
      * @return array Terms with frequencies [term => frequency]
      */
-    private function getAllTerms($storage, int $siteId, ?string $language = null): array
+    private function getAllTerms($storage, int $siteId, ?string $language = null, ?string $indexHandle = null): array
     {
         // This is backend-specific and simplified
         // In production, you'd want a dedicated method in StorageInterface
 
         try {
             if ($storage instanceof MySqlStorage) {
-                return $this->getAllTermsFromMysql($siteId, $language);
+                return $this->getAllTermsFromMysql($siteId, $language, $indexHandle);
             } elseif ($storage instanceof RedisStorage) {
                 return $this->getAllTermsFromRedis($storage, $siteId, $language);
             } elseif ($storage instanceof FileStorage) {
@@ -205,14 +211,24 @@ class AutocompleteService extends Component
 
     /**
      * Get all terms from MySQL
+     *
+     * @param int $siteId Site ID
+     * @param string|null $language Language filter
+     * @param string|null $indexHandle Full index handle (with prefix) to filter by
+     * @return array Terms with frequencies [term => frequency]
      */
-    private function getAllTermsFromMysql(int $siteId, string $language = null): array
+    private function getAllTermsFromMysql(int $siteId, ?string $language = null, ?string $indexHandle = null): array
     {
         try {
             $query = (new \craft\db\Query())
                 ->select(['term', 'SUM(frequency) as total_freq'])
                 ->from('{{%searchmanager_search_terms}}')
                 ->where(['siteId' => $siteId]);
+
+            // Filter by index handle if provided
+            if ($indexHandle) {
+                $query->andWhere(['indexHandle' => $indexHandle]);
+            }
 
             // Filter by language if provided
             if ($language) {
@@ -227,6 +243,7 @@ class AutocompleteService extends Component
 
             $this->logDebug('Retrieved terms from MySQL', [
                 'site_id' => $siteId,
+                'index_handle' => $indexHandle,
                 'count' => count($results),
             ]);
 
@@ -353,6 +370,80 @@ class AutocompleteService extends Component
     }
 
     /**
+     * Get element-based autocomplete suggestions with type info
+     *
+     * Returns rich suggestions with element titles and types for display,
+     * perfect for showing icons (📦 for products, 🏷️ for categories).
+     *
+     * @param string $query Partial search query
+     * @param string $indexHandle Index to search
+     * @param array $options Suggestion options
+     * @return array Array of suggestion objects [{text, type, id}, ...]
+     */
+    public function suggestElements(string $query, string $indexHandle, array $options = []): array
+    {
+        $startTime = microtime(true);
+
+        // Get options with defaults from settings
+        $settings = SearchManager::$plugin->getSettings();
+        $minLength = $options['minLength'] ?? $settings->autocompleteMinLength ?? 2;
+        $limit = $options['limit'] ?? $settings->autocompleteLimit ?? 10;
+        $siteId = $options['siteId'] ?? \Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+        $elementType = $options['type'] ?? null; // Optional filter by type
+
+        // Validate query length
+        if (mb_strlen($query) < $minLength) {
+            return [];
+        }
+
+        // Apply index prefix to get full index name (matches how data is stored)
+        $indexPrefix = $settings->indexPrefix ?? '';
+        $fullIndexHandle = $indexPrefix . $indexHandle;
+
+        $this->logDebug('Generating element suggestions', [
+            'query' => $query,
+            'index' => $fullIndexHandle,
+            'type_filter' => $elementType,
+        ]);
+
+        // Get storage for the current backend (pass full index name)
+        $storage = $this->getStorageWithFullName($fullIndexHandle);
+        if (!$storage) {
+            return [];
+        }
+
+        // Check if storage supports element suggestions (MySqlStorage does)
+        if (!method_exists($storage, 'getElementSuggestions')) {
+            $this->logWarning('Storage does not support element suggestions, falling back to term suggestions');
+            // Fallback to term-based suggestions
+            $terms = $this->suggest($query, $indexHandle, $options);
+            return array_map(fn($term) => ['text' => $term, 'type' => 'term', 'id' => null], $terms);
+        }
+
+        // Get element suggestions from storage
+        $suggestions = $storage->getElementSuggestions($query, $siteId, $limit, $elementType);
+
+        // Format response
+        $results = [];
+        foreach ($suggestions as $suggestion) {
+            $results[] = [
+                'text' => $suggestion['title'],
+                'type' => $suggestion['elementType'],
+                'id' => (int)$suggestion['elementId'],
+            ];
+        }
+
+        $duration = round((microtime(true) - $startTime) * 1000, 2);
+        $this->logInfo('Element suggestions generated', [
+            'query' => $query,
+            'count' => count($results),
+            'duration_ms' => $duration,
+        ]);
+
+        return $results;
+    }
+
+    /**
      * Get storage instance for index from active backend
      *
      * @param string $indexHandle Index handle
@@ -402,6 +493,45 @@ class AutocompleteService extends Component
         } catch (\Throwable $e) {
             $this->logError('Failed to get storage from backend', [
                 'backend' => $backendName,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Get storage instance with full index name (prefix already applied)
+     *
+     * Used when the caller has already applied the index prefix.
+     *
+     * @param string $fullIndexName Full index name including prefix
+     * @return mixed Storage instance or null
+     */
+    private function getStorageWithFullName(string $fullIndexName)
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $backendName = $settings->searchBackend;
+
+        // Only support MySQL for now (element suggestions)
+        if ($backendName !== 'mysql') {
+            $this->logWarning('Element suggestions only supported for MySQL backend', [
+                'backend' => $backendName,
+            ]);
+            return null;
+        }
+
+        try {
+            // Create storage directly with the full index name
+            $storage = new \lindemannrock\searchmanager\search\storage\MySqlStorage($fullIndexName);
+
+            $this->logDebug('Created storage with full index name', [
+                'index' => $fullIndexName,
+            ]);
+
+            return $storage;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to create storage', [
+                'index' => $fullIndexName,
                 'error' => $e->getMessage(),
             ]);
             return null;

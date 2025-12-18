@@ -71,6 +71,7 @@ class FileStorage implements StorageInterface
             $this->basePath . '/titles',
             $this->basePath . '/ngrams',
             $this->basePath . '/meta',
+            $this->basePath . '/elements',
         ];
 
         foreach ($dirs as $dir) {
@@ -152,7 +153,10 @@ class FileStorage implements StorageInterface
             @unlink($titlePath);
         }
 
-        $this->logDebug('Deleted document and title files', [
+        // Delete element metadata file
+        $this->deleteElement($siteId, $elementId);
+
+        $this->logDebug('Deleted document, title, and element files', [
             'site_id' => $siteId,
             'element_id' => $elementId,
         ]);
@@ -283,6 +287,113 @@ class FileStorage implements StorageInterface
         if (file_exists($titlePath)) {
             @unlink($titlePath);
         }
+    }
+
+    // =========================================================================
+    // ELEMENT OPERATIONS (for rich autocomplete suggestions)
+    // =========================================================================
+
+    /**
+     * Store element metadata for autocomplete suggestions
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @param string $title Full title for display
+     * @param string $elementType Element type (product, category, etc.)
+     * @return void
+     */
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void
+    {
+        $elementPath = $this->getElementPath($siteId, $elementId);
+
+        // Normalize searchText for prefix matching (lowercase)
+        $searchText = mb_strtolower(trim($title));
+
+        $data = [
+            'title' => $title,
+            'elementType' => $elementType,
+            'searchText' => $searchText,
+            'elementId' => $elementId,
+        ];
+
+        $this->writeFile($elementPath, $data);
+
+        $this->logDebug('Stored element for suggestions', [
+            'site_id' => $siteId,
+            'element_id' => $elementId,
+            'type' => $elementType,
+        ]);
+    }
+
+    /**
+     * Delete element metadata
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @return void
+     */
+    public function deleteElement(int $siteId, int $elementId): void
+    {
+        $elementPath = $this->getElementPath($siteId, $elementId);
+
+        if (file_exists($elementPath)) {
+            @unlink($elementPath);
+        }
+    }
+
+    /**
+     * Get element suggestions by prefix
+     *
+     * @param string $query Search query (prefix)
+     * @param int $siteId Site ID
+     * @param int $limit Maximum results
+     * @param string|null $elementType Filter by element type (null = all types)
+     * @return array Array of suggestions [{title, elementType, elementId}, ...]
+     */
+    public function getElementSuggestions(string $query, int $siteId, int $limit = 10, ?string $elementType = null): array
+    {
+        $searchText = mb_strtolower(trim($query));
+        $elementsDir = $this->basePath . '/elements';
+
+        if (!is_dir($elementsDir)) {
+            return [];
+        }
+
+        // Find all element files for this site
+        $pattern = $elementsDir . '/' . $siteId . '_*.dat';
+        $files = glob($pattern);
+
+        $results = [];
+
+        foreach ($files as $file) {
+            $data = $this->readFile($file);
+
+            if (!$data) {
+                continue;
+            }
+
+            // Check prefix match
+            if (!str_starts_with($data['searchText'] ?? '', $searchText)) {
+                continue;
+            }
+
+            // Apply type filter if specified
+            if ($elementType !== null && ($data['elementType'] ?? '') !== $elementType) {
+                continue;
+            }
+
+            $results[] = [
+                'title' => $data['title'] ?? '',
+                'elementType' => $data['elementType'] ?? 'entry',
+                'elementId' => $data['elementId'] ?? 0,
+            ];
+
+            if (count($results) >= $limit) {
+                break;
+            }
+        }
+
+        return $results;
     }
 
     // =========================================================================
@@ -468,6 +579,7 @@ class FileStorage implements StorageInterface
             $this->basePath . '/docs/' . $siteId . '_*.dat',
             $this->basePath . '/titles/' . $siteId . '_*.dat',
             $this->basePath . '/meta/' . $siteId . '_*.dat',
+            $this->basePath . '/elements/' . $siteId . '_*.dat',
         ];
 
         foreach ($patterns as $pattern) {
@@ -549,6 +661,18 @@ class FileStorage implements StorageInterface
     private function getTitlePath(int $siteId, int $elementId): string
     {
         return $this->basePath . '/titles/' . $siteId . '_' . $elementId . '.dat';
+    }
+
+    /**
+     * Get element file path (for autocomplete suggestions)
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @return string File path
+     */
+    private function getElementPath(int $siteId, int $elementId): string
+    {
+        return $this->basePath . '/elements/' . $siteId . '_' . $elementId . '.dat';
     }
 
     /**

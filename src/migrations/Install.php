@@ -40,6 +40,7 @@ class Install extends Migration
     public function safeDown(): bool
     {
         // Drop tables in reverse order (respecting dependencies)
+        $this->dropTableIfExists('{{%searchmanager_search_elements}}');
         $this->dropTableIfExists('{{%searchmanager_search_metadata}}');
         $this->dropTableIfExists('{{%searchmanager_search_ngram_counts}}');
         $this->dropTableIfExists('{{%searchmanager_search_ngrams}}');
@@ -489,6 +490,25 @@ class Install extends Migration
             ]);
 
             $this->addPrimaryKey(null, '{{%searchmanager_search_metadata}}', ['indexHandle', 'siteId', 'metaKey']);
+        }
+
+        // Elements table: stores element metadata for rich autocomplete suggestions
+        // Returns full titles with element type (product, category) for display
+        if (!$this->db->tableExists('{{%searchmanager_search_elements}}')) {
+            $this->createTable('{{%searchmanager_search_elements}}', [
+                'indexHandle' => $this->string(255)->notNull(),
+                'siteId' => $this->integer()->notNull(),
+                'elementId' => $this->integer()->notNull(),
+                'title' => $this->string(500)->notNull(),
+                'elementType' => $this->string(50)->notNull()->comment('product, category, etc.'),
+                'searchText' => $this->string(500)->notNull()->comment('Normalized lowercase for prefix matching'),
+            ]);
+
+            $this->addPrimaryKey(null, '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementId']);
+            // Index for prefix search on searchText
+            $this->createIndex('idx_elements_search', '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'searchText'], false);
+            // Index for filtering by elementType
+            $this->createIndex('idx_elements_type', '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementType'], false);
         }
     }
 }
