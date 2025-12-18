@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.6.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.9...v5.6.0) (2025-12-18)
+
+
+### Features
+
+* add rich autocomplete with element type detection ([1be13b5](https://github.com/LindemannRock/craft-search-manager/commit/1be13b563c2468dfae6a163d64462d8f8af1c9ee))
+
 ## [5.5.9](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.8...v5.5.9) (2025-12-17)
 
 
