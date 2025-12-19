@@ -28,12 +28,14 @@
 
     <p>{{ "Test your search configuration including autocomplete, promotions, query rules, and highlighting."|t('search-manager') }}</p>
 
-    {# Get available indices #}
+    {# Get available indices and build siteId mapping #}
     {% set allIndices = craft.searchManager.getIndices() %}
     {% set enabledIndices = [] %}
+    {% set indexSiteIds = {} %}
     {% for index in allIndices %}
         {% if index.enabled %}
             {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' (' ~ index.handle ~ ')'}]) %}
+            {% set indexSiteIds = indexSiteIds|merge({(index.handle): index.siteId}) %}
         {% endif %}
     {% endfor %}
 
@@ -175,8 +177,13 @@ const showHighlighting = document.getElementById('showHighlighting');
 
 // Settings
 const autocompleteMinLength = {{ settings.autocompleteMinLength ?? 2 }};
-const currentSiteId = {{ craft.app.sites.currentSite.id }};
+const indexSiteIds = {{ indexSiteIds|json_encode|raw }};
 let autocompleteTimer;
+
+// Get siteId for current selected index
+function getIndexSiteId() {
+    return indexSiteIds[testIndexSelect.value] || null;
+}
 
 // Toggle section visibility based on checkboxes
 function updateSectionVisibility() {
@@ -259,7 +266,9 @@ async function fetchAutocomplete(query) {
     try {
         const baseUrl = Craft.getActionUrl('search-manager/api/autocomplete');
         const separator = baseUrl.includes('?') ? '&' : '?';
-        const response = await fetch(baseUrl + separator + 'q=' + encodeURIComponent(query) + '&index=' + testIndexSelect.value + '&siteId=' + currentSiteId + '&limit=10&only=suggestions');
+        const siteId = getIndexSiteId();
+        const siteParam = siteId ? '&siteId=' + siteId : '';
+        const response = await fetch(baseUrl + separator + 'q=' + encodeURIComponent(query) + '&index=' + testIndexSelect.value + siteParam + '&limit=10&only=suggestions');
         const suggestions = await response.json();
 
         if (suggestions && suggestions.length > 0) {
