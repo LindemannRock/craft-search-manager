@@ -297,7 +297,7 @@ class Settings extends Model
             [['ngramSizes', 'highlightTag'], 'string'],
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'warning', 'error']],
-            [['searchBackend'], 'in', 'range' => ['algolia', 'file', 'meilisearch', 'mysql', 'redis', 'typesense']],
+            [['searchBackend'], 'in', 'range' => ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense']],
         ];
     }
 
