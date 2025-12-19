@@ -10,7 +10,7 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 
 ## Features
 
-### 🔍 Multi-Backend Support
+### Multi-Backend Support
 - **Algolia** - Cloud-hosted search service (Scout replacement)
 - **File** - Local file storage in `@storage/runtime/search-manager/indices/` (no external dependencies)
 - **Meilisearch** - Self-hosted, open-source alternative to Algolia
@@ -19,7 +19,7 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - **Redis** - Fast in-memory BM25 search with persistence (can reuse Craft's Redis cache)
 - **Typesense** - Open-source search engine with typo tolerance
 
-### 🎯 Advanced Search Features (MySQL, PostgreSQL, Redis, File)
+### Advanced Search Features (MySQL, PostgreSQL, Redis, File)
 
 **Search Operators:**
 - **Phrase Search** - `"exact phrase"` for sequential word matching
@@ -50,7 +50,7 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - **Language Filtering** - Filter results by language for multi-site indices
 - **API Language Override** - Mobile apps can specify language for localized operators
 
-### 📊 Comprehensive Analytics
+### Comprehensive Analytics
 - **Search Tracking** - Track every search query with results count and execution time
 - **Source Detection** - Auto-detect search origin (frontend, CP, API) or pass custom sources
 - **Platform & App Tracking** - Track platform (iOS 17, Android 14) and app version for mobile apps
@@ -65,7 +65,7 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - **Export Options** - CSV and JSON export formats
 - **Automatic Cleanup** - Configurable retention period (0-3650 days)
 
-### ⚡ Performance Caching
+### Performance Caching
 - **Search Results Cache** - Cache search results to reduce backend load and improve response times
 - **Device Detection Cache** - Cache parsed user-agent strings to avoid re-parsing
 - **Popular Queries Only** - Only cache frequently-searched queries to save storage space
@@ -96,8 +96,29 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - Custom transformers per element type, site, or section
 - Priority-based transformer resolution
 
+### Promotions (Pinned Results)
+- **Pin Elements** - Force specific elements to fixed positions in search results
+- **Match Types** - Exact match, contains, or prefix matching for query patterns
+- **Position Control** - Specify exact position (1st, 2nd, 3rd, etc.)
+- **Scope Control** - Apply to specific indices and/or sites
+- **Enable/Disable** - Toggle promotions without deleting
+- **Bulk Actions** - Enable, disable, or delete multiple promotions at once
+
+### Query Rules
+- **Synonyms** - Expand searches to include related terms (e.g., "laptop" → "notebook, computer")
+- **Section Boosting** - Boost results from specific sections by multiplier
+- **Category Boosting** - Boost results in specific categories
+- **Element Boosting** - Boost specific elements by ID
+- **Result Filtering** - Filter results by field values when query matches
+- **Query Redirects** - Redirect users to a URL instead of showing results
+- **Match Types** - Exact, contains, prefix, or regex pattern matching
+- **Priority System** - Higher priority rules applied first
+- **Global or Index-Specific** - Apply rules to all indices or specific ones
+
 ### Control Panel Interface
 - Full CP section for managing indices
+- Promotions management with filtering and bulk actions
+- Query Rules management with action type configuration
 - Create, edit, delete, rebuild indices
 - Backend status monitoring
 - Analytics dashboard
@@ -374,7 +395,7 @@ When enabled, you can use advanced operators directly in CP search boxes:
 - Type: `title:blog` → Field-specific search works!
 - Type: `test*` → Wildcards work!
 
-**All features available everywhere!** 🚀
+**All features available everywhere!**
 
 ### Multi-Index Search
 
@@ -624,10 +645,10 @@ Search #6+: Served from cache (5ms vs 150ms)
 ```
 
 **Benefits:**
-- 🚀 Faster response times (5-10ms vs 50-200ms)
-- 💰 Reduced API costs (Algolia, Meilisearch, Typesense)
-- ⚡ Lower backend load (MySQL, Redis queries)
-- 💾 Smart storage (popular queries only option)
+- Faster response times (5-10ms vs 50-200ms)
+- Reduced API costs (Algolia, Meilisearch, Typesense)
+- Lower backend load (MySQL, Redis queries)
+- Smart storage (popular queries only option)
 
 ### Highlighting & Snippets
 
@@ -1031,6 +1052,168 @@ The Recent Searches tab displays source information:
 
 Exported analytics include Platform and App Version columns for detailed analysis.
 
+### Promotions (Pinned Results)
+
+Promotions allow you to pin specific elements to fixed positions in search results, bypassing normal relevance scoring.
+
+**Use Cases:**
+- Feature a specific product when users search for a category
+- Promote sale items for seasonal keywords
+- Ensure important content appears first for specific queries
+
+**Creating Promotions (Control Panel):**
+
+1. Go to Search Manager → Promotions
+2. Click "New Promotion"
+3. Configure:
+   - **Query Pattern**: The search query to match (e.g., "laptop", "sale")
+   - **Match Type**: How to match the query
+     - **Exact**: Query must exactly match the pattern
+     - **Contains**: Query must contain the pattern anywhere
+     - **Prefix**: Query must start with the pattern
+   - **Promoted Element**: Select the element to promote
+   - **Position**: Where to place it (1 = first, 2 = second, etc.)
+   - **Index**: Which search index this applies to
+   - **Site**: Apply to all sites or a specific site
+
+**Example Scenarios:**
+
+```
+Query Pattern: "laptop"
+Match Type: Exact
+Promoted Element: "MacBook Pro 2024" (Entry #123)
+Position: 1
+
+Result: When user searches exactly "laptop", MacBook Pro appears first
+```
+
+```
+Query Pattern: "sale"
+Match Type: Contains
+Promoted Element: "Black Friday Deals" (Entry #456)
+Position: 1
+
+Result: Any query containing "sale" (e.g., "laptop sale", "sale items")
+shows Black Friday Deals first
+```
+
+**Bulk Actions:**
+- Select multiple promotions using checkboxes
+- Enable/disable or delete in bulk
+- Filter by status or match type
+
+### Query Rules
+
+Query Rules modify search behavior when queries match specific patterns. They support synonyms, boosting, filtering, and redirects.
+
+**Creating Query Rules (Control Panel):**
+
+1. Go to Search Manager → Query Rules
+2. Click "New Query Rule"
+3. Select action type and configure
+
+**Action Types:**
+
+#### 1. Synonyms
+Expand search queries to include related terms.
+
+```
+Name: Laptop Synonyms
+Match Value: laptop
+Match Type: Exact
+Action: Synonyms
+Terms: notebook, portable computer, macbook
+
+Result: Searching "laptop" also finds results containing
+"notebook", "portable computer", or "macbook"
+```
+
+#### 2. Boost Section
+Increase relevance score for results from a specific section.
+
+```
+Name: Boost News for Current Events
+Match Value: election
+Match Type: Contains
+Action: Boost Section
+Section: news
+Multiplier: 2.0
+
+Result: News articles rank 2x higher when query contains "election"
+```
+
+#### 3. Boost Category
+Increase relevance score for results in a specific category.
+
+```
+Name: Boost Electronics for Tech Queries
+Match Value: tech
+Match Type: Prefix
+Action: Boost Category
+Category: Electronics
+Multiplier: 1.5
+
+Result: Queries starting with "tech" boost Electronics category results 1.5x
+```
+
+#### 4. Boost Element
+Increase relevance score for a specific element.
+
+```
+Name: Boost FAQ for Help Queries
+Match Value: help
+Match Type: Contains
+Action: Boost Element
+Element ID: 789
+Multiplier: 3.0
+
+Result: FAQ page (ID 789) ranks 3x higher for queries containing "help"
+```
+
+#### 5. Filter Results
+Filter search results by field value when query matches.
+
+```
+Name: Filter to In-Stock Only
+Match Value: buy
+Match Type: Contains
+Action: Filter
+Field: inStock
+Value: true
+
+Result: Queries containing "buy" only show in-stock items
+```
+
+#### 6. Redirect
+Redirect users to a specific URL instead of showing search results.
+
+```
+Name: Contact Redirect
+Match Value: contact us
+Match Type: Exact
+Action: Redirect
+URL: /contact
+
+Result: Searching exactly "contact us" redirects to /contact page
+```
+
+**Priority System:**
+- Rules with higher priority numbers are applied first
+- Use priority to control rule order when multiple rules match
+- Default priority is 0
+
+**Scope:**
+- **Index**: Apply to all indices (leave blank) or a specific index
+- **Site**: Apply to all sites (leave blank) or a specific site
+
+**Match Types:**
+| Type | Description | Example |
+|------|-------------|---------|
+| Exact | Query must match exactly | "laptop" matches only "laptop" |
+| Contains | Query must contain pattern | "laptop" matches "best laptop deals" |
+| Prefix | Query must start with pattern | "lap" matches "laptop", "lapel" |
+| Regex | Regular expression pattern | `^(buy\|purchase)` matches "buy..." or "purchase..." |
+
 ### Multi-Language Support
 
 Search Manager automatically handles multiple languages:
@@ -1340,6 +1523,8 @@ Event::on(
   - **Edit indices**: Can edit existing indices
   - **Delete indices**: Can delete indices
   - **Rebuild indices**: Can rebuild indices
+  - **Manage promotions**: Can create, edit, delete promotions (pinned results)
+  - **Manage query rules**: Can create, edit, delete query rules (synonyms, boosts, etc.)
 - **View analytics**: Can view analytics dashboard and search statistics
 - **Export analytics**: Can export analytics data
 - **View logs**: Can view plugin logs
