@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.11.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.10.0...v5.11.0) (2025-12-19)
+
+
+### Features
+
+* Add promotion and query rule testing actions to settings controller and update test template ([d8c4b57](https://github.com/LindemannRock/craft-search-manager/commit/d8c4b57c4356ae33c43701d96bee5c4d671e3c07))
+
 ## [5.10.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.9.0...v5.10.0) (2025-12-19)
 
 
