@@ -349,6 +349,120 @@ class SettingsController extends Controller
         }
     }
 
+    /**
+     * Test which promotions match a query
+     */
+    public function actionTestPromotions(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $query = Craft::$app->getRequest()->getRequiredBodyParam('query');
+        $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
+
+        try {
+            // Get matching promotions
+            $matchingPromotions = \lindemannrock\searchmanager\models\Promotion::findMatching($query, $indexHandle);
+
+            $promotions = [];
+            foreach ($matchingPromotions as $promotion) {
+                $element = $promotion->getElement();
+                $promotions[] = [
+                    'id' => $promotion->id,
+                    'query' => $promotion->query,
+                    'matchType' => $promotion->matchType,
+                    'position' => $promotion->position,
+                    'elementId' => $promotion->elementId,
+                    'elementTitle' => $element ? $element->title : 'Element not found',
+                    'elementEditUrl' => $element ? $element->getCpEditUrl() : '#',
+                ];
+            }
+
+            return $this->asJson([
+                'success' => true,
+                'promotions' => $promotions,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->asJson([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Test which query rules match a query
+     */
+    public function actionTestQueryRules(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $query = Craft::$app->getRequest()->getRequiredBodyParam('query');
+        $indexHandle = Craft::$app->getRequest()->getBodyParam('indexHandle');
+
+        try {
+            // Get matching rules
+            $matchingRules = \lindemannrock\searchmanager\models\QueryRule::findMatching($query, $indexHandle);
+
+            $rules = [];
+            $redirect = null;
+            $synonyms = [$query]; // Start with original query
+
+            foreach ($matchingRules as $rule) {
+                // Build effect description
+                $effectDescription = '';
+                switch ($rule->actionType) {
+                    case 'synonym':
+                        $terms = $rule->getSynonyms();
+                        $effectDescription = 'Expands to: ' . implode(', ', $terms);
+                        $synonyms = array_merge($synonyms, $terms);
+                        break;
+                    case 'boost_section':
+                        $effectDescription = 'Boost section "' . ($rule->actionValue['sectionHandle'] ?? '') . '" by ' . ($rule->actionValue['multiplier'] ?? 2.0) . 'x';
+                        break;
+                    case 'boost_category':
+                        $effectDescription = 'Boost category by ' . ($rule->actionValue['multiplier'] ?? 2.0) . 'x';
+                        break;
+                    case 'boost_element':
+                        $effectDescription = 'Boost element #' . ($rule->actionValue['elementId'] ?? '') . ' by ' . ($rule->actionValue['multiplier'] ?? 2.0) . 'x';
+                        break;
+                    case 'filter':
+                        $effectDescription = 'Filter: ' . ($rule->actionValue['field'] ?? '') . ' = ' . ($rule->actionValue['value'] ?? '');
+                        break;
+                    case 'redirect':
+                        $redirect = $rule->getRedirectUrl();
+                        $effectDescription = 'Redirect to: ' . $redirect;
+                        break;
+                }
+
+                $rules[] = [
+                    'id' => $rule->id,
+                    'name' => $rule->name,
+                    'actionType' => $rule->actionType,
+                    'matchType' => $rule->matchType,
+                    'matchValue' => $rule->matchValue,
+                    'effectDescription' => $effectDescription,
+                    'editUrl' => Craft::$app->getUrlManager()->createUrl('search-manager/query-rules/edit/' . $rule->id),
+                ];
+            }
+
+            return $this->asJson([
+                'success' => true,
+                'rules' => $rules,
+                'redirect' => $redirect,
+                'synonyms' => array_unique($synonyms),
+            ]);
+        } catch (\Throwable $e) {
+            return $this->asJson([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     public function actionSave(): ?Response
     {
         $this->requirePermission('searchManager:manageSettings');
