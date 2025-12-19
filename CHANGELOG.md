@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.0...v5.14.1) (2025-12-19)
+
+
+### Bug Fixes
+
+* move index retrieval logic to a separate section in test.twig ([48ae33a](https://github.com/LindemannRock/craft-search-manager/commit/48ae33ade32e0b06fde5cabd0296a74474bc71e7))
+
 ## [5.14.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.13.0...v5.14.0) (2025-12-19)
 
 
