@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.10.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.9.0...v5.10.0) (2025-12-19)
+
+
+### Features
+
+* Add Promotions and Query Rules systems with analytics improvements ([64a3c67](https://github.com/LindemannRock/craft-search-manager/commit/64a3c67b6f5edb411142136f26a1c304760b43fa))
+* Enhance dashboard with promotions and query rules statistics, and add analytics overview ([eeeb904](https://github.com/LindemannRock/craft-search-manager/commit/eeeb904fac9cc5c9e483102882f140939f0136ab))
+* Update cache settings instructions and add human-readable duration for cache inputs ([3d33c5e](https://github.com/LindemannRock/craft-search-manager/commit/3d33c5e192f8b88ca9e76e9896fcd15e4054b3b3))
+
+
+### Bug Fixes
+
+* **ui:** boost multiplier spacing ([e347acb](https://github.com/LindemannRock/craft-search-manager/commit/e347acb48e57c403cc9904c90fb7fa3cb309302e))
+
 ## [5.9.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.8.0...v5.9.0) (2025-12-18)
 
 
