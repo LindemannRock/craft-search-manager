@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.15.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.1...v5.15.0) (2025-12-19)
+
+
+### Features
+
+* Enhance language support in search storage and autocomplete services ([ea78e60](https://github.com/LindemannRock/craft-search-manager/commit/ea78e6089488abccc7b7d3f79b366aff4695fbbf))
+
 ## [5.14.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.0...v5.14.1) (2025-12-19)
 
 
