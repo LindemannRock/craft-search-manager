@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.13.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.12.0...v5.13.0) (2025-12-19)
+
+
+### Features
+
+* Enhance test settings template to include siteId mapping for indices ([ce02eaf](https://github.com/LindemannRock/craft-search-manager/commit/ce02eafaeb36630e4e353a07d8debb02f506e242))
+
 ## [5.12.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.11.0...v5.12.0) (2025-12-19)
 
 
