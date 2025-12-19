@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.12.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.11.0...v5.12.0) (2025-12-19)
+
+
+### Features
+
+* Enhance autocomplete functionality with siteId parameter and update test template ([f9d8a8d](https://github.com/LindemannRock/craft-search-manager/commit/f9d8a8d610265a57af32bb9a68df134632fba73f))
+
 ## [5.11.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.10.0...v5.11.0) (2025-12-19)
 
 
