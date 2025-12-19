@@ -47,6 +47,18 @@ class QueryRuleService extends Component
     }
 
     /**
+     * Get query rule count
+     */
+    public function getQueryRuleCount(?bool $enabledOnly = null): int
+    {
+        $rules = QueryRule::findAll();
+        if ($enabledOnly === null) {
+            return count($rules);
+        }
+        return count(array_filter($rules, fn($r) => $r->enabled === $enabledOnly));
+    }
+
+    /**
      * Get rules for an index
      */
     public function getByIndex(?string $indexHandle = null, ?int $siteId = null): array

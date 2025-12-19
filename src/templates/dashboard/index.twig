@@ -1,104 +1,172 @@
 {% extends "_layouts/cp" %}
-{% set title = "Search Manager"|t('search-manager') %}
+{% set title = searchHelper.fullName %}
 {% set selectedSubnavItem = 'dashboard' %}
+
+{% set crumbs = [
+    { label: searchHelper.fullName, url: url('search-manager') },
+] %}
 
 {% block content %}
 
-<h1>{{ searchHelper.fullName }}</h1>
-
-<div class="readable">
+<div class="readable" style="margin-bottom: 24px;">
     <p>{{ "Advanced multi-backend search management for Craft CMS"|t('search-manager') }}</p>
 </div>
 
-<hr>
+{# Stats Overview Cards #}
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
+    {# Indices Card #}
+    <a href="{{ url('search-manager/indices') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #059669;"></div>
+            <h4 style="margin: 0; color: #374151; font-size: 14px; font-weight: 600;">{{ "Search Indices"|t('search-manager') }}</h4>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+            <div style="font-size: 32px; font-weight: 700; color: #059669; line-height: 1;">{{ enabledIndices }}</div>
+            {% if indices|length > enabledIndices %}
+                <div style="font-size: 14px; color: #6b7280;">/ {{ indices|length }}</div>
+            {% endif %}
+        </div>
+        <div style="font-size: 13px; color: #6b7280;">{{ totalDocuments|number_format }} {{ "documents indexed"|t('search-manager') }}</div>
+    </a>
 
-<h2>{{ "Backend Status"|t('search-manager') }}</h2>
+    {# Promotions Card #}
+    <a href="{{ url('search-manager/promotions') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;"></div>
+            <h4 style="margin: 0; color: #374151; font-size: 14px; font-weight: 600;">{{ "Promotions"|t('search-manager') }}</h4>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+            <div style="font-size: 32px; font-weight: 700; color: #f59e0b; line-height: 1;">{{ enabledPromotions }}</div>
+            {% if promotionsCount > enabledPromotions %}
+                <div style="font-size: 14px; color: #6b7280;">/ {{ promotionsCount }}</div>
+            {% endif %}
+        </div>
+        <div style="font-size: 13px; color: #6b7280;">{{ "pinned results active"|t('search-manager') }}</div>
+    </a>
 
-{% if backendStatus %}
-    <table class="data fullwidth">
-        <tbody>
-            <tr>
-                <th>{{ "Active Backend"|t('search-manager') }}</th>
-                <td><strong>{{ backendStatus.name }}</strong></td>
-            </tr>
-            <tr>
-                <th>{{ "Status"|t('search-manager') }}</th>
-                <td>
-                    {% if backendStatus.available %}
-                        <span class="status green"></span> {{ "Available"|t('search-manager') }}
-                    {% else %}
-                        <span class="status red"></span> {{ "Unavailable"|t('search-manager') }}
-                    {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>{{ "Configuration"|t('search-manager') }}</th>
-                <td>
-                    {% if backendStatus.configured %}
-                        <span class="status green"></span> {{ "Configured"|t('search-manager') }}
-                    {% else %}
-                        <span class="status orange"></span> {{ "Not Configured"|t('search-manager') }}
-                    {% endif %}
-                </td>
-            </tr>
-        </tbody>
-    </table>
-{% endif %}
+    {# Query Rules Card #}
+    <a href="{{ url('search-manager/query-rules') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #8b5cf6;"></div>
+            <h4 style="margin: 0; color: #374151; font-size: 14px; font-weight: 600;">{{ "Query Rules"|t('search-manager') }}</h4>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+            <div style="font-size: 32px; font-weight: 700; color: #8b5cf6; line-height: 1;">{{ enabledQueryRules }}</div>
+            {% if queryRulesCount > enabledQueryRules %}
+                <div style="font-size: 14px; color: #6b7280;">/ {{ queryRulesCount }}</div>
+            {% endif %}
+        </div>
+        <div style="font-size: 13px; color: #6b7280;">{{ "synonyms, boosts, redirects"|t('search-manager') }}</div>
+    </a>
 
-<hr>
+    {# Searches Today Card (only if analytics enabled) #}
+    {% if settings.enableAnalytics %}
+    <a href="{{ url('search-manager/analytics') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+            <div style="width: 12px; height: 12px; border-radius: 50%; background: #0ea5e9;"></div>
+            <h4 style="margin: 0; color: #374151; font-size: 14px; font-weight: 600;">{{ "Searches Today"|t('search-manager') }}</h4>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px;">
+            <div style="font-size: 32px; font-weight: 700; color: #0ea5e9; line-height: 1;">{{ searchesToday|number_format }}</div>
+            {% if searchesYesterday > 0 %}
+                {% set change = ((searchesToday - searchesYesterday) / searchesYesterday * 100)|round %}
+                <div style="font-size: 13px; padding: 2px 8px; border-radius: 12px; background: {{ change >= 0 ? '#dcfce7' : '#fee2e2' }}; color: {{ change >= 0 ? '#166534' : '#991b1b' }};">
+                    {{ change >= 0 ? '+' : '' }}{{ change }}%
+                </div>
+            {% endif %}
+        </div>
+        <div style="font-size: 13px; color: #6b7280;">{{ searchesYesterday|number_format }} {{ "yesterday"|t('search-manager') }}</div>
+    </a>
+    {% endif %}
+</div>
 
-<h2>{{ "Indices"|t('search-manager') }}</h2>
+{# Two Column Layout for Lists #}
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 32px;">
 
-{% if indices %}
-    <table class="data fullwidth">
-        <thead>
-            <tr>
-                <th>{{ "Name"|t('search-manager') }}</th>
-                <th>{{ "Handle"|t('search-manager') }}</th>
-                <th>{{ "Elements"|t('search-manager') }}</th>
-                <th>{{ "Documents"|t('search-manager') }}</th>
-                <th>{{ "Last Indexed"|t('search-manager') }}</th>
-                <th>{{ "Status"|t('search-manager') }}</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for index in indices %}
-                <tr>
-                    <td>
-                        <a href="{{ url('search-manager/indices/edit/' ~ index.id) }}">
-                            {{ index.name }}
-                        </a>
-                    </td>
-                    <td><code>{{ index.handle }}</code></td>
-                    <td>{{ index.elementType|split('\\')|last }}</td>
-                    <td>{{ index.documentCount }}</td>
-                    <td>
-                        {% if index.lastIndexed %}
-                            {{ index.lastIndexed|datetime('short') }}
-                        {% else %}
-                            <span class="light">{{ "Never"|t('search-manager') }}</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if index.enabled %}
-                            <span class="status green"></span>
-                        {% else %}
-                            <span class="status"></span>
-                        {% endif %}
-                    </td>
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {# Top Searches (Last 7 Days) #}
+    {% if settings.enableAnalytics %}
+    <div class="pane" style="margin-block: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0;">{{ "Top Searches"|t('search-manager') }}</h3>
+            <span style="font-size: 12px; color: #6b7280;">{{ "Last 7 days"|t('search-manager') }}</span>
+        </div>
 
-    <div class="buttons">
-        <a href="{{ url('search-manager/indices') }}" class="btn">{{ "Manage Indices"|t('search-manager') }}</a>
+        {% if topSearches|length %}
+            <table class="data fullwidth" style="margin: 0;">
+                <tbody>
+                    {% for search in topSearches %}
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                <code style="font-family: monospace; font-size: 13px;">{{ search.query }}</code>
+                            </td>
+                            <td style="text-align: right; padding: 12px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280; white-space: nowrap; font-size: 13px;">
+                                {{ search.count }} {{ search.count == 1 ? 'search' : 'searches' }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="margin-top: 16px;">
+                <a href="{{ url('search-manager/analytics') }}" class="go">{{ "View all analytics"|t('search-manager') }}</a>
+            </div>
+        {% else %}
+            <p class="light" style="margin: 0;">{{ "No searches recorded yet"|t('search-manager') }}</p>
+        {% endif %}
     </div>
-{% else %}
-    <p class="light">{{ "No indices configured yet."|t('search-manager') }}</p>
-    <div class="buttons">
-        <a href="{{ url('search-manager/indices/create') }}" class="btn submit">{{ "Create Index"|t('search-manager') }}</a>
+    {% endif %}
+
+    {# Recent Zero-Result Searches #}
+    {% if settings.enableAnalytics %}
+    <div class="pane" style="margin-block: 0;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="margin: 0;">{{ "Content Gaps"|t('search-manager') }}</h3>
+            <span style="font-size: 12px; color: #6b7280;">{{ "Zero results"|t('search-manager') }}</span>
+        </div>
+
+        {% if recentZeroResults|length %}
+            <table class="data fullwidth" style="margin: 0;">
+                <tbody>
+                    {% for search in recentZeroResults %}
+                        <tr>
+                            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                <code style="font-family: monospace; font-size: 13px;">{{ search.query }}</code>
+                            </td>
+                            <td style="text-align: right; padding: 12px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280; white-space: nowrap; font-size: 13px;">
+                                {{ search.dateCreated|date('M j') }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <div style="margin-top: 16px;">
+                <a href="{{ url('search-manager/analytics') }}#content-gaps" class="go">{{ "View content gaps"|t('search-manager') }}</a>
+            </div>
+        {% else %}
+            <p class="light" style="margin: 0;">{{ "No zero-result searches"|t('search-manager') }}</p>
+        {% endif %}
     </div>
-{% endif %}
+    {% endif %}
+
+</div>
+
+{# Quick Actions #}
+<div class="pane">
+    <h2 style="margin-top: 0;">{{ "Quick Actions"|t('search-manager') }}</h2>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        {% if currentUser.can('searchManager:createIndices') %}
+            <a href="{{ url('search-manager/indices/create') }}" class="btn submit">{{ "New Index"|t('search-manager') }}</a>
+        {% endif %}
+        {% if currentUser.can('searchManager:managePromotions') %}
+            <a href="{{ url('search-manager/promotions/create') }}" class="btn">{{ "New Promotion"|t('search-manager') }}</a>
+        {% endif %}
+        {% if currentUser.can('searchManager:manageQueryRules') %}
+            <a href="{{ url('search-manager/query-rules/create') }}" class="btn">{{ "New Query Rule"|t('search-manager') }}</a>
+        {% endif %}
+        <a href="{{ url('search-manager/settings') }}" class="btn">{{ "Settings"|t('search-manager') }}</a>
+    </div>
+</div>
+
+{% include 'search-manager/_components/plugin-credit.twig' %}
 
 {% endblock %}

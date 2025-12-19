@@ -46,6 +46,18 @@ class PromotionService extends Component
     }
 
     /**
+     * Get promotion count
+     */
+    public function getPromotionCount(?bool $enabledOnly = null): int
+    {
+        $promotions = Promotion::findAll();
+        if ($enabledOnly === null) {
+            return count($promotions);
+        }
+        return count(array_filter($promotions, fn($p) => $p->enabled === $enabledOnly));
+    }
+
+    /**
      * Get promotions for an index
      */
     public function getByIndex(string $indexHandle, ?int $siteId = null): array
