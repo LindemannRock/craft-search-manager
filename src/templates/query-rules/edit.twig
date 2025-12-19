@@ -198,6 +198,15 @@
 			</div>
 		</div>
 
+		{# Boost multiplier options (shared) #}
+		{% set boostMultiplierOptions = [
+			{ label: '1.5× - Slight boost', value: '1.5' },
+			{ label: '2.0× - Double score (recommended)', value: '2.0' },
+			{ label: '3.0× - Triple score', value: '3.0' },
+			{ label: '5.0× - Strong boost', value: '5.0' },
+			{ label: '10.0× - Very strong boost', value: '10.0' },
+		] %}
+
 		{# Boost section fields #}
 		<div id="action-boost_section" class="action-fields" style="{{ rule.actionType != 'boost_section' ? 'display: none;' : '' }}">
 			{{ forms.selectField({
@@ -207,6 +216,15 @@
 				name: 'boostSectionHandle',
 				options: sectionOptions,
 				value: rule.actionValue.sectionHandle ?? '',
+			}) }}
+
+			{{ forms.selectField({
+				label: 'Boost Multiplier'|t('search-manager'),
+				instructions: 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager'),
+				id: 'boostMultiplier-section',
+				name: 'boostMultiplier',
+				options: boostMultiplierOptions,
+				value: (rule.actionValue.multiplier ?? 2.0)|number_format(1),
 			}) }}
 		</div>
 
@@ -229,6 +247,15 @@
 				value: rule.actionValue.categoryHandle ?? '',
 				placeholder: 'featured-products',
 			}) }}
+
+			{{ forms.selectField({
+				label: 'Boost Multiplier'|t('search-manager'),
+				instructions: 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager'),
+				id: 'boostMultiplier-category',
+				name: 'boostMultiplier',
+				options: boostMultiplierOptions,
+				value: (rule.actionValue.multiplier ?? 2.0)|number_format(1),
+			}) }}
 		</div>
 
 		{# Boost element fields #}
@@ -241,34 +268,15 @@
 				type: 'number',
 				value: rule.actionValue.elementId ?? '',
 			}) }}
-		</div>
 
-		{# Boost multiplier (shared by all boost types) #}
-		<div id="boost-multiplier" class="action-fields" style="{{ rule.actionType not in ['boost_section', 'boost_category', 'boost_element'] ? 'display: none;' : '' }}">
-			<div class="field">
-				<div class="heading">
-					<label for="boostMultiplier">{{ 'Boost Multiplier'|t('search-manager') }}</label>
-					<div class="instructions">
-						<p>{{ 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager') }}</p>
-					</div>
-				</div>
-				<div class="input ltr">
-					<div class="select">
-						<select id="boostMultiplier" name="boostMultiplier" style="width: 300px;">
-							<option value="1.5" {% if (rule.actionValue.multiplier ?? 2.0) == 1.5 %} selected {% endif %}>1.5× - Slight boost</option>
-							<option value="2.0" {% if (rule.actionValue.multiplier ?? 2.0) == 2.0 %} selected {% endif %}>2.0× - Double score (recommended)</option>
-							<option value="3.0" {% if (rule.actionValue.multiplier ?? 2.0) == 3.0 %} selected {% endif %}>3.0× - Triple score</option>
-							<option value="5.0" {% if (rule.actionValue.multiplier ?? 2.0) == 5.0 %} selected {% endif %}>5.0× - Strong boost</option>
-							<option value="10.0" {% if (rule.actionValue.multiplier ?? 2.0) == 10.0 %} selected {% endif %}>10.0× - Very strong boost</option>
-						</select>
-					</div>
-				</div>
-				<p class="notice has-icon" style="margin-top: 10px;">
-					<span class="icon" aria-hidden="true"></span>
-					<span class="visually-hidden">Tip:</span>
-					<span>A multiplier of 2.0× doubles the relevance score. Higher values push results higher, but very high values (10×+) may override natural relevance.</span>
-				</p>
-			</div>
+			{{ forms.selectField({
+				label: 'Boost Multiplier'|t('search-manager'),
+				instructions: 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager'),
+				id: 'boostMultiplier-element',
+				name: 'boostMultiplier',
+				options: boostMultiplierOptions,
+				value: (rule.actionValue.multiplier ?? 2.0)|number_format(1),
+			}) }}
 		</div>
 
 		{# Filter fields #}
@@ -366,25 +374,15 @@
 function toggleActionFields() {
 	const actionType = document.getElementById('actionType').value;
 
-	// Hide all action fields
+	// Hide all action-specific field containers
 	document.querySelectorAll('.action-fields').forEach(el => {
 		el.style.display = 'none';
 	});
 
-	// Show relevant fields
+	// Show the relevant action-specific fields
 	const fieldEl = document.getElementById('action-' + actionType);
 	if (fieldEl) {
 		fieldEl.style.display = 'block';
-	}
-
-	// Show boost multiplier for boost actions
-	const boostMultiplier = document.getElementById('boost-multiplier');
-	if (boostMultiplier) {
-		if (['boost_section', 'boost_category', 'boost_element'].includes(actionType)) {
-			boostMultiplier.style.display = 'block';
-		} else {
-			boostMultiplier.style.display = 'none';
-		}
 	}
 
 	// Update action type instructions
