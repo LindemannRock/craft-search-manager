@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.14.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.13.0...v5.14.0) (2025-12-19)
+
+
+### Features
+
+* Add 'pgsql' to searchBackend options in Settings model ([7191b1b](https://github.com/LindemannRock/craft-search-manager/commit/7191b1bab2091ecee3d7ea6cbec6b1aa5def3ba9))
+
 ## [5.13.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.12.0...v5.13.0) (2025-12-19)
 
 
