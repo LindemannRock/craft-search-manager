@@ -45,6 +45,8 @@ class ApiController extends Controller
         $limit = (int)Craft::$app->getRequest()->getParam('limit', 10);
         $only = Craft::$app->getRequest()->getParam('only', null);
         $typeFilter = Craft::$app->getRequest()->getParam('type', null);
+        $siteId = Craft::$app->getRequest()->getParam('siteId');
+        $siteId = $siteId ? (int)$siteId : null;
 
         if (empty($query)) {
             if ($only === 'suggestions') {
@@ -61,30 +63,27 @@ class ApiController extends Controller
 
         $autocomplete = SearchManager::$plugin->autocomplete;
 
+        // Build options array
+        $options = ['limit' => $limit];
+        if ($siteId !== null) {
+            $options['siteId'] = $siteId;
+        }
+
         // Only suggestions: return plain strings
         if ($only === 'suggestions') {
-            return $this->asJson($autocomplete->suggest($query, $indexHandle, [
-                'limit' => $limit,
-            ]));
+            return $this->asJson($autocomplete->suggest($query, $indexHandle, $options));
         }
 
         // Only results: return element objects with type info
         if ($only === 'results') {
-            return $this->asJson($autocomplete->suggestElements($query, $indexHandle, [
-                'limit' => $limit,
-                'type' => $typeFilter,
-            ]));
+            $options['type'] = $typeFilter;
+            return $this->asJson($autocomplete->suggestElements($query, $indexHandle, $options));
         }
 
         // Default: return both
         return $this->asJson([
-            'suggestions' => $autocomplete->suggest($query, $indexHandle, [
-                'limit' => $limit,
-            ]),
-            'results' => $autocomplete->suggestElements($query, $indexHandle, [
-                'limit' => $limit,
-                'type' => $typeFilter,
-            ]),
+            'suggestions' => $autocomplete->suggest($query, $indexHandle, $options),
+            'results' => $autocomplete->suggestElements($query, $indexHandle, array_merge($options, ['type' => $typeFilter])),
         ]);
     }
 

@@ -79,11 +79,11 @@
                     <span>{{ "Test Autocomplete"|t('search-manager') }}</span>
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
-                    <input type="checkbox" id="showPromotions" name="showPromotions" checked>
+                    <input type="checkbox" id="showPromotions" name="showPromotions">
                     <span>{{ "Test Promotions"|t('search-manager') }}</span>
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
-                    <input type="checkbox" id="showQueryRules" name="showQueryRules" checked>
+                    <input type="checkbox" id="showQueryRules" name="showQueryRules">
                     <span>{{ "Test Query Rules"|t('search-manager') }}</span>
                 </label>
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
@@ -175,6 +175,7 @@ const showHighlighting = document.getElementById('showHighlighting');
 
 // Settings
 const autocompleteMinLength = {{ settings.autocompleteMinLength ?? 2 }};
+const currentSiteId = {{ craft.app.sites.currentSite.id }};
 let autocompleteTimer;
 
 // Toggle section visibility based on checkboxes
@@ -258,7 +259,7 @@ async function fetchAutocomplete(query) {
     try {
         const baseUrl = Craft.getActionUrl('search-manager/api/autocomplete');
         const separator = baseUrl.includes('?') ? '&' : '?';
-        const response = await fetch(baseUrl + separator + 'q=' + encodeURIComponent(query) + '&index=' + testIndexSelect.value + '&limit=10&only=suggestions');
+        const response = await fetch(baseUrl + separator + 'q=' + encodeURIComponent(query) + '&index=' + testIndexSelect.value + '&siteId=' + currentSiteId + '&limit=10&only=suggestions');
         const suggestions = await response.json();
 
         if (suggestions && suggestions.length > 0) {
@@ -486,7 +487,7 @@ function displaySearchResults(data, query) {
         <div><strong>Backend:</strong> ${Craft.escapeHtml(data.backend)}</div>
         <div><strong>Execution:</strong> ${data.executionTime}ms</div>
         <div><strong>Cache:</strong> ${data.cacheEnabled ? 'Enabled' : 'Disabled'}</div>
-        <div><strong>Query Used:</strong> <code>${Craft.escapeHtml(data.queryUsed || query)}</code></div>
+        <div><strong>Query Used:</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
     </div>
 </div>
 `;
