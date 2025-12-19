@@ -52,17 +52,26 @@ class AutocompleteService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $minLength = $options['minLength'] ?? $settings->autocompleteMinLength ?? 2;
         $limit = $options['limit'] ?? $settings->autocompleteLimit ?? 10;
-        $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
         $fuzzy = $options['fuzzy'] ?? $settings->autocompleteFuzzy ?? false;
         $language = $options['language'] ?? null;
 
-        // Auto-detect language from current site if not provided
+        // Check if siteId was explicitly provided (for all-sites indices, it won't be)
+        $siteIdProvided = isset($options['siteId']) && $options['siteId'] !== null;
+        $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+
+        // Auto-detect language from query script if not provided and no specific site
         if ($language === null) {
-            $site = Craft::$app->getSites()->getSiteById($siteId);
-            if ($site) {
-                $language = substr($site->language, 0, 2);  // en-US → en
+            if (!$siteIdProvided && $this->containsArabicScript($query)) {
+                // Query contains Arabic script, use Arabic language
+                $language = 'ar';
             } else {
-                $language = 'en';
+                // Detect from site
+                $site = Craft::$app->getSites()->getSiteById($siteId);
+                if ($site) {
+                    $language = substr($site->language, 0, 2);  // en-US → en
+                } else {
+                    $language = 'en';
+                }
             }
         }
 
@@ -94,7 +103,8 @@ class AutocompleteService extends Component
         $suggestions = [];
 
         // Method 1: Prefix matching (fast, exact)
-        $prefixMatches = $this->getPrefixMatches($storage, $query, $siteId, $limit, $language, $fullIndexHandle);
+        // For all-sites indices (siteId not provided), skip siteId filter
+        $prefixMatches = $this->getPrefixMatches($storage, $query, $siteIdProvided ? $siteId : null, $limit, $language, $fullIndexHandle);
         $suggestions = array_merge($suggestions, $prefixMatches);
 
         // Method 2: Fuzzy matching (slower, typo-tolerant)
@@ -122,13 +132,13 @@ class AutocompleteService extends Component
      *
      * @param mixed $storage Storage instance
      * @param string $query Query prefix
-     * @param int $siteId Site ID
+     * @param int|null $siteId Site ID (null for all-sites indices)
      * @param int $limit Maximum suggestions
      * @param string|null $language Language filter
      * @param string|null $indexHandle Full index handle (with prefix) to filter by
      * @return array Matching terms
      */
-    private function getPrefixMatches($storage, string $query, int $siteId, int $limit, ?string $language = null, ?string $indexHandle = null): array
+    private function getPrefixMatches($storage, string $query, ?int $siteId, int $limit, ?string $language = null, ?string $indexHandle = null): array
     {
         $matches = [];
 
@@ -182,12 +192,12 @@ class AutocompleteService extends Component
      * Get all indexed terms for autocomplete
      *
      * @param mixed $storage Storage instance
-     * @param int $siteId Site ID
+     * @param int|null $siteId Site ID (null for all-sites indices)
      * @param string|null $language Language filter
      * @param string|null $indexHandle Full index handle (with prefix) to filter by
      * @return array Terms with frequencies [term => frequency]
      */
-    private function getAllTerms($storage, int $siteId, ?string $language = null, ?string $indexHandle = null): array
+    private function getAllTerms($storage, ?int $siteId, ?string $language = null, ?string $indexHandle = null): array
     {
         // This is backend-specific and simplified
         // In production, you'd want a dedicated method in StorageInterface
@@ -212,18 +222,23 @@ class AutocompleteService extends Component
     /**
      * Get all terms from MySQL
      *
-     * @param int $siteId Site ID
-     * @param string|null $language Language filter
+     * @param int|null $siteId Site ID (null for all-sites indices - skip siteId filter)
+     * @param string|null $language Language filter (e.g., 'en', 'ar')
      * @param string|null $indexHandle Full index handle (with prefix) to filter by
      * @return array Terms with frequencies [term => frequency]
      */
-    private function getAllTermsFromMysql(int $siteId, ?string $language = null, ?string $indexHandle = null): array
+    private function getAllTermsFromMysql(?int $siteId, ?string $language = null, ?string $indexHandle = null): array
     {
         try {
             $query = (new \craft\db\Query())
                 ->select(['term', 'SUM(frequency) as total_freq'])
-                ->from('{{%searchmanager_search_terms}}')
-                ->where(['siteId' => $siteId]);
+                ->from('{{%searchmanager_search_terms}}');
+
+            // Filter by siteId only if provided (for site-specific indices)
+            // For all-sites indices, skip siteId filter and rely on indexHandle + language
+            if ($siteId !== null) {
+                $query->where(['siteId' => $siteId]);
+            }
 
             // Filter by index handle if provided
             if ($indexHandle) {
@@ -244,6 +259,7 @@ class AutocompleteService extends Component
             $this->logDebug('Retrieved terms from MySQL', [
                 'site_id' => $siteId,
                 'index_handle' => $indexHandle,
+                'language' => $language,
                 'count' => count($results),
             ]);
 
@@ -536,5 +552,19 @@ class AutocompleteService extends Component
             ]);
             return null;
         }
+    }
+
+    /**
+     * Check if a string contains Arabic script characters
+     *
+     * @param string $text Text to check
+     * @return bool True if contains Arabic script
+     */
+    private function containsArabicScript(string $text): bool
+    {
+        // Arabic Unicode range: \x{0600}-\x{06FF} (Arabic)
+        // Also includes: \x{0750}-\x{077F} (Arabic Supplement)
+        // And: \x{08A0}-\x{08FF} (Arabic Extended-A)
+        return (bool)preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]/u', $text);
     }
 }

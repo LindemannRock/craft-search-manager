@@ -26,7 +26,13 @@
 {% set indexSiteIds = {} %}
 {% for index in allIndices %}
     {% if index.enabled %}
-        {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' (' ~ index.handle ~ ')'}]) %}
+        {% if index.siteId %}
+            {% set site = craft.app.sites.getSiteById(index.siteId) %}
+            {% set siteLabel = site ? site.name : 'Site ' ~ index.siteId %}
+        {% else %}
+            {% set siteLabel = 'All Sites'|t('search-manager') %}
+        {% endif %}
+        {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' — ' ~ siteLabel}]) %}
         {% set indexSiteIds = indexSiteIds|merge({(index.handle): index.siteId}) %}
     {% endif %}
 {% endfor %}

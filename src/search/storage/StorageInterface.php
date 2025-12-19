@@ -84,9 +84,10 @@ interface StorageInterface
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @param int $frequency Term frequency in document
+     * @param string $language Language code (e.g., 'en', 'ar')
      * @return void
      */
-    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency): void;
+    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void;
 
     /**
      * Get all documents for a term

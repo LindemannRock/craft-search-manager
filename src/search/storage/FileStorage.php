@@ -202,13 +202,14 @@ class FileStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency): void
+    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
         $termPath = $this->getTermPath($term, $siteId);
         $data = $this->readFile($termPath) ?: [];
 
         $docId = $siteId . ':' . $elementId;
         $data[$docId] = $frequency;
+        // Note: File storage uses siteId for language context, language param not stored separately
 
         $this->writeFile($termPath, $data);
     }

@@ -239,10 +239,11 @@ class RedisStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency): void
+    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
         $key = $this->getTermKey($term, $siteId);
         $docId = $siteId . ':' . $elementId;
+        // Note: Redis storage uses siteId for language context, language param not stored separately
 
         $this->redis->hSet($key, $docId, $frequency);
     }

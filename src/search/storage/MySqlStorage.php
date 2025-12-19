@@ -241,7 +241,7 @@ class MySqlStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency): void
+    public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
         $this->db->createCommand()->insert(
             '{{%searchmanager_search_terms}}',
@@ -251,6 +251,7 @@ class MySqlStorage implements StorageInterface
                 'siteId' => $siteId,
                 'elementId' => $elementId,
                 'frequency' => $frequency,
+                'language' => $language,
             ]
         )->execute();
     }

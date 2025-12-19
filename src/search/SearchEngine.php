@@ -174,7 +174,7 @@ class SearchEngine
 
             // Update inverted index
             foreach ($termFreqs as $term => $freq) {
-                $this->storage->storeTermDocument($term, $siteId, $elementId, $freq);
+                $this->storage->storeTermDocument($term, $siteId, $elementId, $freq, $language);
 
                 // Generate and store n-grams for new terms
                 if (!$this->storage->termHasNgrams($term, $siteId)) {

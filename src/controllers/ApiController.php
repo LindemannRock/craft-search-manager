@@ -47,6 +47,8 @@ class ApiController extends Controller
         $typeFilter = Craft::$app->getRequest()->getParam('type', null);
         $siteId = Craft::$app->getRequest()->getParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
+        // Support both 'language' and 'lang' parameters
+        $language = Craft::$app->getRequest()->getParam('language') ?? Craft::$app->getRequest()->getParam('lang');
 
         if (empty($query)) {
             if ($only === 'suggestions') {
@@ -67,6 +69,9 @@ class ApiController extends Controller
         $options = ['limit' => $limit];
         if ($siteId !== null) {
             $options['siteId'] = $siteId;
+        }
+        if ($language !== null) {
+            $options['language'] = $language;
         }
 
         // Only suggestions: return plain strings
