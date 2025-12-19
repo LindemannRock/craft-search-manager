@@ -95,14 +95,14 @@
 
 		{{ forms.textField({
             label: 'Search Results Cache Duration'|t('search-manager'),
-            instructions: 'How long to cache search results (in seconds)'|t('search-manager'),
+            instructions: ('Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>')|raw,
             id: 'cacheDuration',
             name: 'settings[cacheDuration]',
             value: settings.cacheDuration ?? 3600,
             type: 'number',
             min: '60',
             max: '86400',
-            tip: '3600 = 1 hour, 86400 = 24 hours'|t('search-manager'),
+            tip: 'Min: 60 (1 minute), Max: 86400 (1 day)'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('cacheDuration'),
             warning: settings.isOverriddenByConfig('cacheDuration') ?
                 "This is being overridden by the <code>cacheDuration</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -157,12 +157,14 @@
             <div id="device-cache-settings" class="{{ not (settings.cacheDeviceDetection ?? true) ? 'hidden' }}">
                 {{ forms.textField({
                     label: "Device Detection Cache Duration"|t('search-manager'),
-                    instructions: "Cache duration in seconds. Default: 3600 (1 hour)"|t('search-manager'),
+                    instructions: ('Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>')|raw,
                     id: 'deviceDetectionCacheDuration',
                     name: 'settings[deviceDetectionCacheDuration]',
                     value: settings.deviceDetectionCacheDuration ?? 3600,
                     type: 'number',
-                    min: 0,
+                    min: 60,
+                    max: 604800,
+                    tip: 'Min: 60 (1 minute), Max: 604800 (7 days)'|t('search-manager'),
                     disabled: settings.isOverriddenByConfig('deviceDetectionCacheDuration'),
                     warning: settings.isOverriddenByConfig('deviceDetectionCacheDuration') ?
                         "This is being overridden by the <code>deviceDetectionCacheDuration</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
@@ -209,5 +211,35 @@ $('#cacheStorageMethod').on('change', function() {
 		$('#cache-location-file').removeClass('hidden');
 	}
 });
+
+// Convert seconds to human-readable duration
+function secondsToHuman(seconds) {
+	seconds = parseInt(seconds) || 0;
+	if (seconds < 60) {
+		return seconds + ' second' + (seconds !== 1 ? 's' : '');
+	} else if (seconds < 3600) {
+		const mins = Math.round(seconds / 60 * 10) / 10;
+		return mins + ' minute' + (mins !== 1 ? 's' : '');
+	} else if (seconds < 86400) {
+		const hours = Math.round(seconds / 3600 * 10) / 10;
+		return hours + ' hour' + (hours !== 1 ? 's' : '');
+	} else {
+		const days = Math.round(seconds / 86400 * 10) / 10;
+		return days + ' day' + (days !== 1 ? 's' : '');
+	}
+}
+
+// Update human-readable duration on input change
+$('#cacheDuration').on('input', function() {
+	$('#cacheDuration-human').text(secondsToHuman($(this).val()));
+});
+
+$('#deviceDetectionCacheDuration').on('input', function() {
+	$('#deviceDetectionCacheDuration-human').text(secondsToHuman($(this).val()));
+});
+
+// Initialize on page load
+$('#cacheDuration-human').text(secondsToHuman($('#cacheDuration').val()));
+$('#deviceDetectionCacheDuration-human').text(secondsToHuman($('#deviceDetectionCacheDuration').val()));
 {% endjs %}
 
