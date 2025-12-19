@@ -1,0 +1,463 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set title = isNew ? 'New Query Rule'|t('search-manager') : 'Edit Query Rule'|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSubnavItem = 'query-rules' %}
+
+{% set crumbs = [
+    { label: 'Search Manager', url: url('search-manager') },
+    { label: 'Query Rules'|t('search-manager'), url: url('search-manager/query-rules') }
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+	<input type="hidden" name="action" value="search-manager/query-rules/save">
+	<input type="hidden" name="redirect" value="{{ 'search-manager/query-rules'|hash }}">
+	{% if not isNew %}
+		<input type="hidden" name="ruleId" value="{{ rule.id }}">
+	{% endif %}
+	{{ csrfInput() }}
+
+	<div id="fields">
+		<h2>{{ 'Rule Configuration'|t('search-manager') }}</h2>
+
+		{{ forms.textField({
+			first: true,
+			label: 'Name'|t('search-manager'),
+			instructions: 'A descriptive name for this rule (e.g., "Phone synonyms" or "Holiday redirect").'|t('search-manager'),
+			id: 'name',
+			name: 'name',
+			value: rule.name,
+			placeholder: 'Phone synonyms',
+			required: true,
+			errors: rule.getErrors('name'),
+		}) }}
+
+		{{ forms.selectField({
+			label: 'Index'|t('search-manager'),
+			instructions: 'Apply this rule to a specific index, or all indices.'|t('search-manager'),
+			id: 'indexHandle',
+			name: 'indexHandle',
+			options: indexOptions,
+			value: rule.indexHandle,
+			errors: rule.getErrors('indexHandle'),
+		}) }}
+
+		<hr>
+		<h2>{{ 'Query Matching'|t('search-manager') }}</h2>
+
+		<div class="field">
+			<div class="heading">
+				<label for="matchType">{{ 'Match Type'|t('search-manager') }}
+					<span class="required" aria-label="Required"></span>
+				</label>
+				<div class="instructions">
+					<p id="matchTypeInstructions">
+						{% if rule.matchType == 'contains' %}
+							{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}
+						{% elseif rule.matchType == 'prefix' %}
+							{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}
+						{% elseif rule.matchType == 'regex' %}
+							{{ 'Match using a regular expression pattern for complex matching.'|t('search-manager') }}
+						{% else %}
+							{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}
+						{% endif %}
+					</p>
+				</div>
+			</div>
+			<div class="input">
+				<div class="select">
+					<select id="matchType" name="matchType" required>
+						<option value="exact" {% if rule.matchType == 'exact' %} selected {% endif %}>{{ 'Exact Match'|t('search-manager') }}</option>
+						<option value="contains" {% if rule.matchType == 'contains' %} selected {% endif %}>{{ 'Contains'|t('search-manager') }}</option>
+						<option value="prefix" {% if rule.matchType == 'prefix' %} selected {% endif %}>{{ 'Starts With'|t('search-manager') }}</option>
+						<option value="regex" {% if rule.matchType == 'regex' %} selected {% endif %}>{{ 'Regex'|t('search-manager') }}</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<div class="field" id="matchValue-field">
+			<div class="heading">
+				<label for="matchValue">{{ 'Match Pattern'|t('search-manager') }}
+					<span class="required" aria-label="Required"></span>
+				</label>
+				<div class="instructions">
+					<p id="matchValueInstructions">
+						{% if rule.matchType == 'contains' %}
+							{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}
+						{% elseif rule.matchType == 'prefix' %}
+							{{ 'Enter text that the search query should start with.'|t('search-manager') }}
+						{% elseif rule.matchType == 'regex' %}
+							{{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager') }}
+						{% else %}
+							{{ 'Enter the exact search query to match.'|t('search-manager') }}
+						{% endif %}
+					</p>
+				</div>
+			</div>
+			<div class="input ltr">
+				<input type="text" id="matchValue" name="matchValue" value="{{ rule.matchValue }}" placeholder="{{ rule.matchType == 'regex' ? '^(phone|mobile|cell)' : (rule.matchType == 'contains' ? 'phone' : (rule.matchType == 'prefix' ? 'buy ' : 'phone')) }}" required class="text fullwidth{% if rule.getErrors('matchValue') %} error{% endif %}">
+			</div>
+			{% if rule.getErrors('matchValue') %}
+				<ul class="errors">
+					{% for error in rule.getErrors('matchValue') %}
+						<li>{{ error }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+			<p id="matchTypeTip" class="notice has-icon" style="margin-top: 10px;">
+				<span class="icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Tip:</span>
+				<span id="matchTypeTipText">
+					{% if rule.matchType == 'contains' %}
+						Example: "phone" matches "buy phone", "phone case", "smartphone"
+					{% elseif rule.matchType == 'prefix' %}
+						Example: "buy " matches "buy phone", "buy laptop", "buy headphones"
+					{% elseif rule.matchType == 'regex' %}
+						Example: "^(phone|mobile|cell)" matches "phone", "mobile", "cell" at the start
+					{% else %}
+						Example: "phone" only matches exactly "phone", not "smartphone"
+					{% endif %}
+				</span>
+			</p>
+			<p id="regexTip" class="notice has-icon" style="margin-top: 10px; display: {{ rule.matchType == 'regex' ? 'block' : 'none' }};">
+				<span class="icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Tip:</span>
+				<span>Test your pattern at <a class="go" href="https://regexr.com/" target="_blank" rel="noopener">regexr.com</a> before saving.</span>
+			</p>
+		</div>
+
+		<hr>
+		<h2>{{ 'Action'|t('search-manager') }}</h2>
+
+		<div class="field">
+			<div class="heading">
+				<label for="actionType">{{ 'Action Type'|t('search-manager') }}
+					<span class="required" aria-label="Required"></span>
+				</label>
+				<div class="instructions">
+					<p id="actionTypeInstructions">
+						{% if rule.actionType == 'synonym' %}
+							{{ 'Add synonym terms - search results will also include matches for these related terms.'|t('search-manager') }}
+						{% elseif rule.actionType == 'boost_section' %}
+							{{ 'Boost results from a specific section - multiply their scores.'|t('search-manager') }}
+						{% elseif rule.actionType == 'boost_category' %}
+							{{ 'Boost results in a specific category - multiply their scores.'|t('search-manager') }}
+						{% elseif rule.actionType == 'boost_element' %}
+							{{ 'Boost a specific element - multiply its score.'|t('search-manager') }}
+						{% elseif rule.actionType == 'filter' %}
+							{{ 'Filter results to only show entries matching a specific field value.'|t('search-manager') }}
+						{% elseif rule.actionType == 'redirect' %}
+							{{ 'Redirect to a URL instead of showing search results.'|t('search-manager') }}
+						{% else %}
+							{{ 'Select what should happen when this rule matches.'|t('search-manager') }}
+						{% endif %}
+					</p>
+				</div>
+			</div>
+			<div class="input">
+				<div class="select">
+					<select id="actionType" name="actionType" required>
+						<option value="synonym" {% if rule.actionType == 'synonym' %} selected {% endif %}>{{ 'Synonyms'|t('search-manager') }}</option>
+						<option value="boost_section" {% if rule.actionType == 'boost_section' %} selected {% endif %}>{{ 'Boost Section'|t('search-manager') }}</option>
+						<option value="boost_category" {% if rule.actionType == 'boost_category' %} selected {% endif %}>{{ 'Boost Category'|t('search-manager') }}</option>
+						<option value="boost_element" {% if rule.actionType == 'boost_element' %} selected {% endif %}>{{ 'Boost Element'|t('search-manager') }}</option>
+						<option value="filter" {% if rule.actionType == 'filter' %} selected {% endif %}>{{ 'Filter Results'|t('search-manager') }}</option>
+						<option value="redirect" {% if rule.actionType == 'redirect' %} selected {% endif %}>{{ 'Redirect'|t('search-manager') }}</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		{# Synonym fields #}
+		<div id="action-synonym" class="action-fields" style="{{ rule.actionType != 'synonym' ? 'display: none;' : '' }}">
+			<div class="field">
+				<div class="heading">
+					<label for="synonyms">{{ 'Synonyms'|t('search-manager') }}</label>
+					<div class="instructions">
+						<p>{{ 'Comma-separated list of synonym terms. When the pattern matches, search will also include results for these terms.'|t('search-manager') }}</p>
+					</div>
+				</div>
+				<div class="input ltr">
+					<textarea id="synonyms" name="synonyms" rows="3" class="text fullwidth" placeholder="mobile, cell phone, smartphone, cellular">{{ rule.actionValue.terms is defined ? rule.actionValue.terms|join(', ') : '' }}</textarea>
+				</div>
+				<p class="notice has-icon" style="margin-top: 10px;">
+					<span class="icon" aria-hidden="true"></span>
+					<span class="visually-hidden">Tip:</span>
+					<span>Example: For query "phone", add synonyms "mobile, cell phone, smartphone" to show results containing any of these terms.</span>
+				</p>
+			</div>
+		</div>
+
+		{# Boost section fields #}
+		<div id="action-boost_section" class="action-fields" style="{{ rule.actionType != 'boost_section' ? 'display: none;' : '' }}">
+			{{ forms.selectField({
+				label: 'Section'|t('search-manager'),
+				instructions: 'Select the section to boost when this rule matches.'|t('search-manager'),
+				id: 'boostSectionHandle',
+				name: 'boostSectionHandle',
+				options: sectionOptions,
+				value: rule.actionValue.sectionHandle ?? '',
+			}) }}
+		</div>
+
+		{# Boost category fields #}
+		<div id="action-boost_category" class="action-fields" style="{{ rule.actionType != 'boost_category' ? 'display: none;' : '' }}">
+			{{ forms.textField({
+				label: 'Category ID'|t('search-manager'),
+				instructions: 'The ID of the category to boost. Leave empty to use slug below.'|t('search-manager'),
+				id: 'boostCategoryId',
+				name: 'boostCategoryId',
+				type: 'number',
+				value: rule.actionValue.categoryId ?? '',
+			}) }}
+
+			{{ forms.textField({
+				label: 'Category Slug'|t('search-manager'),
+				instructions: 'Or enter the category slug instead of ID.'|t('search-manager'),
+				id: 'boostCategoryHandle',
+				name: 'boostCategoryHandle',
+				value: rule.actionValue.categoryHandle ?? '',
+				placeholder: 'featured-products',
+			}) }}
+		</div>
+
+		{# Boost element fields #}
+		<div id="action-boost_element" class="action-fields" style="{{ rule.actionType != 'boost_element' ? 'display: none;' : '' }}">
+			{{ forms.textField({
+				label: 'Element ID'|t('search-manager'),
+				instructions: 'The ID of the specific element to boost.'|t('search-manager'),
+				id: 'boostElementId',
+				name: 'boostElementId',
+				type: 'number',
+				value: rule.actionValue.elementId ?? '',
+			}) }}
+		</div>
+
+		{# Boost multiplier (shared by all boost types) #}
+		<div id="boost-multiplier" class="action-fields" style="{{ rule.actionType not in ['boost_section', 'boost_category', 'boost_element'] ? 'display: none;' : '' }}">
+			<div class="field">
+				<div class="heading">
+					<label for="boostMultiplier">{{ 'Boost Multiplier'|t('search-manager') }}</label>
+					<div class="instructions">
+						<p>{{ 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager') }}</p>
+					</div>
+				</div>
+				<div class="input ltr">
+					<div class="select">
+						<select id="boostMultiplier" name="boostMultiplier" style="width: 300px;">
+							<option value="1.5" {% if (rule.actionValue.multiplier ?? 2.0) == 1.5 %} selected {% endif %}>1.5× - Slight boost</option>
+							<option value="2.0" {% if (rule.actionValue.multiplier ?? 2.0) == 2.0 %} selected {% endif %}>2.0× - Double score (recommended)</option>
+							<option value="3.0" {% if (rule.actionValue.multiplier ?? 2.0) == 3.0 %} selected {% endif %}>3.0× - Triple score</option>
+							<option value="5.0" {% if (rule.actionValue.multiplier ?? 2.0) == 5.0 %} selected {% endif %}>5.0× - Strong boost</option>
+							<option value="10.0" {% if (rule.actionValue.multiplier ?? 2.0) == 10.0 %} selected {% endif %}>10.0× - Very strong boost</option>
+						</select>
+					</div>
+				</div>
+				<p class="notice has-icon" style="margin-top: 10px;">
+					<span class="icon" aria-hidden="true"></span>
+					<span class="visually-hidden">Tip:</span>
+					<span>A multiplier of 2.0× doubles the relevance score. Higher values push results higher, but very high values (10×+) may override natural relevance.</span>
+				</p>
+			</div>
+		</div>
+
+		{# Filter fields #}
+		<div id="action-filter" class="action-fields" style="{{ rule.actionType != 'filter' ? 'display: none;' : '' }}">
+			{{ forms.textField({
+				label: 'Field Handle'|t('search-manager'),
+				instructions: 'The field handle to filter on.'|t('search-manager'),
+				id: 'filterField',
+				name: 'filterField',
+				value: rule.actionValue.field ?? '',
+				placeholder: 'productType',
+			}) }}
+
+			{{ forms.textField({
+				label: 'Field Value'|t('search-manager'),
+				instructions: 'The value to filter by.'|t('search-manager'),
+				id: 'filterValue',
+				name: 'filterValue',
+				value: rule.actionValue.value ?? '',
+				placeholder: 'accessories',
+			}) }}
+		</div>
+
+		{# Redirect fields #}
+		<div id="action-redirect" class="action-fields" style="{{ rule.actionType != 'redirect' ? 'display: none;' : '' }}">
+			<div class="field">
+				<div class="heading">
+					<label for="redirectUrl">{{ 'Redirect URL'|t('search-manager') }}</label>
+					<div class="instructions">
+						<p>{{ 'The URL to redirect to when this rule matches. Can be a path (/page) or full URL (https://...).'|t('search-manager') }}</p>
+					</div>
+				</div>
+				<div class="input ltr">
+					<input type="text" id="redirectUrl" name="redirectUrl" value="{{ rule.actionValue.url ?? '' }}" placeholder="/special-offers" class="text fullwidth">
+				</div>
+				<p class="notice has-icon" style="margin-top: 10px;">
+					<span class="icon" aria-hidden="true"></span>
+					<span class="visually-hidden">Tip:</span>
+					<span>Use redirects for seasonal promotions (e.g., "christmas" → /holiday-deals) or to guide users to specific pages.</span>
+				</p>
+			</div>
+		</div>
+
+		<hr>
+		<h2>{{ 'Settings'|t('search-manager') }}</h2>
+
+		<div class="field">
+			<div class="heading">
+				<label for="priority">{{ 'Priority'|t('search-manager') }}</label>
+				<div class="instructions">
+					<p>{{ 'Rules are applied in priority order. Higher priority rules are applied first. Use this when you have overlapping patterns.'|t('search-manager') }}</p>
+				</div>
+			</div>
+			<div class="input ltr">
+				<div class="select">
+					<select id="priority" name="priority" style="width: 300px;">
+						{% for i in [10, 5, 0, -5, -10] %}
+							<option value="{{ i }}" {% if (rule.priority ?? 0) == i %} selected {% endif %}>
+								{{ i }} - {{ i == 10 ? 'Highest priority' : (i == 5 ? 'High priority' : (i == 0 ? 'Normal (default)' : (i == -5 ? 'Low priority' : 'Lowest priority'))) }}
+							</option>
+						{% endfor %}
+					</select>
+				</div>
+			</div>
+			<p class="notice has-icon" style="margin-top: 10px;">
+				<span class="icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Tip:</span>
+				<span>Set specific rules to high priority and general catch-all rules to low priority. For example, "buy iphone 15" (priority 10) before "buy" (priority 0).</span>
+			</p>
+		</div>
+
+		{{ forms.selectField({
+			label: 'Site'|t('search-manager'),
+			instructions: 'Limit this rule to a specific site, or apply to all sites.'|t('search-manager'),
+			id: 'siteId',
+			name: 'siteId',
+			options: siteOptions,
+			value: rule.siteId,
+			errors: rule.getErrors('siteId'),
+		}) }}
+
+		{{ forms.lightswitchField({
+			label: 'Enabled'|t('search-manager'),
+			instructions: 'Whether this rule is active.'|t('search-manager'),
+			id: 'enabled',
+			name: 'enabled',
+			on: rule.enabled ?? true,
+			errors: rule.getErrors('enabled'),
+		}) }}
+	</div>
+{% endblock %}
+
+{% js %}
+// Toggle action fields based on action type
+function toggleActionFields() {
+	const actionType = document.getElementById('actionType').value;
+
+	// Hide all action fields
+	document.querySelectorAll('.action-fields').forEach(el => {
+		el.style.display = 'none';
+	});
+
+	// Show relevant fields
+	const fieldEl = document.getElementById('action-' + actionType);
+	if (fieldEl) {
+		fieldEl.style.display = 'block';
+	}
+
+	// Show boost multiplier for boost actions
+	const boostMultiplier = document.getElementById('boost-multiplier');
+	if (boostMultiplier) {
+		if (['boost_section', 'boost_category', 'boost_element'].includes(actionType)) {
+			boostMultiplier.style.display = 'block';
+		} else {
+			boostMultiplier.style.display = 'none';
+		}
+	}
+
+	// Update action type instructions
+	const actionTypeInstructions = document.getElementById('actionTypeInstructions');
+	if (actionTypeInstructions) {
+		switch(actionType) {
+			case 'synonym':
+				actionTypeInstructions.textContent = '{{ 'Add synonym terms - search results will also include matches for these related terms.'|t('search-manager') }}';
+				break;
+			case 'boost_section':
+				actionTypeInstructions.textContent = '{{ 'Boost results from a specific section - multiply their scores.'|t('search-manager') }}';
+				break;
+			case 'boost_category':
+				actionTypeInstructions.textContent = '{{ 'Boost results in a specific category - multiply their scores.'|t('search-manager') }}';
+				break;
+			case 'boost_element':
+				actionTypeInstructions.textContent = '{{ 'Boost a specific element - multiply its score.'|t('search-manager') }}';
+				break;
+			case 'filter':
+				actionTypeInstructions.textContent = '{{ 'Filter results to only show entries matching a specific field value.'|t('search-manager') }}';
+				break;
+			case 'redirect':
+				actionTypeInstructions.textContent = '{{ 'Redirect to a URL instead of showing search results.'|t('search-manager') }}';
+				break;
+		}
+	}
+}
+
+// Update match type UI
+function updateMatchTypeUI() {
+	const matchType = document.getElementById('matchType').value;
+	const matchTypeInstructions = document.getElementById('matchTypeInstructions');
+	const matchValueInstructions = document.getElementById('matchValueInstructions');
+	const matchValueInput = document.getElementById('matchValue');
+	const matchTypeTipText = document.getElementById('matchTypeTipText');
+	const regexTip = document.getElementById('regexTip');
+
+	switch(matchType) {
+		case 'contains':
+			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
+			matchValueInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}';
+			matchValueInput.placeholder = 'phone';
+			matchTypeTipText.textContent = 'Example: "phone" matches "buy phone", "phone case", "smartphone"';
+			regexTip.style.display = 'none';
+			break;
+		case 'prefix':
+			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
+			matchValueInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}';
+			matchValueInput.placeholder = 'buy ';
+			matchTypeTipText.textContent = 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"';
+			regexTip.style.display = 'none';
+			break;
+		case 'regex':
+			matchTypeInstructions.textContent = '{{ 'Match using a regular expression pattern for complex matching.'|t('search-manager') }}';
+			matchValueInstructions.textContent = '{{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager') }}';
+			matchValueInput.placeholder = '^(phone|mobile|cell)';
+			matchTypeTipText.textContent = 'Example: "^(phone|mobile|cell)" matches "phone", "mobile", "cell" at the start';
+			regexTip.style.display = 'block';
+			break;
+		default: // exact
+			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
+			matchValueInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}';
+			matchValueInput.placeholder = 'phone';
+			matchTypeTipText.textContent = 'Example: "phone" only matches exactly "phone", not "smartphone"';
+			regexTip.style.display = 'none';
+	}
+}
+
+// Initialize
+toggleActionFields();
+updateMatchTypeUI();
+
+// Listen for changes
+document.getElementById('actionType').addEventListener('change', toggleActionFields);
+document.getElementById('matchType').addEventListener('change', updateMatchTypeUI);
+{% endjs %}

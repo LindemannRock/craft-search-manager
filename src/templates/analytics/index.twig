@@ -20,8 +20,15 @@
     searches: { label: "Recent Searches"|t('search-manager'), url: '#searches' },
     contentGaps: { label: "Content Gaps"|t('search-manager'), url: '#content-gaps' },
     performance: { label: "Performance"|t('search-manager'), url: '#performance' },
-    audience: { label: "Audience"|t('search-manager'), url: '#audience' }
+    'traffic-devices': { label: "Traffic & Devices"|t('search-manager'), url: '#traffic-devices' }
 } %}
+
+{# Only add Geographic tab if geo detection is enabled #}
+{% if settings.enableGeoDetection %}
+    {% set tabs = tabs|merge({
+        geographic: { label: "Geographic"|t('search-manager'), url: '#geographic' }
+    }) %}
+{% endif %}
 
 {% set selectedTab = 'overview' %}
 
@@ -98,16 +105,22 @@
          {% include 'search-manager/analytics/_tabs/performance' %}
     </div>
 
-    <div id="audience" class="hidden">
-         {% include 'search-manager/analytics/_tabs/audience' %}
+    <div id="traffic-devices" class="hidden">
+         {% include 'search-manager/analytics/_tabs/traffic-devices' %}
     </div>
+
+    {% if settings.enableGeoDetection %}
+    <div id="geographic" class="hidden">
+         {% include 'search-manager/analytics/_tabs/geographic' %}
+    </div>
+    {% endif %}
 
     {% include 'search-manager/_components/plugin-credit.twig' %}
 {% endblock %}
 
 {% css %}
     /* Tab content padding */
-    #overview, #searches, #content-gaps, #performance, #audience {
+    #overview, #searches, #content-gaps, #performance, #traffic-devices, #geographic {
         padding: 24px;
     }
 
@@ -303,7 +316,7 @@
         window.currentTab = tabId;
 
         // Lazy Load Data for specific tabs
-        if (tabId === 'overview' || tabId === 'content-gaps' || tabId === 'performance' || tabId === 'audience') {
+        if (tabId === 'overview' || tabId === 'content-gaps' || tabId === 'performance' || tabId === 'traffic-devices' || tabId === 'geographic') {
              loadTabData(tabId);
         }
     }
@@ -343,7 +356,8 @@
         if (tabName === 'overview' && $('#word-cloud-container').children().length > 0) return;
         if (tabName === 'content-gaps' && $('#content-gaps-body tr').length > 1) return;
         if (tabName === 'performance' && window.performanceLoaded) return;
-        if (tabName === 'audience' && window.audienceLoaded) return;
+        if (tabName === 'traffic-devices' && window.trafficDevicesLoaded) return;
+        if (tabName === 'geographic' && window.geographicLoaded) return;
 
         const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
         const siteId = new URLSearchParams(window.location.search).get('siteId') || '';
@@ -354,9 +368,15 @@
             return;
         }
 
-        if (tabName === 'audience') {
-            // Load audience data (countries, cities, hourly)
-            loadAudienceData(dateRange, siteId);
+        if (tabName === 'traffic-devices') {
+            // Load traffic & devices data (device charts, hourly)
+            loadTrafficDevicesData(dateRange, siteId);
+            return;
+        }
+
+        if (tabName === 'geographic') {
+            // Load geographic data (countries, cities)
+            loadGeographicData(dateRange, siteId);
             return;
         }
 
@@ -386,7 +406,25 @@
         });
     }
 
-    function loadAudienceData(dateRange, siteId) {
+    function loadTrafficDevicesData(dateRange, siteId) {
+        const csrfToken = '{{ craft.app.request.csrfToken }}';
+        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
+
+        // Load hourly data
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderHourlyChart(res.data);
+                $('#analytics-dashboard').css('opacity', '1');
+                window.trafficDevicesLoaded = true;
+            }
+        });
+    }
+
+    function loadGeographicData(dateRange, siteId) {
         const csrfToken = '{{ craft.app.request.csrfToken }}';
         const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
 
@@ -409,19 +447,7 @@
             data: { dateRange: dateRange, siteId: siteId, type: 'cities', [csrfName]: csrfToken },
             success: function(res) {
                 if (res.success) renderCities(res.data);
-            }
-        });
-
-        // Load hourly data
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderHourlyChart(res.data);
-                $('#analytics-dashboard').css('opacity', '1');
-                window.audienceLoaded = true;
+                window.geographicLoaded = true;
             }
         });
     }

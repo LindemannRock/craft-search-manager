@@ -1,0 +1,212 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% set title = isNew ? 'New Promotion'|t('search-manager') : 'Edit Promotion'|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSubnavItem = 'promotions' %}
+
+{% set crumbs = [
+    { label: 'Search Manager', url: url('search-manager') },
+    { label: 'Promotions'|t('search-manager'), url: url('search-manager/promotions') }
+] %}
+
+{% block actionButton %}
+	<div class="btngroup">
+		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+	</div>
+{% endblock %}
+
+{% block content %}
+	<input type="hidden" name="action" value="search-manager/promotions/save">
+	<input type="hidden" name="redirect" value="{{ 'search-manager/promotions'|hash }}">
+	{% if not isNew %}
+		<input type="hidden" name="promotionId" value="{{ promotion.id }}">
+	{% endif %}
+	{{ csrfInput() }}
+
+	<div id="fields">
+		{{ forms.selectField({
+			first: true,
+			label: 'Index'|t('search-manager'),
+			instructions: 'Which search index does this promotion apply to?'|t('search-manager'),
+			id: 'indexHandle',
+			name: 'indexHandle',
+			options: indexOptions,
+			value: promotion.indexHandle,
+			required: true,
+			errors: promotion.getErrors('indexHandle'),
+		}) }}
+
+		<hr>
+
+		<div class="field">
+			<div class="heading">
+				<label for="matchType">{{ 'Match Type'|t('search-manager') }}
+					<span class="required" aria-label="Required"></span>
+				</label>
+				<div class="instructions">
+					<p id="matchTypeInstructions">
+						{% if promotion.matchType == 'contains' %}
+							{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}
+						{% elseif promotion.matchType == 'prefix' %}
+							{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}
+						{% else %}
+							{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}
+						{% endif %}
+					</p>
+				</div>
+			</div>
+			<div class="input">
+				<div class="select">
+					<select id="matchType" name="matchType" required>
+						<option value="exact" {% if promotion.matchType == 'exact' %} selected {% endif %}>{{ 'Exact Match'|t('search-manager') }}</option>
+						<option value="contains" {% if promotion.matchType == 'contains' %} selected {% endif %}>{{ 'Contains'|t('search-manager') }}</option>
+						<option value="prefix" {% if promotion.matchType == 'prefix' %} selected {% endif %}>{{ 'Starts With'|t('search-manager') }}</option>
+					</select>
+				</div>
+			</div>
+		</div>
+
+		<div class="field" id="query-field">
+			<div class="heading">
+				<label for="query">{{ 'Query Pattern'|t('search-manager') }}
+					<span class="required" aria-label="Required"></span>
+				</label>
+				<div class="instructions">
+					<p id="queryInstructions">
+						{% if promotion.matchType == 'contains' %}
+							{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}
+						{% elseif promotion.matchType == 'prefix' %}
+							{{ 'Enter text that the search query should start with.'|t('search-manager') }}
+						{% else %}
+							{{ 'Enter the exact search query to match.'|t('search-manager') }}
+						{% endif %}
+					</p>
+				</div>
+			</div>
+			<div class="input ltr">
+				<input type="text" id="query" name="query" value="{{ promotion.query }}" placeholder="{{ promotion.matchType == 'contains' ? 'iphone' : (promotion.matchType == 'prefix' ? 'buy ' : 'buy iphone') }}" required class="text fullwidth{% if promotion.getErrors('query') %} error{% endif %}">
+			</div>
+			{% if promotion.getErrors('query') %}
+				<ul class="errors">
+					{% for error in promotion.getErrors('query') %}
+						<li>{{ error }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+			<p id="matchTypeTip" class="notice has-icon" style="margin-top: 10px;">
+				<span class="icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Tip:</span>
+				<span id="matchTypeTipText">
+					{% if promotion.matchType == 'contains' %}
+						Example: "iphone" matches "buy iphone", "iphone case", "cheap iphone deals"
+					{% elseif promotion.matchType == 'prefix' %}
+						Example: "buy " matches "buy iphone", "buy samsung", "buy phone case"
+					{% else %}
+						Example: "buy iphone" only matches exactly "buy iphone", not "buy iphone case"
+					{% endif %}
+				</span>
+			</p>
+		</div>
+
+		<hr>
+
+		{{ forms.elementSelectField({
+			label: 'Promoted Element'|t('search-manager'),
+			instructions: 'Select the element to pin to the top of search results when the query matches.'|t('search-manager'),
+			id: 'promotedElement',
+			name: 'promotedElement',
+			elementType: 'craft\\elements\\Entry',
+			selectionLabel: 'Select an element'|t('search-manager'),
+			limit: 1,
+			elements: promotion.elementId ? [craft.entries.id(promotion.elementId).status(null).one()] : [],
+			required: true,
+			errors: promotion.getErrors('elementId'),
+		}) }}
+
+		<div class="field">
+			<div class="heading">
+				<label for="position">{{ 'Position'|t('search-manager') }}</label>
+				<div class="instructions">
+					<p>{{ 'Where to place this element in search results. Position 1 = first result, position 2 = second result, etc.'|t('search-manager') }}</p>
+				</div>
+			</div>
+			<div class="input ltr">
+				<div class="select">
+					<select id="position" name="position" style="width: 250px;">
+						{% for i in 1..10 %}
+							<option value="{{ i }}" {% if (promotion.position ?: 1) == i %} selected {% endif %}>
+								{{ i }} - {{ i == 1 ? 'First result' : (i == 2 ? 'Second result' : (i == 3 ? 'Third result' : 'Position ' ~ i)) }}
+							</option>
+						{% endfor %}
+					</select>
+				</div>
+			</div>
+			<p class="notice has-icon" style="margin-top: 10px;">
+				<span class="icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Tip:</span>
+				<span>Multiple promotions for the same query are sorted by position. If two promotions have position 1, both will appear at the top in order of creation.</span>
+			</p>
+		</div>
+
+		<hr>
+
+		{{ forms.selectField({
+			label: 'Site'|t('search-manager'),
+			instructions: 'Limit this promotion to a specific site, or apply to all sites.'|t('search-manager'),
+			id: 'siteId',
+			name: 'siteId',
+			options: siteOptions,
+			value: promotion.siteId,
+			errors: promotion.getErrors('siteId'),
+		}) }}
+
+		{{ forms.lightswitchField({
+			label: 'Enabled'|t('search-manager'),
+			instructions: 'Whether this promotion is active.'|t('search-manager'),
+			id: 'enabled',
+			name: 'enabled',
+			on: promotion.enabled ?? true,
+			errors: promotion.getErrors('enabled'),
+		}) }}
+	</div>
+{% endblock %}
+
+{% js %}
+// Update instructions based on match type
+const matchTypeSelect = document.getElementById('matchType');
+const matchTypeInstructions = document.getElementById('matchTypeInstructions');
+const queryInstructions = document.getElementById('queryInstructions');
+const queryInput = document.getElementById('query');
+const matchTypeTipText = document.getElementById('matchTypeTipText');
+
+function updateMatchTypeUI() {
+	const matchType = matchTypeSelect.value;
+
+	switch(matchType) {
+		case 'contains':
+			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
+			queryInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}';
+			queryInput.placeholder = 'iphone';
+			matchTypeTipText.textContent = 'Example: "iphone" matches "buy iphone", "iphone case", "cheap iphone deals"';
+			break;
+		case 'prefix':
+			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
+			queryInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}';
+			queryInput.placeholder = 'buy ';
+			matchTypeTipText.textContent = 'Example: "buy " matches "buy iphone", "buy samsung", "buy phone case"';
+			break;
+		default: // exact
+			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
+			queryInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}';
+			queryInput.placeholder = 'buy iphone';
+			matchTypeTipText.textContent = 'Example: "buy iphone" only matches exactly "buy iphone", not "buy iphone case"';
+	}
+}
+
+if (matchTypeSelect) {
+	matchTypeSelect.addEventListener('change', updateMatchTypeUI);
+}
+{% endjs %}

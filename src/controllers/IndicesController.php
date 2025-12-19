@@ -227,4 +227,100 @@ class IndicesController extends Controller
 
         return $this->redirect('search-manager/indices');
     }
+
+    /**
+     * Bulk enable indices
+     */
+    public function actionBulkEnable(): Response
+    {
+        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
+        $count = 0;
+
+        foreach ($indexIds as $id) {
+            if (is_numeric($id)) {
+                $index = SearchIndex::findById((int)$id);
+            } else {
+                $index = SearchIndex::findByHandle($id);
+            }
+
+            if ($index && $index->canEdit()) {
+                $index->enabled = true;
+                if ($index->save()) {
+                    $count++;
+                }
+            }
+        }
+
+        return $this->asJson([
+            'success' => true,
+            'count' => $count,
+        ]);
+    }
+
+    /**
+     * Bulk disable indices
+     */
+    public function actionBulkDisable(): Response
+    {
+        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
+        $count = 0;
+
+        foreach ($indexIds as $id) {
+            if (is_numeric($id)) {
+                $index = SearchIndex::findById((int)$id);
+            } else {
+                $index = SearchIndex::findByHandle($id);
+            }
+
+            if ($index && $index->canEdit()) {
+                $index->enabled = false;
+                if ($index->save()) {
+                    $count++;
+                }
+            }
+        }
+
+        return $this->asJson([
+            'success' => true,
+            'count' => $count,
+        ]);
+    }
+
+    /**
+     * Bulk delete indices
+     */
+    public function actionBulkDelete(): Response
+    {
+        $this->requirePermission('searchManager:deleteIndices');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $indexIds = Craft::$app->getRequest()->getRequiredBodyParam('indexIds');
+        $count = 0;
+
+        foreach ($indexIds as $id) {
+            if (is_numeric($id)) {
+                $index = SearchIndex::findById((int)$id);
+            } else {
+                $index = SearchIndex::findByHandle($id);
+            }
+
+            if ($index && $index->canEdit() && $index->delete()) {
+                $count++;
+            }
+        }
+
+        return $this->asJson([
+            'success' => true,
+            'count' => $count,
+        ]);
+    }
 }

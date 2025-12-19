@@ -9,19 +9,45 @@
 
 {# Get query parameters #}
 {% set search = craft.app.request.getParam('search', '') %}
+{% set statusFilter = craft.app.request.getParam('status', 'all') %}
+{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
+{% set backendFilter = craft.app.request.getParam('backend', 'all') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = 50 %}
 {% set offset = (page - 1) * limit %}
 
-{# Filter indices based on search #}
+{# Backend colors - prepare for per-index backends in future #}
+{% set backendColors = {
+	'mysql': '#f59e0b',
+	'postgresql': '#3b82f6',
+	'file': '#6b7280',
+	'redis': '#dc2626',
+	'typesense': '#8b5cf6',
+	'algolia': '#06b6d4',
+	'meilisearch': '#ec4899',
+} %}
+{% set currentBackend = craft.searchManager.settings.searchBackend|default('mysql') %}
+
+{# Filter indices based on filters #}
 {% set filteredIndices = indices %}
+
+{# Status filter #}
+{% if statusFilter == 'enabled' %}
+	{% set filteredIndices = filteredIndices|filter(i => i.enabled) %}
+{% elseif statusFilter == 'disabled' %}
+	{% set filteredIndices = filteredIndices|filter(i => not i.enabled) %}
+{% endif %}
+
+{# Source filter #}
+{% if sourceFilter == 'config' %}
+	{% set filteredIndices = filteredIndices|filter(i => i.source == 'config') %}
+{% elseif sourceFilter == 'database' %}
+	{% set filteredIndices = filteredIndices|filter(i => i.source != 'config') %}
+{% endif %}
+
+{# Search filter #}
 {% if search %}
-	{% set filteredIndices = [] %}
-	{% for index in indices %}
-		{% if search|lower in index.name|lower or search|lower in index.handle|lower %}
-			{% set filteredIndices = filteredIndices|merge([index]) %}
-		{% endif %}
-	{% endfor %}
+	{% set filteredIndices = filteredIndices|filter(i => search|lower in i.name|lower or search|lower in i.handle|lower) %}
 {% endif %}
 
 {# Pagination #}
@@ -39,10 +65,99 @@
 		<div class="flex-grow">
 			<form method="get" action="{{ url('search-manager/indices') }}">
 				<div class="flex">
+					<div class="btngroup">
+						<button type="button" class="btn menubtn statusmenubtn">
+							<span class="status {{ statusFilter == 'all' ? 'all' : (statusFilter == 'enabled' ? 'green' : 'disabled') }}"></span>
+							{{ statusFilter == 'all' ? 'All'|t('search-manager') : statusFilter|capitalize }}
+						</button>
+						<div class="menu">
+							<ul>
+								<li>
+									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
+										<span class="status all"></span>{{ 'All'|t('search-manager') }}
+									</a>
+								</li>
+								<li><hr class="padded"></li>
+								<li class="menu-header">{{ 'Status'|t('search-manager') }}</li>
+								<li>
+									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
+										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
+										<span class="status disabled"></span>{{ 'Disabled'|t('search-manager') }}
+									</a>
+								</li>
+								<li><hr class="padded"></li>
+								<li class="menu-header">{{ 'Config Source'|t('search-manager') }}</li>
+								<li>
+									<a class="{{ sourceFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=all&backend={{ backendFilter }}&search={{ search }}">
+										<span class="status all"></span>{{ 'All Sources'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=config&backend={{ backendFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ sourceFilter == 'config' ? '#0ea5e9' : '#aab6c1' }};"></span>{{ 'Config File'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=database&backend={{ backendFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ sourceFilter == 'database' ? '#84cc16' : '#aab6c1' }};"></span>{{ 'Database'|t('search-manager') }}
+									</a>
+								</li>
+								<li><hr class="padded"></li>
+								<li class="menu-header">{{ 'Backend'|t('search-manager') }}</li>
+								<li>
+									<a class="{{ backendFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=all&search={{ search }}">
+										<span class="status all"></span>{{ 'All Backends'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ backendFilter == 'mysql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=mysql&search={{ search }}">
+										<span class="status" style="background: {{ backendFilter == 'mysql' ? backendColors.mysql : '#aab6c1' }};"></span>{{ 'MySQL'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ backendFilter == 'postgresql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=postgresql&search={{ search }}">
+										<span class="status" style="background: {{ backendFilter == 'postgresql' ? backendColors.postgresql : '#aab6c1' }};"></span>{{ 'PostgreSQL'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ backendFilter == 'file' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=file&search={{ search }}">
+										<span class="status" style="background: {{ backendFilter == 'file' ? backendColors.file : '#aab6c1' }};"></span>{{ 'File'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ backendFilter == 'redis' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=redis&search={{ search }}">
+										<span class="status" style="background: {{ backendFilter == 'redis' ? backendColors.redis : '#aab6c1' }};"></span>{{ 'Redis'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ backendFilter == 'typesense' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=typesense&search={{ search }}">
+										<span class="status" style="background: {{ backendFilter == 'typesense' ? backendColors.typesense : '#aab6c1' }};"></span>{{ 'Typesense'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ backendFilter == 'algolia' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=algolia&search={{ search }}">
+										<span class="status" style="background: {{ backendFilter == 'algolia' ? backendColors.algolia : '#aab6c1' }};"></span>{{ 'Algolia'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ backendFilter == 'meilisearch' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=meilisearch&search={{ search }}">
+										<span class="status" style="background: {{ backendFilter == 'meilisearch' ? backendColors.meilisearch : '#aab6c1' }};"></span>{{ 'Meilisearch'|t('search-manager') }}
+									</a>
+								</li>
+							</ul>
+						</div>
+					</div>
 					<div class="search-container texticon flex-grow">
 						<span class="texticon-icon search icon" aria-hidden="true"></span>
 						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search indices...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
 						<button type="button" class="clear-btn {{ search ? '' : 'hidden' }}" title="Clear search" role="button" aria-label="Clear search"></button>
+						<input type="hidden" name="status" value="{{ statusFilter }}">
+						<input type="hidden" name="source" value="{{ sourceFilter }}">
+						<input type="hidden" name="backend" value="{{ backendFilter }}">
 					</div>
 				</div>
 			</form>
@@ -85,6 +200,62 @@
 			min-width: 0;
 			flex-shrink: 1;
 		}
+		.menu-header {
+			font-size: 11px;
+			text-transform: uppercase;
+			color: #7c97b2;
+			padding: 8px 14px 4px;
+			font-weight: 600;
+			letter-spacing: 0.5px;
+		}
+		/* Config info icon */
+		.config-info-icon {
+			display: inline-block;
+			width: 16px;
+			height: 16px;
+			margin-left: 5px;
+			border-radius: 50%;
+			background: #9aa5b1;
+			color: #fff;
+			font-size: 11px;
+			font-weight: 600;
+			text-align: center;
+			line-height: 16px;
+			vertical-align: middle;
+			cursor: help;
+		}
+		.config-info-icon::before {
+			content: 'i';
+		}
+		.config-info-icon:hover {
+			background: #7b8794;
+		}
+		/* Config tooltip */
+		.config-tooltip {
+			position: absolute;
+			background: #fff;
+			color: #3f4d5a;
+			padding: 12px 14px;
+			border-radius: 6px;
+			border: 1px solid #cdd8e4;
+			font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+			font-size: 12px;
+			line-height: 1.5;
+			white-space: pre;
+			z-index: 1000;
+			box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+			max-width: 500px;
+			overflow-x: auto;
+		}
+		.config-tooltip::before {
+			content: 'config/search-manager.php';
+			display: block;
+			color: #8f98a3;
+			font-size: 10px;
+			margin-bottom: 8px;
+			padding-bottom: 8px;
+			border-bottom: 1px solid #e3e5e8;
+		}
 	</style>
 
 	<div id="elements" class="elements">
@@ -110,9 +281,14 @@
 				<tbody>
 					{% if paginatedIndices|length %}
 						{% for index in paginatedIndices %}
-							<tr data-id="{{ index.id }}" data-name="{{ index.name }}">
+							{% set isConfig = index.source == 'config' %}
+							<tr data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}" data-source="{{ isConfig ? 'config' : 'database' }}">
 								<td class="checkbox-cell">
-									<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
+									{% if isConfig %}
+										<div class="checkbox disabled" title="{{ 'Config indices cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
+									{% else %}
+										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
+									{% endif %}
 								</td>
 								<td>
 									{% if index.canEdit() %}
@@ -121,12 +297,12 @@
 										</a>
 									{% else %}
 										{{ index.name }}
-										<span class="info">{{ "(Config)"|t('search-manager') }}</span>
+										<span class="config-info-icon" data-config="{{ index.rawConfigDisplay|e('html_attr') }}"></span>
 									{% endif %}
 								</td>
 								<td><code>{{ index.handle }}</code></td>
 								<td>{{ index.elementType|split('\\')|last }}</td>
-								<td><span class="status" style="background: #0ea5e9;"></span> {{ craft.searchManager.settings.searchBackend|title }}</td>
+								<td><span class="status" style="background: {{ backendColors[currentBackend]|default('#9aa5b1') }};"></span> {{ currentBackend|title }}</td>
 								{% set expected = index.expectedCount %}
 								<td>{{ expected }}</td>
 								<td>
@@ -147,9 +323,9 @@
 								</td>
 								<td>
 									{% if index.source == 'config' %}
-										<span class="status blue"></span> {{ "Config"|t('search-manager') }}
+										<span class="status" style="background: #0ea5e9;"></span> {{ "Config"|t('search-manager') }}
 									{% else %}
-										<span class="status green"></span> {{ "Database"|t('search-manager') }}
+										<span class="status" style="background: #84cc16;"></span> {{ "Database"|t('search-manager') }}
 									{% endif %}
 								</td>
 								<td>
@@ -219,6 +395,22 @@
 				</div>
 			</div>
 		</div>
+		<div id="actions-container" class="flex" style="display: none;">
+			<div>
+				<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
+					{{ 'Set status'|t('app') }}
+				</button>
+				<div class="menu">
+					<ul>
+						<li><a id="bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
+						<li><a id="bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
+					</ul>
+				</div>
+			</div>
+			<button type="button" class="btn secondary" id="bulk-delete-btn">
+				<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
+			</button>
+		</div>
 	</div>
 
 	<script>
@@ -253,11 +445,138 @@
 
 	// Pagination
 	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?search={{ search }}&page={{ page - 1 }}';
+		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&page={{ page - 1 }}';
 	});
 
 	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?search={{ search }}&page={{ page + 1 }}';
+		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&page={{ page + 1 }}';
+	});
+
+	// Checkbox functionality
+	const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
+	const checkboxes = document.querySelectorAll('tbody .checkbox:not(.disabled)');
+	let selectedIds = new Set();
+
+	function toggleCheckbox(checkbox, checked) {
+		if (checked) {
+			checkbox.classList.add('checked');
+			checkbox.setAttribute('aria-checked', 'true');
+		} else {
+			checkbox.classList.remove('checked');
+			checkbox.setAttribute('aria-checked', 'false');
+		}
+	}
+
+	function updateBulkButtons() {
+		const hasSelection = selectedIds.size > 0;
+		const actionsContainer = document.getElementById('actions-container');
+		const deleteLabel = document.getElementById('delete-label');
+
+		if (hasSelection) {
+			actionsContainer.style.display = '';
+			const count = selectedIds.size;
+			deleteLabel.textContent = `{{ 'Delete'|t('search-manager') }} (${count})`;
+		} else {
+			actionsContainer.style.display = 'none';
+		}
+	}
+
+	// Select all
+	if (selectAllCheckbox) {
+		selectAllCheckbox.addEventListener('click', function() {
+			const isChecked = !this.classList.contains('checked');
+			toggleCheckbox(this, isChecked);
+
+			checkboxes.forEach(checkbox => {
+				toggleCheckbox(checkbox, isChecked);
+				const id = checkbox.closest('tr').dataset.id;
+				if (isChecked) {
+					selectedIds.add(id);
+				} else {
+					selectedIds.delete(id);
+				}
+			});
+
+			updateBulkButtons();
+		});
+	}
+
+	// Individual checkboxes
+	checkboxes.forEach(checkbox => {
+		checkbox.addEventListener('click', function() {
+			const isChecked = !this.classList.contains('checked');
+			toggleCheckbox(this, isChecked);
+
+			const id = this.closest('tr').dataset.id;
+			if (isChecked) {
+				selectedIds.add(id);
+			} else {
+				selectedIds.delete(id);
+			}
+
+			updateBulkButtons();
+		});
+	});
+
+	// Initialize bulk actions menu button
+	const bulkActionsBtn = document.getElementById('bulk-actions-btn');
+	if (bulkActionsBtn) {
+		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
+			new Craft.MenuBtn(bulkActionsBtn);
+		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
+			new Garnish.MenuBtn(bulkActionsBtn);
+		}
+	}
+
+	// Bulk enable
+	document.getElementById('bulk-enable-action')?.addEventListener('click', function(e) {
+		e.preventDefault();
+		const ids = Array.from(selectedIds);
+
+		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-enable', {
+			data: { indexIds: ids }
+		}).then(function(response) {
+			if (response.data.success) {
+				Craft.cp.displayNotice(`Enabled ${response.data.count} indices`);
+				setTimeout(() => window.location.reload(), 1000);
+			}
+		}).catch(function(error) {
+			Craft.cp.displayError('Failed to enable indices');
+		});
+	});
+
+	// Bulk disable
+	document.getElementById('bulk-disable-action')?.addEventListener('click', function(e) {
+		e.preventDefault();
+		const ids = Array.from(selectedIds);
+
+		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-disable', {
+			data: { indexIds: ids }
+		}).then(function(response) {
+			if (response.data.success) {
+				Craft.cp.displayNotice(`Disabled ${response.data.count} indices`);
+				setTimeout(() => window.location.reload(), 1000);
+			}
+		}).catch(function(error) {
+			Craft.cp.displayError('Failed to disable indices');
+		});
+	});
+
+	// Bulk delete
+	document.getElementById('bulk-delete-btn')?.addEventListener('click', function() {
+		const ids = Array.from(selectedIds);
+		if (!confirm(`Delete ${ids.length} ${ids.length > 1 ? 'indices' : 'index'}? This cannot be undone.`)) return;
+
+		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-delete', {
+			data: { indexIds: ids }
+		}).then(function(response) {
+			if (response.data.success) {
+				Craft.cp.displayNotice(`Deleted ${response.data.count} indices`);
+				setTimeout(() => window.location.reload(), 1000);
+			}
+		}).catch(function(error) {
+			Craft.cp.displayError('Failed to delete indices');
+		});
 	});
 
 	// Individual index action menu clicks
@@ -305,5 +624,49 @@
 		document.body.appendChild(form);
 		form.submit();
 	}
+
+	// Config tooltip for config-based indices
+	let activeTooltip = null;
+
+	document.querySelectorAll('.config-info-icon').forEach(info => {
+		info.addEventListener('mouseenter', function(e) {
+			const config = this.dataset.config;
+			if (!config) return;
+
+			// Remove any existing tooltip
+			if (activeTooltip) {
+				activeTooltip.remove();
+			}
+
+			// Create tooltip
+			const tooltip = document.createElement('div');
+			tooltip.className = 'config-tooltip';
+			tooltip.textContent = config;
+			document.body.appendChild(tooltip);
+			activeTooltip = tooltip;
+
+			// Position tooltip
+			const rect = this.getBoundingClientRect();
+			const tooltipRect = tooltip.getBoundingClientRect();
+
+			let left = rect.left + window.scrollX;
+			let top = rect.bottom + window.scrollY + 8;
+
+			// Keep within viewport
+			if (left + tooltipRect.width > window.innerWidth - 20) {
+				left = window.innerWidth - tooltipRect.width - 20;
+			}
+
+			tooltip.style.left = left + 'px';
+			tooltip.style.top = top + 'px';
+		});
+
+		info.addEventListener('mouseleave', function() {
+			if (activeTooltip) {
+				activeTooltip.remove();
+				activeTooltip = null;
+			}
+		});
+	});
 	</script>
 {% endblock %}

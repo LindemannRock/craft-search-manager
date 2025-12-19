@@ -744,6 +744,72 @@ class SearchIndex extends Model
     }
 
     /**
+     * Get raw config display string for config indices
+     * Returns a formatted representation of the config file definition
+     */
+    public function getRawConfigDisplay(): ?string
+    {
+        if ($this->source !== 'config') {
+            return null;
+        }
+
+        $configData = self::loadConfigForHandle($this->handle);
+        if (!$configData) {
+            return null;
+        }
+
+        $lines = ["'{$this->handle}' => ["];
+
+        // Name
+        if (isset($configData['name'])) {
+            $lines[] = "    'name' => '{$configData['name']}',";
+        }
+
+        // Element type - shorten the class name
+        if (isset($configData['elementType'])) {
+            $elementType = $configData['elementType'];
+            // Show as ::class syntax for readability
+            $shortName = (new \ReflectionClass($elementType))->getShortName();
+            $lines[] = "    'elementType' => \\craft\\elements\\{$shortName}::class,";
+        }
+
+        // Site ID
+        if (isset($configData['siteId'])) {
+            $lines[] = "    'siteId' => {$configData['siteId']},";
+        }
+
+        // Transformer
+        if (!empty($configData['transformer'])) {
+            $transformer = $configData['transformer'];
+            $lines[] = "    'transformer' => '{$transformer}',";
+        }
+
+        // Language
+        if (!empty($configData['language'])) {
+            $lines[] = "    'language' => '{$configData['language']}',";
+        }
+
+        // Criteria - show as closure placeholder if it's a closure
+        if (isset($configData['criteria'])) {
+            if ($configData['criteria'] instanceof \Closure) {
+                $lines[] = "    'criteria' => function(\$query) { ... },";
+            } elseif (is_array($configData['criteria']) && !empty($configData['criteria'])) {
+                $criteriaJson = json_encode($configData['criteria'], JSON_PRETTY_PRINT);
+                $criteriaJson = str_replace("\n", "\n        ", $criteriaJson);
+                $lines[] = "    'criteria' => {$criteriaJson},";
+            }
+        }
+
+        // Enabled
+        $enabled = ($configData['enabled'] ?? true) ? 'true' : 'false';
+        $lines[] = "    'enabled' => {$enabled},";
+
+        $lines[] = "],";
+
+        return implode("\n", $lines);
+    }
+
+    /**
      * Get expected element count based on index criteria
      * Runs the element query with count() to determine how many elements should be indexed
      * Matches the logic in RebuildIndexJob for accurate comparison

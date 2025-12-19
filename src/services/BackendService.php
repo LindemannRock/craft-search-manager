@@ -182,6 +182,7 @@ class BackendService extends Component
             $options['siteId'] = \Craft::$app->getSites()->getCurrentSite()->id ?? 1;
         }
 
+        $siteId = $options['siteId'];
         $settings = SearchManager::$plugin->getSettings();
 
         // Extract analytics options from search options (API callers can pass these)
@@ -191,12 +192,40 @@ class BackendService extends Component
             'appVersion' => $options['appVersion'] ?? null,
         ];
 
+        // =====================================================================
+        // QUERY RULES: Check for redirect first
+        // =====================================================================
+        $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, $indexName, $siteId);
+        if ($redirectUrl) {
+            $this->logDebug('Query rule redirect matched', [
+                'query' => $query,
+                'redirectUrl' => $redirectUrl,
+            ]);
+            return [
+                'hits' => [],
+                'total' => 0,
+                'redirect' => $redirectUrl,
+            ];
+        }
+
+        // =====================================================================
+        // QUERY RULES: Expand query with synonyms
+        // =====================================================================
+        $expandedQueries = SearchManager::$plugin->queryRules->expandWithSynonyms($query, $indexName, $siteId);
+        $useSynonyms = count($expandedQueries) > 1;
+
+        if ($useSynonyms) {
+            $this->logDebug('Query expanded with synonyms', [
+                'original' => $query,
+                'expanded' => $expandedQueries,
+            ]);
+        }
+
         // 1. Check cache first (if caching enabled)
         if ($settings->enableCache) {
             $cached = $this->_getFromCache($indexName, $query, $options);
             if ($cached !== null) {
                 // Still track analytics for cached results
-                $siteId = $options['siteId'];
                 SearchManager::$plugin->analytics->trackSearch(
                     $indexName,
                     $query,
@@ -212,11 +241,41 @@ class BackendService extends Component
 
         // 2. No cache - perform actual search
         $startTime = microtime(true);
-        $results = $backend->search($indexName, $query, $options);
+
+        // If synonyms exist, search for all expanded queries and merge results
+        if ($useSynonyms) {
+            $results = $this->_searchWithSynonyms($backend, $indexName, $expandedQueries, $options);
+        } else {
+            $results = $backend->search($indexName, $query, $options);
+        }
+
+        // =====================================================================
+        // QUERY RULES: Apply score boosts
+        // =====================================================================
+        if (!empty($results['hits'])) {
+            $results['hits'] = SearchManager::$plugin->queryRules->applyBoosts(
+                $results['hits'],
+                $query,
+                $indexName,
+                $siteId
+            );
+        }
+
+        // =====================================================================
+        // PROMOTIONS: Apply pinned/promoted results
+        // =====================================================================
+        if (!empty($results['hits'])) {
+            $results['hits'] = SearchManager::$plugin->promotions->applyPromotions(
+                $results['hits'],
+                $query,
+                $indexName,
+                $siteId
+            );
+        }
+
         $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
 
         // 3. Track analytics
-        $siteId = $options['siteId'] ?: \Craft::$app->getSites()->getCurrentSite()->id ?? 1;
         SearchManager::$plugin->analytics->trackSearch(
             $indexName,
             $query,
@@ -248,6 +307,63 @@ class BackendService extends Component
         }
 
         return $results;
+    }
+
+    /**
+     * Search with synonym expansion - merges results from multiple queries
+     *
+     * @param BackendInterface $backend
+     * @param string $indexName
+     * @param array $queries Array of query strings (original + synonyms)
+     * @param array $options
+     * @return array Merged search results
+     */
+    private function _searchWithSynonyms(BackendInterface $backend, string $indexName, array $queries, array $options): array
+    {
+        $allHits = [];
+        $seenElementIds = [];
+        $total = 0;
+
+        foreach ($queries as $searchQuery) {
+            $queryResults = $backend->search($indexName, $searchQuery, $options);
+
+            if (!empty($queryResults['hits'])) {
+                foreach ($queryResults['hits'] as $hit) {
+                    $elementId = $hit['elementId'] ?? null;
+
+                    // Avoid duplicates - keep highest score
+                    if ($elementId && !isset($seenElementIds[$elementId])) {
+                        $seenElementIds[$elementId] = true;
+                        $allHits[] = $hit;
+                    } elseif ($elementId && isset($seenElementIds[$elementId])) {
+                        // Find existing hit and update score if higher
+                        foreach ($allHits as &$existingHit) {
+                            if (($existingHit['elementId'] ?? null) === $elementId) {
+                                $existingHit['score'] = max($existingHit['score'] ?? 0, $hit['score'] ?? 0);
+                                break;
+                            }
+                        }
+                        unset($existingHit);
+                    }
+                }
+            }
+        }
+
+        // Sort by score (descending)
+        usort($allHits, function($a, $b) {
+            return ($b['score'] ?? 0) <=> ($a['score'] ?? 0);
+        });
+
+        // Apply limit
+        $limit = $options['limit'] ?? 50;
+        if ($limit > 0 && count($allHits) > $limit) {
+            $allHits = array_slice($allHits, 0, $limit);
+        }
+
+        return [
+            'hits' => $allHits,
+            'total' => count($allHits),
+        ];
     }
 
     public function clearIndex(string $indexName): bool

@@ -26,6 +26,8 @@ use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\DeviceDetectionService;
 use lindemannrock\searchmanager\services\IndexingService;
+use lindemannrock\searchmanager\services\PromotionService;
+use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\twigextensions\PluginNameExtension;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
@@ -43,6 +45,8 @@ use yii\base\Event;
  * @property-read AnalyticsService $analytics
  * @property-read AutocompleteService $autocomplete
  * @property-read DeviceDetectionService $deviceDetection
+ * @property-read PromotionService $promotions
+ * @property-read QueryRuleService $queryRules
  * @property-read Settings $settings
  * @method Settings getSettings()
  */
@@ -200,6 +204,8 @@ class SearchManager extends Plugin
             'backend' => BackendService::class,
             'deviceDetection' => DeviceDetectionService::class,
             'indexing' => IndexingService::class,
+            'promotions' => PromotionService::class,
+            'queryRules' => QueryRuleService::class,
             'transformers' => TransformerService::class,
         ]);
     }
@@ -260,6 +266,17 @@ class SearchManager extends Plugin
                     'search-manager/indices/rebuild/<indexId:\d+>' => 'search-manager/indices/rebuild',
                     'search-manager/indices/clear/<indexId:\d+>' => 'search-manager/indices/clear',
                     'search-manager/indices/delete/<indexId:\d+>' => 'search-manager/indices/delete',
+                    // Promotions
+                    'search-manager/promotions' => 'search-manager/promotions/index',
+                    'search-manager/promotions/create' => 'search-manager/promotions/edit',
+                    'search-manager/promotions/edit/<promotionId:\d+>' => 'search-manager/promotions/edit',
+                    'search-manager/promotions/delete/<promotionId:\d+>' => 'search-manager/promotions/delete',
+                    // Query Rules
+                    'search-manager/query-rules' => 'search-manager/query-rules/index',
+                    'search-manager/query-rules/create' => 'search-manager/query-rules/edit',
+                    'search-manager/query-rules/edit/<ruleId:\d+>' => 'search-manager/query-rules/edit',
+                    'search-manager/query-rules/delete/<ruleId:\d+>' => 'search-manager/query-rules/delete',
+                    // Analytics
                     'search-manager/analytics' => 'search-manager/analytics/index',
                     'search-manager/analytics/export' => 'search-manager/analytics/export',
                     'search-manager/settings' => 'search-manager/settings/general',
@@ -362,11 +379,11 @@ class SearchManager extends Plugin
             ClearCaches::EVENT_REGISTER_CACHE_OPTIONS,
             function(RegisterCacheOptionsEvent $event) {
                 $settings = $this->getSettings();
-                $pluginName = $settings->getFullName();
+                $displayName = $settings->getDisplayName();
 
                 $event->options[] = [
                     'key' => 'search-manager-search-cache',
-                    'label' => Craft::t('search-manager', '{pluginName} caches', ['pluginName' => $pluginName]),
+                    'label' => Craft::t('search-manager', '{displayName} caches', ['displayName' => $displayName]),
                     'action' => function() {
                         $this->backend->clearAllSearchCache();
                     },
@@ -496,6 +513,22 @@ class SearchManager extends Plugin
             $item['subnav']['indices'] = [
                 'label' => Craft::t('search-manager', 'Indices'),
                 'url' => 'search-manager/indices',
+            ];
+        }
+
+        // Promotions
+        if (Craft::$app->getUser()->checkPermission('searchManager:manageIndices')) {
+            $item['subnav']['promotions'] = [
+                'label' => Craft::t('search-manager', 'Promotions'),
+                'url' => 'search-manager/promotions',
+            ];
+        }
+
+        // Query Rules
+        if (Craft::$app->getUser()->checkPermission('searchManager:manageIndices')) {
+            $item['subnav']['query-rules'] = [
+                'label' => Craft::t('search-manager', 'Query Rules'),
+                'url' => 'search-manager/query-rules',
             ];
         }
 

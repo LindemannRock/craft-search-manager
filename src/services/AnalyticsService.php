@@ -180,13 +180,14 @@ class AnalyticsService extends Component
     /**
      * Get query length distribution
      */
-    public function getQueryLengthDistribution(?int $siteId, int $days = 30): array
+    public function getQueryLengthDistribution(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
-            ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('query');
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -222,13 +223,14 @@ class AnalyticsService extends Component
     /**
      * Get word cloud data
      */
-    public function getWordCloudData(?int $siteId, int $days = 30, int $limit = 50): array
+    public function getWordCloudData(?int $siteId, string $dateRange = 'last30days', int $limit = 50): array
     {
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
-            ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('query');
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -270,17 +272,18 @@ class AnalyticsService extends Component
      * Get zero-result clusters (content gaps)
      * Groups similar failed queries together
      */
-    public function getZeroResultClusters(?int $siteId, int $days = 30, int $limit = 20): array
+    public function getZeroResultClusters(?int $siteId, string $dateRange = 'last30days', int $limit = 20): array
     {
         // 1. Get all zero-result queries
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count', 'MAX(dateCreated) as lastSearched'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['isHit' => 0])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit * 3); // Get more candidates for clustering
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -321,7 +324,18 @@ class AnalyticsService extends Component
         // Sort clusters by count
         usort($clusters, fn($a, $b) => $b['count'] <=> $a['count']);
 
-        return array_slice($clusters, 0, $limit);
+        // Convert lastSearched from UTC to user's timezone for display
+        $userTz = new \DateTimeZone(Craft::$app->getTimeZone());
+        $result = array_slice($clusters, 0, $limit);
+        foreach ($result as &$cluster) {
+            if (!empty($cluster['lastSearched'])) {
+                $utcDate = new \DateTime($cluster['lastSearched'], new \DateTimeZone('UTC'));
+                $utcDate->setTimezone($userTz);
+                $cluster['lastSearched'] = $utcDate->format('Y-m-d H:i:s');
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -352,7 +366,7 @@ class AnalyticsService extends Component
     /**
      * Get chart data for visualization
      */
-    public function getChartData(?int $siteId, int $days = 30): array
+    public function getChartData(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select([
@@ -362,9 +376,10 @@ class AnalyticsService extends Component
                 'SUM(CASE WHEN isHit = 0 THEN 1 ELSE 0 END) as zeroResults',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('DATE(dateCreated)')
             ->orderBy(['date' => SORT_ASC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -376,7 +391,7 @@ class AnalyticsService extends Component
     /**
      * Get most common search queries
      */
-    public function getMostCommon404s(?int $siteId, int $limit = 10): array
+    public function getMostCommonSearches(?int $siteId, int $limit = 10, ?string $dateRange = null): array
     {
         $query = (new Query())
             ->select(['query', 'siteId', 'COUNT(*) as count', 'SUM(resultsCount) as totalResults', 'MAX(dateCreated) as lastSearched'])
@@ -385,6 +400,10 @@ class AnalyticsService extends Component
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
 
+        if ($dateRange !== null) {
+            $this->applyDateRangeFilter($query, $dateRange);
+        }
+
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
         }
@@ -392,11 +411,12 @@ class AnalyticsService extends Component
         $results = $query->all();
 
         // Convert lastSearched dates from UTC to user's timezone
+        $userTz = new \DateTimeZone(Craft::$app->getTimeZone());
         foreach ($results as &$result) {
             if (!empty($result['lastSearched'])) {
                 $utcDate = new \DateTime($result['lastSearched'], new \DateTimeZone('UTC'));
-                $utcDate->setTimezone(new \DateTimeZone(Craft::$app->getTimeZone()));
-                $result['lastSearched'] = $utcDate;
+                $utcDate->setTimezone($userTz);
+                $result['lastSearched'] = $utcDate->format('Y-m-d H:i:s');
             }
         }
 
@@ -406,7 +426,7 @@ class AnalyticsService extends Component
     /**
      * Get recent searches
      */
-    public function getRecent404s(?int $siteId, int $limit = 5, ?bool $hasResults = null, ?int $days = null): array
+    public function getRecentSearches(?int $siteId, int $limit = 5, ?bool $hasResults = null, ?string $dateRange = null): array
     {
         $query = (new Query())
             ->from('{{%searchmanager_analytics}}')
@@ -421,8 +441,50 @@ class AnalyticsService extends Component
             $query->andWhere(['isHit' => $hasResults ? 1 : 0]);
         }
 
-        if ($days !== null) {
-            $query->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
+        if ($dateRange !== null) {
+            $tz = new \DateTimeZone(Craft::$app->getTimeZone());
+
+            switch ($dateRange) {
+                case 'today':
+                    $start = new \DateTime('now', $tz);
+                    $start->setTime(0, 0, 0);
+                    $start->setTimezone(new \DateTimeZone('UTC'));
+                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
+                    break;
+                case 'yesterday':
+                    $start = new \DateTime('now', $tz);
+                    $start->modify('-1 day')->setTime(0, 0, 0);
+                    $start->setTimezone(new \DateTimeZone('UTC'));
+
+                    $end = new \DateTime('now', $tz);
+                    $end->setTime(0, 0, 0);
+                    $end->setTimezone(new \DateTimeZone('UTC'));
+
+                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
+                    $query->andWhere(['<', 'dateCreated', $end->format('Y-m-d H:i:s')]);
+                    break;
+                case 'last7days':
+                    $start = new \DateTime('now', $tz);
+                    $start->modify('-7 days');
+                    $start->setTimezone(new \DateTimeZone('UTC'));
+                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
+                    break;
+                case 'last30days':
+                    $start = new \DateTime('now', $tz);
+                    $start->modify('-30 days');
+                    $start->setTimezone(new \DateTimeZone('UTC'));
+                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
+                    break;
+                case 'last90days':
+                    $start = new \DateTime('now', $tz);
+                    $start->modify('-90 days');
+                    $start->setTimezone(new \DateTimeZone('UTC'));
+                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
+                    break;
+                case 'all':
+                    // No date filter
+                    break;
+            }
         }
 
         $results = $query->all();
@@ -442,7 +504,7 @@ class AnalyticsService extends Component
     /**
      * Get analytics count
      */
-    public function getAnalyticsCount(?int $siteId = null, ?bool $hasResults = null, ?int $days = null): int
+    public function getAnalyticsCount(?int $siteId = null, ?bool $hasResults = null, ?string $dateRange = null): int
     {
         $query = (new Query())->from('{{%searchmanager_analytics}}');
 
@@ -454,8 +516,8 @@ class AnalyticsService extends Component
             $query->andWhere(['isHit' => $hasResults ? 1 : 0]);
         }
 
-        if ($days !== null) {
-            $query->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
+        if ($dateRange !== null) {
+            $this->applyDateRangeFilter($query, $dateRange);
         }
 
         return (int)$query->count();
@@ -464,15 +526,16 @@ class AnalyticsService extends Component
     /**
      * Get device breakdown
      */
-    public function getDeviceBreakdown(?int $siteId, int $days = 30): array
+    public function getDeviceBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['deviceType', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['deviceType' => null]])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('deviceType')
             ->orderBy(['count' => SORT_DESC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -484,16 +547,17 @@ class AnalyticsService extends Component
     /**
      * Get browser breakdown
      */
-    public function getBrowserBreakdown(?int $siteId, int $days = 30): array
+    public function getBrowserBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['browser', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['browser' => null]])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('browser')
             ->orderBy(['count' => SORT_DESC])
             ->limit(10);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -505,15 +569,16 @@ class AnalyticsService extends Component
     /**
      * Get OS breakdown
      */
-    public function getOsBreakdown(?int $siteId, int $days = 30): array
+    public function getOsBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['osName', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['osName' => null]])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('osName')
             ->orderBy(['count' => SORT_DESC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -525,12 +590,13 @@ class AnalyticsService extends Component
     /**
      * Get bot statistics
      */
-    public function getBotStats(?int $siteId, int $days = 30): array
+    public function getBotStats(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['COUNT(*) as total', 'SUM(CASE WHEN isRobot = 1 THEN 1 ELSE 0 END) as bots'])
-            ->from('{{%searchmanager_analytics}}')
-            ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
+            ->from('{{%searchmanager_analytics}}');
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -548,10 +614,11 @@ class AnalyticsService extends Component
             ->from('{{%searchmanager_analytics}}')
             ->where(['isRobot' => 1])
             ->andWhere(['not', ['botName' => null]])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('botName')
             ->orderBy(['count' => SORT_DESC])
             ->limit(10);
+
+        $this->applyDateRangeFilter($topBotsQuery, $dateRange);
 
         if ($siteId) {
             $topBotsQuery->andWhere(['siteId' => $siteId]);
@@ -831,20 +898,47 @@ class AnalyticsService extends Component
     private function applyDateRangeFilter(Query $query, string $dateRange, ?string $column = null): void
     {
         $column = $column ?: 'dateCreated';
+        $tz = new \DateTimeZone(Craft::$app->getTimeZone());
 
+        // Create dates in user's timezone, then convert to UTC for database comparison
         switch ($dateRange) {
             case 'today':
-                $query->andWhere(['>=', $column, Db::prepareDateForDb(new \DateTime('today'))]);
+                $start = new \DateTime('now', $tz);
+                $start->setTime(0, 0, 0);
+                $start->setTimezone(new \DateTimeZone('UTC'));
+                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
+                break;
+            case 'yesterday':
+                $start = new \DateTime('now', $tz);
+                $start->modify('-1 day')->setTime(0, 0, 0);
+                $start->setTimezone(new \DateTimeZone('UTC'));
+
+                $end = new \DateTime('now', $tz);
+                $end->setTime(0, 0, 0);
+                $end->setTimezone(new \DateTimeZone('UTC'));
+
+                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
+                $query->andWhere(['<', $column, $end->format('Y-m-d H:i:s')]);
                 break;
             case 'last7days':
-                $query->andWhere(['>=', $column, Db::prepareDateForDb((new \DateTime())->modify('-7 days'))]);
+                $start = new \DateTime('now', $tz);
+                $start->modify('-7 days');
+                $start->setTimezone(new \DateTimeZone('UTC'));
+                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
                 break;
             case 'last30days':
-                $query->andWhere(['>=', $column, Db::prepareDateForDb((new \DateTime())->modify('-30 days'))]);
+                $start = new \DateTime('now', $tz);
+                $start->modify('-30 days');
+                $start->setTimezone(new \DateTimeZone('UTC'));
+                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
                 break;
             case 'last90days':
-                $query->andWhere(['>=', $column, Db::prepareDateForDb((new \DateTime())->modify('-90 days'))]);
+                $start = new \DateTime('now', $tz);
+                $start->modify('-90 days');
+                $start->setTimezone(new \DateTimeZone('UTC'));
+                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
                 break;
+            case 'all':
             case 'alltime':
                 // No filter
                 break;
@@ -1133,16 +1227,17 @@ class AnalyticsService extends Component
     /**
      * Get intent breakdown
      */
-    public function getIntentBreakdown(?int $siteId, int $days = 30): array
+    public function getIntentBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['intent', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['intent' => null]])
             ->andWhere(['source' => 'frontend']) // Only frontend searches
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('intent')
             ->orderBy(['count' => SORT_DESC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -1171,14 +1266,15 @@ class AnalyticsService extends Component
     /**
      * Get source breakdown (frontend, cp, api, custom sources)
      */
-    public function getSourceBreakdown(?int $siteId, int $days = 30): array
+    public function getSourceBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['source', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('source')
             ->orderBy(['count' => SORT_DESC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -1216,7 +1312,7 @@ class AnalyticsService extends Component
     /**
      * Get average execution time over time for performance chart
      */
-    public function getPerformanceData(?int $siteId, int $days = 30): array
+    public function getPerformanceData(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select([
@@ -1227,9 +1323,10 @@ class AnalyticsService extends Component
                 'COUNT(*) as searches',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('DATE(dateCreated)')
             ->orderBy(['date' => SORT_ASC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -1250,14 +1347,13 @@ class AnalyticsService extends Component
      * Get cache hit statistics
      * Note: Cache hits are identified by executionTime = 0
      */
-    public function getCacheStats(?int $siteId, int $days = 30): array
+    public function getCacheStats(?int $siteId, string $dateRange = 'last30days'): array
     {
-        $dateThreshold = Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"));
-
         // Total searches
         $totalQuery = (new Query())
-            ->from('{{%searchmanager_analytics}}')
-            ->andWhere(['>=', 'dateCreated', $dateThreshold]);
+            ->from('{{%searchmanager_analytics}}');
+
+        $this->applyDateRangeFilter($totalQuery, $dateRange);
 
         if ($siteId) {
             $totalQuery->andWhere(['siteId' => $siteId]);
@@ -1268,8 +1364,9 @@ class AnalyticsService extends Component
         // Cache hits (executionTime = 0)
         $cacheHitQuery = (new Query())
             ->from('{{%searchmanager_analytics}}')
-            ->andWhere(['>=', 'dateCreated', $dateThreshold])
             ->andWhere(['executionTime' => 0]);
+
+        $this->applyDateRangeFilter($cacheHitQuery, $dateRange);
 
         if ($siteId) {
             $cacheHitQuery->andWhere(['siteId' => $siteId]);
@@ -1290,7 +1387,7 @@ class AnalyticsService extends Component
     /**
      * Get top performing queries (fastest response time)
      */
-    public function getTopPerformingQueries(?int $siteId, int $days = 30, int $limit = 10): array
+    public function getTopPerformingQueries(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select([
@@ -1303,13 +1400,14 @@ class AnalyticsService extends Component
                 'AVG(resultsCount) as avgResults',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
             ->andWhere(['>', 'resultsCount', 0]) // Only queries with results
             ->groupBy(['query', 'siteId'])
             ->having(['>=', 'COUNT(*)', 3]) // At least 3 searches for reliable avg
             ->orderBy(['avgTime' => SORT_ASC])
             ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -1339,7 +1437,7 @@ class AnalyticsService extends Component
     /**
      * Get worst performing queries (slowest response time)
      */
-    public function getWorstPerformingQueries(?int $siteId, int $days = 30, int $limit = 10): array
+    public function getWorstPerformingQueries(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select([
@@ -1352,12 +1450,13 @@ class AnalyticsService extends Component
                 'AVG(resultsCount) as avgResults',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->andWhere(['>', 'executionTime', 0]) // Exclude cache hits
             ->groupBy(['query', 'siteId'])
             ->having(['>=', 'COUNT(*)', 3]) // At least 3 searches for reliable avg
             ->orderBy(['avgTime' => SORT_DESC])
             ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -1387,7 +1486,7 @@ class AnalyticsService extends Component
     /**
      * Get country breakdown
      */
-    public function getCountryBreakdown(?int $siteId, int $days = 30, int $limit = 10): array
+    public function getCountryBreakdown(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select(['country', 'COUNT(*) as count'])
@@ -1395,10 +1494,11 @@ class AnalyticsService extends Component
             ->where(['not', ['country' => null]])
             ->andWhere(['!=', 'country', ''])
             ->andWhere(['source' => 'frontend'])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('country')
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -1424,7 +1524,7 @@ class AnalyticsService extends Component
     /**
      * Get city breakdown
      */
-    public function getCityBreakdown(?int $siteId, int $days = 30, int $limit = 10): array
+    public function getCityBreakdown(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select(['city', 'country', 'COUNT(*) as count'])
@@ -1432,10 +1532,11 @@ class AnalyticsService extends Component
             ->where(['not', ['city' => null]])
             ->andWhere(['!=', 'city', ''])
             ->andWhere(['source' => 'frontend'])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy(['city', 'country'])
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);
@@ -1461,15 +1562,16 @@ class AnalyticsService extends Component
     /**
      * Get peak usage hours
      */
-    public function getPeakUsageHours(?int $siteId, int $days = 30): array
+    public function getPeakUsageHours(?int $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['HOUR(dateCreated) as hour', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['source' => 'frontend'])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))])
             ->groupBy('HOUR(dateCreated)')
             ->orderBy(['hour' => SORT_ASC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);

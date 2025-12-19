@@ -515,8 +515,8 @@ class Settings extends Model
      */
     public function getDisplayName(): string
     {
-        // Strip "Manager" or "manager" from the name
-        $name = str_replace([' Manager', ' manager'], '', $this->pluginName);
+        // Strip "Manager" or "manager" from the name and trim whitespace
+        $name = trim(str_replace([' Manager', ' manager'], '', $this->pluginName));
 
         // Singularize by removing trailing 's' if present
         $singular = preg_replace('/s$/', '', $name) ?: $name;
@@ -534,7 +534,7 @@ class Settings extends Model
      */
     public function getFullName(): string
     {
-        return $this->pluginName;
+        return trim($this->pluginName);
     }
 
     /**
@@ -547,8 +547,8 @@ class Settings extends Model
      */
     public function getPluralDisplayName(): string
     {
-        // Strip "Manager" or "manager" from the name
-        return str_replace([' Manager', ' manager'], '', $this->pluginName);
+        // Strip "Manager" or "manager" from the name and trim whitespace
+        return trim(str_replace([' Manager', ' manager'], '', $this->pluginName));
     }
 
     /**

@@ -47,37 +47,26 @@ class AnalyticsController extends Controller
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
         $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', 'last7days');
 
-        // Determine days based on date range
-        $days = match ($dateRange) {
-            'today' => 1,
-            'yesterday' => 2,
-            'last7days' => 7,
-            'last30days' => 30,
-            'last90days' => 90,
-            'all' => 365,
-            default => 7,
-        };
-
         // Get chart data
-        $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $days);
+        $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
 
-        // Get most common 404s
-        $mostCommon = SearchManager::$plugin->analytics->getMostCommon404s($siteId, 15);
+        // Get most common searches
+        $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($siteId, 15, $dateRange);
 
         // Get recent searches
-        $recentSearches = SearchManager::$plugin->analytics->getRecent404s($siteId, 100, null, $days);
-        $recentUnhandled = SearchManager::$plugin->analytics->getRecent404s($siteId, 15, false);
+        $recentSearches = SearchManager::$plugin->analytics->getRecentSearches($siteId, 100, null, $dateRange);
+        $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($siteId, 15, false, $dateRange);
 
         // Get counts
-        $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, null, $days);
-        $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true, $days);
-        $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false, $days);
+        $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, null, $dateRange);
+        $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true, $dateRange);
+        $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false, $dateRange);
 
         // Get device analytics
-        $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $days);
-        $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $days);
-        $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $days);
-        $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $days);
+        $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
+        $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
+        $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
+        $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $dateRange);
 
         // Transform data for charts
         $deviceBreakdown = [
@@ -226,26 +215,15 @@ class AnalyticsController extends Controller
         $type = $request->getParam('type', 'all'); // 'all', 'summary', 'chart', 'query-analysis', 'content-gaps', 'device-stats'
 
         try {
-            // Determine days based on date range
-            $days = match ($dateRange) {
-                'today' => 1,
-                'yesterday' => 2,
-                'last7days' => 7,
-                'last30days' => 30,
-                'last90days' => 90,
-                'all' => 365,
-                default => 7,
-            };
-
             $data = [];
 
             // Summary Stats (Header)
             if ($type === 'all' || $type === 'summary') {
-                $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, null, $days);
-                $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true, $days);
-                $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false, $days);
-                $mostCommon = SearchManager::$plugin->analytics->getMostCommon404s($siteId, 15);
-                $recentUnhandled = SearchManager::$plugin->analytics->getRecent404s($siteId, 15, false);
+                $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, null, $dateRange);
+                $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true, $dateRange);
+                $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false, $dateRange);
+                $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($siteId, 15, $dateRange);
+                $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($siteId, 15, false, $dateRange);
 
                 $data['summary'] = [
                     'totalCount' => $totalCount,
@@ -258,30 +236,30 @@ class AnalyticsController extends Controller
 
             // Main Chart
             if ($type === 'all' || $type === 'chart') {
-                $data['chartData'] = SearchManager::$plugin->analytics->getChartData($siteId, $days);
+                $data['chartData'] = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
             }
 
             // Query Analysis Tab
             if ($type === 'all' || $type === 'query-analysis') {
                 $data['queryAnalysis'] = [
-                    'lengthDistribution' => SearchManager::$plugin->analytics->getQueryLengthDistribution($siteId, $days),
-                    'wordCloud' => SearchManager::$plugin->analytics->getWordCloudData($siteId, $days),
+                    'lengthDistribution' => SearchManager::$plugin->analytics->getQueryLengthDistribution($siteId, $dateRange),
+                    'wordCloud' => SearchManager::$plugin->analytics->getWordCloudData($siteId, $dateRange),
                 ];
             }
 
             // Content Gaps Tab
             if ($type === 'all' || $type === 'content-gaps') {
                 $data['contentGaps'] = [
-                    'clusters' => SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $days, 15),
+                    'clusters' => SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $dateRange, 15),
                 ];
             }
 
             // Audience/Device Stats
             if ($type === 'all' || $type === 'device-stats' || $type === 'devices') {
-                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $days);
-                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $days);
-                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $days);
-                $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $days);
+                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
+                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
+                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
+                $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $dateRange);
 
                 $data['deviceStats'] = [
                     'deviceBreakdown' => [
@@ -313,7 +291,7 @@ class AnalyticsController extends Controller
 
             // Browsers only
             if ($type === 'browsers') {
-                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $days);
+                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => [
@@ -325,7 +303,7 @@ class AnalyticsController extends Controller
 
             // OS only
             if ($type === 'os') {
-                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $days);
+                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => [
@@ -337,7 +315,7 @@ class AnalyticsController extends Controller
 
             // Bots only
             if ($type === 'bots') {
-                $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $days);
+                $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $botStats,
@@ -346,7 +324,7 @@ class AnalyticsController extends Controller
 
             // Geographic data - countries
             if ($type === 'countries') {
-                $countryData = SearchManager::$plugin->analytics->getCountryBreakdown($siteId, $days);
+                $countryData = SearchManager::$plugin->analytics->getCountryBreakdown($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $countryData,
@@ -355,7 +333,7 @@ class AnalyticsController extends Controller
 
             // Geographic data - cities
             if ($type === 'cities') {
-                $cityData = SearchManager::$plugin->analytics->getCityBreakdown($siteId, $days);
+                $cityData = SearchManager::$plugin->analytics->getCityBreakdown($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $cityData,
@@ -364,7 +342,7 @@ class AnalyticsController extends Controller
 
             // Peak usage hours
             if ($type === 'hourly') {
-                $hourlyData = SearchManager::$plugin->analytics->getPeakUsageHours($siteId, $days);
+                $hourlyData = SearchManager::$plugin->analytics->getPeakUsageHours($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $hourlyData,
@@ -373,7 +351,7 @@ class AnalyticsController extends Controller
 
             // Intent breakdown
             if ($type === 'intent') {
-                $intentData = SearchManager::$plugin->analytics->getIntentBreakdown($siteId, $days);
+                $intentData = SearchManager::$plugin->analytics->getIntentBreakdown($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $intentData,
@@ -382,7 +360,7 @@ class AnalyticsController extends Controller
 
             // Source breakdown
             if ($type === 'source') {
-                $sourceData = SearchManager::$plugin->analytics->getSourceBreakdown($siteId, $days);
+                $sourceData = SearchManager::$plugin->analytics->getSourceBreakdown($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $sourceData,
@@ -391,7 +369,7 @@ class AnalyticsController extends Controller
 
             // Performance data
             if ($type === 'performance') {
-                $performanceData = SearchManager::$plugin->analytics->getPerformanceData($siteId, $days);
+                $performanceData = SearchManager::$plugin->analytics->getPerformanceData($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $performanceData,
@@ -400,7 +378,7 @@ class AnalyticsController extends Controller
 
             // Cache stats
             if ($type === 'cache-stats') {
-                $cacheStats = SearchManager::$plugin->analytics->getCacheStats($siteId, $days);
+                $cacheStats = SearchManager::$plugin->analytics->getCacheStats($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $cacheStats,
@@ -409,7 +387,7 @@ class AnalyticsController extends Controller
 
             // Top performing queries
             if ($type === 'top-queries') {
-                $topQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($siteId, $days);
+                $topQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $topQueries,
@@ -418,7 +396,7 @@ class AnalyticsController extends Controller
 
             // Worst performing queries
             if ($type === 'worst-queries') {
-                $worstQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($siteId, $days);
+                $worstQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($siteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $worstQueries,
@@ -460,9 +438,9 @@ class AnalyticsController extends Controller
 
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-        $days = (int)Craft::$app->getRequest()->getQueryParam('days', 30);
+        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', 'last30days');
 
-        $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $days);
+        $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
 
         return $this->asJson([
             'success' => true,

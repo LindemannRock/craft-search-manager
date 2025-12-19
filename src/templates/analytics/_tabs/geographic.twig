@@ -1,0 +1,54 @@
+{# Geographic Tab - Countries and Cities #}
+
+{% set settings = craft.app.plugins.getPlugin('search-manager').settings %}
+
+{% if settings.enableGeoDetection %}
+    <h2 style="margin: 0 0 20px;">{{ "Geographic Distribution"|t('search-manager') }}</h2>
+
+    <div class="analytics-charts two-columns">
+        <div class="chart-container">
+            <h3>{{ "Top Countries"|t('search-manager') }}</h3>
+            <div class="table-scroll-container">
+                <table class="data fullwidth" id="countries-table">
+                    <thead>
+                        <tr>
+                            <th>{{ "Country"|t('search-manager') }}</th>
+                            <th>{{ "Searches"|t('search-manager') }}</th>
+                            <th>%</th>
+                        </tr>
+                    </thead>
+                    <tbody id="countries-body">
+                        <tr>
+                            <td colspan="3" class="light" style="text-align: center;">{{ "Loading..."|t('search-manager') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>{{ "Top Cities"|t('search-manager') }}</h3>
+            <div class="table-scroll-container">
+                <table class="data fullwidth" id="cities-table">
+                    <thead>
+                        <tr>
+                            <th>{{ "City"|t('search-manager') }}</th>
+                            <th>{{ "Country"|t('search-manager') }}</th>
+                            <th>{{ "Searches"|t('search-manager') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cities-body">
+                        <tr>
+                            <td colspan="3" class="light" style="text-align: center;">{{ "Loading..."|t('search-manager') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="pane" style="text-align: center; padding: 60px 20px;">
+        <p class="light">{{ "Geographic detection is disabled."|t('search-manager') }}</p>
+        <p><a href="{{ url('search-manager/settings') }}" class="btn">{{ "Enable in Settings"|t('search-manager') }}</a></p>
+    </div>
+{% endif %}

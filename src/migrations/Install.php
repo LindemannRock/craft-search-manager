@@ -29,6 +29,8 @@ class Install extends Migration
         $this->createIndexStatsTable();
         $this->createAnalyticsTable();
         $this->createSearchEngineTables();
+        $this->createPromotionsTable();
+        $this->createQueryRulesTable();
 
         // Insert default data
         $this->insertDefaultSettings();
@@ -40,6 +42,8 @@ class Install extends Migration
     public function safeDown(): bool
     {
         // Drop tables in reverse order (respecting dependencies)
+        $this->dropTableIfExists('{{%searchmanager_query_rules}}');
+        $this->dropTableIfExists('{{%searchmanager_promotions}}');
         $this->dropTableIfExists('{{%searchmanager_search_elements}}');
         $this->dropTableIfExists('{{%searchmanager_search_metadata}}');
         $this->dropTableIfExists('{{%searchmanager_search_ngram_counts}}');
@@ -517,5 +521,68 @@ class Install extends Migration
             // Index for filtering by elementType
             $this->createIndex('idx_elements_type', '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementType'], false);
         }
+    }
+
+    /**
+     * Create promotions table
+     * Stores pinned/promoted results that bypass normal scoring
+     */
+    private function createPromotionsTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_promotions}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_promotions}}', [
+            'id' => $this->primaryKey(),
+            'indexHandle' => $this->string(255)->notNull(),
+            'query' => $this->string(500)->notNull()->comment('Query pattern to match'),
+            'matchType' => $this->enum('matchType', ['exact', 'contains', 'prefix'])->notNull()->defaultValue('exact'),
+            'elementId' => $this->integer()->notNull(),
+            'position' => $this->integer()->notNull()->defaultValue(1)->comment('1 = first position'),
+            'siteId' => $this->integer()->null(),
+            'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        // Indexes for efficient lookup
+        $this->createIndex(null, '{{%searchmanager_promotions}}', ['indexHandle', 'siteId', 'enabled'], false);
+        $this->createIndex(null, '{{%searchmanager_promotions}}', ['query'], false);
+        $this->createIndex(null, '{{%searchmanager_promotions}}', ['elementId'], false);
+    }
+
+    /**
+     * Create query rules table
+     * Stores rules for synonyms, category boosts, filters, etc.
+     */
+    private function createQueryRulesTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_query_rules}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_query_rules}}', [
+            'id' => $this->primaryKey(),
+            'name' => $this->string(255)->notNull()->comment('Descriptive name for the rule'),
+            'indexHandle' => $this->string(255)->null()->comment('null = applies to all indices'),
+            'matchType' => $this->enum('matchType', ['exact', 'contains', 'prefix', 'regex'])->notNull()->defaultValue('exact'),
+            'matchValue' => $this->string(500)->notNull()->comment('Query pattern to match'),
+            'actionType' => $this->enum('actionType', ['synonym', 'boost_section', 'boost_category', 'boost_element', 'filter', 'redirect'])->notNull(),
+            'actionValue' => $this->text()->notNull()->comment('JSON config for the action'),
+            'priority' => $this->integer()->notNull()->defaultValue(0)->comment('Higher = applied first'),
+            'siteId' => $this->integer()->null(),
+            'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        // Indexes for efficient lookup
+        $this->createIndex(null, '{{%searchmanager_query_rules}}', ['indexHandle', 'siteId', 'enabled'], false);
+        $this->createIndex(null, '{{%searchmanager_query_rules}}', ['matchType', 'matchValue'], false);
+        $this->createIndex(null, '{{%searchmanager_query_rules}}', ['actionType'], false);
+        $this->createIndex(null, '{{%searchmanager_query_rules}}', ['priority'], false);
     }
 }
