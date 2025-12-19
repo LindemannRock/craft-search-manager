@@ -20,6 +20,17 @@
     },
 ] %}
 
+{# Get available indices and build siteId mapping (before block for JS access) #}
+{% set allIndices = craft.searchManager.getIndices() %}
+{% set enabledIndices = [] %}
+{% set indexSiteIds = {} %}
+{% for index in allIndices %}
+    {% if index.enabled %}
+        {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' (' ~ index.handle ~ ')'}]) %}
+        {% set indexSiteIds = indexSiteIds|merge({(index.handle): index.siteId}) %}
+    {% endif %}
+{% endfor %}
+
 {% block content %}
 
     {% include 'search-manager/_components/ip-salt-error' %}
@@ -27,17 +38,6 @@
     <h2 style="margin-top: 0px;">{{ "Test Search Engine"|t('search-manager') }}</h2>
 
     <p>{{ "Test your search configuration including autocomplete, promotions, query rules, and highlighting."|t('search-manager') }}</p>
-
-    {# Get available indices and build siteId mapping #}
-    {% set allIndices = craft.searchManager.getIndices() %}
-    {% set enabledIndices = [] %}
-    {% set indexSiteIds = {} %}
-    {% for index in allIndices %}
-        {% if index.enabled %}
-            {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' (' ~ index.handle ~ ')'}]) %}
-            {% set indexSiteIds = indexSiteIds|merge({(index.handle): index.siteId}) %}
-        {% endif %}
-    {% endfor %}
 
     {# Main Search Configuration #}
     <div class="pane" style="margin-bottom: 24px;">
