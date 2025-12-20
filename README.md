@@ -560,7 +560,7 @@ Operators work in 5 languages (case-insensitive). Language is auto-detected from
 | German | UND | ODER | NICHT |
 | French | ET | OU | SAUF |
 | Spanish | Y | O | NO |
-| Arabic | و | أو | ليس |
+| Arabic | و | أو / او | ليس / لا |
 
 ```twig
 {# German site - both work #}
@@ -1337,7 +1337,7 @@ Search Manager automatically handles multiple languages:
 
 **Supported Languages:**
 - **English** (en) - 297 stop words + AND/OR/NOT operators
-- **Arabic** (ar) - 122 stop words + و/أو/ليس operators
+- **Arabic** (ar) - 122 stop words + و/أو/او/ليس/لا operators (supports spelling variations)
 - **German** (de) - 130+ stop words + UND/ODER/NICHT operators
 - **French** (fr) - 140+ stop words + ET/OU/SAUF operators
 - **Spanish** (es) - 135+ stop words + Y/O/NO operators
@@ -1352,7 +1352,7 @@ Each language supports native boolean operators (case-insensitive):
 | German | UND | ODER | NICHT | `kaffee ODER tee NICHT entkoffeiniert` |
 | French | ET | OU | SAUF | `café OU thé SAUF décaféiné` |
 | Spanish | Y | O | NO | `café O té NO descafeinado` |
-| Arabic | و | أو | ليس | `قهوة أو شاي ليس منزوع` |
+| Arabic | و | أو / او | ليس / لا | `قهوة او شاي لا منزوع` |
 
 **Note:** English operators always work as fallback regardless of site language.
 

@@ -41,7 +41,10 @@ class QueryParser
         'de' => ['and' => 'UND', 'or' => 'ODER', 'not' => 'NICHT'],
         'fr' => ['and' => 'ET', 'or' => 'OU', 'not' => 'SAUF'],
         'es' => ['and' => 'Y', 'or' => 'O', 'not' => 'NO'],
-        'ar' => ['and' => 'و', 'or' => 'أو', 'not' => 'ليس'],
+        // Arabic: support common spelling variations
+        // OR: أو (with hamza) and او (without hamza)
+        // NOT: ليس (formal "is not") and لا (common "no/not")
+        'ar' => ['and' => ['و'], 'or' => ['أو', 'او'], 'not' => ['ليس', 'لا']],
     ];
 
     /**
@@ -115,11 +118,45 @@ class QueryParser
     public static function hasAdvancedOperators(string $query): bool
     {
         // Quick check without full parsing
-        return str_contains($query, '"') ||         // Phrases
-               str_contains($query, ' NOT ') ||     // NOT operator
-               str_contains($query, ':') ||         // Field filters
-               str_contains($query, '*') ||         // Wildcards
-               str_contains($query, '^');           // Boosts
+        // Check syntax operators first
+        if (str_contains($query, '"') ||         // Phrases
+            str_contains($query, ':') ||         // Field filters
+            str_contains($query, '*') ||         // Wildcards
+            str_contains($query, '^')) {         // Boosts
+            return true;
+        }
+
+        // Build list of all boolean operators from LOCALIZED_OPERATORS constant
+        $allOperators = self::getAllBooleanOperators();
+
+        // Build regex pattern for all operators (unicode-aware)
+        $escapedOperators = array_map('preg_quote', $allOperators);
+        $pattern = '/\s+(' . implode('|', $escapedOperators) . ')\s+/iu';
+
+        return (bool)preg_match($pattern, $query);
+    }
+
+    /**
+     * Get all boolean operators from all languages
+     *
+     * @return array Flat array of all operator strings
+     */
+    private static function getAllBooleanOperators(): array
+    {
+        $operators = [];
+
+        foreach (self::LOCALIZED_OPERATORS as $lang => $ops) {
+            foreach (['and', 'or', 'not'] as $type) {
+                $op = $ops[$type];
+                if (is_array($op)) {
+                    $operators = array_merge($operators, $op);
+                } else {
+                    $operators[] = $op;
+                }
+            }
+        }
+
+        return array_unique($operators);
     }
 
     // =========================================================================
@@ -135,11 +172,15 @@ class QueryParser
     {
         $operators = ['NOT']; // Always include English
 
-        // Add localized operator if available and different from English
+        // Add localized operator(s) if available and different from English
         if (isset(self::LOCALIZED_OPERATORS[$this->language])) {
             $localized = self::LOCALIZED_OPERATORS[$this->language]['not'];
-            if ($localized !== 'NOT') {
-                $operators[] = $localized;
+            // Support both single string and array of alternatives
+            $localizedArray = is_array($localized) ? $localized : [$localized];
+            foreach ($localizedArray as $op) {
+                if ($op !== 'NOT') {
+                    $operators[] = $op;
+                }
             }
         }
 
@@ -155,11 +196,15 @@ class QueryParser
     {
         $operators = ['OR']; // Always include English
 
-        // Add localized operator if available and different from English
+        // Add localized operator(s) if available and different from English
         if (isset(self::LOCALIZED_OPERATORS[$this->language])) {
             $localized = self::LOCALIZED_OPERATORS[$this->language]['or'];
-            if ($localized !== 'OR') {
-                $operators[] = $localized;
+            // Support both single string and array of alternatives
+            $localizedArray = is_array($localized) ? $localized : [$localized];
+            foreach ($localizedArray as $op) {
+                if ($op !== 'OR') {
+                    $operators[] = $op;
+                }
             }
         }
 
@@ -175,11 +220,15 @@ class QueryParser
     {
         $operators = ['AND']; // Always include English
 
-        // Add localized operator if available and different from English
+        // Add localized operator(s) if available and different from English
         if (isset(self::LOCALIZED_OPERATORS[$this->language])) {
             $localized = self::LOCALIZED_OPERATORS[$this->language]['and'];
-            if ($localized !== 'AND') {
-                $operators[] = $localized;
+            // Support both single string and array of alternatives
+            $localizedArray = is_array($localized) ? $localized : [$localized];
+            foreach ($localizedArray as $op) {
+                if ($op !== 'AND') {
+                    $operators[] = $op;
+                }
             }
         }
 
