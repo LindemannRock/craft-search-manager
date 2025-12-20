@@ -94,18 +94,21 @@
 					<p id="matchValueInstructions">
 						{% if rule.matchType == 'contains' %}
 							{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}
+							{{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager') }}
 						{% elseif rule.matchType == 'prefix' %}
 							{{ 'Enter text that the search query should start with.'|t('search-manager') }}
+							{{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager') }}
 						{% elseif rule.matchType == 'regex' %}
 							{{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager') }}
 						{% else %}
 							{{ 'Enter the exact search query to match.'|t('search-manager') }}
+							{{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager') }}
 						{% endif %}
 					</p>
 				</div>
 			</div>
 			<div class="input ltr">
-				<input type="text" id="matchValue" name="matchValue" value="{{ rule.matchValue }}" placeholder="{{ rule.matchType == 'regex' ? '^(phone|mobile|cell)' : (rule.matchType == 'contains' ? 'phone' : (rule.matchType == 'prefix' ? 'buy ' : 'phone')) }}" required class="text fullwidth{% if rule.getErrors('matchValue') %} error{% endif %}">
+				<input type="text" id="matchValue" name="matchValue" value="{{ rule.matchValue }}" placeholder="{{ rule.matchType == 'regex' ? '^(sale|تخفيض|soldes|angebot)' : (rule.matchType == 'contains' ? 'sale' : (rule.matchType == 'prefix' ? 'buy ' : 'sale')) }}" required class="text fullwidth{% if rule.getErrors('matchValue') %} error{% endif %}">
 			</div>
 			{% if rule.getErrors('matchValue') %}
 				<ul class="errors">
@@ -414,18 +417,19 @@ function updateMatchTypeUI() {
 	const matchValueInput = document.getElementById('matchValue');
 	const matchTypeTipText = document.getElementById('matchTypeTipText');
 	const regexTip = document.getElementById('regexTip');
+	const commaHint = ' {{ 'Use commas for multiple patterns (e.g., sale, تخفيض, soldes, angebot).'|t('search-manager') }}';
 
 	switch(matchType) {
 		case 'contains':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
-			matchValueInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}';
-			matchValueInput.placeholder = 'phone';
-			matchTypeTipText.textContent = 'Example: "phone" matches "buy phone", "phone case", "smartphone"';
+			matchValueInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}' + commaHint;
+			matchValueInput.placeholder = 'sale';
+			matchTypeTipText.textContent = 'Example: "sale" matches "big sale", "sale items", "flash sale"';
 			regexTip.style.display = 'none';
 			break;
 		case 'prefix':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
-			matchValueInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}';
+			matchValueInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}' + commaHint;
 			matchValueInput.placeholder = 'buy ';
 			matchTypeTipText.textContent = 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"';
 			regexTip.style.display = 'none';
@@ -433,15 +437,15 @@ function updateMatchTypeUI() {
 		case 'regex':
 			matchTypeInstructions.textContent = '{{ 'Match using a regular expression pattern for complex matching.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager') }}';
-			matchValueInput.placeholder = '^(phone|mobile|cell)';
-			matchTypeTipText.textContent = 'Example: "^(phone|mobile|cell)" matches "phone", "mobile", "cell" at the start';
+			matchValueInput.placeholder = '^(sale|تخفيض|soldes|angebot)';
+			matchTypeTipText.textContent = 'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start';
 			regexTip.style.display = 'block';
 			break;
 		default: // exact
 			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
-			matchValueInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}';
-			matchValueInput.placeholder = 'phone';
-			matchTypeTipText.textContent = 'Example: "phone" only matches exactly "phone", not "smartphone"';
+			matchValueInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}' + commaHint;
+			matchValueInput.placeholder = 'sale';
+			matchTypeTipText.textContent = 'Example: "sale" only matches exactly "sale", not "flash sale"';
 			regexTip.style.display = 'none';
 	}
 }

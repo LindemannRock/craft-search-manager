@@ -185,18 +185,34 @@ class Promotion extends Model
 
     /**
      * Check if this promotion matches a search query
+     * Supports comma-separated patterns (e.g., "bread, خبز" matches either)
      */
     public function matches(string $searchQuery): bool
     {
         $searchQuery = mb_strtolower(trim($searchQuery));
-        $pattern = mb_strtolower(trim($this->query));
 
-        return match ($this->matchType) {
-            'exact' => $searchQuery === $pattern,
-            'contains' => str_contains($searchQuery, $pattern),
-            'prefix' => str_starts_with($searchQuery, $pattern),
-            default => false,
-        };
+        // Split by comma and check each pattern
+        $patterns = array_map('trim', explode(',', $this->query));
+
+        foreach ($patterns as $pattern) {
+            $pattern = mb_strtolower($pattern);
+            if (empty($pattern)) {
+                continue;
+            }
+
+            $matched = match ($this->matchType) {
+                'exact' => $searchQuery === $pattern,
+                'contains' => str_contains($searchQuery, $pattern),
+                'prefix' => str_starts_with($searchQuery, $pattern),
+                default => false,
+            };
+
+            if ($matched) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

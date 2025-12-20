@@ -219,19 +219,40 @@ class QueryRule extends Model
 
     /**
      * Check if this rule matches a search query
+     * Supports comma-separated patterns for exact/contains/prefix (not regex)
      */
     public function matches(string $searchQuery): bool
     {
         $searchQuery = mb_strtolower(trim($searchQuery));
-        $pattern = mb_strtolower(trim($this->matchValue));
 
-        return match ($this->matchType) {
-            self::MATCH_EXACT => $searchQuery === $pattern,
-            self::MATCH_CONTAINS => str_contains($searchQuery, $pattern),
-            self::MATCH_PREFIX => str_starts_with($searchQuery, $pattern),
-            self::MATCH_REGEX => (bool)@preg_match("/$pattern/i", $searchQuery),
-            default => false,
-        };
+        // Regex doesn't support comma-separated (commas could be in pattern)
+        if ($this->matchType === self::MATCH_REGEX) {
+            $pattern = trim($this->matchValue);
+            return (bool)@preg_match("/$pattern/i", $searchQuery);
+        }
+
+        // Split by comma and check each pattern
+        $patterns = array_map('trim', explode(',', $this->matchValue));
+
+        foreach ($patterns as $pattern) {
+            $pattern = mb_strtolower($pattern);
+            if (empty($pattern)) {
+                continue;
+            }
+
+            $matched = match ($this->matchType) {
+                self::MATCH_EXACT => $searchQuery === $pattern,
+                self::MATCH_CONTAINS => str_contains($searchQuery, $pattern),
+                self::MATCH_PREFIX => str_starts_with($searchQuery, $pattern),
+                default => false,
+            };
+
+            if ($matched) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

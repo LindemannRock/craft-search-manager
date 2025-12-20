@@ -1120,15 +1120,18 @@ Promotions allow you to pin specific elements to fixed positions in search resul
 1. Go to Search Manager → Promotions
 2. Click "New Promotion"
 3. Configure:
-   - **Query Pattern**: The search query to match (e.g., "laptop", "sale")
+   - **Title**: Descriptive name for organization (e.g., "Holiday Sale Banner")
+   - **Query Pattern**: The search query to match. Use commas for multiple patterns:
+     - Single: `sale`
+     - Multi-language: `sale, تخفيض, soldes, angebot` (EN, AR, FR, DE)
    - **Match Type**: How to match the query
-     - **Exact**: Query must exactly match the pattern
-     - **Contains**: Query must contain the pattern anywhere
-     - **Prefix**: Query must start with the pattern
+     - **Exact**: Query must exactly match one of the patterns
+     - **Contains**: Query must contain one of the patterns anywhere
+     - **Prefix**: Query must start with one of the patterns
    - **Promoted Element**: Select the element to promote
    - **Position**: Where to place it (1 = first, 2 = second, etc.)
-   - **Index**: Which search index this applies to
-   - **Site**: Apply to all sites or a specific site
+   - **Index**: All Indexes or a specific search index
+   - **Site**: All Sites or a specific site
 
 **Example Scenarios:**
 
@@ -1149,6 +1152,18 @@ Position: 1
 
 Result: Any query containing "sale" (e.g., "laptop sale", "sale items")
 shows Black Friday Deals first
+```
+
+```
+Query Pattern: "sale, تخفيض, soldes, angebot"
+Match Type: Exact
+Promoted Element: "Holiday Sale Banner" (Entry #789)
+Position: 1
+Index: All Indexes
+Site: All Sites
+
+Result: One promotion works across all languages - matches "sale" (EN),
+"تخفيض" (AR), "soldes" (FR), or "angebot" (DE)
 ```
 
 **Bulk Actions:**
@@ -1309,10 +1324,23 @@ The `actionValue` format varies by action type:
 **Match Types:**
 | Type | Description | Example |
 |------|-------------|---------|
-| Exact | Query must match exactly | "laptop" matches only "laptop" |
-| Contains | Query must contain pattern | "laptop" matches "best laptop deals" |
-| Prefix | Query must start with pattern | "lap" matches "laptop", "lapel" |
+| Exact | Query must match exactly | `laptop` matches only "laptop" |
+| Contains | Query must contain pattern | `laptop` matches "best laptop deals" |
+| Prefix | Query must start with pattern | `lap` matches "laptop", "lapel" |
 | Regex | Regular expression pattern | `^(buy\|purchase)` matches "buy..." or "purchase..." |
+
+**Multi-Language Patterns:**
+
+Use commas to match multiple patterns in one rule (Exact, Contains, Prefix):
+```
+sale, تخفيض, soldes, angebot
+```
+This matches "sale" (EN), "تخفيض" (AR), "soldes" (FR), or "angebot" (DE).
+
+For Regex, use the `|` operator instead:
+```
+^(sale|تخفيض|soldes|angebot)
+```
 
 ### Multi-Language Support
 
