@@ -971,13 +971,52 @@ Search response:
     {
       "objectID": 123,
       "id": 123,
+      "promoted": true,
+      "position": 1,
+      "score": null,
+      "type": "product",
+      "title": "Featured Product"
+    },
+    {
+      "objectID": 456,
+      "id": 456,
       "score": 45.23,
       "type": "product"
     }
   ],
-  "total": 150
+  "total": 150,
+  "meta": {
+    "synonymsExpanded": true,
+    "expandedQueries": ["laptop", "notebook", "computer"],
+    "rulesMatched": [
+      {
+        "id": 5,
+        "name": "Laptop synonyms",
+        "actionType": "synonym",
+        "actionValue": ["notebook", "computer"]
+      }
+    ],
+    "promotionsMatched": [
+      {
+        "id": 1,
+        "elementId": 123,
+        "position": 1
+      }
+    ]
+  }
 }
 ```
+
+**Hit Fields:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `objectID` | int | Element ID |
+| `id` | int | Element ID (alias) |
+| `score` | float\|null | BM25 relevance score (null for promoted items) |
+| `type` | string | Element type (product, category, entry, etc.) |
+| `promoted` | bool | Present and true for promoted/pinned results |
+| `position` | int | Position in results (for promoted items) |
+| `title` | string | Element title (for promoted items) |
 
 **Default Limits:**
 - Search API: 20 results (use `limit=0` for unlimited)
@@ -1132,24 +1171,9 @@ Example:
 - French site searches: promotion shown at position 1
 ```
 
-**API Response Structure:**
+**API Response:**
 
-Promoted items in search results include full metadata:
-```json
-{
-  "hits": [
-    {
-      "objectID": 123,
-      "id": 123,
-      "promoted": true,
-      "position": 1,
-      "score": null,
-      "type": "product",
-      "title": "Summer Sale Product"
-    }
-  ]
-}
-```
+Promoted items appear in `hits` with `promoted: true`, `position`, and `score: null`. See the main [API Response Structure](#api-response-structure) for full details.
 
 ### Query Rules
 
@@ -1257,28 +1281,30 @@ Result: Searching exactly "contact us" redirects to /contact page
 
 **API Response Metadata:**
 
-When query rules are applied, the search response includes metadata:
+When query rules are applied, they appear in the `meta.rulesMatched` array:
 ```json
 {
   "hits": [...],
-  "rulesMatched": [
-    {
-      "ruleName": "Boost Electronics",
-      "ruleId": 5,
-      "actionType": "boost_element",
-      "actionValue": 123
-    }
-  ]
+  "meta": {
+    "rulesMatched": [
+      {
+        "id": 5,
+        "name": "Boost Electronics",
+        "actionType": "boost_element",
+        "actionValue": {"elementId": 123, "multiplier": 2.0}
+      }
+    ]
+  }
 }
 ```
 
-The `actionValue` field shows:
-- **boost_element**: The element ID being boosted
-- **boost_section**: The section handle
-- **boost_category**: The category ID
-- **synonyms**: The synonym terms (comma-separated)
-- **filter**: The filter field/value
-- **redirect**: The redirect URL
+The `actionValue` format varies by action type:
+- **boost_element**: `{"elementId": 123, "multiplier": 2.0}`
+- **boost_section**: `{"sectionHandle": "products", "multiplier": 2.0}`
+- **boost_category**: `{"categoryId": 5, "multiplier": 1.5}`
+- **synonym**: `["notebook", "computer", "laptop"]`
+- **filter**: `{"field": "status", "value": "featured"}`
+- **redirect**: `"/sale-page"`
 
 **Match Types:**
 | Type | Description | Example |
