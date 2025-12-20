@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.20.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.0...v5.20.1) (2025-12-20)
+
+
+### Bug Fixes
+
+* query rules table to rename 'Match Type' to 'Query Pattern' and add a new 'Match' column with color indicators ([3bbaa96](https://github.com/LindemannRock/craft-search-manager/commit/3bbaa96954573aa26dd1748b5cabd43865367e28))
+
 ## [5.20.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.19.0...v5.20.0) (2025-12-20)
 
 
