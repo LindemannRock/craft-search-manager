@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.17.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.16.0...v5.17.0) (2025-12-20)
+
+
+### Features
+
+* enhance Arabic language support with spelling variations for boolean operators ([8d8fa83](https://github.com/LindemannRock/craft-search-manager/commit/8d8fa83a8241b8edf6a663a1e2251536cff79330))
+
 ## [5.16.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.15.0...v5.16.0) (2025-12-20)
 
 
