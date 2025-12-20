@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.20.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.1...v5.20.2) (2025-12-20)
+
+
+### Bug Fixes
+
+* format numerical values in dashboard for improved readability ([5759a85](https://github.com/LindemannRock/craft-search-manager/commit/5759a855108af7dc975cf78d84ce3a262444b681))
+
 ## [5.20.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.0...v5.20.1) (2025-12-20)
 
 
