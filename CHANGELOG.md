@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.16.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.15.0...v5.16.0) (2025-12-20)
+
+
+### Features
+
+* add  all-sites search support for CP test page ([1989182](https://github.com/LindemannRock/craft-search-manager/commit/19891822081d649347b425b8a9fe2ca2659b018a))
+
+
+### Bug Fixes
+
+* objectID/elementId mismatch in promotions, query rules, and synonym handling ([014a9cd](https://github.com/LindemannRock/craft-search-manager/commit/014a9cd6bb7635ee9887947798826d1f140c9c90))
+
 ## [5.15.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.1...v5.15.0) (2025-12-19)
 
 
