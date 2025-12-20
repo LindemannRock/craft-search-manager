@@ -27,8 +27,18 @@
 	{{ csrfInput() }}
 
 	<div id="fields">
-		{{ forms.selectField({
+		{{ forms.textField({
 			first: true,
+			label: 'Title'|t('search-manager'),
+			instructions: 'A descriptive name to help identify this promotion.'|t('search-manager'),
+			id: 'title',
+			name: 'title',
+			value: promotion.title,
+			placeholder: 'e.g., Promote Hummus for bread searches'|t('search-manager'),
+			errors: promotion.getErrors('title'),
+		}) }}
+
+		{{ forms.selectField({
 			label: 'Index'|t('search-manager'),
 			instructions: 'Which search index does this promotion apply to?'|t('search-manager'),
 			id: 'indexHandle',

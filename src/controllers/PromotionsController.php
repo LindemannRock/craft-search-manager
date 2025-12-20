@@ -125,6 +125,7 @@ class PromotionsController extends Controller
 
         // Set attributes
         $promotion->indexHandle = $request->getBodyParam('indexHandle');
+        $promotion->title = $request->getBodyParam('title') ?: null;
         $promotion->query = $request->getBodyParam('query');
         $promotion->matchType = $request->getBodyParam('matchType', 'exact');
 

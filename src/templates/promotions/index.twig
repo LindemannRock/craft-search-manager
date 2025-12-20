@@ -39,7 +39,7 @@
 
 {# Search filter #}
 {% if search %}
-	{% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or search|lower in p.indexHandle|lower) %}
+	{% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or search|lower in p.indexHandle|lower or (p.title and search|lower in p.title|lower)) %}
 {% endif %}
 
 {# Pagination #}
@@ -172,11 +172,11 @@
 						<th class="checkbox-cell selectallcontainer">
 							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
 						</th>
+						<th scope="col">{{ "Title"|t('search-manager') }}</th>
 						<th scope="col">{{ "Query Pattern"|t('search-manager') }}</th>
 						<th scope="col">{{ "Match"|t('search-manager') }}</th>
 						<th scope="col">{{ "Promoted Element"|t('search-manager') }}</th>
 						<th scope="col">{{ "Position"|t('search-manager') }}</th>
-						<th scope="col">{{ "Index"|t('search-manager') }}</th>
 						<th scope="col">{{ "Site"|t('search-manager') }}</th>
 						<th scope="col">{{ "Status"|t('search-manager') }}</th>
 						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
@@ -192,8 +192,15 @@
 								</td>
 								<td>
 									<a class="label-link" href="{{ url('search-manager/promotions/edit/' ~ promotion.id) }}">
-										<span><code>{{ promotion.query }}</code></span>
+										{% if promotion.title %}
+											{{ promotion.title }}
+										{% else %}
+											<span class="light">{{ 'Untitled'|t('search-manager') }}</span>
+										{% endif %}
 									</a>
+								</td>
+								<td>
+									<code>{{ promotion.query }}</code>
 								</td>
 								<td>
 									{% if promotion.matchType == 'exact' %}
@@ -216,9 +223,6 @@
 								</td>
 								<td>
 									<strong>{{ promotion.position }}</strong>
-								</td>
-								<td>
-									{{ indexLookup[promotion.indexHandle] ?? promotion.indexHandle }}
 								</td>
 								<td>
 									{% if promotion.siteId %}
@@ -257,7 +261,7 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="9" style="text-align: center; padding: 2em;">
+							<td colspan="9" class="zilch">
 								{{ 'No promotions found.'|t('search-manager') }}
 							</td>
 						</tr>

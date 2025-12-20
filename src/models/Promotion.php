@@ -25,6 +25,7 @@ class Promotion extends Model
 
     public ?int $id = null;
     public string $indexHandle = '';
+    public ?string $title = null;
     public string $query = '';
     public string $matchType = 'exact'; // exact, contains, prefix
     public int $elementId = 0;
@@ -54,6 +55,7 @@ class Promotion extends Model
         return [
             [['indexHandle', 'query', 'elementId'], 'required'],
             [['indexHandle', 'query'], 'string', 'max' => 500],
+            [['title'], 'string', 'max' => 255],
             [['matchType'], 'in', 'range' => ['exact', 'contains', 'prefix']],
             [['elementId', 'position', 'siteId'], 'integer'],
             [['position'], 'integer', 'min' => 1],
@@ -200,6 +202,7 @@ class Promotion extends Model
         $model = new self();
         $model->id = (int)$row['id'];
         $model->indexHandle = $row['indexHandle'];
+        $model->title = $row['title'] ?? null;
         $model->query = $row['query'];
         $model->matchType = $row['matchType'];
         $model->elementId = (int)$row['elementId'];
@@ -228,6 +231,7 @@ class Promotion extends Model
         try {
             $attributes = [
                 'indexHandle' => $this->indexHandle,
+                'title' => $this->title,
                 'query' => $this->query,
                 'matchType' => $this->matchType,
                 'elementId' => $this->elementId,
