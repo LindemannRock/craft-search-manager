@@ -34,7 +34,7 @@
 			id: 'title',
 			name: 'title',
 			value: promotion.title,
-			placeholder: 'e.g., Promote Hummus for bread searches'|t('search-manager'),
+			placeholder: 'e.g., Holiday Sale Banner'|t('search-manager'),
 			errors: promotion.getErrors('title'),
 		}) }}
 
@@ -97,7 +97,7 @@
 				</div>
 			</div>
 			<div class="input ltr">
-				<input type="text" id="query" name="query" value="{{ promotion.query }}" placeholder="{{ promotion.matchType == 'contains' ? 'iphone' : (promotion.matchType == 'prefix' ? 'buy ' : 'buy iphone') }}" required class="text fullwidth{% if promotion.getErrors('query') %} error{% endif %}">
+				<input type="text" id="query" name="query" value="{{ promotion.query }}" placeholder="{{ promotion.matchType == 'contains' ? 'sale' : (promotion.matchType == 'prefix' ? 'best ' : 'holiday sale') }}" required class="text fullwidth{% if promotion.getErrors('query') %} error{% endif %}">
 			</div>
 			{% if promotion.getErrors('query') %}
 				<ul class="errors">
@@ -111,11 +111,11 @@
 				<span class="visually-hidden">Tip:</span>
 				<span id="matchTypeTipText">
 					{% if promotion.matchType == 'contains' %}
-						Example: "iphone" matches "buy iphone", "iphone case", "cheap iphone deals"
+						Example: "sale" matches "holiday sale", "sale items", "big sale event"
 					{% elseif promotion.matchType == 'prefix' %}
-						Example: "buy " matches "buy iphone", "buy samsung", "buy phone case"
+						Example: "best " matches "best deals", "best products", "best sellers"
 					{% else %}
-						Example: "buy iphone" only matches exactly "buy iphone", not "buy iphone case"
+						Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"
 					{% endif %}
 				</span>
 			</p>
@@ -199,20 +199,20 @@ function updateMatchTypeUI() {
 		case 'contains':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}';
-			queryInput.placeholder = 'iphone';
-			matchTypeTipText.textContent = 'Example: "iphone" matches "buy iphone", "iphone case", "cheap iphone deals"';
+			queryInput.placeholder = 'sale';
+			matchTypeTipText.textContent = 'Example: "sale" matches "holiday sale", "sale items", "big sale event"';
 			break;
 		case 'prefix':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}';
-			queryInput.placeholder = 'buy ';
-			matchTypeTipText.textContent = 'Example: "buy " matches "buy iphone", "buy samsung", "buy phone case"';
+			queryInput.placeholder = 'best ';
+			matchTypeTipText.textContent = 'Example: "best " matches "best deals", "best products", "best sellers"';
 			break;
 		default: // exact
 			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}';
-			queryInput.placeholder = 'buy iphone';
-			matchTypeTipText.textContent = 'Example: "buy iphone" only matches exactly "buy iphone", not "buy iphone case"';
+			queryInput.placeholder = 'holiday sale';
+			matchTypeTipText.textContent = 'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"';
 	}
 }
 

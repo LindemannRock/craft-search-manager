@@ -546,7 +546,7 @@ class Install extends Migration
 
         $this->createTable('{{%searchmanager_promotions}}', [
             'id' => $this->primaryKey(),
-            'indexHandle' => $this->string(255)->notNull(),
+            'indexHandle' => $this->string(255)->null()->comment('null = applies to all indices'),
             'title' => $this->string(255)->null()->comment('Descriptive title for organization'),
             'query' => $this->string(500)->notNull()->comment('Query pattern to match'),
             'matchType' => $this->enum('matchType', ['exact', 'contains', 'prefix'])->notNull()->defaultValue('exact'),

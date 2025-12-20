@@ -24,7 +24,7 @@ class Promotion extends Model
     // =========================================================================
 
     public ?int $id = null;
-    public string $indexHandle = '';
+    public ?string $indexHandle = null; // null = applies to all indices
     public ?string $title = null;
     public string $query = '';
     public string $matchType = 'exact'; // exact, contains, prefix
@@ -53,7 +53,7 @@ class Promotion extends Model
     public function rules(): array
     {
         return [
-            [['indexHandle', 'query', 'elementId'], 'required'],
+            [['query', 'elementId'], 'required'],
             [['indexHandle', 'query'], 'string', 'max' => 500],
             [['title'], 'string', 'max' => 255],
             [['matchType'], 'in', 'range' => ['exact', 'contains', 'prefix']],
@@ -97,14 +97,19 @@ class Promotion extends Model
     }
 
     /**
-     * Find all promotions for an index
+     * Find all promotions for an index (including global promotions)
      */
-    public static function findByIndex(string $indexHandle, ?int $siteId = null): array
+    public static function findByIndex(?string $indexHandle = null, ?int $siteId = null): array
     {
         $query = (new Query())
             ->from('{{%searchmanager_promotions}}')
-            ->where(['indexHandle' => $indexHandle, 'enabled' => 1])
+            ->where(['enabled' => 1])
             ->orderBy(['position' => SORT_ASC]);
+
+        // Include promotions for this specific index OR global promotions (null indexHandle)
+        if ($indexHandle) {
+            $query->andWhere(['or', ['indexHandle' => null], ['indexHandle' => $indexHandle]]);
+        }
 
         if ($siteId !== null) {
             $query->andWhere(['or', ['siteId' => null], ['siteId' => $siteId]]);
@@ -230,7 +235,7 @@ class Promotion extends Model
 
         try {
             $attributes = [
-                'indexHandle' => $this->indexHandle,
+                'indexHandle' => $this->indexHandle ?: null,
                 'title' => $this->title,
                 'query' => $this->query,
                 'matchType' => $this->matchType,

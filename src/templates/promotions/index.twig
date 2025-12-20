@@ -39,7 +39,7 @@
 
 {# Search filter #}
 {% if search %}
-	{% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or search|lower in p.indexHandle|lower or (p.title and search|lower in p.title|lower)) %}
+	{% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or (p.indexHandle and search|lower in p.indexHandle|lower) or (p.title and search|lower in p.title|lower)) %}
 {% endif %}
 
 {# Pagination #}

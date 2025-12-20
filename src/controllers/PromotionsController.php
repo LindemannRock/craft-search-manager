@@ -66,7 +66,9 @@ class PromotionsController extends Controller
 
         // Get indices for dropdown
         $indices = SearchIndex::findAll();
-        $indexOptions = [];
+        $indexOptions = [
+            ['label' => Craft::t('search-manager', 'All Indexes'), 'value' => ''],
+        ];
         foreach ($indices as $index) {
             if ($index->enabled) {
                 $indexOptions[] = [
@@ -124,7 +126,7 @@ class PromotionsController extends Controller
         }
 
         // Set attributes
-        $promotion->indexHandle = $request->getBodyParam('indexHandle');
+        $promotion->indexHandle = $request->getBodyParam('indexHandle') ?: null;
         $promotion->title = $request->getBodyParam('title') ?: null;
         $promotion->query = $request->getBodyParam('query');
         $promotion->matchType = $request->getBodyParam('matchType', 'exact');
@@ -154,8 +156,10 @@ class PromotionsController extends Controller
             return null;
         }
 
-        // Clear search cache for this index
-        SearchManager::$plugin->backend->clearSearchCache($promotion->indexHandle);
+        // Clear search cache for this index (or all if global promotion)
+        if ($promotion->indexHandle) {
+            SearchManager::$plugin->backend->clearSearchCache($promotion->indexHandle);
+        }
 
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', 'Promotion saved.')
