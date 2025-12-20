@@ -233,7 +233,8 @@
 							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
 						</th>
 						<th scope="col">{{ "Name"|t('search-manager') }}</th>
-						<th scope="col">{{ "Match Type"|t('search-manager') }}</th>
+						<th scope="col">{{ "Query Pattern"|t('search-manager') }}</th>
+						<th scope="col">{{ "Match"|t('search-manager') }}</th>
 						<th scope="col">{{ "Action"|t('search-manager') }}</th>
 						<th scope="col">{{ "Index"|t('search-manager') }}</th>
 						<th scope="col">{{ "Site"|t('search-manager') }}</th>
@@ -256,9 +257,17 @@
 								</td>
 								<td>
 									<code>{{ rule.matchValue }}</code>
-									<span class="light">
-										({% if rule.matchType == 'exact' %}{{ 'exact'|t('search-manager') }}{% elseif rule.matchType == 'contains' %}{{ 'contains'|t('search-manager') }}{% elseif rule.matchType == 'prefix' %}{{ 'prefix'|t('search-manager') }}{% elseif rule.matchType == 'regex' %}{{ 'regex'|t('search-manager') }}{% endif %})
-									</span>
+								</td>
+								<td>
+									{% if rule.matchType == 'exact' %}
+										<span class="status" style="background: {{ matchTypeColors.exact }};"></span> {{ 'Exact'|t('search-manager') }}
+									{% elseif rule.matchType == 'contains' %}
+										<span class="status" style="background: {{ matchTypeColors.contains }};"></span> {{ 'Contains'|t('search-manager') }}
+									{% elseif rule.matchType == 'prefix' %}
+										<span class="status" style="background: {{ matchTypeColors.prefix }};"></span> {{ 'Starts With'|t('search-manager') }}
+									{% elseif rule.matchType == 'regex' %}
+										<span class="status" style="background: {{ matchTypeColors.regex }};"></span> {{ 'Regex'|t('search-manager') }}
+									{% endif %}
 								</td>
 								<td>
 									{% if rule.actionType == 'synonym' %}
@@ -322,7 +331,7 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="9" style="text-align: center; padding: 2em;">
+							<td colspan="10" style="text-align: center; padding: 2em;">
 								{{ 'No query rules found.'|t('search-manager') }}
 							</td>
 						</tr>
