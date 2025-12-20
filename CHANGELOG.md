@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.19.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.18.0...v5.19.0) (2025-12-20)
+
+
+### Features
+
+* update promotions handling to support null indexHandle for global promotions and improve UI placeholders ([a866fd2](https://github.com/LindemannRock/craft-search-manager/commit/a866fd2459012de42ebd3a7316a045af64dbe2a6))
+
 ## [5.18.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.17.0...v5.18.0) (2025-12-20)
 
 
