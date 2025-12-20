@@ -50,6 +50,12 @@ class AnalyticsService extends Component
      *   - source: The source of the search (frontend, cp, api, ios-app, android-app, etc.)
      *   - platform: The platform info (iOS 17, Android 14, Windows 11, etc.)
      *   - appVersion: The app version (1.0.0, 2.3.1, etc.)
+     *   - synonymsExpanded: Whether query was expanded with synonyms
+     *   - rulesMatched: Number of query rules that matched
+     *   - promotionsShown: Number of promotions shown
+     *   - wasRedirected: Whether a redirect rule matched
+     *   - matchedRules: Array of matched QueryRule objects (for detailed tracking)
+     *   - matchedPromotions: Array of matched Promotion objects (for detailed tracking)
      * @return void
      */
     public function trackSearch(
@@ -77,6 +83,14 @@ class AnalyticsService extends Component
         $source = $analyticsOptions['source'] ?? null;
         $platform = $analyticsOptions['platform'] ?? null;
         $appVersion = $analyticsOptions['appVersion'] ?? null;
+
+        // Extract query rules & promotions tracking options
+        $synonymsExpanded = $analyticsOptions['synonymsExpanded'] ?? false;
+        $rulesMatched = $analyticsOptions['rulesMatched'] ?? 0;
+        $promotionsShown = $analyticsOptions['promotionsShown'] ?? 0;
+        $wasRedirected = $analyticsOptions['wasRedirected'] ?? false;
+        $matchedRules = $analyticsOptions['matchedRules'] ?? [];
+        $matchedPromotions = $analyticsOptions['matchedPromotions'] ?? [];
 
         // Get referrer, IP, and user agent
         $request = Craft::$app->getRequest();
@@ -140,6 +154,11 @@ class AnalyticsService extends Component
                     'userAgent' => $userAgent,
                     'referer' => $referer,
                     'isHit' => $isHit,
+                    // Query rules & promotions tracking
+                    'synonymsExpanded' => $synonymsExpanded,
+                    'rulesMatched' => $rulesMatched,
+                    'promotionsShown' => $promotionsShown,
+                    'wasRedirected' => $wasRedirected,
                     // Device detection fields
                     'deviceType' => $deviceInfo['deviceType'],
                     'deviceBrand' => $deviceInfo['deviceBrand'],
@@ -172,8 +191,98 @@ class AnalyticsService extends Component
                 'backend' => $backend,
                 'isHit' => $isHit,
             ]);
+
+            // Track detailed rule analytics
+            if (!empty($matchedRules)) {
+                $this->trackRuleAnalytics($matchedRules, $query, $indexHandle, $siteId, $resultsCount);
+            }
+
+            // Track detailed promotion analytics
+            if (!empty($matchedPromotions)) {
+                $this->trackPromotionAnalytics($matchedPromotions, $query, $indexHandle, $siteId);
+            }
         } catch (\Exception $e) {
             $this->logError('Failed to track search query', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Track detailed analytics for matched query rules
+     *
+     * @param array $matchedRules Array of QueryRule objects
+     * @param string $query The search query
+     * @param string $indexHandle The index handle
+     * @param int|null $siteId The site ID
+     * @param int $resultsCount Results count after rules applied
+     */
+    private function trackRuleAnalytics(array $matchedRules, string $query, string $indexHandle, ?int $siteId, int $resultsCount): void
+    {
+        $now = Db::prepareDateForDb(new \DateTime());
+
+        foreach ($matchedRules as $rule) {
+            try {
+                Craft::$app->getDb()->createCommand()
+                    ->insert('{{%searchmanager_rule_analytics}}', [
+                        'queryRuleId' => $rule->id,
+                        'ruleName' => $rule->name,
+                        'actionType' => $rule->actionType,
+                        'query' => $query,
+                        'indexHandle' => $indexHandle,
+                        'siteId' => $siteId,
+                        'resultsCount' => $resultsCount,
+                        'dateCreated' => $now,
+                        'uid' => \craft\helpers\StringHelper::UUID(),
+                    ])
+                    ->execute();
+            } catch (\Exception $e) {
+                $this->logError('Failed to track rule analytics', [
+                    'ruleId' => $rule->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Track detailed analytics for matched promotions
+     *
+     * @param array $matchedPromotions Array of Promotion objects with position info
+     * @param string $query The search query
+     * @param string $indexHandle The index handle
+     * @param int|null $siteId The site ID
+     */
+    private function trackPromotionAnalytics(array $matchedPromotions, string $query, string $indexHandle, ?int $siteId): void
+    {
+        $now = Db::prepareDateForDb(new \DateTime());
+
+        foreach ($matchedPromotions as $promo) {
+            try {
+                // Get element title for denormalized storage
+                $elementTitle = null;
+                $element = Craft::$app->getElements()->getElementById($promo->elementId);
+                if ($element) {
+                    $elementTitle = $element->title ?? (string)$element;
+                }
+
+                Craft::$app->getDb()->createCommand()
+                    ->insert('{{%searchmanager_promotion_analytics}}', [
+                        'promotionId' => $promo->id,
+                        'elementId' => $promo->elementId,
+                        'elementTitle' => $elementTitle,
+                        'query' => $query,
+                        'position' => $promo->position,
+                        'indexHandle' => $indexHandle,
+                        'siteId' => $siteId,
+                        'dateCreated' => $now,
+                        'uid' => \craft\helpers\StringHelper::UUID(),
+                    ])
+                    ->execute();
+            } catch (\Exception $e) {
+                $this->logError('Failed to track promotion analytics', [
+                    'promotionId' => $promo->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

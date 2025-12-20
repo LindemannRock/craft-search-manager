@@ -149,7 +149,7 @@ class PromotionService extends Component
         $promotedIds = array_keys($promoted);
         $filteredResults = [];
         foreach ($results as $result) {
-            $elementId = is_array($result) ? ($result['elementId'] ?? null) : $result;
+            $elementId = is_array($result) ? ($result['objectID'] ?? $result['elementId'] ?? null) : $result;
             if (!in_array($elementId, $promotedIds)) {
                 $filteredResults[] = $result;
             }
@@ -166,8 +166,8 @@ class PromotionService extends Component
 
             // Create result item matching the format of existing results
             if (!empty($results) && is_array($results[0])) {
-                // Results are arrays with elementId key
-                $promotedItem = ['elementId' => $elementId, 'promoted' => true];
+                // Results are arrays with objectID key (standard backend format)
+                $promotedItem = ['objectID' => $elementId, 'promoted' => true];
             } else {
                 // Results are just element IDs
                 $promotedItem = $elementId;

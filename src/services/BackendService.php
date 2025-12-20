@@ -193,6 +193,12 @@ class BackendService extends Component
         ];
 
         // =====================================================================
+        // QUERY RULES: Get all matching rules for analytics
+        // =====================================================================
+        $matchedRules = \lindemannrock\searchmanager\models\QueryRule::findMatching($query, $indexName, $siteId);
+        $matchedPromotions = \lindemannrock\searchmanager\models\Promotion::findMatching($query, $indexName, $siteId);
+
+        // =====================================================================
         // QUERY RULES: Check for redirect first
         // =====================================================================
         $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, $indexName, $siteId);
@@ -201,6 +207,25 @@ class BackendService extends Component
                 'query' => $query,
                 'redirectUrl' => $redirectUrl,
             ]);
+
+            // Track analytics for redirect (no search performed)
+            SearchManager::$plugin->analytics->trackSearch(
+                $indexName,
+                $query,
+                0, // No results
+                0, // No execution time
+                $backend->getName(),
+                $siteId,
+                array_merge($analyticsOptions, [
+                    'synonymsExpanded' => false,
+                    'rulesMatched' => count($matchedRules),
+                    'promotionsShown' => 0,
+                    'wasRedirected' => true,
+                    'matchedRules' => $matchedRules,
+                    'matchedPromotions' => [],
+                ])
+            );
+
             return [
                 'hits' => [],
                 'total' => 0,
@@ -233,7 +258,14 @@ class BackendService extends Component
                     0, // Cache hit = 0ms execution time
                     $backend->getName(), // Don't append "(cached)" - breaks analytics grouping
                     $siteId,
-                    $analyticsOptions
+                    array_merge($analyticsOptions, [
+                        'synonymsExpanded' => $useSynonyms,
+                        'rulesMatched' => count($matchedRules),
+                        'promotionsShown' => count($matchedPromotions),
+                        'wasRedirected' => false,
+                        'matchedRules' => $matchedRules,
+                        'matchedPromotions' => $matchedPromotions,
+                    ])
                 );
                 return $cached;
             }
@@ -283,7 +315,14 @@ class BackendService extends Component
             $executionTime,
             $backend->getName(),
             $siteId,
-            $analyticsOptions
+            array_merge($analyticsOptions, [
+                'synonymsExpanded' => $useSynonyms,
+                'rulesMatched' => count($matchedRules),
+                'promotionsShown' => count($matchedPromotions),
+                'wasRedirected' => false,
+                'matchedRules' => $matchedRules,
+                'matchedPromotions' => $matchedPromotions,
+            ])
         );
 
         // 4. Decide whether to cache
@@ -329,7 +368,7 @@ class BackendService extends Component
 
             if (!empty($queryResults['hits'])) {
                 foreach ($queryResults['hits'] as $hit) {
-                    $elementId = $hit['elementId'] ?? null;
+                    $elementId = $hit['objectID'] ?? $hit['elementId'] ?? null;
 
                     // Avoid duplicates - keep highest score
                     if ($elementId && !isset($seenElementIds[$elementId])) {
@@ -338,7 +377,7 @@ class BackendService extends Component
                     } elseif ($elementId && isset($seenElementIds[$elementId])) {
                         // Find existing hit and update score if higher
                         foreach ($allHits as &$existingHit) {
-                            if (($existingHit['elementId'] ?? null) === $elementId) {
+                            if (($existingHit['objectID'] ?? $existingHit['elementId'] ?? null) === $elementId) {
                                 $existingHit['score'] = max($existingHit['score'] ?? 0, $hit['score'] ?? 0);
                                 break;
                             }

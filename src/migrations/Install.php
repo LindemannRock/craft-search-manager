@@ -31,6 +31,8 @@ class Install extends Migration
         $this->createSearchEngineTables();
         $this->createPromotionsTable();
         $this->createQueryRulesTable();
+        $this->createRuleAnalyticsTable();
+        $this->createPromotionAnalyticsTable();
 
         // Insert default data
         $this->insertDefaultSettings();
@@ -42,6 +44,8 @@ class Install extends Migration
     public function safeDown(): bool
     {
         // Drop tables in reverse order (respecting dependencies)
+        $this->dropTableIfExists('{{%searchmanager_promotion_analytics}}');
+        $this->dropTableIfExists('{{%searchmanager_rule_analytics}}');
         $this->dropTableIfExists('{{%searchmanager_query_rules}}');
         $this->dropTableIfExists('{{%searchmanager_promotions}}');
         $this->dropTableIfExists('{{%searchmanager_search_elements}}');
@@ -370,6 +374,11 @@ class Install extends Migration
             'userAgent' => $this->text()->null(),
             'referer' => $this->string()->null(),
             'isHit' => $this->boolean()->notNull()->defaultValue(true),
+            // Query rules & promotions tracking
+            'synonymsExpanded' => $this->boolean()->notNull()->defaultValue(false)->comment('Was query expanded with synonyms'),
+            'rulesMatched' => $this->integer()->notNull()->defaultValue(0)->comment('Number of query rules that matched'),
+            'promotionsShown' => $this->integer()->notNull()->defaultValue(0)->comment('Number of promotions shown'),
+            'wasRedirected' => $this->boolean()->notNull()->defaultValue(false)->comment('Did a redirect rule match'),
             // Device detection fields (via Matomo DeviceDetector)
             'deviceType' => $this->string(50)->null(),
             'deviceBrand' => $this->string(50)->null(),
@@ -407,6 +416,8 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['clientType'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['isRobot'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['dateCreated'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['synonymsExpanded'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['wasRedirected'], false);
     }
 
     /**
@@ -584,5 +595,65 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_query_rules}}', ['matchType', 'matchValue'], false);
         $this->createIndex(null, '{{%searchmanager_query_rules}}', ['actionType'], false);
         $this->createIndex(null, '{{%searchmanager_query_rules}}', ['priority'], false);
+    }
+
+    /**
+     * Create rule analytics table
+     * Tracks which query rules are triggered and how often
+     */
+    private function createRuleAnalyticsTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_rule_analytics}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_rule_analytics}}', [
+            'id' => $this->primaryKey(),
+            'queryRuleId' => $this->integer()->notNull()->comment('FK to query_rules.id'),
+            'ruleName' => $this->string(255)->notNull()->comment('Denormalized for reporting after rule deletion'),
+            'actionType' => $this->enum('actionType', ['synonym', 'boost_section', 'boost_category', 'boost_element', 'filter', 'redirect'])->notNull(),
+            'query' => $this->string(500)->notNull()->comment('The search query that triggered this rule'),
+            'indexHandle' => $this->string(255)->null(),
+            'siteId' => $this->integer()->null(),
+            'resultsCount' => $this->integer()->notNull()->defaultValue(0)->comment('Results count after rule applied'),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        // Indexes for analytics queries
+        $this->createIndex(null, '{{%searchmanager_rule_analytics}}', ['queryRuleId'], false);
+        $this->createIndex(null, '{{%searchmanager_rule_analytics}}', ['actionType'], false);
+        $this->createIndex(null, '{{%searchmanager_rule_analytics}}', ['dateCreated'], false);
+        $this->createIndex(null, '{{%searchmanager_rule_analytics}}', ['indexHandle', 'siteId'], false);
+    }
+
+    /**
+     * Create promotion analytics table
+     * Tracks which promotions are shown and how often
+     */
+    private function createPromotionAnalyticsTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_promotion_analytics}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_promotion_analytics}}', [
+            'id' => $this->primaryKey(),
+            'promotionId' => $this->integer()->notNull()->comment('FK to promotions.id'),
+            'elementId' => $this->integer()->notNull()->comment('Denormalized - the promoted element'),
+            'elementTitle' => $this->string(500)->null()->comment('Denormalized for reporting after element deletion'),
+            'query' => $this->string(500)->notNull()->comment('The search query that triggered this promotion'),
+            'position' => $this->integer()->notNull()->comment('Position the promotion was shown at'),
+            'indexHandle' => $this->string(255)->notNull(),
+            'siteId' => $this->integer()->null(),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        // Indexes for analytics queries
+        $this->createIndex(null, '{{%searchmanager_promotion_analytics}}', ['promotionId'], false);
+        $this->createIndex(null, '{{%searchmanager_promotion_analytics}}', ['elementId'], false);
+        $this->createIndex(null, '{{%searchmanager_promotion_analytics}}', ['dateCreated'], false);
+        $this->createIndex(null, '{{%searchmanager_promotion_analytics}}', ['indexHandle', 'siteId'], false);
     }
 }

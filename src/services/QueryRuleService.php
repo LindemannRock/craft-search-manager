@@ -249,7 +249,7 @@ class QueryRuleService extends Component
         $elementCache = [];
 
         foreach ($results as &$result) {
-            $elementId = is_array($result) ? ($result['elementId'] ?? null) : $result;
+            $elementId = is_array($result) ? ($result['objectID'] ?? $result['elementId'] ?? null) : $result;
             if (!$elementId) {
                 continue;
             }
