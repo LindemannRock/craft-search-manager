@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.20.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.19.0...v5.20.0) (2025-12-20)
+
+
+### Features
+
+* enhance promotions and query rules to support multi-pattern matching with commas ([c841691](https://github.com/LindemannRock/craft-search-manager/commit/c8416913a2b042edfe1fc84a79ba25e3cb74c374))
+
 ## [5.19.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.18.0...v5.19.0) (2025-12-20)
 
 
