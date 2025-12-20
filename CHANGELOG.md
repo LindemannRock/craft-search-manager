@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.18.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.17.0...v5.18.0) (2025-12-20)
+
+
+### Features
+
+* add title attribute to promotions and update related templates for better identification ([e2e2a8a](https://github.com/LindemannRock/craft-search-manager/commit/e2e2a8a9a43b365be2fd6f0ec33de4f38073fe5b))
+
 ## [5.17.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.16.0...v5.17.0) (2025-12-20)
 
 
