@@ -5,11 +5,11 @@
     </div>
     <div class="stat-box">
         <div class="stat-value" id="handled-404s">{{ (handledCount ?? 0)|number }}</div>
-        <div class="stat-label">{{ "With Results"|t('search-manager') }}</div>
+        <div class="stat-label">{{ "With Hits"|t('search-manager') }}</div>
     </div>
     <div class="stat-box">
         <div class="stat-value" id="unhandled-404s">{{ (unhandledCount ?? 0)|number }}</div>
-        <div class="stat-label">{{ "Zero Results"|t('search-manager') }}</div>
+        <div class="stat-label">{{ "Zero Hits"|t('search-manager') }}</div>
     </div>
     <div class="stat-box">
         <div class="stat-value" id="success-rate">{{ totalCount > 0 ? ((handledCount / totalCount * 100)|round) : 0 }}%</div>
@@ -67,7 +67,7 @@
                         <th>{{ 'Query'|t('search-manager') }}</th>
                         <th>{{ 'Site'|t('search-manager') }}</th>
                         <th>{{ 'Searches'|t('search-manager') }}</th>
-                        <th>{{ 'Avg Results'|t('search-manager') }}</th>
+                        <th>{{ 'Avg Hits'|t('search-manager') }}</th>
                         <th>{{ 'Date'|t('search-manager') }}</th>
                         <th>{{ 'Time'|t('search-manager') }}</th>
                     </tr>

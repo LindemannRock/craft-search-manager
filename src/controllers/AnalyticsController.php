@@ -403,6 +403,68 @@ class AnalyticsController extends Controller
                 ]);
             }
 
+            // =====================================================================
+            // QUERY RULES ANALYTICS
+            // =====================================================================
+
+            // Top triggered rules
+            if ($type === 'query-rules-top') {
+                $topRules = SearchManager::$plugin->analytics->getTopTriggeredRules($siteId, $dateRange);
+                return $this->asJson([
+                    'success' => true,
+                    'data' => $topRules,
+                ]);
+            }
+
+            // Rules by action type
+            if ($type === 'query-rules-by-type') {
+                $rulesByType = SearchManager::$plugin->analytics->getRulesByActionType($siteId, $dateRange);
+                return $this->asJson([
+                    'success' => true,
+                    'data' => $rulesByType,
+                ]);
+            }
+
+            // Top queries triggering rules
+            if ($type === 'query-rules-queries') {
+                $ruleQueries = SearchManager::$plugin->analytics->getQueriesTriggeringRules($siteId, $dateRange);
+                return $this->asJson([
+                    'success' => true,
+                    'data' => $ruleQueries,
+                ]);
+            }
+
+            // =====================================================================
+            // PROMOTIONS ANALYTICS
+            // =====================================================================
+
+            // Top promotions
+            if ($type === 'promotions-top') {
+                $topPromos = SearchManager::$plugin->analytics->getTopPromotions($siteId, $dateRange);
+                return $this->asJson([
+                    'success' => true,
+                    'data' => $topPromos,
+                ]);
+            }
+
+            // Promotions by position
+            if ($type === 'promotions-by-position') {
+                $promosByPosition = SearchManager::$plugin->analytics->getPromotionsByPosition($siteId, $dateRange);
+                return $this->asJson([
+                    'success' => true,
+                    'data' => $promosByPosition,
+                ]);
+            }
+
+            // Top queries triggering promotions
+            if ($type === 'promotions-queries') {
+                $promoQueries = SearchManager::$plugin->analytics->getQueriesTriggeringPromotions($siteId, $dateRange);
+                return $this->asJson([
+                    'success' => true,
+                    'data' => $promoQueries,
+                ]);
+            }
+
             // Flatten structure for backward compatibility if 'all' is requested
             if ($type === 'all') {
                 return $this->asJson([

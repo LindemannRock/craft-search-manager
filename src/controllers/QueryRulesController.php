@@ -188,16 +188,21 @@ class QueryRulesController extends Controller
                 break;
 
             case QueryRule::ACTION_BOOST_CATEGORY:
+                // Element selector returns an array of IDs
+                $boostCategory = $request->getBodyParam('boostCategory');
+                $categoryId = is_array($boostCategory) && !empty($boostCategory) ? (int)$boostCategory[0] : 0;
                 $actionValue = [
-                    'categoryId' => (int)$request->getBodyParam('boostCategoryId') ?: null,
-                    'categoryHandle' => $request->getBodyParam('boostCategoryHandle'),
+                    'categoryId' => $categoryId,
                     'multiplier' => (float)$request->getBodyParam('boostMultiplier', 2.0),
                 ];
                 break;
 
             case QueryRule::ACTION_BOOST_ELEMENT:
+                // Element selector returns an array of IDs
+                $boostElement = $request->getBodyParam('boostElement');
+                $elementId = is_array($boostElement) && !empty($boostElement) ? (int)$boostElement[0] : 0;
                 $actionValue = [
-                    'elementId' => (int)$request->getBodyParam('boostElementId'),
+                    'elementId' => $elementId,
                     'multiplier' => (float)$request->getBodyParam('boostMultiplier', 2.0),
                 ];
                 break;

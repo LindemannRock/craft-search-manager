@@ -101,7 +101,7 @@ class Promotion extends Model
     {
         $query = (new Query())
             ->from('{{%searchmanager_promotions}}')
-            ->where(['indexHandle' => $indexHandle, 'enabled' => true])
+            ->where(['indexHandle' => $indexHandle, 'enabled' => 1])
             ->orderBy(['position' => SORT_ASC]);
 
         if ($siteId !== null) {
@@ -131,15 +131,41 @@ class Promotion extends Model
 
     /**
      * Find promotions matching a search query
+     * Only returns promotions where the element is enabled for the given site
      */
     public static function findMatching(string $searchQuery, string $indexHandle, ?int $siteId = null): array
     {
         $searchQuery = mb_strtolower(trim($searchQuery));
         $promotions = self::findByIndex($indexHandle, $siteId);
-        $matches = [];
 
+        $checkSiteId = $siteId ?? \Craft::$app->getSites()->getCurrentSite()->id;
+
+        // Filter promotions that match the query pattern
+        $queryMatches = [];
+        $elementIds = [];
         foreach ($promotions as $promotion) {
             if ($promotion->matches($searchQuery)) {
+                $queryMatches[] = $promotion;
+                $elementIds[] = $promotion->elementId;
+            }
+        }
+
+        if (empty($queryMatches)) {
+            return [];
+        }
+
+        // Batch query: get all live elements in one query
+        $liveElements = \craft\elements\Entry::find()
+            ->id($elementIds)
+            ->siteId($checkSiteId)
+            ->status('live')
+            ->indexBy('id')
+            ->all();
+
+        // Filter to only promotions with live elements
+        $matches = [];
+        foreach ($queryMatches as $promotion) {
+            if (isset($liveElements[$promotion->elementId])) {
                 $matches[] = $promotion;
             }
         }
@@ -278,7 +304,7 @@ class Promotion extends Model
     }
 
     /**
-     * Get the promoted element
+     * Get the promoted element (for CP display)
      */
     public function getElement(): ?\craft\base\ElementInterface
     {

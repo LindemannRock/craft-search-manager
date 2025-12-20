@@ -1,0 +1,64 @@
+{# Check if any promotions exist #}
+{% set promotionsExist = craft.app.db.createCommand("SELECT COUNT(*) FROM {{%searchmanager_promotions}}").queryScalar() > 0 %}
+
+{% if not promotionsExist %}
+    <div style="text-align: center; padding: 60px 20px;">
+        <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </div>
+        <h2 style="margin-bottom: 10px; color: #596673;">{{ "No Promotions Created"|t('search-manager') }}</h2>
+        <p class="light" style="margin-bottom: 20px;">{{ "Create promotions to pin specific results to the top of search results for certain queries."|t('search-manager') }}</p>
+        <a href="{{ url('search-manager/promotions/new') }}" class="btn submit">{{ "Create Promotion"|t('search-manager') }}</a>
+    </div>
+{% else %}
+    <div class="analytics-charts two-columns">
+        <div class="chart-container">
+            <h3>{{ "Top Promoted Elements"|t('search-manager') }}</h3>
+            <div class="table-scroll-container">
+                <table class="data fullwidth">
+                    <thead>
+                        <tr>
+                            <th>{{ 'Element'|t('search-manager') }}</th>
+                            <th>{{ 'Position'|t('search-manager') }}</th>
+                            <th>{{ 'Impressions'|t('search-manager') }}</th>
+                            <th>{{ 'Unique Queries'|t('search-manager') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="top-promotions-body">
+                        <tr><td colspan="4" class="thin light">{{ "Loading..."|t('search-manager') }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>{{ "Impressions by Position"|t('search-manager') }}</h3>
+            <canvas id="promotions-by-position-chart" style="max-height: 250px;"></canvas>
+        </div>
+    </div>
+
+    <h2 style="margin: 30px 0 20px;">{{ "Top Queries Triggering Promotions"|t('search-manager') }}</h2>
+
+    <div class="analytics-charts">
+        <div class="chart-container full-width">
+            <div class="table-scroll-container">
+                <table class="data fullwidth">
+                    <thead>
+                        <tr>
+                            <th>{{ 'Query'|t('search-manager') }}</th>
+                            <th>{{ 'Promotions Shown'|t('search-manager') }}</th>
+                            <th>{{ 'Times Searched'|t('search-manager') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="promotion-queries-body">
+                        <tr><td colspan="3" class="thin light">{{ "Loading..."|t('search-manager') }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <p class="light" style="margin-top: 20px; font-size: 12px;">
+        {{ "Tip: Promotions in position #1 get the most visibility. Consider which products or content deserve top placement."|t('search-manager') }}
+    </p>
+{% endif %}

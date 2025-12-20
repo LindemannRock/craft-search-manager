@@ -51,19 +51,32 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - **API Language Override** - Mobile apps can specify language for localized operators
 
 ### Comprehensive Analytics
-- **Search Tracking** - Track every search query with results count and execution time
+- **Search Tracking** - Track every search query with hits count and execution time
+- **Query Rules Tracking** - Track which rules fire, how often, and their effectiveness
+- **Promotions Tracking** - Track promotion impressions, positions, and triggering queries
+- **Synonyms Tracking** - Track when synonym expansion is used
 - **Source Detection** - Auto-detect search origin (frontend, CP, API) or pass custom sources
 - **Platform & App Tracking** - Track platform (iOS 17, Android 14) and app version for mobile apps
 - **Device Detection** - Powered by Matomo DeviceDetector for accurate device, browser, and OS identification
 - **Geographic Detection** - Track visitor location (country, city, region) via ip-api.com
 - **Bot Filtering** - Identify and filter bot traffic (GoogleBot, BingBot, etc.)
-- **Zero-Result Tracking** - Identify queries that return no results for optimization
+- **Zero-Hit Tracking** - Identify queries that return no results (content gaps)
 - **Performance Metrics** - Dedicated Performance tab with cache hit rate, response time trends, fastest/slowest queries
 - **Intent & Source Charts** - Visual breakdown of search intent and source distribution
 - **Privacy-First** - IP hashing with salt, optional subnet masking, GDPR-friendly
 - **Referrer Tracking** - See where search traffic is coming from
-- **Export Options** - CSV and JSON export formats
+- **Export Options** - CSV and JSON export with clean column names (Hits, Synonyms, Rules, Promotions, Redirected)
 - **Automatic Cleanup** - Configurable retention period (0-3650 days)
+
+**Analytics Tabs:**
+- **Overview** - Summary stats, search trends, intent/source breakdown
+- **Recent Searches** - Detailed log with hits, synonyms, rules, promotions columns
+- **Query Rules** - Top triggered rules, rules by action type, triggering queries (only shown if rules exist)
+- **Promotions** - Top promoted elements, impressions by position, triggering queries (only shown if promotions exist)
+- **Content Gaps** - Zero-hit clusters and recent failed queries
+- **Performance** - Cache stats, response times, fastest/slowest queries
+- **Traffic & Devices** - Device, browser, OS breakdown, peak hours
+- **Geographic** - Country and city breakdown (when geo detection enabled)
 
 ### Performance Caching
 - **Search Results Cache** - Cache search results to reduce backend load and improve response times
@@ -103,6 +116,7 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - **Scope Control** - Apply to specific indices and/or sites
 - **Enable/Disable** - Toggle promotions without deleting
 - **Bulk Actions** - Enable, disable, or delete multiple promotions at once
+- **Per-Site Status** - Respects element status per site (disabled/pending/expired elements excluded from that site's results)
 
 ### Query Rules
 - **Synonyms** - Expand searches to include related terms (e.g., "laptop" → "notebook, computer")
@@ -123,6 +137,7 @@ Advanced multi-backend search management for Craft CMS - supports Algolia, File,
 - Backend status monitoring
 - Analytics dashboard
 - Comprehensive settings with config override warnings
+- **Test Search** - Test searches across all sites with element type and site info per result
 
 ### Developer-Friendly
 - Console commands for all operations
@@ -1102,6 +1117,40 @@ shows Black Friday Deals first
 - Enable/disable or delete in bulk
 - Filter by status or match type
 
+**Per-Site Element Status:**
+
+Promotions automatically respect element status on a per-site basis:
+- If an element is **disabled** for Site 1 but **enabled** for Site 2, the promotion will only appear on Site 2
+- Elements with **pending** or **expired** post dates are excluded
+- Uses Craft's `status('live')` to check all status conditions
+
+```
+Example:
+- Product "Summer Sale" is linked to promotion for query "sale"
+- Product is disabled for English site, enabled for French/Arabic sites
+- English site searches: promotion NOT shown
+- French site searches: promotion shown at position 1
+```
+
+**API Response Structure:**
+
+Promoted items in search results include full metadata:
+```json
+{
+  "hits": [
+    {
+      "objectID": 123,
+      "id": 123,
+      "promoted": true,
+      "position": 1,
+      "score": null,
+      "type": "product",
+      "title": "Summer Sale Product"
+    }
+  ]
+}
+```
+
 ### Query Rules
 
 Query Rules modify search behavior when queries match specific patterns. They support synonyms, boosting, filtering, and redirects.
@@ -1205,6 +1254,31 @@ Result: Searching exactly "contact us" redirects to /contact page
 **Scope:**
 - **Index**: Apply to all indices (leave blank) or a specific index
 - **Site**: Apply to all sites (leave blank) or a specific site
+
+**API Response Metadata:**
+
+When query rules are applied, the search response includes metadata:
+```json
+{
+  "hits": [...],
+  "rulesMatched": [
+    {
+      "ruleName": "Boost Electronics",
+      "ruleId": 5,
+      "actionType": "boost_element",
+      "actionValue": 123
+    }
+  ]
+}
+```
+
+The `actionValue` field shows:
+- **boost_element**: The element ID being boosted
+- **boost_section**: The section handle
+- **boost_category**: The category ID
+- **synonyms**: The synonym terms (comma-separated)
+- **filter**: The filter field/value
+- **redirect**: The redirect URL
 
 **Match Types:**
 | Type | Description | Example |

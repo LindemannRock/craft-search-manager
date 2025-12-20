@@ -14,14 +14,35 @@
     },
 ] %}
 
+{# Check if query rules and promotions exist #}
+{% set queryRulesExist = craft.app.db.createCommand("SELECT COUNT(*) FROM {{%searchmanager_query_rules}}").queryScalar() > 0 %}
+{% set promotionsExist = craft.app.db.createCommand("SELECT COUNT(*) FROM {{%searchmanager_promotions}}").queryScalar() > 0 %}
+
 {# Define Tabs #}
 {% set tabs = {
     overview: { label: "Overview"|t('search-manager'), url: '#overview' },
     searches: { label: "Recent Searches"|t('search-manager'), url: '#searches' },
+} %}
+
+{# Only add Query Rules tab if rules exist #}
+{% if queryRulesExist %}
+    {% set tabs = tabs|merge({
+        'query-rules': { label: "Query Rules"|t('search-manager'), url: '#query-rules' }
+    }) %}
+{% endif %}
+
+{# Only add Promotions tab if promotions exist #}
+{% if promotionsExist %}
+    {% set tabs = tabs|merge({
+        'promotions': { label: "Promotions"|t('search-manager'), url: '#promotions' }
+    }) %}
+{% endif %}
+
+{% set tabs = tabs|merge({
     contentGaps: { label: "Content Gaps"|t('search-manager'), url: '#content-gaps' },
     performance: { label: "Performance"|t('search-manager'), url: '#performance' },
     'traffic-devices': { label: "Traffic & Devices"|t('search-manager'), url: '#traffic-devices' }
-} %}
+}) %}
 
 {# Only add Geographic tab if geo detection is enabled #}
 {% if settings.enableGeoDetection %}
@@ -97,6 +118,18 @@
          {% include 'search-manager/analytics/_tabs/searches' %}
     </div>
 
+    {% if queryRulesExist %}
+    <div id="query-rules" class="hidden">
+         {% include 'search-manager/analytics/_tabs/query-rules' %}
+    </div>
+    {% endif %}
+
+    {% if promotionsExist %}
+    <div id="promotions" class="hidden">
+         {% include 'search-manager/analytics/_tabs/promotions' %}
+    </div>
+    {% endif %}
+
     <div id="content-gaps" class="hidden">
          {% include 'search-manager/analytics/_tabs/content-gaps' %}
     </div>
@@ -120,7 +153,7 @@
 
 {% css %}
     /* Tab content padding */
-    #overview, #searches, #content-gaps, #performance, #traffic-devices, #geographic {
+    #overview, #searches, #content-gaps, #performance, #traffic-devices, #query-rules, #promotions, #geographic {
         padding: 24px;
     }
 
@@ -254,8 +287,8 @@
                 data: {
                     labels: chartData.map(d => d.date),
                     datasets: [
-                        { label: 'With Results', data: chartData.map(d => d.withResults), borderColor: '#10B981', tension: 0.1 },
-                        { label: 'Zero Results', data: chartData.map(d => d.zeroResults), borderColor: '#EF4444', tension: 0.1 }
+                        { label: 'With Hits', data: chartData.map(d => d.withResults), borderColor: '#10B981', tension: 0.1 },
+                        { label: 'Zero Hits', data: chartData.map(d => d.zeroResults), borderColor: '#EF4444', tension: 0.1 }
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false }
@@ -316,7 +349,7 @@
         window.currentTab = tabId;
 
         // Lazy Load Data for specific tabs
-        if (tabId === 'overview' || tabId === 'content-gaps' || tabId === 'performance' || tabId === 'traffic-devices' || tabId === 'geographic') {
+        if (tabId === 'overview' || tabId === 'content-gaps' || tabId === 'performance' || tabId === 'traffic-devices' || tabId === 'geographic' || tabId === 'query-rules' || tabId === 'promotions') {
              loadTabData(tabId);
         }
     }
@@ -358,6 +391,8 @@
         if (tabName === 'performance' && window.performanceLoaded) return;
         if (tabName === 'traffic-devices' && window.trafficDevicesLoaded) return;
         if (tabName === 'geographic' && window.geographicLoaded) return;
+        if (tabName === 'query-rules' && window.queryRulesLoaded) return;
+        if (tabName === 'promotions' && window.promotionsLoaded) return;
 
         const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
         const siteId = new URLSearchParams(window.location.search).get('siteId') || '';
@@ -377,6 +412,18 @@
         if (tabName === 'geographic') {
             // Load geographic data (countries, cities)
             loadGeographicData(dateRange, siteId);
+            return;
+        }
+
+        if (tabName === 'query-rules') {
+            // Load query rules analytics
+            loadQueryRulesData(dateRange, siteId);
+            return;
+        }
+
+        if (tabName === 'promotions') {
+            // Load promotions analytics
+            loadPromotionsData(dateRange, siteId);
             return;
         }
 
@@ -784,6 +831,240 @@
                     }
                 }
             }
+        });
+    }
+
+    // Load Query Rules Analytics
+    function loadQueryRulesData(dateRange, siteId) {
+        const csrfToken = '{{ craft.app.request.csrfToken }}';
+        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
+
+        // Load top rules
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-top', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderTopRules(res.data);
+            }
+        });
+
+        // Load rules by action type
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-by-type', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderRulesByType(res.data);
+            }
+        });
+
+        // Load top queries triggering rules
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-queries', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderRuleQueries(res.data);
+                window.queryRulesLoaded = true;
+            }
+        });
+    }
+
+    function renderTopRules(data) {
+        const tbody = $('#top-rules-body');
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="4" class="light" style="text-align: center;">No query rules have been triggered yet</td></tr>');
+            return;
+        }
+
+        data.forEach(r => {
+            const actionBadge = getActionTypeBadge(r.actionType);
+            tbody.append(`<tr>
+                <td><strong>${Craft.escapeHtml(r.ruleName)}</strong></td>
+                <td>${actionBadge}</td>
+                <td>${r.hits.toLocaleString()}</td>
+                <td>${r.avgResults}</td>
+            </tr>`);
+        });
+    }
+
+    function renderRulesByType(data) {
+        if (window.smCharts.rulesByType) {
+            window.smCharts.rulesByType.destroy();
+        }
+        const ctx = document.getElementById('rules-by-type-chart');
+        if (!ctx) return;
+
+        if (!data.labels || data.labels.length === 0) {
+            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No data available</p>');
+            return;
+        }
+
+        const colors = {
+            'synonym': '#3498db',
+            'boost_section': '#2ecc71',
+            'boost_category': '#27ae60',
+            'boost_element': '#1abc9c',
+            'filter': '#f39c12',
+            'redirect': '#e74c3c'
+        };
+
+        window.smCharts.rulesByType = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: data.labels.map(l => l.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())),
+                datasets: [{
+                    data: data.values,
+                    backgroundColor: data.labels.map(l => colors[l] || '#95a5a6')
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+
+    function renderRuleQueries(data) {
+        const tbody = $('#rule-queries-body');
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No queries have triggered rules yet</td></tr>');
+            return;
+        }
+
+        data.forEach(q => {
+            tbody.append(`<tr>
+                <td><code>${Craft.escapeHtml(q.query)}</code></td>
+                <td>${q.rulesTriggered}</td>
+                <td>${q.count.toLocaleString()}</td>
+            </tr>`);
+        });
+    }
+
+    function getActionTypeBadge(actionType) {
+        const badges = {
+            'synonym': '<span class="status blue"></span> Synonym',
+            'boost_section': '<span class="status green"></span> Boost Section',
+            'boost_category': '<span class="status green"></span> Boost Category',
+            'boost_element': '<span class="status green"></span> Boost Element',
+            'filter': '<span class="status orange"></span> Filter',
+            'redirect': '<span class="status red"></span> Redirect'
+        };
+        return badges[actionType] || actionType;
+    }
+
+    // Load Promotions Analytics
+    function loadPromotionsData(dateRange, siteId) {
+        const csrfToken = '{{ craft.app.request.csrfToken }}';
+        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
+
+        // Load top promotions
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-top', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderTopPromotions(res.data);
+            }
+        });
+
+        // Load promotions by position
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-by-position', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderPromotionsByPosition(res.data);
+            }
+        });
+
+        // Load top queries triggering promotions
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-queries', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderPromotionQueries(res.data);
+                window.promotionsLoaded = true;
+            }
+        });
+    }
+
+    function renderTopPromotions(data) {
+        const tbody = $('#top-promotions-body');
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="4" class="light" style="text-align: center;">No promotions have been shown yet</td></tr>');
+            return;
+        }
+
+        data.forEach(p => {
+            tbody.append(`<tr>
+                <td><strong>${Craft.escapeHtml(p.elementTitle || 'Element #' + p.elementId)}</strong></td>
+                <td>#${p.position}</td>
+                <td>${p.impressions.toLocaleString()}</td>
+                <td>${p.uniqueQueries}</td>
+            </tr>`);
+        });
+    }
+
+    function renderPromotionsByPosition(data) {
+        if (window.smCharts.promosByPosition) {
+            window.smCharts.promosByPosition.destroy();
+        }
+        const ctx = document.getElementById('promotions-by-position-chart');
+        if (!ctx) return;
+
+        if (!data.labels || data.labels.length === 0) {
+            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No data available</p>');
+            return;
+        }
+
+        window.smCharts.promosByPosition = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels.map(l => 'Position #' + l),
+                datasets: [{
+                    label: 'Impressions',
+                    data: data.values,
+                    backgroundColor: '#0d78f2'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+            }
+        });
+    }
+
+    function renderPromotionQueries(data) {
+        const tbody = $('#promotion-queries-body');
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No queries have triggered promotions yet</td></tr>');
+            return;
+        }
+
+        data.forEach(q => {
+            tbody.append(`<tr>
+                <td><code>${Craft.escapeHtml(q.query)}</code></td>
+                <td>${q.promotionsShown}</td>
+                <td>${q.count.toLocaleString()}</td>
+            </tr>`);
         });
     }
 

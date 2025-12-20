@@ -103,20 +103,12 @@ class PromotionService extends Component
      */
     public function getPromotedElements(string $query, string $indexHandle, ?int $siteId = null): array
     {
+        // findMatching already filters by element enabled status for the site
         $promotions = Promotion::findMatching($query, $indexHandle, $siteId);
         $promoted = [];
 
         foreach ($promotions as $promotion) {
-            // Verify element still exists
-            $element = $promotion->getElement();
-            if ($element) {
-                $promoted[$promotion->elementId] = $promotion->position;
-            } else {
-                $this->logWarning('Promoted element not found', [
-                    'promotionId' => $promotion->id,
-                    'elementId' => $promotion->elementId,
-                ]);
-            }
+            $promoted[$promotion->elementId] = $promotion->position;
         }
 
         return $promoted;
@@ -155,6 +147,17 @@ class PromotionService extends Component
             }
         }
 
+        // Batch query: get all promoted elements in one query
+        $elements = [];
+        if (!empty($results) && is_array($results[0])) {
+            $elements = \craft\elements\Entry::find()
+                ->id($promotedIds)
+                ->siteId($siteId)
+                ->status(null)
+                ->indexBy('id')
+                ->all();
+        }
+
         // Sort promoted elements by position
         asort($promoted);
 
@@ -166,8 +169,17 @@ class PromotionService extends Component
 
             // Create result item matching the format of existing results
             if (!empty($results) && is_array($results[0])) {
-                // Results are arrays with objectID key (standard backend format)
-                $promotedItem = ['objectID' => $elementId, 'promoted' => true];
+                // Results are arrays - build full promoted item with element data
+                $element = $elements[$elementId] ?? null;
+                $promotedItem = [
+                    'objectID' => $elementId,
+                    'id' => $elementId,
+                    'promoted' => true,
+                    'position' => $position,
+                    'score' => null, // Promoted items bypass scoring
+                    'type' => $element ? $element->section->handle ?? null : null,
+                    'title' => $element ? $element->title : null,
+                ];
             } else {
                 // Results are just element IDs
                 $promotedItem = $elementId;

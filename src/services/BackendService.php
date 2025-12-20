@@ -177,12 +177,16 @@ class BackendService extends Component
             return [];
         }
 
+        // Handle "all sites" option - siteId of '*' or null/not set means search all
+        // Check raw value BEFORE applying default
+        $rawSiteId = $options['siteId'] ?? null;
+        $searchAllSites = $rawSiteId === '*' || $rawSiteId === null;
+
         // Ensure siteId is in options for cache key generation
         if (!isset($options['siteId'])) {
             $options['siteId'] = \Craft::$app->getSites()->getCurrentSite()->id ?? 1;
         }
-
-        $siteId = $options['siteId'];
+        $siteId = $searchAllSites ? null : $options['siteId'];
         $settings = SearchManager::$plugin->getSettings();
 
         // Extract analytics options from search options (API callers can pass these)
@@ -247,9 +251,21 @@ class BackendService extends Component
         }
 
         // 1. Check cache first (if caching enabled)
+        // Note: Cache stores RAW backend results. Promotions are applied fresh each time
+        // to ensure disabled/expired promotions are immediately excluded.
         if ($settings->enableCache) {
             $cached = $this->_getFromCache($indexName, $query, $options);
             if ($cached !== null) {
+                // Apply promotions fresh (not from cache) so disabled promotions are excluded
+                if (!empty($cached['hits'])) {
+                    $cached['hits'] = SearchManager::$plugin->promotions->applyPromotions(
+                        $cached['hits'],
+                        $query,
+                        $indexName,
+                        $siteId
+                    );
+                }
+
                 // Still track analytics for cached results
                 SearchManager::$plugin->analytics->trackSearch(
                     $indexName,
@@ -267,6 +283,28 @@ class BackendService extends Component
                         'matchedPromotions' => $matchedPromotions,
                     ])
                 );
+
+                // Add metadata about rules and promotions (even for cached results)
+                $cached['meta'] = [
+                    'synonymsExpanded' => $useSynonyms,
+                    'expandedQueries' => $useSynonyms ? $expandedQueries : [],
+                    'rulesMatched' => array_map(function($rule) {
+                        return [
+                            'id' => $rule->id,
+                            'name' => $rule->name,
+                            'actionType' => $rule->actionType,
+                            'actionValue' => $rule->actionValue,
+                        ];
+                    }, $matchedRules),
+                    'promotionsMatched' => array_map(function($promo) {
+                        return [
+                            'id' => $promo->id,
+                            'elementId' => $promo->elementId,
+                            'position' => $promo->position,
+                        ];
+                    }, $matchedPromotions),
+                ];
+
                 return $cached;
             }
         }
@@ -293,39 +331,10 @@ class BackendService extends Component
             );
         }
 
-        // =====================================================================
-        // PROMOTIONS: Apply pinned/promoted results
-        // =====================================================================
-        if (!empty($results['hits'])) {
-            $results['hits'] = SearchManager::$plugin->promotions->applyPromotions(
-                $results['hits'],
-                $query,
-                $indexName,
-                $siteId
-            );
-        }
-
         $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
 
-        // 3. Track analytics
-        SearchManager::$plugin->analytics->trackSearch(
-            $indexName,
-            $query,
-            $results['total'] ?? 0,
-            $executionTime,
-            $backend->getName(),
-            $siteId,
-            array_merge($analyticsOptions, [
-                'synonymsExpanded' => $useSynonyms,
-                'rulesMatched' => count($matchedRules),
-                'promotionsShown' => count($matchedPromotions),
-                'wasRedirected' => false,
-                'matchedRules' => $matchedRules,
-                'matchedPromotions' => $matchedPromotions,
-            ])
-        );
-
-        // 4. Decide whether to cache
+        // 3. Cache RAW results (BEFORE promotions) so promotions can be applied fresh
+        // This ensures disabled/expired promotions are immediately excluded
         if ($settings->enableCache) {
             if ($settings->cachePopularQueriesOnly) {
                 // Check if query is popular enough
@@ -344,6 +353,59 @@ class BackendService extends Component
                 $this->_saveToCache($indexName, $query, $options, $results);
             }
         }
+
+        // =====================================================================
+        // PROMOTIONS: Apply pinned/promoted results (AFTER caching)
+        // Promotions are applied fresh each time, not cached, so disabled
+        // promotions are immediately excluded from results.
+        // =====================================================================
+        if (!empty($results['hits'])) {
+            $results['hits'] = SearchManager::$plugin->promotions->applyPromotions(
+                $results['hits'],
+                $query,
+                $indexName,
+                $siteId
+            );
+        }
+
+        // 4. Track analytics
+        SearchManager::$plugin->analytics->trackSearch(
+            $indexName,
+            $query,
+            $results['total'] ?? 0,
+            $executionTime,
+            $backend->getName(),
+            $siteId,
+            array_merge($analyticsOptions, [
+                'synonymsExpanded' => $useSynonyms,
+                'rulesMatched' => count($matchedRules),
+                'promotionsShown' => count($matchedPromotions),
+                'wasRedirected' => false,
+                'matchedRules' => $matchedRules,
+                'matchedPromotions' => $matchedPromotions,
+            ])
+        );
+
+        // 5. Add metadata about rules and promotions applied
+        $results['meta'] = [
+            'synonymsExpanded' => $useSynonyms,
+            'expandedQueries' => $useSynonyms ? $expandedQueries : [],
+            'rulesMatched' => array_map(function($rule) {
+                return [
+                    'id' => $rule->id,
+                    'name' => $rule->name,
+                    'actionType' => $rule->actionType,
+                    'actionValue' => $rule->actionValue,
+                ];
+            }, $matchedRules),
+            'promotionsMatched' => array_map(function($promo) {
+                return [
+                    'id' => $promo->id,
+                    'elementId' => $promo->elementId,
+                    'position' => $promo->position,
+                ];
+            }, $matchedPromotions),
+        ];
 
         return $results;
     }

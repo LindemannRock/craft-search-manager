@@ -10,7 +10,11 @@
                         <th>{{ 'Time'|t('search-manager') }}</th>
                         <th>{{ 'Query'|t('search-manager') }}</th>
                         <th>{{ 'Site'|t('search-manager') }}</th>
-                        <th>{{ 'Results'|t('search-manager') }}</th>
+                        <th>{{ 'Hits'|t('search-manager') }}</th>
+                        <th>{{ 'Synonyms'|t('search-manager') }}</th>
+                        <th>{{ 'Rules Matched'|t('search-manager') }}</th>
+                        <th>{{ 'Promotions'|t('search-manager') }}</th>
+                        <th>{{ 'Redirected'|t('search-manager') }}</th>
                         <th>{{ 'Index'|t('search-manager') }}</th>
                         <th>{{ 'Backend'|t('search-manager') }}</th>
                         <th>{{ 'Intent'|t('search-manager') }}</th>
@@ -40,10 +44,40 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if search.resultsCount > 0 %}
+                                {% if search.wasRedirected|default(false) %}
+                                    <span style="color: #9b59b6;" title="{{ 'Redirected'|t('search-manager') }}">—</span>
+                                {% elseif search.resultsCount > 0 %}
                                     <span style="color: #27ae60;">{{ search.resultsCount }}</span>
                                 {% else %}
                                     <span style="color: #e74c3c;">0</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if search.synonymsExpanded|default(false) %}
+                                    <span class="status green" title="{{ 'Synonyms used'|t('search-manager') }}"></span>
+                                {% else %}
+                                    <span class="light">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if search.rulesMatched|default(0) > 0 %}
+                                    <span style="color: #3498db;">{{ search.rulesMatched }}</span>
+                                {% else %}
+                                    <span class="light">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if search.promotionsShown|default(0) > 0 %}
+                                    <span style="color: #f39c12;">{{ search.promotionsShown }}</span>
+                                {% else %}
+                                    <span class="light">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if search.wasRedirected|default(false) %}
+                                    <span class="status red" title="{{ 'Redirected to another page'|t('search-manager') }}"></span>
+                                {% else %}
+                                    <span class="light">—</span>
                                 {% endif %}
                             </td>
                             <td>{{ search.indexHandle }}</td>
@@ -85,7 +119,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="{{ settings.enableGeoDetection ? 15 : 14 }}" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
+                            <td colspan="{{ settings.enableGeoDetection ? 19 : 18 }}" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

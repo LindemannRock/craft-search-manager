@@ -418,19 +418,30 @@ function displayPromotions(data, query) {
                         <th>Element</th>
                         <th>Match Type</th>
                         <th>Pattern</th>
+                        <th>Live on Sites</th>
                     </tr>
                 </thead>
                 <tbody>
                     ${data.promotions.map(p => `
-                        <tr>
+                        <tr${!p.enabled ? ' style="opacity: 0.5;"' : ''}>
                             <td><span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 600;">#${p.position}</span></td>
-                            <td><a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a> <span style="color: #9ca3af;">(ID: ${p.elementId})</span></td>
+                            <td>
+                                <a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
+                                <span style="color: #9ca3af;">(ID: ${p.elementId})</span>
+                                ${!p.enabled ? '<span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 6px;">DISABLED</span>' : ''}
+                            </td>
                             <td><code>${p.matchType}</code></td>
                             <td><code>${Craft.escapeHtml(p.query)}</code></td>
+                            <td>
+                                ${p.siteStatuses ? p.siteStatuses.map(s => `
+                                    <span style="background: ${s.isLive ? '#dcfce7' : '#fee2e2'}; color: ${s.isLive ? '#166534' : '#dc2626'}; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">${s.siteName}</span>
+                                `).join('') : '-'}
+                            </td>
                         </tr>
                     `).join('')}
                 </tbody>
             </table>
+            <p class="light" style="margin-top: 12px; font-size: 12px;">Note: Promotions only appear in search results on sites where the element is live (green).</p>
         `;
     } else {
         container.innerHTML = `<p class="light">No promotions match the query "${Craft.escapeHtml(query)}"</p>`;
@@ -530,7 +541,7 @@ function displaySearchResults(data, query) {
         </div>
     </div>
     <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
-        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}${hit.section ? ' • Section: ' + hit.section : ''}
+        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}${hit.section ? ' • Section: ' + hit.section : ''} • <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Site: ${hit.siteName || 'Unknown'} (${hit.language || '??'})</span>
     </div>
     ${excerpt ? `<div style="color: #4b5563; line-height: 1.6; font-size: 14px;">${excerpt.substring(0, 300)}${excerpt.length > 300 ? '...' : ''}</div>` : ''}
 </div>

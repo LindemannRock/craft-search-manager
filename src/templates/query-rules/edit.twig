@@ -230,22 +230,15 @@
 
 		{# Boost category fields #}
 		<div id="action-boost_category" class="action-fields" style="{{ rule.actionType != 'boost_category' ? 'display: none;' : '' }}">
-			{{ forms.textField({
-				label: 'Category ID'|t('search-manager'),
-				instructions: 'The ID of the category to boost. Leave empty to use slug below.'|t('search-manager'),
-				id: 'boostCategoryId',
-				name: 'boostCategoryId',
-				type: 'number',
-				value: rule.actionValue.categoryId ?? '',
-			}) }}
-
-			{{ forms.textField({
-				label: 'Category Slug'|t('search-manager'),
-				instructions: 'Or enter the category slug instead of ID.'|t('search-manager'),
-				id: 'boostCategoryHandle',
-				name: 'boostCategoryHandle',
-				value: rule.actionValue.categoryHandle ?? '',
-				placeholder: 'featured-products',
+			{{ forms.elementSelectField({
+				label: 'Boost Category'|t('search-manager'),
+				instructions: 'Select the category to boost when this rule matches.'|t('search-manager'),
+				id: 'boostCategory',
+				name: 'boostCategory',
+				elementType: 'craft\\elements\\Category',
+				selectionLabel: 'Select a category'|t('search-manager'),
+				limit: 1,
+				elements: (rule.actionValue.categoryId ?? null) ? [craft.categories.id(rule.actionValue.categoryId).status(null).one()] : [],
 			}) }}
 
 			{{ forms.selectField({
@@ -260,13 +253,15 @@
 
 		{# Boost element fields #}
 		<div id="action-boost_element" class="action-fields" style="{{ rule.actionType != 'boost_element' ? 'display: none;' : '' }}">
-			{{ forms.textField({
-				label: 'Element ID'|t('search-manager'),
-				instructions: 'The ID of the specific element to boost.'|t('search-manager'),
-				id: 'boostElementId',
-				name: 'boostElementId',
-				type: 'number',
-				value: rule.actionValue.elementId ?? '',
+			{{ forms.elementSelectField({
+				label: 'Boost Element'|t('search-manager'),
+				instructions: 'Select the element to boost when this rule matches.'|t('search-manager'),
+				id: 'boostElement',
+				name: 'boostElement',
+				elementType: 'craft\\elements\\Entry',
+				selectionLabel: 'Select an element'|t('search-manager'),
+				limit: 1,
+				elements: (rule.actionValue.elementId ?? null) ? [craft.entries.id(rule.actionValue.elementId).status(null).one()] : [],
 			}) }}
 
 			{{ forms.selectField({

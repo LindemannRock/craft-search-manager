@@ -1,6 +1,6 @@
-<h2 style="margin: 0 0 20px;">{{ "Content Gaps (Zero-Result Clusters)"|t('search-manager') }}</h2>
+<h2 style="margin: 0 0 20px;">{{ "Content Gaps (Zero-Hit Clusters)"|t('search-manager') }}</h2>
 <p class="light" style="margin-bottom: 20px;">
-    {{ "These groups of queries returned no results. This indicates missing content or topics your users are looking for."|t('search-manager') }}
+    {{ "These groups of queries returned no hits. This indicates missing content or topics your users are looking for."|t('search-manager') }}
 </p>
 
 <div class="analytics-charts">
@@ -24,7 +24,7 @@
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Recent Zero-Result Queries"|t('search-manager') }}</h2>
+<h2 style="margin: 30px 0 20px;">{{ "Recent Zero-Hit Queries"|t('search-manager') }}</h2>
 
 <div class="analytics-charts">
     <div class="chart-container full-width">
@@ -59,7 +59,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="6" class="thin light">{{ "All searches have results!"|t('search-manager') }}</td>
+                            <td colspan="6" class="thin light">{{ "All searches have hits!"|t('search-manager') }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

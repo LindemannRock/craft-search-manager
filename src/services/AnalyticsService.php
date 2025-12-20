@@ -763,6 +763,10 @@ class AnalyticsService extends Component
                 'indexHandle',
                 'query',
                 'resultsCount',
+                'synonymsExpanded',
+                'rulesMatched',
+                'promotionsShown',
+                'wasRedirected',
                 'executionTime',
                 'backend',
                 'siteId',
@@ -813,9 +817,9 @@ class AnalyticsService extends Component
 
         // CSV headers - conditionally include geo columns
         if ($geoEnabled) {
-            $csv = "Date,Time,Query,Results,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Country,City,Region,Language,Is Bot,Bot Name,User Agent\n";
+            $csv = "Date,Time,Query,Hits,Synonyms,Rules,Promotions,Redirected,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Country,City,Region,Language,Is Bot,Bot Name,User Agent\n";
         } else {
-            $csv = "Date,Time,Query,Results,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Language,Is Bot,Bot Name,User Agent\n";
+            $csv = "Date,Time,Query,Hits,Synonyms,Rules,Promotions,Redirected,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Language,Is Bot,Bot Name,User Agent\n";
         }
 
         foreach ($results as $row) {
@@ -832,11 +836,15 @@ class AnalyticsService extends Component
 
             if ($geoEnabled) {
                 $csv .= sprintf(
-                    '"%s","%s","%s",%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
+                    '"%s","%s","%s",%d,%d,%d,%d,%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
                     $dateStr,
                     $timeStr,
-                    $row['query'],
+                    str_replace('"', '""', $row['query']),
                     $row['resultsCount'],
+                    ($row['synonymsExpanded'] ?? false) ? 1 : 0,
+                    $row['rulesMatched'] ?? 0,
+                    $row['promotionsShown'] ?? 0,
+                    ($row['wasRedirected'] ?? false) ? 1 : 0,
                     $row['executionTime'] ?? 0,
                     $row['backend'],
                     $row['indexHandle'],
@@ -845,7 +853,7 @@ class AnalyticsService extends Component
                     $row['source'] ?? 'frontend',
                     $row['platform'] ?? '',
                     $row['appVersion'] ?? '',
-                    $row['referrer'] ?? '',
+                    str_replace('"', '""', $row['referrer'] ?? ''),
                     $row['deviceType'] ?? '',
                     $row['deviceBrand'] ?? '',
                     $row['deviceModel'] ?? '',
@@ -859,15 +867,19 @@ class AnalyticsService extends Component
                     $row['language'] ?? '',
                     $row['isRobot'] ? 1 : 0,
                     $row['botName'] ?? '',
-                    $row['userAgent'] ?? ''
+                    str_replace('"', '""', $row['userAgent'] ?? '')
                 );
             } else {
                 $csv .= sprintf(
-                    '"%s","%s","%s",%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
+                    '"%s","%s","%s",%d,%d,%d,%d,%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
                     $dateStr,
                     $timeStr,
-                    $row['query'],
+                    str_replace('"', '""', $row['query']),
                     $row['resultsCount'],
+                    ($row['synonymsExpanded'] ?? false) ? 1 : 0,
+                    $row['rulesMatched'] ?? 0,
+                    $row['promotionsShown'] ?? 0,
+                    ($row['wasRedirected'] ?? false) ? 1 : 0,
                     $row['executionTime'] ?? 0,
                     $row['backend'],
                     $row['indexHandle'],
@@ -876,7 +888,7 @@ class AnalyticsService extends Component
                     $row['source'] ?? 'frontend',
                     $row['platform'] ?? '',
                     $row['appVersion'] ?? '',
-                    $row['referrer'] ?? '',
+                    str_replace('"', '""', $row['referrer'] ?? ''),
                     $row['deviceType'] ?? '',
                     $row['deviceBrand'] ?? '',
                     $row['deviceModel'] ?? '',
@@ -887,7 +899,7 @@ class AnalyticsService extends Component
                     $row['language'] ?? '',
                     $row['isRobot'] ? 1 : 0,
                     $row['botName'] ?? '',
-                    $row['userAgent'] ?? ''
+                    str_replace('"', '""', $row['userAgent'] ?? '')
                 );
             }
         }
@@ -921,7 +933,11 @@ class AnalyticsService extends Component
                 'time' => $date ? $date->format('H:i:s') : null,
                 'datetime' => $date ? $date->format('c') : null,
                 'query' => $row['query'],
-                'resultsCount' => (int)$row['resultsCount'],
+                'hits' => (int)$row['resultsCount'],
+                'synonyms' => (bool)($row['synonymsExpanded'] ?? false),
+                'rules' => (int)($row['rulesMatched'] ?? 0),
+                'promotions' => (int)($row['promotionsShown'] ?? 0),
+                'redirected' => (bool)($row['wasRedirected'] ?? false),
                 'executionTime' => $row['executionTime'] ? (float)$row['executionTime'] : null,
                 'backend' => $row['backend'],
                 'indexHandle' => $row['indexHandle'],
@@ -1804,5 +1820,205 @@ class AnalyticsService extends Component
         ];
 
         return $countries[$countryCode] ?? $countryCode;
+    }
+
+    // =========================================================================
+    // QUERY RULES ANALYTICS
+    // =========================================================================
+
+    /**
+     * Get top triggered query rules
+     */
+    public function getTopTriggeredRules(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    {
+        $query = (new Query())
+            ->select([
+                'queryRuleId',
+                'ruleName',
+                'actionType',
+                'COUNT(*) as hits',
+                'AVG(resultsCount) as avgResults',
+            ])
+            ->from('{{%searchmanager_rule_analytics}}')
+            ->groupBy(['queryRuleId', 'ruleName', 'actionType'])
+            ->orderBy(['hits' => SORT_DESC])
+            ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return array_map(function($row) {
+            return [
+                'queryRuleId' => (int)$row['queryRuleId'],
+                'ruleName' => $row['ruleName'],
+                'actionType' => $row['actionType'],
+                'hits' => (int)$row['hits'],
+                'avgResults' => round((float)$row['avgResults'], 1),
+            ];
+        }, $results);
+    }
+
+    /**
+     * Get rules breakdown by action type
+     */
+    public function getRulesByActionType(?int $siteId, string $dateRange = 'last30days'): array
+    {
+        $query = (new Query())
+            ->select(['actionType', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_rule_analytics}}')
+            ->groupBy('actionType')
+            ->orderBy(['count' => SORT_DESC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return [
+            'labels' => array_column($results, 'actionType'),
+            'values' => array_map(fn($r) => (int)$r['count'], $results),
+        ];
+    }
+
+    /**
+     * Get top queries that trigger rules
+     */
+    public function getQueriesTriggeringRules(?int $siteId, string $dateRange = 'last30days', int $limit = 15): array
+    {
+        $query = (new Query())
+            ->select([
+                'query',
+                'COUNT(*) as count',
+                'COUNT(DISTINCT queryRuleId) as rulesTriggered',
+            ])
+            ->from('{{%searchmanager_rule_analytics}}')
+            ->groupBy('query')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return array_map(function($row) {
+            return [
+                'query' => $row['query'],
+                'count' => (int)$row['count'],
+                'rulesTriggered' => (int)$row['rulesTriggered'],
+            ];
+        }, $results);
+    }
+
+    // =========================================================================
+    // PROMOTIONS ANALYTICS
+    // =========================================================================
+
+    /**
+     * Get top promotions by impressions
+     */
+    public function getTopPromotions(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    {
+        $query = (new Query())
+            ->select([
+                'promotionId',
+                'elementId',
+                'elementTitle',
+                'position',
+                'COUNT(*) as impressions',
+                'COUNT(DISTINCT query) as uniqueQueries',
+            ])
+            ->from('{{%searchmanager_promotion_analytics}}')
+            ->groupBy(['promotionId', 'elementId', 'elementTitle', 'position'])
+            ->orderBy(['impressions' => SORT_DESC])
+            ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return array_map(function($row) {
+            return [
+                'promotionId' => (int)$row['promotionId'],
+                'elementId' => (int)$row['elementId'],
+                'elementTitle' => $row['elementTitle'],
+                'position' => (int)$row['position'],
+                'impressions' => (int)$row['impressions'],
+                'uniqueQueries' => (int)$row['uniqueQueries'],
+            ];
+        }, $results);
+    }
+
+    /**
+     * Get promotions breakdown by position
+     */
+    public function getPromotionsByPosition(?int $siteId, string $dateRange = 'last30days'): array
+    {
+        $query = (new Query())
+            ->select(['position', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_promotion_analytics}}')
+            ->groupBy('position')
+            ->orderBy(['position' => SORT_ASC]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return [
+            'labels' => array_column($results, 'position'),
+            'values' => array_map(fn($r) => (int)$r['count'], $results),
+        ];
+    }
+
+    /**
+     * Get top queries that trigger promotions
+     */
+    public function getQueriesTriggeringPromotions(?int $siteId, string $dateRange = 'last30days', int $limit = 15): array
+    {
+        $query = (new Query())
+            ->select([
+                'query',
+                'COUNT(*) as count',
+                'COUNT(DISTINCT promotionId) as promotionsShown',
+            ])
+            ->from('{{%searchmanager_promotion_analytics}}')
+            ->groupBy('query')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = $query->all();
+
+        return array_map(function($row) {
+            return [
+                'query' => $row['query'],
+                'count' => (int)$row['count'],
+                'promotionsShown' => (int)$row['promotionsShown'],
+            ];
+        }, $results);
     }
 }

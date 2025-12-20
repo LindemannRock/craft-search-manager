@@ -165,16 +165,15 @@ class SettingsController extends Controller
         $wildcard = Craft::$app->getRequest()->getBodyParam('wildcard', false);
 
         try {
-            // Get the index to determine correct siteId
+            // Get the index
             $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
 
-            $searchOptions = [];
             $originalQuery = $query;
 
-            // Use index's configured siteId (not current CP site)
-            if ($index && $index->siteId) {
-                $searchOptions['siteId'] = $index->siteId;
-            }
+            // CP Test: Search across all sites by default
+            $searchOptions = [
+                'siteId' => '*', // Special value to search all sites
+            ];
 
             // Add wildcard support (auto-append * if enabled and no wildcard present)
             if ($wildcard && !str_contains($query, '*')) {
@@ -194,43 +193,52 @@ class SettingsController extends Controller
 
             // Hydrate element data for display (title, url, type, section)
             $elementType = $index->elementType ?? \craft\elements\Entry::class;
-            $elementIds = array_column($results['hits'] ?? [], 'objectID');
             $indexSiteId = $index->siteId ?? null;
 
-            if (!empty($elementIds)) {
-                // Load elements from the correct site
-                $query = $elementType::find()
-                    ->id($elementIds)
-                    ->status(null);
-
-                if ($indexSiteId) {
-                    $query->siteId($indexSiteId);
-                } else {
-                    $query->site('*');
+            if (!empty($results['hits'])) {
+                // Group hits by siteId so we can batch-load elements per site
+                $hitsBySite = [];
+                foreach ($results['hits'] as $key => $hit) {
+                    // Use the siteId from the hit (returned by backend's all-sites search)
+                    // Fall back to index site or current site
+                    $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+                    $hitsBySite[$hitSiteId][$key] = $hit;
                 }
 
-                $elements = $query->all();
-
+                // Load elements per site to get correct site-specific data
                 $elementsById = [];
-                foreach ($elements as $element) {
-                    $elementsById[$element->id] = $element;
+                foreach ($hitsBySite as $siteId => $siteHits) {
+                    $elementIds = array_column($siteHits, 'objectID');
+                    $elements = $elementType::find()
+                        ->id($elementIds)
+                        ->siteId($siteId)
+                        ->status(null)
+                        ->indexBy('id')
+                        ->all();
+
+                    foreach ($elements as $id => $element) {
+                        $elementsById[$siteId . ':' . $id] = $element;
+                    }
                 }
 
-                // Get site language from index or element
-                $siteLang = 'unknown';
-                if ($indexSiteId) {
-                    $site = Craft::$app->getSites()->getSiteById($indexSiteId);
-                    $siteLang = $site ? strtoupper(substr($site->language, 0, 2)) : 'unknown';
-                }
-
-                // Enhance hits with element data
+                // Enhance hits with element data including site info
                 foreach ($results['hits'] as &$hit) {
-                    $element = $elementsById[$hit['objectID']] ?? null;
+                    $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+                    $elementKey = $hitSiteId . ':' . $hit['objectID'];
+                    $element = $elementsById[$elementKey] ?? null;
+
                     if ($element) {
                         $hit['title'] = $element->title ?? 'Untitled';
                         $hit['url'] = $element->url ?? '';
                         $hit['type'] = (new \ReflectionClass($element))->getShortName();
-                        $hit['language'] = $siteLang;
+
+                        // Use site info from the element (which was loaded for the correct site)
+                        $site = $element->getSite();
+                        $hit['siteId'] = $site->id;
+                        $hit['siteName'] = $site->name;
+                        $hit['siteHandle'] = $site->handle;
+                        $hit['language'] = strtoupper(substr($site->language, 0, 2));
+
                         if (method_exists($element, 'getSection') && $element->getSection()) {
                             $hit['section'] = $element->getSection()->name;
                         }
@@ -362,12 +370,36 @@ class SettingsController extends Controller
         $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
 
         try {
-            // Get matching promotions
-            $matchingPromotions = \lindemannrock\searchmanager\models\Promotion::findMatching($query, $indexHandle);
+            // CP Test: Get ALL promotions that match the query pattern (ignoring element status)
+            // This shows all promotions for testing, with status info per site
+            $allPromotions = \lindemannrock\searchmanager\models\Promotion::findByIndex($indexHandle);
 
             $promotions = [];
-            foreach ($matchingPromotions as $promotion) {
+            foreach ($allPromotions as $promotion) {
+                // Check if query pattern matches
+                if (!$promotion->matches(mb_strtolower(trim($query)))) {
+                    continue;
+                }
+
                 $element = $promotion->getElement();
+
+                // Get element status per site for display
+                $siteStatuses = [];
+                if ($element) {
+                    foreach (Craft::$app->getSites()->getAllSites() as $site) {
+                        $siteElement = \craft\elements\Entry::find()
+                            ->id($promotion->elementId)
+                            ->siteId($site->id)
+                            ->status('live')
+                            ->one();
+                        $siteStatuses[] = [
+                            'siteId' => $site->id,
+                            'siteName' => $site->name,
+                            'isLive' => $siteElement !== null,
+                        ];
+                    }
+                }
+
                 $promotions[] = [
                     'id' => $promotion->id,
                     'query' => $promotion->query,
@@ -376,6 +408,8 @@ class SettingsController extends Controller
                     'elementId' => $promotion->elementId,
                     'elementTitle' => $element ? $element->title : 'Element not found',
                     'elementEditUrl' => $element ? $element->getCpEditUrl() : '#',
+                    'enabled' => $promotion->enabled,
+                    'siteStatuses' => $siteStatuses,
                 ];
             }
 

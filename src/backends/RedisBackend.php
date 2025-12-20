@@ -264,40 +264,86 @@ class RedisBackend extends BaseBackend
             $engine = $this->getSearchEngine($fullIndexName);
             $storage = $this->getStorage($fullIndexName);
 
-            // Get site ID from options or use current site
-            $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+            // Get site ID from options - check raw value first for "all sites" detection
+            $rawSiteId = $options['siteId'] ?? null;
             $limit = $options['limit'] ?? 0;
             $typeFilter = $options['type'] ?? null;
 
-            // Use SearchEngine to search
-            $results = $engine->search($query, $siteId, $limit);
+            // Handle "all sites" search (siteId = '*' or null/not set)
+            $searchAllSites = $rawSiteId === '*' || $rawSiteId === null;
+            $siteIdOption = $rawSiteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
 
-            // Get element IDs for enrichment
-            $elementIds = array_keys($results);
+            if ($searchAllSites) {
+                // Search across all sites and combine results
+                // For all-sites search, show each site version separately (no deduplication)
+                $allResults = [];
+                $allSites = Craft::$app->getSites()->getAllSites();
 
-            // Fetch element info (type, title) for all results
-            $elementInfo = $storage->getElementsByIds($siteId, $elementIds);
-
-            // Convert to backend format with type info
-            $hits = [];
-            foreach ($results as $elementId => $score) {
-                $info = $elementInfo[$elementId] ?? null;
-                $elementType = $info['elementType'] ?? 'entry';
-
-                // Filter by type if specified
-                if ($typeFilter !== null) {
-                    $allowedTypes = is_array($typeFilter) ? $typeFilter : explode(',', $typeFilter);
-                    if (!in_array($elementType, $allowedTypes, true)) {
-                        continue; // Skip this result
+                foreach ($allSites as $site) {
+                    $siteResults = $engine->search($query, $site->id, 0);
+                    foreach ($siteResults as $elementId => $score) {
+                        // Use composite key to keep results from all sites (no deduplication)
+                        $compositeKey = $site->id . ':' . $elementId;
+                        $allResults[$compositeKey] = [
+                            'elementId' => $elementId,
+                            'score' => $score,
+                            'siteId' => $site->id,
+                        ];
                     }
                 }
 
-                $hits[] = [
-                    'objectID' => $elementId,
-                    'id' => $elementId,
-                    'score' => $score,
-                    'type' => $elementType,
-                ];
+                $hits = [];
+                foreach ($allResults as $compositeKey => $data) {
+                    $elementId = $data['elementId'];
+                    $elementInfo = $storage->getElementsByIds($data['siteId'], [$elementId]);
+                    $info = $elementInfo[$elementId] ?? null;
+                    $elementType = $info['elementType'] ?? 'entry';
+
+                    if ($typeFilter !== null) {
+                        $allowedTypes = is_array($typeFilter) ? $typeFilter : explode(',', $typeFilter);
+                        if (!in_array($elementType, $allowedTypes, true)) {
+                            continue;
+                        }
+                    }
+
+                    $hits[] = [
+                        'objectID' => $elementId,
+                        'id' => $elementId,
+                        'score' => $data['score'],
+                        'type' => $elementType,
+                        'siteId' => $data['siteId'],
+                    ];
+                }
+
+                usort($hits, fn($a, $b) => $b['score'] <=> $a['score']);
+                if ($limit > 0) {
+                    $hits = array_slice($hits, 0, $limit);
+                }
+            } else {
+                $siteId = (int)$siteIdOption;
+                $results = $engine->search($query, $siteId, $limit);
+                $elementIds = array_keys($results);
+                $elementInfo = $storage->getElementsByIds($siteId, $elementIds);
+
+                $hits = [];
+                foreach ($results as $elementId => $score) {
+                    $info = $elementInfo[$elementId] ?? null;
+                    $elementType = $info['elementType'] ?? 'entry';
+
+                    if ($typeFilter !== null) {
+                        $allowedTypes = is_array($typeFilter) ? $typeFilter : explode(',', $typeFilter);
+                        if (!in_array($elementType, $allowedTypes, true)) {
+                            continue;
+                        }
+                    }
+
+                    $hits[] = [
+                        'objectID' => $elementId,
+                        'id' => $elementId,
+                        'score' => $score,
+                        'type' => $elementType,
+                    ];
+                }
             }
 
             $this->logDebug('Search completed with SearchEngine', [
@@ -305,6 +351,7 @@ class RedisBackend extends BaseBackend
                 'query' => $query,
                 'result_count' => count($hits),
                 'type_filter' => $typeFilter,
+                'all_sites' => $searchAllSites,
             ]);
 
             return ['hits' => $hits, 'total' => count($hits)];
