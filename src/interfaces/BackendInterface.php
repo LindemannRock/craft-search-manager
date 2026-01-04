@@ -57,6 +57,16 @@ interface BackendInterface
     public function clearIndex(string $indexName): bool;
 
     /**
+     * Check if a document exists in the index
+     *
+     * @param string $indexName The index name
+     * @param int $elementId The element ID to check
+     * @param int|null $siteId The site ID (optional)
+     * @return bool True if document exists
+     */
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool;
+
+    /**
      * Check if the backend is available and configured
      *
      * @return bool Availability status

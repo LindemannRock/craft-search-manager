@@ -169,6 +169,17 @@ class BackendService extends Component
         return $backend->delete($indexName, $elementId, $siteId);
     }
 
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        $backend = $this->getActiveBackend();
+        if (!$backend) {
+            $this->logError('No active backend available for document check');
+            return false;
+        }
+
+        return $backend->documentExists($indexName, $elementId, $siteId);
+    }
+
     public function search(string $indexName, string $query, array $options = []): array
     {
         $backend = $this->getActiveBackend();

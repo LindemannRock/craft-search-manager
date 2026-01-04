@@ -106,6 +106,28 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        try {
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+
+            // Try to retrieve the document - if it exists, return true
+            $client->collections[$fullIndexName]->documents[(string)$elementId]->retrieve();
+            return true;
+        } catch (\Typesense\Exceptions\ObjectNotFound $e) {
+            // Document not found - this is expected
+            return false;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to check document existence in Typesense', [
+                'index' => $indexName,
+                'elementId' => $elementId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
     private function getClient(): Client
     {
         if ($this->_client === null) {

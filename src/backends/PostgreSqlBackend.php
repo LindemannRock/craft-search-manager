@@ -352,4 +352,25 @@ class PostgreSqlBackend extends BaseBackend
             return false;
         }
     }
+
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        try {
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $storage = $this->getStorage($fullIndexName);
+            $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+            // Check if document has any terms indexed (means it exists)
+            $terms = $storage->getDocumentTerms($siteId, $elementId);
+
+            return !empty($terms);
+        } catch (\Throwable $e) {
+            $this->logError('Failed to check document existence', [
+                'index' => $indexName,
+                'elementId' => $elementId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
 }

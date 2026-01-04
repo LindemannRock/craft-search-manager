@@ -167,6 +167,33 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        try {
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+
+            $index = $client->index($fullIndexName);
+
+            // Try to get the document - if it exists, return true
+            $index->getDocument($elementId);
+            return true;
+        } catch (\MeiliSearch\Exceptions\ApiException $e) {
+            // Document not found - this is expected
+            if ($e->httpStatus === 404) {
+                return false;
+            }
+            throw $e;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to check document existence in Meilisearch', [
+                'index' => $indexName,
+                'elementId' => $elementId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
     // =========================================================================
     // PRIVATE METHODS
     // =========================================================================

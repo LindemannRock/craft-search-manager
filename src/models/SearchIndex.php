@@ -712,6 +712,56 @@ class SearchIndex extends Model
     }
 
     /**
+     * Increment document count by 1
+     * Used when a single element is added to the index
+     */
+    public static function incrementDocumentCount(string $handle): bool
+    {
+        return self::adjustDocumentCount($handle, 1);
+    }
+
+    /**
+     * Decrement document count by 1
+     * Used when a single element is removed from the index
+     */
+    public static function decrementDocumentCount(string $handle): bool
+    {
+        return self::adjustDocumentCount($handle, -1);
+    }
+
+    /**
+     * Adjust document count by a delta value
+     */
+    private static function adjustDocumentCount(string $handle, int $delta): bool
+    {
+        try {
+            $db = Craft::$app->getDb();
+
+            // Use SQL expression to atomically increment/decrement
+            // This avoids race conditions when multiple requests update simultaneously
+            $result = $db->createCommand()
+                ->update(
+                    '{{%searchmanager_indices}}',
+                    [
+                        'documentCount' => new \yii\db\Expression("GREATEST(0, [[documentCount]] + :delta)", [':delta' => $delta]),
+                        'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+                    ],
+                    ['handle' => $handle]
+                )
+                ->execute();
+
+            return $result > 0;
+        } catch (\Throwable $e) {
+            LoggingService::log('Failed to adjust document count', 'error', 'search-manager', [
+                'handle' => $handle,
+                'delta' => $delta,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
+    /**
      * Convert to config array format (for export)
      */
     public function toConfigArray(): array

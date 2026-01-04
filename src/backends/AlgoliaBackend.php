@@ -111,6 +111,29 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        try {
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $index = $client->initIndex($fullIndexName);
+
+            // Try to get the object - if it exists, return true
+            $index->getObject((string)$elementId);
+            return true;
+        } catch (\Algolia\AlgoliaSearch\Exceptions\NotFoundException $e) {
+            // Object not found - this is expected
+            return false;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to check document existence in Algolia', [
+                'index' => $indexName,
+                'elementId' => $elementId,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
+    }
+
     private function getClient(): SearchClient
     {
         if ($this->_client === null) {

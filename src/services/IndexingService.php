@@ -79,6 +79,18 @@ class IndexingService extends Component
             'elementType' => get_class($element),
         ]);
 
+        // Skip elements that shouldn't be indexed (drafts, revisions, disabled for site)
+        if (!$this->shouldIndexElementForSite($element)) {
+            $this->logDebug('Element should not be indexed, skipping', [
+                'elementId' => $element->id,
+                'siteId' => $element->siteId,
+                'enabled' => $element->enabled,
+                'enabledForSite' => $element->getEnabledForSite(),
+                'status' => $element->getStatus(),
+            ]);
+            return true; // Not an error, just shouldn't be indexed
+        }
+
         // Trigger before event
         $event = new IndexEvent([
             'element' => $element,
@@ -133,11 +145,23 @@ class IndexingService extends Component
         $success = true;
         foreach ($indexHandles as $indexHandle) {
             try {
+                // Check if document already exists (for accurate count tracking)
+                $isNewDocument = !SearchManager::$plugin->backend->documentExists(
+                    $indexHandle,
+                    $element->id,
+                    $element->siteId
+                );
+
                 $result = SearchManager::$plugin->backend->index($indexHandle, $data);
 
                 if ($result) {
                     // Clear search cache for this index
                     SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+
+                    // Increment document count only for new documents
+                    if ($isNewDocument) {
+                        SearchIndex::incrementDocumentCount($indexHandle);
+                    }
 
                     // Trigger after event
                     $this->trigger(self::EVENT_AFTER_INDEX, new IndexEvent([
@@ -149,6 +173,7 @@ class IndexingService extends Component
                     $this->logInfo('Element indexed successfully', [
                         'elementId' => $element->id,
                         'indexHandle' => $indexHandle,
+                        'isNew' => $isNewDocument,
                     ]);
                 } else {
                     $success = false;
@@ -167,7 +192,7 @@ class IndexingService extends Component
     }
 
     /**
-     * Remove an element from all indices
+     * Remove an element from all matching indices
      */
     public function removeElement(ElementInterface $element): bool
     {
@@ -181,14 +206,34 @@ class IndexingService extends Component
 
         foreach ($indexHandles as $indexHandle) {
             try {
+                // Check if document actually exists in this index before removing
+                $documentExists = SearchManager::$plugin->backend->documentExists(
+                    $indexHandle,
+                    $element->id,
+                    $element->siteId
+                );
+
+                if (!$documentExists) {
+                    $this->logDebug('Document not in index, skipping removal', [
+                        'elementId' => $element->id,
+                        'siteId' => $element->siteId,
+                        'indexHandle' => $indexHandle,
+                    ]);
+                    continue;
+                }
+
                 $result = SearchManager::$plugin->backend->delete($indexHandle, $element->id, $element->siteId);
 
                 if ($result) {
                     // Clear search cache for this index
                     SearchManager::$plugin->backend->clearSearchCache($indexHandle);
 
+                    // Decrement document count (only if document actually existed)
+                    SearchIndex::decrementDocumentCount($indexHandle);
+
                     $this->logInfo('Element removed from index', [
                         'elementId' => $element->id,
+                        'siteId' => $element->siteId,
                         'indexHandle' => $indexHandle,
                     ]);
                 } else {
@@ -197,6 +242,7 @@ class IndexingService extends Component
             } catch (\Throwable $e) {
                 $this->logError('Failed to remove element from index', [
                     'elementId' => $element->id,
+                    'siteId' => $element->siteId,
                     'indexHandle' => $indexHandle,
                     'error' => $e->getMessage(),
                 ]);
@@ -205,6 +251,54 @@ class IndexingService extends Component
         }
 
         return $success;
+    }
+
+    // =========================================================================
+    // MULTI-SITE SYNC
+    // =========================================================================
+
+    /**
+     * Check if an element should be indexed for its specific site
+     *
+     * Checks: not draft/revision, enabled globally, enabled for site, proper status
+     */
+    public function shouldIndexElementForSite(ElementInterface $element): bool
+    {
+        // Skip drafts and revisions
+        if ($element->getIsDraft() || $element->getIsRevision()) {
+            return false;
+        }
+
+        // Must be enabled globally AND for this site
+        if (!$element->enabled || !$element->getEnabledForSite()) {
+            return false;
+        }
+
+        // Check status based on element type
+        $status = $element->getStatus();
+
+        // Entries: must be live (not disabled, pending, or expired)
+        if ($element instanceof \craft\elements\Entry) {
+            return $status === \craft\elements\Entry::STATUS_LIVE;
+        }
+
+        // Assets: must be enabled
+        if ($element instanceof \craft\elements\Asset) {
+            return $status === \craft\base\Element::STATUS_ENABLED;
+        }
+
+        // Categories: must be enabled
+        if ($element instanceof \craft\elements\Category) {
+            return $status === \craft\base\Element::STATUS_ENABLED;
+        }
+
+        // Users: must be active
+        if ($element instanceof \craft\elements\User) {
+            return $status === \craft\elements\User::STATUS_ACTIVE;
+        }
+
+        // Default: check if enabled status
+        return $status === \craft\base\Element::STATUS_ENABLED;
     }
 
     // =========================================================================
@@ -386,6 +480,9 @@ class IndexingService extends Component
      *
      * This executes the Closure to build the query, then checks if the
      * specific element ID would be included in the results.
+     *
+     * Note: This only checks structural criteria (section, type, etc.)
+     * Status checks are handled separately by shouldIndexElement()
      */
     private function elementMatchesClosureCriteria(ElementInterface $element, $index): bool
     {
@@ -394,29 +491,23 @@ class IndexingService extends Component
             $elementType = $index->elementType;
             $query = $elementType::find();
 
-            // Set site context if specified
+            // Set site context - MUST match element's site for proper per-site checks
             if ($index->siteId) {
                 $query->siteId($index->siteId);
             }
 
-            // Apply the Closure criteria
+            // Apply the Closure criteria (section, type filters, etc.)
             $closure = $index->criteria;
             $query = $closure($query);
 
-            // Check if this specific element is in the results
-            // Use ->id() and ->exists() for performance (no full query execution)
-            $exists = $query
+            // Check if this specific element matches the structural criteria
+            // Bypass ALL status/enabled filters - we only care about structure here
+            // Status checks are done separately in shouldIndexElementForSite()
+            return $query
                 ->id($element->id)
-                ->status(null) // Don't filter by status here - we already checked in shouldIndexElement
+                ->siteId($element->siteId) // Ensure we check the correct site version
+                ->status(null) // Include all statuses
                 ->exists();
-
-            $this->logDebug('Closure criteria check', [
-                'elementId' => $element->id,
-                'indexHandle' => $index->handle,
-                'matches' => $exists,
-            ]);
-
-            return $exists;
         } catch (\Throwable $e) {
             $this->logError('Failed to evaluate Closure criteria', [
                 'elementId' => $element->id,

@@ -403,26 +403,22 @@ class SearchManager extends Plugin
             Elements::EVENT_AFTER_SAVE_ELEMENT,
             function(ElementEvent $event) {
                 // Skip if element is currently propagating to other sites
-                // We only want to index once after propagation is complete
+                // We only want to process once after propagation is complete
                 if ($event->element->propagating) {
                     return;
                 }
 
                 $element = $event->element;
 
-                // Check if element should be indexed
-                // Elements must be enabled and have a "live" status (not disabled, expired, or pending)
-                $shouldIndex = $this->shouldIndexElement($element);
+                $this->logDebug('Element save triggered', [
+                    'elementId' => $element->id,
+                    'requestSiteId' => $element->siteId,
+                    'enabled' => $element->enabled,
+                ]);
 
-                // Debug logging
-                \Craft::info("Element save: ID={$element->id}, siteId={$element->siteId}, enabled={$element->enabled}, enabledForSite=" . ($element->getEnabledForSite() ? 'true' : 'false') . ", status={$element->getStatus()}, shouldIndex=" . ($shouldIndex ? 'true' : 'false'), 'search-manager');
-
-                if ($shouldIndex) {
-                    $this->indexing->indexElement($element);
-                } else {
-                    // Element is disabled/expired/pending - remove from index
-                    $this->indexing->removeElement($element);
-                }
+                // Queue sync jobs for ALL sites that have indices for this element type
+                // Each job will check that site's actual state and index/remove accordingly
+                $this->queueSyncJobs($element);
             }
         );
 
@@ -431,7 +427,8 @@ class SearchManager extends Plugin
             Elements::class,
             Elements::EVENT_AFTER_DELETE_ELEMENT,
             function(ElementEvent $event) {
-                $this->indexing->removeElement($event->element);
+                // Queue removal jobs for all sites
+                $this->queueSyncJobs($event->element);
             }
         );
 
@@ -439,48 +436,61 @@ class SearchManager extends Plugin
     }
 
     /**
-     * Check if an element should be indexed based on its status
-     *
-     * @param \craft\base\ElementInterface $element
-     * @return bool
+     * Queue sync jobs for all sites that have indices for this element type
      */
-    private function shouldIndexElement(\craft\base\ElementInterface $element): bool
+    private function queueSyncJobs(\craft\base\ElementInterface $element): void
     {
-        // Skip drafts and revisions
-        if ($element->getIsDraft() || $element->getIsRevision()) {
-            return false;
+        $indices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+        $elementClass = get_class($element);
+        $queuedSites = [];
+
+        foreach ($indices as $index) {
+            if (!$index->enabled) {
+                continue;
+            }
+            if ($index->elementType !== $elementClass) {
+                continue;
+            }
+
+            // Get siteId for this index
+            $siteId = $index->siteId;
+
+            if ($siteId) {
+                // Index is for a specific site - queue job for that site
+                if (!in_array($siteId, $queuedSites)) {
+                    Craft::$app->getQueue()->push(new \lindemannrock\searchmanager\jobs\SyncElementJob([
+                        'elementId' => $element->id,
+                        'elementType' => $elementClass,
+                        'siteId' => $siteId,
+                    ]));
+                    $queuedSites[] = $siteId;
+
+                    $this->logDebug('Queued sync job for site', [
+                        'elementId' => $element->id,
+                        'siteId' => $siteId,
+                    ]);
+                }
+            } else {
+                // Index is for ALL sites - queue a job for each site
+                $allSites = Craft::$app->getSites()->getAllSites();
+                foreach ($allSites as $site) {
+                    if (!in_array($site->id, $queuedSites)) {
+                        Craft::$app->getQueue()->push(new \lindemannrock\searchmanager\jobs\SyncElementJob([
+                            'elementId' => $element->id,
+                            'elementType' => $elementClass,
+                            'siteId' => $site->id,
+                        ]));
+                        $queuedSites[] = $site->id;
+
+                        $this->logDebug('Queued sync job for all-sites index', [
+                            'elementId' => $element->id,
+                            'siteId' => $site->id,
+                            'indexHandle' => $index->handle,
+                        ]);
+                    }
+                }
+            }
         }
-
-        // Must be enabled globally AND for this site
-        if (!$element->enabled || !$element->getEnabledForSite()) {
-            return false;
-        }
-
-        // Check status based on element type
-        $status = $element->getStatus();
-
-        // Entries: must be live (not disabled, pending, or expired)
-        if ($element instanceof \craft\elements\Entry) {
-            return $status === \craft\elements\Entry::STATUS_LIVE;
-        }
-
-        // Assets: must be enabled (default status check)
-        if ($element instanceof \craft\elements\Asset) {
-            return $status === \craft\base\Element::STATUS_ENABLED;
-        }
-
-        // Categories: must be enabled
-        if ($element instanceof \craft\elements\Category) {
-            return $status === \craft\base\Element::STATUS_ENABLED;
-        }
-
-        // Users: must be active
-        if ($element instanceof \craft\elements\User) {
-            return $status === \craft\elements\User::STATUS_ACTIVE;
-        }
-
-        // Default: check if enabled status
-        return $status === \craft\base\Element::STATUS_ENABLED;
     }
 
     // =========================================================================

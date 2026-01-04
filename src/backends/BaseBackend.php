@@ -135,6 +135,7 @@ abstract class BaseBackend extends Component implements BackendInterface
     abstract public function delete(string $indexName, int $elementId, ?int $siteId = null): bool;
     abstract public function search(string $indexName, string $query, array $options = []): array;
     abstract public function clearIndex(string $indexName): bool;
+    abstract public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool;
     abstract public function isAvailable(): bool;
     abstract public function getStatus(): array;
     abstract public function getName(): string;

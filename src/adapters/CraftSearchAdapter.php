@@ -150,6 +150,15 @@ class CraftSearchAdapter extends \craft\services\Search
             return parent::indexElementAttributes($element, $fieldHandles);
         }
 
+        // When autoIndex is enabled, SyncElementJob handles indexing with proper
+        // multi-site logic. Skip here to avoid double-indexing.
+        if ($settings->autoIndex) {
+            $this->logDebug('Skipping Craft-triggered indexing (autoIndex handles it)', [
+                'elementId' => $element->id,
+            ]);
+            return true;
+        }
+
         $this->logDebug('Craft requested element indexing', [
             'elementId' => $element->id,
             'elementType' => get_class($element),
