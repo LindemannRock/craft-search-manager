@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.21.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.0...v5.21.1) (2026-01-04)
+
+
+### Bug Fixes
+
+* auto-indexing for config indices and add real-time document count tracking ([de90fa8](https://github.com/LindemannRock/craft-search-manager/commit/de90fa8e47b780a37a466ff215923e0f75079111))
+
 ## [5.21.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.2...v5.21.0) (2026-01-04)
 
 
