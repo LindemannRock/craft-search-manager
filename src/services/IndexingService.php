@@ -346,8 +346,12 @@ class IndexingService extends Component
             return true; // No criteria = matches all
         }
 
-        // Criteria filtering only applies to database indices (stored as array)
-        // Config indices use Closures that are applied when building queries
+        // Handle Closure criteria (config indices)
+        if ($index->criteria instanceof \Closure) {
+            return $this->elementMatchesClosureCriteria($element, $index);
+        }
+
+        // Handle array criteria (database indices)
         if (is_array($index->criteria)) {
             // Check sections filter for entries
             if ($element instanceof \craft\elements\Entry && !empty($index->criteria['sections'])) {
@@ -378,12 +382,58 @@ class IndexingService extends Component
     }
 
     /**
+     * Check if an element matches a Closure-based criteria (config indices)
+     *
+     * This executes the Closure to build the query, then checks if the
+     * specific element ID would be included in the results.
+     */
+    private function elementMatchesClosureCriteria(ElementInterface $element, $index): bool
+    {
+        try {
+            // Create a fresh query for the element type
+            $elementType = $index->elementType;
+            $query = $elementType::find();
+
+            // Set site context if specified
+            if ($index->siteId) {
+                $query->siteId($index->siteId);
+            }
+
+            // Apply the Closure criteria
+            $closure = $index->criteria;
+            $query = $closure($query);
+
+            // Check if this specific element is in the results
+            // Use ->id() and ->exists() for performance (no full query execution)
+            $exists = $query
+                ->id($element->id)
+                ->status(null) // Don't filter by status here - we already checked in shouldIndexElement
+                ->exists();
+
+            $this->logDebug('Closure criteria check', [
+                'elementId' => $element->id,
+                'indexHandle' => $index->handle,
+                'matches' => $exists,
+            ]);
+
+            return $exists;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to evaluate Closure criteria', [
+                'elementId' => $element->id,
+                'indexHandle' => $index->handle,
+                'error' => $e->getMessage(),
+            ]);
+
+            // On error, assume it doesn't match to avoid indexing incorrectly
+            return false;
+        }
+    }
+
+    /**
      * Get all indices (database + config)
      */
     private function getAllIndices(): array
     {
-        // This would normally merge database and config indices
-        // For now, just get database indices
         return SearchIndex::findAll();
     }
 }
