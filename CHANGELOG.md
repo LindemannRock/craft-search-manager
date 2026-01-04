@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.21.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.2...v5.21.0) (2026-01-04)
+
+
+### Features
+
+* enhance indexing service to support Closure-based criteria for config indices ([b078f49](https://github.com/LindemannRock/craft-search-manager/commit/b078f496e2e19a9b7f348de9585064b396d63ca0))
+
 ## [5.20.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.1...v5.20.2) (2025-12-20)
 
 
