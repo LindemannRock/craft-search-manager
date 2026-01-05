@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.21.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.1...v5.21.2) (2026-01-05)
+
+
+### Bug Fixes
+
+* add tab-content class to analytics sections for improved styling ([a6df207](https://github.com/LindemannRock/craft-search-manager/commit/a6df207e1860f9860838cc508fac9acf30729baa))
+
 ## [5.21.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.0...v5.21.1) (2026-01-04)
 
 
