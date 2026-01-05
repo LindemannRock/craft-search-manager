@@ -1,5 +1,19 @@
 # Changelog
 
+## [5.22.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.2...v5.22.0) (2026-01-05)
+
+
+### Features
+
+* add backend filtering to indices for improved data management ([d837e1f](https://github.com/LindemannRock/craft-search-manager/commit/d837e1fa385c48559af9b75781ac6e06d3f7145c))
+* add sorting functionality to indices, promotions, and query rules templates ([178b801](https://github.com/LindemannRock/craft-search-manager/commit/178b80130c67ae6301347ff92d567ef37397383a))
+* enhance color coding for backend, source, and match types in indices, promotions, and query rules templates ([2f939c0](https://github.com/LindemannRock/craft-search-manager/commit/2f939c08b34a1f67db0885fc8b8d1414d8068b29))
+
+
+### Bug Fixes
+
+* backend filter logic and prepare for per-index backend overrides ([e5f5faf](https://github.com/LindemannRock/craft-search-manager/commit/e5f5faf97fadee2a4c7aab373603c09d863594b0))
+
 ## [5.21.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.1...v5.21.2) (2026-01-05)
 
 
