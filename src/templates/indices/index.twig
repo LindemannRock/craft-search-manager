@@ -12,6 +12,8 @@
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
 {% set sourceFilter = craft.app.request.getParam('source', 'all') %}
 {% set backendFilter = craft.app.request.getParam('backend', 'all') %}
+{% set sort = craft.app.request.getParam('sort', 'source') %}
+{% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = 50 %}
 {% set offset = (page - 1) * limit %}
@@ -50,6 +52,19 @@
 	{% set filteredIndices = filteredIndices|filter(i => search|lower in i.name|lower or search|lower in i.handle|lower) %}
 {% endif %}
 
+{# Sort #}
+{% if sort == 'name' %}
+	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.name|lower <=> b.name|lower) : filteredIndices|sort((a, b) => b.name|lower <=> a.name|lower) %}
+{% elseif sort == 'handle' %}
+	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredIndices|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
+{% elseif sort == 'elementType' %}
+	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.elementType <=> b.elementType) : filteredIndices|sort((a, b) => b.elementType <=> a.elementType) %}
+{% elseif sort == 'source' %}
+	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredIndices|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
+{% elseif sort == 'enabled' %}
+	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.enabled <=> b.enabled) : filteredIndices|sort((a, b) => b.enabled <=> a.enabled) %}
+{% endif %}
+
 {# Pagination #}
 {% set totalCount = filteredIndices|length %}
 {% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
@@ -77,8 +92,6 @@
 										<span class="status all"></span>{{ 'All'|t('search-manager') }}
 									</a>
 								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Status'|t('search-manager') }}</li>
 								<li>
 									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
 										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
@@ -266,15 +279,25 @@
 						<th class="checkbox-cell selectallcontainer">
 							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
 						</th>
-						<th scope="col">{{ "Name"|t('search-manager') }}</th>
-						<th scope="col">{{ "Handle"|t('search-manager') }}</th>
-						<th scope="col">{{ "Element Type"|t('search-manager') }}</th>
+						<th scope="col" data-attribute="name" class="orderable {{ sort == 'name' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="name">{{ "Name"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="elementType" class="orderable {{ sort == 'elementType' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="elementType">{{ "Element Type"|t('search-manager') }}</button>
+						</th>
 						<th scope="col">{{ "Backend"|t('search-manager') }}</th>
 						<th scope="col">{{ "Craft"|t('search-manager') }}</th>
 						<th scope="col">{{ "Indexed"|t('search-manager') }}</th>
 						<th scope="col">{{ "Last Indexed"|t('search-manager') }}</th>
-						<th scope="col">{{ "Config Source"|t('search-manager') }}</th>
-						<th scope="col">{{ "Status"|t('search-manager') }}</th>
+						<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="source">{{ "Config Source"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
+						</th>
 						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
 					</tr>
 				</thead>
@@ -330,9 +353,9 @@
 								</td>
 								<td>
 									{% if index.enabled %}
-										<span class="status green"></span>
+										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
 									{% else %}
-										<span class="status disabled"></span>
+										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td class="thin" style="text-align: right;">
@@ -445,11 +468,25 @@
 
 	// Pagination
 	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&page={{ page - 1 }}';
+		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
 	});
 
 	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&page={{ page + 1 }}';
+		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
+	});
+
+	// Sort buttons
+	document.querySelectorAll('th.orderable button').forEach(button => {
+		button.addEventListener('click', function() {
+			const sortField = this.dataset.sort;
+			const currentSort = '{{ sort }}';
+			const currentDir = '{{ dir }}';
+			let newDir = 'asc';
+			if (sortField === currentSort) {
+				newDir = currentDir === 'asc' ? 'desc' : 'asc';
+			}
+			window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
+		});
 	});
 
 	// Checkbox functionality

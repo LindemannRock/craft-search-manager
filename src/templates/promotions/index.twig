@@ -11,6 +11,8 @@
 {% set search = craft.app.request.getParam('search', '') %}
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
 {% set matchTypeFilter = craft.app.request.getParam('matchType', 'all') %}
+{% set sort = craft.app.request.getParam('sort', 'position') %}
+{% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = 50 %}
 {% set offset = (page - 1) * limit %}
@@ -42,6 +44,21 @@
 	{% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or (p.indexHandle and search|lower in p.indexHandle|lower) or (p.title and search|lower in p.title|lower)) %}
 {% endif %}
 
+{# Sort #}
+{% if sort == 'query' %}
+	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.query|lower <=> b.query|lower) : filteredPromotions|sort((a, b) => b.query|lower <=> a.query|lower) %}
+{% elseif sort == 'matchType' %}
+	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.matchType <=> b.matchType) : filteredPromotions|sort((a, b) => b.matchType <=> a.matchType) %}
+{% elseif sort == 'title' %}
+	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.title ?? '')|lower <=> (b.title ?? '')|lower) : filteredPromotions|sort((a, b) => (b.title ?? '')|lower <=> (a.title ?? '')|lower) %}
+{% elseif sort == 'position' %}
+	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.position <=> b.position) : filteredPromotions|sort((a, b) => b.position <=> a.position) %}
+{% elseif sort == 'enabled' %}
+	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.enabled <=> b.enabled) : filteredPromotions|sort((a, b) => b.enabled <=> a.enabled) %}
+{% elseif sort == 'siteId' %}
+	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.siteId ?? 0) <=> (b.siteId ?? 0)) : filteredPromotions|sort((a, b) => (b.siteId ?? 0) <=> (a.siteId ?? 0)) %}
+{% endif %}
+
 {# Pagination #}
 {% set totalCount = filteredPromotions|length %}
 {% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
@@ -69,8 +86,6 @@
 										<span class="status all"></span>{{ 'All'|t('search-manager') }}
 									</a>
 								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Status'|t('search-manager') }}</li>
 								<li>
 									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&matchType={{ matchTypeFilter }}&search={{ search }}">
 										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
@@ -172,13 +187,25 @@
 						<th class="checkbox-cell selectallcontainer">
 							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
 						</th>
-						<th scope="col">{{ "Title"|t('search-manager') }}</th>
-						<th scope="col">{{ "Query Pattern"|t('search-manager') }}</th>
-						<th scope="col">{{ "Match"|t('search-manager') }}</th>
+						<th scope="col" data-attribute="title" class="orderable {{ sort == 'title' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="title">{{ "Title"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="query" class="orderable {{ sort == 'query' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="query">{{ "Query Pattern"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="matchType" class="orderable {{ sort == 'matchType' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="matchType">{{ "Match"|t('search-manager') }}</button>
+						</th>
 						<th scope="col">{{ "Promoted Element"|t('search-manager') }}</th>
-						<th scope="col">{{ "Position"|t('search-manager') }}</th>
-						<th scope="col">{{ "Site"|t('search-manager') }}</th>
-						<th scope="col">{{ "Status"|t('search-manager') }}</th>
+						<th scope="col" data-attribute="position" class="orderable {{ sort == 'position' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="position">{{ "Position"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="siteId" class="orderable {{ sort == 'siteId' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="siteId">{{ "Site"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
+						</th>
 						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
 					</tr>
 				</thead>
@@ -234,9 +261,9 @@
 								</td>
 								<td>
 									{% if promotion.enabled %}
-										<span class="status green"></span>
+										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
 									{% else %}
-										<span class="status disabled"></span>
+										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td class="thin" style="text-align: right;">
@@ -261,7 +288,7 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="9" class="zilch">
+							<td colspan="9" style="text-align: center; padding: 2em;">
 								{{ 'No promotions found.'|t('search-manager') }}
 							</td>
 						</tr>
@@ -338,11 +365,25 @@
 
 	// Pagination
 	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&page={{ page - 1 }}';
+		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
 	});
 
 	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&page={{ page + 1 }}';
+		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
+	});
+
+	// Sort buttons
+	document.querySelectorAll('th.orderable button').forEach(button => {
+		button.addEventListener('click', function() {
+			const sortField = this.dataset.sort;
+			const currentSort = '{{ sort }}';
+			const currentDir = '{{ dir }}';
+			let newDir = 'asc';
+			if (sortField === currentSort) {
+				newDir = currentDir === 'asc' ? 'desc' : 'asc';
+			}
+			window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
+		});
 	});
 
 	// Checkbox functionality

@@ -12,6 +12,8 @@
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
 {% set matchTypeFilter = craft.app.request.getParam('matchType', 'all') %}
 {% set actionTypeFilter = craft.app.request.getParam('actionType', 'all') %}
+{% set sort = craft.app.request.getParam('sort', 'priority') %}
+{% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = 50 %}
 {% set offset = (page - 1) * limit %}
@@ -59,6 +61,23 @@
 	{% set filteredRules = filteredRules|filter(r => search|lower in r.name|lower or search|lower in r.matchValue|lower) %}
 {% endif %}
 
+{# Sort #}
+{% if sort == 'name' %}
+	{% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.name|lower <=> b.name|lower) : filteredRules|sort((a, b) => b.name|lower <=> a.name|lower) %}
+{% elseif sort == 'matchValue' %}
+	{% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.matchValue|lower <=> b.matchValue|lower) : filteredRules|sort((a, b) => b.matchValue|lower <=> a.matchValue|lower) %}
+{% elseif sort == 'matchType' %}
+	{% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.matchType <=> b.matchType) : filteredRules|sort((a, b) => b.matchType <=> a.matchType) %}
+{% elseif sort == 'actionType' %}
+	{% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.actionType <=> b.actionType) : filteredRules|sort((a, b) => b.actionType <=> a.actionType) %}
+{% elseif sort == 'priority' %}
+	{% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.priority <=> b.priority) : filteredRules|sort((a, b) => b.priority <=> a.priority) %}
+{% elseif sort == 'enabled' %}
+	{% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.enabled <=> b.enabled) : filteredRules|sort((a, b) => b.enabled <=> a.enabled) %}
+{% elseif sort == 'siteId' %}
+	{% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => (a.siteId ?? 0) <=> (b.siteId ?? 0)) : filteredRules|sort((a, b) => (b.siteId ?? 0) <=> (a.siteId ?? 0)) %}
+{% endif %}
+
 {# Pagination #}
 {% set totalCount = filteredRules|length %}
 {% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
@@ -86,8 +105,6 @@
 										<span class="status all"></span>{{ 'All'|t('search-manager') }}
 									</a>
 								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Status'|t('search-manager') }}</li>
 								<li>
 									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&matchType={{ matchTypeFilter }}&actionType={{ actionTypeFilter }}&search={{ search }}">
 										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
@@ -232,14 +249,28 @@
 						<th class="checkbox-cell selectallcontainer">
 							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
 						</th>
-						<th scope="col">{{ "Name"|t('search-manager') }}</th>
-						<th scope="col">{{ "Query Pattern"|t('search-manager') }}</th>
-						<th scope="col">{{ "Match"|t('search-manager') }}</th>
-						<th scope="col">{{ "Action"|t('search-manager') }}</th>
+						<th scope="col" data-attribute="name" class="orderable {{ sort == 'name' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="name">{{ "Name"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="matchValue" class="orderable {{ sort == 'matchValue' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="matchValue">{{ "Query Pattern"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="matchType" class="orderable {{ sort == 'matchType' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="matchType">{{ "Match"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="actionType" class="orderable {{ sort == 'actionType' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="actionType">{{ "Action"|t('search-manager') }}</button>
+						</th>
 						<th scope="col">{{ "Index"|t('search-manager') }}</th>
-						<th scope="col">{{ "Site"|t('search-manager') }}</th>
-						<th scope="col">{{ "Priority"|t('search-manager') }}</th>
-						<th scope="col">{{ "Status"|t('search-manager') }}</th>
+						<th scope="col" data-attribute="siteId" class="orderable {{ sort == 'siteId' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="siteId">{{ "Site"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="priority" class="orderable {{ sort == 'priority' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="priority">{{ "Priority"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
+						</th>
 						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
 					</tr>
 				</thead>
@@ -304,9 +335,9 @@
 								</td>
 								<td>
 									{% if rule.enabled %}
-										<span class="status green"></span>
+										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
 									{% else %}
-										<span class="status disabled"></span>
+										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td class="thin" style="text-align: right;">
@@ -408,11 +439,25 @@
 
 	// Pagination
 	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&actionType={{ actionTypeFilter }}&search={{ search }}&page={{ page - 1 }}';
+		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&actionType={{ actionTypeFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
 	});
 
 	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&actionType={{ actionTypeFilter }}&search={{ search }}&page={{ page + 1 }}';
+		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&actionType={{ actionTypeFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
+	});
+
+	// Sort buttons
+	document.querySelectorAll('th.orderable button').forEach(button => {
+		button.addEventListener('click', function() {
+			const sortField = this.dataset.sort;
+			const currentSort = '{{ sort }}';
+			const currentDir = '{{ dir }}';
+			let newDir = 'asc';
+			if (sortField === currentSort) {
+				newDir = currentDir === 'asc' ? 'desc' : 'asc';
+			}
+			window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&actionType={{ actionTypeFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
+		});
 	});
 
 	// Checkbox functionality
