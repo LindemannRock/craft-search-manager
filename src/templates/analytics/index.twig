@@ -110,40 +110,40 @@
 
 {% block content %}
     {# Tab Content - IDs must match tab URLs #}
-    <div id="overview">
+    <div id="overview" class="tab-content">
         {% include 'search-manager/analytics/_tabs/overview' %}
     </div>
 
-    <div id="searches" class="hidden">
+    <div id="searches" class="tab-content hidden">
          {% include 'search-manager/analytics/_tabs/searches' %}
     </div>
 
     {% if queryRulesExist %}
-    <div id="query-rules" class="hidden">
+    <div id="query-rules" class="tab-content hidden">
          {% include 'search-manager/analytics/_tabs/query-rules' %}
     </div>
     {% endif %}
 
     {% if promotionsExist %}
-    <div id="promotions" class="hidden">
+    <div id="promotions" class="tab-content hidden">
          {% include 'search-manager/analytics/_tabs/promotions' %}
     </div>
     {% endif %}
 
-    <div id="content-gaps" class="hidden">
+    <div id="content-gaps" class="tab-content hidden">
          {% include 'search-manager/analytics/_tabs/content-gaps' %}
     </div>
 
-    <div id="performance" class="hidden">
+    <div id="performance" class="tab-content hidden">
          {% include 'search-manager/analytics/_tabs/performance' %}
     </div>
 
-    <div id="traffic-devices" class="hidden">
+    <div id="traffic-devices" class="tab-content hidden">
          {% include 'search-manager/analytics/_tabs/traffic-devices' %}
     </div>
 
     {% if settings.enableGeoDetection %}
-    <div id="geographic" class="hidden">
+    <div id="geographic" class="tab-content hidden">
          {% include 'search-manager/analytics/_tabs/geographic' %}
     </div>
     {% endif %}
@@ -153,7 +153,7 @@
 
 {% css %}
     /* Tab content padding */
-    #overview, #searches, #content-gaps, #performance, #traffic-devices, #query-rules, #promotions, #geographic {
+    .tab-content {
         padding: 24px;
     }
 
@@ -342,7 +342,7 @@
         if (!tabId) tabId = 'overview';
 
         // Hide all tab content
-        $('#content > div[id]').addClass('hidden');
+        $('.tab-content').addClass('hidden');
         // Show selected tab content
         $('#' + tabId).removeClass('hidden');
 
