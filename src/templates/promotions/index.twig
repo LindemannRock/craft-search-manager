@@ -24,6 +24,20 @@
 	'prefix': '#f59e0b',
 } %}
 
+{# Match type RGB for backgrounds #}
+{% set matchTypeRgb = {
+	'exact': '99, 102, 241',
+	'contains': '168, 85, 247',
+	'prefix': '245, 158, 11',
+} %}
+
+{# Match type dark colors for text #}
+{% set matchTypeTextColors = {
+	'exact': '#312e81',
+	'contains': '#581c87',
+	'prefix': '#78350f',
+} %}
+
 {# Filter promotions based on filters #}
 {% set filteredPromotions = promotions %}
 
@@ -231,11 +245,11 @@
 								</td>
 								<td>
 									{% if promotion.matchType == 'exact' %}
-										<span class="status" style="background: {{ matchTypeColors.exact }};"></span> {{ 'Exact'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ matchTypeRgb.exact }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.exact }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.exact }};">{{ 'Exact'|t('search-manager') }}</span></span>
 									{% elseif promotion.matchType == 'contains' %}
-										<span class="status" style="background: {{ matchTypeColors.contains }};"></span> {{ 'Contains'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ matchTypeRgb.contains }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.contains }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.contains }};">{{ 'Contains'|t('search-manager') }}</span></span>
 									{% elseif promotion.matchType == 'prefix' %}
-										<span class="status" style="background: {{ matchTypeColors.prefix }};"></span> {{ 'Starts With'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ matchTypeRgb.prefix }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.prefix }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.prefix }};">{{ 'Starts With'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td>
@@ -256,7 +270,7 @@
 										{% set site = craft.app.sites.getSiteById(promotion.siteId) %}
 										{{ site ? site.name : 'Unknown' }}
 									{% else %}
-										<span class="light">{{ 'All'|t('search-manager') }}</span>
+										<span class="light">{{ 'All Sites'|t('search-manager') }}</span>
 									{% endif %}
 								</td>
 								<td>

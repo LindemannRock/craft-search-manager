@@ -26,6 +26,22 @@
 	'regex': '#ec4899',
 } %}
 
+{# Match type RGB for backgrounds #}
+{% set matchTypeRgb = {
+	'exact': '99, 102, 241',
+	'contains': '168, 85, 247',
+	'prefix': '245, 158, 11',
+	'regex': '236, 72, 153',
+} %}
+
+{# Match type dark colors for text #}
+{% set matchTypeTextColors = {
+	'exact': '#312e81',
+	'contains': '#581c87',
+	'prefix': '#78350f',
+	'regex': '#831843',
+} %}
+
 {# Action type colors #}
 {% set actionTypeColors = {
 	'synonym': '#3b82f6',
@@ -34,6 +50,26 @@
 	'boost_element': '#22c55e',
 	'filter': '#f97316',
 	'redirect': '#ef4444',
+} %}
+
+{# Action type RGB for backgrounds #}
+{% set actionTypeRgb = {
+	'synonym': '59, 130, 246',
+	'boost_section': '16, 185, 129',
+	'boost_category': '20, 184, 166',
+	'boost_element': '34, 197, 94',
+	'filter': '249, 115, 22',
+	'redirect': '239, 68, 68',
+} %}
+
+{# Action type dark colors for text #}
+{% set actionTypeTextColors = {
+	'synonym': '#1e3a8a',
+	'boost_section': '#065f46',
+	'boost_category': '#115e59',
+	'boost_element': '#14532d',
+	'filter': '#7c2d12',
+	'redirect': '#7f1d1d',
 } %}
 
 {# Filter rules based on filters #}
@@ -291,28 +327,28 @@
 								</td>
 								<td>
 									{% if rule.matchType == 'exact' %}
-										<span class="status" style="background: {{ matchTypeColors.exact }};"></span> {{ 'Exact'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ matchTypeRgb.exact }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.exact }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.exact }};">{{ 'Exact'|t('search-manager') }}</span></span>
 									{% elseif rule.matchType == 'contains' %}
-										<span class="status" style="background: {{ matchTypeColors.contains }};"></span> {{ 'Contains'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ matchTypeRgb.contains }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.contains }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.contains }};">{{ 'Contains'|t('search-manager') }}</span></span>
 									{% elseif rule.matchType == 'prefix' %}
-										<span class="status" style="background: {{ matchTypeColors.prefix }};"></span> {{ 'Starts With'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ matchTypeRgb.prefix }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.prefix }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.prefix }};">{{ 'Starts With'|t('search-manager') }}</span></span>
 									{% elseif rule.matchType == 'regex' %}
-										<span class="status" style="background: {{ matchTypeColors.regex }};"></span> {{ 'Regex'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ matchTypeRgb.regex }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.regex }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.regex }};">{{ 'Regex'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td>
 									{% if rule.actionType == 'synonym' %}
-										<span class="status" style="background: {{ actionTypeColors.synonym }};"></span> {{ 'Synonyms'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ actionTypeRgb.synonym }}, 0.12);"><span class="status" style="background: {{ actionTypeColors.synonym }};"></span><span class="status-label-text" style="color: {{ actionTypeTextColors.synonym }};">{{ 'Synonyms'|t('search-manager') }}</span></span>
 									{% elseif rule.actionType == 'boost_section' %}
-										<span class="status" style="background: {{ actionTypeColors.boost_section }};"></span> {{ 'Boost Section'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ actionTypeRgb.boost_section }}, 0.12);"><span class="status" style="background: {{ actionTypeColors.boost_section }};"></span><span class="status-label-text" style="color: {{ actionTypeTextColors.boost_section }};">{{ 'Boost Section'|t('search-manager') }}</span></span>
 									{% elseif rule.actionType == 'boost_category' %}
-										<span class="status" style="background: {{ actionTypeColors.boost_category }};"></span> {{ 'Boost Category'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ actionTypeRgb.boost_category }}, 0.12);"><span class="status" style="background: {{ actionTypeColors.boost_category }};"></span><span class="status-label-text" style="color: {{ actionTypeTextColors.boost_category }};">{{ 'Boost Category'|t('search-manager') }}</span></span>
 									{% elseif rule.actionType == 'boost_element' %}
-										<span class="status" style="background: {{ actionTypeColors.boost_element }};"></span> {{ 'Boost Element'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ actionTypeRgb.boost_element }}, 0.12);"><span class="status" style="background: {{ actionTypeColors.boost_element }};"></span><span class="status-label-text" style="color: {{ actionTypeTextColors.boost_element }};">{{ 'Boost Element'|t('search-manager') }}</span></span>
 									{% elseif rule.actionType == 'filter' %}
-										<span class="status" style="background: {{ actionTypeColors.filter }};"></span> {{ 'Filter'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ actionTypeRgb.filter }}, 0.12);"><span class="status" style="background: {{ actionTypeColors.filter }};"></span><span class="status-label-text" style="color: {{ actionTypeTextColors.filter }};">{{ 'Filter'|t('search-manager') }}</span></span>
 									{% elseif rule.actionType == 'redirect' %}
-										<span class="status" style="background: {{ actionTypeColors.redirect }};"></span> {{ 'Redirect'|t('search-manager') }}
+										<span class="status-label" style="background: rgba({{ actionTypeRgb.redirect }}, 0.12);"><span class="status" style="background: {{ actionTypeColors.redirect }};"></span><span class="status-label-text" style="color: {{ actionTypeTextColors.redirect }};">{{ 'Redirect'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td>
@@ -327,7 +363,7 @@
 										{% set site = craft.app.sites.getSiteById(rule.siteId) %}
 										{{ site ? site.name : 'Unknown' }}
 									{% else %}
-										<span class="light">{{ 'All'|t('search-manager') }}</span>
+										<span class="light">{{ 'All Sites'|t('search-manager') }}</span>
 									{% endif %}
 								</td>
 								<td>
