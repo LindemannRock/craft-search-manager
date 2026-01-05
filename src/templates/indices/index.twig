@@ -88,6 +88,11 @@
 	{% set filteredIndices = filteredIndices|filter(i => i.source != 'config') %}
 {% endif %}
 
+{# Backend filter #}
+{% if backendFilter != 'all' %}
+	{% set filteredIndices = filteredIndices|filter(i => (attribute(i, 'backend')|default(currentBackend)) == backendFilter) %}
+{% endif %}
+
 {# Search filter #}
 {% if search %}
 	{% set filteredIndices = filteredIndices|filter(i => search|lower in i.name|lower or search|lower in i.handle|lower) %}
@@ -367,10 +372,11 @@
 								<td><code>{{ index.handle }}</code></td>
 								<td>{{ index.elementType|split('\\')|last }}</td>
 								<td>
-									{% set bColor = backendColors[currentBackend]|default('#9aa5b1') %}
-									{% set bRgb = backendRgb[currentBackend]|default('154, 165, 177') %}
-									{% set bTextColor = backendTextColors[currentBackend]|default('#374151') %}
-									<span class="status-label" style="background: rgba({{ bRgb }}, 0.12);"><span class="status" style="background: {{ bColor }};"></span><span class="status-label-text" style="color: {{ bTextColor }};">{{ currentBackend|title }}</span></span>
+									{% set indexBackend = attribute(index, 'backend')|default(currentBackend) %}
+									{% set bColor = backendColors[indexBackend]|default('#9aa5b1') %}
+									{% set bRgb = backendRgb[indexBackend]|default('154, 165, 177') %}
+									{% set bTextColor = backendTextColors[indexBackend]|default('#374151') %}
+									<span class="status-label" style="background: rgba({{ bRgb }}, 0.12);"><span class="status" style="background: {{ bColor }};"></span><span class="status-label-text" style="color: {{ bTextColor }};">{{ indexBackend|title }}</span></span>
 								</td>
 								{% set expected = index.expectedCount %}
 								<td>{{ expected }}</td>
