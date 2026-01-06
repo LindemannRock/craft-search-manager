@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.23.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.22.0...v5.23.0) (2026-01-06)
+
+
+### Features
+
+* migrate to shared base plugin ([125dfff](https://github.com/LindemannRock/craft-search-manager/commit/125dfff6b442221498f28085af0a3ef16b0943a8))
+
 ## [5.22.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.2...v5.22.0) (2026-01-05)
 
 
