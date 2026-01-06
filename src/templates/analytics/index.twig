@@ -2,7 +2,6 @@
 {% set title = "Analytics"|t('search-manager') %}
 {% set selectedSubnavItem = 'analytics' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 {% set crumbs = [
     {
         label: searchHelper.fullName|t('search-manager'),
@@ -148,7 +147,7 @@
     </div>
     {% endif %}
 
-    {% include 'search-manager/_components/plugin-credit.twig' %}
+    {% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
 
 {% css %}

@@ -2,10 +2,10 @@
 
 namespace lindemannrock\searchmanager\models;
 
-use Craft;
 use craft\base\Model;
-use craft\db\Query;
-use craft\helpers\Db;
+use lindemannrock\base\traits\SettingsConfigTrait;
+use lindemannrock\base\traits\SettingsDisplayNameTrait;
+use lindemannrock\base\traits\SettingsPersistenceTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 
 /**
@@ -20,6 +20,9 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 class Settings extends Model
 {
     use LoggingTrait;
+    use SettingsConfigTrait;
+    use SettingsDisplayNameTrait;
+    use SettingsPersistenceTrait;
 
     // =========================================================================
     // PROPERTIES (map to database columns)
@@ -271,6 +274,77 @@ class Settings extends Model
     }
 
     // =========================================================================
+    // TRAIT CONFIGURATION
+    // =========================================================================
+
+    protected static function tableName(): string
+    {
+        return 'searchmanager_settings';
+    }
+
+    protected static function pluginHandle(): string
+    {
+        return 'search-manager';
+    }
+
+    protected static function booleanFields(): array
+    {
+        return [
+            'autoIndex',
+            'queueEnabled',
+            'replaceNativeSearch',
+            'enableAnalytics',
+            'anonymizeIpAddress',
+            'enableGeoDetection',
+            'cacheDeviceDetection',
+            'enableCache',
+            'cachePopularQueriesOnly',
+            'enableStopWords',
+            'enableHighlighting',
+            'enableAutocomplete',
+            'autocompleteFuzzy',
+        ];
+    }
+
+    protected static function integerFields(): array
+    {
+        return [
+            'itemsPerPage',
+            'batchSize',
+            'analyticsRetention',
+            'deviceDetectionCacheDuration',
+            'maxFuzzyCandidates',
+            'cacheDuration',
+            'popularQueryThreshold',
+            'snippetLength',
+            'maxSnippets',
+            'autocompleteMinLength',
+            'autocompleteLimit',
+        ];
+    }
+
+    protected static function floatFields(): array
+    {
+        return [
+            'bm25K1',
+            'bm25B',
+            'titleBoostFactor',
+            'exactMatchBoostFactor',
+            'similarityThreshold',
+            'phraseBoostFactor',
+        ];
+    }
+
+    protected static function excludeFromSave(): array
+    {
+        return [
+            'ipHashSalt',
+            'defaultCountry',
+            'defaultCity',
+        ];
+    }
+
+    // =========================================================================
     // VALIDATION RULES
     // =========================================================================
 
@@ -299,281 +373,5 @@ class Settings extends Model
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'warning', 'error']],
             [['searchBackend'], 'in', 'range' => ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense']],
         ];
-    }
-
-    // =========================================================================
-    // CONFIG FILE OVERRIDE DETECTION
-    // =========================================================================
-
-    /**
-     * Check if a setting is overridden by config file
-     * Supports dot notation for nested settings
-     *
-     * @param string $attribute The setting attribute name or dot-notation path
-     * @return bool
-     */
-    public function isOverriddenByConfig(string $attribute): bool
-    {
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-
-        if (!file_exists($configPath)) {
-            return false;
-        }
-
-        try {
-            // Load the raw config file
-            $rawConfig = require $configPath;
-
-            // Get current environment
-            $env = Craft::$app->getConfig()->env;
-
-            // Merge environment-specific config with wildcard config
-            $mergedConfig = $rawConfig['*'] ?? [];
-            if ($env && isset($rawConfig[$env])) {
-                $mergedConfig = array_merge($mergedConfig, $rawConfig[$env]);
-            }
-
-            // Handle dot notation for nested config
-            if (str_contains($attribute, '.')) {
-                $parts = explode('.', $attribute);
-                $current = $mergedConfig;
-
-                foreach ($parts as $part) {
-                    if (!is_array($current) || !array_key_exists($part, $current)) {
-                        return false;
-                    }
-                    $current = $current[$part];
-                }
-
-                return true;
-            }
-
-            // Check for the attribute in the merged config
-            return array_key_exists($attribute, $mergedConfig);
-        } catch (\Throwable $e) {
-            $this->logError('Error checking config override', [
-                'attribute' => $attribute,
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
-    }
-
-    // =========================================================================
-    // DATABASE OPERATIONS
-    // =========================================================================
-
-    /**
-     * Load settings from database
-     * This is the single source of truth for settings
-     *
-     * @param Settings|null $settings Optional settings model to populate
-     * @return self
-     */
-    public static function loadFromDatabase(?Settings $settings = null): self
-    {
-        if ($settings === null) {
-            $settings = new self();
-        }
-
-        try {
-            $row = (new Query())
-                ->from('{{%searchmanager_settings}}')
-                ->where(['id' => 1])
-                ->one();
-
-            if ($row) {
-                // Type conversion for boolean fields
-                $row['autoIndex'] = (bool)$row['autoIndex'];
-                $row['queueEnabled'] = (bool)$row['queueEnabled'];
-                $row['replaceNativeSearch'] = (bool)$row['replaceNativeSearch'];
-                $row['enableAnalytics'] = (bool)$row['enableAnalytics'];
-                $row['enableCache'] = (bool)$row['enableCache'];
-                $row['cachePopularQueriesOnly'] = (bool)$row['cachePopularQueriesOnly'];
-                $row['anonymizeIpAddress'] = (bool)($row['anonymizeIpAddress'] ?? false);
-                $row['enableGeoDetection'] = (bool)($row['enableGeoDetection'] ?? false);
-                $row['cacheDeviceDetection'] = (bool)($row['cacheDeviceDetection'] ?? true);
-
-                // Type conversion for integer fields
-                $row['itemsPerPage'] = (int)$row['itemsPerPage'];
-                $row['batchSize'] = (int)$row['batchSize'];
-                $row['analyticsRetention'] = (int)$row['analyticsRetention'];
-                $row['maxFuzzyCandidates'] = (int)$row['maxFuzzyCandidates'];
-                $row['cacheDuration'] = (int)$row['cacheDuration'];
-                $row['popularQueryThreshold'] = (int)$row['popularQueryThreshold'];
-                $row['deviceDetectionCacheDuration'] = (int)($row['deviceDetectionCacheDuration'] ?? 3600);
-
-                // Type conversion for float fields
-                $row['bm25K1'] = (float)$row['bm25K1'];
-                $row['bm25B'] = (float)$row['bm25B'];
-                $row['titleBoostFactor'] = (float)$row['titleBoostFactor'];
-                $row['exactMatchBoostFactor'] = (float)$row['exactMatchBoostFactor'];
-                $row['similarityThreshold'] = (float)$row['similarityThreshold'];
-
-                // Set attributes
-                $settings->setAttributes($row, false);
-            }
-        } catch (\Throwable $e) {
-            $settings->logError('Failed to load settings from database', [
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        return $settings;
-    }
-
-    /**
-     * Save settings to database
-     * Respects config file overrides (won't save overridden attributes)
-     *
-     * @return bool
-     */
-    public function saveToDatabase(): bool
-    {
-        if (!$this->validate()) {
-            $this->logError('Settings validation failed', [
-                'errors' => $this->getErrors(),
-            ]);
-            return false;
-        }
-
-        try {
-            $attributes = $this->getAttributes();
-
-            // Remove config-overridden attributes (can't save them)
-            foreach (array_keys($attributes) as $attribute) {
-                if ($this->isOverriddenByConfig($attribute)) {
-                    unset($attributes[$attribute]);
-                    $this->logDebug('Skipping config-overridden attribute', [
-                        'attribute' => $attribute,
-                    ]);
-                }
-            }
-
-            // Type conversion for database storage
-            if (isset($attributes['autoIndex'])) {
-                $attributes['autoIndex'] = (int)$attributes['autoIndex'];
-            }
-            if (isset($attributes['queueEnabled'])) {
-                $attributes['queueEnabled'] = (int)$attributes['queueEnabled'];
-            }
-            if (isset($attributes['replaceNativeSearch'])) {
-                $attributes['replaceNativeSearch'] = (int)$attributes['replaceNativeSearch'];
-            }
-            if (isset($attributes['enableAnalytics'])) {
-                $attributes['enableAnalytics'] = (int)$attributes['enableAnalytics'];
-            }
-            if (isset($attributes['enableCache'])) {
-                $attributes['enableCache'] = (int)$attributes['enableCache'];
-            }
-            if (isset($attributes['cachePopularQueriesOnly'])) {
-                $attributes['cachePopularQueriesOnly'] = (int)$attributes['cachePopularQueriesOnly'];
-            }
-            if (isset($attributes['anonymizeIpAddress'])) {
-                $attributes['anonymizeIpAddress'] = (int)$attributes['anonymizeIpAddress'];
-            }
-            if (isset($attributes['enableGeoDetection'])) {
-                $attributes['enableGeoDetection'] = (int)$attributes['enableGeoDetection'];
-            }
-            if (isset($attributes['cacheDeviceDetection'])) {
-                $attributes['cacheDeviceDetection'] = (int)$attributes['cacheDeviceDetection'];
-            }
-
-            // Update timestamp
-            $attributes['dateUpdated'] = Db::prepareDateForDb(new \DateTime());
-
-            // Remove non-database fields (ipHashSalt, defaultCountry, defaultCity are config/env-only, never saved to DB)
-            unset($attributes['id'], $attributes['dateCreated'], $attributes['uid'], $attributes['ipHashSalt'], $attributes['defaultCountry'], $attributes['defaultCity']);
-
-            // Update database (always ID=1)
-            $result = Craft::$app->getDb()
-                ->createCommand()
-                ->update('{{%searchmanager_settings}}', $attributes, ['id' => 1])
-                ->execute();
-
-            $this->logInfo('Settings saved successfully');
-            return true;
-        } catch (\Throwable $e) {
-            $this->logError('Exception while saving settings', [
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
-    }
-
-    // =========================================================================
-    // DISPLAY NAME HELPERS (for UI)
-    // =========================================================================
-
-    /**
-     * Get display name (singular, without "Manager")
-     *
-     * Strips "Manager" and singularizes the plugin name for use in UI labels.
-     * E.g., "Search Manager" → "Search", "Searches" → "Search"
-     *
-     * @return string
-     */
-    public function getDisplayName(): string
-    {
-        // Strip "Manager" or "manager" from the name and trim whitespace
-        $name = trim(str_replace([' Manager', ' manager'], '', $this->pluginName));
-
-        // Singularize by removing trailing 's' if present
-        $singular = preg_replace('/s$/', '', $name) ?: $name;
-
-        return $singular;
-    }
-
-    /**
-     * Get full plugin name (as configured, with "Manager" if present)
-     *
-     * Returns the plugin name exactly as configured in settings.
-     * E.g., "Search Manager", "Searches", etc.
-     *
-     * @return string
-     */
-    public function getFullName(): string
-    {
-        return trim($this->pluginName);
-    }
-
-    /**
-     * Get plural display name (without "Manager")
-     *
-     * Strips "Manager" from the plugin name but keeps plural form.
-     * E.g., "Search Manager" → "Searches", "Searches" → "Searches"
-     *
-     * @return string
-     */
-    public function getPluralDisplayName(): string
-    {
-        // Strip "Manager" or "manager" from the name and trim whitespace
-        return trim(str_replace([' Manager', ' manager'], '', $this->pluginName));
-    }
-
-    /**
-     * Get lowercase display name (singular, without "Manager")
-     *
-     * Lowercase version of getDisplayName() for use in messages, handles, etc.
-     * E.g., "Search Manager" → "search", "Searches" → "search"
-     *
-     * @return string
-     */
-    public function getLowerDisplayName(): string
-    {
-        return strtolower($this->getDisplayName());
-    }
-
-    /**
-     * Get lowercase plural display name (without "Manager")
-     *
-     * Lowercase version of getPluralDisplayName() for use in messages, handles, etc.
-     * E.g., "Search Manager" → "searches", "Searches" → "searches"
-     *
-     * @return string
-     */
-    public function getPluralLowerDisplayName(): string
-    {
-        return strtolower($this->getPluralDisplayName());
     }
 }

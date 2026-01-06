@@ -37,6 +37,7 @@
         "php": "^8.2",
         "craftcms/cms": "^5.0.0",
         "lindemannrock/craft-logging-library": "^5.0",
+        "lindemannrock/craft-plugin-base": "^5.0",
         "algolia/algoliasearch-client-php": "^4.0",
         "meilisearch/meilisearch-php": "^1.0",
         "typesense/typesense-php": "^4.0",

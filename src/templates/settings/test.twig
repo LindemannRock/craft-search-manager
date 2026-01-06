@@ -4,7 +4,6 @@
 {% set title = "Test Search"|t('search-manager') %}
 {% set selectedSettingsItem = 'test' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 {% set crumbs = [
     {
         label: searchHelper.fullName|t('search-manager'),
@@ -39,7 +38,10 @@
 
 {% block content %}
 
-    {% include 'search-manager/_components/ip-salt-error' %}
+    {% include 'lindemannrock-base/_components/ip-salt-error' with {
+		pluginHandle: 'search-manager',
+		envVarName: 'SEARCH_MANAGER_IP_SALT'
+	} %}
 
     <h2 style="margin-top: 0px;">{{ "Test Search Engine"|t('search-manager') }}</h2>
 
@@ -158,7 +160,7 @@
         </div>
     </div>
 
-    {% include 'search-manager/_components/plugin-credit.twig' %}
+    {% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
 
 {% js %}

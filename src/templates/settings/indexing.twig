@@ -5,7 +5,6 @@
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'indexing' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 
 {% set crumbs = [
     {
@@ -30,7 +29,10 @@
 
 {% block content %}
 
-    {% include 'search-manager/_components/ip-salt-error' %}
+    {% include 'lindemannrock-base/_components/ip-salt-error' with {
+		pluginHandle: 'search-manager',
+		envVarName: 'SEARCH_MANAGER_IP_SALT'
+	} %}
     
 	<form method="post" accept-charset="UTF-8">
 		<input type="hidden" name="action" value="search-manager/settings/save">
@@ -84,7 +86,7 @@
 					<p>Replace Craft's native search with Search Manager throughout the Control Panel and templates.</p>
 				</div>
 			</div>
-			{% include 'search-manager/_components/info-box' with {
+			{% include 'lindemannrock-base/_components/info-box' with {
 				type: 'warning',
 				message: '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>' ~ settings.searchBackend|upper ~ '</strong>, which handles search via its own API. For ' ~ settings.searchBackend|capitalize ~ ', use <code>craft.searchManager.search()</code> in templates instead of native search replacement.'
 			} %}
@@ -123,5 +125,5 @@
 		</div>
 	</form>
 
-	{% include 'search-manager/_components/plugin-credit.twig' %}
+	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

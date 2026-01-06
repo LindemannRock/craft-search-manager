@@ -1,7 +1,6 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 
 {% set title = "Query Rules"|t('search-manager') %}
 {% set fullPageForm = false %}
@@ -120,7 +119,7 @@
 {% set paginatedRules = filteredRules|slice(offset, limit) %}
 
 {% set crumbs = [
-    { label: 'Search Manager', url: url('search-manager') },
+    { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Query Rules'|t('search-manager'), url: url('search-manager/query-rules') }
 ] %}
 

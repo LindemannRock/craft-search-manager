@@ -1,14 +1,13 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 
 {% set title = isNew ? 'New Promotion'|t('search-manager') : 'Edit Promotion'|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSubnavItem = 'promotions' %}
 
 {% set crumbs = [
-    { label: 'Search Manager', url: url('search-manager') },
+    { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Promotions'|t('search-manager'), url: url('search-manager/promotions') }
 ] %}
 

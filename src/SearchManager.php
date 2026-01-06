@@ -18,6 +18,7 @@ use craft\services\Utilities;
 use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\Settings;
@@ -29,7 +30,6 @@ use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\TransformerService;
-use lindemannrock\searchmanager\twigextensions\PluginNameExtension;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use yii\base\Event;
 
@@ -94,20 +94,15 @@ class SearchManager extends Plugin
         // Set alias for plugin path
         Craft::setAlias('@searchmanager', $this->getBasePath());
 
-        // Configure logging
-        $this->configureLogging();
-
-        // Override plugin name from config if set
-        $this->overridePluginNameFromConfig();
+        // Bootstrap: configure logging, register Twig extension, apply plugin name from config
+        PluginHelper::bootstrap($this, 'searchHelper', ['searchManager:viewLogs']);
+        PluginHelper::applyPluginNameFromConfig($this);
 
         // Register services
         $this->registerServices();
 
         // Register translations
         $this->registerTranslations();
-
-        // Register Twig extension
-        $this->registerTwigExtension();
 
         // Register template variables
         $this->registerTemplateVariables();
@@ -147,53 +142,6 @@ class SearchManager extends Plugin
     // =========================================================================
 
     /**
-     * Configure logging library integration
-     */
-    private function configureLogging(): void
-    {
-        $settings = $this->getSettings();
-
-        LoggingLibrary::configure([
-            'pluginHandle' => $this->handle,
-            'pluginName' => $settings->getFullName(),
-            'logLevel' => $settings->logLevel ?? 'error',
-            'itemsPerPage' => $settings->itemsPerPage ?? 100,
-            'permissions' => ['searchManager:viewLogs'],
-        ]);
-
-        $this->setLoggingHandle($this->handle);
-    }
-
-    /**
-     * Override plugin name from config file if set
-     */
-    private function overridePluginNameFromConfig(): void
-    {
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-
-        if (file_exists($configPath)) {
-            try {
-                $rawConfig = require $configPath;
-                $env = Craft::$app->getConfig()->env;
-
-                // Merge environment config
-                $config = $rawConfig['*'] ?? [];
-                if ($env && isset($rawConfig[$env])) {
-                    $config = array_merge($config, $rawConfig[$env]);
-                }
-
-                if (isset($config['pluginName'])) {
-                    $this->name = $config['pluginName'];
-                }
-            } catch (\Throwable $e) {
-                $this->logError('Failed to load plugin name from config', [
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-    }
-
-    /**
      * Register plugin services
      */
     private function registerServices(): void
@@ -222,14 +170,6 @@ class SearchManager extends Plugin
             'forceTranslation' => true,
             'allowOverrides' => true,
         ];
-    }
-
-    /**
-     * Register Twig extension
-     */
-    private function registerTwigExtension(): void
-    {
-        Craft::$app->view->registerTwigExtension(new PluginNameExtension());
     }
 
     /**

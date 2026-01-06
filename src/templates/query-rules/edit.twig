@@ -1,14 +1,13 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 
 {% set title = isNew ? 'New Query Rule'|t('search-manager') : 'Edit Query Rule'|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSubnavItem = 'query-rules' %}
 
 {% set crumbs = [
-    { label: 'Search Manager', url: url('search-manager') },
+    { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Query Rules'|t('search-manager'), url: url('search-manager/query-rules') }
 ] %}
 

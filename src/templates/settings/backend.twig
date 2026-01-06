@@ -5,7 +5,6 @@
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'backend' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 
 {% set crumbs = [
     {
@@ -30,7 +29,10 @@
 
 {% block content %}
 
-    {% include 'search-manager/_components/ip-salt-error' %}
+    {% include 'lindemannrock-base/_components/ip-salt-error' with {
+		pluginHandle: 'search-manager',
+		envVarName: 'SEARCH_MANAGER_IP_SALT'
+	} %}
 
 	<form method="post" accept-charset="UTF-8">
 		<input type="hidden" name="action" value="search-manager/settings/save-backend">
@@ -66,7 +68,7 @@
 			<h2>{{ "File Backend Configuration"|t('search-manager') }}</h2>
 			<p class="light">{{ "File backend stores search indices as JSON files. No additional configuration required."|t('search-manager') }}</p>
 
-			{% include 'search-manager/_components/info-box' with {
+			{% include 'lindemannrock-base/_components/info-box' with {
 				message: '<strong>Storage Location:</strong> <code>@storage/runtime/search-manager/indices/</code>'
 			} %}
 			<hr>
@@ -78,7 +80,7 @@
 			<p class="light">{{ "Uses Craft's MySQL database with BM25 search algorithm. No additional configuration required. Ranking algorithm settings below control search behavior."|t('search-manager') }}</p>
 
 			{% if dbDriver != 'mysql' %}
-				{% include 'search-manager/_components/info-box' with {
+				{% include 'lindemannrock-base/_components/info-box' with {
 					type: 'warning',
 					message: '<strong>Not Available:</strong> This backend requires Craft CMS to use MySQL. Your installation currently uses ' ~ dbDriver|upper ~ '. Please select a different backend or change your database configuration.'
 				} %}
@@ -92,7 +94,7 @@
 			<p class="light">{{ "Uses Craft's PostgreSQL database with BM25 search algorithm. No additional configuration required. Ranking algorithm settings below control search behavior."|t('search-manager') }}</p>
 
 			{% if dbDriver != 'pgsql' %}
-				{% include 'search-manager/_components/info-box' with {
+				{% include 'lindemannrock-base/_components/info-box' with {
 					type: 'warning',
 					message: '<strong>Not Available:</strong> This backend requires Craft CMS to use PostgreSQL. Your installation currently uses ' ~ dbDriver|upper ~ '. Please select a different backend or change your database configuration.'
 				} %}
@@ -156,7 +158,7 @@
 			<h2>{{ "Meilisearch Configuration"|t('search-manager') }}</h2>
 			<p class="light">{{ "Self-hosted open-source search engine."|t('search-manager') }} <a href="https://www.meilisearch.com/docs" target="_blank" rel="noopener">Meilisearch Documentation</a></p>
 
-			{% include 'search-manager/_components/info-box' with {
+			{% include 'lindemannrock-base/_components/info-box' with {
 				message: '<strong>Quick Start:</strong> <code>docker run -d -p 7700:7700 getmeili/meilisearch:latest</code>'
 			} %}
 
@@ -199,12 +201,12 @@
 
 			{% set craftUsesRedis = craft.app.cache is defined and craft.app.cache.className is defined and craft.app.cache.className == 'yii\\redis\\Cache' %}
 			{% if craftUsesRedis %}
-				{% include 'search-manager/_components/info-box' with {
+				{% include 'lindemannrock-base/_components/info-box' with {
 					type: 'success',
 					message: '<strong>Craft Redis Cache Detected:</strong> Leave fields empty to reuse Craft\'s connection, or configure below for dedicated search Redis.'
 				} %}
 			{% else %}
-				{% include 'search-manager/_components/info-box' with {
+				{% include 'lindemannrock-base/_components/info-box' with {
 					message: '<strong>Optional:</strong> Install <code>yiisoft/yii2-redis</code> (run <code>composer require yiisoft/yii2-redis</code> or <code>ddev composer require yiisoft/yii2-redis</code>), then configure in <code>config/app.php</code> to use Craft\'s Redis cache. Search Manager can then reuse that connection. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>'
 				} %}
 			{% endif %}
@@ -268,7 +270,7 @@
 			<h2>{{ "Typesense Configuration"|t('search-manager') }}</h2>
 			<p class="light">{{ "Open-source search engine with typo tolerance."|t('search-manager') }} <a href="https://typesense.org/docs/" target="_blank" rel="noopener">Typesense Documentation</a></p>
 
-			{% include 'search-manager/_components/info-box' with {
+			{% include 'lindemannrock-base/_components/info-box' with {
 				message: '<strong>Quick Start:</strong> <code>docker run -d -p 8108:8108 typesense/typesense:latest</code>'
 			} %}
 
@@ -394,7 +396,7 @@
 		</div>
 	</form>
 
-	{% include 'search-manager/_components/plugin-credit.twig' %}
+	{% include 'lindemannrock-base/_components/plugin-credit' %}
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function() {

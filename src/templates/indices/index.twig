@@ -1,7 +1,6 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 
 {% set title = "Indices"|t('search-manager') %}
 {% set fullPageForm = false %}
@@ -118,7 +117,7 @@
 {% set paginatedIndices = filteredIndices|slice(offset, limit) %}
 
 {% set crumbs = [
-    { label: 'Search Manager', url: url('search-manager') },
+    { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') }
 ] %}
 

@@ -5,7 +5,6 @@
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'analytics' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 
 {% set crumbs = [
     {
@@ -30,7 +29,10 @@
 
 {% block content %}
 
-    {% include 'search-manager/_components/ip-salt-error' %}
+    {% include 'lindemannrock-base/_components/ip-salt-error' with {
+		pluginHandle: 'search-manager',
+		envVarName: 'SEARCH_MANAGER_IP_SALT'
+	} %}
 
 	<form method="post" accept-charset="UTF-8">
 		<input type="hidden" name="action" value="search-manager/settings/save">
@@ -144,7 +146,7 @@
 		</div>
 	</form>
 
-	{% include 'search-manager/_components/plugin-credit.twig' %}
+	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
 
 {% js %}
