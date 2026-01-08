@@ -31,7 +31,7 @@ class PromotionsController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:viewPromotions');
 
         $promotions = Promotion::findAll();
         $indices = SearchIndex::findAll();
@@ -53,7 +53,12 @@ class PromotionsController extends Controller
      */
     public function actionEdit(?int $promotionId = null): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        // Require create permission for new, edit permission for existing
+        if ($promotionId) {
+            $this->requirePermission('searchManager:editPromotions');
+        } else {
+            $this->requirePermission('searchManager:createPromotions');
+        }
 
         if ($promotionId) {
             $promotion = Promotion::findById($promotionId);
@@ -110,11 +115,17 @@ class PromotionsController extends Controller
      */
     public function actionSave(): ?Response
     {
-        $this->requirePermission('searchManager:manageIndices');
         $this->requirePostRequest();
 
         $request = Craft::$app->getRequest();
         $promotionId = $request->getBodyParam('promotionId');
+
+        // Require create permission for new, edit permission for existing
+        if ($promotionId) {
+            $this->requirePermission('searchManager:editPromotions');
+        } else {
+            $this->requirePermission('searchManager:createPromotions');
+        }
 
         if ($promotionId) {
             $promotion = Promotion::findById($promotionId);
@@ -173,7 +184,7 @@ class PromotionsController extends Controller
      */
     public function actionDelete(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:deletePromotions');
         $this->requirePostRequest();
 
         $promotionId = Craft::$app->getRequest()->getRequiredBodyParam('promotionId');
@@ -217,7 +228,7 @@ class PromotionsController extends Controller
      */
     public function actionBulkEnable(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:editPromotions');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
@@ -252,7 +263,7 @@ class PromotionsController extends Controller
      */
     public function actionBulkDisable(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:editPromotions');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
@@ -287,7 +298,7 @@ class PromotionsController extends Controller
      */
     public function actionBulkDelete(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:deletePromotions');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 

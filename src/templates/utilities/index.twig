@@ -1,5 +1,13 @@
 {% import "_includes/forms" as forms %}
 
+{# Permission checks #}
+{% set canViewIndices = currentUser.can('searchManager:viewIndices') %}
+{% set canRebuildIndices = currentUser.can('searchManager:rebuildIndices') %}
+{% set canClearCache = currentUser.can('searchManager:clearCache') %}
+{% set canClearAnalytics = currentUser.can('searchManager:clearAnalytics') %}
+{% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
+{% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
+
 <div style="margin-bottom: 32px;">
     <h2>{{ "{pluginName} Overview"|t('search-manager', {pluginName: searchHelper.fullName}) }}</h2>
     <p class="light">{{ "Monitor search indices, clear file cache, and manage your search infrastructure."|t('search-manager') }}</p>
@@ -102,30 +110,45 @@
     </div>
 </div>
 
+{# Determine what sections to show #}
+{% set hasNavigation = canViewIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
+{% set hasIndexManagement = canRebuildIndices %}
+{% set hasCacheManagement = canClearCache and (settings.cacheDeviceDetection or settings.enableCache) %}
+{% set hasAnalyticsManagement = canClearAnalytics and settings.enableAnalytics %}
+{% set hasAnyQuickAction = hasNavigation or hasIndexManagement or hasCacheManagement or hasAnalyticsManagement %}
+
 <!-- Quick Actions -->
+{% if hasAnyQuickAction %}
 <div style="margin-bottom: 40px;">
     <h2>{{ 'Quick Actions'|t('search-manager') }}</h2>
 
     <div class="pane">
+        {% if hasNavigation %}
         <div style="margin-bottom: 24px;">
             <h3 style="margin-bottom: 8px;">{{ "Navigation"|t('search-manager') }}</h3>
             <p class="light" style="margin-bottom: 16px;">{{ "Access main plugin sections"|t('search-manager') }}</p>
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                {% if canViewIndices %}
                 <a href="{{ url('search-manager/indices') }}" class="btn">
                     {{ "Manage Indices"|t('search-manager') }}
                 </a>
-                {% if settings.enableAnalytics %}
+                {% endif %}
+                {% if settings.enableAnalytics and canViewAnalytics %}
                     <a href="{{ url('search-manager/analytics') }}" class="btn">
                         {{ "View Analytics"|t('search-manager') }}
                     </a>
                 {% endif %}
+                {% if canManageSettings %}
                 <a href="{{ url('search-manager/settings') }}" class="btn">
                     {{ "View Settings"|t('search-manager') }}
                 </a>
+                {% endif %}
             </div>
         </div>
+        {% endif %}
 
-        <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">
+        {% if hasIndexManagement %}
+        {% if hasNavigation %}<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">{% endif %}
 
         <div style="margin-bottom: 24px;">
             <h3 style="margin-bottom: 8px;">{{ "Index Management"|t('search-manager') }}</h3>
@@ -165,9 +188,10 @@
                 {% endif %}
             </p>
         </div>
+        {% endif %}
 
-        {% if settings.cacheDeviceDetection or settings.enableCache %}
-        <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">
+        {% if hasCacheManagement %}
+        {% if hasNavigation or hasIndexManagement %}<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">{% endif %}
 
         <div>
             <h3 style="margin-bottom: 8px;">{{ "Cache Management"|t('search-manager') }}</h3>
@@ -195,8 +219,8 @@
         </div>
         {% endif %}
 
-        {% if settings.enableAnalytics %}
-            <hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">
+        {% if hasAnalyticsManagement %}
+            {% if hasNavigation or hasIndexManagement or hasCacheManagement %}<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">{% endif %}
 
             <div>
                 <h3 style="margin-bottom: 8px;">{{ "Analytics Data Management"|t('search-manager') }}</h3>
@@ -211,6 +235,7 @@
         {% endif %}
     </div>
 </div>
+{% endif %}
 
 {% js %}
 // Backend storage clearing handler

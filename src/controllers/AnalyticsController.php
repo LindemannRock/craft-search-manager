@@ -132,7 +132,7 @@ class AnalyticsController extends Controller
     public function actionClearAll(): Response
     {
         $this->requirePostRequest();
-        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePermission('searchManager:clearAnalytics');
 
         $siteId = Craft::$app->getRequest()->getBodyParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null

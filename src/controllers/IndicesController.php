@@ -42,7 +42,12 @@ class IndicesController extends Controller
      */
     public function actionEdit(?int $indexId = null): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        // Require create permission for new, edit permission for existing
+        if ($indexId) {
+            $this->requirePermission('searchManager:editIndices');
+        } else {
+            $this->requirePermission('searchManager:createIndices');
+        }
 
         if ($indexId) {
             $index = SearchIndex::findById($indexId);
@@ -71,11 +76,17 @@ class IndicesController extends Controller
      */
     public function actionSave(): ?Response
     {
-        $this->requirePermission('searchManager:manageIndices');
         $this->requirePostRequest();
 
         $request = Craft::$app->getRequest();
         $indexId = $request->getBodyParam('indexId');
+
+        // Require create permission for new, edit permission for existing
+        if ($indexId) {
+            $this->requirePermission('searchManager:editIndices');
+        } else {
+            $this->requirePermission('searchManager:createIndices');
+        }
 
         if ($indexId) {
             $index = SearchIndex::findById($indexId);
@@ -156,7 +167,7 @@ class IndicesController extends Controller
      */
     public function actionClear(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:clearIndices');
         $this->requirePostRequest();
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
@@ -185,7 +196,7 @@ class IndicesController extends Controller
             Craft::t('search-manager', 'Index data cleared.')
         );
 
-        return $this->redirect('search-manager/indices');
+        return $this->redirectToPostedUrl(null, 'search-manager/indices');
     }
 
     /**
@@ -225,7 +236,7 @@ class IndicesController extends Controller
             Craft::t('search-manager', 'Index rebuild queued.')
         );
 
-        return $this->redirect('search-manager/indices');
+        return $this->redirectToPostedUrl(null, 'search-manager/indices');
     }
 
     /**
@@ -233,7 +244,7 @@ class IndicesController extends Controller
      */
     public function actionBulkEnable(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:editIndices');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
@@ -266,7 +277,7 @@ class IndicesController extends Controller
      */
     public function actionBulkDisable(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:editIndices');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 

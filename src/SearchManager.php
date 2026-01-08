@@ -98,6 +98,17 @@ class SearchManager extends Plugin
         PluginHelper::bootstrap($this, 'searchHelper', ['searchManager:viewLogs']);
         PluginHelper::applyPluginNameFromConfig($this);
 
+        // Configure logging library with download permissions
+        $settings = $this->getSettings();
+        LoggingLibrary::configure([
+            'pluginHandle' => $this->handle,
+            'pluginName' => $settings->pluginName ?? $this->name,
+            'logLevel' => $settings->logLevel ?? 'error',
+            'itemsPerPage' => $settings->itemsPerPage ?? 50,
+            'viewPermissions' => ['searchManager:viewLogs'],
+            'downloadPermissions' => ['searchManager:downloadLogs'],
+        ]);
+
         // Register services
         $this->registerServices();
 
@@ -250,15 +261,19 @@ class SearchManager extends Plugin
             UserPermissions::class,
             UserPermissions::EVENT_REGISTER_PERMISSIONS,
             function(RegisterUserPermissionsEvent $event) {
+                $settings = $this->getSettings();
+                $fullName = $settings->getFullName();
+
                 $event->permissions[] = [
-                    'heading' => Craft::t('search-manager', 'Search Manager'),
+                    'heading' => $fullName,
                     'permissions' => [
-                        'searchManager:viewIndices' => [
-                            'label' => Craft::t('search-manager', 'View indices'),
-                        ],
+                        // Indices - grouped
                         'searchManager:manageIndices' => [
                             'label' => Craft::t('search-manager', 'Manage indices'),
                             'nested' => [
+                                'searchManager:viewIndices' => [
+                                    'label' => Craft::t('search-manager', 'View indices'),
+                                ],
                                 'searchManager:createIndices' => [
                                     'label' => Craft::t('search-manager', 'Create indices'),
                                 ],
@@ -271,17 +286,73 @@ class SearchManager extends Plugin
                                 'searchManager:rebuildIndices' => [
                                     'label' => Craft::t('search-manager', 'Rebuild indices'),
                                 ],
+                                'searchManager:clearIndices' => [
+                                    'label' => Craft::t('search-manager', 'Clear indices'),
+                                ],
                             ],
                         ],
+                        // Promotions - grouped
+                        'searchManager:managePromotions' => [
+                            'label' => Craft::t('search-manager', 'Manage promotions'),
+                            'nested' => [
+                                'searchManager:viewPromotions' => [
+                                    'label' => Craft::t('search-manager', 'View promotions'),
+                                ],
+                                'searchManager:createPromotions' => [
+                                    'label' => Craft::t('search-manager', 'Create promotions'),
+                                ],
+                                'searchManager:editPromotions' => [
+                                    'label' => Craft::t('search-manager', 'Edit promotions'),
+                                ],
+                                'searchManager:deletePromotions' => [
+                                    'label' => Craft::t('search-manager', 'Delete promotions'),
+                                ],
+                            ],
+                        ],
+                        // Query Rules - grouped
+                        'searchManager:manageQueryRules' => [
+                            'label' => Craft::t('search-manager', 'Manage query rules'),
+                            'nested' => [
+                                'searchManager:viewQueryRules' => [
+                                    'label' => Craft::t('search-manager', 'View query rules'),
+                                ],
+                                'searchManager:createQueryRules' => [
+                                    'label' => Craft::t('search-manager', 'Create query rules'),
+                                ],
+                                'searchManager:editQueryRules' => [
+                                    'label' => Craft::t('search-manager', 'Edit query rules'),
+                                ],
+                                'searchManager:deleteQueryRules' => [
+                                    'label' => Craft::t('search-manager', 'Delete query rules'),
+                                ],
+                            ],
+                        ],
+                        // Analytics - grouped
                         'searchManager:viewAnalytics' => [
                             'label' => Craft::t('search-manager', 'View analytics'),
+                            'nested' => [
+                                'searchManager:exportAnalytics' => [
+                                    'label' => Craft::t('search-manager', 'Export analytics'),
+                                ],
+                                'searchManager:clearAnalytics' => [
+                                    'label' => Craft::t('search-manager', 'Clear analytics'),
+                                ],
+                            ],
                         ],
-                        'searchManager:exportAnalytics' => [
-                            'label' => Craft::t('search-manager', 'Export analytics'),
+                        // Cache
+                        'searchManager:clearCache' => [
+                            'label' => Craft::t('search-manager', 'Clear cache'),
                         ],
+                        // Logs - grouped
                         'searchManager:viewLogs' => [
                             'label' => Craft::t('search-manager', 'View logs'),
+                            'nested' => [
+                                'searchManager:downloadLogs' => [
+                                    'label' => Craft::t('search-manager', 'Download logs'),
+                                ],
+                            ],
                         ],
+                        // Settings
                         'searchManager:manageSettings' => [
                             'label' => Craft::t('search-manager', 'Manage settings'),
                         ],
@@ -318,6 +389,11 @@ class SearchManager extends Plugin
             ClearCaches::class,
             ClearCaches::EVENT_REGISTER_CACHE_OPTIONS,
             function(RegisterCacheOptionsEvent $event) {
+                // Only show cache option if user has permission to clear cache
+                if (!Craft::$app->getUser()->checkPermission('searchManager:clearCache')) {
+                    return;
+                }
+
                 $settings = $this->getSettings();
                 $displayName = $settings->getDisplayName();
 
@@ -445,21 +521,39 @@ class SearchManager extends Plugin
             return null;
         }
 
+        $user = Craft::$app->getUser();
         $settings = $this->getSettings();
+
+        // Check if user has view access to each section
+        $hasIndicesAccess = $user->checkPermission('searchManager:viewIndices');
+        $hasPromotionsAccess = $user->checkPermission('searchManager:viewPromotions');
+        $hasQueryRulesAccess = $user->checkPermission('searchManager:viewQueryRules');
+        $hasAnalyticsAccess = $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics');
+        $hasLogsAccess = $user->checkPermission('searchManager:viewLogs');
+        $hasSettingsAccess = $user->checkPermission('searchManager:manageSettings');
+
+        // If no access at all, hide the plugin from nav
+        if (!$hasIndicesAccess && !$hasPromotionsAccess && !$hasQueryRulesAccess &&
+            !$hasAnalyticsAccess && !$hasLogsAccess && !$hasSettingsAccess) {
+            return null;
+        }
+
         $item['label'] = $settings->getFullName();
         $item['icon'] = '@appicons/magnifying-glass.svg';
 
         // Add subnav items
         $item['subnav'] = [];
 
-        // Dashboard
-        $item['subnav']['dashboard'] = [
-            'label' => Craft::t('search-manager', 'Dashboard'),
-            'url' => 'search-manager',
-        ];
+        // Dashboard - requires viewIndices permission
+        if ($hasIndicesAccess) {
+            $item['subnav']['dashboard'] = [
+                'label' => Craft::t('search-manager', 'Dashboard'),
+                'url' => 'search-manager',
+            ];
+        }
 
         // Indices
-        if (Craft::$app->getUser()->checkPermission('searchManager:viewIndices')) {
+        if ($hasIndicesAccess) {
             $item['subnav']['indices'] = [
                 'label' => Craft::t('search-manager', 'Indices'),
                 'url' => 'search-manager/indices',
@@ -467,7 +561,7 @@ class SearchManager extends Plugin
         }
 
         // Promotions
-        if (Craft::$app->getUser()->checkPermission('searchManager:manageIndices')) {
+        if ($hasPromotionsAccess) {
             $item['subnav']['promotions'] = [
                 'label' => Craft::t('search-manager', 'Promotions'),
                 'url' => 'search-manager/promotions',
@@ -475,7 +569,7 @@ class SearchManager extends Plugin
         }
 
         // Query Rules
-        if (Craft::$app->getUser()->checkPermission('searchManager:manageIndices')) {
+        if ($hasQueryRulesAccess) {
             $item['subnav']['query-rules'] = [
                 'label' => Craft::t('search-manager', 'Query Rules'),
                 'url' => 'search-manager/query-rules',
@@ -483,7 +577,7 @@ class SearchManager extends Plugin
         }
 
         // Analytics (only show if enabled in settings)
-        if ($this->getSettings()->enableAnalytics && Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics')) {
+        if ($hasAnalyticsAccess) {
             $item['subnav']['analytics'] = [
                 'label' => Craft::t('search-manager', 'Analytics'),
                 'url' => 'search-manager/analytics',
@@ -498,7 +592,7 @@ class SearchManager extends Plugin
         }
 
         // Settings
-        if (Craft::$app->getUser()->checkPermission('searchManager:manageSettings')) {
+        if ($hasSettingsAccess) {
             $item['subnav']['settings'] = [
                 'label' => Craft::t('search-manager', 'Settings'),
                 'url' => 'search-manager/settings',

@@ -6,6 +6,16 @@
     { label: searchHelper.fullName, url: url('search-manager') },
 ] %}
 
+{# Permission checks #}
+{% set canViewIndices = currentUser.can('searchManager:viewIndices') %}
+{% set canViewPromotions = currentUser.can('searchManager:viewPromotions') %}
+{% set canViewQueryRules = currentUser.can('searchManager:viewQueryRules') %}
+{% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
+{% set canCreateIndices = currentUser.can('searchManager:createIndices') %}
+{% set canCreatePromotions = currentUser.can('searchManager:createPromotions') %}
+{% set canCreateQueryRules = currentUser.can('searchManager:createQueryRules') %}
+{% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
+
 {% block content %}
 
 <div class="readable" style="margin-bottom: 24px;">
@@ -15,6 +25,7 @@
 {# Stats Overview Cards #}
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
     {# Indices Card #}
+    {% if canViewIndices %}
     <a href="{{ url('search-manager/indices') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
             <div style="width: 12px; height: 12px; border-radius: 50%; background: #059669;"></div>
@@ -28,8 +39,10 @@
         </div>
         <div style="font-size: 13px; color: #6b7280;">{{ totalDocuments|number_format }} {{ "documents indexed"|t('search-manager') }}</div>
     </a>
+    {% endif %}
 
     {# Promotions Card #}
+    {% if canViewPromotions %}
     <a href="{{ url('search-manager/promotions') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
             <div style="width: 12px; height: 12px; border-radius: 50%; background: #f59e0b;"></div>
@@ -43,8 +56,10 @@
         </div>
         <div style="font-size: 13px; color: #6b7280;">{{ "pinned results active"|t('search-manager') }}</div>
     </a>
+    {% endif %}
 
     {# Query Rules Card #}
+    {% if canViewQueryRules %}
     <a href="{{ url('search-manager/query-rules') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
             <div style="width: 12px; height: 12px; border-radius: 50%; background: #8b5cf6;"></div>
@@ -58,9 +73,10 @@
         </div>
         <div style="font-size: 13px; color: #6b7280;">{{ "synonyms, boosts, redirects"|t('search-manager') }}</div>
     </a>
+    {% endif %}
 
-    {# Searches Today Card (only if analytics enabled) #}
-    {% if settings.enableAnalytics %}
+    {# Searches Today Card (only if analytics enabled and user has permission) #}
+    {% if settings.enableAnalytics and canViewAnalytics %}
     <a href="{{ url('search-manager/analytics') }}" class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); text-decoration: none; display: block;">
         <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
             <div style="width: 12px; height: 12px; border-radius: 50%; background: #0ea5e9;"></div>
@@ -81,10 +97,10 @@
 </div>
 
 {# Two Column Layout for Lists #}
+{% if settings.enableAnalytics and canViewAnalytics %}
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 32px;">
 
     {# Top Searches (Last 7 Days) #}
-    {% if settings.enableAnalytics %}
     <div class="pane" style="margin-block: 0;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="margin: 0;">{{ "Top Searches"|t('search-manager') }}</h3>
@@ -113,10 +129,8 @@
             <p class="light" style="margin: 0;">{{ "No searches recorded yet"|t('search-manager') }}</p>
         {% endif %}
     </div>
-    {% endif %}
 
     {# Recent Zero-Result Searches #}
-    {% if settings.enableAnalytics %}
     <div class="pane" style="margin-block: 0;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
             <h3 style="margin: 0;">{{ "Content Gaps"|t('search-manager') }}</h3>
@@ -145,27 +159,32 @@
             <p class="light" style="margin: 0;">{{ "No zero-result searches"|t('search-manager') }}</p>
         {% endif %}
     </div>
-    {% endif %}
 
 </div>
+{% endif %}
 
 {# Quick Actions #}
+{% set hasAnyQuickAction = canCreateIndices or canCreatePromotions or canCreateQueryRules or canManageSettings %}
+{% if hasAnyQuickAction %}
 <div class="pane">
     <h2 style="margin-top: 0;">{{ "Quick Actions"|t('search-manager') }}</h2>
 
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        {% if currentUser.can('searchManager:createIndices') %}
+        {% if canCreateIndices %}
             <a href="{{ url('search-manager/indices/create') }}" class="btn submit">{{ "New Index"|t('search-manager') }}</a>
         {% endif %}
-        {% if currentUser.can('searchManager:managePromotions') %}
+        {% if canCreatePromotions %}
             <a href="{{ url('search-manager/promotions/create') }}" class="btn">{{ "New Promotion"|t('search-manager') }}</a>
         {% endif %}
-        {% if currentUser.can('searchManager:manageQueryRules') %}
+        {% if canCreateQueryRules %}
             <a href="{{ url('search-manager/query-rules/create') }}" class="btn">{{ "New Query Rule"|t('search-manager') }}</a>
         {% endif %}
-        <a href="{{ url('search-manager/settings') }}" class="btn">{{ "Settings"|t('search-manager') }}</a>
+        {% if canManageSettings %}
+            <a href="{{ url('search-manager/settings') }}" class="btn">{{ "Settings"|t('search-manager') }}</a>
+        {% endif %}
     </div>
 </div>
+{% endif %}
 
 {% include 'lindemannrock-base/_components/plugin-credit' %}
 

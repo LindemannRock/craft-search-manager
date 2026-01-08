@@ -17,6 +17,9 @@
 {% set limit = 50 %}
 {% set offset = (page - 1) * limit %}
 
+{# Permission checks #}
+{% set showActionsColumn = currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices') or currentUser.can('searchManager:deleteIndices') %}
+
 {# Backend colors - prepare for per-index backends in future #}
 {% set backendColors = {
 	'mysql': '#f59e0b',
@@ -344,7 +347,7 @@
 						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
 						</th>
-						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
+						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
 					</tr>
 				</thead>
 				<tbody>
@@ -411,6 +414,7 @@
 										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
+								{% if showActionsColumn %}
 								<td class="thin" style="text-align: right;">
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
@@ -423,11 +427,13 @@
 												</li>
 											{% endif %}
 
-											<li>
-												<a class="index-action" data-action="clear" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-													{{ 'Clear Index Data'|t('search-manager') }}
-												</a>
-											</li>
+											{% if currentUser.can('searchManager:clearIndices') %}
+												<li>
+													<a class="index-action" data-action="clear" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
+														{{ 'Clear Index Data'|t('search-manager') }}
+													</a>
+												</li>
+											{% endif %}
 
 											{% if index.canEdit() and currentUser.can('searchManager:deleteIndices') %}
 												<li><hr class="padded"></li>
@@ -440,6 +446,7 @@
 										</ul>
 									</div>
 								</td>
+								{% endif %}
 							</tr>
 						{% endfor %}
 					{% else %}

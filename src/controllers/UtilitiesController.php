@@ -23,6 +23,34 @@ class UtilitiesController extends Controller
     }
 
     /**
+     * @inheritdoc
+     */
+    public function beforeAction($action): bool
+    {
+        if (!parent::beforeAction($action)) {
+            return false;
+        }
+
+        // Permission checks based on action
+        switch ($action->id) {
+            case 'rebuild-all-indices':
+            case 'clear-backend-storage':
+                $this->requirePermission('searchManager:rebuildIndices');
+                break;
+            case 'clear-device-cache':
+            case 'clear-search-cache':
+            case 'clear-all-caches':
+                $this->requirePermission('searchManager:clearCache');
+                break;
+            case 'clear-all-analytics':
+                $this->requirePermission('searchManager:clearAnalytics');
+                break;
+        }
+
+        return true;
+    }
+
+    /**
      * Rebuild all indices
      */
     public function actionRebuildAllIndices(): Response

@@ -31,7 +31,7 @@ class QueryRulesController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:viewQueryRules');
 
         $rules = QueryRule::findAll();
         $indices = SearchIndex::findAll();
@@ -53,7 +53,12 @@ class QueryRulesController extends Controller
      */
     public function actionEdit(?int $ruleId = null): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        // Require create permission for new, edit permission for existing
+        if ($ruleId) {
+            $this->requirePermission('searchManager:editQueryRules');
+        } else {
+            $this->requirePermission('searchManager:createQueryRules');
+        }
 
         if ($ruleId) {
             $rule = QueryRule::findById($ruleId);
@@ -142,11 +147,17 @@ class QueryRulesController extends Controller
      */
     public function actionSave(): ?Response
     {
-        $this->requirePermission('searchManager:manageIndices');
         $this->requirePostRequest();
 
         $request = Craft::$app->getRequest();
         $ruleId = $request->getBodyParam('ruleId');
+
+        // Require create permission for new, edit permission for existing
+        if ($ruleId) {
+            $this->requirePermission('searchManager:editQueryRules');
+        } else {
+            $this->requirePermission('searchManager:createQueryRules');
+        }
 
         if ($ruleId) {
             $rule = QueryRule::findById($ruleId);
@@ -251,7 +262,7 @@ class QueryRulesController extends Controller
      */
     public function actionDelete(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:deleteQueryRules');
         $this->requirePostRequest();
 
         $ruleId = Craft::$app->getRequest()->getRequiredBodyParam('ruleId');
@@ -293,7 +304,7 @@ class QueryRulesController extends Controller
      */
     public function actionBulkEnable(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:editQueryRules');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
@@ -326,7 +337,7 @@ class QueryRulesController extends Controller
      */
     public function actionBulkDisable(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:editQueryRules');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
@@ -359,7 +370,7 @@ class QueryRulesController extends Controller
      */
     public function actionBulkDelete(): Response
     {
-        $this->requirePermission('searchManager:manageIndices');
+        $this->requirePermission('searchManager:deleteQueryRules');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 

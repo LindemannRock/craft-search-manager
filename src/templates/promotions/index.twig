@@ -16,6 +16,9 @@
 {% set limit = 50 %}
 {% set offset = (page - 1) * limit %}
 
+{# Permission checks #}
+{% set showActionsColumn = currentUser.can('searchManager:editPromotions') or currentUser.can('searchManager:deletePromotions') %}
+
 {# Match type colors #}
 {% set matchTypeColors = {
 	'exact': '#6366f1',
@@ -144,7 +147,7 @@
 				</div>
 			</form>
 		</div>
-		{% if currentUser.can('searchManager:manageIndices') %}
+		{% if currentUser.can('searchManager:createPromotions') %}
 			<a href="{{ url('search-manager/promotions/create') }}" class="btn submit add icon" id="new-promotion-btn">
 				<span class="label-full">{{ 'New Promotion'|t('search-manager') }}</span>
 				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
@@ -219,7 +222,7 @@
 						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
 						</th>
-						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
+						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
 					</tr>
 				</thead>
 				<tbody>
@@ -279,24 +282,30 @@
 										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
+								{% if showActionsColumn %}
 								<td class="thin" style="text-align: right;">
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
 										<ul>
-											<li>
-												<a href="{{ url('search-manager/promotions/edit/' ~ promotion.id) }}">
-													{{ 'Edit'|t('search-manager') }}
-												</a>
-											</li>
-											<li><hr class="padded"></li>
-											<li>
-												<a class="promotion-action error" data-action="delete" data-id="{{ promotion.id }}" data-name="{{ promotion.query }}">
-													{{ 'Delete'|t('search-manager') }}
-												</a>
-											</li>
+											{% if currentUser.can('searchManager:editPromotions') %}
+												<li>
+													<a href="{{ url('search-manager/promotions/edit/' ~ promotion.id) }}">
+														{{ 'Edit'|t('search-manager') }}
+													</a>
+												</li>
+											{% endif %}
+											{% if currentUser.can('searchManager:deletePromotions') %}
+												<li><hr class="padded"></li>
+												<li>
+													<a class="promotion-action error" data-action="delete" data-id="{{ promotion.id }}" data-name="{{ promotion.query }}">
+														{{ 'Delete'|t('search-manager') }}
+													</a>
+												</li>
+											{% endif %}
 										</ul>
 									</div>
 								</td>
+								{% endif %}
 							</tr>
 						{% endfor %}
 					{% else %}
