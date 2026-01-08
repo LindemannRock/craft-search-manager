@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.24.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.23.0...v5.24.0) (2026-01-08)
+
+
+### Features
+
+* refactor permissions to use grouped nested structure with granular access control ([3774d8c](https://github.com/LindemannRock/craft-search-manager/commit/3774d8c123a43f8bc38c74710807d66368d24115))
+
 ## [5.23.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.22.0...v5.23.0) (2026-01-06)
 
 
