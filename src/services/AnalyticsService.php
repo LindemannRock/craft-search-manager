@@ -383,11 +383,11 @@ class AnalyticsService extends Component
      */
     public function getZeroResultClusters(?int $siteId, string $dateRange = 'last30days', int $limit = 20): array
     {
-        // 1. Get all zero-result queries
+        // 1. Get all zero-result queries (excluding handled searches: redirected or showed promotions)
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count', 'MAX(dateCreated) as lastSearched'])
             ->from('{{%searchmanager_analytics}}')
-            ->where(['isHit' => 0])
+            ->where(['isHit' => 0, 'wasRedirected' => 0, 'promotionsShown' => 0])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit * 3); // Get more candidates for clustering
@@ -461,7 +461,8 @@ class AnalyticsService extends Component
 
         $totalSearches = (int)$query->count();
         $uniqueVisitors = (int)$query->select('COUNT(DISTINCT ip)')->scalar();
-        $zeroResults = (int)(clone $query)->andWhere(['isHit' => 0])->count();
+        // Zero results excludes handled searches (redirected or showed promotions)
+        $zeroResults = (int)(clone $query)->andWhere(['isHit' => 0, 'wasRedirected' => 0, 'promotionsShown' => 0])->count();
         $zeroResultsRate = $totalSearches > 0 ? round(($zeroResults / $totalSearches) * 100, 1) : 0;
 
         return [
@@ -481,8 +482,10 @@ class AnalyticsService extends Component
             ->select([
                 'DATE(dateCreated) as date',
                 'COUNT(*) as total',
-                'SUM(CASE WHEN isHit = 1 THEN 1 ELSE 0 END) as withResults',
-                'SUM(CASE WHEN isHit = 0 THEN 1 ELSE 0 END) as zeroResults',
+                // Count searches with results OR redirected OR showed promotions as successful
+                'SUM(CASE WHEN isHit = 1 OR wasRedirected = 1 OR promotionsShown > 0 THEN 1 ELSE 0 END) as withResults',
+                // Only count as zero results if no hit AND not redirected AND no promotions (true content gaps)
+                'SUM(CASE WHEN isHit = 0 AND wasRedirected = 0 AND promotionsShown = 0 THEN 1 ELSE 0 END) as zeroResults',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->groupBy('DATE(dateCreated)')
@@ -547,7 +550,13 @@ class AnalyticsService extends Component
         }
 
         if ($hasResults !== null) {
-            $query->andWhere(['isHit' => $hasResults ? 1 : 0]);
+            if ($hasResults) {
+                // With results: found search results OR was redirected OR showed promotions
+                $query->andWhere(['or', ['isHit' => 1], ['wasRedirected' => 1], ['>', 'promotionsShown', 0]]);
+            } else {
+                // No results: no search results AND not redirected AND no promotions (true content gaps)
+                $query->andWhere(['isHit' => 0, 'wasRedirected' => 0, 'promotionsShown' => 0]);
+            }
         }
 
         if ($dateRange !== null) {
@@ -622,7 +631,13 @@ class AnalyticsService extends Component
         }
 
         if ($hasResults !== null) {
-            $query->andWhere(['isHit' => $hasResults ? 1 : 0]);
+            if ($hasResults) {
+                // With results: found search results OR was redirected OR showed promotions
+                $query->andWhere(['or', ['isHit' => 1], ['wasRedirected' => 1], ['>', 'promotionsShown', 0]]);
+            } else {
+                // No results: no search results AND not redirected AND no promotions (true content gaps)
+                $query->andWhere(['isHit' => 0, 'wasRedirected' => 0, 'promotionsShown' => 0]);
+            }
         }
 
         if ($dateRange !== null) {
