@@ -472,9 +472,29 @@ function displayQueryRules(data, query) {
             'redirect': '#fee2e2'
         };
 
+        // Build redirect info HTML
+        let redirectHtml = '';
+        if (data.redirect) {
+            // Find the redirect rule to get element info
+            const redirectRule = data.rules.find(r => r.actionType === 'redirect');
+            if (redirectRule && redirectRule.elementInfo) {
+                const el = redirectRule.elementInfo;
+                redirectHtml = `
+                    <div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;">
+                        <strong>↪️ Redirect:</strong> This query would redirect to
+                        <strong>${Craft.escapeHtml(el.type)}</strong>:
+                        <a href="${el.cpEditUrl}" target="_blank" style="font-weight: 600;">${Craft.escapeHtml(el.title)}</a>
+                        <span style="color: #9ca3af;">(ID: ${el.id})</span>
+                        <br><span style="color: #6b7280; font-size: 13px;">URL: <a href="${el.url}" target="_blank">${el.url}</a></span>
+                    </div>`;
+            } else {
+                redirectHtml = `<div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;"><strong>↪️ Redirect:</strong> This query would redirect to <a href="${data.redirect}" target="_blank">${data.redirect}</a></div>`;
+            }
+        }
+
         container.innerHTML = `
             <p style="margin-bottom: 12px;"><strong>Query:</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>Matched:</strong> ${data.rules.length} rule(s)</p>
-            ${data.redirect ? `<div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;"><strong>Redirect:</strong> This query would redirect to <a href="${data.redirect}" target="_blank">${data.redirect}</a></div>` : ''}
+            ${redirectHtml}
             ${data.synonyms && data.synonyms.length > 0 ? `<div style="padding: 12px; background: #dbeafe; border-radius: 4px; margin-bottom: 12px;"><strong>Expanded Queries:</strong> ${data.synonyms.map(s => `<code>${s}</code>`).join(', ')}</div>` : ''}
             <table class="data fullwidth" style="margin: 0;">
                 <thead>
@@ -486,14 +506,21 @@ function displayQueryRules(data, query) {
                     </tr>
                 </thead>
                 <tbody>
-                    ${data.rules.map(r => `
-                        <tr>
-                            <td><a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a></td>
-                            <td><span style="background: ${actionColors[r.actionType] || '#f3f4f6'}; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${actionLabels[r.actionType] || r.actionType}</span></td>
-                            <td><code>${r.matchType}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
-                            <td>${Craft.escapeHtml(r.effectDescription)}</td>
-                        </tr>
-                    `).join('')}
+                    ${data.rules.map(r => {
+                        let effectHtml = Craft.escapeHtml(r.effectDescription);
+                        // If it's a redirect with element info, make it clickable
+                        if (r.actionType === 'redirect' && r.elementInfo) {
+                            effectHtml = `Redirect to <a href="${r.elementInfo.cpEditUrl}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`;
+                        }
+                        return `
+                            <tr>
+                                <td><a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a></td>
+                                <td><span style="background: ${actionColors[r.actionType] || '#f3f4f6'}; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${actionLabels[r.actionType] || r.actionType}</span></td>
+                                <td><code>${r.matchType}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
+                                <td>${effectHtml}</td>
+                            </tr>
+                        `;
+                    }).join('')}
                 </tbody>
             </table>
         `;

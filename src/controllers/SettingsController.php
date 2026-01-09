@@ -468,7 +468,28 @@ class SettingsController extends Controller
                         break;
                     case 'redirect':
                         $redirect = $rule->getRedirectUrl();
-                        $effectDescription = 'Redirect to: ' . $redirect;
+                        // Check if element-based redirect
+                        $elementInfo = null;
+                        if (!empty($rule->actionValue['elementId']) && !empty($rule->actionValue['elementType'])) {
+                            $element = Craft::$app->getElements()->getElementById(
+                                (int)$rule->actionValue['elementId'],
+                                $rule->actionValue['elementType']
+                            );
+                            if ($element) {
+                                $elementInfo = [
+                                    'id' => $element->id,
+                                    'title' => $element->title ?? 'Untitled',
+                                    'type' => (new \ReflectionClass($element))->getShortName(),
+                                    'url' => $element->getUrl(),
+                                    'cpEditUrl' => $element->getCpEditUrl(),
+                                ];
+                                $effectDescription = 'Redirect to ' . $elementInfo['type'] . ': ' . $elementInfo['title'];
+                            } else {
+                                $effectDescription = 'Redirect to element (not found)';
+                            }
+                        } else {
+                            $effectDescription = 'Redirect to: ' . $redirect;
+                        }
                         break;
                 }
 
@@ -479,6 +500,7 @@ class SettingsController extends Controller
                     'matchType' => $rule->matchType,
                     'matchValue' => $rule->matchValue,
                     'effectDescription' => $effectDescription,
+                    'elementInfo' => $elementInfo ?? null,
                     'editUrl' => Craft::$app->getUrlManager()->createUrl('search-manager/query-rules/edit/' . $rule->id),
                 ];
             }
