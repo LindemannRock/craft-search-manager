@@ -511,4 +511,240 @@ class AnalyticsController extends Controller
             'data' => $chartData,
         ]);
     }
+
+    /**
+     * Get analytics for a specific query rule (AJAX)
+     *
+     * @return Response
+     */
+    public function actionGetRuleAnalytics(): Response
+    {
+        $this->requirePermission('searchManager:viewAnalytics');
+
+        $request = Craft::$app->getRequest();
+        $ruleId = (int)$request->getParam('ruleId');
+        $dateRange = $request->getParam('range', 'last7days');
+
+        if (!$ruleId) {
+            return $this->asJson([
+                'success' => false,
+                'error' => 'Rule ID is required',
+            ]);
+        }
+
+        try {
+            // Get the rule
+            $rule = \lindemannrock\searchmanager\models\QueryRule::findById($ruleId);
+            if (!$rule) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => 'Rule not found',
+                ]);
+            }
+
+            // Get analytics data
+            $analytics = SearchManager::$plugin->analytics->getRuleAnalytics($ruleId, $dateRange);
+
+            // Render the partial template
+            $html = Craft::$app->getView()->renderTemplate(
+                'search-manager/query-rules/_partials/analytics-content',
+                [
+                    'rule' => $rule,
+                    'analytics' => $analytics,
+                    'dateRange' => $dateRange,
+                ]
+            );
+
+            return $this->asJson([
+                'success' => true,
+                'html' => $html,
+            ]);
+        } catch (\Exception $e) {
+            return $this->asJson([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get analytics for a specific promotion (AJAX)
+     *
+     * @return Response
+     */
+    public function actionGetPromotionAnalytics(): Response
+    {
+        $this->requirePermission('searchManager:viewAnalytics');
+
+        $request = Craft::$app->getRequest();
+        $promotionId = (int)$request->getParam('promotionId');
+        $dateRange = $request->getParam('range', 'last7days');
+
+        if (!$promotionId) {
+            return $this->asJson([
+                'success' => false,
+                'error' => 'Promotion ID is required',
+            ]);
+        }
+
+        try {
+            // Get the promotion
+            $promotion = \lindemannrock\searchmanager\models\Promotion::findById($promotionId);
+            if (!$promotion) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => 'Promotion not found',
+                ]);
+            }
+
+            // Get analytics data
+            $analytics = SearchManager::$plugin->analytics->getPromotionAnalytics($promotionId, $dateRange);
+
+            // Render the partial template
+            $html = Craft::$app->getView()->renderTemplate(
+                'search-manager/promotions/_partials/analytics-content',
+                [
+                    'promotion' => $promotion,
+                    'analytics' => $analytics,
+                    'dateRange' => $dateRange,
+                ]
+            );
+
+            return $this->asJson([
+                'success' => true,
+                'html' => $html,
+            ]);
+        } catch (\Exception $e) {
+            return $this->asJson([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Export analytics for a specific query rule
+     *
+     * @return Response
+     */
+    public function actionExportRuleAnalytics(): Response
+    {
+        $this->requirePermission('searchManager:exportAnalytics');
+
+        $request = Craft::$app->getRequest();
+        $ruleId = (int)$request->getQueryParam('ruleId');
+        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $format = $request->getQueryParam('format', 'csv');
+
+        if (!$ruleId) {
+            throw new \yii\web\BadRequestHttpException('Rule ID is required');
+        }
+
+        // Get the rule
+        $rule = \lindemannrock\searchmanager\models\QueryRule::findById($ruleId);
+        if (!$rule) {
+            throw new \yii\web\NotFoundHttpException('Rule not found');
+        }
+
+        // Get raw analytics data for export
+        $query = (new \craft\db\Query())
+            ->from('{{%searchmanager_rule_analytics}}')
+            ->where(['queryRuleId' => $ruleId]);
+
+        SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
+
+        $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
+
+        // Generate filename
+        $ruleName = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $rule->name));
+        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
+        $filename = 'query-rule-' . $ruleName . '-analytics-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
+
+        if ($format === 'json') {
+            $content = json_encode($data, JSON_PRETTY_PRINT);
+            $mimeType = 'application/json';
+        } else {
+            // CSV format
+            $lines = [];
+            if (!empty($data)) {
+                $lines[] = implode(',', array_keys($data[0]));
+                foreach ($data as $row) {
+                    $lines[] = implode(',', array_map(function($val) {
+                        return '"' . str_replace('"', '""', $val ?? '') . '"';
+                    }, $row));
+                }
+            }
+            $content = implode("\n", $lines);
+            $mimeType = 'text/csv';
+        }
+
+        return Craft::$app->getResponse()->sendContentAsFile(
+            $content,
+            $filename,
+            ['mimeType' => $mimeType]
+        );
+    }
+
+    /**
+     * Export analytics for a specific promotion
+     *
+     * @return Response
+     */
+    public function actionExportPromotionAnalytics(): Response
+    {
+        $this->requirePermission('searchManager:exportAnalytics');
+
+        $request = Craft::$app->getRequest();
+        $promotionId = (int)$request->getQueryParam('promotionId');
+        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $format = $request->getQueryParam('format', 'csv');
+
+        if (!$promotionId) {
+            throw new \yii\web\BadRequestHttpException('Promotion ID is required');
+        }
+
+        // Get the promotion
+        $promotion = \lindemannrock\searchmanager\models\Promotion::findById($promotionId);
+        if (!$promotion) {
+            throw new \yii\web\NotFoundHttpException('Promotion not found');
+        }
+
+        // Get raw analytics data for export
+        $query = (new \craft\db\Query())
+            ->from('{{%searchmanager_promotion_analytics}}')
+            ->where(['promotionId' => $promotionId]);
+
+        SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
+
+        $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
+
+        // Generate filename
+        $promotionTitle = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $promotion->title));
+        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
+        $filename = 'promotion-' . $promotionTitle . '-analytics-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
+
+        if ($format === 'json') {
+            $content = json_encode($data, JSON_PRETTY_PRINT);
+            $mimeType = 'application/json';
+        } else {
+            // CSV format
+            $lines = [];
+            if (!empty($data)) {
+                $lines[] = implode(',', array_keys($data[0]));
+                foreach ($data as $row) {
+                    $lines[] = implode(',', array_map(function($val) {
+                        return '"' . str_replace('"', '""', $val ?? '') . '"';
+                    }, $row));
+                }
+            }
+            $content = implode("\n", $lines);
+            $mimeType = 'text/csv';
+        }
+
+        return Craft::$app->getResponse()->sendContentAsFile(
+            $content,
+            $filename,
+            ['mimeType' => $mimeType]
+        );
+    }
 }

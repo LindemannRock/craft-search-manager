@@ -1,0 +1,197 @@
+{% set dateRange = craft.app.request.getQueryParam('range') ?? 'last7days' %}
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{# Get analytics data for this promotion #}
+{% set analytics = craft.searchManager.getPromotionAnalytics(promotion.id, dateRange) %}
+
+<div class="analytics-container">
+    {# Date Range Selector #}
+    <div class="analytics-header">
+        <div class="flex">
+            <div class="btngroup">
+                <button type="button" class="btn menubtn">
+                    <span>{{ dateRange == 'today' ? 'Today' : (dateRange == 'yesterday' ? 'Yesterday' : (dateRange == 'last7days' ? 'Last 7 days' : (dateRange == 'last30days' ? 'Last 30 days' : (dateRange == 'last90days' ? 'Last 90 days' : 'All time')))) }}</span>
+                </button>
+                <div class="menu">
+                    <ul>
+                        <li><a href="#" data-range="today" class="date-range-option {{ dateRange == 'today' ? 'sel' : '' }}">{{ "Today"|t('search-manager') }}</a></li>
+                        <li><a href="#" data-range="yesterday" class="date-range-option {{ dateRange == 'yesterday' ? 'sel' : '' }}">{{ "Yesterday"|t('search-manager') }}</a></li>
+                        <li><a href="#" data-range="last7days" class="date-range-option {{ dateRange == 'last7days' ? 'sel' : '' }}">{{ "Last 7 days"|t('search-manager') }}</a></li>
+                        <li><a href="#" data-range="last30days" class="date-range-option {{ dateRange == 'last30days' ? 'sel' : '' }}">{{ "Last 30 days"|t('search-manager') }}</a></li>
+                        <li><a href="#" data-range="last90days" class="date-range-option {{ dateRange == 'last90days' ? 'sel' : '' }}">{{ "Last 90 days"|t('search-manager') }}</a></li>
+                        <li><a href="#" data-range="all" class="date-range-option {{ dateRange == 'all' ? 'sel' : '' }}">{{ "All time"|t('search-manager') }}</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex-grow"></div>
+            {% if currentUser.can('searchManager:exportAnalytics') %}
+                <div class="btngroup">
+                    <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+                    <div class="menu" data-align="right">
+                        <ul>
+                            <li><a href="#" class="export-promotion-analytics" data-format="csv">{{ "Export as CSV"|t('search-manager') }}</a></li>
+                            <li><a href="#" class="export-promotion-analytics" data-format="json">{{ "Export as JSON"|t('search-manager') }}</a></li>
+                        </ul>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="promotion-analytics-content" data-promotion-id="{{ promotion.id }}">
+        {% include "search-manager/promotions/_partials/analytics-content" with {
+            promotion: promotion,
+            analytics: analytics,
+            dateRange: dateRange
+        } %}
+    </div>
+</div>
+
+{% js %}
+$(document).ready(function() {
+    // Handle export clicks
+    $(document).on('click', '.export-promotion-analytics', function(e) {
+        e.preventDefault();
+
+        const format = $(this).data('format');
+        const promotionId = $('#promotion-analytics-content').data('promotion-id');
+        const currentRange = new URLSearchParams(window.location.search).get('range') || 'last7days';
+
+        // Build export URL
+        const exportUrl = Craft.getActionUrl('search-manager/analytics/export-promotion-analytics', {
+            promotionId: promotionId,
+            dateRange: currentRange,
+            format: format
+        });
+
+        // Trigger download
+        window.location.href = exportUrl;
+
+        // Close the menu
+        $(this).closest('.menu').removeClass('active');
+        $(this).closest('.btngroup').find('.menubtn').removeClass('active');
+    });
+
+    // Handle date range selection via AJAX
+    $(document).on('click', '.date-range-option', function(e) {
+        e.preventDefault();
+
+        const $link = $(this);
+        const range = $link.data('range');
+        const promotionId = $('#promotion-analytics-content').data('promotion-id');
+
+        // Update the button text
+        const rangeLabels = {
+            'today': '{{ "Today"|t('search-manager')|e('js') }}',
+            'yesterday': '{{ "Yesterday"|t('search-manager')|e('js') }}',
+            'last7days': '{{ "Last 7 days"|t('search-manager')|e('js') }}',
+            'last30days': '{{ "Last 30 days"|t('search-manager')|e('js') }}',
+            'last90days': '{{ "Last 90 days"|t('search-manager')|e('js') }}',
+            'all': '{{ "All time"|t('search-manager')|e('js') }}'
+        };
+
+        // Update button text immediately
+        $link.closest('.btngroup').find('.menubtn span').text(rangeLabels[range] || range);
+
+        // Update selected state
+        $link.closest('ul').find('.sel').removeClass('sel');
+        $link.addClass('sel');
+
+        // Close the menu
+        $link.closest('.menu').removeClass('active');
+        $link.closest('.btngroup').find('.menubtn').removeClass('active');
+
+        // Show loading state
+        $('#promotion-analytics-content').addClass('loading').css('opacity', '0.5');
+
+        // Make AJAX request
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-promotion-analytics'),
+            type: 'GET',
+            dataType: 'json',
+            data: {
+                promotionId: promotionId,
+                range: range
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#promotion-analytics-content').html(response.html);
+
+                    // Update URL without reload
+                    const url = new URL(window.location);
+                    url.searchParams.set('range', range);
+                    window.history.pushState({}, '', url);
+                } else {
+                    Craft.cp.displayError(response.error || '{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
+                }
+            },
+            error: function() {
+                Craft.cp.displayError('{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
+            },
+            complete: function() {
+                $('#promotion-analytics-content').removeClass('loading').css('opacity', '1');
+            }
+        });
+    });
+});
+{% endjs %}
+
+{% css %}
+.analytics-container {
+    padding: 24px 0;
+}
+
+.analytics-header {
+    margin-bottom: 24px;
+}
+
+.analytics-header .flex {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.analytics-header .flex-grow {
+    flex-grow: 1;
+}
+
+.analytics-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.stat-box {
+    background: #f3f7fc;
+    padding: 20px;
+    border-radius: 4px;
+    text-align: center;
+    border: 1px solid var(--border-hairline);
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 600;
+    color: #0d78f2;
+    margin-bottom: 6px;
+}
+
+.stat-label {
+    font-size: 13px;
+    color: #596673;
+}
+
+.chart-container {
+    background: #fff;
+    border: 1px solid #e3e5e8;
+    border-radius: 4px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.chart-container h3 {
+    margin: 0 0 16px;
+    font-size: 15px;
+}
+{% endcss %}

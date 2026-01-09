@@ -1,7 +1,7 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 {% set title = isNew ? 'New Query Rule'|t('search-manager') : 'Edit Query Rule'|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSubnavItem = 'query-rules' %}
@@ -13,6 +13,24 @@
     { label: 'Query Rules'|t('search-manager'), url: url('search-manager/query-rules') },
     { label: isNew ? 'New Query Rule'|t('search-manager') : rule.name }
 ] %}
+
+{# Set up tabs #}
+{% set tabs = {
+    fields: {
+        label: 'Settings'|t('search-manager'),
+        url: '#fields',
+    },
+} %}
+
+{# Add analytics tab if rule exists and analytics are enabled #}
+{% if not isNew and plugin.settings.enableAnalytics %}
+    {% set tabs = tabs|merge({
+        analytics: {
+            label: 'Analytics'|t('search-manager'),
+            url: '#analytics',
+        },
+    }) %}
+{% endif %}
 
 {% block actionButton %}
 	<div class="btngroup submit">
@@ -451,6 +469,16 @@
 		</div>
 
 	</div>
+
+	{# Analytics Tab #}
+	{% if not isNew and plugin.settings.enableAnalytics %}
+		<div id="analytics" class="hidden">
+			{% include "search-manager/query-rules/_partials/analytics" with {
+				rule: rule,
+				analyticsService: analyticsService ?? null
+			} %}
+		</div>
+	{% endif %}
 {% endblock %}
 
 {% block details %}

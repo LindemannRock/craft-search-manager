@@ -156,4 +156,28 @@ class SearchManagerVariable
 
         return SearchManager::$plugin->autocomplete->suggest($query, $indexHandle, $options);
     }
+
+    /**
+     * Get analytics for a specific query rule
+     *
+     * @param int $ruleId The query rule ID
+     * @param string $dateRange Date range filter
+     * @return array Analytics data
+     */
+    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
+    {
+        return SearchManager::$plugin->analytics->getRuleAnalytics($ruleId, $dateRange);
+    }
+
+    /**
+     * Get analytics for a specific promotion
+     *
+     * @param int $promotionId The promotion ID
+     * @param string $dateRange Date range filter
+     * @return array Analytics data
+     */
+    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
+    {
+        return SearchManager::$plugin->analytics->getPromotionAnalytics($promotionId, $dateRange);
+    }
 }

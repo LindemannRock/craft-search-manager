@@ -1,0 +1,167 @@
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{% if analytics.totalTriggers == 0 %}
+    <div class="zilch">
+        <p>{{ "No analytics data yet"|t('search-manager') }}</p>
+        <p class="light">{{ "Analytics will appear here once this rule starts being triggered by searches."|t('search-manager') }}</p>
+    </div>
+{% else %}
+
+{# Summary Stats #}
+<div class="analytics-stats">
+    <div class="stat-box">
+        <div class="stat-value">{{ analytics.totalTriggers|number }}</div>
+        <div class="stat-label">{{ "Times Triggered"|t('search-manager') }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value">{{ analytics.uniqueQueries|number }}</div>
+        <div class="stat-label">{{ "Unique Queries"|t('search-manager') }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-value">{{ analytics.avgResultsAfter|number(1) }}</div>
+        <div class="stat-label">{{ "Avg Results After"|t('search-manager') }}</div>
+    </div>
+    {% if rule.actionType == 'redirect' %}
+    <div class="stat-box">
+        <div class="stat-value">{{ analytics.totalTriggers|number }}</div>
+        <div class="stat-label">{{ "Redirects"|t('search-manager') }}</div>
+    </div>
+    {% endif %}
+</div>
+
+{# Top Queries that triggered this rule #}
+{% if analytics.topQueries|length %}
+<div class="chart-container">
+    <h3>{{ "Top Queries Triggering This Rule"|t('search-manager') }}</h3>
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Query'|t('search-manager') }}</th>
+                <th>{{ 'Times Triggered'|t('search-manager') }}</th>
+                <th>{{ 'Avg Results'|t('search-manager') }}</th>
+                <th>{{ 'Last Triggered'|t('search-manager') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in analytics.topQueries %}
+                <tr>
+                    <td><code>{{ item.query }}</code></td>
+                    <td>{{ item.count|number }}</td>
+                    <td>{{ item.avgResults|number(1) }}</td>
+                    <td>{{ item.lastTriggered|date('short') }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{# Daily Trend Chart #}
+{% if analytics.dailyTriggers|length %}
+<div class="chart-container">
+    <h3>{{ "Daily Triggers"|t('search-manager') }}</h3>
+    <canvas id="rule-daily-chart" style="max-height: 250px;"></canvas>
+</div>
+
+<script>
+// Load Chart.js if not already loaded
+if (typeof Chart === 'undefined') {
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
+    script.onload = function() {
+        initializeRuleCharts();
+    };
+    document.head.appendChild(script);
+} else {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initializeRuleCharts);
+    } else {
+        initializeRuleCharts();
+    }
+}
+
+window.ruleCharts = window.ruleCharts || {};
+
+function initializeRuleCharts() {
+    if (window.ruleCharts.dailyChart) {
+        window.ruleCharts.dailyChart.destroy();
+    }
+
+    const ctx = document.getElementById('rule-daily-chart');
+    if (ctx) {
+        const dailyData = {{ analytics.dailyTriggers|json_encode|raw }};
+        window.ruleCharts.dailyChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dailyData.map(d => d.date),
+                datasets: [{
+                    label: '{{ "Triggers"|t('search-manager') }}',
+                    data: dailyData.map(d => d.count),
+                    borderColor: '#0d78f2',
+                    backgroundColor: 'rgba(13, 120, 242, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+</script>
+{% endif %}
+
+{# Recent Triggers #}
+{% if analytics.recentTriggers|length %}
+<div class="chart-container">
+    <h3>{{ "Recent Triggers (Last 20)"|t('search-manager') }}</h3>
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Date'|t('search-manager') }}</th>
+                <th>{{ 'Time'|t('search-manager') }}</th>
+                <th>{{ 'Query'|t('search-manager') }}</th>
+                <th>{{ 'Index'|t('search-manager') }}</th>
+                <th>{{ 'Site'|t('search-manager') }}</th>
+                <th>{{ 'Results After'|t('search-manager') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for trigger in analytics.recentTriggers %}
+                <tr>
+                    <td>{{ trigger.dateCreated|date('short') }}</td>
+                    <td>{{ trigger.dateCreated|time('short') }}</td>
+                    <td><code>{{ trigger.query }}</code></td>
+                    <td>{{ trigger.indexHandle ?? '—' }}</td>
+                    <td>
+                        {% if trigger.siteId %}
+                            {% set site = craft.app.sites.getSiteById(trigger.siteId) %}
+                            {{ site ? site.name : '—' }}
+                        {% else %}
+                            —
+                        {% endif %}
+                    </td>
+                    <td>{{ trigger.resultsCount ?? '—' }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+{% endif %}{# end if analytics.totalTriggers == 0 #}

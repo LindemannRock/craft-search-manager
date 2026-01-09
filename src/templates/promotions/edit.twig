@@ -1,7 +1,7 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 {% set title = isNew ? 'New Promotion'|t('search-manager') : 'Edit Promotion'|t('search-manager') %}
 {% set fullPageForm = true %}
 {% set selectedSubnavItem = 'promotions' %}
@@ -13,6 +13,24 @@
     { label: 'Promotions'|t('search-manager'), url: url('search-manager/promotions') },
     { label: isNew ? 'New Promotion'|t('search-manager') : promotion.title }
 ] %}
+
+{# Set up tabs #}
+{% set tabs = {
+    fields: {
+        label: 'Settings'|t('search-manager'),
+        url: '#fields',
+    },
+} %}
+
+{# Add analytics tab if promotion exists and analytics are enabled #}
+{% if not isNew and plugin.settings.enableAnalytics %}
+    {% set tabs = tabs|merge({
+        analytics: {
+            label: 'Analytics'|t('search-manager'),
+            url: '#analytics',
+        },
+    }) %}
+{% endif %}
 
 {% block actionButton %}
 	<div class="btngroup submit">
@@ -188,7 +206,16 @@
 			</p>
 		</div>
 
-	</div>
+	</div>{# /fields #}
+
+	{# Analytics Tab Content - only for existing promotions #}
+	{% if not isNew and plugin.settings.enableAnalytics %}
+		<div id="analytics" class="hidden">
+			{% include "search-manager/promotions/_partials/analytics" with {
+				promotion: promotion
+			} %}
+		</div>
+	{% endif %}
 {% endblock %}
 
 {% block details %}

@@ -1035,7 +1035,7 @@ class AnalyticsService extends Component
     /**
      * Apply date range filter to query
      */
-    private function applyDateRangeFilter(Query $query, string $dateRange, ?string $column = null): void
+    public function applyDateRangeFilter(Query $query, string $dateRange, ?string $column = null): void
     {
         $column = $column ?: 'dateCreated';
         $tz = new \DateTimeZone(Craft::$app->getTimeZone());
@@ -2035,5 +2035,133 @@ class AnalyticsService extends Component
                 'promotionsShown' => (int)$row['promotionsShown'],
             ];
         }, $results);
+    }
+
+    /**
+     * Get analytics for a specific query rule
+     *
+     * @param int $ruleId The query rule ID
+     * @param string $dateRange Date range filter
+     * @return array Analytics data
+     */
+    public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
+    {
+        $query = (new Query())
+            ->from('{{%searchmanager_rule_analytics}}')
+            ->where(['queryRuleId' => $ruleId]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        // Get summary stats
+        $totalTriggers = (int)(clone $query)->count();
+        $uniqueQueries = (int)(clone $query)->select('COUNT(DISTINCT query)')->scalar();
+        $avgResultsAfter = (float)(clone $query)->select('AVG(resultsCount)')->scalar();
+
+        // Get top queries
+        $topQueries = (clone $query)
+            ->select(['query', 'COUNT(*) as count', 'AVG(resultsCount) as avgResults', 'MAX(dateCreated) as lastTriggered'])
+            ->groupBy('query')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit(10)
+            ->all();
+
+        // Get daily triggers
+        $dailyTriggers = (clone $query)
+            ->select(['DATE(dateCreated) as date', 'COUNT(*) as count'])
+            ->groupBy('DATE(dateCreated)')
+            ->orderBy(['date' => SORT_ASC])
+            ->all();
+
+        // Get recent triggers
+        $recentTriggers = (clone $query)
+            ->select(['*'])
+            ->orderBy(['dateCreated' => SORT_DESC])
+            ->limit(20)
+            ->all();
+
+        return [
+            'totalTriggers' => $totalTriggers,
+            'uniqueQueries' => $uniqueQueries,
+            'avgResultsAfter' => $avgResultsAfter,
+            'topQueries' => array_map(function($row) {
+                return [
+                    'query' => $row['query'],
+                    'count' => (int)$row['count'],
+                    'avgResults' => (float)$row['avgResults'],
+                    'lastTriggered' => $row['lastTriggered'],
+                ];
+            }, $topQueries),
+            'dailyTriggers' => array_map(function($row) {
+                return [
+                    'date' => $row['date'],
+                    'count' => (int)$row['count'],
+                ];
+            }, $dailyTriggers),
+            'recentTriggers' => $recentTriggers,
+        ];
+    }
+
+    /**
+     * Get analytics for a specific promotion
+     *
+     * @param int $promotionId The promotion ID
+     * @param string $dateRange Date range filter
+     * @return array Analytics data
+     */
+    public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
+    {
+        $query = (new Query())
+            ->from('{{%searchmanager_promotion_analytics}}')
+            ->where(['promotionId' => $promotionId]);
+
+        $this->applyDateRangeFilter($query, $dateRange);
+
+        // Get summary stats
+        $totalImpressions = (int)(clone $query)->count();
+        $uniqueQueries = (int)(clone $query)->select('COUNT(DISTINCT query)')->scalar();
+        $avgPosition = (float)(clone $query)->select('AVG(position)')->scalar();
+
+        // Get top queries
+        $topQueries = (clone $query)
+            ->select(['query', 'COUNT(*) as count', 'AVG(position) as avgPosition', 'MAX(dateCreated) as lastShown'])
+            ->groupBy('query')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit(10)
+            ->all();
+
+        // Get daily impressions
+        $dailyImpressions = (clone $query)
+            ->select(['DATE(dateCreated) as date', 'COUNT(*) as count'])
+            ->groupBy('DATE(dateCreated)')
+            ->orderBy(['date' => SORT_ASC])
+            ->all();
+
+        // Get recent impressions
+        $recentImpressions = (clone $query)
+            ->select(['*'])
+            ->orderBy(['dateCreated' => SORT_DESC])
+            ->limit(20)
+            ->all();
+
+        return [
+            'totalImpressions' => $totalImpressions,
+            'uniqueQueries' => $uniqueQueries,
+            'avgPosition' => $avgPosition,
+            'topQueries' => array_map(function($row) {
+                return [
+                    'query' => $row['query'],
+                    'count' => (int)$row['count'],
+                    'avgPosition' => (float)$row['avgPosition'],
+                    'lastShown' => $row['lastShown'],
+                ];
+            }, $topQueries),
+            'dailyImpressions' => array_map(function($row) {
+                return [
+                    'date' => $row['date'],
+                    'count' => (int)$row['count'],
+                ];
+            }, $dailyImpressions),
+            'recentImpressions' => $recentImpressions,
+        ];
     }
 }
