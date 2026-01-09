@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.25.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.24.0...v5.25.0) (2026-01-09)
+
+
+### Features
+
+* **analytics:** add per-tab export buttons with consistent filenames ([e28d68b](https://github.com/LindemannRock/craft-search-manager/commit/e28d68bdc68213a6ec6b835a436cd9499fb77a0c))
+* enhance action type badge styling for improved visibility and clarity ([88a7005](https://github.com/LindemannRock/craft-search-manager/commit/88a7005894905ec07c995952ffb32e8d4880ecdb))
+* enhance multi-index search with redirect handling and metadata aggregation ([0e50b74](https://github.com/LindemannRock/craft-search-manager/commit/0e50b74e067e449ea566a974a36ba5cf9f4b7029))
+* enhance redirect functionality to support element-based redirects and improve UI for redirect type selection ([41974c7](https://github.com/LindemannRock/craft-search-manager/commit/41974c7dbf571a4877671757ae6874b485ffe0f9))
+* enhance redirect handling to display element info in query results ([5d9849b](https://github.com/LindemannRock/craft-search-manager/commit/5d9849be597c0abc46a3d6702bc216ecbc4fd886))
+* refine zero-result analytics to exclude handled searches and improve accuracy ([aff45c5](https://github.com/LindemannRock/craft-search-manager/commit/aff45c5f7fd8ee05c4ae1e19529195d99ab589a3))
+* update redirect URL resolution to support optional site ID for accurate element URLs ([9a6cbc9](https://github.com/LindemannRock/craft-search-manager/commit/9a6cbc90cc6f7abc5de25f1fe2c3d7e54467a3f7))
+
+
+### Bug Fixes
+
+* update filename generation to use 'alltime' instead of 'all' for clarity ([cc1982c](https://github.com/LindemannRock/craft-search-manager/commit/cc1982ce429dcf0aed770f45edce8498225121f8))
+
 ## [5.24.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.23.0...v5.24.0) (2026-01-08)
 
 
