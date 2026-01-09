@@ -117,12 +117,15 @@ class QueryRuleService extends Component
 
         foreach ($rules as $rule) {
             if ($rule->isRedirect()) {
+                // Pass siteId so element URLs resolve to the correct site
+                $redirectUrl = $rule->getRedirectUrl($siteId);
                 $this->logDebug('Redirect rule matched', [
                     'query' => $query,
                     'ruleId' => $rule->id,
-                    'url' => $rule->getRedirectUrl(),
+                    'siteId' => $siteId,
+                    'url' => $redirectUrl,
                 ]);
-                return $rule->getRedirectUrl();
+                return $redirectUrl;
             }
         }
 

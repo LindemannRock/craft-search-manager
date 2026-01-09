@@ -400,8 +400,10 @@ class QueryRule extends Model
     /**
      * Get redirect URL for redirect action type
      * Resolves element URLs if an element is linked
+     *
+     * @param int|null $siteId Optional site ID - if provided, will get element URL for that site
      */
-    public function getRedirectUrl(): ?string
+    public function getRedirectUrl(?int $siteId = null): ?string
     {
         if ($this->actionType !== self::ACTION_REDIRECT) {
             return null;
@@ -418,7 +420,7 @@ class QueryRule extends Model
             $elementId = (int)$this->actionValue['elementId'];
 
             /** @var \craft\base\Element|null $element */
-            $element = \Craft::$app->getElements()->getElementById($elementId, $elementType);
+            $element = \Craft::$app->getElements()->getElementById($elementId, $elementType, $siteId);
 
             if ($element) {
                 return $element->getUrl();
