@@ -505,9 +505,63 @@ class BackendService extends Component
             return ['hits' => [], 'total' => 0, 'indices' => []];
         }
 
+        $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id;
+
+        // Check for redirects first across all indexes (including global rules)
+        // Global rules (indexHandle = null) apply to all indexes
+        $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, null, $siteId);
+        if (!$redirectUrl) {
+            // Check each specific index for redirect rules
+            foreach ($indexNames as $indexName) {
+                $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, $indexName, $siteId);
+                if ($redirectUrl) {
+                    break;
+                }
+            }
+        }
+
+        if ($redirectUrl) {
+            $this->logDebug('Multi-index search redirect matched', [
+                'query' => $query,
+                'redirectUrl' => $redirectUrl,
+                'indices' => $indexNames,
+            ]);
+
+            // Track analytics for redirect
+            SearchManager::$plugin->analytics->trackSearch(
+                implode(',', $indexNames),
+                $query,
+                0,
+                0,
+                $backend->getName(),
+                $siteId,
+                [
+                    'synonymsExpanded' => false,
+                    'rulesMatched' => 1,
+                    'promotionsShown' => 0,
+                    'wasRedirected' => true,
+                    'matchedRules' => [],
+                    'matchedPromotions' => [],
+                ]
+            );
+
+            return [
+                'hits' => [],
+                'total' => 0,
+                'indices' => array_fill_keys($indexNames, 0),
+                'redirect' => $redirectUrl,
+            ];
+        }
+
         $allHits = [];
         $totalCount = 0;
         $indicesSearched = [];
+        $meta = [
+            'synonymsExpanded' => false,
+            'expandedQueries' => [],
+            'rulesMatched' => [],
+            'promotionsMatched' => [],
+        ];
 
         foreach ($indexNames as $indexName) {
             $indexResults = $this->search($indexName, $query, $options);
@@ -523,6 +577,24 @@ class BackendService extends Component
 
             $totalCount += $indexResults['total'] ?? 0;
             $indicesSearched[$indexName] = $indexResults['total'] ?? 0;
+
+            // Merge metadata from each index
+            if (!empty($indexResults['meta'])) {
+                $indexMeta = $indexResults['meta'];
+                if (!empty($indexMeta['synonymsExpanded'])) {
+                    $meta['synonymsExpanded'] = true;
+                    $meta['expandedQueries'] = array_unique(array_merge(
+                        $meta['expandedQueries'],
+                        $indexMeta['expandedQueries'] ?? []
+                    ));
+                }
+                if (!empty($indexMeta['rulesMatched'])) {
+                    $meta['rulesMatched'] = array_merge($meta['rulesMatched'], $indexMeta['rulesMatched']);
+                }
+                if (!empty($indexMeta['promotionsMatched'])) {
+                    $meta['promotionsMatched'] = array_merge($meta['promotionsMatched'], $indexMeta['promotionsMatched']);
+                }
+            }
         }
 
         // Sort merged hits by score (descending)
@@ -539,6 +611,7 @@ class BackendService extends Component
             'hits' => $allHits,
             'total' => $totalCount,
             'indices' => $indicesSearched,
+            'meta' => $meta,
         ];
     }
 
