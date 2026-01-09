@@ -949,15 +949,17 @@
     }
 
     function getActionTypeBadge(actionType) {
-        const badges = {
-            'synonym': '<span class="status blue"></span> Synonym',
-            'boost_section': '<span class="status green"></span> Boost Section',
-            'boost_category': '<span class="status green"></span> Boost Category',
-            'boost_element': '<span class="status green"></span> Boost Element',
-            'filter': '<span class="status orange"></span> Filter',
-            'redirect': '<span class="status red"></span> Redirect'
+        const colors = {
+            'synonym': { bg: '59, 130, 246', dot: '#3b82f6', text: '#1e3a8a', label: 'Synonyms' },
+            'boost_section': { bg: '16, 185, 129', dot: '#10b981', text: '#064e3b', label: 'Boost Section' },
+            'boost_category': { bg: '20, 184, 166', dot: '#14b8a6', text: '#134e4a', label: 'Boost Category' },
+            'boost_element': { bg: '34, 197, 94', dot: '#22c55e', text: '#14532d', label: 'Boost Element' },
+            'filter': { bg: '249, 115, 22', dot: '#f97316', text: '#7c2d12', label: 'Filter' },
+            'redirect': { bg: '239, 68, 68', dot: '#ef4444', text: '#7f1d1d', label: 'Redirect' }
         };
-        return badges[actionType] || actionType;
+        const c = colors[actionType];
+        if (!c) return actionType;
+        return `<span class="status-label" style="background: rgba(${c.bg}, 0.12);"><span class="status" style="background: ${c.dot};"></span><span class="status-label-text" style="color: ${c.text};">${c.label}</span></span>`;
     }
 
     // Load Promotions Analytics
