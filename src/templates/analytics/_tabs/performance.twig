@@ -1,3 +1,15 @@
+<div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+    <div class="btngroup">
+        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+        <div class="menu" data-align="right">
+            <ul>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"performance"}'>{{ "Export CSV"|t('search-manager') }}</a></li>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"performance"}'>{{ "Export JSON"|t('search-manager') }}</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
 <div class="analytics-stats">
     <div class="stat-box">
         <div class="stat-value" id="cache-hit-rate">—</div>

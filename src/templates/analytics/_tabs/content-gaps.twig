@@ -1,7 +1,23 @@
-<h2 style="margin: 0 0 20px;">{{ "Content Gaps (Zero-Hit Clusters)"|t('search-manager') }}</h2>
-<p class="light" style="margin-bottom: 20px;">
-    {{ "These groups of queries returned no hits. This indicates missing content or topics your users are looking for."|t('search-manager') }}
-</p>
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+    <div>
+        <h2 style="margin: 0 0 10px;">{{ "Content Gaps (Zero-Hit Clusters)"|t('search-manager') }}</h2>
+        <p class="light" style="margin: 0;">
+            {{ "These groups of queries returned no hits. This indicates missing content or topics your users are looking for."|t('search-manager') }}
+        </p>
+    </div>
+    <div class="btngroup">
+        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+        <div class="menu" data-align="right">
+            <ul>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="csv" data-params='{"type":"clusters"}'>{{ "Clusters (CSV)"|t('search-manager') }}</a></li>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="json" data-params='{"type":"clusters"}'>{{ "Clusters (JSON)"|t('search-manager') }}</a></li>
+                <li><hr></li>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="csv" data-params='{"type":"recent"}'>{{ "Recent Zero-Hits (CSV)"|t('search-manager') }}</a></li>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="json" data-params='{"type":"recent"}'>{{ "Recent Zero-Hits (JSON)"|t('search-manager') }}</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
 
 <div class="analytics-charts">
     <div class="chart-container full-width">

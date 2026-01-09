@@ -3,7 +3,18 @@
 {% set settings = craft.app.plugins.getPlugin('search-manager').settings %}
 
 {% if settings.enableGeoDetection %}
-    <h2 style="margin: 0 0 20px;">{{ "Geographic Distribution"|t('search-manager') }}</h2>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0;">{{ "Geographic Distribution"|t('search-manager') }}</h2>
+        <div class="btngroup">
+            <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+            <div class="menu" data-align="right">
+                <ul>
+                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"geographic"}'>{{ "Export CSV"|t('search-manager') }}</a></li>
+                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"geographic"}'>{{ "Export JSON"|t('search-manager') }}</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
 
     <div class="analytics-charts two-columns">
         <div class="chart-container">

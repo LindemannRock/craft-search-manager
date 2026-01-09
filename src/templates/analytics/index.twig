@@ -52,21 +52,6 @@
 
 {% set selectedTab = 'overview' %}
 
-{% block actionButton %}
-	<div id="action-button" class="btngroup">
-		<button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-		<div class="menu" data-align="right">
-			<ul>
-				<li>
-					<a href="#" class="export-link" data-format="csv" data-action="search-manager/analytics/export">{{ "Export as CSV"|t('search-manager') }}</a>
-				</li>
-				<li>
-					<a href="#" class="export-link" data-format="json" data-action="search-manager/analytics/export">{{ "Export as JSON"|t('search-manager') }}</a>
-				</li>
-			</ul>
-		</div>
-	</div>
-{% endblock %}
 
 {% block toolbar %}
 	<div class="flex">
@@ -359,7 +344,7 @@
         switchTab(hash);
     });
 
-    // Handle initial tab and clicks
+    // Handle initial page load and tab clicks
     $(document).ready(function() {
         // Handle clicks on tab links
         $(document).on('click', 'a[href^="#"]', function() {
@@ -372,7 +357,7 @@
             }
         });
 
-        // Handle initial tab
+        // Initialize with current tab
         var hash = window.location.hash.substring(1) || 'overview';
         switchTab(hash);
     });
@@ -442,6 +427,8 @@
                         renderQueryAnalysis(res.data.queryAnalysis);
                         // Also load breakdown charts
                         loadBreakdownCharts(dateRange, siteId);
+                        // Load peak hours and trending queries
+                        loadSearchActivityData(dateRange, siteId);
                     }
                     if (tabName === 'content-gaps') renderContentGaps(res.data.contentGaps);
                 }
@@ -631,6 +618,130 @@
             success: function(res) {
                 if (res.success) renderSourceChart(res.data);
             }
+        });
+    }
+
+    // Load Search Activity data (Peak Hours + Trending Queries)
+    function loadSearchActivityData(dateRange, siteId) {
+        const csrfToken = '{{ craft.app.request.csrfToken }}';
+        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
+
+        // Load Peak Hours
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderPeakHoursChart(res.data);
+            }
+        });
+
+        // Load Trending Queries
+        $.ajax({
+            url: Craft.getActionUrl('search-manager/analytics/get-data'),
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'trending', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderTrendingQueries(res.data);
+            }
+        });
+    }
+
+    function renderPeakHoursChart(data) {
+        const ctx = document.getElementById('peak-hours-chart');
+        if (!ctx) return;
+
+        if (window.smCharts.peakHours) {
+            window.smCharts.peakHours.destroy();
+        }
+
+        window.smCharts.peakHours = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [{
+                    label: '{{ "Searches"|t('search-manager') }}',
+                    data: data.data,
+                    backgroundColor: data.data.map((val, idx) => idx === data.peakHour ? '#e74c3c' : 'rgba(13, 120, 242, 0.7)'),
+                    borderColor: data.data.map((val, idx) => idx === data.peakHour ? '#c0392b' : '#0d78f2'),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { stepSize: 1 }
+                    },
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
+            }
+        });
+
+        // Show peak hour label
+        if (data.peakHourFormatted) {
+            $('#peak-hour-label').html('<strong>{{ "Peak hour:"|t('search-manager') }}</strong> ' + data.peakHourFormatted);
+        }
+    }
+
+    function renderTrendingQueries(data) {
+        const tbody = $('#trending-queries-body');
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="4" class="thin light" style="text-align: center;">{{ "No trending data available"|t('search-manager') }}</td></tr>');
+            return;
+        }
+
+        data.forEach(q => {
+            let trendIcon = '';
+            let trendColor = '';
+            let trendText = '';
+
+            switch(q.trend) {
+                case 'up':
+                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>';
+                    trendColor = '#27ae60';
+                    trendText = '+' + q.changePercent + '%';
+                    break;
+                case 'down':
+                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>';
+                    trendColor = '#e74c3c';
+                    trendText = '-' + q.changePercent + '%';
+                    break;
+                case 'new':
+                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4" fill="currentColor"></circle></svg>';
+                    trendColor = '#3498db';
+                    trendText = '{{ "New"|t('search-manager') }}';
+                    break;
+                default:
+                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+                    trendColor = '#95a5a6';
+                    trendText = '—';
+            }
+
+            tbody.append(`<tr>
+                <td><code>${Craft.escapeHtml(q.query)}</code></td>
+                <td style="text-align: right;">${q.count.toLocaleString()}</td>
+                <td style="text-align: right; color: #95a5a6;">${q.previousCount > 0 ? q.previousCount.toLocaleString() : '—'}</td>
+                <td style="text-align: right; color: ${trendColor};">
+                    <span style="display: inline-flex; align-items: center; gap: 4px;">
+                        ${trendIcon} ${trendText}
+                    </span>
+                </td>
+            </tr>`);
         });
     }
 
@@ -1091,20 +1202,24 @@
          window.location = url;
     });
 
-    // Export Handler
-    $(document).on('click', '.export-link', function(e) {
+    // Export click handler for per-tab export buttons
+    $(document).on('click', '.tab-export', function(e) {
         e.preventDefault();
+
         const action = $(this).data('action');
         const format = $(this).data('format') || 'csv';
+        const extraParams = $(this).data('params') || {};
         const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
         const siteId = new URLSearchParams(window.location.search).get('siteId') || '';
 
-        const exportUrl = Craft.getActionUrl(action, {
+        const params = {
             dateRange: dateRange,
             siteId: siteId,
-            format: format
-        });
+            format: format,
+            ...extraParams
+        };
 
+        const exportUrl = Craft.getActionUrl(action, params);
         window.location.href = exportUrl;
     });
 

@@ -1,3 +1,15 @@
+<div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+    <div class="btngroup">
+        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+        <div class="menu" data-align="right">
+            <ul>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"trending"}'>{{ "Trending Queries (CSV)"|t('search-manager') }}</a></li>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"trending"}'>{{ "Trending Queries (JSON)"|t('search-manager') }}</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
 <div class="analytics-stats">
     <div class="stat-box">
         <div class="stat-value" id="total-404s">{{ (totalCount ?? 0)|number }}</div>
@@ -52,6 +64,40 @@
         <h3>{{ "Word Cloud"|t('search-manager') }}</h3>
         <div id="word-cloud-container" style="height: 300px; position: relative; width: 100%;">
             {# Word cloud will be rendered here by D3/JS #}
+        </div>
+    </div>
+</div>
+
+<h2 style="margin: 30px 0 20px;">{{ "Search Activity"|t('search-manager') }}</h2>
+
+<div class="analytics-charts">
+    <div class="chart-container full-width">
+        <h3>{{ "Peak Search Hours"|t('search-manager') }}</h3>
+        <p class="light" style="margin: -10px 0 15px; font-size: 12px;">{{ "When users search most (24-hour format)"|t('search-manager') }}</p>
+        <canvas id="peak-hours-chart" style="max-height: 200px;"></canvas>
+        <div id="peak-hour-label" style="text-align: center; margin-top: 10px; font-size: 13px; color: #596673;"></div>
+    </div>
+</div>
+
+<h2 style="margin: 30px 0 20px;">{{ "Trending Queries"|t('search-manager') }}</h2>
+
+<div class="analytics-charts">
+    <div class="chart-container full-width">
+        <p class="light" style="margin: -10px 0 15px; font-size: 12px;">{{ "Compared to previous period (e.g., last 7 days vs. prior 7 days)"|t('search-manager') }}</p>
+        <div class="table-scroll-container">
+            <table class="data fullwidth">
+                <thead>
+                    <tr>
+                        <th>{{ 'Query'|t('search-manager') }}</th>
+                        <th style="text-align: right;">{{ 'Searches'|t('search-manager') }}</th>
+                        <th style="text-align: right;">{{ 'Previous'|t('search-manager') }}</th>
+                        <th style="text-align: right;">{{ 'Trend'|t('search-manager') }}</th>
+                    </tr>
+                </thead>
+                <tbody id="trending-queries-body">
+                    <tr><td colspan="4" class="thin light">{{ "Loading..."|t('search-manager') }}</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 </div>

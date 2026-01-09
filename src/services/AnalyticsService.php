@@ -1738,6 +1738,134 @@ class AnalyticsService extends Component
     }
 
     /**
+     * Get trending queries - compares current period to previous period
+     *
+     * @param int|null $siteId Site ID filter
+     * @param string $dateRange Date range for current period
+     * @param int $limit Number of queries to return
+     * @return array Queries with trend data (up, down, new, same)
+     */
+    public function getTrendingQueries(?int $siteId, string $dateRange = 'last7days', int $limit = 10): array
+    {
+        // Calculate date ranges for current and previous periods
+        $tz = new \DateTimeZone(Craft::$app->getTimeZone());
+        $now = new \DateTime('now', $tz);
+
+        switch ($dateRange) {
+            case 'today':
+                $currentStart = (clone $now)->setTime(0, 0, 0);
+                $previousStart = (clone $currentStart)->modify('-1 day');
+                $previousEnd = (clone $currentStart)->modify('-1 second');
+                break;
+            case 'yesterday':
+                $currentStart = (clone $now)->modify('-1 day')->setTime(0, 0, 0);
+                $currentEnd = (clone $currentStart)->modify('+1 day')->modify('-1 second');
+                $previousStart = (clone $currentStart)->modify('-1 day');
+                $previousEnd = (clone $currentStart)->modify('-1 second');
+                $now = $currentEnd; // Use yesterday's end as "now"
+                break;
+            case 'last7days':
+                $currentStart = (clone $now)->modify('-7 days');
+                $previousStart = (clone $now)->modify('-14 days');
+                $previousEnd = (clone $currentStart)->modify('-1 second');
+                break;
+            case 'last30days':
+                $currentStart = (clone $now)->modify('-30 days');
+                $previousStart = (clone $now)->modify('-60 days');
+                $previousEnd = (clone $currentStart)->modify('-1 second');
+                break;
+            case 'last90days':
+                $currentStart = (clone $now)->modify('-90 days');
+                $previousStart = (clone $now)->modify('-180 days');
+                $previousEnd = (clone $currentStart)->modify('-1 second');
+                break;
+            default: // 'all' - compare last 30 days vs previous 30 days
+                $currentStart = (clone $now)->modify('-30 days');
+                $previousStart = (clone $now)->modify('-60 days');
+                $previousEnd = (clone $currentStart)->modify('-1 second');
+                break;
+        }
+
+        // Get current period queries
+        $currentQuery = (new Query())
+            ->select(['query', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['>=', 'dateCreated', Db::prepareDateForDb($currentStart)])
+            ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($now)])
+            ->groupBy('query')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit * 2); // Get more to account for filtering
+
+        if ($siteId) {
+            $currentQuery->andWhere(['siteId' => $siteId]);
+        }
+
+        $currentResults = $currentQuery->all();
+
+        // Get previous period queries for comparison
+        $previousQuery = (new Query())
+            ->select(['query', 'COUNT(*) as count'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['>=', 'dateCreated', Db::prepareDateForDb($previousStart)])
+            ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($previousEnd)])
+            ->groupBy('query');
+
+        if ($siteId) {
+            $previousQuery->andWhere(['siteId' => $siteId]);
+        }
+
+        $previousResults = $previousQuery->all();
+
+        // Index previous results by query
+        $previousCounts = [];
+        foreach ($previousResults as $row) {
+            $previousCounts[strtolower($row['query'])] = (int)$row['count'];
+        }
+
+        // Calculate trends
+        $trending = [];
+        foreach ($currentResults as $row) {
+            $query = $row['query'];
+            $currentCount = (int)$row['count'];
+            $queryKey = strtolower($query);
+            $previousCount = $previousCounts[$queryKey] ?? 0;
+
+            // Calculate percentage change
+            if ($previousCount === 0) {
+                $trend = 'new';
+                $changePercent = 100;
+            } elseif ($currentCount > $previousCount) {
+                $trend = 'up';
+                $changePercent = round((($currentCount - $previousCount) / $previousCount) * 100);
+            } elseif ($currentCount < $previousCount) {
+                $trend = 'down';
+                $changePercent = round((($previousCount - $currentCount) / $previousCount) * 100);
+            } else {
+                $trend = 'same';
+                $changePercent = 0;
+            }
+
+            $trending[] = [
+                'query' => $query,
+                'count' => $currentCount,
+                'previousCount' => $previousCount,
+                'trend' => $trend,
+                'changePercent' => $changePercent,
+            ];
+        }
+
+        // Sort by absolute change (most movement first), but keep high-count items visible
+        usort($trending, function($a, $b) {
+            // Prioritize significant trends with decent volume
+            $aScore = $a['count'] * ($a['changePercent'] / 100 + 1);
+            $bScore = $b['count'] * ($b['changePercent'] / 100 + 1);
+            return $bScore <=> $aScore;
+        });
+
+        return array_slice($trending, 0, $limit);
+    }
+
+    /**
      * Get average execution time
      */
     public function getAverageExecutionTime(?int $siteId, int $days = 30): float

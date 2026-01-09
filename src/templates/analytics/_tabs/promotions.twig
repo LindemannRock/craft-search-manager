@@ -11,6 +11,17 @@
         <a href="{{ url('search-manager/promotions/new') }}" class="btn submit">{{ "Create Promotion"|t('search-manager') }}</a>
     </div>
 {% else %}
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
+        <div class="btngroup">
+            <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+            <div class="menu" data-align="right">
+                <ul>
+                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"promotions"}'>{{ "Export CSV"|t('search-manager') }}</a></li>
+                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"promotions"}'>{{ "Export JSON"|t('search-manager') }}</a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
     <div class="analytics-charts two-columns">
         <div class="chart-container">
             <h3>{{ "Top Promoted Elements"|t('search-manager') }}</h3>

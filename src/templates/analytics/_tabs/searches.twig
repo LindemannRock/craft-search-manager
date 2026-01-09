@@ -1,4 +1,15 @@
-<h2 style="margin: 0 0 20px;">{{ "Recent Searches"|t('search-manager') }}</h2>
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h2 style="margin: 0;">{{ "Recent Searches"|t('search-manager') }}</h2>
+    <div class="btngroup">
+        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
+        <div class="menu" data-align="right">
+            <ul>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export" data-format="csv">{{ "Export CSV"|t('search-manager') }}</a></li>
+                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export" data-format="json">{{ "Export JSON"|t('search-manager') }}</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
 
 <div class="analytics-charts">
     <div class="chart-container full-width">

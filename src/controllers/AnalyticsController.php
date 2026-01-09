@@ -351,6 +351,15 @@ class AnalyticsController extends Controller
                 ]);
             }
 
+            // Trending queries
+            if ($type === 'trending') {
+                $trendingData = SearchManager::$plugin->analytics->getTrendingQueries($siteId, $dateRange);
+                return $this->asJson([
+                    'success' => true,
+                    'data' => $trendingData,
+                ]);
+            }
+
             // Intent breakdown
             if ($type === 'intent') {
                 $intentData = SearchManager::$plugin->analytics->getIntentBreakdown($siteId, $dateRange);
@@ -656,9 +665,11 @@ class AnalyticsController extends Controller
         $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
 
         // Generate filename
+        $settings = SearchManager::$plugin->getSettings();
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
         $ruleName = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $rule->name));
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
-        $filename = 'query-rule-' . $ruleName . '-analytics-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
+        $filename = $filenamePart . '-query-rule-' . $ruleName . '-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
 
         if ($format === 'json') {
             $content = json_encode($data, JSON_PRETTY_PRINT);
@@ -719,9 +730,11 @@ class AnalyticsController extends Controller
         $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
 
         // Generate filename
+        $settings = SearchManager::$plugin->getSettings();
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
         $promotionTitle = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $promotion->title));
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
-        $filename = 'promotion-' . $promotionTitle . '-analytics-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
+        $filename = $filenamePart . '-promotion-' . $promotionTitle . '-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
 
         if ($format === 'json') {
             $content = json_encode($data, JSON_PRETTY_PRINT);
@@ -736,6 +749,255 @@ class AnalyticsController extends Controller
                         return '"' . str_replace('"', '""', $val ?? '') . '"';
                     }, $row));
                 }
+            }
+            $content = implode("\n", $lines);
+            $mimeType = 'text/csv';
+        }
+
+        return Craft::$app->getResponse()->sendContentAsFile(
+            $content,
+            $filename,
+            ['mimeType' => $mimeType]
+        );
+    }
+
+    /**
+     * Export tab-specific data
+     *
+     * @return Response
+     */
+    public function actionExportTab(): Response
+    {
+        $this->requirePermission('searchManager:exportAnalytics');
+
+        $request = Craft::$app->getRequest();
+        $tab = $request->getQueryParam('tab', 'trending');
+        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $siteId = $request->getQueryParam('siteId');
+        $siteId = $siteId ? (int)$siteId : null;
+        $format = $request->getQueryParam('format', 'csv');
+
+        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
+        $settings = SearchManager::$plugin->getSettings();
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
+        $data = [];
+        $filename = '';
+
+        switch ($tab) {
+            case 'trending':
+                $trending = SearchManager::$plugin->analytics->getTrendingQueries($siteId, $dateRange, 50);
+                foreach ($trending as $item) {
+                    $data[] = [
+                        'query' => $item['query'],
+                        'searches' => $item['count'],
+                        'previous_period' => $item['previousCount'],
+                        'trend' => $item['trend'],
+                        'change_percent' => $item['changePercent'],
+                    ];
+                }
+                $filename = $filenamePart . '-trending-' . $dateRangeLabel . '-' . date('Y-m-d');
+                break;
+
+            case 'query-rules':
+                $rulesData = SearchManager::$plugin->analytics->getTopTriggeredRules($siteId, $dateRange);
+                foreach ($rulesData as $item) {
+                    $data[] = [
+                        'rule_name' => $item['ruleName'],
+                        'action_type' => $item['actionType'],
+                        'hits' => $item['hits'],
+                        'avg_results' => $item['avgResults'],
+                    ];
+                }
+                $filename = $filenamePart . '-query-rules-' . $dateRangeLabel . '-' . date('Y-m-d');
+                break;
+
+            case 'promotions':
+                $promosData = SearchManager::$plugin->analytics->getTopPromotions($siteId, $dateRange);
+                foreach ($promosData as $item) {
+                    $data[] = [
+                        'element_title' => $item['elementTitle'] ?? 'Element #' . $item['elementId'],
+                        'position' => $item['position'],
+                        'impressions' => $item['impressions'],
+                        'unique_queries' => $item['uniqueQueries'],
+                    ];
+                }
+                $filename = $filenamePart . '-promotions-' . $dateRangeLabel . '-' . date('Y-m-d');
+                break;
+
+            case 'performance':
+                $fastQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($siteId, $dateRange);
+                $slowQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($siteId, $dateRange);
+                foreach ($fastQueries as $item) {
+                    $data[] = [
+                        'query' => $item['query'],
+                        'type' => 'fast',
+                        'avg_time_ms' => $item['avgTime'],
+                        'searches' => $item['searches'],
+                    ];
+                }
+                foreach ($slowQueries as $item) {
+                    $data[] = [
+                        'query' => $item['query'],
+                        'type' => 'slow',
+                        'avg_time_ms' => $item['avgTime'],
+                        'searches' => $item['searches'],
+                    ];
+                }
+                $filename = $filenamePart . '-performance-' . $dateRangeLabel . '-' . date('Y-m-d');
+                break;
+
+            case 'traffic-devices':
+                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
+                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
+                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
+
+                foreach ($deviceData as $item) {
+                    $data[] = ['category' => 'device', 'name' => $item['deviceType'] ?? '', 'count' => $item['count']];
+                }
+                foreach ($browserData as $item) {
+                    $data[] = ['category' => 'browser', 'name' => $item['browser'] ?? '', 'count' => $item['count']];
+                }
+                foreach ($osData as $item) {
+                    $data[] = ['category' => 'os', 'name' => $item['osName'] ?? '', 'count' => $item['count']];
+                }
+                $filename = $filenamePart . '-traffic-devices-' . $dateRangeLabel . '-' . date('Y-m-d');
+                break;
+
+            case 'geographic':
+                $countries = SearchManager::$plugin->analytics->getCountryBreakdown($siteId, $dateRange);
+                $cities = SearchManager::$plugin->analytics->getCityBreakdown($siteId, $dateRange);
+
+                foreach ($countries as $item) {
+                    $data[] = ['type' => 'country', 'name' => $item['name'] ?? '', 'count' => $item['count']];
+                }
+                foreach ($cities as $item) {
+                    $countryName = $item['country'] ?? '';
+                    $data[] = ['type' => 'city', 'name' => ($item['city'] ?? '') . ', ' . $countryName, 'count' => $item['count']];
+                }
+                $filename = $filenamePart . '-geographic-' . $dateRangeLabel . '-' . date('Y-m-d');
+                break;
+
+            default:
+                throw new \yii\web\BadRequestHttpException('Invalid tab specified');
+        }
+
+        $filename .= '.' . $format;
+
+        if ($format === 'json') {
+            $content = json_encode($data, JSON_PRETTY_PRINT);
+            $mimeType = 'application/json';
+        } else {
+            $lines = [];
+            if (!empty($data)) {
+                $lines[] = implode(',', array_keys($data[0]));
+                foreach ($data as $row) {
+                    $lines[] = implode(',', array_map(function($val) {
+                        return '"' . str_replace('"', '""', $val ?? '') . '"';
+                    }, $row));
+                }
+            } else {
+                $lines[] = 'No data available';
+            }
+            $content = implode("\n", $lines);
+            $mimeType = 'text/csv';
+        }
+
+        return Craft::$app->getResponse()->sendContentAsFile(
+            $content,
+            $filename,
+            ['mimeType' => $mimeType]
+        );
+    }
+
+    /**
+     * Export content gaps data (zero-hit queries)
+     *
+     * @return Response
+     */
+    public function actionExportContentGaps(): Response
+    {
+        $this->requirePermission('searchManager:exportAnalytics');
+
+        $request = Craft::$app->getRequest();
+        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $siteId = $request->getQueryParam('siteId');
+        $siteId = $siteId ? (int)$siteId : null;
+        $format = $request->getQueryParam('format', 'csv');
+        $type = $request->getQueryParam('type', 'clusters'); // 'clusters' or 'recent'
+
+        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
+        $settings = SearchManager::$plugin->getSettings();
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
+
+        if ($type === 'clusters') {
+            // Get content gaps clusters
+            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $dateRange);
+            $data = [];
+
+            foreach ($clusters as $cluster) {
+                $data[] = [
+                    'main_term' => $cluster['representative'],
+                    'total_searches' => $cluster['count'],
+                    'related_queries' => implode('; ', $cluster['queries']),
+                    'last_searched' => $cluster['lastSearched'],
+                ];
+            }
+
+            $filename = $filenamePart . '-content-gaps-clusters-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
+        } else {
+            // Get recent zero-hit queries
+            $query = (new \craft\db\Query())
+                ->select(['query', 'siteId', 'indexHandle', 'backend', 'dateCreated'])
+                ->from('{{%searchmanager_analytics}}')
+                ->where(['isHit' => 0])
+                ->andWhere(['wasRedirected' => 0])
+                ->andWhere(['or', ['promotionsShown' => null], ['promotionsShown' => 0]])
+                ->orderBy(['dateCreated' => SORT_DESC])
+                ->limit(1000);
+
+            SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
+
+            if ($siteId) {
+                $query->andWhere(['siteId' => $siteId]);
+            }
+
+            $results = $query->all();
+            $data = [];
+
+            foreach ($results as $row) {
+                $siteName = '—';
+                if ($row['siteId']) {
+                    $site = Craft::$app->getSites()->getSiteById($row['siteId']);
+                    $siteName = $site ? $site->name : '—';
+                }
+
+                $data[] = [
+                    'query' => $row['query'],
+                    'site' => $siteName,
+                    'index' => $row['indexHandle'],
+                    'backend' => $row['backend'],
+                    'date' => $row['dateCreated'],
+                ];
+            }
+
+            $filename = $filenamePart . '-content-gaps-recent-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
+        }
+
+        if ($format === 'json') {
+            $content = json_encode($data, JSON_PRETTY_PRINT);
+            $mimeType = 'application/json';
+        } else {
+            // CSV format
+            $lines = [];
+            if (!empty($data)) {
+                $lines[] = implode(',', array_keys($data[0]));
+                foreach ($data as $row) {
+                    $lines[] = implode(',', array_map(function($val) {
+                        return '"' . str_replace('"', '""', $val ?? '') . '"';
+                    }, $row));
+                }
+            } else {
+                $lines[] = 'No content gaps found';
             }
             $content = implode("\n", $lines);
             $mimeType = 'text/csv';
