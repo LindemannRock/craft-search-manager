@@ -135,8 +135,11 @@ class QueryRule extends Model
                 break;
 
             case self::ACTION_REDIRECT:
-                if (empty($value['url'])) {
-                    $this->addError($attribute, 'Redirect action requires a "url".');
+                // Either URL or element must be provided
+                $hasUrl = !empty($value['url']);
+                $hasElement = !empty($value['elementId']) && !empty($value['elementType']);
+                if (!$hasUrl && !$hasElement) {
+                    $this->addError($attribute, 'Redirect action requires a URL or an element.');
                 }
                 break;
         }
@@ -396,6 +399,7 @@ class QueryRule extends Model
 
     /**
      * Get redirect URL for redirect action type
+     * Resolves element URLs if an element is linked
      */
     public function getRedirectUrl(): ?string
     {
@@ -403,7 +407,25 @@ class QueryRule extends Model
             return null;
         }
 
-        return $this->actionValue['url'] ?? null;
+        // Check for custom URL first
+        if (!empty($this->actionValue['url'])) {
+            return $this->actionValue['url'];
+        }
+
+        // Check for element-based redirect
+        if (!empty($this->actionValue['elementId']) && !empty($this->actionValue['elementType'])) {
+            $elementType = $this->actionValue['elementType'];
+            $elementId = (int)$this->actionValue['elementId'];
+
+            /** @var \craft\base\Element|null $element */
+            $element = \Craft::$app->getElements()->getElementById($elementId, $elementType);
+
+            if ($element) {
+                return $element->getUrl();
+            }
+        }
+
+        return null;
     }
 
     /**

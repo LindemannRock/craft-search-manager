@@ -226,9 +226,28 @@ class QueryRulesController extends Controller
                 break;
 
             case QueryRule::ACTION_REDIRECT:
-                $actionValue = [
-                    'url' => $request->getBodyParam('redirectUrl'),
-                ];
+                $redirectType = $request->getBodyParam('redirectType', 'url');
+
+                if ($redirectType === 'url') {
+                    $actionValue = [
+                        'url' => $request->getBodyParam('redirectUrl'),
+                    ];
+                } else {
+                    // Element-based redirect
+                    $elementIds = $request->getBodyParam('redirectElement' . ucfirst($redirectType), []);
+                    $elementId = is_array($elementIds) ? ($elementIds[0] ?? null) : $elementIds;
+
+                    $elementTypeMap = [
+                        'entry' => \craft\elements\Entry::class,
+                        'category' => \craft\elements\Category::class,
+                        'asset' => \craft\elements\Asset::class,
+                    ];
+
+                    $actionValue = [
+                        'elementId' => $elementId ? (int)$elementId : null,
+                        'elementType' => $elementTypeMap[$redirectType] ?? null,
+                    ];
+                }
                 break;
         }
 

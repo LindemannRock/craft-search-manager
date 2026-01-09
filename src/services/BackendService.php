@@ -578,7 +578,7 @@ class BackendService extends Component
             $totalCount += $indexResults['total'] ?? 0;
             $indicesSearched[$indexName] = $indexResults['total'] ?? 0;
 
-            // Merge metadata from each index
+            // Merge metadata from each index (deduplicate by ID)
             if (!empty($indexResults['meta'])) {
                 $indexMeta = $indexResults['meta'];
                 if (!empty($indexMeta['synonymsExpanded'])) {
@@ -589,10 +589,20 @@ class BackendService extends Component
                     ));
                 }
                 if (!empty($indexMeta['rulesMatched'])) {
-                    $meta['rulesMatched'] = array_merge($meta['rulesMatched'], $indexMeta['rulesMatched']);
+                    foreach ($indexMeta['rulesMatched'] as $rule) {
+                        $ruleId = $rule['id'] ?? $rule['name'] ?? null;
+                        if ($ruleId && !isset($meta['rulesMatched'][$ruleId])) {
+                            $meta['rulesMatched'][$ruleId] = $rule;
+                        }
+                    }
                 }
                 if (!empty($indexMeta['promotionsMatched'])) {
-                    $meta['promotionsMatched'] = array_merge($meta['promotionsMatched'], $indexMeta['promotionsMatched']);
+                    foreach ($indexMeta['promotionsMatched'] as $promo) {
+                        $promoId = $promo['id'] ?? $promo['elementId'] ?? null;
+                        if ($promoId && !isset($meta['promotionsMatched'][$promoId])) {
+                            $meta['promotionsMatched'][$promoId] = $promo;
+                        }
+                    }
                 }
             }
         }
@@ -611,7 +621,12 @@ class BackendService extends Component
             'hits' => $allHits,
             'total' => $totalCount,
             'indices' => $indicesSearched,
-            'meta' => $meta,
+            'meta' => [
+                'synonymsExpanded' => $meta['synonymsExpanded'],
+                'expandedQueries' => $meta['expandedQueries'],
+                'rulesMatched' => array_values($meta['rulesMatched']),
+                'promotionsMatched' => array_values($meta['promotionsMatched']),
+            ],
         ];
     }
 

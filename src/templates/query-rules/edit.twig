@@ -322,22 +322,105 @@
 
 		{# Redirect fields #}
 		<div id="action-redirect" class="action-fields" style="{{ rule.actionType != 'redirect' ? 'display: none;' : '' }}">
-			<div class="field">
-				<div class="heading">
-					<label for="redirectUrl">{{ 'Redirect URL'|t('search-manager') }}</label>
-					<div class="instructions">
-						<p>{{ 'The URL to redirect to when this rule matches. Can be a path (/page) or full URL (https://...).'|t('search-manager') }}</p>
+			{# Determine current redirect type #}
+			{% set redirectType = rule.actionValue.elementId is defined and rule.actionValue.elementId ?
+				(rule.actionValue.elementType ends with 'Entry' ? 'entry' :
+				 rule.actionValue.elementType ends with 'Category' ? 'category' :
+				 rule.actionValue.elementType ends with 'Asset' ? 'asset' : 'url')
+				: 'url' %}
+
+			{{ forms.selectField({
+				label: 'Redirect To'|t('search-manager'),
+				instructions: 'Choose what to redirect to when this rule matches.'|t('search-manager'),
+				id: 'redirectType',
+				name: 'redirectType',
+				value: redirectType,
+				options: [
+					{ value: 'url', label: 'Custom URL'|t('search-manager') },
+					{ value: 'entry', label: 'Entry'|t('search-manager') },
+					{ value: 'category', label: 'Category'|t('search-manager') },
+					{ value: 'asset', label: 'Asset'|t('search-manager') },
+				],
+			}) }}
+
+			{# Custom URL field #}
+			<div id="redirect-url-field" class="{{ redirectType != 'url' ? 'hidden' : '' }}">
+				<div class="field">
+					<div class="heading">
+						<label for="redirectUrl">{{ 'Redirect URL'|t('search-manager') }}</label>
+						<div class="instructions">
+							<p>{{ 'The URL to redirect to. Can be a path (/page) or full URL (https://...).'|t('search-manager') }}</p>
+						</div>
+					</div>
+					<div class="input ltr">
+						<input type="text" id="redirectUrl" name="redirectUrl" value="{{ redirectType == 'url' ? (rule.actionValue.url ?? '') : '' }}" placeholder="/special-offers" class="text fullwidth">
 					</div>
 				</div>
-				<div class="input ltr">
-					<input type="text" id="redirectUrl" name="redirectUrl" value="{{ rule.actionValue.url ?? '' }}" placeholder="/special-offers" class="text fullwidth">
-				</div>
-				<p class="notice has-icon" style="margin-top: 10px;">
-					<span class="icon" aria-hidden="true"></span>
-					<span class="visually-hidden">Tip:</span>
-					<span>Use redirects for seasonal promotions (e.g., "christmas" → /holiday-deals) or to guide users to specific pages.</span>
-				</p>
 			</div>
+
+			{# Get linked element if exists #}
+			{% set redirectElement = null %}
+			{% if rule.actionValue.elementId is defined and rule.actionValue.elementId %}
+				{% if redirectType == 'entry' %}
+					{% set redirectElement = craft.entries.id(rule.actionValue.elementId).status(null).one() %}
+				{% elseif redirectType == 'category' %}
+					{% set redirectElement = craft.categories.id(rule.actionValue.elementId).status(null).one() %}
+				{% elseif redirectType == 'asset' %}
+					{% set redirectElement = craft.assets.id(rule.actionValue.elementId).one() %}
+				{% endif %}
+			{% endif %}
+
+			{# Entry picker #}
+			<div id="redirect-entry-field" class="{{ redirectType != 'entry' ? 'hidden' : '' }}">
+				{{ forms.elementSelectField({
+					label: 'Select Entry'|t('search-manager'),
+					instructions: 'Choose an entry to redirect to.'|t('search-manager'),
+					id: 'redirectElementEntry',
+					name: 'redirectElementEntry',
+					elementType: 'craft\\elements\\Entry',
+					selectionLabel: 'Choose an entry'|t('search-manager'),
+					limit: 1,
+					elements: (redirectType == 'entry' and redirectElement) ? [redirectElement] : [],
+					showSiteMenu: true,
+					criteria: { status: ['live', 'pending', 'expired'] },
+				}) }}
+			</div>
+
+			{# Category picker #}
+			<div id="redirect-category-field" class="{{ redirectType != 'category' ? 'hidden' : '' }}">
+				{{ forms.elementSelectField({
+					label: 'Select Category'|t('search-manager'),
+					instructions: 'Choose a category to redirect to.'|t('search-manager'),
+					id: 'redirectElementCategory',
+					name: 'redirectElementCategory',
+					elementType: 'craft\\elements\\Category',
+					selectionLabel: 'Choose a category'|t('search-manager'),
+					limit: 1,
+					elements: (redirectType == 'category' and redirectElement) ? [redirectElement] : [],
+					showSiteMenu: true,
+				}) }}
+			</div>
+
+			{# Asset picker #}
+			<div id="redirect-asset-field" class="{{ redirectType != 'asset' ? 'hidden' : '' }}">
+				{{ forms.elementSelectField({
+					label: 'Select Asset'|t('search-manager'),
+					instructions: 'Choose an asset to redirect to.'|t('search-manager'),
+					id: 'redirectElementAsset',
+					name: 'redirectElementAsset',
+					elementType: 'craft\\elements\\Asset',
+					selectionLabel: 'Choose an asset'|t('search-manager'),
+					limit: 1,
+					elements: (redirectType == 'asset' and redirectElement) ? [redirectElement] : [],
+					showSiteMenu: true,
+				}) }}
+			</div>
+
+			<p class="notice has-icon" style="margin-top: 10px;">
+				<span class="icon" aria-hidden="true"></span>
+				<span class="visually-hidden">Tip:</span>
+				<span>Use redirects for seasonal promotions (e.g., "christmas" → /holiday-deals) or to guide users to specific pages.</span>
+			</p>
 		</div>
 
 		<hr>
@@ -497,13 +580,30 @@ function updateMatchTypeUI() {
 	}
 }
 
+// Toggle redirect type fields
+function toggleRedirectFields() {
+	const redirectTypeSelect = document.getElementById('redirectType');
+	if (!redirectTypeSelect) return;
+
+	const type = redirectTypeSelect.value;
+	document.getElementById('redirect-url-field').classList.toggle('hidden', type !== 'url');
+	document.getElementById('redirect-entry-field').classList.toggle('hidden', type !== 'entry');
+	document.getElementById('redirect-category-field').classList.toggle('hidden', type !== 'category');
+	document.getElementById('redirect-asset-field').classList.toggle('hidden', type !== 'asset');
+}
+
 // Initialize
 toggleActionFields();
 updateMatchTypeUI();
+toggleRedirectFields();
 
 // Listen for changes
 document.getElementById('actionType').addEventListener('change', toggleActionFields);
 document.getElementById('matchType').addEventListener('change', updateMatchTypeUI);
+const redirectTypeSelect = document.getElementById('redirectType');
+if (redirectTypeSelect) {
+	redirectTypeSelect.addEventListener('change', toggleRedirectFields);
+}
 
 // Set platform-specific keyboard shortcut
 const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
