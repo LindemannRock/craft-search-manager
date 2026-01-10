@@ -1281,22 +1281,51 @@ Result: Queries containing "buy" only show in-stock items
 ```
 
 #### 6. Redirect
-Redirect users to a specific URL instead of showing search results.
+Redirect users to a specific page instead of showing search results. Supports four redirect types:
 
+**Custom URL:**
 ```
 Name: Contact Redirect
 Match Value: contact us
 Match Type: Exact
 Action: Redirect
+Redirect To: Custom URL
 URL: /contact
 
 Result: Searching exactly "contact us" redirects to /contact page
 ```
 
+**Entry, Category, or Asset:**
+```
+Name: Support Redirect
+Match Value: help, support, assistance
+Match Type: Exact
+Action: Redirect
+Redirect To: Entry
+Select Entry: "Help Center" (Entry #456)
+
+Result: Searching "help", "support", or "assistance" redirects to Help Center entry
+```
+
+Redirect types:
+- **Custom URL** - Path (/page) or full URL (https://...)
+- **Entry** - Select any entry via element picker
+- **Category** - Select any category via element picker
+- **Asset** - Select any asset via element picker (e.g., PDF download)
+
 **Priority System:**
-- Rules with higher priority numbers are applied first
-- Use priority to control rule order when multiple rules match
-- Default priority is 0
+
+Rules are applied in priority order. Higher priority rules are checked first.
+
+| Priority | Label | Use Case |
+|----------|-------|----------|
+| 10 | Highest priority | Specific, high-value rules (e.g., "buy iphone 15 pro max") |
+| 5 | High priority | Important rules (e.g., "buy iphone") |
+| 0 | Normal (default) | Standard rules |
+| -5 | Low priority | General rules |
+| -10 | Lowest priority | Catch-all/fallback rules (e.g., "buy") |
+
+**Example:** Set specific rule "buy iphone 15" to priority 10, and general rule "buy" to priority -10. The specific rule matches first when applicable.
 
 **Scope:**
 - **Index**: Apply to all indices (leave blank) or a specific index
