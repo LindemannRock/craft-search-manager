@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.26.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.25.0...v5.26.0) (2026-01-10)
+
+
+### Features
+
+* Replace custom country name retrieval with GeoHelper utility ([c6e49fc](https://github.com/LindemannRock/craft-search-manager/commit/c6e49fc2f88e4249f21fdda76a7e023e0ee5e8a1))
+
 ## [5.25.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.24.0...v5.25.0) (2026-01-09)
 
 
