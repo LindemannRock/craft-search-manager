@@ -23,8 +23,7 @@ class ClearSearchCache extends Utility
      */
     public static function displayName(): string
     {
-        $pluginName = SearchManager::getInstance()->getSettings()->pluginName;
-        return $pluginName;
+        return SearchManager::$plugin->getSettings()->getFullName();
     }
 
     /**

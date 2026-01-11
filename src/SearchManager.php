@@ -102,7 +102,7 @@ class SearchManager extends Plugin
         $settings = $this->getSettings();
         LoggingLibrary::configure([
             'pluginHandle' => $this->handle,
-            'pluginName' => $settings->pluginName ?? $this->name,
+            'pluginName' => $settings->getFullName(),
             'logLevel' => $settings->logLevel ?? 'error',
             'itemsPerPage' => $settings->itemsPerPage ?? 50,
             'viewPermissions' => ['searchManager:viewLogs'],
