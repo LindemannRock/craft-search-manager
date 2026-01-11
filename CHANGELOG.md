@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.26.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.0...v5.26.1) (2026-01-11)
+
+
+### Bug Fixes
+
+* plugin name retrieval to use getFullName method ([da20354](https://github.com/LindemannRock/craft-search-manager/commit/da2035446a9ab38005e55aad9476bfb06860747f))
+
 ## [5.26.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.25.0...v5.26.0) (2026-01-10)
 
 
