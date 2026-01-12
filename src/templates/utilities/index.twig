@@ -164,13 +164,13 @@
                     </button>
                 </form>
 
-                <button type="button" class="btn" id="clear-backend-storage">
+                <button type="button" class="btn secondary" id="clear-backend-storage">
                     {% if activeBackend == 'file' and backendStats.fileCount is defined %}
-                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|title}) }} ({{ backendStats.fileCount }})
+                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|title}) }} ({{ backendStats.fileCount|number_format }})
                     {% elseif activeBackend == 'mysql' and backendStats.documentRows is defined %}
-                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|upper}) }} ({{ backendStats.documentRows }})
+                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|upper}) }} ({{ backendStats.documentRows|number_format }})
                     {% else %}
-                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|title}) }} ({{ indexCount }} indices)
+                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|title}) }} ({{ indexCount|number_format }} indices)
                     {% endif %}
                 </button>
             </div>
@@ -200,19 +200,19 @@
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                 {% if settings.cacheDeviceDetection %}
                     <button type="button" class="btn" id="clear-device-cache">
-                        {{ "Clear Device Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ deviceCacheFiles }}){% endif %}
+                        {{ "Clear Device Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ deviceCacheFiles|number_format }}){% endif %}
                     </button>
                 {% endif %}
 
                 {% if settings.enableCache %}
                     <button type="button" class="btn" id="clear-search-cache">
-                        {{ "Clear Search Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ searchCacheFiles }}){% endif %}
+                        {{ "Clear Search Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ searchCacheFiles|number_format }}){% endif %}
                     </button>
                 {% endif %}
 
                 {% if settings.cacheDeviceDetection and settings.enableCache %}
                     <button type="button" class="btn secondary" id="clear-all-caches">
-                        {{ "Clear All Caches"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ (deviceCacheFiles + searchCacheFiles) }}){% endif %}
+                        {{ "Clear All Caches"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ (deviceCacheFiles + searchCacheFiles)|number_format }}){% endif %}
                     </button>
                 {% endif %}
             </div>
@@ -227,8 +227,8 @@
                 <p class="light" style="margin-bottom: 16px;">{{ "Permanently delete all analytics tracking data. This action cannot be undone!"|t('search-manager') }}</p>
 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button type="button" class="btn submit" id="clear-all-analytics" style="background: #dc2626; border-color: #dc2626; color: white;">
-                        {{ "Clear All Analytics"|t('search-manager') }}
+                    <button type="button" class="btn secondary" id="clear-all-analytics">
+                        {{ "Clear All Analytics"|t('search-manager') }} ({{ analyticsCount|number_format }})
                     </button>
                 </div>
             </div>

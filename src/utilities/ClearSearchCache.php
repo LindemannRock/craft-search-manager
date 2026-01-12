@@ -91,6 +91,11 @@ class ClearSearchCache extends Utility
                 break;
         }
 
+        // Get analytics count
+        $analyticsCount = (new \craft\db\Query())
+            ->from('{{%searchmanager_analytics}}')
+            ->count();
+
         // Count cache files (only for file storage)
         $deviceCacheFiles = 0;
         $searchCacheFiles = 0;
@@ -119,6 +124,7 @@ class ClearSearchCache extends Utility
             'deviceCacheFiles' => $deviceCacheFiles,
             'searchCacheFiles' => $searchCacheFiles,
             'storageMethod' => $settings->cacheStorageMethod,
+            'analyticsCount' => (int) $analyticsCount,
             'settings' => $settings,
         ]);
     }
