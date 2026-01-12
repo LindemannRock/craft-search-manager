@@ -1,0 +1,16 @@
+{% import '_includes/forms.twig' as forms %}
+
+{{ forms.selectField({
+    label: 'Date Range'|t('search-manager'),
+    id: 'dateRange',
+    name: 'dateRange',
+    value: widget.dateRange,
+    options: [
+        { label: 'Today'|t('search-manager'), value: 'today' },
+        { label: 'Yesterday'|t('search-manager'), value: 'yesterday' },
+        { label: 'Last 7 days'|t('search-manager'), value: 'last7days' },
+        { label: 'Last 30 days'|t('search-manager'), value: 'last30days' },
+        { label: 'Last 90 days'|t('search-manager'), value: 'last90days' },
+        { label: 'All time'|t('search-manager'), value: 'all' },
+    ],
+}) }}

@@ -1,0 +1,123 @@
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+<div class="analytics-summary-widget">
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ analyticsData.totalSearches|number }}</div>
+            <div class="stat-label">{{ "Total Searches"|t('search-manager') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ analyticsData.uniqueVisitors|number }}</div>
+            <div class="stat-label">{{ "Unique Visitors"|t('search-manager') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ analyticsData.zeroResults|number }}</div>
+            <div class="stat-label">{{ "Zero Results"|t('search-manager') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value highlight">{{ analyticsData.zeroResultsRate }}%</div>
+            <div class="stat-label">{{ "Zero Results Rate"|t('search-manager') }}</div>
+        </div>
+    </div>
+
+    {% if topSearch %}
+        <div class="top-performer">
+            <div class="top-performer-label">{{ "Top Search"|t('search-manager') }}</div>
+            <div class="top-performer-content">
+                <a href="{{ cpUrl('search-manager/analytics') }}" class="top-search-link">{{ topSearch.query }}</a>
+                <div class="link-meta">
+                    <span>{{ topSearch.count|number }} {{ "searches"|t('search-manager') }}</span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="widget-footer">
+        <a href="{{ cpUrl('search-manager/analytics') }}" class="go">{{ "View full analytics"|t('search-manager') }}</a>
+    </div>
+</div>
+
+<style>
+.analytics-summary-widget {
+    padding: 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    padding: 16px;
+}
+
+.stat-card {
+    background: #eff6ff;
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: #0d78f2;
+    line-height: 1.2;
+}
+
+.stat-value.highlight {
+    color: #0d78f2;
+}
+
+.stat-label {
+    font-size: 12px;
+    color: #6b7280;
+    margin-top: 4px;
+}
+
+.top-performer {
+    margin: 0 16px 16px;
+    padding: 16px;
+    border: 1px solid #e3e5e8;
+    border-radius: 6px;
+}
+
+.top-performer-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+
+.top-performer-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.top-search-link {
+    font-weight: 600;
+    font-size: 15px;
+    color: #0d78f2;
+    text-decoration: none;
+}
+
+.top-search-link:hover {
+    text-decoration: underline;
+}
+
+.link-meta {
+    font-size: 12px;
+    color: #8b95a1;
+}
+
+.widget-footer {
+    text-align: center;
+    padding: 12px;
+    border-top: 1px solid #e3e5e8;
+}
+
+.widget-footer .go {
+    font-size: 13px;
+}
+</style>

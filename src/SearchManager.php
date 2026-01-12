@@ -12,6 +12,7 @@ use craft\events\RegisterComponentTypesEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\helpers\UrlHelper;
+use craft\services\Dashboard;
 use craft\services\Elements;
 use craft\services\UserPermissions;
 use craft\services\Utilities;
@@ -31,6 +32,10 @@ use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
+use lindemannrock\searchmanager\widgets\AnalyticsSummaryWidget;
+use lindemannrock\searchmanager\widgets\ContentGapsWidget;
+use lindemannrock\searchmanager\widgets\TopSearchesWidget;
+use lindemannrock\searchmanager\widgets\TrendingSearchesWidget;
 use yii\base\Event;
 
 /**
@@ -126,6 +131,9 @@ class SearchManager extends Plugin
 
         // Register utilities
         $this->registerUtilities();
+
+        // Register dashboard widgets
+        $this->registerWidgets();
 
         // Register cache clearing options
         $this->registerCacheClearingOptions();
@@ -372,6 +380,23 @@ class SearchManager extends Plugin
             Utilities::EVENT_REGISTER_UTILITIES,
             function(RegisterComponentTypesEvent $event) {
                 $event->types[] = \lindemannrock\searchmanager\utilities\ClearSearchCache::class;
+            }
+        );
+    }
+
+    /**
+     * Register dashboard widgets
+     */
+    private function registerWidgets(): void
+    {
+        Event::on(
+            Dashboard::class,
+            Dashboard::EVENT_REGISTER_WIDGET_TYPES,
+            function(RegisterComponentTypesEvent $event) {
+                $event->types[] = AnalyticsSummaryWidget::class;
+                $event->types[] = TopSearchesWidget::class;
+                $event->types[] = ContentGapsWidget::class;
+                $event->types[] = TrendingSearchesWidget::class;
             }
         );
     }

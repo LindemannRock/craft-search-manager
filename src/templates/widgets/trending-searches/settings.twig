@@ -1,0 +1,29 @@
+{% import '_includes/forms.twig' as forms %}
+
+{{ forms.selectField({
+    label: 'Number of Queries'|t('search-manager'),
+    id: 'limit',
+    name: 'limit',
+    value: widget.limit,
+    options: [
+        { label: '3', value: 3 },
+        { label: '5', value: 5 },
+        { label: '10', value: 10 },
+        { label: '15', value: 15 },
+        { label: '20', value: 20 },
+    ],
+}) }}
+
+{{ forms.selectField({
+    label: 'Date Range'|t('search-manager'),
+    id: 'dateRange',
+    name: 'dateRange',
+    value: widget.dateRange,
+    options: [
+        { label: 'Today vs Yesterday'|t('search-manager'), value: 'today' },
+        { label: 'Yesterday vs Day Before'|t('search-manager'), value: 'yesterday' },
+        { label: 'Last 7 days vs Previous'|t('search-manager'), value: 'last7days' },
+        { label: 'Last 30 days vs Previous'|t('search-manager'), value: 'last30days' },
+        { label: 'Last 90 days vs Previous'|t('search-manager'), value: 'last90days' },
+    ],
+}) }}

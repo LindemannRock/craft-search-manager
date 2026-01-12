@@ -1,0 +1,116 @@
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+<div class="top-searches-widget">
+    {% if searches|length > 0 %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ "Query"|t('search-manager') }}</th>
+                    <th>{{ "Searches"|t('search-manager') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for search in searches %}
+                    <tr>
+                        <td>
+                            <div class="search-cell">
+                                <a href="{{ cpUrl('search-manager/analytics') }}" class="search-query">
+                                    {{ search.query }}
+                                </a>
+                                <div class="search-meta">
+                                    {{ search.totalResults|number }} {{ "results"|t('search-manager') }}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="count-cell">
+                            <span class="badge">{{ search.count|number }}</span>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="widget-footer">
+            <a href="{{ cpUrl('search-manager/analytics') }}" class="go">{{ "View all searches"|t('search-manager') }}</a>
+        </div>
+    {% else %}
+        <div class="zilch">
+            <p>{{ "No searches yet"|t('search-manager') }}</p>
+            <p class="light">{{ "Search analytics will appear here once users start searching."|t('search-manager') }}</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.top-searches-widget {
+    padding: 0;
+}
+
+.top-searches-widget table {
+    margin-bottom: 0;
+}
+
+.top-searches-widget table td {
+    vertical-align: top;
+}
+
+.search-cell {
+    min-width: 0;
+}
+
+.search-query {
+    font-weight: 600;
+    font-size: 13px;
+    color: #0d78f2;
+    background: #eff6ff;
+    padding: 4px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 4px;
+    text-decoration: none;
+}
+
+.search-query:hover {
+    text-decoration: underline;
+}
+
+.search-meta {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.count-cell {
+    text-align: left;
+    white-space: nowrap;
+}
+
+.count-cell .badge {
+    background: #eff6ff;
+    color: #0d78f2;
+    padding: 10px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+    line-height: 0;
+}
+
+.widget-footer {
+    text-align: center;
+    padding: 12px;
+    border-top: 1px solid #e3e5e8;
+}
+
+.widget-footer .go {
+    font-size: 13px;
+}
+
+.zilch {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.zilch p {
+    margin-bottom: 8px;
+}
+</style>

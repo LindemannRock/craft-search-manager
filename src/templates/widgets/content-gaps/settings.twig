@@ -1,0 +1,30 @@
+{% import '_includes/forms.twig' as forms %}
+
+{{ forms.selectField({
+    label: 'Number of Gaps'|t('search-manager'),
+    id: 'limit',
+    name: 'limit',
+    value: widget.limit,
+    options: [
+        { label: '3', value: 3 },
+        { label: '5', value: 5 },
+        { label: '10', value: 10 },
+        { label: '15', value: 15 },
+        { label: '20', value: 20 },
+    ],
+}) }}
+
+{{ forms.selectField({
+    label: 'Date Range'|t('search-manager'),
+    id: 'dateRange',
+    name: 'dateRange',
+    value: widget.dateRange,
+    options: [
+        { label: 'Today'|t('search-manager'), value: 'today' },
+        { label: 'Yesterday'|t('search-manager'), value: 'yesterday' },
+        { label: 'Last 7 days'|t('search-manager'), value: 'last7days' },
+        { label: 'Last 30 days'|t('search-manager'), value: 'last30days' },
+        { label: 'Last 90 days'|t('search-manager'), value: 'last90days' },
+        { label: 'All time'|t('search-manager'), value: 'all' },
+    ],
+}) }}

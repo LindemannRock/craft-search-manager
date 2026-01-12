@@ -1,0 +1,157 @@
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+<div class="trending-searches-widget">
+    {% if trending|length > 0 %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ "Query"|t('search-manager') }}</th>
+                    <th>{{ "Trend"|t('search-manager') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in trending %}
+                    <tr>
+                        <td>
+                            <div class="trending-cell">
+                                <a href="{{ cpUrl('search-manager/analytics') }}" class="trending-query">
+                                    {{ item.query }}
+                                </a>
+                                <div class="trending-meta">
+                                    {{ item.count|number }} {{ "searches"|t('search-manager') }}
+                                </div>
+                            </div>
+                        </td>
+                        <td class="trend-cell">
+                            {% if item.trend == 'up' %}
+                                <span class="trend-badge up" title="{{ item.changePercent }}% {{ 'increase'|t('search-manager') }}">
+                                    <span class="trend-arrow">&#9650;</span>
+                                    {{ item.changePercent }}%
+                                </span>
+                            {% elseif item.trend == 'down' %}
+                                <span class="trend-badge down" title="{{ item.changePercent }}% {{ 'decrease'|t('search-manager') }}">
+                                    <span class="trend-arrow">&#9660;</span>
+                                    {{ item.changePercent }}%
+                                </span>
+                            {% elseif item.trend == 'new' %}
+                                <span class="trend-badge new" title="{{ 'New query'|t('search-manager') }}">
+                                    {{ "New"|t('search-manager') }}
+                                </span>
+                            {% else %}
+                                <span class="trend-badge same" title="{{ 'No change'|t('search-manager') }}">
+                                    &mdash;
+                                </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="widget-footer">
+            <a href="{{ cpUrl('search-manager/analytics') }}" class="go">{{ "View all analytics"|t('search-manager') }}</a>
+        </div>
+    {% else %}
+        <div class="zilch">
+            <p>{{ "No trending data yet"|t('search-manager') }}</p>
+            <p class="light">{{ "Trending data requires search history to compare."|t('search-manager') }}</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.trending-searches-widget {
+    padding: 0;
+}
+
+.trending-searches-widget table {
+    margin-bottom: 0;
+}
+
+.trending-searches-widget table td {
+    vertical-align: top;
+}
+
+.trending-cell {
+    min-width: 0;
+}
+
+.trending-query {
+    font-weight: 600;
+    font-size: 13px;
+    color: #0d78f2;
+    background: #eff6ff;
+    padding: 4px 8px;
+    border-radius: 3px;
+    display: inline-block;
+    margin-bottom: 4px;
+    text-decoration: none;
+}
+
+.trending-query:hover {
+    text-decoration: underline;
+}
+
+.trending-meta {
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.trend-cell {
+    text-align: left;
+    white-space: nowrap;
+}
+
+.trend-badge {
+    padding: 6px 10px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.trend-badge.up {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.trend-badge.down {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.trend-badge.new {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.trend-badge.same {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.trend-arrow {
+    font-size: 10px;
+}
+
+.widget-footer {
+    text-align: center;
+    padding: 12px;
+    border-top: 1px solid #e3e5e8;
+}
+
+.widget-footer .go {
+    font-size: 13px;
+}
+
+.zilch {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.zilch p {
+    margin-bottom: 8px;
+}
+</style>

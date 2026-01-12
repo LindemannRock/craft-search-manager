@@ -1,0 +1,120 @@
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+<div class="content-gaps-widget">
+    {% if contentGaps|length > 0 %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ "Query"|t('search-manager') }}</th>
+                    <th>{{ "Hits"|t('search-manager') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for gap in contentGaps %}
+                    <tr>
+                        <td>
+                            <div class="gap-cell">
+                                <a href="{{ cpUrl('search-manager/analytics') }}" class="gap-query" title="{{ gap.queries|join(', ') }}">
+                                    {{ gap.representative }}
+                                </a>
+                                {% if gap.queries|length > 1 %}
+                                    <div class="gap-meta">
+                                        +{{ gap.queries|length - 1 }} {{ "similar"|t('search-manager') }}
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="count-cell">
+                            <span class="badge">{{ gap.count|number }}</span>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="widget-footer">
+            <a href="{{ cpUrl('search-manager/analytics') }}" class="go">{{ "View all content gaps"|t('search-manager') }}</a>
+        </div>
+    {% else %}
+        <div class="zilch success">
+            <p>{{ "No content gaps"|t('search-manager') }}</p>
+            <p class="light">{{ "All searches are returning results."|t('search-manager') }}</p>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+.content-gaps-widget {
+    padding: 0;
+}
+
+.content-gaps-widget table {
+    margin-bottom: 0;
+}
+
+.content-gaps-widget table td {
+    vertical-align: top;
+}
+
+.gap-cell {
+    min-width: 0;
+}
+
+.gap-query {
+    font-weight: 600;
+    font-size: 13px;
+    color: #dc2626;
+    display: block;
+    margin-bottom: 4px;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.gap-query:hover {
+    text-decoration: underline;
+}
+
+.gap-meta {
+    font-size: 10px;
+    color: #9ca3af;
+}
+
+.count-cell {
+    text-align: left;
+    white-space: nowrap;
+}
+
+.count-cell .badge {
+    background: #fef2f2;
+    color: #dc2626;
+    padding: 10px;
+    border-radius: 3px;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+    line-height: 0;
+}
+
+.widget-footer {
+    text-align: center;
+    padding: 12px;
+    border-top: 1px solid #e3e5e8;
+}
+
+.widget-footer .go {
+    font-size: 13px;
+}
+
+.zilch {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.zilch.success {
+    color: #059669;
+}
+
+.zilch p {
+    margin-bottom: 8px;
+}
+</style>
