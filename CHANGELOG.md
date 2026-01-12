@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.27.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.1...v5.27.0) (2026-01-12)
+
+
+### Features
+
+* add analytics count to cache clearing buttons and format displayed numbers ([fd2791a](https://github.com/LindemannRock/craft-search-manager/commit/fd2791a74d5a4e00aae75b4f369f051e973de629))
+* add analytics summary, content gaps, top searches, and trending searches widgets ([403ba22](https://github.com/LindemannRock/craft-search-manager/commit/403ba22de3eedddec12092a666be64aa207c42b7))
+
 ## [5.26.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.0...v5.26.1) (2026-01-11)
 
 
