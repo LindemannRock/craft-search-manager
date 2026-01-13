@@ -49,12 +49,6 @@ class Settings extends Model
     public bool $autoIndex = true;
 
     /**
-     * @var string Active search backend type (legacy - for backward compatibility)
-     * @deprecated Use defaultBackendHandle instead
-     */
-    public string $searchBackend = 'file';
-
-    /**
      * @var string|null Handle of the default configured backend
      */
     public ?string $defaultBackendHandle = null;
@@ -357,7 +351,7 @@ class Settings extends Model
     public function rules(): array
     {
         return [
-            [['pluginName', 'searchBackend', 'logLevel'], 'required'],
+            [['pluginName', 'logLevel'], 'required'],
             [['pluginName'], 'string', 'max' => 255],
             [['indexPrefix'], 'string', 'max' => 50],
             [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy'], 'boolean'],
@@ -377,7 +371,7 @@ class Settings extends Model
             [['ngramSizes', 'highlightTag'], 'string'],
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'warning', 'error']],
-            [['searchBackend'], 'in', 'range' => ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense']],
+            [['defaultBackendHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
         ];
     }
 }

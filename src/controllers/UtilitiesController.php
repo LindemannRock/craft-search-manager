@@ -87,9 +87,8 @@ class UtilitiesController extends Controller
         $this->requireAcceptsJson();
 
         try {
-            $settings = SearchManager::$plugin->getSettings();
             $backend = SearchManager::$plugin->backend->getActiveBackend();
-            $backendName = $settings->searchBackend;
+            $backendName = $backend ? $backend->getName() : 'unknown';
             $clearedCount = 0;
 
             if (!$backend) {
@@ -123,6 +122,7 @@ class UtilitiesController extends Controller
                 )->queryColumn();
 
                 $knownHandles = array_map(fn($idx) => $idx->handle, $indices);
+                $settings = SearchManager::$plugin->getSettings();
                 $prefix = $settings->indexPrefix ?? '';
 
                 // Also include prefixed versions of known handles

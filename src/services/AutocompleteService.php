@@ -467,8 +467,7 @@ class AutocompleteService extends Component
      */
     private function getStorage(string $indexHandle)
     {
-        $settings = SearchManager::$plugin->getSettings();
-        $backendName = $settings->searchBackend;
+        $backendName = $this->getDefaultBackendType();
 
         // Only support built-in backends (MySQL, PostgreSQL, Redis, File)
         if (!in_array($backendName, ['mysql', 'pgsql', 'redis', 'file'])) {
@@ -525,8 +524,7 @@ class AutocompleteService extends Component
      */
     private function getStorageWithFullName(string $fullIndexName)
     {
-        $settings = SearchManager::$plugin->getSettings();
-        $backendName = $settings->searchBackend;
+        $backendName = $this->getDefaultBackendType();
 
         // Only support MySQL for now (element suggestions)
         if ($backendName !== 'mysql') {
@@ -566,5 +564,26 @@ class AutocompleteService extends Component
         // Also includes: \x{0750}-\x{077F} (Arabic Supplement)
         // And: \x{08A0}-\x{08FF} (Arabic Extended-A)
         return (bool)preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]/u', $text);
+    }
+
+    /**
+     * Get the default backend type from configured backends
+     */
+    private function getDefaultBackendType(): string
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $defaultHandle = $settings->defaultBackendHandle;
+
+        if (!$defaultHandle) {
+            return 'file'; // Fallback to file if no default configured
+        }
+
+        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
+        if ($configuredBackend) {
+            return $configuredBackend->backendType;
+        }
+
+        // Fallback: might be a backend type directly for backwards compatibility
+        return $defaultHandle;
     }
 }

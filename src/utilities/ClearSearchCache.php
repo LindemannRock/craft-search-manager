@@ -57,8 +57,9 @@ class ClearSearchCache extends Utility
 
         // Gather backend-specific stats
         $backendStats = [];
+        $activeBackendType = self::getDefaultBackendType($settings);
 
-        switch ($settings->searchBackend) {
+        switch ($activeBackendType) {
             case 'file':
                 $cacheFileCount = 0;
                 $runtimePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/indices';
@@ -118,7 +119,7 @@ class ClearSearchCache extends Utility
         return Craft::$app->getView()->renderTemplate('search-manager/utilities/index', [
             'indexCount' => count($indices),
             'totalDocuments' => $totalDocuments,
-            'activeBackend' => $settings->searchBackend,
+            'activeBackend' => $activeBackendType,
             'backendStats' => $backendStats,
             'indices' => $indices,
             'deviceCacheFiles' => $deviceCacheFiles,
@@ -127,5 +128,25 @@ class ClearSearchCache extends Utility
             'analyticsCount' => (int) $analyticsCount,
             'settings' => $settings,
         ]);
+    }
+
+    /**
+     * Get the default backend type from configured backends
+     */
+    private static function getDefaultBackendType($settings): string
+    {
+        $defaultHandle = $settings->defaultBackendHandle;
+
+        if (!$defaultHandle) {
+            return 'file'; // Fallback to file if no default configured
+        }
+
+        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
+        if ($configuredBackend) {
+            return $configuredBackend->backendType;
+        }
+
+        // Fallback: might be a backend type directly for backwards compatibility
+        return $defaultHandle;
     }
 }

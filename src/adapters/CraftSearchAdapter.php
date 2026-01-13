@@ -44,10 +44,10 @@ class CraftSearchAdapter extends \craft\services\Search
     public function searchElements(ElementQuery $query): array
     {
         // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
-        $settings = SearchManager::$plugin->getSettings();
-        if (!in_array($settings->searchBackend, ['mysql', 'pgsql', 'redis', 'file'])) {
+        $backendType = $this->getDefaultBackendType();
+        if (!in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'])) {
             $this->logDebug('Native search replacement not supported for external backends, falling back', [
-                'backend' => $settings->searchBackend,
+                'backend' => $backendType,
             ]);
             return parent::searchElements($query);
         }
@@ -142,16 +142,17 @@ class CraftSearchAdapter extends \craft\services\Search
     public function indexElementAttributes(ElementInterface $element, ?array $fieldHandles = null): bool
     {
         // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
-        $settings = SearchManager::$plugin->getSettings();
-        if (!in_array($settings->searchBackend, ['mysql', 'pgsql', 'redis', 'file'])) {
+        $backendType = $this->getDefaultBackendType();
+        if (!in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'])) {
             $this->logDebug('Native search replacement not supported for external backends, falling back', [
-                'backend' => $settings->searchBackend,
+                'backend' => $backendType,
             ]);
             return parent::indexElementAttributes($element, $fieldHandles);
         }
 
         // When autoIndex is enabled, SyncElementJob handles indexing with proper
         // multi-site logic. Skip here to avoid double-indexing.
+        $settings = SearchManager::$plugin->getSettings();
         if ($settings->autoIndex) {
             $this->logDebug('Skipping Craft-triggered indexing (autoIndex handles it)', [
                 'elementId' => $element->id,
@@ -239,5 +240,26 @@ class CraftSearchAdapter extends \craft\services\Search
         }
 
         return '';
+    }
+
+    /**
+     * Get the default backend type from configured backends
+     */
+    private function getDefaultBackendType(): string
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $defaultHandle = $settings->defaultBackendHandle;
+
+        if (!$defaultHandle) {
+            return 'file'; // Fallback to file if no default configured
+        }
+
+        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
+        if ($configuredBackend) {
+            return $configuredBackend->backendType;
+        }
+
+        // Fallback: might be a backend type directly for backwards compatibility
+        return $defaultHandle;
     }
 }
