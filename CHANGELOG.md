@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.28.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.1...v5.28.2) (2026-01-13)
+
+
+### Bug Fixes
+
+* backend handling to use defaultBackendHandle and improve compatibility checks ([daee11e](https://github.com/LindemannRock/craft-search-manager/commit/daee11e9aab9517cb8b7a64ae9cdd96328107300))
+
 ## [5.28.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.0...v5.28.1) (2026-01-13)
 
 
