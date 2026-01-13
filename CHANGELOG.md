@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.28.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.27.0...v5.28.0) (2026-01-13)
+
+
+### Features
+
+* Add configuredBackends system with granular permissions and per-index backend support ([c5104db](https://github.com/LindemannRock/craft-search-manager/commit/c5104db074c47e013a6de701add89406c4d93211))
+* add cross-backend methods for Algolia, Meilisearch, and Typesense, including browse, multiple queries, and filter parsing ([c47bf42](https://github.com/LindemannRock/craft-search-manager/commit/c47bf4205b5507a6c19c06df28e6eb447ed464bc))
+
 ## [5.27.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.1...v5.27.0) (2026-01-12)
 
 
