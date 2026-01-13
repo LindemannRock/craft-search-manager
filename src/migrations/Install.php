@@ -11,7 +11,7 @@ use craft\helpers\StringHelper;
  *
  * Creates all database tables required for the plugin:
  * - Settings table (single row, database-backed settings)
- * - Backend settings table (per-backend configuration)
+ * - Backends table (configured backend instances)
  * - Indices table (hybrid config - can be in config file OR database)
  * - Transformers table (element type to transformer mappings)
  * - Index queue table (for async indexing operations)
@@ -22,7 +22,7 @@ class Install extends Migration
     public function safeUp(): bool
     {
         $this->createSettingsTable();
-        $this->createBackendSettingsTable();
+        $this->createBackendsTable();
         $this->createIndicesTable();
         $this->createTransformersTable();
         $this->createIndexQueueTable();
@@ -36,7 +36,6 @@ class Install extends Migration
 
         // Insert default data
         $this->insertDefaultSettings();
-        $this->insertDefaultBackendSettings();
 
         return true;
     }
@@ -60,7 +59,7 @@ class Install extends Migration
         $this->dropTableIfExists('{{%searchmanager_index_queue}}');
         $this->dropTableIfExists('{{%searchmanager_transformers}}');
         $this->dropTableIfExists('{{%searchmanager_indices}}');
-        $this->dropTableIfExists('{{%searchmanager_backend_settings}}');
+        $this->dropTableIfExists('{{%searchmanager_backends}}');
         $this->dropTableIfExists('{{%searchmanager_settings}}');
 
         return true;
@@ -82,7 +81,7 @@ class Install extends Migration
             'logLevel' => $this->enum('logLevel', ['debug', 'info', 'warning', 'error'])->notNull()->defaultValue('error'),
             'itemsPerPage' => $this->integer()->notNull()->defaultValue(100),
             'autoIndex' => $this->boolean()->notNull()->defaultValue(true),
-            'searchBackend' => $this->enum('searchBackend', ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense'])->notNull()->defaultValue('file'),
+            'defaultBackendHandle' => $this->string(255)->null()->comment('Handle of the default configured backend'),
             'batchSize' => $this->integer()->notNull()->defaultValue(100),
             'queueEnabled' => $this->boolean()->notNull()->defaultValue(true),
             'replaceNativeSearch' => $this->boolean()->notNull()->defaultValue(false),
@@ -129,27 +128,32 @@ class Install extends Migration
     }
 
     /**
-     * Create backend settings table
-     * Stores configuration for each search backend (Algolia, Meilisearch, etc.)
+     * Create backends table
+     * Stores configured backend instances (e.g., "Production Algolia", "Dev Meilisearch")
      */
-    private function createBackendSettingsTable(): void
+    private function createBackendsTable(): void
     {
-        if ($this->db->tableExists('{{%searchmanager_backend_settings}}')) {
+        if ($this->db->tableExists('{{%searchmanager_backends}}')) {
             return;
         }
 
-        $this->createTable('{{%searchmanager_backend_settings}}', [
+        $this->createTable('{{%searchmanager_backends}}', [
             'id' => $this->primaryKey(),
-            'backend' => $this->enum('backend', ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense'])->notNull(),
-            'enabled' => $this->boolean()->notNull()->defaultValue(false),
-            'configJson' => $this->text()->notNull(),
+            'name' => $this->string(255)->notNull(),
+            'handle' => $this->string(255)->notNull(),
+            'backendType' => $this->enum('backendType', ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense'])->notNull(),
+            'settings' => $this->text()->null()->comment('JSON settings for the backend'),
+            'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'sortOrder' => $this->integer()->notNull()->defaultValue(0),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),
         ]);
 
-        // Create unique index on backend
-        $this->createIndex(null, '{{%searchmanager_backend_settings}}', ['backend'], true);
+        // Create unique index on handle
+        $this->createIndex(null, '{{%searchmanager_backends}}', ['handle'], true);
+        $this->createIndex(null, '{{%searchmanager_backends}}', ['backendType'], false);
+        $this->createIndex(null, '{{%searchmanager_backends}}', ['enabled'], false);
     }
 
     /**
@@ -173,6 +177,7 @@ class Install extends Migration
             'language' => $this->string(10)->null(),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'source' => $this->enum('source', ['config', 'database'])->notNull()->defaultValue('database'),
+            'backend' => $this->string(255)->null()->comment('Handle of configured backend to use'),
             'lastIndexed' => $this->dateTime()->null(),
             'documentCount' => $this->integer()->notNull()->defaultValue(0),
             'sortOrder' => $this->integer()->notNull()->defaultValue(0),
@@ -291,7 +296,7 @@ class Install extends Migration
             'logLevel' => 'error',
             'itemsPerPage' => 100,
             'autoIndex' => 1,
-            'searchBackend' => 'file',
+            'defaultBackendHandle' => null,
             'batchSize' => 100,
             'queueEnabled' => 1,
             'replaceNativeSearch' => 0,
@@ -325,26 +330,6 @@ class Install extends Migration
             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
             'uid' => StringHelper::UUID(),
         ]);
-    }
-
-    /**
-     * Insert default backend settings (one row per backend)
-     */
-    private function insertDefaultBackendSettings(): void
-    {
-        $backends = ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense'];
-        $now = Db::prepareDateForDb(new \DateTime());
-
-        foreach ($backends as $backend) {
-            $this->insert('{{%searchmanager_backend_settings}}', [
-                'backend' => $backend,
-                'enabled' => 0,
-                'configJson' => '{}',
-                'dateCreated' => $now,
-                'dateUpdated' => $now,
-                'uid' => StringHelper::UUID(),
-            ]);
-        }
     }
 
     /**

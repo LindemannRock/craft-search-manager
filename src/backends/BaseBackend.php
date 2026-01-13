@@ -18,6 +18,11 @@ abstract class BaseBackend extends Component implements BackendInterface
 {
     use LoggingTrait;
 
+    /**
+     * @var array|null Settings from a ConfiguredBackend (overrides global config)
+     */
+    protected ?array $_configuredSettings = null;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -26,6 +31,18 @@ abstract class BaseBackend extends Component implements BackendInterface
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
+    }
+
+    /**
+     * Set configured settings from a ConfiguredBackend
+     * These settings will be used instead of global config
+     *
+     * @param array $settings
+     * @return void
+     */
+    public function setConfiguredSettings(array $settings): void
+    {
+        $this->_configuredSettings = $settings;
     }
 
     // =========================================================================
@@ -49,12 +66,20 @@ abstract class BaseBackend extends Component implements BackendInterface
     /**
      * Get backend settings
      *
-     * Config file overrides database settings (standard pattern)
+     * Priority: ConfiguredBackend settings > Config file > Database settings
      *
      * @return array Backend configuration
      */
     protected function getBackendSettings(): array
     {
+        // If we have configured settings from a ConfiguredBackend, use those
+        if ($this->_configuredSettings !== null) {
+            $this->logDebug('Using ConfiguredBackend settings', [
+                'backend' => $this->getName(),
+            ]);
+            return $this->_configuredSettings;
+        }
+
         $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
 
         // Try config file first

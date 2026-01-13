@@ -132,15 +132,94 @@ class BackendService extends Component
         ];
     }
 
+    /**
+     * Get backend for a specific index
+     *
+     * If the index has a configured backend override, uses that backend with its settings.
+     * Otherwise falls back to the global default backend.
+     *
+     * @param string $indexName Index handle
+     * @return BackendInterface|null
+     */
+    public function getBackendForIndex(string $indexName): ?BackendInterface
+    {
+        // Load the index to check for backend override
+        $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexName);
+
+        if ($index && $index->hasBackendOverride()) {
+            // Load the configured backend by handle
+            $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($index->backend);
+
+            if ($configuredBackend && $configuredBackend->enabled) {
+                $backend = $this->createBackendFromConfig($configuredBackend);
+                if ($backend) {
+                    $this->logDebug('Using configured backend for index', [
+                        'index' => $indexName,
+                        'configuredBackend' => $configuredBackend->handle,
+                        'backendType' => $configuredBackend->backendType,
+                    ]);
+                    return $backend;
+                }
+            }
+
+            // Configured backend not found or disabled - log warning and fall back
+            $this->logWarning('Configured backend not available, falling back to default', [
+                'index' => $indexName,
+                'specifiedBackend' => $index->backend,
+            ]);
+        }
+
+        // Fall back to global default
+        return $this->getActiveBackend();
+    }
+
+    /**
+     * Create a backend instance from a ConfiguredBackend model
+     *
+     * @param \lindemannrock\searchmanager\models\ConfiguredBackend $configuredBackend
+     * @return BackendInterface|null
+     */
+    public function createBackendFromConfig(\lindemannrock\searchmanager\models\ConfiguredBackend $configuredBackend): ?BackendInterface
+    {
+        try {
+            $backend = $this->getBackend($configuredBackend->backendType);
+
+            if ($backend) {
+                // Store the configured backend settings for this instance
+                // The backend will use these settings instead of global config
+                $backend->setConfiguredSettings($configuredBackend->settings);
+            }
+
+            return $backend;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to create backend from config', [
+                'configuredBackend' => $configuredBackend->handle,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Get list of available backend options for UI dropdowns
+     * Uses configured backends from the database
+     *
+     * @return array Array of [value => label] pairs
+     */
+    public function getBackendOptions(): array
+    {
+        return \lindemannrock\searchmanager\models\ConfiguredBackend::getSelectOptions(true);
+    }
+
     // =========================================================================
     // PROXY METHODS (delegate to active backend)
     // =========================================================================
 
     public function index(string $indexName, array $data): bool
     {
-        $backend = $this->getActiveBackend();
+        $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
-            $this->logError('No active backend available for indexing');
+            $this->logError('No backend available for indexing', ['index' => $indexName]);
             return false;
         }
 
@@ -149,9 +228,9 @@ class BackendService extends Component
 
     public function batchIndex(string $indexName, array $items): bool
     {
-        $backend = $this->getActiveBackend();
+        $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
-            $this->logError('No active backend available for batch indexing');
+            $this->logError('No backend available for batch indexing', ['index' => $indexName]);
             return false;
         }
 
@@ -160,9 +239,9 @@ class BackendService extends Component
 
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
-        $backend = $this->getActiveBackend();
+        $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
-            $this->logError('No active backend available for deletion');
+            $this->logError('No backend available for deletion', ['index' => $indexName]);
             return false;
         }
 
@@ -171,9 +250,9 @@ class BackendService extends Component
 
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
-        $backend = $this->getActiveBackend();
+        $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
-            $this->logError('No active backend available for document check');
+            $this->logError('No backend available for document check', ['index' => $indexName]);
             return false;
         }
 
@@ -182,9 +261,9 @@ class BackendService extends Component
 
     public function search(string $indexName, string $query, array $options = []): array
     {
-        $backend = $this->getActiveBackend();
+        $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
-            $this->logError('No active backend available for search');
+            $this->logError('No backend available for search', ['index' => $indexName]);
             return [];
         }
 
@@ -480,9 +559,9 @@ class BackendService extends Component
 
     public function clearIndex(string $indexName): bool
     {
-        $backend = $this->getActiveBackend();
+        $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
-            $this->logError('No active backend available for clearing index');
+            $this->logError('No backend available for clearing index', ['index' => $indexName]);
             return false;
         }
 

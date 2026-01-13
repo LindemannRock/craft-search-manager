@@ -6,7 +6,6 @@ use Craft;
 use craft\helpers\Db;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\models\BackendSettings;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
 
@@ -43,32 +42,14 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        // Load backend configurations from database
-        $algolia = BackendSettings::findByBackend('algolia');
-        $meilisearch = BackendSettings::findByBackend('meilisearch');
-        $redis = BackendSettings::findByBackend('redis');
-        $typesense = BackendSettings::findByBackend('typesense');
-
-        // Detect database driver for dynamic labeling
-        $dbDriver = Craft::$app->getDb()->getDriverName();
-        $dbLabel = match ($dbDriver) {
-            'mysql' => 'Craft Database (MySQL)',
-            'pgsql' => 'Craft Database (PostgreSQL)',
-            default => 'Craft Database',
-        };
+        // Load configured backends
+        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+        $enabledBackends = array_filter($configuredBackends, fn($b) => $b->enabled);
 
         return $this->renderTemplate('search-manager/settings/backend', [
             'settings' => $settings,
-            'dbDriver' => $dbDriver,
-            'dbLabel' => $dbLabel,
-            'algoliaSettings' => $algolia,
-            'meilisearchSettings' => $meilisearch,
-            'redisSettings' => $redis,
-            'typesenseSettings' => $typesense,
-            'algoliaConfig' => $algolia ? $algolia->config : [],
-            'meilisearchConfig' => $meilisearch ? $meilisearch->config : [],
-            'redisConfig' => $redis ? $redis->config : [],
-            'typesenseConfig' => $typesense ? $typesense->config : [],
+            'configuredBackends' => $configuredBackends,
+            'enabledBackends' => $enabledBackends,
         ]);
     }
 
@@ -560,144 +541,51 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $this->requirePostRequest();
 
-        // Detect database driver for dynamic labeling
-        $dbDriver = Craft::$app->getDb()->getDriverName();
-        $dbLabel = match ($dbDriver) {
-            'mysql' => 'Craft Database (MySQL)',
-            'pgsql' => 'Craft Database (PostgreSQL)',
-            default => 'Craft Database',
-        };
-
-        // Save general settings first
         $settings = SearchManager::$plugin->getSettings();
-        $oldBackend = $settings->searchBackend;
+        $oldBackend = $settings->defaultBackendHandle ?? null;
 
         $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
-        $settings->setAttributes($postedSettings, false);
+        $newBackendHandle = $postedSettings['defaultBackendHandle'] ?? null;
 
-        $newBackend = $settings->searchBackend;
-        $backendChanged = $oldBackend !== $newBackend;
-
-        // Helper function to render template with all required variables
-        $renderBackendTemplate = function($settings, $backendModels = []) use ($dbDriver, $dbLabel) {
-            return $this->renderTemplate('search-manager/settings/backend', [
-                'settings' => $settings,
-                'dbDriver' => $dbDriver,
-                'dbLabel' => $dbLabel,
-                'algoliaSettings' => $backendModels['algolia'] ?? BackendSettings::findByBackend('algolia'),
-                'meilisearchSettings' => $backendModels['meilisearch'] ?? BackendSettings::findByBackend('meilisearch'),
-                'redisSettings' => $backendModels['redis'] ?? BackendSettings::findByBackend('redis'),
-                'typesenseSettings' => $backendModels['typesense'] ?? BackendSettings::findByBackend('typesense'),
-                'algoliaConfig' => ($backendModels['algolia'] ?? BackendSettings::findByBackend('algolia'))?->config ?? [],
-                'meilisearchConfig' => ($backendModels['meilisearch'] ?? BackendSettings::findByBackend('meilisearch'))?->config ?? [],
-                'redisConfig' => ($backendModels['redis'] ?? BackendSettings::findByBackend('redis'))?->config ?? [],
-                'typesenseConfig' => ($backendModels['typesense'] ?? BackendSettings::findByBackend('typesense'))?->config ?? [],
-            ]);
-        };
-
-        if (!$settings->validate()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
-            return $renderBackendTemplate($settings);
-        }
-
-        // Don't save main settings yet - validate backend first
-
-        // Save and validate backend configurations
-        $backendData = Craft::$app->getRequest()->getBodyParam('backend', []);
-        $backendModels = [];
-        $hasValidationError = false;
-
-        // Process all backends (MySQL, PostgreSQL, and File have no config fields)
-        $allBackends = ['algolia', 'file', 'meilisearch', 'mysql', 'pgsql', 'redis', 'typesense'];
-
-        foreach ($allBackends as $backendName) {
-            $backendSettings = BackendSettings::findByBackend($backendName);
-
-            if (!$backendSettings) {
-                $backendSettings = new BackendSettings();
-                $backendSettings->backend = $backendName;
+        // Validate that the selected backend exists and is enabled
+        if ($newBackendHandle) {
+            $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($newBackendHandle);
+            if (!$configuredBackend) {
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend does not exist.'));
+                return $this->renderTemplate('search-manager/settings/backend', [
+                    'settings' => $settings,
+                    'configuredBackends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                    'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
+                ]);
             }
-
-            // Update config for the selected backend (even if empty - clears old values)
-            if ($backendName === $newBackend) {
-                $backendSettings->config = $backendData[$backendName] ?? [];
-            } elseif (isset($backendData[$backendName])) {
-                // Only update other backends if they were actually in the form
-                $backendSettings->config = $backendData[$backendName];
-            }
-
-            // Enable the selected backend, disable others
-            $backendSettings->enabled = ($backendName === $newBackend);
-
-            $backendModels[$backendName] = $backendSettings;
-
-            // Only validate the selected backend
-            if ($backendName === $newBackend) {
-                if (!$backendSettings->validate()) {
-                    $hasValidationError = true;
-                    Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save backend settings. Please check required fields.'));
-                } else {
-                    // Save first so availability check uses new config
-                    $backendSettings->save();
-
-                    // Check if backend is actually available (now uses saved config)
-                    $backendInstance = SearchManager::$plugin->backend->getBackend($backendName);
-                    if ($backendInstance && !$backendInstance->isAvailable()) {
-                        // Rollback: re-enable old backend and disable new one
-                        $backendSettings->enabled = false;
-                        $backendSettings->save();
-
-                        // Re-enable the old backend
-                        if ($oldBackend !== $newBackend) {
-                            $oldBackendSettings = $backendModels[$oldBackend] ?? null;
-                            if ($oldBackendSettings) {
-                                $oldBackendSettings->enabled = true;
-                                $oldBackendSettings->save();
-                            }
-                        }
-
-                        $hasValidationError = true;
-                        $status = $backendInstance->getStatus();
-                        Craft::$app->getSession()->setError(Craft::t('search-manager',
-                            'Cannot switch to {backend} - backend is not available. Please check configuration and connection.',
-                            ['backend' => $backendName]
-                        ));
-                    }
-                }
+            if (!$configuredBackend->enabled) {
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend is disabled. Enable it first in the Backends section.'));
+                return $this->renderTemplate('search-manager/settings/backend', [
+                    'settings' => $settings,
+                    'configuredBackends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                    'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
+                ]);
             }
         }
 
-        // Save all other backends only if validation passed
-        if (!$hasValidationError) {
-            foreach ($backendModels as $backendName => $backendSettings) {
-                // Skip selected backend (already saved above)
-                if ($backendName !== $newBackend) {
-                    $backendSettings->save();
-                }
-            }
-        }
+        $settings->defaultBackendHandle = $newBackendHandle;
 
-        if ($hasValidationError) {
-            // Keep the new backend selected so user sees the form with errors
-            return $renderBackendTemplate($settings, $backendModels);
-        }
-
-        // Now save main settings (backend validated successfully)
         if (!$settings->saveToDatabase()) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
-            return $renderBackendTemplate($settings, $backendModels);
+            return $this->renderTemplate('search-manager/settings/backend', [
+                'settings' => $settings,
+                'configuredBackends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
+            ]);
         }
 
-        $this->logInfo('Backend settings saved successfully');
+        $this->logInfo('Default backend setting saved', ['handle' => $newBackendHandle]);
 
-        // Show appropriate message
-        if ($backendChanged) {
+        $backendChanged = $oldBackend !== $newBackendHandle;
+        if ($backendChanged && $newBackendHandle) {
             Craft::$app->getSession()->setNotice(Craft::t('search-manager',
-                'Settings saved. Backend changed from {old} to {new}. Rebuild all indices in Utilities to migrate data.',
-                [
-                    'old' => $oldBackend,
-                    'new' => $newBackend,
-                ]
+                'Default backend changed to "{name}". Rebuild indices in Utilities to migrate data.',
+                ['name' => $configuredBackend->name]
             ));
         } else {
             Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));

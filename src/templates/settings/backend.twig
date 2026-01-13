@@ -5,7 +5,6 @@
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'backend' %}
 
-
 {% set crumbs = [
     {
         label: searchHelper.fullName|t('search-manager'),
@@ -22,434 +21,88 @@
 ] %}
 
 {% block actionButton %}
-	<div class="btngroup">
-		<input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
-	</div>
+    {% if enabledBackends|length > 0 %}
+        <div class="btngroup">
+            <input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+        </div>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
 
     {% include 'lindemannrock-base/_components/ip-salt-error' with {
-		pluginHandle: 'search-manager',
-		envVarName: 'SEARCH_MANAGER_IP_SALT'
-	} %}
+        pluginHandle: 'search-manager',
+        envVarName: 'SEARCH_MANAGER_IP_SALT'
+    } %}
 
-	<form method="post" accept-charset="UTF-8">
-		<input type="hidden" name="action" value="search-manager/settings/save-backend">
-		{{ csrfInput() }}
-		{{ redirectInput('search-manager/settings/backend') }}
+    <form method="post" accept-charset="UTF-8">
+        <input type="hidden" name="action" value="search-manager/settings/save-backend">
+        {{ csrfInput() }}
+        {{ redirectInput('search-manager/settings/backend') }}
 
-		<h2 style="margin-top: 0px;">{{ "Search Backend"|t('search-manager') }}</h2>
+        <h2 style="margin-top: 0px;">{{ "Default Search Backend"|t('search-manager') }}</h2>
+        <p class="light">{{ "Select which configured backend to use as the system default. Indices can override this setting individually."|t('search-manager') }}</p>
 
-		{% set backendOptions = {
-            'algolia': 'Algolia (Cloud search service)'|t('search-manager'),
-            'file': 'File (Local storage in @storage/runtime)'|t('search-manager'),
-            'meilisearch': 'Meilisearch (Self-hosted)'|t('search-manager'),
-            'mysql': (dbDriver == 'mysql' ? 'Craft Database (MySQL)' : 'Craft Database (MySQL) - Not available (Craft uses PostgreSQL)')|t('search-manager'),
-            'pgsql': (dbDriver == 'pgsql' ? 'Craft Database (PostgreSQL)' : 'Craft Database (PostgreSQL) - Not available (Craft uses MySQL)')|t('search-manager'),
-            'redis': 'Redis (In-memory cache)'|t('search-manager'),
-            'typesense': 'Typesense (Self-hosted)'|t('search-manager'),
-        } %}
+        {% if configuredBackends|length == 0 %}
+            {# No backends configured at all #}
+            {% include 'lindemannrock-base/_components/info-box' with {
+                type: 'warning',
+                message: '<strong>No Backends Configured</strong><br>You need to create at least one backend before you can select a default.<br><br><a href="' ~ url('search-manager/backends/new') ~ '" class="btn">Create Your First Backend</a>'
+            } %}
 
-		{{ forms.selectField({
-            label: 'Active Backend'|t('search-manager'),
-            instructions: 'Choose which search backend to use'|t('search-manager'),
-            id: 'searchBackend',
-            name: 'settings[searchBackend]',
-            value: settings.searchBackend,
-            options: backendOptions,
-            disabled: settings.isOverriddenByConfig('searchBackend'),
-            warning: settings.isOverriddenByConfig('searchBackend') ?
-                "This is being overridden by the <code>searchBackend</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-        }) }}
+        {% elseif enabledBackends|length == 0 %}
+            {# Backends exist but none are enabled #}
+            {% include 'lindemannrock-base/_components/info-box' with {
+                type: 'warning',
+                message: '<strong>No Enabled Backends</strong><br>You have ' ~ configuredBackends|length ~ ' backend(s) configured, but none are enabled. Enable at least one backend to use it as the default.<br><br><a href="' ~ url('search-manager/backends') ~ '" class="btn">Manage Backends</a>'
+            } %}
 
-		<div id="file-config" {% if settings.searchBackend != 'file' %}style="display:none;"{% endif %}>
-			<hr>
-			<h2>{{ "File Backend Configuration"|t('search-manager') }}</h2>
-			<p class="light">{{ "File backend stores search indices as JSON files. No additional configuration required."|t('search-manager') }}</p>
+        {% else %}
+            {# Build options from enabled backends #}
+            {% set backendOptions = [{ label: 'Select a default backend...', value: '' }] %}
+            {% for backend in enabledBackends %}
+                {% set backendOptions = backendOptions|merge([{
+                    label: backend.name ~ ' (' ~ backend.getTypeLabel() ~ ')',
+                    value: backend.handle
+                }]) %}
+            {% endfor %}
 
-			{% include 'lindemannrock-base/_components/info-box' with {
-				message: '<strong>Storage Location:</strong> <code>@storage/runtime/search-manager/indices/</code>'
-			} %}
-			<hr>
-		</div>
+            {{ forms.selectField({
+                label: 'Default Backend'|t('search-manager'),
+                instructions: 'The backend that will be used for new indices and as the fallback when no specific backend is assigned.'|t('search-manager'),
+                id: 'defaultBackendHandle',
+                name: 'settings[defaultBackendHandle]',
+                value: settings.defaultBackendHandle,
+                options: backendOptions,
+                disabled: settings.isOverriddenByConfig('defaultBackendHandle'),
+                warning: settings.isOverriddenByConfig('defaultBackendHandle') ?
+                    "This is being overridden by the <code>defaultBackendHandle</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            }) }}
 
-		<div id="mysql-config" {% if settings.searchBackend != 'mysql' %}style="display:none;"{% endif %}>
-			<hr>
-			<h2>{{ "Craft Database (MySQL) Configuration"|t('search-manager') }}</h2>
-			<p class="light">{{ "Uses Craft's MySQL database with BM25 search algorithm. No additional configuration required. Ranking algorithm settings below control search behavior."|t('search-manager') }}</p>
+            {% include 'lindemannrock-base/_components/info-box' with {
+                type: 'tip',
+                message: '<strong>Manage Backends:</strong> <a href="' ~ url('search-manager/backends') ~ '">Configure backend connections</a> in the Backends section. You can create multiple backends (e.g., "Production Algolia", "Development MySQL") and assign them to different indices.'
+            } %}
+        {% endif %}
 
-			{% if dbDriver != 'mysql' %}
-				{% include 'lindemannrock-base/_components/info-box' with {
-					type: 'warning',
-					message: '<strong>Not Available:</strong> This backend requires Craft CMS to use MySQL. Your installation currently uses ' ~ dbDriver|upper ~ '. Please select a different backend or change your database configuration.'
-				} %}
-			{% endif %}
-			<hr>
-		</div>
-
-		<div id="pgsql-config" {% if settings.searchBackend != 'pgsql' %}style="display:none;"{% endif %}>
-			<hr>
-			<h2>{{ "Craft Database (PostgreSQL) Configuration"|t('search-manager') }}</h2>
-			<p class="light">{{ "Uses Craft's PostgreSQL database with BM25 search algorithm. No additional configuration required. Ranking algorithm settings below control search behavior."|t('search-manager') }}</p>
-
-			{% if dbDriver != 'pgsql' %}
-				{% include 'lindemannrock-base/_components/info-box' with {
-					type: 'warning',
-					message: '<strong>Not Available:</strong> This backend requires Craft CMS to use PostgreSQL. Your installation currently uses ' ~ dbDriver|upper ~ '. Please select a different backend or change your database configuration.'
-				} %}
-			{% endif %}
-			<hr>
-		</div>
-
-		<div id="algolia-config" {% if settings.searchBackend != 'algolia' %}style="display:none;"{% endif %}>
-			<hr>
-			<h2>{{ "Algolia Configuration"|t('search-manager') }}</h2>
-			<p class="light">{{ "Get your API keys from your"|t('search-manager') }} <a href="https://www.algolia.com/dashboard" target="_blank" rel="noopener">Algolia Dashboard</a></p>
-
-			{{ forms.autosuggestField({
-            label: 'Application ID'|t('search-manager'),
-            instructions: 'Your Algolia Application ID'|t('search-manager'),
-            id: 'algoliaApplicationId',
-            name: 'backend[algolia][applicationId]',
-            value: algoliaConfig.applicationId ?? '',
-            placeholder: '$ALGOLIA_APPLICATION_ID',
-            suggestEnvVars: true,
-            required: true,
-            errors: algoliaSettings ? algoliaSettings.getErrors('applicationId') : [],
-            disabled: settings.isOverriddenByConfig('backends.algolia.applicationId'),
-            warning: settings.isOverriddenByConfig('backends.algolia.applicationId') ?
-                "This is being overridden by the <code>backends.algolia.applicationId</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-        }) }}
-
-		{{ forms.autosuggestField({
-            label: 'Admin API Key'|t('search-manager'),
-            instructions: 'Your Algolia Admin API Key (for indexing)'|t('search-manager'),
-            id: 'algoliaAdminApiKey',
-            name: 'backend[algolia][adminApiKey]',
-            value: algoliaConfig.adminApiKey ?? '',
-            placeholder: '$ALGOLIA_ADMIN_API_KEY',
-            suggestEnvVars: true,
-            required: true,
-            errors: algoliaSettings ? algoliaSettings.getErrors('apiKey') : [],
-            disabled: settings.isOverriddenByConfig('backends.algolia.adminApiKey'),
-            warning: settings.isOverriddenByConfig('backends.algolia.adminApiKey') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-        }) }}
-
-		{{ forms.autosuggestField({
-            label: 'Search API Key'|t('search-manager'),
-            instructions: 'Your Algolia Search-Only API Key (for frontend)'|t('search-manager'),
-            id: 'algoliaSearchApiKey',
-            name: 'backend[algolia][searchApiKey]',
-            value: algoliaConfig.searchApiKey ?? '',
-            placeholder: '$ALGOLIA_SEARCH_API_KEY',
-            suggestEnvVars: true,
-            disabled: settings.isOverriddenByConfig('backends.algolia.searchApiKey'),
-            warning: settings.isOverriddenByConfig('backends.algolia.searchApiKey') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-        }) }}
-<hr>
-
-		</div>
-
-		<div id="meilisearch-config" {% if settings.searchBackend != 'meilisearch' %}style="display:none;"{% endif %}>
-			<hr>
-			<h2>{{ "Meilisearch Configuration"|t('search-manager') }}</h2>
-			<p class="light">{{ "Self-hosted open-source search engine."|t('search-manager') }} <a href="https://www.meilisearch.com/docs" target="_blank" rel="noopener">Meilisearch Documentation</a></p>
-
-			{% include 'lindemannrock-base/_components/info-box' with {
-				message: '<strong>Quick Start:</strong> <code>docker run -d -p 7700:7700 getmeili/meilisearch:latest</code>'
-			} %}
-
-		{{ forms.autosuggestField({
-            label: 'Host'|t('search-manager'),
-            instructions: 'Meilisearch server URL'|t('search-manager'),
-            id: 'meilisearchHost',
-            name: 'backend[meilisearch][host]',
-            value: meilisearchConfig.host ?? '',
-            placeholder: '$MEILISEARCH_HOST or http://localhost:7700',
-            suggestEnvVars: true,
-            required: true,
-            errors: meilisearchSettings ? meilisearchSettings.getErrors('host') : [],
-            disabled: settings.isOverriddenByConfig('backends.meilisearch.host'),
-            warning: settings.isOverriddenByConfig('backends.meilisearch.host') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-        }) }}
-
-		{{ forms.autosuggestField({
-            label: 'API Key'|t('search-manager'),
-            instructions: 'Meilisearch Master Key'|t('search-manager'),
-            id: 'meilisearchApiKey',
-            name: 'backend[meilisearch][apiKey]',
-            value: meilisearchConfig.apiKey ?? '',
-            placeholder: '$MEILISEARCH_API_KEY',
-            suggestEnvVars: true,
-            required: true,
-            errors: meilisearchSettings ? meilisearchSettings.getErrors('apiKey') : [],
-            disabled: settings.isOverriddenByConfig('backends.meilisearch.apiKey'),
-            warning: settings.isOverriddenByConfig('backends.meilisearch.apiKey') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-        }) }}
         <hr>
-		</div>
 
-		<div id="redis-config" {% if settings.searchBackend != 'redis' %}style="display:none;"{% endif %}>
-			<hr>
-			<h2>{{ "Redis Configuration"|t('search-manager') }}</h2>
-			<p class="light">{{ "In-memory search storage. Requires Redis server and PHP Redis extension."|t('search-manager') }} <a href="https://redis.io/docs/getting-started/" target="_blank" rel="noopener">Redis Documentation</a></p>
+        <h2>{{ "Search & Ranking Settings"|t('search-manager') }}</h2>
+        <div class="field">
+            <p class="light">
+                {{ "Configure search behavior and ranking algorithms:"|t('search-manager') }}<br><br>
+                → <a href="{{ url('search-manager/settings/search') }}"><strong>{{ "Search Settings"|t('search-manager') }}</strong></a> - {{ "BM25 parameters, boost factors, fuzzy matching"|t('search-manager') }}<br>
+                → <a href="{{ url('search-manager/settings/language') }}"><strong>{{ "Language Settings"|t('search-manager') }}</strong></a> - {{ "Stop words and multi-language support"|t('search-manager') }}<br>
+                → <a href="{{ url('search-manager/settings/highlighting') }}"><strong>{{ "Highlighting Settings"|t('search-manager') }}</strong></a> - {{ "Result highlighting, snippets, autocomplete"|t('search-manager') }}
+            </p>
+        </div>
 
-			{% set craftUsesRedis = craft.app.cache is defined and craft.app.cache.className is defined and craft.app.cache.className == 'yii\\redis\\Cache' %}
-			{% if craftUsesRedis %}
-				{% include 'lindemannrock-base/_components/info-box' with {
-					type: 'success',
-					message: '<strong>Craft Redis Cache Detected:</strong> Leave fields empty to reuse Craft\'s connection, or configure below for dedicated search Redis.'
-				} %}
-			{% else %}
-				{% include 'lindemannrock-base/_components/info-box' with {
-					message: '<strong>Optional:</strong> Install <code>yiisoft/yii2-redis</code> (run <code>composer require yiisoft/yii2-redis</code> or <code>ddev composer require yiisoft/yii2-redis</code>), then configure in <code>config/app.php</code> to use Craft\'s Redis cache. Search Manager can then reuse that connection. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>'
-				} %}
-			{% endif %}
+        {% if enabledBackends|length > 0 %}
+            <div class="buttons">
+                <button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+            </div>
+        {% endif %}
+    </form>
 
-		{{ forms.autosuggestField({
-            label: 'Host'|t('search-manager'),
-            instructions: craftUsesRedis ? 'Leave empty to use Craft\'s Redis cache connection, or specify dedicated host'|t('search-manager') : 'Redis server host (e.g., redis or localhost)'|t('search-manager'),
-            id: 'redisHost',
-            name: 'backend[redis][host]',
-            value: redisConfig.host ?? '',
-            placeholder: craftUsesRedis ? '$REDIS_HOST or leave empty' : '$REDIS_HOST or redis',
-            suggestEnvVars: true,
-            required: not craftUsesRedis,
-            errors: redisSettings ? redisSettings.getErrors('host') : [],
-            disabled: settings.isOverriddenByConfig('backends.redis.host'),
-            warning: settings.isOverriddenByConfig('backends.redis.host') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-        }) }}
-
-		{{ forms.autosuggestField({
-            label: 'Port'|t('search-manager'),
-            instructions: craftUsesRedis ? 'Leave empty to use Craft\'s Redis port, or specify dedicated port'|t('search-manager') : 'Redis server port (e.g., 6379)'|t('search-manager'),
-            id: 'redisPort',
-            name: 'backend[redis][port]',
-            value: redisConfig.port ?? '',
-            placeholder: craftUsesRedis ? '$REDIS_PORT or leave empty' : '$REDIS_PORT or 6379',
-            suggestEnvVars: true,
-            required: not craftUsesRedis,
-            errors: redisSettings ? redisSettings.getErrors('port') : [],
-            disabled: settings.isOverriddenByConfig('backends.redis.port'),
-        }) }}
-
-		{{ forms.autosuggestField({
-            label: 'Password'|t('search-manager'),
-            instructions: 'Redis password (leave empty if no password required)'|t('search-manager'),
-            id: 'redisPassword',
-            name: 'backend[redis][password]',
-            value: redisConfig.password ?? '',
-            placeholder: '$REDIS_PASSWORD or leave empty',
-            suggestEnvVars: true,
-            disabled: settings.isOverriddenByConfig('backends.redis.password'),
-        }) }}
-
-		{{ forms.autosuggestField({
-            label: 'Database'|t('search-manager'),
-            instructions: craftUsesRedis ? 'Leave empty to use Craft\'s Redis database, or specify dedicated database'|t('search-manager') : 'Redis database number (e.g., 0)'|t('search-manager'),
-            id: 'redisDatabase',
-            name: 'backend[redis][database]',
-            value: redisConfig.database ?? '',
-            placeholder: craftUsesRedis ? '$REDIS_DATABASE or leave empty' : '$REDIS_DATABASE or 0',
-            suggestEnvVars: true,
-            required: not craftUsesRedis,
-            errors: redisSettings ? redisSettings.getErrors('database') : [],
-            disabled: settings.isOverriddenByConfig('backends.redis.database'),
-        }) }}
-			<hr>
-		</div>
-
-		<div id="typesense-config" {% if settings.searchBackend != 'typesense' %}style="display:none;"{% endif %}>
-			<hr>
-			<h2>{{ "Typesense Configuration"|t('search-manager') }}</h2>
-			<p class="light">{{ "Open-source search engine with typo tolerance."|t('search-manager') }} <a href="https://typesense.org/docs/" target="_blank" rel="noopener">Typesense Documentation</a></p>
-
-			{% include 'lindemannrock-base/_components/info-box' with {
-				message: '<strong>Quick Start:</strong> <code>docker run -d -p 8108:8108 typesense/typesense:latest</code>'
-			} %}
-
-		{{ forms.autosuggestField({
-            label: 'Host'|t('search-manager'),
-            instructions: 'Typesense server host'|t('search-manager'),
-            id: 'typesenseHost',
-            name: 'backend[typesense][host]',
-            value: typesenseConfig.host ?? 'localhost',
-            placeholder: '$TYPESENSE_HOST or localhost',
-            suggestEnvVars: true,
-            required: true,
-            errors: typesenseSettings ? typesenseSettings.getErrors('host') : [],
-            disabled: settings.isOverriddenByConfig('backends.typesense.host'),
-            warning: settings.isOverriddenByConfig('backends.typesense.host') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-        }) }}
-
-		{{ forms.textField({
-            label: 'Port'|t('search-manager'),
-            instructions: 'Typesense server port'|t('search-manager'),
-            id: 'typesensePort',
-            name: 'backend[typesense][port]',
-            value: typesenseConfig.port ?? '8108',
-            disabled: settings.isOverriddenByConfig('backends.typesense.port'),
-        }) }}
-
-		{{ forms.selectField({
-            label: 'Protocol'|t('search-manager'),
-            id: 'typesenseProtocol',
-            name: 'backend[typesense][protocol]',
-            value: typesenseConfig.protocol ?? 'http',
-            options: {
-                'http': 'HTTP',
-                'https': 'HTTPS',
-            },
-            disabled: settings.isOverriddenByConfig('backends.typesense.protocol'),
-        }) }}
-
-		{{ forms.autosuggestField({
-            label: 'API Key'|t('search-manager'),
-            instructions: 'Typesense API Key'|t('search-manager'),
-            id: 'typesenseApiKey',
-            name: 'backend[typesense][apiKey]',
-            value: typesenseConfig.apiKey ?? '',
-            placeholder: '$TYPESENSE_API_KEY',
-            suggestEnvVars: true,
-            required: true,
-            errors: typesenseSettings ? typesenseSettings.getErrors('apiKey') : [],
-            disabled: settings.isOverriddenByConfig('backends.typesense.apiKey'),
-            warning: settings.isOverriddenByConfig('backends.typesense.apiKey') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-        }) }}
-
-<hr>
-
-		</div>
-
-		{# MySQL, PostgreSQL, Redis, File - Show links to dedicated settings pages #}
-		<div id="builtin-algorithm-config" {% if settings.searchBackend not in ['mysql', 'pgsql', 'file', 'redis'] %}style="display:none;"{% endif %}>
-			<h2>{{ "Search & Ranking Settings"|t('search-manager') }}</h2>
-			<div class="field">
-				<p class="light">
-					BM25 algorithm settings, boost factors, and fuzzy matching options have been moved to dedicated pages for better organization:<br><br>
-					→ <a href="{{ url('search-manager/settings/search') }}"><strong>Search Settings</strong></a> - BM25 parameters, boost factors, fuzzy matching<br>
-					→ <a href="{{ url('search-manager/settings/language') }}"><strong>Language Settings</strong></a> - Stop words and multi-language support<br>
-					→ <a href="{{ url('search-manager/settings/highlighting') }}"><strong>Highlighting Settings</strong></a> - Result highlighting, snippets, autocomplete
-				</p>
-			</div>
-			<hr>
-		</div>
-
-		{# Algolia - External configuration #}
-		<div id="algolia-algorithm-config" {% if settings.searchBackend != 'algolia' %}style="display:none;"{% endif %}>
-			<h2>{{ "Search & Ranking Settings"|t('search-manager') }}</h2>
-			<div class="field">
-				<p class="light">
-					Algolia uses its own ranking algorithm and search features configured in the Algolia Dashboard:<br><br>
-					→ <strong>Ranking & Relevance:</strong> Configure in <a href="https://www.algolia.com/doc/guides/managing-results/relevance-overview/" target="_blank" rel="noopener">Algolia Dashboard → Ranking</a><br>
-					→ <strong>Typo Tolerance:</strong> Built-in, configure via <a href="https://www.algolia.com/doc/api-reference/api-parameters/typoTolerance/" target="_blank" rel="noopener">typoTolerance settings</a><br>
-					→ <strong>Stop Words:</strong> Configure in <a href="https://www.algolia.com/doc/guides/managing-results/optimize-search-results/handling-natural-languages-nlp/in-depth/language-specific-configurations/#stop-words" target="_blank" rel="noopener">Algolia Dashboard → Stop Words</a><br>
-					→ <strong>Highlighting:</strong> Built-in, returned in <code>_highlightResult</code> automatically<br>
-					→ <strong>Autocomplete:</strong> Use Algolia's autocomplete.js or InstantSearch libraries
-				</p>
-			</div>
-			<hr>
-		</div>
-
-		{# Meilisearch - External configuration #}
-		<div id="meilisearch-algorithm-config" {% if settings.searchBackend != 'meilisearch' %}style="display:none;"{% endif %}>
-			<h2>{{ "Search & Ranking Settings"|t('search-manager') }}</h2>
-			<div class="field">
-				<p class="light">
-					Meilisearch uses its own ranking rules and search features configured via API or dashboard:<br><br>
-					→ <strong>Ranking Rules:</strong> Configure <a href="https://www.meilisearch.com/docs/learn/core_concepts/relevancy" target="_blank" rel="noopener">Meilisearch ranking rules</a><br>
-					→ <strong>Typo Tolerance:</strong> Built-in, configure via <a href="https://www.meilisearch.com/docs/reference/api/settings#typo-tolerance" target="_blank" rel="noopener">typoTolerance settings</a><br>
-					→ <strong>Stop Words:</strong> Configure via <a href="https://www.meilisearch.com/docs/reference/api/settings#stop-words" target="_blank" rel="noopener">stopWords API</a><br>
-					→ <strong>Highlighting:</strong> Built-in, configure via <code>attributesToHighlight</code><br>
-					→ <strong>Autocomplete:</strong> Use Meilisearch's instant-meilisearch library
-				</p>
-			</div>
-			<hr>
-		</div>
-
-		{# Typesense - External configuration #}
-		<div id="typesense-algorithm-config" {% if settings.searchBackend != 'typesense' %}style="display:none;"{% endif %}>
-			<h2>{{ "Search & Ranking Settings"|t('search-manager') }}</h2>
-			<div class="field">
-				<p class="light">
-					Typesense uses its own ranking algorithm and search features configured in collection schema:<br><br>
-					→ <strong>Ranking & Relevance:</strong> Configure via <a href="https://typesense.org/docs/latest/api/search.html#ranking-and-sorting" target="_blank" rel="noopener">Typesense ranking</a><br>
-					→ <strong>Typo Tolerance:</strong> Built-in, configure via <a href="https://typesense.org/docs/latest/api/search.html#typo-tolerance-parameters" target="_blank" rel="noopener">num_typos parameter</a><br>
-					→ <strong>Stop Words:</strong> Not supported (Typesense doesn't use stop words)<br>
-					→ <strong>Highlighting:</strong> Built-in, configure via <code>highlight_fields</code><br>
-					→ <strong>Autocomplete:</strong> Use Typesense's prefix search and autocomplete features
-				</p>
-			</div>
-			<hr>
-		</div>
-
-		<div class="buttons">
-			<button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
-		</div>
-	</form>
-
-	{% include 'lindemannrock-base/_components/plugin-credit' %}
-
-	<script>
-		document.addEventListener('DOMContentLoaded', function() {
-			const backendSelect = document.getElementById('searchBackend');
-			const backendConfigs = {
-				'file': document.getElementById('file-config'),
-				'mysql': document.getElementById('mysql-config'),
-				'pgsql': document.getElementById('pgsql-config'),
-				'algolia': document.getElementById('algolia-config'),
-				'meilisearch': document.getElementById('meilisearch-config'),
-				'redis': document.getElementById('redis-config'),
-				'typesense': document.getElementById('typesense-config')
-			};
-			const algorithmConfigs = {
-				'builtin': document.getElementById('builtin-algorithm-config'),
-				'algolia': document.getElementById('algolia-algorithm-config'),
-				'meilisearch': document.getElementById('meilisearch-algorithm-config'),
-				'typesense': document.getElementById('typesense-algorithm-config')
-			};
-
-			function updateBackendVisibility() {
-				const selectedBackend = backendSelect.value;
-
-				// Hide all backend configs
-				Object.values(backendConfigs).forEach(config => {
-					if (config) config.style.display = 'none';
-				});
-
-				// Hide all algorithm configs
-				Object.values(algorithmConfigs).forEach(config => {
-					if (config) config.style.display = 'none';
-				});
-
-				// Show selected backend config
-				if (backendConfigs[selectedBackend]) {
-					backendConfigs[selectedBackend].style.display = 'block';
-				}
-
-				// Show appropriate algorithm config
-				if (['mysql', 'pgsql', 'file', 'redis'].includes(selectedBackend)) {
-					if (algorithmConfigs.builtin) {
-						algorithmConfigs.builtin.style.display = 'block';
-					}
-				} else if (algorithmConfigs[selectedBackend]) {
-					algorithmConfigs[selectedBackend].style.display = 'block';
-				}
-			}
-
-			// Update on change
-			backendSelect.addEventListener('change', updateBackendVisibility);
-
-			// Initial state
-			updateBackendVisibility();
-		});
-	</script>
+    {% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

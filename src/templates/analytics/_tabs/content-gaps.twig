@@ -1,3 +1,14 @@
+{# Backend type labels for proper display #}
+{% set backendLabels = {
+    'algolia': 'Algolia',
+    'meilisearch': 'Meilisearch',
+    'typesense': 'Typesense',
+    'mysql': 'MySQL',
+    'pgsql': 'PostgreSQL',
+    'redis': 'Redis',
+    'file': 'File',
+} %}
+
 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
     <div>
         <h2 style="margin: 0 0 10px;">{{ "Content Gaps (Zero-Hit Clusters)"|t('search-manager') }}</h2>
@@ -69,7 +80,7 @@
                                 {% endif %}
                             </td>
                             <td>{{ stat.indexHandle }}</td>
-                            <td>{{ stat.backend|title }}</td>
+                            <td>{{ backendLabels[stat.backend] ?? stat.backend|title }}</td>
                             <td>{{ stat.dateCreated|date('short') }}</td>
                             <td>{{ stat.dateCreated|time('short') }}</td>
                         </tr>

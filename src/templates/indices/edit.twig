@@ -196,6 +196,32 @@
         </div>
     </div>
 
+    <hr style="margin: 25px 0; border: none; border-top: 1px solid #e3e5e8;">
+
+    <h2 style="font-size: 1.1em; font-weight: 600; margin-bottom: 15px;">{{ "Advanced Settings"|t('search-manager') }}</h2>
+
+    {% set backendOptions = craft.searchManager.getPlugin().backend.getBackendOptions() %}
+
+    {{ forms.selectField({
+        label: "Search Backend"|t('search-manager'),
+        instructions: "Override the global search backend for this index. Leave as 'Default' to use the backend configured in plugin settings."|t('search-manager'),
+        id: 'backend',
+        name: 'backend',
+        value: index.backend ?? '',
+        options: backendOptions,
+    }) }}
+
+    {% if backendOptions|length <= 1 %}
+        {% include 'lindemannrock-base/_components/info-box' with {
+            message: '<strong>No configured backends yet.</strong> <a href="' ~ cpUrl('search-manager/backends/new') ~ '">Create a backend</a> to use a different search service for this index.'
+        } %}
+    {% elseif index.backend %}
+        {% include 'lindemannrock-base/_components/info-box' with {
+            type: 'warning',
+            message: '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.'
+        } %}
+    {% endif %}
+
 </form>
 
 <script>
@@ -357,6 +383,33 @@ document.addEventListener('DOMContentLoaded', function() {
 					<dd class="value">
 						<span class="status {{ index.enabled ? 'live' : 'disabled' }}"></span>
 						<span>{{ index.enabled ? 'Live'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+					</dd>
+				</div>
+				<div class="data">
+					<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
+					<dd class="value">
+						{% if index.backend %}
+							{# Show configured backend name #}
+							{% set configuredBackend = index.configuredBackend %}
+							{% if configuredBackend %}
+								{{ configuredBackend.name }}&nbsp;<span style="color: #f59e0b; font-size: 0.85em;">({{ configuredBackend.getTypeLabel() }})</span>
+							{% else %}
+								{{ index.backend }}&nbsp;<span style="color: #ef4444; font-size: 0.85em;">(not found)</span>
+							{% endif %}
+						{% else %}
+							{# Show default backend from settings #}
+							{% set defaultBackendHandle = craft.searchManager.getSettings().defaultBackendHandle %}
+							{% if defaultBackendHandle %}
+								{% set defaultConfiguredBackend = craft.searchManager.getPlugin().getConfiguredBackend(defaultBackendHandle) %}
+								{% if defaultConfiguredBackend %}
+									{{ defaultConfiguredBackend.name }}&nbsp;<span style="color: #8f98a3; font-size: 0.85em;">(default)</span>
+								{% else %}
+									{{ defaultBackendHandle }}&nbsp;<span style="color: #8f98a3; font-size: 0.85em;">(default, not found)</span>
+								{% endif %}
+							{% else %}
+								<span class="light">{{ 'No default backend'|t('search-manager') }}</span>
+							{% endif %}
+						{% endif %}
 					</dd>
 				</div>
 				<div class="data">

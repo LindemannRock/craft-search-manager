@@ -133,4 +133,13 @@ interface BackendInterface
      * @return array Array of index information
      */
     public function listIndices(): array;
+
+    /**
+     * Set configured settings from a ConfiguredBackend
+     * These settings will be used instead of global config
+     *
+     * @param array $settings
+     * @return void
+     */
+    public function setConfiguredSettings(array $settings): void;
 }

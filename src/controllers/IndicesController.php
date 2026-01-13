@@ -104,6 +104,7 @@ class IndicesController extends Controller
         $index->siteId = $request->getBodyParam('siteId') ?: null;
         $index->transformerClass = $request->getBodyParam('transformerClass');
         $index->language = $request->getBodyParam('language') ?: null;
+        $index->backend = $request->getBodyParam('backend') ?: null;
         $index->enabled = (bool)$request->getBodyParam('enabled');
         $index->criteria = $request->getBodyParam('criteria', []);
 

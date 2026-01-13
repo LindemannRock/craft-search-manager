@@ -22,8 +22,22 @@ class AlgoliaBackend extends BaseBackend
     public function isAvailable(): bool
     {
         $settings = $this->getBackendSettings();
-        return !empty($settings['applicationId']) &&
-               !empty($settings['adminApiKey']);
+
+        if (empty($settings['applicationId']) || empty($settings['adminApiKey'])) {
+            return false;
+        }
+
+        try {
+            // Actually test the connection by listing indices
+            $client = $this->getClient();
+            $client->listIndices();
+            return true;
+        } catch (\Throwable $e) {
+            $this->logError('Algolia connection test failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 
     public function getStatus(): array

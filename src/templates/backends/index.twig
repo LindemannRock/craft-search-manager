@@ -1,16 +1,15 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 
-
-{% set title = "Indices"|t('search-manager') %}
+{% set title = "Backends"|t('search-manager') %}
 {% set fullPageForm = false %}
-{% set selectedSubnavItem = 'indices' %}
+{% set selectedSubnavItem = 'backends' %}
 
 {# Get query parameters #}
 {% set search = craft.app.request.getParam('search', '') %}
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
+{% set typeFilter = craft.app.request.getParam('type', 'all') %}
 {% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set backendFilter = craft.app.request.getParam('backend', 'all') %}
 {% set sort = craft.app.request.getParam('sort', 'source') %}
 {% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
@@ -18,12 +17,28 @@
 {% set offset = (page - 1) * limit %}
 
 {# Permission checks #}
-{% set showActionsColumn = currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices') or currentUser.can('searchManager:deleteIndices') %}
+{% set canCreate = currentUser.can('searchManager:createBackends') %}
+{% set canEdit = currentUser.can('searchManager:editBackends') %}
+{% set canDelete = currentUser.can('searchManager:deleteBackends') %}
 
-{# Backend colors - prepare for per-index backends in future #}
+{# Source colors #}
+{% set sourceColors = {
+	'config': '#0ea5e9',
+	'database': '#84cc16',
+} %}
+{% set sourceRgb = {
+	'config': '14, 165, 233',
+	'database': '132, 204, 22',
+} %}
+{% set sourceTextColors = {
+	'config': '#0c4a6e',
+	'database': '#3f6212',
+} %}
+
+{# Backend type colors - match indices/index.twig #}
 {% set backendColors = {
 	'mysql': '#f59e0b',
-	'postgresql': '#3b82f6',
+	'pgsql': '#3b82f6',
 	'file': '#6b7280',
 	'redis': '#dc2626',
 	'typesense': '#8b5cf6',
@@ -34,7 +49,7 @@
 {# Backend RGB for backgrounds #}
 {% set backendRgb = {
 	'mysql': '245, 158, 11',
-	'postgresql': '59, 130, 246',
+	'pgsql': '59, 130, 246',
 	'file': '107, 114, 128',
 	'redis': '220, 38, 38',
 	'typesense': '139, 92, 246',
@@ -45,7 +60,7 @@
 {# Backend dark colors for text #}
 {% set backendTextColors = {
 	'mysql': '#78350f',
-	'postgresql': '#1e3a8a',
+	'pgsql': '#1e3a8a',
 	'file': '#374151',
 	'redis': '#7f1d1d',
 	'typesense': '#5b21b6',
@@ -53,78 +68,60 @@
 	'meilisearch': '#831843',
 } %}
 
-{# Config source colors #}
-{% set sourceColors = {
-	'config': '#0ea5e9',
-	'database': '#84cc16',
-} %}
-
-{# Config source RGB for backgrounds #}
-{% set sourceRgb = {
-	'config': '14, 165, 233',
-	'database': '132, 204, 22',
-} %}
-
-{# Config source dark colors for text #}
-{% set sourceTextColors = {
-	'config': '#0c4a6e',
-	'database': '#1a2e05',
-} %}
-
-{# Filter indices based on filters #}
-{% set filteredIndices = indices %}
+{# Filter backends #}
+{% set filteredBackends = backends %}
 
 {# Status filter #}
 {% if statusFilter == 'enabled' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.enabled) %}
+	{% set filteredBackends = filteredBackends|filter(b => b.enabled) %}
 {% elseif statusFilter == 'disabled' %}
-	{% set filteredIndices = filteredIndices|filter(i => not i.enabled) %}
+	{% set filteredBackends = filteredBackends|filter(b => not b.enabled) %}
+{% endif %}
+
+{# Type filter #}
+{% if typeFilter != 'all' %}
+	{% set filteredBackends = filteredBackends|filter(b => b.backendType == typeFilter) %}
 {% endif %}
 
 {# Source filter #}
 {% if sourceFilter == 'config' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.source == 'config') %}
+	{% set filteredBackends = filteredBackends|filter(b => b.source == 'config') %}
 {% elseif sourceFilter == 'database' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.source != 'config') %}
-{% endif %}
-
-{# Backend filter - filter by the index's effective backend TYPE #}
-{% if backendFilter != 'all' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.effectiveBackendType == backendFilter) %}
+	{% set filteredBackends = filteredBackends|filter(b => b.source != 'config') %}
 {% endif %}
 
 {# Search filter #}
 {% if search %}
-	{% set filteredIndices = filteredIndices|filter(i => search|lower in i.name|lower or search|lower in i.handle|lower) %}
+	{% set filteredBackends = filteredBackends|filter(b => search|lower in b.name|lower or search|lower in b.handle|lower) %}
 {% endif %}
 
 {# Sort #}
 {% if sort == 'name' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.name|lower <=> b.name|lower) : filteredIndices|sort((a, b) => b.name|lower <=> a.name|lower) %}
+	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.name|lower <=> b.name|lower) : filteredBackends|sort((a, b) => b.name|lower <=> a.name|lower) %}
 {% elseif sort == 'handle' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredIndices|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
-{% elseif sort == 'elementType' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.elementType <=> b.elementType) : filteredIndices|sort((a, b) => b.elementType <=> a.elementType) %}
+	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredBackends|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
+{% elseif sort == 'type' %}
+	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.backendType <=> b.backendType) : filteredBackends|sort((a, b) => b.backendType <=> a.backendType) %}
 {% elseif sort == 'source' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredIndices|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
+	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredBackends|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
 {% elseif sort == 'enabled' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.enabled <=> b.enabled) : filteredIndices|sort((a, b) => b.enabled <=> a.enabled) %}
+	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.enabled <=> b.enabled) : filteredBackends|sort((a, b) => b.enabled <=> a.enabled) %}
 {% endif %}
 
 {# Pagination #}
-{% set totalCount = filteredIndices|length %}
+{% set totalCount = filteredBackends|length %}
 {% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
-{% set paginatedIndices = filteredIndices|slice(offset, limit) %}
+{% set paginatedBackends = filteredBackends|slice(offset, limit) %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
-    { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') }
+    { label: 'Backends'|t('search-manager'), url: url('search-manager/backends') }
 ] %}
 
 {% block toolbar %}
 	<div id="toolbar" class="flex" style="align-items: flex-end;">
 		<div class="flex-grow">
-			<form method="get" action="{{ url('search-manager/indices') }}">
+			<form method="get" action="{{ url('search-manager/backends') }}">
 				<div class="flex">
 					<div class="btngroup">
 						<button type="button" class="btn menubtn statusmenubtn">
@@ -134,77 +131,77 @@
 						<div class="menu">
 							<ul>
 								<li>
-									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
+									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}">
 										<span class="status all"></span>{{ 'All'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
-									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
+									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}">
 										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
-									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
+									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}">
 										<span class="status disabled"></span>{{ 'Disabled'|t('search-manager') }}
+									</a>
+								</li>
+								<li><hr class="padded"></li>
+								<li class="menu-header">{{ 'Backend Type'|t('search-manager') }}</li>
+								<li>
+									<a class="{{ typeFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=all&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status all"></span>{{ 'All Types'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ typeFilter == 'algolia' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=algolia&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ typeFilter == 'algolia' ? backendColors.algolia : '#aab6c1' }};"></span>{{ 'Algolia'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ typeFilter == 'meilisearch' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=meilisearch&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ typeFilter == 'meilisearch' ? backendColors.meilisearch : '#aab6c1' }};"></span>{{ 'Meilisearch'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ typeFilter == 'typesense' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=typesense&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ typeFilter == 'typesense' ? backendColors.typesense : '#aab6c1' }};"></span>{{ 'Typesense'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ typeFilter == 'mysql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=mysql&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ typeFilter == 'mysql' ? backendColors.mysql : '#aab6c1' }};"></span>{{ 'MySQL'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ typeFilter == 'pgsql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=pgsql&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ typeFilter == 'pgsql' ? backendColors.pgsql : '#aab6c1' }};"></span>{{ 'PostgreSQL'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ typeFilter == 'redis' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=redis&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ typeFilter == 'redis' ? backendColors.redis : '#aab6c1' }};"></span>{{ 'Redis'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ typeFilter == 'file' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=file&source={{ sourceFilter }}&search={{ search }}">
+										<span class="status" style="background: {{ typeFilter == 'file' ? backendColors.file : '#aab6c1' }};"></span>{{ 'File'|t('search-manager') }}
 									</a>
 								</li>
 								<li><hr class="padded"></li>
 								<li class="menu-header">{{ 'Config Source'|t('search-manager') }}</li>
 								<li>
-									<a class="{{ sourceFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=all&backend={{ backendFilter }}&search={{ search }}">
+									<a class="{{ sourceFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type={{ typeFilter }}&source=all&search={{ search }}">
 										<span class="status all"></span>{{ 'All Sources'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
-									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=config&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'config' ? '#0ea5e9' : '#aab6c1' }};"></span>{{ 'Config File'|t('search-manager') }}
+									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type={{ typeFilter }}&source=config&search={{ search }}">
+										<span class="status" style="background: {{ sourceFilter == 'config' ? sourceColors.config : '#aab6c1' }};"></span>{{ 'Config File'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
-									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=database&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'database' ? '#84cc16' : '#aab6c1' }};"></span>{{ 'Database'|t('search-manager') }}
-									</a>
-								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Backend'|t('search-manager') }}</li>
-								<li>
-									<a class="{{ backendFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=all&search={{ search }}">
-										<span class="status all"></span>{{ 'All Backends'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'mysql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=mysql&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'mysql' ? backendColors.mysql : '#aab6c1' }};"></span>{{ 'MySQL'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'postgresql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=postgresql&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'postgresql' ? backendColors.postgresql : '#aab6c1' }};"></span>{{ 'PostgreSQL'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'file' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=file&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'file' ? backendColors.file : '#aab6c1' }};"></span>{{ 'File'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'redis' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=redis&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'redis' ? backendColors.redis : '#aab6c1' }};"></span>{{ 'Redis'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'typesense' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=typesense&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'typesense' ? backendColors.typesense : '#aab6c1' }};"></span>{{ 'Typesense'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'algolia' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=algolia&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'algolia' ? backendColors.algolia : '#aab6c1' }};"></span>{{ 'Algolia'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'meilisearch' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=meilisearch&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'meilisearch' ? backendColors.meilisearch : '#aab6c1' }};"></span>{{ 'Meilisearch'|t('search-manager') }}
+									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type={{ typeFilter }}&source=database&search={{ search }}">
+										<span class="status" style="background: {{ sourceFilter == 'database' ? sourceColors.database : '#aab6c1' }};"></span>{{ 'Database'|t('search-manager') }}
 									</a>
 								</li>
 							</ul>
@@ -212,18 +209,18 @@
 					</div>
 					<div class="search-container texticon flex-grow">
 						<span class="texticon-icon search icon" aria-hidden="true"></span>
-						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search indices...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
+						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search backends...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
 						<button type="button" class="clear-btn {{ search ? '' : 'hidden' }}" title="Clear search" role="button" aria-label="Clear search"></button>
 						<input type="hidden" name="status" value="{{ statusFilter }}">
+						<input type="hidden" name="type" value="{{ typeFilter }}">
 						<input type="hidden" name="source" value="{{ sourceFilter }}">
-						<input type="hidden" name="backend" value="{{ backendFilter }}">
 					</div>
 				</div>
 			</form>
 		</div>
-		{% if currentUser.can('searchManager:createIndices') %}
-			<a href="{{ url('search-manager/indices/create') }}" class="btn submit add icon" id="new-index-btn">
-				<span class="label-full">{{ 'New Index'|t('search-manager') }}</span>
+		{% if canCreate %}
+			<a href="{{ url('search-manager/backends/new') }}" class="btn submit add icon" id="new-backend-btn">
+				<span class="label-full">{{ 'New Backend'|t('search-manager') }}</span>
 				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
 			</a>
 		{% endif %}
@@ -232,13 +229,13 @@
 
 {% css %}
 @media (max-width: 768px) {
-	#new-index-btn .label-full {
+	#new-backend-btn .label-full {
 		display: none;
 	}
-	#new-index-btn .label-short {
+	#new-backend-btn .label-short {
 		display: inline;
 	}
-	#new-index-btn:before {
+	#new-backend-btn:before {
 		margin-inline-end: 0 !important;
 	}
 }
@@ -250,7 +247,6 @@
 			width: 40px !important;
 			text-align: center;
 		}
-		/* Keep toolbar on one row even on smaller screens */
 		#toolbar.flex {
 			flex-wrap: nowrap;
 			gap: 8px;
@@ -331,119 +327,86 @@
 						<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
 						</th>
-						<th scope="col" data-attribute="elementType" class="orderable {{ sort == 'elementType' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="elementType">{{ "Element Type"|t('search-manager') }}</button>
+						<th scope="col" data-attribute="type" class="orderable {{ sort == 'type' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="type">{{ "Type"|t('search-manager') }}</button>
 						</th>
-						<th scope="col">{{ "Backend"|t('search-manager') }}</th>
-						<th scope="col">{{ "Craft"|t('search-manager') }}</th>
-						<th scope="col">{{ "Indexed"|t('search-manager') }}</th>
-						<th scope="col">{{ "Last Indexed"|t('search-manager') }}</th>
 						<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="source">{{ "Config Source"|t('search-manager') }}</button>
 						</th>
 						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
 						</th>
-						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
+						{% if canEdit or canDelete %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
 					</tr>
 				</thead>
 				<tbody>
-					{% if paginatedIndices|length %}
-						{% for index in paginatedIndices %}
-							{% set isConfig = index.source == 'config' %}
-							<tr data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}" data-source="{{ isConfig ? 'config' : 'database' }}">
+					{% if paginatedBackends|length %}
+						{% for backend in paginatedBackends %}
+							{% set isConfig = backend.source == 'config' %}
+							{% set bColor = backendColors[backend.backendType]|default('#9aa5b1') %}
+							{% set bRgb = backendRgb[backend.backendType]|default('154, 165, 177') %}
+							{% set bTextColor = backendTextColors[backend.backendType]|default('#374151') %}
+							<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ isConfig ? 'config' : 'database' }}">
 								<td class="checkbox-cell">
 									{% if isConfig %}
-										<div class="checkbox disabled" title="{{ 'Config indices cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
+										<div class="checkbox disabled" title="{{ 'Config backends cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
 									{% else %}
 										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
 									{% endif %}
 								</td>
 								<td>
-									{% if index.canEdit() %}
-										<a class="label-link" href="{{ url('search-manager/indices/edit/' ~ index.id) }}">
-											<span>{{ index.name }}</span>
+									{% if backend.canEdit() %}
+										<a class="label-link" href="{{ url('search-manager/backends/' ~ backend.id) }}">
+											<span>{{ backend.name }}</span>
 										</a>
 									{% else %}
-										{{ index.name }}
-										<span class="config-info-icon" data-config="{{ index.rawConfigDisplay|e('html_attr') }}"></span>
+										{{ backend.name }}
+										<span class="config-info-icon" data-config="{{ backend.rawConfigDisplay|e('html_attr') }}"></span>
 									{% endif %}
 								</td>
-								<td><code>{{ index.handle }}</code></td>
-								<td>{{ index.elementType|split('\\')|last }}</td>
+								<td><code>{{ backend.handle }}</code></td>
 								<td>
-									{% set indexBackendType = index.effectiveBackendType %}
-									{% set configuredBackend = index.configuredBackend %}
-									{% set bColor = backendColors[indexBackendType]|default('#9aa5b1') %}
-									{% set bRgb = backendRgb[indexBackendType]|default('154, 165, 177') %}
-									{% set bTextColor = backendTextColors[indexBackendType]|default('#374151') %}
-									{% if indexBackendType %}
-										<span class="status-label" style="background: rgba({{ bRgb }}, 0.12);" title="{{ configuredBackend ? configuredBackend.name : '' }}">
-											<span class="status" style="background: {{ bColor }};"></span>
-											<span class="status-label-text" style="color: {{ bTextColor }};">{{ configuredBackend ? configuredBackend.name : indexBackendType|title }}</span>
-										</span>
-									{% else %}
-										<span class="light">{{ 'No backend'|t('search-manager') }}</span>
-									{% endif %}
-								</td>
-								{% set expected = index.expectedCount %}
-								<td>{{ expected }}</td>
-								<td>
-									{% if index.documentCount == expected %}
-										<span style="color: #059669;">{{ index.documentCount }}</span>
-									{% elseif index.documentCount < expected %}
-										<span style="color: #d97706;" title="{{ expected - index.documentCount }} missing">{{ index.documentCount }}</span>
-									{% else %}
-										<span style="color: #dc2626;" title="{{ index.documentCount - expected }} stale">{{ index.documentCount }}</span>
-									{% endif %}
+									<span class="status-label" style="background: rgba({{ bRgb }}, 0.12);">
+										<span class="status" style="background: {{ bColor }};"></span>
+										<span class="status-label-text" style="color: {{ bTextColor }};">{{ backend.getTypeLabel() }}</span>
+									</span>
 								</td>
 								<td>
-									{% if index.lastIndexed %}
-										{{ index.lastIndexed|datetime('short') }}
-									{% else %}
-										<span class="light">{{ "Never"|t('search-manager') }}</span>
-									{% endif %}
-								</td>
-								<td>
-									{% if index.source == 'config' %}
+									{% if isConfig %}
 										<span class="status-label" style="background: rgba({{ sourceRgb.config }}, 0.12);"><span class="status" style="background: {{ sourceColors.config }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.config }};">{{ "Config"|t('search-manager') }}</span></span>
 									{% else %}
 										<span class="status-label" style="background: rgba({{ sourceRgb.database }}, 0.12);"><span class="status" style="background: {{ sourceColors.database }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.database }};">{{ "Database"|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td>
-									{% if index.enabled %}
+									{% if backend.enabled %}
 										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
 									{% else %}
 										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
-								{% if showActionsColumn %}
+								{% if canEdit or canDelete %}
 								<td class="thin" style="text-align: right;">
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
 										<ul>
-											{% if currentUser.can('searchManager:rebuildIndices') %}
+											{% if canEdit and backend.canEdit() %}
 												<li>
-													<a class="index-action" data-action="rebuild" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Rebuild Index'|t('search-manager') }}
+													<a href="{{ url('search-manager/backends/' ~ backend.id) }}">
+														{{ 'Edit'|t('search-manager') }}
 													</a>
 												</li>
 											{% endif %}
-
-											{% if currentUser.can('searchManager:clearIndices') %}
-												<li>
-													<a class="index-action" data-action="clear" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Clear Index Data'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-
-											{% if index.canEdit() and currentUser.can('searchManager:deleteIndices') %}
+											<li>
+												<a class="backend-action" data-action="test" data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name }}">
+													{{ 'Test Connection'|t('search-manager') }}
+												</a>
+											</li>
+											{% if canDelete and backend.canEdit() %}
 												<li><hr class="padded"></li>
 												<li>
-													<a class="index-action error" data-action="delete" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Delete Index'|t('search-manager') }}
+													<a class="backend-action error" data-action="delete" data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name }}">
+														{{ 'Delete'|t('search-manager') }}
 													</a>
 												</li>
 											{% endif %}
@@ -455,8 +418,8 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="11" style="text-align: center; padding: 2em;">
-								{{ 'No indices found.'|t('search-manager') }}
+							<td colspan="{{ (canEdit or canDelete) ? 7 : 6 }}" style="text-align: center; padding: 2em;">
+								{{ 'No backends found.'|t('search-manager') }}
 							</td>
 						</tr>
 					{% endif %}
@@ -468,21 +431,23 @@
 	<div id="footer" class="flex flex-justify">
 		<div class="light">
 			<div class="flex pagination">
-				<nav class="flex" aria-label="index pagination">
+				<nav class="flex" aria-label="backend pagination">
 					<button type="button" class="page-link prev-page {{ page <= 1 ? 'disabled' : '' }}" {{ page <= 1 ? 'disabled' : '' }} title="Previous Page"></button>
 					<button type="button" class="page-link next-page {{ page >= totalPages ? 'disabled' : '' }}" {{ page >= totalPages ? 'disabled' : '' }} title="Next Page"></button>
 				</nav>
 				<div class="page-info" style="margin: 0 12px; color: #596673;">
 					{% set endRange = min(offset + limit, totalCount) %}
 					{% if totalCount == 0 %}
-						{{ 'no indices'|t('search-manager') }}
+						{{ 'no backends'|t('search-manager') }}
 					{% else %}
-						{{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'index' : 'indices' }}
+						{{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'backend' : 'backends' }}
 					{% endif %}
 				</div>
 			</div>
 		</div>
+		{% if canEdit or canDelete %}
 		<div id="actions-container" class="flex" style="display: none;">
+			{% if canEdit %}
 			<div>
 				<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
 					{{ 'Set status'|t('app') }}
@@ -494,10 +459,14 @@
 					</ul>
 				</div>
 			</div>
+			{% endif %}
+			{% if canDelete %}
 			<button type="button" class="btn secondary" id="bulk-delete-btn">
 				<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
 			</button>
+			{% endif %}
 		</div>
+		{% endif %}
 	</div>
 
 	<script>
@@ -532,11 +501,11 @@
 
 	// Pagination
 	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
+		window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
 	});
 
 	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
+		window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
 	});
 
 	// Sort buttons
@@ -549,7 +518,7 @@
 			if (sortField === currentSort) {
 				newDir = currentDir === 'asc' ? 'desc' : 'asc';
 			}
-			window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
+			window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
 		});
 	});
 
@@ -634,15 +603,15 @@
 		e.preventDefault();
 		const ids = Array.from(selectedIds);
 
-		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-enable', {
-			data: { indexIds: ids }
+		Craft.sendActionRequest('POST', 'search-manager/backends/bulk-enable', {
+			data: { backendIds: ids }
 		}).then(function(response) {
 			if (response.data.success) {
-				Craft.cp.displayNotice(`Enabled ${response.data.count} indices`);
+				Craft.cp.displayNotice(`Enabled ${response.data.count} backends`);
 				setTimeout(() => window.location.reload(), 1000);
 			}
 		}).catch(function(error) {
-			Craft.cp.displayError('Failed to enable indices');
+			Craft.cp.displayError('Failed to enable backends');
 		});
 	});
 
@@ -651,61 +620,77 @@
 		e.preventDefault();
 		const ids = Array.from(selectedIds);
 
-		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-disable', {
-			data: { indexIds: ids }
+		Craft.sendActionRequest('POST', 'search-manager/backends/bulk-disable', {
+			data: { backendIds: ids }
 		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Disabled ${response.data.count} indices`);
+			if (response.data.count > 0) {
+				Craft.cp.displayNotice(`Disabled ${response.data.count} backend(s)`);
+			}
+			if (response.data.errors && response.data.errors.length > 0) {
+				response.data.errors.forEach(err => Craft.cp.displayError(err));
+			}
+			// Only auto-reload if no errors
+			if (!response.data.errors || response.data.errors.length === 0) {
 				setTimeout(() => window.location.reload(), 1000);
 			}
 		}).catch(function(error) {
-			Craft.cp.displayError('Failed to disable indices');
+			Craft.cp.displayError('Failed to disable backends');
 		});
 	});
 
 	// Bulk delete
 	document.getElementById('bulk-delete-btn')?.addEventListener('click', function() {
 		const ids = Array.from(selectedIds);
-		if (!confirm(`Delete ${ids.length} ${ids.length > 1 ? 'indices' : 'index'}? This cannot be undone.`)) return;
+		if (!confirm(`Delete ${ids.length} ${ids.length > 1 ? 'backends' : 'backend'}? This cannot be undone.`)) return;
 
-		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-delete', {
-			data: { indexIds: ids }
+		Craft.sendActionRequest('POST', 'search-manager/backends/bulk-delete', {
+			data: { backendIds: ids }
 		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Deleted ${response.data.count} indices`);
+			if (response.data.count > 0) {
+				Craft.cp.displayNotice(`Deleted ${response.data.count} backend(s)`);
+			}
+			if (response.data.errors && response.data.errors.length > 0) {
+				response.data.errors.forEach(err => Craft.cp.displayError(err));
+			}
+			// Only auto-reload if no errors
+			if (!response.data.errors || response.data.errors.length === 0) {
 				setTimeout(() => window.location.reload(), 1000);
 			}
 		}).catch(function(error) {
-			Craft.cp.displayError('Failed to delete indices');
+			Craft.cp.displayError('Failed to delete backends');
 		});
 	});
 
-	// Individual index action menu clicks
-	document.querySelectorAll('.index-action').forEach(link => {
+	// Individual backend action menu clicks
+	document.querySelectorAll('.backend-action').forEach(link => {
 		link.addEventListener('click', function(e) {
 			e.preventDefault();
 
 			const action = this.dataset.action;
-			const indexId = this.dataset.id;
-			const indexName = this.dataset.name;
+			const backendId = this.dataset.id;
+			const backendName = this.dataset.name;
 
-			if (action === 'rebuild') {
-				if (confirm('Rebuild index "' + indexName + '"? This will re-index all elements.')) {
-					submitIndexAction('search-manager/indices/rebuild', indexId);
-				}
-			} else if (action === 'clear') {
-				if (confirm('Clear all data from index "' + indexName + '"? This cannot be undone.')) {
-					submitIndexAction('search-manager/indices/clear', indexId);
-				}
+			if (action === 'test') {
+				Craft.sendActionRequest('POST', 'search-manager/backends/test', {
+					data: { backendId: backendId }
+				}).then(function(response) {
+					if (response.data.success) {
+						Craft.cp.displayNotice('Connection successful: ' + backendName);
+					} else {
+						Craft.cp.displayError('Connection failed: ' + (response.data.error || 'Unknown error'));
+					}
+				}).catch(function(error) {
+					Craft.cp.displayError('Connection test failed');
+				});
 			} else if (action === 'delete') {
-				if (confirm('Delete index "' + indexName + '"? This will remove the index and all its data.')) {
-					submitIndexAction('search-manager/indices/delete', indexId);
+				if (confirm('Delete backend "' + backendName + '"? Indices using this backend will fall back to the default.')) {
+					submitBackendAction('search-manager/backends/delete', backendId);
 				}
 			}
 		});
 	});
 
-	function submitIndexAction(action, indexId) {
+	function submitBackendAction(action, backendId) {
 		const form = document.createElement('form');
 		form.method = 'POST';
 		form.action = Craft.getActionUrl(action);
@@ -716,17 +701,17 @@
 		csrfInput.value = '{{ craft.app.request.csrfToken }}';
 		form.appendChild(csrfInput);
 
-		const indexIdInput = document.createElement('input');
-		indexIdInput.type = 'hidden';
-		indexIdInput.name = 'indexId';
-		indexIdInput.value = indexId;
-		form.appendChild(indexIdInput);
+		const backendIdInput = document.createElement('input');
+		backendIdInput.type = 'hidden';
+		backendIdInput.name = 'backendId';
+		backendIdInput.value = backendId;
+		form.appendChild(backendIdInput);
 
 		document.body.appendChild(form);
 		form.submit();
 	}
 
-	// Config tooltip for config-based indices
+	// Config tooltip for config-based backends
 	let activeTooltip = null;
 
 	document.querySelectorAll('.config-info-icon').forEach(info => {

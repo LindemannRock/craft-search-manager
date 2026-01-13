@@ -346,70 +346,94 @@ return [
         // ========================================
 
         /**
-         * Active search backend
-         * Options: 'algolia', 'meilisearch', 'mysql', 'typesense'
-         * Default: 'algolia'
+         * Default backend handle
+         * Must match a handle from configuredBackends (or database)
+         * Default: null (falls back to first enabled backend)
          */
-        // 'searchBackend' => 'algolia',
+        // 'defaultBackendHandle' => 'production-algolia',
 
         /**
-         * Backend-specific settings
-         * Configure credentials and options for each backend
+         * Configured backend instances
+         * Define named backend instances with their own credentials
+         * These are marked as source='config' and cannot be edited in CP
+         *
+         * Available backend types: 'algolia', 'meilisearch', 'typesense', 'mysql', 'pgsql', 'redis', 'file'
          */
-        'backends' => [
-            // Algolia Configuration
-            'algolia' => [
-                'enabled' => false,
-                'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
-                'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
-                'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
-                'timeout' => 5, // seconds
-                'connectTimeout' => 1, // seconds
-            ],
+        'configuredBackends' => [
+            // Example: Algolia for production
+            // 'production-algolia' => [
+            //     'name' => 'Production Algolia',
+            //     'backendType' => 'algolia',
+            //     'enabled' => true,
+            //     'settings' => [
+            //         'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
+            //         'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
+            //         'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
+            //     ],
+            // ],
 
-            // File Configuration (built-in, stores in @storage/runtime/search-manager)
-            'file' => [
-                'enabled' => false,
-                // No additional configuration needed
-                // Files stored in: storage/runtime/search-manager/
-            ],
+            // Example: Meilisearch for development
+            // 'dev-meilisearch' => [
+            //     'name' => 'Dev Meilisearch',
+            //     'backendType' => 'meilisearch',
+            //     'enabled' => true,
+            //     'settings' => [
+            //         'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
+            //         'apiKey' => App::env('MEILISEARCH_API_KEY'),
+            //     ],
+            // ],
 
-            // Meilisearch Configuration
-            'meilisearch' => [
-                'enabled' => false,
-                'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
-                'apiKey' => App::env('MEILISEARCH_API_KEY'),
-                'timeout' => 5, // seconds
-            ],
+            // Example: Typesense
+            // 'typesense-cloud' => [
+            //     'name' => 'Typesense Cloud',
+            //     'backendType' => 'typesense',
+            //     'enabled' => true,
+            //     'settings' => [
+            //         'host' => App::env('TYPESENSE_HOST'),
+            //         'port' => App::env('TYPESENSE_PORT') ?: 8108,
+            //         'protocol' => 'https',
+            //         'apiKey' => App::env('TYPESENSE_API_KEY'),
+            //     ],
+            // ],
 
-            // MySQL Configuration (built-in, no external service required)
-            'mysql' => [
-                'enabled' => false,
-                'rankingAlgorithm' => 'bm25', // Options: 'bm25', 'tf-idf'
-                'fuzzySearch' => true,
-                'maxEditDistance' => 2, // Levenshtein distance for fuzzy matching
-                'minWordLength' => 3, // Minimum word length to index
-            ],
+            // Example: MySQL (uses Craft's database)
+            // 'mysql-backend' => [
+            //     'name' => 'MySQL Backend',
+            //     'backendType' => 'mysql',
+            //     'enabled' => true,
+            //     'settings' => [], // No settings needed, uses Craft's DB
+            // ],
 
-            // Redis Configuration
-            'redis' => [
-                'enabled' => false,
-                'host' => App::env('REDIS_HOST') ?: '127.0.0.1',
-                'port' => App::env('REDIS_PORT') ?: 6379,
-                'password' => App::env('REDIS_PASSWORD'),
-                'database' => App::env('REDIS_DATABASE') ?: 0,
-                'timeout' => 2.0, // seconds
-            ],
+            // Example: PostgreSQL (uses Craft's database)
+            // 'pgsql-backend' => [
+            //     'name' => 'PostgreSQL Backend',
+            //     'backendType' => 'pgsql',
+            //     'enabled' => true,
+            //     'settings' => [], // No settings needed, uses Craft's DB
+            // ],
 
-            // Typesense Configuration
-            'typesense' => [
-                'enabled' => false,
-                'host' => App::env('TYPESENSE_HOST') ?: 'localhost',
-                'port' => App::env('TYPESENSE_PORT') ?: '8108',
-                'protocol' => App::env('TYPESENSE_PROTOCOL') ?: 'http',
-                'apiKey' => App::env('TYPESENSE_API_KEY'),
-                'connectionTimeout' => 5, // seconds
-            ],
+            // Example: Redis
+            // 'redis-backend' => [
+            //     'name' => 'Redis Backend',
+            //     'backendType' => 'redis',
+            //     'enabled' => true,
+            //     'settings' => [
+            //         'host' => App::env('REDIS_HOST') ?: 'redis',
+            //         'port' => App::env('REDIS_PORT') ?: 6379,
+            //         'password' => App::env('REDIS_PASSWORD'),
+            //         'database' => 0,
+            //     ],
+            // ],
+
+            // Example: File backend (local JSON files)
+            // 'file-backend' => [
+            //     'name' => 'File Backend',
+            //     'backendType' => 'file',
+            //     'enabled' => true,
+            //     'settings' => [
+            //         'storagePath' => '', // Empty = @storage/runtime/search-manager/indices/
+            //     ],
+            // ],
         ],
 
         // ========================================
@@ -474,12 +498,7 @@ return [
         'enableCache' => false, // Disable cache for testing
         'cacheDuration' => 300, // 5 minutes (if enabled)
         'deviceDetectionCacheDuration' => 1800, // 30 minutes
-        'backends' => [
-            'meilisearch' => [
-                'enabled' => true,
-                'host' => 'http://localhost:7700',
-            ],
-        ],
+        // 'defaultBackendHandle' => 'dev-meilisearch', // Use Meilisearch in dev
     ],
 
     // ========================================
@@ -491,11 +510,7 @@ return [
         'enableCache' => true,
         'cacheDuration' => 1800, // 30 minutes
         'deviceDetectionCacheDuration' => 3600, // 1 hour
-        'backends' => [
-            'meilisearch' => [
-                'enabled' => true,
-            ],
-        ],
+        // 'defaultBackendHandle' => 'staging-algolia', // Use staging Algolia
     ],
 
     // ========================================
@@ -511,10 +526,6 @@ return [
         'deviceDetectionCacheDuration' => 86400, // 24 hours (user agents rarely change)
         'cachePopularQueriesOnly' => true, // Save cache space
         'popularQueryThreshold' => 3, // Cache after 3 searches
-        'backends' => [
-            'algolia' => [
-                'enabled' => true,
-            ],
-        ],
+        // 'defaultBackendHandle' => 'production-algolia', // Use production Algolia
     ],
 ];

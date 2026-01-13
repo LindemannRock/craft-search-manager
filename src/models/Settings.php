@@ -49,9 +49,15 @@ class Settings extends Model
     public bool $autoIndex = true;
 
     /**
-     * @var string Active search backend handle
+     * @var string Active search backend type (legacy - for backward compatibility)
+     * @deprecated Use defaultBackendHandle instead
      */
     public string $searchBackend = 'file';
+
+    /**
+     * @var string|null Handle of the default configured backend
+     */
+    public ?string $defaultBackendHandle = null;
 
     /**
      * @var int Batch size for bulk indexing operations

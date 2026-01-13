@@ -314,13 +314,19 @@ use craft\helpers\App;
 
 return [
     '*' => [
-        'searchBackend' => 'meilisearch',
+        // Default backend to use (must match a handle from configuredBackends)
+        'defaultBackendHandle' => 'my-meilisearch',
 
-        'backends' => [
-            'meilisearch' => [
+        // Define backend instances
+        'configuredBackends' => [
+            'my-meilisearch' => [
+                'name' => 'My Meilisearch',
+                'backendType' => 'meilisearch',
                 'enabled' => true,
-                'host' => App::env('MEILISEARCH_HOST'),
-                'apiKey' => App::env('MEILISEARCH_API_KEY'),
+                'settings' => [
+                    'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
+                    'apiKey' => App::env('MEILISEARCH_API_KEY'),
+                ],
             ],
         ],
     ],
@@ -1573,17 +1579,23 @@ SearchManager::$plugin->indexing->rebuildAll();
 
 ## Backend Configuration
 
+Backends are configured as named instances using `configuredBackends`. Each backend has a unique handle and can be defined in config or created via the Control Panel.
+
 ### Algolia
 
 ```php
-'backends' => [
-    'algolia' => [
+'configuredBackends' => [
+    'production-algolia' => [
+        'name' => 'Production Algolia',
+        'backendType' => 'algolia',
         'enabled' => true,
-        'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
-        'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
-        'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
-        'timeout' => 5,
-        'connectTimeout' => 1,
+        'settings' => [
+            'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
+            'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
+            'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
+            'timeout' => 5,
+            'connectTimeout' => 1,
+        ],
     ],
 ],
 ```
@@ -1591,9 +1603,12 @@ SearchManager::$plugin->indexing->rebuildAll();
 ### File (Built-in)
 
 ```php
-'backends' => [
-    'file' => [
+'configuredBackends' => [
+    'local-file' => [
+        'name' => 'Local File Storage',
+        'backendType' => 'file',
         'enabled' => true,
+        'settings' => [],
         // Index data: storage/runtime/search-manager/indices/
         // Search cache: storage/runtime/search-manager/cache/search/
         // Device cache: storage/runtime/search-manager/cache/device/
@@ -1604,12 +1619,16 @@ SearchManager::$plugin->indexing->rebuildAll();
 ### Meilisearch
 
 ```php
-'backends' => [
-    'meilisearch' => [
+'configuredBackends' => [
+    'dev-meilisearch' => [
+        'name' => 'Development Meilisearch',
+        'backendType' => 'meilisearch',
         'enabled' => true,
-        'host' => 'http://localhost:7700',
-        'apiKey' => App::env('MEILISEARCH_API_KEY'),
-        'timeout' => 5,
+        'settings' => [
+            'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
+            'apiKey' => App::env('MEILISEARCH_API_KEY'),
+            'timeout' => 5,
+        ],
     ],
 ],
 ```
@@ -1619,17 +1638,21 @@ SearchManager::$plugin->indexing->rebuildAll();
 Uses Craft's existing database connection - no additional configuration needed.
 
 ```php
-'backends' => [
-    'mysql' => [
+'configuredBackends' => [
+    'craft-mysql' => [
+        'name' => 'Craft MySQL',
+        'backendType' => 'mysql',
         'enabled' => true,
+        'settings' => [],
         // Uses Craft's MySQL database
-        // No additional config needed
     ],
     // Or for PostgreSQL installations:
-    'pgsql' => [
+    'craft-pgsql' => [
+        'name' => 'Craft PostgreSQL',
+        'backendType' => 'pgsql',
         'enabled' => true,
+        'settings' => [],
         // Uses Craft's PostgreSQL database
-        // No additional config needed
     ],
 ],
 ```
@@ -1643,11 +1666,13 @@ Uses Craft's existing database connection - no additional configuration needed.
 If Craft is configured to use Redis cache in `config/app.php`, Search Manager can automatically reuse that connection:
 
 ```php
-'backends' => [
-    'redis' => [
+'configuredBackends' => [
+    'craft-redis' => [
+        'name' => 'Craft Redis Cache',
+        'backendType' => 'redis',
         'enabled' => true,
-        // Leave all fields empty in CP or omit config entirely
-        // Plugin will automatically use Craft's Redis settings
+        'settings' => [],
+        // Leave settings empty to use Craft's Redis connection
     ],
 ],
 ```
@@ -1657,13 +1682,17 @@ If Craft is configured to use Redis cache in `config/app.php`, Search Manager ca
 Configure a separate Redis connection for search:
 
 ```php
-'backends' => [
-    'redis' => [
+'configuredBackends' => [
+    'dedicated-redis' => [
+        'name' => 'Dedicated Redis',
+        'backendType' => 'redis',
         'enabled' => true,
-        'host' => App::env('REDIS_HOST') ?: 'redis',
-        'port' => App::env('REDIS_PORT') ?: 6379,
-        'password' => App::env('REDIS_PASSWORD'),
-        'database' => App::env('REDIS_DATABASE') ?: 0,
+        'settings' => [
+            'host' => App::env('REDIS_HOST') ?: 'redis',
+            'port' => App::env('REDIS_PORT') ?: 6379,
+            'password' => App::env('REDIS_PASSWORD'),
+            'database' => App::env('REDIS_DATABASE') ?: 0,
+        ],
     ],
 ],
 ```
@@ -1684,17 +1713,66 @@ REDIS_DATABASE=0
 ### Typesense
 
 ```php
-'backends' => [
-    'typesense' => [
+'configuredBackends' => [
+    'typesense-server' => [
+        'name' => 'Typesense Server',
+        'backendType' => 'typesense',
         'enabled' => true,
-        'host' => 'localhost',
-        'port' => '8108',
-        'protocol' => 'http',
-        'apiKey' => App::env('TYPESENSE_API_KEY'),
-        'connectionTimeout' => 5,
+        'settings' => [
+            'host' => 'localhost',
+            'port' => '8108',
+            'protocol' => 'http',
+            'apiKey' => App::env('TYPESENSE_API_KEY'),
+            'connectionTimeout' => 5,
+        ],
     ],
 ],
 ```
+
+### Multiple Backends
+
+You can configure multiple backends and switch between them per environment:
+
+```php
+return [
+    '*' => [
+        'defaultBackendHandle' => 'dev-meilisearch',
+        'configuredBackends' => [
+            'dev-meilisearch' => [
+                'name' => 'Development Meilisearch',
+                'backendType' => 'meilisearch',
+                'enabled' => true,
+                'settings' => [
+                    'host' => 'http://localhost:7700',
+                    'apiKey' => App::env('MEILISEARCH_API_KEY'),
+                ],
+            ],
+            'production-algolia' => [
+                'name' => 'Production Algolia',
+                'backendType' => 'algolia',
+                'enabled' => true,
+                'settings' => [
+                    'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
+                    'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
+                    'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
+                ],
+            ],
+        ],
+    ],
+    'production' => [
+        'defaultBackendHandle' => 'production-algolia',
+    ],
+];
+```
+
+### Config vs Database Backends
+
+Backends can be defined in two ways:
+
+- **Config-defined**: Defined in `config/search-manager.php`. Cannot be edited in Control Panel. Shows "Config" source badge.
+- **Database-defined**: Created via Control Panel. Fully editable. Shows "Database" source badge.
+
+If a config backend has the same handle as a database backend, the config version takes precedence.
 
 ## Utilities & Cache Management
 
@@ -1830,8 +1908,8 @@ return [
         // Prefix for index names (useful for multi-environment)
         'indexPrefix' => App::env('SEARCH_INDEX_PREFIX'),
 
-        // Active search backend (mysql, pgsql, redis, file, algolia, meilisearch, typesense)
-        'searchBackend' => 'mysql',
+        // Default backend to use (must match a handle from configuredBackends)
+        'defaultBackendHandle' => 'my-backend',
 
         // Analytics settings
         'enableAnalytics' => true,
@@ -1868,12 +1946,39 @@ return [
 ```php
 return [
     '*' => [
-        'searchBackend' => 'mysql',
+        'defaultBackendHandle' => 'dev-mysql',
         'logLevel' => 'error',
         'enableAnalytics' => true,
+
+        // Define all backends in one place
+        'configuredBackends' => [
+            'dev-mysql' => [
+                'name' => 'Development MySQL',
+                'backendType' => 'mysql',
+                'enabled' => true,
+                'settings' => [],
+            ],
+            'staging-redis' => [
+                'name' => 'Staging Redis',
+                'backendType' => 'redis',
+                'enabled' => true,
+                'settings' => [],
+            ],
+            'production-algolia' => [
+                'name' => 'Production Algolia',
+                'backendType' => 'algolia',
+                'enabled' => true,
+                'settings' => [
+                    'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
+                    'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
+                    'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
+                ],
+            ],
+        ],
     ],
 
     'dev' => [
+        'defaultBackendHandle' => 'dev-mysql',
         'logLevel' => 'debug',
         'indexPrefix' => 'dev_',
         'queueEnabled' => false,
@@ -1881,13 +1986,10 @@ return [
         'cacheDuration' => 300, // 5 minutes (if enabled)
         'deviceDetectionCacheDuration' => 1800, // 30 minutes
         'analyticsRetention' => 30,
-        'backends' => [
-            'mysql' => ['enabled' => true],
-            'file' => ['enabled' => true],
-        ],
     ],
 
     'staging' => [
+        'defaultBackendHandle' => 'staging-redis',
         'logLevel' => 'info',
         'indexPrefix' => 'staging_',
         'enableCache' => true,
@@ -1895,12 +1997,10 @@ return [
         'cacheDuration' => 1800, // 30 minutes
         'deviceDetectionCacheDuration' => 3600, // 1 hour
         'analyticsRetention' => 90,
-        'backends' => [
-            'redis' => ['enabled' => true],
-        ],
     ],
 
     'production' => [
+        'defaultBackendHandle' => 'production-algolia',
         'logLevel' => 'error',
         'indexPrefix' => 'prod_',
         'queueEnabled' => true,
@@ -1912,9 +2012,6 @@ return [
         'popularQueryThreshold' => 3, // Cache after 3 searches
         'analyticsRetention' => 365,
         'enableGeoDetection' => true,
-        'backends' => [
-            'algolia' => ['enabled' => true],
-        ],
     ],
 ];
 ```

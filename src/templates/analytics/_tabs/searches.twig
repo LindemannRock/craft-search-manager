@@ -1,3 +1,14 @@
+{# Backend type labels for proper display #}
+{% set backendLabels = {
+    'algolia': 'Algolia',
+    'meilisearch': 'Meilisearch',
+    'typesense': 'Typesense',
+    'mysql': 'MySQL',
+    'pgsql': 'PostgreSQL',
+    'redis': 'Redis',
+    'file': 'File',
+} %}
+
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
     <h2 style="margin: 0;">{{ "Recent Searches"|t('search-manager') }}</h2>
     <div class="btngroup">
@@ -92,7 +103,7 @@
                                 {% endif %}
                             </td>
                             <td>{{ search.indexHandle }}</td>
-                            <td>{{ search.backend|title }}</td>
+                            <td>{{ backendLabels[search.backend] ?? search.backend|title }}</td>
                             <td>
                                 {% if search.intent %}
                                     {{ search.intent|title }}

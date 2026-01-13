@@ -22,7 +22,22 @@ class TypesenseBackend extends BaseBackend
     public function isAvailable(): bool
     {
         $settings = $this->getBackendSettings();
-        return !empty($settings['host']) && !empty($settings['apiKey']);
+
+        if (empty($settings['host']) || empty($settings['apiKey'])) {
+            return false;
+        }
+
+        try {
+            // Actually test the connection with health check
+            $client = $this->getClient();
+            $client->health->retrieve();
+            return true;
+        } catch (\Throwable $e) {
+            $this->logError('Typesense connection test failed', [
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 
     public function getStatus(): array

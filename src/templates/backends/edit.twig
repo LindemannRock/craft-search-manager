@@ -1,0 +1,339 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = isNew ? 'New Backend'|t('search-manager') : 'Edit Backend'|t('search-manager') %}
+{% set selectedSubnavItem = 'backends' %}
+{% set fullPageForm = true %}
+{% set saveShortcutRedirect = cpUrl('search-manager/backends/{id}') %}
+{% set retainScrollOnSaveShortcut = true %}
+
+{% set crumbs = [
+    { label: searchHelper.fullName, url: url('search-manager') },
+    { label: 'Backends'|t('search-manager'), url: url('search-manager/backends') },
+    { label: isNew ? 'New Backend'|t('search-manager') : backend.name }
+] %}
+
+{% block actionButton %}
+    <div class="btngroup submit">
+        <button type="submit" class="btn submit">{{ 'Save'|t('app') }}</button>
+        <button type="button" class="btn submit menubtn"></button>
+        <div class="menu">
+            <ul role="listbox">
+                <li>
+                    <a class="formsubmit" role="option" tabindex="0" data-redirect="{{ cpUrl('search-manager/backends/{id}')|hash }}">
+                        <span class="label">{{ 'Save and continue editing'|t('app') }}</span>
+                        <span class="shortcut" id="save-shortcut"></span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    {% if not isNew and currentUser.can('searchManager:deleteBackends') %}
+        <button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('app') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('app') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
+        <div id="action-menu" class="menu menu--disclosure">
+            <ul>
+                <li>
+                    <button class="menu-item error formsubmit" data-destructive data-action="search-manager/backends/delete" data-params='{"backendId":{{ backend.id }}}' data-confirm="{{ 'Are you sure you want to delete this backend? Indices using it will fall back to the default.'|t('search-manager') }}" data-redirect="{{ 'search-manager/backends'|hash }}" data-headers='{"Accept":"application/json"}'>
+                        <span class="icon">{{ svg('@app/icons/trash.svg') }}</span>
+                        <span class="menu-item-label">{{ 'Delete'|t('app') }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<form method="post" accept-charset="UTF-8">
+    {{ actionInput('search-manager/backends/save') }}
+    {{ csrfInput() }}
+    {{ redirectInput('search-manager/backends') }}
+
+    {% if not isNew %}
+        {{ hiddenInput('backendId', backend.id) }}
+    {% endif %}
+
+    {{ forms.textField({
+        first: true,
+        label: 'Name'|t('search-manager'),
+        instructions: 'A descriptive name for this backend configuration (e.g., "Production Algolia", "Mobile Typesense")'|t('search-manager'),
+        id: 'name',
+        name: 'name',
+        value: backend.name,
+        required: true,
+        autofocus: true,
+        errors: backend.getErrors('name'),
+    }) }}
+
+    {{ forms.textField({
+        label: 'Handle'|t('search-manager'),
+        instructions: 'Unique identifier for this backend (used in config and code)'|t('search-manager'),
+        id: 'handle',
+        name: 'handle',
+        value: backend.handle,
+        required: true,
+        class: 'code',
+        errors: backend.getErrors('handle'),
+    }) }}
+
+    {# Build backend type options with availability info for mysql/pgsql #}
+    {% set backendTypeOptions = [{ label: 'Select a backend type...', value: '' }] %}
+    {% for value, label in backendTypes %}
+        {% if value == 'mysql' %}
+            {% if dbDriver == 'mysql' %}
+                {% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (MySQL)', value: 'mysql' }]) %}
+            {% else %}
+                {% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (MySQL) - Not available (Craft uses PostgreSQL)', value: 'mysql' }]) %}
+            {% endif %}
+        {% elseif value == 'pgsql' %}
+            {% if dbDriver == 'pgsql' %}
+                {% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (PostgreSQL)', value: 'pgsql' }]) %}
+            {% else %}
+                {% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (PostgreSQL) - Not available (Craft uses MySQL)', value: 'pgsql' }]) %}
+            {% endif %}
+        {% else %}
+            {% set backendTypeOptions = backendTypeOptions|merge([{ label: label, value: value }]) %}
+        {% endif %}
+    {% endfor %}
+
+    {{ forms.selectField({
+        label: 'Backend Type'|t('search-manager'),
+        instructions: 'The search service to use'|t('search-manager'),
+        id: 'backendType',
+        name: 'backendType',
+        value: backend.backendType,
+        required: true,
+        options: backendTypeOptions,
+        errors: backend.getErrors('backendType'),
+    }) }}
+
+    <hr style="margin: 25px 0;">
+
+    <div id="backend-settings">
+        <div id="no-settings-message" style="color: #8f98a3; font-style: italic; {% if backend.backendType %}display: none;{% endif %}">
+            {{ 'Select a backend type above to configure its settings.'|t('search-manager') }}
+        </div>
+
+        {% set backendDescriptions = constant('lindemannrock\\searchmanager\\models\\ConfiguredBackend::BACKEND_DESCRIPTIONS') %}
+
+        {# Check if Craft is using Redis for caching (indicates Redis is available) #}
+        {% set craftUsesRedis = craft.app.cache is defined and craft.app.cache.className is defined and craft.app.cache.className == 'yii\\redis\\Cache' %}
+
+        {% for type, schema in settingsSchemas %}
+            {% set typeDesc = backendDescriptions[type] ?? null %}
+            <div id="settings-{{ type }}" class="backend-type-settings" style="{% if backend.backendType != type %}display: none;{% endif %}">
+
+                {# Backend type header and description #}
+                {% if typeDesc %}
+                    <h2 style="margin-top: 0;">{{ typeDesc.title|t('search-manager') }}</h2>
+                    <p class="light">{{ typeDesc.description|t('search-manager')|raw }}</p>
+
+                    {% if typeDesc.infoBox %}
+                        {% include 'lindemannrock-base/_components/info-box' with {
+                            message: typeDesc.infoBox
+                        } %}
+                    {% endif %}
+                {% endif %}
+
+                {# Show availability warnings for MySQL/PostgreSQL #}
+                {% if type == 'mysql' and dbDriver != 'mysql' %}
+                    {% include 'lindemannrock-base/_components/info-box' with {
+                        type: 'warning',
+                        message: '<strong>Not Available:</strong> This backend requires Craft CMS to use MySQL. Your installation currently uses PostgreSQL. Please select a different backend or change your database configuration.'
+                    } %}
+                {% elseif type == 'pgsql' and dbDriver != 'pgsql' %}
+                    {% include 'lindemannrock-base/_components/info-box' with {
+                        type: 'warning',
+                        message: '<strong>Not Available:</strong> This backend requires Craft CMS to use PostgreSQL. Your installation currently uses MySQL. Please select a different backend or change your database configuration.'
+                    } %}
+                {% endif %}
+
+                {# Show Redis configuration info #}
+                {% if type == 'redis' %}
+                    {% if craftUsesRedis %}
+                        {% include 'lindemannrock-base/_components/info-box' with {
+                            type: 'success',
+                            message: '<strong>Redis Detected:</strong> Craft is configured to use Redis for caching via <code>config/app.php</code>. If no settings are provided below, the backend will use Craft\'s Redis connection by default.'
+                        } %}
+                    {% else %}
+                        {% include 'lindemannrock-base/_components/info-box' with {
+                            type: 'info',
+                            message: '<strong>Redis Not Detected in Craft:</strong> Redis caching is not configured in <code>config/app.php</code>. You must provide connection settings below, or <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">configure Redis in Craft</a> first.'
+                        } %}
+                    {% endif %}
+                    {% include 'lindemannrock-base/_components/info-box' with {
+                        type: 'tip',
+                        message: '<strong>Hosting Platform Note:</strong> If you\'re using a managed hosting platform like Servd, they may provide reserved environment variables (e.g., <code>REDIS_HOST</code>, <code>REDIS_PORT</code>) with custom values. In that case, configure the settings below using those env vars to ensure proper connectivity.'
+                    } %}
+                {% endif %}
+
+                {% if schema|length > 0 %}
+                    {% for key, config in schema %}
+                        {% set fieldValue = backend.settings[key] ?? config.default ?? '' %}
+                        {% set fieldInstructions = config.instructions ?? '' %}
+                        {% set fieldPlaceholder = config.placeholder ?? '' %}
+
+                        {% if config.type == 'password' %}
+                            {{ forms.autosuggestField({
+                                label: config.label|t('search-manager'),
+                                instructions: fieldInstructions|t('search-manager'),
+                                id: 'settings-' ~ type ~ '-' ~ key,
+                                name: 'settings[' ~ key ~ ']',
+                                value: fieldValue,
+                                required: config.required ?? false,
+                                placeholder: fieldPlaceholder,
+                                suggestEnvVars: true,
+                            }) }}
+                        {% elseif config.type == 'number' %}
+                            {{ forms.autosuggestField({
+                                label: config.label|t('search-manager'),
+                                instructions: fieldInstructions|t('search-manager'),
+                                id: 'settings-' ~ type ~ '-' ~ key,
+                                name: 'settings[' ~ key ~ ']',
+                                value: fieldValue,
+                                required: config.required ?? false,
+                                placeholder: fieldPlaceholder,
+                                suggestEnvVars: true,
+                            }) }}
+                        {% elseif config.type == 'select' %}
+                            {{ forms.selectField({
+                                label: config.label|t('search-manager'),
+                                instructions: fieldInstructions|t('search-manager'),
+                                id: 'settings-' ~ type ~ '-' ~ key,
+                                name: 'settings[' ~ key ~ ']',
+                                value: fieldValue,
+                                required: config.required ?? false,
+                                options: config.options,
+                            }) }}
+                        {% else %}
+                            {{ forms.autosuggestField({
+                                label: config.label|t('search-manager'),
+                                instructions: fieldInstructions|t('search-manager'),
+                                id: 'settings-' ~ type ~ '-' ~ key,
+                                name: 'settings[' ~ key ~ ']',
+                                value: fieldValue,
+                                required: config.required ?? false,
+                                placeholder: fieldPlaceholder,
+                                suggestEnvVars: true,
+                            }) }}
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+</form>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('name');
+    const handleInput = document.getElementById('handle');
+    const backendTypeSelect = document.getElementById('backendType');
+    const noSettingsMessage = document.getElementById('no-settings-message');
+    const allSettingsDivs = document.querySelectorAll('.backend-type-settings');
+    const isNew = {{ isNew ? 'true' : 'false' }};
+    let handleModifiedManually = !isNew;
+
+    // Convert name to handle format
+    function nameToHandle(name) {
+        return name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
+
+    // Auto-generate handle for new backends
+    if (isNew && nameInput && handleInput) {
+        nameInput.addEventListener('input', function() {
+            if (!handleModifiedManually) {
+                handleInput.value = nameToHandle(this.value);
+            }
+        });
+
+        handleInput.addEventListener('input', function() {
+            handleModifiedManually = true;
+        });
+    }
+
+    // Show/hide settings based on backend type
+    function updateSettingsVisibility() {
+        const selectedType = backendTypeSelect.value;
+
+        // Hide all settings divs
+        allSettingsDivs.forEach(function(div) {
+            div.style.display = 'none';
+            // Disable inputs in hidden divs so they don't submit
+            div.querySelectorAll('input, select').forEach(function(input) {
+                input.disabled = true;
+            });
+        });
+
+        if (selectedType) {
+            noSettingsMessage.style.display = 'none';
+            const activeDiv = document.getElementById('settings-' + selectedType);
+            if (activeDiv) {
+                activeDiv.style.display = 'block';
+                // Enable inputs in active div
+                activeDiv.querySelectorAll('input, select').forEach(function(input) {
+                    input.disabled = false;
+                });
+            }
+        } else {
+            noSettingsMessage.style.display = 'block';
+        }
+    }
+
+    if (backendTypeSelect) {
+        backendTypeSelect.addEventListener('change', updateSettingsVisibility);
+        // Initial state
+        updateSettingsVisibility();
+    }
+});
+</script>
+{% endblock %}
+
+{% block details %}
+    <fieldset>
+        <legend class="h6">{{ 'Status'|t('search-manager') }}</legend>
+        <div class="meta">
+            {{ forms.lightswitchField({
+                label: 'Enabled'|t('search-manager'),
+                id: 'enabled',
+                name: 'enabled',
+                on: backend.enabled ?? true
+            }) }}
+        </div>
+    </fieldset>
+
+    {% if not isNew %}
+        <fieldset>
+            <legend class="h6">{{ 'Info'|t('search-manager') }}</legend>
+            <dl class="meta read-only">
+                <div class="data">
+                    <dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
+                    <dd class="value">{{ backend.getTypeLabel() }}</dd>
+                </div>
+                <div class="data">
+                    <dt class="heading">{{ 'Configured'|t('search-manager') }}</dt>
+                    <dd class="value">
+                        {% if backend.isConfigured() %}
+                            <span class="status live"></span> {{ 'Yes'|t('search-manager') }}
+                        {% else %}
+                            <span class="status pending"></span> {{ 'Missing required settings'|t('search-manager') }}
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </fieldset>
+    {% endif %}
+{% endblock %}
+
+{% js %}
+    // Set platform-specific keyboard shortcut
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    const saveShortcut = document.getElementById('save-shortcut');
+    if (saveShortcut) {
+        saveShortcut.textContent = isMac ? '⌘S' : 'Ctrl+S';
+    }
+{% endjs %}

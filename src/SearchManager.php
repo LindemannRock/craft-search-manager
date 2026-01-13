@@ -235,6 +235,10 @@ class SearchManager extends Plugin
                     'search-manager/query-rules/create' => 'search-manager/query-rules/edit',
                     'search-manager/query-rules/edit/<ruleId:\d+>' => 'search-manager/query-rules/edit',
                     'search-manager/query-rules/delete/<ruleId:\d+>' => 'search-manager/query-rules/delete',
+                    // Backends
+                    'search-manager/backends' => 'search-manager/backends/index',
+                    'search-manager/backends/new' => 'search-manager/backends/edit',
+                    'search-manager/backends/<backendId:\d+>' => 'search-manager/backends/edit',
                     // Analytics
                     'search-manager/analytics' => 'search-manager/analytics/index',
                     'search-manager/analytics/export' => 'search-manager/analytics/export',
@@ -332,6 +336,24 @@ class SearchManager extends Plugin
                                 ],
                                 'searchManager:deleteQueryRules' => [
                                     'label' => Craft::t('search-manager', 'Delete query rules'),
+                                ],
+                            ],
+                        ],
+                        // Backends - grouped
+                        'searchManager:manageBackends' => [
+                            'label' => Craft::t('search-manager', 'Manage backends'),
+                            'nested' => [
+                                'searchManager:viewBackends' => [
+                                    'label' => Craft::t('search-manager', 'View backends'),
+                                ],
+                                'searchManager:createBackends' => [
+                                    'label' => Craft::t('search-manager', 'Create backends'),
+                                ],
+                                'searchManager:editBackends' => [
+                                    'label' => Craft::t('search-manager', 'Edit backends'),
+                                ],
+                                'searchManager:deleteBackends' => [
+                                    'label' => Craft::t('search-manager', 'Delete backends'),
                                 ],
                             ],
                         ],
@@ -549,8 +571,12 @@ class SearchManager extends Plugin
         $user = Craft::$app->getUser();
         $settings = $this->getSettings();
 
+        // Check if any backends are configured
+        $hasBackends = !empty(\lindemannrock\searchmanager\models\ConfiguredBackend::findAllEnabled());
+
         // Check if user has view access to each section
         $hasIndicesAccess = $user->checkPermission('searchManager:viewIndices');
+        $hasBackendsAccess = $user->checkPermission('searchManager:viewBackends');
         $hasPromotionsAccess = $user->checkPermission('searchManager:viewPromotions');
         $hasQueryRulesAccess = $user->checkPermission('searchManager:viewQueryRules');
         $hasAnalyticsAccess = $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics');
@@ -558,7 +584,7 @@ class SearchManager extends Plugin
         $hasSettingsAccess = $user->checkPermission('searchManager:manageSettings');
 
         // If no access at all, hide the plugin from nav
-        if (!$hasIndicesAccess && !$hasPromotionsAccess && !$hasQueryRulesAccess &&
+        if (!$hasIndicesAccess && !$hasBackendsAccess && !$hasPromotionsAccess && !$hasQueryRulesAccess &&
             !$hasAnalyticsAccess && !$hasLogsAccess && !$hasSettingsAccess) {
             return null;
         }
@@ -569,54 +595,62 @@ class SearchManager extends Plugin
         // Add subnav items
         $item['subnav'] = [];
 
-        // Dashboard - requires viewIndices permission
-        if ($hasIndicesAccess) {
+        // Dashboard - requires viewIndices permission AND configured backends
+        if ($hasIndicesAccess && $hasBackends) {
             $item['subnav']['dashboard'] = [
                 'label' => Craft::t('search-manager', 'Dashboard'),
                 'url' => 'search-manager',
             ];
         }
 
-        // Indices
-        if ($hasIndicesAccess) {
+        // Backends (always show - users need this to configure backends)
+        if ($hasBackendsAccess) {
+            $item['subnav']['backends'] = [
+                'label' => Craft::t('search-manager', 'Backends'),
+                'url' => 'search-manager/backends',
+            ];
+        }
+
+        // Indices - requires configured backends
+        if ($hasIndicesAccess && $hasBackends) {
             $item['subnav']['indices'] = [
                 'label' => Craft::t('search-manager', 'Indices'),
                 'url' => 'search-manager/indices',
             ];
         }
 
-        // Promotions
-        if ($hasPromotionsAccess) {
+        // Promotions - requires configured backends
+        if ($hasPromotionsAccess && $hasBackends) {
             $item['subnav']['promotions'] = [
                 'label' => Craft::t('search-manager', 'Promotions'),
                 'url' => 'search-manager/promotions',
             ];
         }
 
-        // Query Rules
-        if ($hasQueryRulesAccess) {
+        // Query Rules - requires configured backends
+        if ($hasQueryRulesAccess && $hasBackends) {
             $item['subnav']['query-rules'] = [
                 'label' => Craft::t('search-manager', 'Query Rules'),
                 'url' => 'search-manager/query-rules',
             ];
         }
 
-        // Analytics (only show if enabled in settings)
-        if ($hasAnalyticsAccess) {
+        // Analytics - requires configured backends (only show if enabled in settings)
+        if ($hasAnalyticsAccess && $hasBackends) {
             $item['subnav']['analytics'] = [
                 'label' => Craft::t('search-manager', 'Analytics'),
                 'url' => 'search-manager/analytics',
             ];
         }
 
-        // Add logs section if logging library is enabled
+        // Add logs section if logging library is enabled (always show)
         if (Craft::$app->getPlugins()->isPluginEnabled('logging-library')) {
             $item = LoggingLibrary::addLogsNav($item, $this->handle, [
                 'searchManager:viewLogs',
             ]);
         }
 
-        // Settings
+        // Settings (always show - users need this for configuration)
         if ($hasSettingsAccess) {
             $item['subnav']['settings'] = [
                 'label' => Craft::t('search-manager', 'Settings'),
@@ -676,6 +710,18 @@ class SearchManager extends Plugin
         return Craft::$app->getResponse()->redirect(
             UrlHelper::cpUrl('search-manager/settings')
         );
+    }
+
+    /**
+     * Get a configured backend by handle
+     * Convenience method for templates
+     *
+     * @param string $handle
+     * @return \lindemannrock\searchmanager\models\ConfiguredBackend|null
+     */
+    public function getConfiguredBackend(string $handle): ?\lindemannrock\searchmanager\models\ConfiguredBackend
+    {
+        return \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($handle);
     }
 
     // =========================================================================

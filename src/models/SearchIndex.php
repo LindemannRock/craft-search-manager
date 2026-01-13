@@ -43,6 +43,11 @@ class SearchIndex extends Model
      */
     public ?string $language = null;
 
+    /**
+     * @var string|null Handle of configured backend to use - null means use global default from settings
+     */
+    public ?string $backend = null;
+
     public bool $enabled = true;
 
     /**
@@ -80,6 +85,7 @@ class SearchIndex extends Model
             [['handle'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/'],
             [['language'], 'string', 'max' => 10],
             [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => 'Language must be a valid language code (e.g., en, ar, fr-ca)'],
+            [['backend'], 'string', 'max' => 255],
             [['enabled'], 'boolean'],
             [['siteId', 'documentCount', 'sortOrder'], 'integer'],
             [['source'], 'in', 'range' => ['config', 'database']],
@@ -152,6 +158,7 @@ class SearchIndex extends Model
             $model->criteria = $configData['criteria'] ?? [];
             $model->transformerClass = $configData['transformer'] ?? null;
             $model->language = $configData['language'] ?? null;
+            $model->backend = $configData['backend'] ?? null;
             $model->enabled = $configData['enabled'] ?? true;
             $model->source = 'config';
 
@@ -273,6 +280,7 @@ class SearchIndex extends Model
                 $model->criteria = $indexConfig['criteria'] ?? [];
                 $model->transformerClass = $indexConfig['transformer'] ?? null;
                 $model->language = $indexConfig['language'] ?? null;
+                $model->backend = $indexConfig['backend'] ?? null;
                 $model->enabled = $indexConfig['enabled'] ?? true;
                 $model->source = 'config';
 
@@ -391,6 +399,7 @@ class SearchIndex extends Model
         $model->criteria = json_decode($row['criteriaJson'], true) ?? [];
         $model->transformerClass = $row['transformerClass'];
         $model->language = $row['language'] ?? null;
+        $model->backend = $row['backend'] ?? null;
         $model->enabled = (bool)$row['enabled'];
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
@@ -431,6 +440,7 @@ class SearchIndex extends Model
                 'criteriaJson' => json_encode($this->criteria),
                 'transformerClass' => $this->transformerClass,
                 'language' => $this->language,
+                'backend' => $this->backend ?: null,
                 'enabled' => (int)$this->enabled,
                 'source' => $this->source,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
@@ -766,7 +776,7 @@ class SearchIndex extends Model
      */
     public function toConfigArray(): array
     {
-        return [
+        $config = [
             'name' => $this->name,
             'elementType' => $this->elementType,
             'siteId' => $this->siteId,
@@ -775,6 +785,13 @@ class SearchIndex extends Model
             'language' => $this->language,
             'enabled' => $this->enabled,
         ];
+
+        // Only include backend if set (optional override)
+        if ($this->backend) {
+            $config['backend'] = $this->backend;
+        }
+
+        return $config;
     }
 
     /**
@@ -783,6 +800,70 @@ class SearchIndex extends Model
     public function isFromConfig(): bool
     {
         return $this->source === 'config';
+    }
+
+    /**
+     * Check if this index has a custom backend override
+     */
+    public function hasBackendOverride(): bool
+    {
+        return !empty($this->backend);
+    }
+
+    /**
+     * Get the effective backend handle for this index
+     * Returns the index-specific backend if set, otherwise the global default
+     */
+    public function getEffectiveBackend(): ?string
+    {
+        if ($this->backend) {
+            return $this->backend;
+        }
+
+        // Fall back to global default backend handle
+        return \lindemannrock\searchmanager\SearchManager::$plugin->getSettings()->defaultBackendHandle;
+    }
+
+    /**
+     * Get the effective backend TYPE for this index (e.g., 'algolia', 'mysql', 'meilisearch')
+     * Resolves the configured backend handle to its type
+     */
+    public function getEffectiveBackendType(): ?string
+    {
+        $backendHandle = $this->getEffectiveBackend();
+
+        if (!$backendHandle) {
+            return null;
+        }
+
+        // Look up the configured backend to get its type
+        $configuredBackend = ConfiguredBackend::findByHandle($backendHandle);
+        if ($configuredBackend) {
+            return $configuredBackend->backendType;
+        }
+
+        // If not found as a configured backend, it might be a legacy backend type directly
+        // (for backwards compatibility during migration)
+        $validTypes = ['algolia', 'meilisearch', 'typesense', 'mysql', 'pgsql', 'redis', 'file'];
+        if (in_array($backendHandle, $validTypes, true)) {
+            return $backendHandle;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the configured backend for this index
+     */
+    public function getConfiguredBackend(): ?ConfiguredBackend
+    {
+        $backendHandle = $this->getEffectiveBackend();
+
+        if (!$backendHandle) {
+            return null;
+        }
+
+        return ConfiguredBackend::findByHandle($backendHandle);
     }
 
     /**
