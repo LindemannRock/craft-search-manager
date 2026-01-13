@@ -445,10 +445,18 @@ return [
          * These will be merged with indices created via Control Panel
          * Indices defined here are marked as source='config' and cannot be edited in CP
          *
-         * Example structure:
+         * Available options:
+         * - name: Display name for the index
+         * - elementType: Element class (Entry::class, Asset::class, etc.)
+         * - siteId: Site ID (null for all sites)
+         * - criteria: Closure to filter elements
+         * - transformer: Custom transformer class (optional)
+         * - language: Language code for stemming/stop words (optional, auto-detected from site)
+         * - backend: Handle of configured backend (optional, uses defaultBackendHandle if not set)
+         * - enabled: Whether the index is active
          */
         'indices' => [
-            // Example: English entries index
+            // Example: English entries index using default backend
             // 'entries-en' => [
             //     'name' => 'Entries (English)',
             //     'elementType' => Entry::class,
@@ -457,10 +465,11 @@ return [
             //         return $query->section(['news', 'blog'])->status('enabled');
             //     },
             //     'transformer' => \modules\searchmodule\transformers\EntryEnTransformer::class,
+            //     'language' => 'en',
             //     'enabled' => true,
             // ],
 
-            // Example: Arabic entries index
+            // Example: Arabic entries index with specific backend
             // 'entries-ar' => [
             //     'name' => 'Entries (Arabic)',
             //     'elementType' => Entry::class,
@@ -469,6 +478,8 @@ return [
             //         return $query->section(['news', 'blog'])->status('enabled');
             //     },
             //     'transformer' => \modules\searchmodule\transformers\EntryArTransformer::class,
+            //     'language' => 'ar',
+            //     'backend' => 'production-algolia', // Use specific backend for this index
             //     'enabled' => true,
             // ],
         ],
