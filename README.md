@@ -1558,6 +1558,77 @@ cp vendor/.../src/search/stopwords/ar.php config/search-manager/stopwords/ar-sa.
 ar-sa → config/ar-sa.php → plugin/ar-sa.php → config/ar.php → plugin/ar.php
 ```
 
+### Multi-Environment Index Prefix
+
+Use `indexPrefix` to automatically prefix all index names per environment. This allows you to define indices once and deploy across dev/staging/production without conflicts.
+
+**How It Works:**
+
+1. Define indices with base names (no prefix):
+```php
+// config/search-manager.php
+'indices' => [
+    'vehicles_used_en' => [
+        'name' => 'Vehicles (English)',
+        'elementType' => Entry::class,
+        'siteId' => 1,
+        // ...
+    ],
+    'vehicles_used_ar' => [
+        'name' => 'Vehicles (Arabic)',
+        'elementType' => Entry::class,
+        'siteId' => 2,
+        // ...
+    ],
+],
+```
+
+2. Set `indexPrefix` per environment:
+```php
+'dev' => [
+    'indexPrefix' => 'local_',
+],
+'staging' => [
+    'indexPrefix' => 'stage_',
+],
+'production' => [
+    'indexPrefix' => 'prod_',
+],
+```
+
+3. The plugin automatically creates prefixed index names in your backend:
+
+| Environment | Index Handle | Actual Backend Index Name |
+|-------------|--------------|---------------------------|
+| Dev | `vehicles_used_en` | `local_vehicles_used_en` |
+| Staging | `vehicles_used_en` | `stage_vehicles_used_en` |
+| Production | `vehicles_used_en` | `prod_vehicles_used_en` |
+
+**Benefits:**
+- Single index configuration across all environments
+- No need for separate `.env` variables per index
+- Safe to run dev/staging/production on same Algolia account
+- Prevents accidental data overwrites between environments
+
+**Using Environment Variables:**
+```php
+// config/search-manager.php
+'*' => [
+    'indexPrefix' => App::env('SEARCH_INDEX_PREFIX'),
+],
+```
+
+```bash
+# .env.dev
+SEARCH_INDEX_PREFIX=local_
+
+# .env.staging
+SEARCH_INDEX_PREFIX=stage_
+
+# .env.production
+SEARCH_INDEX_PREFIX=prod_
+```
+
 ### Auto-Indexing
 
 Elements are automatically indexed when saved if `autoIndex` is enabled in settings.
