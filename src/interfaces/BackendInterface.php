@@ -86,4 +86,51 @@ interface BackendInterface
      * @return string Backend name (algolia, meilisearch, mysql, typesense)
      */
     public function getName(): string;
+
+    /**
+     * Browse/iterate through all documents in an index
+     *
+     * @param string $indexName The index name
+     * @param string $query Optional query to filter results
+     * @param array $parameters Additional browse parameters
+     * @return iterable Iterator or array of all matching documents
+     */
+    public function browse(string $indexName, string $query = '', array $parameters = []): iterable;
+
+    /**
+     * Perform multiple search queries in a single request
+     *
+     * @param array $queries Array of query objects with 'indexName', 'query', and optional 'params'
+     * @return array Results from all queries
+     */
+    public function multipleQueries(array $queries = []): array;
+
+    /**
+     * Parse filters array into backend-specific filter string
+     *
+     * @param array $filters Key/value pairs of filters
+     * @return string Backend-compatible filter string
+     */
+    public function parseFilters(array $filters = []): string;
+
+    /**
+     * Check if this backend supports browse functionality
+     *
+     * @return bool
+     */
+    public function supportsBrowse(): bool;
+
+    /**
+     * Check if this backend supports multiple queries
+     *
+     * @return bool
+     */
+    public function supportsMultipleQueries(): bool;
+
+    /**
+     * List all indices available in the backend
+     *
+     * @return array Array of index information
+     */
+    public function listIndices(): array;
 }

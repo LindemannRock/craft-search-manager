@@ -128,6 +128,142 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    // =========================================================================
+    // BROWSE / MULTI-QUERY / FILTER METHODS
+    // =========================================================================
+
+    /**
+     * Browse all documents in an index
+     *
+     * @param string $indexName Index to browse
+     * @param string $query Optional query to filter (not used in browse)
+     * @param array $parameters Parameters like 'filter_by', 'include_fields'
+     * @return iterable Array of all documents
+     */
+    public function browse(string $indexName, string $query = '', array $parameters = []): iterable
+    {
+        try {
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+
+            // Typesense export returns JSONL, we need to parse it
+            $exportParams = [];
+            if (!empty($parameters['filter_by'])) {
+                $exportParams['filter_by'] = $parameters['filter_by'];
+            }
+            if (!empty($parameters['include_fields'])) {
+                $exportParams['include_fields'] = $parameters['include_fields'];
+            }
+
+            $exported = $client->collections[$fullIndexName]->documents->export($exportParams);
+
+            // Parse JSONL response
+            $documents = [];
+            $lines = explode("\n", trim($exported));
+            foreach ($lines as $line) {
+                if (!empty($line)) {
+                    $doc = json_decode($line, true);
+                    if ($doc !== null) {
+                        $documents[] = $doc;
+                    }
+                }
+            }
+
+            return $documents;
+        } catch (\Throwable $e) {
+            $this->logError('Typesense browse failed', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Perform multiple search queries in a single request
+     *
+     * @param array $queries Array of query objects with 'indexName', 'query', and optional 'params'
+     * @return array Results from all queries
+     */
+    public function multipleQueries(array $queries = []): array
+    {
+        try {
+            $client = $this->getClient();
+
+            // Build Typesense multi-search format
+            $searchRequests = ['searches' => []];
+            foreach ($queries as $query) {
+                $indexName = $this->getFullIndexName($query['indexName'] ?? '');
+                $params = $query['params'] ?? [];
+
+                $searchRequests['searches'][] = array_merge([
+                    'collection' => $indexName,
+                    'q' => $query['query'] ?? '',
+                    'query_by' => $params['query_by'] ?? 'title,content',
+                ], $params);
+            }
+
+            $results = $client->multiSearch->perform($searchRequests, []);
+
+            $this->logDebug('Typesense multiple queries executed', ['count' => count($queries)]);
+
+            return ['results' => $results['results'] ?? []];
+        } catch (\Throwable $e) {
+            $this->logError('Typesense multiple queries failed', ['error' => $e->getMessage()]);
+            return ['results' => []];
+        }
+    }
+
+    /**
+     * Parse filters array into Typesense filter string
+     *
+     * Typesense syntax: key:=value && key2:=[value1, value2]
+     *
+     * @param array $filters Key/value pairs of filters
+     * @return string Typesense-compatible filter string
+     */
+    public function parseFilters(array $filters = []): string
+    {
+        $filterParts = [];
+
+        foreach ($filters as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (is_array($value)) {
+                // Multiple values - use array syntax
+                $values = array_map(function($v) {
+                    if (is_bool($v)) {
+                        return $v ? 'true' : 'false';
+                    }
+                    return '`' . $v . '`';
+                }, $value);
+                $filterParts[] = $key . ':=[' . implode(', ', $values) . ']';
+            } else {
+                if (is_bool($value)) {
+                    $value = $value ? 'true' : 'false';
+                    $filterParts[] = $key . ':=' . $value;
+                } else {
+                    $filterParts[] = $key . ':=`' . $value . '`';
+                }
+            }
+        }
+
+        return implode(' && ', $filterParts);
+    }
+
+    public function supportsBrowse(): bool
+    {
+        return true;
+    }
+
+    public function supportsMultipleQueries(): bool
+    {
+        return true;
+    }
+
+    // =========================================================================
+    // PRIVATE METHODS
+    // =========================================================================
+
     private function getClient(): Client
     {
         if ($this->_client === null) {

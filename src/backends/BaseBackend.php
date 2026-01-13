@@ -118,12 +118,14 @@ abstract class BaseBackend extends Component implements BackendInterface
             return $default;
         }
 
+        // If value starts with $, it's an env var reference
         if (is_string($value) && str_starts_with($value, '$')) {
             $envVarName = ltrim($value, '$');
             return \craft\helpers\App::env($envVarName) ?? $default;
         }
 
-        return \craft\helpers\App::env($value) ?? $default;
+        // Otherwise return the value as-is (it's a plain string, not an env var)
+        return $value;
     }
 
     // =========================================================================
@@ -139,4 +141,103 @@ abstract class BaseBackend extends Component implements BackendInterface
     abstract public function isAvailable(): bool;
     abstract public function getStatus(): array;
     abstract public function getName(): string;
+
+    // =========================================================================
+    // DEFAULT IMPLEMENTATIONS (can be overridden by subclasses)
+    // =========================================================================
+
+    /**
+     * Browse/iterate through all documents in an index
+     * Default: not supported, returns empty array
+     */
+    public function browse(string $indexName, string $query = '', array $parameters = []): iterable
+    {
+        $this->logWarning('browse() not supported by this backend', ['backend' => $this->getName()]);
+        return [];
+    }
+
+    /**
+     * Perform multiple search queries in a single request
+     * Default: sequential search fallback
+     */
+    public function multipleQueries(array $queries = []): array
+    {
+        // Fallback: execute queries sequentially
+        $results = [];
+        foreach ($queries as $query) {
+            $indexName = $query['indexName'] ?? '';
+            $searchQuery = $query['query'] ?? '';
+            $params = $query['params'] ?? [];
+
+            $results[] = $this->search($indexName, $searchQuery, $params);
+        }
+
+        return ['results' => $results];
+    }
+
+    /**
+     * Parse filters array into backend-specific filter string
+     * Default: basic SQL-like syntax
+     */
+    public function parseFilters(array $filters = []): string
+    {
+        $filterParts = [];
+
+        foreach ($filters as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (is_array($value)) {
+                // Multiple values = OR condition
+                $orParts = array_map(function($v) use ($key) {
+                    $v = is_bool($v) ? ($v ? 'true' : 'false') : $v;
+                    return $key . ' = "' . $v . '"';
+                }, $value);
+                $filterParts[] = '(' . implode(' OR ', $orParts) . ')';
+            } else {
+                $value = is_bool($value) ? ($value ? 'true' : 'false') : $value;
+                $filterParts[] = $key . ' = "' . $value . '"';
+            }
+        }
+
+        return implode(' AND ', $filterParts);
+    }
+
+    /**
+     * Check if this backend supports browse functionality
+     */
+    public function supportsBrowse(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Check if this backend supports multiple queries
+     */
+    public function supportsMultipleQueries(): bool
+    {
+        return false;
+    }
+
+    /**
+     * List all indices available in the backend
+     * Default: returns configured indices from search-manager
+     */
+    public function listIndices(): array
+    {
+        // Default implementation returns locally configured indices
+        $settings = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings();
+        $indices = [];
+
+        foreach ($settings->indices ?? [] as $handle => $config) {
+            $indices[] = [
+                'name' => $this->getFullIndexName($handle),
+                'handle' => $handle,
+                'source' => 'config',
+            ];
+        }
+
+        return $indices;
+    }
 }

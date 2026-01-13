@@ -180,4 +180,132 @@ class SearchManagerVariable
     {
         return SearchManager::$plugin->analytics->getPromotionAnalytics($promotionId, $dateRange);
     }
+
+    // =========================================================================
+    // CROSS-BACKEND METHODS (Algolia, Meilisearch, Typesense)
+    // =========================================================================
+
+    /**
+     * Browse an index (iterate through all objects)
+     *
+     * Works with Algolia, Meilisearch, and Typesense backends.
+     * Compatible with trendyminds/algolia craft.algolia.browse()
+     *
+     * Usage: {% for item in craft.searchManager.browse({index: 'myIndex', query: '', params: {}}) %}
+     *
+     * @param array $options Options array with 'index', 'query', and optional 'params'
+     * @return iterable Iterator or array of all matching objects
+     */
+    public function browse(array $options = []): iterable
+    {
+        $backend = SearchManager::$plugin->backend->getActiveBackend();
+
+        if ($backend === null) {
+            \Craft::warning('No active backend configured for browse()', 'search-manager');
+            return [];
+        }
+
+        if (!$backend->supportsBrowse()) {
+            \Craft::warning('browse() is not supported by ' . $backend->getName() . ' backend', 'search-manager');
+            return [];
+        }
+
+        $index = $options['index'] ?? '';
+        $query = $options['query'] ?? '';
+        $params = $options['params'] ?? [];
+
+        return $backend->browse($index, $query, $params);
+    }
+
+    /**
+     * Perform multiple queries at once
+     *
+     * Works with Algolia, Meilisearch, and Typesense backends.
+     * Other backends fall back to sequential queries.
+     * Compatible with trendyminds/algolia craft.algolia.multipleQueries()
+     *
+     * Usage: {{ craft.searchManager.multipleQueries([{indexName: 'index1', query: 'test'}, ...]) }}
+     *
+     * @param array $queries Array of query objects
+     * @return array Results from all queries
+     */
+    public function multipleQueries(array $queries = []): array
+    {
+        $backend = SearchManager::$plugin->backend->getActiveBackend();
+
+        if ($backend === null) {
+            \Craft::warning('No active backend configured for multipleQueries()', 'search-manager');
+            return ['results' => []];
+        }
+
+        return $backend->multipleQueries($queries);
+    }
+
+    /**
+     * Parse filters array into backend-specific filter string
+     *
+     * Automatically generates the correct filter syntax for the active backend:
+     * - Algolia: (key:"value1" OR key:"value2") AND (key2:"value")
+     * - Meilisearch: key = "value1" OR key = "value2" AND key2 = "value"
+     * - Typesense: key:=[`value1`, `value2`] && key2:=`value`
+     *
+     * Usage: {{ craft.searchManager.parseFilters({category: ['news', 'blog'], active: true}) }}
+     *
+     * @param array $filters Key/value pairs of filters
+     * @return string Backend-compatible filter string
+     */
+    public function parseFilters(array $filters = []): string
+    {
+        $backend = SearchManager::$plugin->backend->getActiveBackend();
+
+        if ($backend === null) {
+            \Craft::warning('No active backend configured for parseFilters()', 'search-manager');
+            return '';
+        }
+
+        return $backend->parseFilters($filters);
+    }
+
+    /**
+     * Check if the active backend supports browse functionality
+     *
+     * @return bool
+     */
+    public function supportsBrowse(): bool
+    {
+        $backend = SearchManager::$plugin->backend->getActiveBackend();
+        return $backend !== null && $backend->supportsBrowse();
+    }
+
+    /**
+     * Check if the active backend supports native multiple queries
+     *
+     * @return bool
+     */
+    public function supportsMultipleQueries(): bool
+    {
+        $backend = SearchManager::$plugin->backend->getActiveBackend();
+        return $backend !== null && $backend->supportsMultipleQueries();
+    }
+
+    /**
+     * List all indices available in the backend
+     *
+     * For Algolia/Meilisearch/Typesense: returns indices from the service
+     * For local backends: returns configured indices from search-manager
+     *
+     * Usage: {% for index in craft.searchManager.listIndices() %}
+     *
+     * @return array Array of index information
+     */
+    public function listIndices(): array
+    {
+        $backend = SearchManager::$plugin->backend->getActiveBackend();
+
+        if ($backend === null) {
+            return [];
+        }
+
+        return $backend->listIndices();
+    }
 }

@@ -496,6 +496,112 @@ Search across multiple indices at once and get merged, scored results:
 {# Will find documents containing "test" #}
 ```
 
+### Cross-Backend Methods (Algolia, Meilisearch, Typesense)
+
+These methods provide unified access to backend-specific features, making it easy to migrate from Scout or trendyminds/algolia while maintaining compatibility.
+
+| Method | Twig Usage | Description |
+|--------|------------|-------------|
+| `listIndices()` | `craft.searchManager.listIndices()` | List all indices from backend |
+| `search()` | `craft.searchManager.search(index, query, options)` | Search an index |
+| `browse()` | `craft.searchManager.browse({index, query, params})` | Iterate through all documents |
+| `multipleQueries()` | `craft.searchManager.multipleQueries([...])` | Batch search multiple indices |
+| `parseFilters()` | `craft.searchManager.parseFilters({...})` | Generate backend-specific filter strings |
+| `supportsBrowse()` | `craft.searchManager.supportsBrowse()` | Check if browse is supported |
+| `supportsMultipleQueries()` | `craft.searchManager.supportsMultipleQueries()` | Check if batch queries supported |
+
+**Backend Support:**
+
+| Feature | Algolia | Meilisearch | Typesense | MySQL/PostgreSQL/Redis/File |
+|---------|---------|-------------|-----------|----------------------------|
+| `listIndices()` | ✅ | ✅ | ✅ | ✅ (from config) |
+| `browse()` | ✅ | ✅ | ✅ | ❌ |
+| `multipleQueries()` | ✅ Native | ✅ Native | ✅ Native | ✅ Sequential fallback |
+| `parseFilters()` | ✅ | ✅ | ✅ | ✅ (SQL-like) |
+
+#### List Indices
+
+```twig
+{# List all indices from the backend #}
+{% set indices = craft.searchManager.listIndices() %}
+
+<table>
+    <thead>
+        <tr>
+            <th>Index Name</th>
+            <th>Entries</th>
+            <th>Data Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for index in indices %}
+        <tr>
+            <td>{{ index.name }}</td>
+            <td>{{ index.entries|default('-') }}</td>
+            <td>{{ index.dataSize|default(0)|number_format }} bytes</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+```
+
+#### Browse (Iterate All Documents)
+
+```twig
+{# Browse all documents in an index #}
+{% if craft.searchManager.supportsBrowse() %}
+    {% set allDocs = craft.searchManager.browse({
+        index: 'products',
+        query: '',
+        params: {}
+    }) %}
+
+    {% for doc in allDocs %}
+        <div>{{ doc.title }}</div>
+    {% endfor %}
+{% endif %}
+```
+
+#### Multiple Queries (Batch Search)
+
+```twig
+{# Search multiple indices in one request #}
+{% set results = craft.searchManager.multipleQueries([
+    {indexName: 'products', query: 'laptop'},
+    {indexName: 'categories', query: 'electronics'},
+    {indexName: 'blog', query: 'review'}
+]) %}
+
+{% for result in results.results %}
+    <h3>Results from index {{ loop.index }}</h3>
+    <p>{{ result.nbHits ?? result.total }} hits</p>
+{% endfor %}
+```
+
+#### Parse Filters
+
+Automatically generates the correct filter syntax for your active backend:
+
+```twig
+{# Generate backend-specific filter string #}
+{% set filterString = craft.searchManager.parseFilters({
+    category: ['Electronics', 'Computers'],
+    inStock: true,
+    brand: 'Apple'
+}) %}
+
+{# Algolia output: (category:"Electronics" OR category:"Computers") AND (inStock:"true") AND (brand:"Apple") #}
+{# Meilisearch output: (category = "Electronics" OR category = "Computers") AND inStock = "true" AND brand = "Apple" #}
+{# Typesense output: category:=[`Electronics`, `Computers`] && inStock:=`true` && brand:=`Apple` #}
+```
+
+**Use with search:**
+```twig
+{% set results = craft.searchManager.search('products', 'laptop', {
+    filters: craft.searchManager.parseFilters({category: 'Electronics'})
+}) %}
+```
+
 ### Search Operators (MySQL, PostgreSQL, Redis, File)
 
 Search Manager supports powerful query operators for precise search control:

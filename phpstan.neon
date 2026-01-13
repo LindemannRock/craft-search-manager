@@ -7,6 +7,17 @@ parameters:
     paths:
         - src
     ignoreErrors:
-        # Optional dependencies for third-party search services
-        - '#AlgoliaSearch#'
-        - '#Meilisearch#'
+        # Optional dependencies for third-party search services (may not be installed)
+        # These patterns are marked reportUnmatched: false individually since packages are optional
+        -
+            identifier: class.notFound
+            message: '#Algolia\\\\AlgoliaSearch#'
+            reportUnmatched: false
+        -
+            identifier: class.notFound
+            message: '#Meilisearch\\\\#'
+            reportUnmatched: false
+        -
+            identifier: class.notFound
+            message: '#Typesense\\\\#'
+            reportUnmatched: false

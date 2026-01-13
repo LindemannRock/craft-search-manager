@@ -2,7 +2,9 @@
 
 namespace lindemannrock\searchmanager\backends;
 
-use MeiliSearch\Client;
+use Meilisearch\Client;
+use Meilisearch\Contracts\DocumentsQuery;
+use Meilisearch\Contracts\SearchQuery;
 
 /**
  * Meilisearch Backend
@@ -178,7 +180,7 @@ class MeilisearchBackend extends BaseBackend
             // Try to get the document - if it exists, return true
             $index->getDocument($elementId);
             return true;
-        } catch (\MeiliSearch\Exceptions\ApiException $e) {
+        } catch (\Meilisearch\Exceptions\ApiException $e) {
             // Document not found - this is expected
             if ($e->httpStatus === 404) {
                 return false;
@@ -195,6 +197,135 @@ class MeilisearchBackend extends BaseBackend
     }
 
     // =========================================================================
+    // BROWSE / MULTI-QUERY / FILTER METHODS
+    // =========================================================================
+
+    /**
+     * Browse all documents in an index
+     *
+     * @param string $indexName Index to browse
+     * @param string $query Optional query to filter (not used in browse, use search instead)
+     * @param array $parameters Parameters like 'limit', 'offset', 'fields'
+     * @return iterable Array of all documents
+     */
+    public function browse(string $indexName, string $query = '', array $parameters = []): iterable
+    {
+        try {
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $index = $client->index($fullIndexName);
+
+            $limit = $parameters['limit'] ?? 1000;
+            $offset = $parameters['offset'] ?? 0;
+            $fields = $parameters['fields'] ?? null;
+
+            $query = (new DocumentsQuery())
+                ->setLimit($limit)
+                ->setOffset($offset);
+
+            if ($fields !== null) {
+                $query->setFields($fields);
+            }
+
+            $results = $index->getDocuments($query);
+
+            return $results->getResults();
+        } catch (\Throwable $e) {
+            $this->logError('Meilisearch browse failed', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * Perform multiple search queries in a single request
+     *
+     * @param array $queries Array of query objects with 'indexName', 'query', and optional 'params'
+     * @return array Results from all queries
+     */
+    public function multipleQueries(array $queries = []): array
+    {
+        try {
+            $client = $this->getClient();
+
+            // Build Meilisearch multi-search format using SearchQuery objects
+            $searchQueries = array_map(function($query) {
+                $indexName = $this->getFullIndexName($query['indexName'] ?? '');
+                $searchQuery = new SearchQuery();
+                $searchQuery->setIndexUid($indexName);
+                $searchQuery->setQuery($query['query'] ?? '');
+
+                // Apply additional params if provided
+                if (isset($query['params']['limit'])) {
+                    $searchQuery->setLimit($query['params']['limit']);
+                }
+                if (isset($query['params']['offset'])) {
+                    $searchQuery->setOffset($query['params']['offset']);
+                }
+                if (isset($query['params']['filter'])) {
+                    $searchQuery->setFilter($query['params']['filter']);
+                }
+                if (isset($query['params']['attributesToRetrieve'])) {
+                    $searchQuery->setAttributesToRetrieve($query['params']['attributesToRetrieve']);
+                }
+
+                return $searchQuery;
+            }, $queries);
+
+            $results = $client->multiSearch($searchQueries);
+
+            $this->logDebug('Meilisearch multiple queries executed', ['count' => count($queries)]);
+
+            return ['results' => $results['results'] ?? []];
+        } catch (\Throwable $e) {
+            $this->logError('Meilisearch multiple queries failed', ['error' => $e->getMessage()]);
+            return ['results' => []];
+        }
+    }
+
+    /**
+     * Parse filters array into Meilisearch filter string
+     *
+     * Meilisearch syntax: key = "value" AND (key2 = "a" OR key2 = "b")
+     *
+     * @param array $filters Key/value pairs of filters
+     * @return string Meilisearch-compatible filter string
+     */
+    public function parseFilters(array $filters = []): string
+    {
+        $filterParts = [];
+
+        foreach ($filters as $key => $value) {
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (is_array($value)) {
+                // Multiple values = OR condition
+                $orParts = array_map(function($v) use ($key) {
+                    $v = is_bool($v) ? ($v ? 'true' : 'false') : $v;
+                    return $key . ' = "' . $v . '"';
+                }, $value);
+                $filterParts[] = '(' . implode(' OR ', $orParts) . ')';
+            } else {
+                $value = is_bool($value) ? ($value ? 'true' : 'false') : $value;
+                $filterParts[] = $key . ' = "' . $value . '"';
+            }
+        }
+
+        return implode(' AND ', $filterParts);
+    }
+
+    public function supportsBrowse(): bool
+    {
+        return true;
+    }
+
+    public function supportsMultipleQueries(): bool
+    {
+        return true;
+    }
+
+    // =========================================================================
     // PRIVATE METHODS
     // =========================================================================
 
@@ -205,8 +336,7 @@ class MeilisearchBackend extends BaseBackend
 
             $this->_client = new Client(
                 $this->resolveEnvVar($settings['host'] ?? null, 'http://localhost:7700'),
-                $this->resolveEnvVar($settings['apiKey'] ?? null, null),
-                (int)$this->resolveEnvVar($settings['timeout'] ?? null, 5)
+                $this->resolveEnvVar($settings['apiKey'] ?? null, null)
             );
         }
 
