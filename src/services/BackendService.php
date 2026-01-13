@@ -54,16 +54,40 @@ class BackendService extends Component
 
     /**
      * Create backend instance based on settings
+     * Uses defaultBackendHandle to look up the configured backend
      */
     private function createBackend(): ?BackendInterface
     {
         $settings = SearchManager::$plugin->getSettings();
-        $backendName = $settings->searchBackend;
+        $defaultHandle = $settings->defaultBackendHandle;
 
-        $this->logDebug('Creating backend instance', ['backend' => $backendName]);
+        $this->logDebug('Creating default backend instance', ['handle' => $defaultHandle]);
+
+        // If no default handle configured, fall back to file backend
+        if (!$defaultHandle) {
+            $this->logWarning('No defaultBackendHandle configured, falling back to file backend');
+            return new FileBackend();
+        }
+
+        // Look up the configured backend
+        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
+
+        if ($configuredBackend && $configuredBackend->enabled) {
+            $backend = $this->createBackendFromConfig($configuredBackend);
+            if ($backend) {
+                $this->logDebug('Using configured default backend', [
+                    'handle' => $defaultHandle,
+                    'backendType' => $configuredBackend->backendType,
+                ]);
+                return $backend;
+            }
+        }
+
+        // Fallback: try treating defaultHandle as a backend type directly (backwards compatibility)
+        $this->logDebug('Configured backend not found, trying as backend type', ['handle' => $defaultHandle]);
 
         try {
-            $backend = match ($backendName) {
+            $backend = match ($defaultHandle) {
                 'algolia' => new AlgoliaBackend(),
                 'file' => new FileBackend(),
                 'meilisearch' => new MeilisearchBackend(),
@@ -71,12 +95,12 @@ class BackendService extends Component
                 'pgsql' => new PostgreSqlBackend(),
                 'redis' => new RedisBackend(),
                 'typesense' => new TypesenseBackend(),
-                default => throw new \Exception("Unknown backend: {$backendName}"),
+                default => null,
             };
 
-            if (!$backend->isAvailable()) {
+            if ($backend && !$backend->isAvailable()) {
                 $this->logWarning('Backend is not available', [
-                    'backend' => $backendName,
+                    'backend' => $defaultHandle,
                     'status' => $backend->getStatus(),
                 ]);
             }
@@ -84,7 +108,7 @@ class BackendService extends Component
             return $backend;
         } catch (\Throwable $e) {
             $this->logError('Failed to create backend', [
-                'backend' => $backendName,
+                'backend' => $defaultHandle,
                 'error' => $e->getMessage(),
             ]);
             return null;
