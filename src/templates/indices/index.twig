@@ -19,6 +19,7 @@
 
 {# Permission checks #}
 {% set showActionsColumn = currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices') or currentUser.can('searchManager:deleteIndices') %}
+{% set globalSettings = craft.searchManager.getSettings() %}
 
 {# Backend colors - prepare for per-index backends in future #}
 {% set backendColors = {
@@ -344,6 +345,9 @@
 						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
 						</th>
+						{% if globalSettings.enableAnalytics %}
+							<th scope="col">{{ "Analytics"|t('search-manager') }}</th>
+						{% endif %}
 						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
 					</tr>
 				</thead>
@@ -418,6 +422,15 @@
 										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
+								{% if globalSettings.enableAnalytics %}
+									<td>
+										{% if index.enableAnalytics %}
+											<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'On'|t('search-manager') }}</span></span>
+										{% else %}
+											<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Off'|t('search-manager') }}</span></span>
+										{% endif %}
+									</td>
+								{% endif %}
 								{% if showActionsColumn %}
 								<td class="thin" style="text-align: right;">
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
@@ -455,7 +468,7 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="11" style="text-align: center; padding: 2em;">
+							<td colspan="{{ 10 + (globalSettings.enableAnalytics ? 1 : 0) + (showActionsColumn ? 1 : 0) }}" style="text-align: center; padding: 2em;">
 								{{ 'No indices found.'|t('search-manager') }}
 							</td>
 						</tr>
