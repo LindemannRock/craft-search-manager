@@ -106,6 +106,7 @@ class IndicesController extends Controller
         $index->language = $request->getBodyParam('language') ?: null;
         $index->backend = $request->getBodyParam('backend') ?: null;
         $index->enabled = (bool)$request->getBodyParam('enabled');
+        $index->enableAnalytics = (bool)$request->getBodyParam('enableAnalytics', true);
         $index->criteria = $request->getBodyParam('criteria', []);
 
         if (!$index->validate() || !$index->save()) {

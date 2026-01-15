@@ -70,8 +70,15 @@ class AnalyticsService extends Component
     ): void {
         $settings = SearchManager::$plugin->getSettings();
 
-        // Check if analytics is enabled
+        // Check if global analytics is enabled
         if (!$settings->enableAnalytics) {
+            return;
+        }
+
+        // Check if index-level analytics is enabled
+        $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+        if ($index && !$index->enableAnalytics) {
+            $this->logDebug('Analytics disabled for index', ['indexHandle' => $indexHandle]);
             return;
         }
 

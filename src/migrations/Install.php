@@ -176,6 +176,7 @@ class Install extends Migration
             'transformerClass' => $this->string(255)->notNull(),
             'language' => $this->string(10)->null(),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'enableAnalytics' => $this->boolean()->notNull()->defaultValue(true),
             'source' => $this->enum('source', ['config', 'database'])->notNull()->defaultValue('database'),
             'backend' => $this->string(255)->null()->comment('Handle of configured backend to use'),
             'lastIndexed' => $this->dateTime()->null(),

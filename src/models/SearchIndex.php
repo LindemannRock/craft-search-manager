@@ -51,6 +51,11 @@ class SearchIndex extends Model
     public bool $enabled = true;
 
     /**
+     * @var bool Whether to track analytics for searches on this index
+     */
+    public bool $enableAnalytics = true;
+
+    /**
      * @var string Source (config|database)
      */
     public string $source = 'database';
@@ -160,6 +165,7 @@ class SearchIndex extends Model
             $model->language = $configData['language'] ?? null;
             $model->backend = $configData['backend'] ?? null;
             $model->enabled = $configData['enabled'] ?? true;
+            $model->enableAnalytics = $configData['enableAnalytics'] ?? true;
             $model->source = 'config';
 
             // Load stats from database if metadata record exists
@@ -282,6 +288,7 @@ class SearchIndex extends Model
                 $model->language = $indexConfig['language'] ?? null;
                 $model->backend = $indexConfig['backend'] ?? null;
                 $model->enabled = $indexConfig['enabled'] ?? true;
+                $model->enableAnalytics = $indexConfig['enableAnalytics'] ?? true;
                 $model->source = 'config';
 
                 // Check if database metadata exists for this config index (array lookup)
@@ -401,6 +408,7 @@ class SearchIndex extends Model
         $model->language = $row['language'] ?? null;
         $model->backend = $row['backend'] ?? null;
         $model->enabled = (bool)$row['enabled'];
+        $model->enableAnalytics = (bool)($row['enableAnalytics'] ?? true);
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
         $model->documentCount = (int)$row['documentCount'];
@@ -442,6 +450,7 @@ class SearchIndex extends Model
                 'language' => $this->language,
                 'backend' => $this->backend ?: null,
                 'enabled' => (int)$this->enabled,
+                'enableAnalytics' => (int)$this->enableAnalytics,
                 'source' => $this->source,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
                 'documentCount' => $this->documentCount,

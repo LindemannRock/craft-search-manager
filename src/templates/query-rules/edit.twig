@@ -482,33 +482,24 @@
 {% endblock %}
 
 {% block details %}
-	<fieldset>
-		<legend class="h6">{{ 'Status'|t('search-manager') }}</legend>
-		<div class="meta">
-			{{ forms.lightswitchField({
-				label: 'Enabled'|t('search-manager'),
-				id: 'enabled',
-				name: 'enabled',
-				on: rule.enabled ?? true
-			}) }}
-		</div>
-	</fieldset>
+	<div class="meta">
+		{{ forms.lightswitchField({
+			label: 'Enabled'|t('search-manager'),
+			id: 'enabled',
+			name: 'enabled',
+			on: rule.enabled ?? true
+		}) }}
 
-	{% if craft.app.getIsMultiSite() %}
-		<fieldset>
-			<legend class="h6">{{ 'Site'|t('search-manager') }}</legend>
-			<div class="meta">
-				{{ forms.selectField({
-					label: 'Site'|t('search-manager'),
-					instructions: 'Limit this rule to a specific site, or apply to all sites.'|t('search-manager'),
-					id: 'siteId',
-					name: 'siteId',
-					options: siteOptions,
-					value: rule.siteId
-				}) }}
-			</div>
-		</fieldset>
-	{% endif %}
+		{% if craft.app.getIsMultiSite() %}
+			{{ forms.selectField({
+				label: 'Site'|t('search-manager'),
+				id: 'siteId',
+				name: 'siteId',
+				options: siteOptions,
+				value: rule.siteId
+			}) }}
+		{% endif %}
+	</div>
 
 	{% if not isNew %}
 		<fieldset>

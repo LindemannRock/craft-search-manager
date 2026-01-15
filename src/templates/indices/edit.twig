@@ -332,52 +332,63 @@ document.addEventListener('DOMContentLoaded', function() {
 {% endblock %}
 
 {% block details %}
-	<fieldset>
-		<legend class="h6">{{ 'Status'|t('search-manager') }}</legend>
-		<div class="meta">
-			{{ forms.lightswitchField({
-				label: 'Enabled'|t('search-manager'),
-				id: 'enabled',
-				name: 'enabled',
-				on: index.enabled ?? true
-			}) }}
+	{% set globalSettings = craft.searchManager.getSettings() %}
 
-			{% if not isNew and (currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices')) %}
-				<div class="field" style="margin-top: 15px;">
-					<div class="heading">
-						<label>{{ 'Actions'|t('search-manager') }}</label>
-					</div>
-					<div class="input">
-						<div class="btngroup" style="width: 100%;">
-							<button type="button" class="btn menubtn" data-icon="settings" style="width: 100%;">{{ "Index Actions"|t('search-manager') }}</button>
-							<div class="menu">
-								<ul>
-									{% if currentUser.can('searchManager:rebuildIndices') %}
-									<li>
-										<a class="formsubmit" data-action="search-manager/indices/rebuild" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will rebuild the entire index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
-											{{ "Rebuild Index"|t('search-manager') }}
-										</a>
-									</li>
-									{% endif %}
-									{% if currentUser.can('searchManager:clearIndices') %}
-									<li>
-										<a class="formsubmit error" data-action="search-manager/indices/clear" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will remove all documents from the index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
-											{{ "Clear Index"|t('search-manager') }}
-										</a>
-									</li>
-									{% endif %}
-								</ul>
-							</div>
+	<div class="meta">
+		{{ forms.lightswitchField({
+			label: 'Enabled'|t('search-manager'),
+			id: 'enabled',
+			name: 'enabled',
+			on: index.enabled ?? true
+		}) }}
+
+		{% if globalSettings.enableAnalytics %}
+			{{ forms.lightswitchField({
+				label: 'Track Analytics'|t('search-manager'),
+				id: 'enableAnalytics',
+				name: 'enableAnalytics',
+				on: index.enableAnalytics ?? true
+			}) }}
+		{% else %}
+			{# Hidden field to preserve value when global analytics is disabled #}
+			<input type="hidden" name="enableAnalytics" value="{{ index.enableAnalytics ?? true ? '1' : '0' }}">
+		{% endif %}
+
+		{% if not isNew and (currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices')) %}
+			<div class="field">
+				<div class="heading">
+					<label>{{ 'Actions'|t('search-manager') }}</label>
+				</div>
+				<div class="input">
+					<div class="btngroup" style="width: 100%;">
+						<button type="button" class="btn menubtn" data-icon="settings" style="width: 100%;">{{ "Index Actions"|t('search-manager') }}</button>
+						<div class="menu">
+							<ul>
+								{% if currentUser.can('searchManager:rebuildIndices') %}
+								<li>
+									<a class="formsubmit" data-action="search-manager/indices/rebuild" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will rebuild the entire index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
+										{{ "Rebuild Index"|t('search-manager') }}
+									</a>
+								</li>
+								{% endif %}
+								{% if currentUser.can('searchManager:clearIndices') %}
+								<li>
+									<a class="formsubmit error" data-action="search-manager/indices/clear" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will remove all documents from the index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
+										{{ "Clear Index"|t('search-manager') }}
+									</a>
+								</li>
+								{% endif %}
+							</ul>
 						</div>
 					</div>
 				</div>
-			{% endif %}
-		</div>
-	</fieldset>
+			</div>
+		{% endif %}
+	</div>
 
 	{% if not isNew %}
-		<fieldset>
-			<dl class="meta read-only">
+		<hr>
+		<dl class="meta read-only">
 				<div class="data">
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
