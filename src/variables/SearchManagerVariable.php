@@ -308,4 +308,39 @@ class SearchManagerVariable
 
         return $backend->listIndices();
     }
+
+    /**
+     * Get a proxy for a specific configured backend
+     *
+     * This allows templates to use a specific backend regardless of the default.
+     * Useful for testing or when you need to query multiple backends.
+     *
+     * Usage:
+     *     {% set algolia = craft.searchManager.withBackend('production-algolia') %}
+     *     {% set indices = algolia.listIndices() %}
+     *     {% set results = algolia.search('my-index', 'query') %}
+     *
+     * @param string $backendHandle Handle of a configured backend
+     * @return BackendVariableProxy|null Proxy object or null if backend not found
+     */
+    public function withBackend(string $backendHandle): ?BackendVariableProxy
+    {
+        // Look up the configured backend by handle
+        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($backendHandle);
+
+        if (!$configuredBackend || !$configuredBackend->enabled) {
+            \Craft::warning("Backend '{$backendHandle}' not found or disabled", 'search-manager');
+            return null;
+        }
+
+        // Create the backend instance with its configured settings
+        $backend = SearchManager::$plugin->backend->createBackendFromConfig($configuredBackend);
+
+        if (!$backend) {
+            \Craft::warning("Failed to create backend instance for '{$backendHandle}'", 'search-manager');
+            return null;
+        }
+
+        return new BackendVariableProxy($backend, $backendHandle);
+    }
 }
