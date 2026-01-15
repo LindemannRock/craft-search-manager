@@ -95,40 +95,40 @@
 {% block content %}
     {# Tab Content - IDs must match tab URLs #}
     <div id="overview" class="tab-content">
-        {% include 'search-manager/analytics/_tabs/overview' %}
+        {% include 'search-manager/analytics/_partials/overview' %}
     </div>
 
     <div id="searches" class="tab-content hidden">
-         {% include 'search-manager/analytics/_tabs/searches' %}
+         {% include 'search-manager/analytics/_partials/searches' %}
     </div>
 
     {% if queryRulesExist %}
     <div id="query-rules" class="tab-content hidden">
-         {% include 'search-manager/analytics/_tabs/query-rules' %}
+         {% include 'search-manager/analytics/_partials/query-rules' %}
     </div>
     {% endif %}
 
     {% if promotionsExist %}
     <div id="promotions" class="tab-content hidden">
-         {% include 'search-manager/analytics/_tabs/promotions' %}
+         {% include 'search-manager/analytics/_partials/promotions' %}
     </div>
     {% endif %}
 
     <div id="content-gaps" class="tab-content hidden">
-         {% include 'search-manager/analytics/_tabs/content-gaps' %}
+         {% include 'search-manager/analytics/_partials/content-gaps' %}
     </div>
 
     <div id="performance" class="tab-content hidden">
-         {% include 'search-manager/analytics/_tabs/performance' %}
+         {% include 'search-manager/analytics/_partials/performance' %}
     </div>
 
     <div id="traffic-devices" class="tab-content hidden">
-         {% include 'search-manager/analytics/_tabs/traffic-devices' %}
+         {% include 'search-manager/analytics/_partials/traffic-devices' %}
     </div>
 
     {% if settings.enableGeoDetection %}
     <div id="geographic" class="tab-content hidden">
-         {% include 'search-manager/analytics/_tabs/geographic' %}
+         {% include 'search-manager/analytics/_partials/geographic' %}
     </div>
     {% endif %}
 

@@ -238,6 +238,7 @@ class SearchManager extends Plugin
                     // Backends
                     'search-manager/backends' => 'search-manager/backends/index',
                     'search-manager/backends/new' => 'search-manager/backends/edit',
+                    'search-manager/backends/view/<backendId>' => 'search-manager/backends/view',
                     'search-manager/backends/<backendId:\d+>' => 'search-manager/backends/edit',
                     // Analytics
                     'search-manager/analytics' => 'search-manager/analytics/index',

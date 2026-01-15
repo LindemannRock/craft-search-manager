@@ -129,9 +129,13 @@ class SettingsController extends Controller
 
         $settings = SearchManager::$plugin->getSettings();
 
+        // Get all configured backends for the backend selector
+        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+
         return $this->renderTemplate('search-manager/settings/test', [
             'settings' => $settings,
             'cacheEnabled' => $settings->enableCache ?? true,
+            'configuredBackends' => $configuredBackends,
         ]);
     }
 

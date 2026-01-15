@@ -360,7 +360,9 @@
 											<span>{{ backend.name }}</span>
 										</a>
 									{% else %}
-										{{ backend.name }}
+										<a class="label-link" href="{{ url('search-manager/backends/view/' ~ backend.handle) }}">
+											<span>{{ backend.name }}</span>
+										</a>
 										<span class="config-info-icon" data-config="{{ backend.rawConfigDisplay|e('html_attr') }}"></span>
 									{% endif %}
 								</td>
@@ -390,6 +392,11 @@
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
 										<ul>
+											<li>
+												<a href="{{ url('search-manager/backends/view/' ~ (backend.id ?: backend.handle)) }}">
+													{{ 'View'|t('search-manager') }}
+												</a>
+											</li>
 											{% if canEdit and backend.canEdit() %}
 												<li>
 													<a href="{{ url('search-manager/backends/' ~ backend.id) }}">

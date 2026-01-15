@@ -1,0 +1,135 @@
+{# Diagnostics Tab Content #}
+
+<div class="pane">
+    <h2>{{ "Indices in Backend"|t('search-manager') }}</h2>
+    <p class="light">{{ 'These are the indices that exist in the backend service itself.'|t('search-manager') }}</p>
+    <div id="indices-list">
+        <p class="light"><span class="spinner"></span> {{ 'Loading indices...'|t('search-manager') }}</p>
+    </div>
+</div>
+
+{% if backend.source == 'config' and backend.rawConfigDisplay %}
+    <div class="pane">
+        <h2>{{ 'Configuration'|t('search-manager') }}</h2>
+        <p class="light">{{ 'This backend is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+        <pre><code>{{ backend.rawConfigDisplay }}</code></pre>
+    </div>
+{% endif %}
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const backendId = '{{ backend.id ?: backend.handle }}';
+
+    function testConnection() {
+        const connectionResult = document.getElementById('connection-result');
+        const responseTime = document.getElementById('response-time');
+        const capBrowse = document.getElementById('cap-browse');
+        const capMulti = document.getElementById('cap-multi');
+        const indicesList = document.getElementById('indices-list');
+        const retestBtn = document.getElementById('retest-btn');
+
+        if (connectionResult) connectionResult.innerHTML = '<span class="spinner"></span>';
+        if (responseTime) responseTime.textContent = '—';
+        if (capBrowse) capBrowse.textContent = '—';
+        if (capMulti) capMulti.textContent = '—';
+        if (retestBtn) retestBtn.disabled = true;
+        if (indicesList) indicesList.innerHTML = '<p class="light"><span class="spinner"></span> {{ 'Loading indices...'|t('search-manager') }}</p>';
+
+        const startTime = performance.now();
+
+        Craft.sendActionRequest('POST', 'search-manager/backends/test', {
+            data: { backendId: backendId }
+        }).then(function(response) {
+            const elapsed = Math.round(performance.now() - startTime);
+            if (retestBtn) retestBtn.disabled = false;
+
+            if (response.data.success) {
+                if (connectionResult) connectionResult.innerHTML = '<span class="status live"></span> {{ 'Connected'|t('search-manager') }}';
+                if (responseTime) responseTime.textContent = elapsed + 'ms';
+                fetchBackendInfo();
+            } else {
+                if (connectionResult) connectionResult.innerHTML = '<span class="status off"></span> {{ 'Failed'|t('search-manager') }}';
+                if (indicesList) indicesList.innerHTML = '<p class="light error">{{ 'Cannot load indices - connection failed'|t('search-manager') }}</p>';
+            }
+        }).catch(function(error) {
+            if (retestBtn) retestBtn.disabled = false;
+            if (connectionResult) connectionResult.innerHTML = '<span class="status off"></span> {{ 'Error'|t('search-manager') }}';
+        });
+    }
+
+    function fetchBackendInfo() {
+        const capBrowse = document.getElementById('cap-browse');
+        const capMulti = document.getElementById('cap-multi');
+        const indicesList = document.getElementById('indices-list');
+
+        Craft.sendActionRequest('POST', 'search-manager/backends/info', {
+            data: { backendId: backendId }
+        }).then(function(response) {
+            if (response.data.success) {
+                if (capBrowse) capBrowse.innerHTML = response.data.supportsBrowse
+                    ? '<span class="status live"></span> {{ 'Yes'|t('search-manager') }}'
+                    : '<span class="status"></span> {{ 'No'|t('search-manager') }}';
+                if (capMulti) capMulti.innerHTML = response.data.supportsMultipleQueries
+                    ? '<span class="status live"></span> {{ 'Yes'|t('search-manager') }}'
+                    : '<span class="status"></span> {{ 'No'|t('search-manager') }}';
+
+                const indices = response.data.indices || [];
+                updateIndicesList(indices);
+            }
+        }).catch(function(error) {
+            console.error('Failed to fetch backend info:', error);
+        });
+    }
+
+    function updateIndicesList(indices) {
+        const container = document.getElementById('indices-list');
+        if (!container) return;
+
+        if (indices.length === 0) {
+            container.innerHTML = '<p class="light">{{ 'No indices found in this backend.'|t('search-manager') }}</p>';
+            return;
+        }
+
+        const hasDataSize = indices.some(function(index) {
+            return index.dataSize !== undefined && index.dataSize !== null;
+        });
+
+        let html = '<table class="data fullwidth"><thead><tr><th>{{ 'Index Name'|t('search-manager') }}</th><th>{{ 'Entries'|t('search-manager') }}</th>';
+        if (hasDataSize) {
+            html += '<th>{{ 'Data Size'|t('search-manager') }}</th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        indices.forEach(function(index) {
+            const name = index.name || index.uid || 'Unknown';
+            const entries = index.entries !== undefined ? index.entries.toLocaleString() : '—';
+            html += '<tr><td><code>' + Craft.escapeHtml(name) + '</code></td><td>' + entries + '</td>';
+            if (hasDataSize) {
+                const dataSize = index.dataSize ? formatBytes(index.dataSize) : '—';
+                html += '<td>' + dataSize + '</td>';
+            }
+            html += '</tr>';
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    // Run on load
+    testConnection();
+
+    // Bind refresh button
+    const retestBtn = document.getElementById('retest-btn');
+    if (retestBtn) {
+        retestBtn.addEventListener('click', testConnection);
+    }
+});
+</script>
