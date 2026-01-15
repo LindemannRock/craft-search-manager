@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\backends;
 use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
@@ -22,6 +23,11 @@ abstract class BaseBackend extends Component implements BackendInterface
      * @var array|null Settings from a ConfiguredBackend (overrides global config)
      */
     protected ?array $_configuredSettings = null;
+
+    /**
+     * @var string|null Handle of the ConfiguredBackend this adapter is associated with
+     */
+    protected ?string $_backendHandle = null;
 
     // =========================================================================
     // INITIALIZATION
@@ -43,6 +49,14 @@ abstract class BaseBackend extends Component implements BackendInterface
     public function setConfiguredSettings(array $settings): void
     {
         $this->_configuredSettings = $settings;
+    }
+
+    /**
+     * Set the backend handle this adapter is associated with
+     */
+    public function setBackendHandle(string $handle): void
+    {
+        $this->_backendHandle = $handle;
     }
 
     // =========================================================================
@@ -247,20 +261,53 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * List all indices available in the backend
-     * Default: returns configured indices from search-manager
+     * Default: returns indices from database that use this backend
      */
     public function listIndices(): array
     {
-        // Default implementation returns locally configured indices
-        $settings = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings();
+        $settings = SearchManager::$plugin->getSettings();
         $indices = [];
 
+        // Get indices from database that use this backend
+        $searchIndices = SearchIndex::findAll();
+        $defaultBackendHandle = $settings->defaultBackendHandle;
+
+        foreach ($searchIndices as $searchIndex) {
+            // Check if this index uses this backend
+            $indexBackend = $searchIndex->backend ?: $defaultBackendHandle;
+
+            if ($this->_backendHandle && $indexBackend === $this->_backendHandle) {
+                $indices[] = [
+                    'name' => $this->getFullIndexName($searchIndex->handle),
+                    'handle' => $searchIndex->handle,
+                    'entries' => $searchIndex->documentCount,
+                    'source' => $searchIndex->source,
+                ];
+            }
+        }
+
+        // Also check config-based indices
         foreach ($settings->indices ?? [] as $handle => $config) {
-            $indices[] = [
-                'name' => $this->getFullIndexName($handle),
-                'handle' => $handle,
-                'source' => 'config',
-            ];
+            $indexBackend = $config['backend'] ?? $defaultBackendHandle;
+
+            if ($this->_backendHandle && $indexBackend === $this->_backendHandle) {
+                // Check if not already added from database
+                $alreadyAdded = false;
+                foreach ($indices as $index) {
+                    if ($index['handle'] === $handle) {
+                        $alreadyAdded = true;
+                        break;
+                    }
+                }
+
+                if (!$alreadyAdded) {
+                    $indices[] = [
+                        'name' => $this->getFullIndexName($handle),
+                        'handle' => $handle,
+                        'source' => 'config',
+                    ];
+                }
+            }
         }
 
         return $indices;

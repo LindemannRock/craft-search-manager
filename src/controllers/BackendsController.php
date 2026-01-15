@@ -40,6 +40,43 @@ class BackendsController extends Controller
     }
 
     /**
+     * View a backend (read-only, works for both config and database backends)
+     *
+     * @param string|int|null $backendId Backend ID (numeric) or handle (string)
+     */
+    public function actionView(string|int|null $backendId = null): Response
+    {
+        $this->requirePermission('searchManager:viewBackends');
+
+        if (!$backendId) {
+            throw new NotFoundHttpException('Backend ID or handle required');
+        }
+
+        // Try by ID first, then by handle
+        if (is_numeric($backendId)) {
+            $backend = ConfiguredBackend::findById((int)$backendId);
+        } else {
+            $backend = ConfiguredBackend::findByHandle((string)$backendId);
+        }
+
+        if (!$backend) {
+            throw new NotFoundHttpException('Backend not found');
+        }
+
+        // Get database driver for mysql/pgsql availability checks
+        $dbDriver = Craft::$app->getDb()->getDriverName();
+
+        // Render edit.twig - it handles both editable and config backends via tabs
+        return $this->renderTemplate('search-manager/backends/edit', [
+            'backend' => $backend,
+            'isNew' => false,
+            'backendTypes' => ConfiguredBackend::BACKEND_TYPES,
+            'settingsSchemas' => ConfiguredBackend::BACKEND_SETTINGS_SCHEMA,
+            'dbDriver' => $dbDriver,
+        ]);
+    }
+
+    /**
      * Edit or create a backend
      */
     public function actionEdit(?int $backendId = null): Response
@@ -235,6 +272,75 @@ class BackendsController extends Controller
             return $this->asJson([
                 'success' => false,
                 'error' => 'Backend is not available. Check your settings.',
+            ]);
+        } catch (\Throwable $e) {
+            return $this->asJson([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get backend info (capabilities and indices)
+     */
+    public function actionInfo(): Response
+    {
+        $this->requirePermission('searchManager:viewBackends');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $request = Craft::$app->getRequest();
+        $backendId = $request->getBodyParam('backendId');
+
+        try {
+            // Find the configured backend
+            if (is_numeric($backendId)) {
+                $configuredBackend = ConfiguredBackend::findById((int)$backendId);
+            } else {
+                $configuredBackend = ConfiguredBackend::findByHandle($backendId);
+            }
+
+            if (!$configuredBackend) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => 'Backend not found',
+                ]);
+            }
+
+            // Get the backend adapter
+            $backendAdapter = SearchManager::$plugin->backend->getBackend($configuredBackend->backendType);
+            if (!$backendAdapter) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => "Unknown backend type: {$configuredBackend->backendType}",
+                ]);
+            }
+
+            // Apply configured settings
+            $backendAdapter->setConfiguredSettings($configuredBackend->settings);
+            $backendAdapter->setBackendHandle($configuredBackend->handle);
+
+            // Get capabilities
+            $supportsBrowse = $backendAdapter->supportsBrowse();
+            $supportsMultipleQueries = $backendAdapter->supportsMultipleQueries();
+
+            // Get indices from the backend
+            $indices = [];
+            try {
+                $indices = $backendAdapter->listIndices();
+            } catch (\Throwable $e) {
+                $this->logWarning('Failed to list indices from backend', [
+                    'backend' => $configuredBackend->handle,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            return $this->asJson([
+                'success' => true,
+                'supportsBrowse' => $supportsBrowse,
+                'supportsMultipleQueries' => $supportsMultipleQueries,
+                'indices' => $indices,
             ]);
         } catch (\Throwable $e) {
             return $this->asJson([

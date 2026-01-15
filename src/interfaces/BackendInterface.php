@@ -142,4 +142,12 @@ interface BackendInterface
      * @return void
      */
     public function setConfiguredSettings(array $settings): void;
+
+    /**
+     * Set the backend handle this adapter is associated with
+     *
+     * @param string $handle
+     * @return void
+     */
+    public function setBackendHandle(string $handle): void;
 }
