@@ -508,6 +508,7 @@ These methods provide unified access to backend-specific features, making it eas
 
 | Method | Twig Usage | Description |
 |--------|------------|-------------|
+| `withBackend()` | `craft.searchManager.withBackend('handle')` | Get proxy for a specific configured backend |
 | `listIndices()` | `craft.searchManager.listIndices()` | List all indices from backend |
 | `search()` | `craft.searchManager.search(index, query, options)` | Search an index |
 | `browse()` | `craft.searchManager.browse({index, query, params})` | Iterate through all documents |
@@ -524,6 +525,41 @@ These methods provide unified access to backend-specific features, making it eas
 | `browse()` | ✅ | ✅ | ✅ | ❌ |
 | `multipleQueries()` | ✅ Native | ✅ Native | ✅ Native | ✅ Sequential fallback |
 | `parseFilters()` | ✅ | ✅ | ✅ | ✅ (SQL-like) |
+
+#### Using a Specific Backend (withBackend)
+
+By default, all `craft.searchManager` methods use the backend specified by `defaultBackendHandle`. Use `withBackend()` to explicitly use a different configured backend:
+
+```twig
+{# Get a proxy for a specific configured backend #}
+{% set algolia = craft.searchManager.withBackend('production-algolia') %}
+
+{# Now use it - all methods work on this backend #}
+{% set indices = algolia.listIndices() %}
+{% set results = algolia.search('my-index', 'query', {hitsPerPage: 10}) %}
+{% set browseResults = algolia.browse({index: 'products', query: ''}) %}
+
+{# Check backend info #}
+<p>Using: {{ algolia.getName() }}</p>
+<p>Available: {{ algolia.isAvailable() ? 'Yes' : 'No' }}</p>
+```
+
+**Use Cases:**
+- Testing a specific backend when another is the default
+- Querying multiple backends in the same template
+- Accessing external indices (e.g., Algolia indices not managed by Search Manager)
+
+**Available Methods on the Proxy:**
+- `search(index, query, options)` - Search an index
+- `browse(options)` - Iterate through all documents
+- `multipleQueries(queries)` - Batch search
+- `parseFilters(filters)` - Generate filter strings
+- `listIndices()` - List all indices
+- `supportsBrowse()` - Check browse support
+- `supportsMultipleQueries()` - Check batch query support
+- `getName()` - Get backend name
+- `isAvailable()` - Check if backend is available
+- `getStatus()` - Get backend status info
 
 #### List Indices
 
