@@ -106,19 +106,19 @@ class AnalyticsService extends Component
         // Detect device information using Matomo DeviceDetector
         $deviceInfo = SearchManager::$plugin->deviceDetection->detectDevice($userAgent);
 
-        // Multi-step IP processing for privacy and geo detection
+        // Multi-step IP processing for privacy
         $ip = null;
-        $geoData = null;
         $rawIp = $request->getUserIP();
+        $ipForGeoLookup = null;
 
         // Step 1: Subnet masking (if anonymizeIpAddress enabled)
         if ($settings->anonymizeIpAddress && $rawIp) {
             $rawIp = $this->_anonymizeIp($rawIp);
         }
 
-        // Step 2: Get geo location (BEFORE hashing, using anonymized or full IP)
+        // Step 2: Store IP for async geo-lookup (BEFORE hashing)
         if ($settings->enableGeoDetection && $rawIp) {
-            $geoData = $this->getLocationFromIp($rawIp);
+            $ipForGeoLookup = $rawIp;
         }
 
         // Step 3: Hash with salt for storage
@@ -137,9 +137,10 @@ class AnalyticsService extends Component
         // Classify search intent
         $intent = $this->classifyIntent($query);
 
-        // Insert analytics record directly
+        // Insert analytics record directly (geo data will be populated async)
         try {
-            Craft::$app->getDb()->createCommand()
+            $db = Craft::$app->getDb();
+            $db->createCommand()
                 ->insert('{{%searchmanager_analytics}}', [
                     'indexHandle' => $indexHandle,
                     'query' => $query,
@@ -173,17 +174,20 @@ class AnalyticsService extends Component
                     'isRobot' => $deviceInfo['isRobot'],
                     'isMobileApp' => $deviceInfo['isMobileApp'],
                     'botName' => $deviceInfo['botName'],
-                    // Geographic data
-                    'country' => $geoData['countryCode'] ?? null,
-                    'city' => $geoData['city'] ?? null,
-                    'region' => $geoData['region'] ?? null,
-                    'latitude' => $geoData['lat'] ?? null,
-                    'longitude' => $geoData['lon'] ?? null,
+                    // Geographic data - populated async via GeoLookupJob
+                    'country' => null,
+                    'city' => null,
+                    'region' => null,
+                    'latitude' => null,
+                    'longitude' => null,
                     'language' => null, // Could be extracted from Accept-Language header if needed
                     'dateCreated' => Db::prepareDateForDb(new \DateTime()),
                     'uid' => \craft\helpers\StringHelper::UUID(),
                 ])
                 ->execute();
+
+            // Get the inserted record ID for async geo-lookup
+            $analyticsId = (int) $db->getLastInsertID();
 
             $this->logDebug('Tracked search query', [
                 'indexHandle' => $indexHandle,
@@ -191,7 +195,16 @@ class AnalyticsService extends Component
                 'resultsCount' => $resultsCount,
                 'backend' => $backend,
                 'isHit' => $isHit,
+                'analyticsId' => $analyticsId,
             ]);
+
+            // Queue async geo-lookup if enabled and we have an IP
+            if ($ipForGeoLookup && $analyticsId) {
+                Craft::$app->getQueue()->push(new \lindemannrock\searchmanager\jobs\GeoLookupJob([
+                    'analyticsId' => $analyticsId,
+                    'ip' => $ipForGeoLookup,
+                ]));
+            }
 
             // Track detailed rule analytics
             if (!empty($matchedRules)) {
