@@ -403,4 +403,49 @@ class FileBackend extends BaseBackend
             return false;
         }
     }
+
+    /**
+     * List all indices with file sizes
+     */
+    public function listIndices(): array
+    {
+        // Get base indices from parent
+        $indices = parent::listIndices();
+
+        // Add file size for each index
+        foreach ($indices as &$index) {
+            $fullIndexName = $this->getFullIndexName($index['handle']);
+            $indexPath = $this->_basePath . '/' . $fullIndexName;
+
+            if (is_dir($indexPath)) {
+                $index['dataSize'] = $this->getDirectorySize($indexPath);
+            }
+        }
+
+        return $indices;
+    }
+
+    /**
+     * Calculate total size of a directory
+     */
+    private function getDirectorySize(string $path): int
+    {
+        $size = 0;
+
+        if (!is_dir($path)) {
+            return $size;
+        }
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \RecursiveDirectoryIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $size += $file->getSize();
+            }
+        }
+
+        return $size;
+    }
 }
