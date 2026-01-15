@@ -1,0 +1,578 @@
+{# Search Testing Tab #}
+{% import "_includes/forms" as forms %}
+
+{# Get available indices and build siteId mapping #}
+{% set allIndices = craft.searchManager.getIndices() %}
+{% set enabledIndices = [] %}
+{% set indexSiteIds = {} %}
+{% for index in allIndices %}
+    {% if index.enabled %}
+        {% if index.siteId %}
+            {% set site = craft.app.sites.getSiteById(index.siteId) %}
+            {% set siteLabel = site ? site.name : 'Site ' ~ index.siteId %}
+        {% else %}
+            {% set siteLabel = 'All Sites'|t('search-manager') %}
+        {% endif %}
+        {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' — ' ~ siteLabel}]) %}
+        {% set indexSiteIds = indexSiteIds|merge({(index.handle): index.siteId}) %}
+    {% endif %}
+{% endfor %}
+
+{# Search Configuration #}
+<div class="pane" style="margin-bottom: 24px;">
+    <h3 style="margin-top: 0;">{{ "Search Configuration"|t('search-manager') }}</h3>
+
+    {{ forms.selectField({
+        label: 'Search Index'|t('search-manager'),
+        instructions: 'Select which index to search'|t('search-manager'),
+        id: 'testIndex',
+        name: 'testIndex',
+        options: enabledIndices,
+        value: enabledIndices[0].value ?? '',
+    }) }}
+
+    <div class="field">
+        <div class="heading">
+            <label for="testQuery">{{ "Search Query"|t('search-manager') }}</label>
+        </div>
+        <div class="instructions">
+            <p>{{ "Enter a search query to test. Supports all operators."|t('search-manager') }}</p>
+        </div>
+        <div style="position: relative;">
+            <input type="text" id="testQuery" name="testQuery" class="text fullwidth" value="" placeholder="Try: 'exact phrase', test NOT spam, title:blog, test*" autocomplete="off">
+            {# Autocomplete dropdown #}
+            <div id="autocomplete-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 4px; margin-top: 4px; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100;"></div>
+        </div>
+    </div>
+
+    {# Test Feature Toggles #}
+    <div class="field" style="margin-top: 20px;">
+        <div class="heading">
+            <label>{{ "Test Features"|t('search-manager') }}</label>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px;">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <input type="checkbox" id="enableWildcard" name="enableWildcard">
+                <span>{{ "Auto Wildcards"|t('search-manager') }}</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <input type="checkbox" id="showAutocomplete" name="showAutocomplete" {{ settings.enableAutocomplete ? 'checked' : '' }}>
+                <span>{{ "Test Autocomplete"|t('search-manager') }}</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <input type="checkbox" id="showPromotions" name="showPromotions">
+                <span>{{ "Test Promotions"|t('search-manager') }}</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <input type="checkbox" id="showQueryRules" name="showQueryRules">
+                <span>{{ "Test Query Rules"|t('search-manager') }}</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <input type="checkbox" id="showHighlighting" name="showHighlighting" checked>
+                <span>{{ "Show Highlighting"|t('search-manager') }}</span>
+            </label>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+        <button type="button" id="testButton" class="btn submit">{{ "Search"|t('search-manager') }}</button>
+        {% if cacheEnabled %}
+            <button type="button" id="clearCacheButton" class="btn">{{ "Clear Search Cache"|t('search-manager') }}</button>
+            <span id="cacheStatus" style="font-size: 0.9em; color: #666;"></span>
+        {% endif %}
+    </div>
+</div>
+
+{# Quick Operator Tests #}
+<div class="pane" style="margin-bottom: 24px;">
+    <h3 style="margin-top: 0;">{{ "Quick Operator Tests"|t('search-manager') }}</h3>
+    <p class="light">{{ "Click to test different search operators"|t('search-manager') }}</p>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <button type="button" class="btn small quick-test" data-query="test">Basic</button>
+        <button type="button" class="btn small quick-test" data-query='"test entry"'>Phrase</button>
+        <button type="button" class="btn small quick-test" data-query="test NOT spam">NOT</button>
+        <button type="button" class="btn small quick-test" data-query="title:test">Field</button>
+        <button type="button" class="btn small quick-test" data-query="test*">Wildcard</button>
+        <button type="button" class="btn small quick-test" data-query="test^2 entry">Boost</button>
+        <button type="button" class="btn small quick-test" data-query="test OR entry">OR</button>
+        <button type="button" class="btn small quick-test" data-query='test* OR entry title:blog NOT spam'>Combined</button>
+    </div>
+</div>
+
+{# Autocomplete Preview Section #}
+<div id="autocomplete-section" class="pane" style="margin-bottom: 24px; display: none;">
+    <h3 style="margin-top: 0;">{{ "Autocomplete Suggestions"|t('search-manager') }}</h3>
+    <div id="autocomplete-results">
+        <p class="light">{{ "Type at least {minLength} characters above to see suggestions"|t('search-manager', {minLength: settings.autocompleteMinLength ?? 2}) }}</p>
+    </div>
+</div>
+
+{# Promotions Preview Section #}
+<div id="promotions-section" class="pane" style="margin-bottom: 24px; display: none;">
+    <h3 style="margin-top: 0;">{{ "Matched Promotions"|t('search-manager') }}</h3>
+    <div id="promotions-results">
+        <p class="light">{{ "Run a search to see which promotions match"|t('search-manager') }}</p>
+    </div>
+</div>
+
+{# Query Rules Preview Section #}
+<div id="queryrules-section" class="pane" style="margin-bottom: 24px; display: none;">
+    <h3 style="margin-top: 0;">{{ "Matched Query Rules"|t('search-manager') }}</h3>
+    <div id="queryrules-results">
+        <p class="light">{{ "Run a search to see which query rules apply"|t('search-manager') }}</p>
+    </div>
+</div>
+
+{# Main Results Section #}
+<div id="testResults" style="display: none;">
+    <div class="pane">
+        <h3 id="resultsTitle" style="margin-top: 0;"></h3>
+        <div id="resultsContent"></div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const testButton = document.getElementById('testButton');
+    const clearCacheButton = document.getElementById('clearCacheButton');
+    const cacheStatus = document.getElementById('cacheStatus');
+    const testQueryInput = document.getElementById('testQuery');
+    const testIndexSelect = document.getElementById('testIndex');
+    const testResults = document.getElementById('testResults');
+    const resultsTitle = document.getElementById('resultsTitle');
+    const resultsContent = document.getElementById('resultsContent');
+    const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+    const autocompleteSection = document.getElementById('autocomplete-section');
+    const promotionsSection = document.getElementById('promotions-section');
+    const queryrulesSection = document.getElementById('queryrules-section');
+
+    // Toggle checkboxes
+    const showAutocomplete = document.getElementById('showAutocomplete');
+    const showPromotions = document.getElementById('showPromotions');
+    const showQueryRules = document.getElementById('showQueryRules');
+    const showHighlighting = document.getElementById('showHighlighting');
+
+    // Settings
+    const autocompleteMinLength = {{ settings.autocompleteMinLength ?? 2 }};
+    const indexSiteIds = {{ indexSiteIds|json_encode|raw }};
+    let autocompleteTimer;
+
+    // Get siteId for current selected index
+    function getIndexSiteId() {
+        return indexSiteIds[testIndexSelect.value] || null;
+    }
+
+    // Toggle section visibility based on checkboxes
+    function updateSectionVisibility() {
+        autocompleteSection.style.display = showAutocomplete.checked ? 'block' : 'none';
+        promotionsSection.style.display = showPromotions.checked ? 'block' : 'none';
+        queryrulesSection.style.display = showQueryRules.checked ? 'block' : 'none';
+    }
+
+    showAutocomplete.addEventListener('change', updateSectionVisibility);
+    showPromotions.addEventListener('change', updateSectionVisibility);
+    showQueryRules.addEventListener('change', updateSectionVisibility);
+
+    // Quick test buttons
+    document.querySelectorAll('.quick-test').forEach(btn => {
+        btn.addEventListener('click', function() {
+            testQueryInput.value = this.dataset.query;
+            testButton.click();
+        });
+    });
+
+    // Clear cache handler
+    if (clearCacheButton) {
+        clearCacheButton.addEventListener('click', function() {
+            const indexHandle = testIndexSelect.value;
+            clearCacheButton.disabled = true;
+            clearCacheButton.textContent = 'Clearing...';
+
+            fetch('{{ actionUrl('search-manager/settings/clear-test-cache') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+                },
+                body: JSON.stringify({ indexHandle: indexHandle })
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearCacheButton.disabled = false;
+                clearCacheButton.textContent = 'Clear Search Cache';
+                if (data.success) {
+                    cacheStatus.textContent = data.message;
+                    cacheStatus.style.color = '#059669';
+                    setTimeout(() => { cacheStatus.textContent = ''; }, 3000);
+                } else {
+                    cacheStatus.textContent = data.error || 'Failed to clear cache';
+                    cacheStatus.style.color = '#dc2626';
+                }
+            })
+            .catch(error => {
+                clearCacheButton.disabled = false;
+                clearCacheButton.textContent = 'Clear Search Cache';
+                cacheStatus.textContent = error.message;
+                cacheStatus.style.color = '#dc2626';
+            });
+        });
+    }
+
+    // Autocomplete as user types
+    testQueryInput.addEventListener('input', function() {
+        const query = this.value.trim();
+
+        if (!showAutocomplete.checked || query.length < autocompleteMinLength) {
+            autocompleteDropdown.style.display = 'none';
+            return;
+        }
+
+        clearTimeout(autocompleteTimer);
+        autocompleteTimer = setTimeout(() => {
+            fetchAutocomplete(query);
+        }, 200);
+    });
+
+    // Hide autocomplete on blur (with delay for click)
+    testQueryInput.addEventListener('blur', function() {
+        setTimeout(() => { autocompleteDropdown.style.display = 'none'; }, 200);
+    });
+
+    async function fetchAutocomplete(query) {
+        try {
+            const baseUrl = Craft.getActionUrl('search-manager/api/autocomplete');
+            const separator = baseUrl.includes('?') ? '&' : '?';
+            const siteId = getIndexSiteId();
+            const siteParam = siteId ? '&siteId=' + siteId : '';
+            const response = await fetch(baseUrl + separator + 'q=' + encodeURIComponent(query) + '&index=' + testIndexSelect.value + siteParam + '&limit=10&only=suggestions');
+            const suggestions = await response.json();
+
+            if (suggestions && suggestions.length > 0) {
+                // Show dropdown
+                autocompleteDropdown.innerHTML = suggestions.map(term => `
+                    <div style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.1s;"
+                         onmouseover="this.style.background='#f9fafb'"
+                         onmouseout="this.style.background='#fff'"
+                         onclick="document.getElementById('testQuery').value='${term}'; document.getElementById('autocomplete-dropdown').style.display='none'; document.getElementById('testButton').click();">
+                        <code style="font-size: 13px;">${highlightMatch(term, query)}</code>
+                    </div>
+                `).join('');
+                autocompleteDropdown.style.display = 'block';
+
+                // Update autocomplete section
+                updateAutocompleteSection(suggestions, query);
+            } else {
+                autocompleteDropdown.style.display = 'none';
+                updateAutocompleteSection([], query);
+            }
+        } catch (error) {
+            autocompleteDropdown.style.display = 'none';
+        }
+    }
+
+    function highlightMatch(text, query) {
+        const index = text.toLowerCase().indexOf(query.toLowerCase());
+        if (index === -1) return text;
+        return text.substring(0, index) + '<strong>' + text.substring(index, index + query.length) + '</strong>' + text.substring(index + query.length);
+    }
+
+    function updateAutocompleteSection(suggestions, query) {
+        const container = document.getElementById('autocomplete-results');
+        if (suggestions.length > 0) {
+            container.innerHTML = `
+                <p style="margin-bottom: 12px;"><strong>Query:</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>Found:</strong> ${suggestions.length} suggestions</p>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    ${suggestions.map(s => `<span style="background: #f3f4f6; padding: 6px 12px; border-radius: 16px; font-size: 13px;">${s}</span>`).join('')}
+                </div>
+            `;
+        } else {
+            container.innerHTML = `<p class="light">No suggestions found for "${Craft.escapeHtml(query)}"</p>`;
+        }
+    }
+
+    // Main search test
+    testButton.addEventListener('click', function() {
+        const query = testQueryInput.value.trim();
+        const indexHandle = testIndexSelect.value;
+        const enableWildcard = document.getElementById('enableWildcard').checked;
+
+        if (!query) {
+            testResults.style.display = 'block';
+            resultsTitle.innerHTML = 'Validation Error';
+            resultsTitle.style.color = '#dc2626';
+            resultsContent.innerHTML = '<p style="color: #dc2626;">Please enter a search query</p>';
+            return;
+        }
+
+        testButton.disabled = true;
+        testButton.textContent = '{{ "Searching..."|t('search-manager') }}';
+        updateSectionVisibility();
+
+        // Fetch all test data
+        Promise.all([
+            // Main search
+            fetch('{{ actionUrl('search-manager/settings/test-search') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+                },
+                body: JSON.stringify({
+                    query: query,
+                    indexHandle: indexHandle,
+                    wildcard: enableWildcard,
+                    includeHighlighting: showHighlighting.checked
+                })
+            }).then(r => r.json()),
+
+            // Promotions test
+            showPromotions.checked ? fetch('{{ actionUrl('search-manager/settings/test-promotions') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+                },
+                body: JSON.stringify({ query: query, indexHandle: indexHandle })
+            }).then(r => r.json()) : Promise.resolve(null),
+
+            // Query rules test
+            showQueryRules.checked ? fetch('{{ actionUrl('search-manager/settings/test-query-rules') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+                },
+                body: JSON.stringify({ query: query, indexHandle: indexHandle })
+            }).then(r => r.json()) : Promise.resolve(null)
+        ])
+        .then(([searchData, promotionsData, queryRulesData]) => {
+            testButton.disabled = false;
+            testButton.textContent = '{{ "Search"|t('search-manager') }}';
+
+            // Display promotions
+            if (promotionsData && showPromotions.checked) {
+                displayPromotions(promotionsData, query);
+            }
+
+            // Display query rules
+            if (queryRulesData && showQueryRules.checked) {
+                displayQueryRules(queryRulesData, query);
+            }
+
+            // Display main results
+            displaySearchResults(searchData, query);
+        })
+        .catch(error => {
+            testButton.disabled = false;
+            testButton.textContent = '{{ "Search"|t('search-manager') }}';
+            testResults.style.display = 'block';
+            resultsTitle.innerHTML = 'Error';
+            resultsTitle.style.color = '#dc2626';
+            resultsContent.innerHTML = `<p style="color: #dc2626;">${error.message}</p>`;
+        });
+    });
+
+    function displayPromotions(data, query) {
+        const container = document.getElementById('promotions-results');
+
+        if (data.success && data.promotions && data.promotions.length > 0) {
+            container.innerHTML = `
+                <p style="margin-bottom: 12px;"><strong>Query:</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>Matched:</strong> ${data.promotions.length} promotion(s)</p>
+                <table class="data fullwidth" style="margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>Position</th>
+                            <th>Element</th>
+                            <th>Match Type</th>
+                            <th>Pattern</th>
+                            <th>Live on Sites</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.promotions.map(p => `
+                            <tr${!p.enabled ? ' style="opacity: 0.5;"' : ''}>
+                                <td><span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 600;">#${p.position}</span></td>
+                                <td>
+                                    <a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
+                                    <span style="color: #9ca3af;">(ID: ${p.elementId})</span>
+                                    ${!p.enabled ? '<span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 6px;">DISABLED</span>' : ''}
+                                </td>
+                                <td><code>${p.matchType}</code></td>
+                                <td><code>${Craft.escapeHtml(p.query)}</code></td>
+                                <td>
+                                    ${p.siteStatuses ? p.siteStatuses.map(s => `
+                                        <span style="background: ${s.isLive ? '#dcfce7' : '#fee2e2'}; color: ${s.isLive ? '#166534' : '#dc2626'}; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">${s.siteName}</span>
+                                    `).join('') : '-'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <p class="light" style="margin-top: 12px; font-size: 12px;">Note: Promotions only appear in search results on sites where the element is live (green).</p>
+            `;
+        } else {
+            container.innerHTML = `<p class="light">No promotions match the query "${Craft.escapeHtml(query)}"</p>`;
+        }
+    }
+
+    function displayQueryRules(data, query) {
+        const container = document.getElementById('queryrules-results');
+
+        if (data.success && data.rules && data.rules.length > 0) {
+            const actionLabels = {
+                'synonym': 'Synonyms',
+                'boost_section': 'Boost Section',
+                'boost_category': 'Boost Category',
+                'boost_element': 'Boost Element',
+                'filter': 'Filter',
+                'redirect': 'Redirect'
+            };
+
+            const actionColors = {
+                'synonym': '#dbeafe',
+                'boost_section': '#dcfce7',
+                'boost_category': '#dcfce7',
+                'boost_element': '#dcfce7',
+                'filter': '#fef3c7',
+                'redirect': '#fee2e2'
+            };
+
+            // Build redirect info HTML
+            let redirectHtml = '';
+            if (data.redirect) {
+                // Find the redirect rule to get element info
+                const redirectRule = data.rules.find(r => r.actionType === 'redirect');
+                if (redirectRule && redirectRule.elementInfo) {
+                    const el = redirectRule.elementInfo;
+                    redirectHtml = `
+                        <div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;">
+                            <strong>↪️ Redirect:</strong> This query would redirect to
+                            <strong>${Craft.escapeHtml(el.type)}</strong>:
+                            <a href="${el.cpEditUrl}" target="_blank" style="font-weight: 600;">${Craft.escapeHtml(el.title)}</a>
+                            <span style="color: #9ca3af;">(ID: ${el.id})</span>
+                            <br><span style="color: #6b7280; font-size: 13px;">URL: <a href="${el.url}" target="_blank">${el.url}</a></span>
+                        </div>`;
+                } else {
+                    redirectHtml = `<div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;"><strong>↪️ Redirect:</strong> This query would redirect to <a href="${data.redirect}" target="_blank">${data.redirect}</a></div>`;
+                }
+            }
+
+            container.innerHTML = `
+                <p style="margin-bottom: 12px;"><strong>Query:</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>Matched:</strong> ${data.rules.length} rule(s)</p>
+                ${redirectHtml}
+                ${data.synonyms && data.synonyms.length > 0 ? `<div style="padding: 12px; background: #dbeafe; border-radius: 4px; margin-bottom: 12px;"><strong>Expanded Queries:</strong> ${data.synonyms.map(s => `<code>${s}</code>`).join(', ')}</div>` : ''}
+                <table class="data fullwidth" style="margin: 0;">
+                    <thead>
+                        <tr>
+                            <th>Rule Name</th>
+                            <th>Action</th>
+                            <th>Match</th>
+                            <th>Effect</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.rules.map(r => {
+                            let effectHtml = Craft.escapeHtml(r.effectDescription);
+                            // If it's a redirect with element info, make it clickable
+                            if (r.actionType === 'redirect' && r.elementInfo) {
+                                effectHtml = `Redirect to <a href="${r.elementInfo.cpEditUrl}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`;
+                            }
+                            return `
+                                <tr>
+                                    <td><a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a></td>
+                                    <td><span style="background: ${actionColors[r.actionType] || '#f3f4f6'}; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${actionLabels[r.actionType] || r.actionType}</span></td>
+                                    <td><code>${r.matchType}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
+                                    <td>${effectHtml}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+            `;
+        } else {
+            container.innerHTML = `<p class="light">No query rules match the query "${Craft.escapeHtml(query)}"</p>`;
+        }
+    }
+
+    function displaySearchResults(data, query) {
+        testResults.style.display = 'block';
+
+        if (data.success) {
+            resultsTitle.innerHTML = `Found ${data.total} result${data.total !== 1 ? 's' : ''}`;
+            resultsTitle.style.color = '#059669';
+
+            let html = `
+<div style="padding: 16px; background: #f0fdf4; border-left: 4px solid #059669; margin-bottom: 20px; border-radius: 0 4px 4px 0;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 14px;">
+        <div><strong>Backend:</strong> ${Craft.escapeHtml(data.backend)}</div>
+        <div><strong>Execution:</strong> ${data.executionTime}ms</div>
+        <div><strong>Cache:</strong> ${data.cacheEnabled ? 'Enabled' : 'Disabled'}</div>
+        <div><strong>Query Used:</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
+    </div>
+</div>
+`;
+
+            if (data.total > 0) {
+                html += '<div style="display: grid; gap: 12px;">';
+                data.hits.forEach((hit, index) => {
+                    const title = showHighlighting.checked && hit.titleHighlighted ? hit.titleHighlighted : (hit.title || 'Untitled');
+                    const excerpt = showHighlighting.checked && hit.excerptHighlighted ? hit.excerptHighlighted : (hit.excerpt || hit.content || '');
+                    const url = hit.url || '';
+                    const isPromoted = hit.promoted === true;
+
+                    html += `
+<div style="padding: 16px; border: 1px solid ${isPromoted ? '#fbbf24' : '#e5e7eb'}; border-radius: 4px; background: ${isPromoted ? '#fffbeb' : '#fff'};">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+        <div style="flex: 1;">
+            ${isPromoted ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">PROMOTED</span>' : ''}
+            <strong style="color: #111827; font-size: 15px;">${title}</strong>
+            ${url ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><a href="${url}" target="_blank" style="color: #0d78f2;">${url}</a></div>` : ''}
+        </div>
+        <div style="display: flex; gap: 8px; margin-left: 12px;">
+            <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                Score: ${hit.score ? hit.score.toFixed(2) : 'N/A'}
+            </span>
+        </div>
+    </div>
+    <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
+        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}${hit.section ? ' • Section: ' + hit.section : ''} • <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Site: ${hit.siteName || 'Unknown'} (${hit.language || '??'})</span>
+    </div>
+    ${excerpt ? `<div style="color: #4b5563; line-height: 1.6; font-size: 14px;">${excerpt.substring(0, 300)}${excerpt.length > 300 ? '...' : ''}</div>` : ''}
+</div>
+`;
+                });
+                html += '</div>';
+            } else {
+                html += `
+<div style="text-align: center; padding: 40px; color: #9ca3af;">
+    <p style="font-size: 18px; margin: 0;">No results found for "${Craft.escapeHtml(query)}"</p>
+    <p style="font-size: 14px; margin: 8px 0 0;">Try different keywords or operators</p>
+</div>
+`;
+            }
+
+            resultsContent.innerHTML = html;
+        } else {
+            resultsTitle.innerHTML = 'Search Failed';
+            resultsTitle.style.color = '#dc2626';
+            resultsContent.innerHTML = `<p style="color: #dc2626;">${Craft.escapeHtml(data.error || 'Unknown error')}</p>`;
+        }
+    }
+
+    // Enter key triggers search
+    testQueryInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            autocompleteDropdown.style.display = 'none';
+            testButton.click();
+        }
+    });
+
+    // Initialize section visibility on page load
+    updateSectionVisibility();
+});
+</script>

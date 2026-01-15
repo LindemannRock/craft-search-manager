@@ -1,0 +1,83 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Test Search"|t('search-manager') %}
+{% set selectedSettingsItem = 'test' %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Test'|t('search-manager'),
+        url: url('search-manager/settings/test'),
+    },
+] %}
+
+{# Define Tabs #}
+{% set tabs = {
+    backend: { label: "Backend"|t('search-manager'), url: '#backend' },
+    search: { label: "Search"|t('search-manager'), url: '#search' },
+} %}
+
+{% set selectedTab = 'search' %}
+
+{% block content %}
+
+    {% include 'lindemannrock-base/_components/ip-salt-error' with {
+        pluginHandle: 'search-manager',
+        envVarName: 'SEARCH_MANAGER_IP_SALT'
+    } %}
+
+    {# Tab Content #}
+    <div id="backend" class="tab-content hidden">
+        {% include 'search-manager/settings/test/_partials/backend' %}
+    </div>
+
+    <div id="search" class="tab-content">
+        {% include 'search-manager/settings/test/_partials/search' %}
+    </div>
+
+    {% include 'lindemannrock-base/_components/plugin-credit' %}
+{% endblock %}
+
+{% css %}
+    .tab-content {
+        padding: 24px;
+    }
+{% endcss %}
+
+{% js %}
+    // Tab Switching
+    function switchTab(tabId) {
+        if (!tabId) tabId = 'search';
+
+        // Hide all tab content
+        document.querySelectorAll('.tab-content').forEach(function(el) {
+            el.classList.add('hidden');
+        });
+
+        // Show selected tab content
+        var selectedTab = document.getElementById(tabId);
+        if (selectedTab) {
+            selectedTab.classList.remove('hidden');
+        }
+    }
+
+    // Handle hash changes (when Craft switches tabs)
+    window.addEventListener('hashchange', function() {
+        var hash = window.location.hash.substring(1);
+        switchTab(hash);
+    });
+
+    // Handle initial page load
+    document.addEventListener('DOMContentLoaded', function() {
+        var hash = window.location.hash.substring(1) || 'search';
+        switchTab(hash);
+    });
+{% endjs %}

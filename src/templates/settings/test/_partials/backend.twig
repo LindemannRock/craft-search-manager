@@ -1,0 +1,152 @@
+{# Backend Diagnostics Tab #}
+{% import "_includes/forms" as forms %}
+
+{# Build backend options #}
+{% set backendOptions = [] %}
+{% set defaultBackendHandle = settings.defaultBackendHandle %}
+{% for backend in configuredBackends %}
+    {% if backend.enabled %}
+        {% set isDefault = backend.handle == defaultBackendHandle %}
+        {% set backendOptions = backendOptions|merge([{
+            value: backend.handle,
+            label: backend.name ~ ' (' ~ backend.getTypeLabel() ~ ')' ~ (isDefault ? ' — Default' : '')
+        }]) %}
+    {% endif %}
+{% endfor %}
+
+<div class="pane" style="margin-bottom: 24px;">
+    <h3 style="margin-top: 0;">{{ "Backend Diagnostics"|t('search-manager') }}</h3>
+
+    {{ forms.selectField({
+        label: 'Backend'|t('search-manager'),
+        instructions: 'Select a backend to view its connection status and capabilities'|t('search-manager'),
+        id: 'backendSelector',
+        name: 'backendSelector',
+        options: backendOptions,
+        value: defaultBackendHandle,
+    }) }}
+
+    <div id="backend-info-panel" style="margin-top: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px;">
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">{{ 'Connection'|t('search-manager') }}</div>
+                <div id="backend-connection" style="font-weight: 600; color: #d97706;">
+                    <span class="spinner small"></span> {{ 'Testing...'|t('search-manager') }}
+                </div>
+            </div>
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">{{ 'Response Time'|t('search-manager') }}</div>
+                <div id="backend-response-time" style="font-weight: 600;">—</div>
+            </div>
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">{{ 'Browse'|t('search-manager') }}</div>
+                <div id="backend-browse" style="font-weight: 600;">—</div>
+            </div>
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">{{ 'Multi-Query'|t('search-manager') }}</div>
+                <div id="backend-multi" style="font-weight: 600;">—</div>
+            </div>
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px;">
+                <div style="font-size: 11px; text-transform: uppercase; color: #6b7280; margin-bottom: 4px;">{{ 'Indices'|t('search-manager') }}</div>
+                <div id="backend-index-count" style="font-weight: 600;">—</div>
+            </div>
+        </div>
+
+        <details id="backend-indices-details" style="margin-top: 12px;">
+            <summary style="cursor: pointer; color: #3b82f6; font-weight: 500;">{{ 'View indices in backend'|t('search-manager') }}</summary>
+            <div id="backend-indices-list" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">
+                <p class="light">{{ 'Loading...'|t('search-manager') }}</p>
+            </div>
+        </details>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const backendSelector = document.getElementById('backendSelector');
+    const backendConnection = document.getElementById('backend-connection');
+    const backendResponseTime = document.getElementById('backend-response-time');
+    const backendBrowse = document.getElementById('backend-browse');
+    const backendMulti = document.getElementById('backend-multi');
+    const backendIndexCount = document.getElementById('backend-index-count');
+    const backendIndicesList = document.getElementById('backend-indices-list');
+
+    function fetchBackendInfo() {
+        const backendHandle = backendSelector.value;
+        if (!backendHandle) return;
+
+        // Reset UI
+        backendConnection.innerHTML = '<span class="spinner small"></span> {{ 'Testing...'|t('search-manager') }}';
+        backendConnection.style.color = '#d97706';
+        backendResponseTime.textContent = '—';
+        backendBrowse.textContent = '—';
+        backendMulti.textContent = '—';
+        backendIndexCount.textContent = '—';
+        backendIndicesList.innerHTML = '<p class="light">{{ 'Loading...'|t('search-manager') }}</p>';
+
+        const startTime = performance.now();
+
+        // Test connection
+        Craft.sendActionRequest('POST', 'search-manager/backends/test', {
+            data: { backendId: backendHandle }
+        }).then(function(response) {
+            const elapsed = Math.round(performance.now() - startTime);
+
+            if (response.data.success) {
+                backendConnection.innerHTML = '&#10003; {{ 'Connected'|t('search-manager') }}';
+                backendConnection.style.color = '#059669';
+                backendResponseTime.textContent = elapsed + 'ms';
+
+                // Fetch capabilities and indices
+                return Craft.sendActionRequest('POST', 'search-manager/backends/info', {
+                    data: { backendId: backendHandle }
+                });
+            } else {
+                backendConnection.innerHTML = '&#10007; ' + (response.data.error || '{{ 'Failed'|t('search-manager') }}');
+                backendConnection.style.color = '#dc2626';
+                backendIndicesList.innerHTML = '<p class="light" style="color: #dc2626;">{{ 'Cannot load - connection failed'|t('search-manager') }}</p>';
+                return null;
+            }
+        }).then(function(response) {
+            if (!response) return;
+
+            if (response.data.success) {
+                // Update capabilities
+                backendBrowse.innerHTML = response.data.supportsBrowse
+                    ? '<span style="color: #059669;">&#10003; Yes</span>'
+                    : '<span style="color: #6b7280;">&#10007; No</span>';
+                backendMulti.innerHTML = response.data.supportsMultipleQueries
+                    ? '<span style="color: #059669;">&#10003; Yes</span>'
+                    : '<span style="color: #6b7280;">&#10007; No</span>';
+
+                // Update indices
+                const indices = response.data.indices || [];
+                backendIndexCount.textContent = indices.length;
+
+                if (indices.length > 0) {
+                    let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+                    html += '<thead><tr><th style="text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">{{ 'Name'|t('search-manager') }}</th><th style="text-align: right; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">{{ 'Entries'|t('search-manager') }}</th></tr></thead><tbody>';
+                    indices.forEach(function(idx) {
+                        const name = idx.name || idx.uid || 'Unknown';
+                        const entries = idx.entries !== undefined ? idx.entries.toLocaleString() : '—';
+                        html += '<tr><td style="padding: 8px; border-bottom: 1px solid #f3f4f6;"><code>' + Craft.escapeHtml(name) + '</code></td><td style="text-align: right; padding: 8px; border-bottom: 1px solid #f3f4f6;">' + entries + '</td></tr>';
+                    });
+                    html += '</tbody></table>';
+                    backendIndicesList.innerHTML = html;
+                } else {
+                    backendIndicesList.innerHTML = '<p class="light">{{ 'No indices found'|t('search-manager') }}</p>';
+                }
+            }
+        }).catch(function(error) {
+            backendConnection.innerHTML = '&#10007; {{ 'Error'|t('search-manager') }}';
+            backendConnection.style.color = '#dc2626';
+        });
+    }
+
+    // Fetch backend info on selector change and page load
+    if (backendSelector) {
+        backendSelector.addEventListener('change', fetchBackendInfo);
+        fetchBackendInfo();
+    }
+});
+</script>
