@@ -49,6 +49,12 @@ abstract class BaseBackend extends Component implements BackendInterface
     public function setConfiguredSettings(array $settings): void
     {
         $this->_configuredSettings = $settings;
+        $this->logDebug('ConfiguredSettings set', [
+            'backend' => $this->getName(),
+            'settingsKeys' => array_keys($settings),
+            'host' => $settings['host'] ?? 'NOT SET',
+            'port' => $settings['port'] ?? 'NOT SET',
+        ]);
     }
 
     /**
@@ -90,9 +96,14 @@ abstract class BaseBackend extends Component implements BackendInterface
         if ($this->_configuredSettings !== null) {
             $this->logDebug('Using ConfiguredBackend settings', [
                 'backend' => $this->getName(),
+                'host' => $this->_configuredSettings['host'] ?? 'NOT SET',
             ]);
             return $this->_configuredSettings;
         }
+
+        $this->logDebug('No ConfiguredBackend settings, falling back', [
+            'backend' => $this->getName(),
+        ]);
 
         $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
 

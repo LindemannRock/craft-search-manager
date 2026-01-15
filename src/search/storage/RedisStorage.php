@@ -75,6 +75,12 @@ class RedisStorage implements StorageInterface
             throw new \Exception('Redis extension is not installed');
         }
 
+        $this->logDebug('RedisStorage initializeRedis received config', [
+            'configKeys' => array_keys($config),
+            'rawHost' => $config['host'] ?? 'NOT IN CONFIG',
+            'configCount' => count($config),
+        ]);
+
         $this->redis = new \Redis();
 
         // Resolve environment variables (strip $ prefix if present)
@@ -864,8 +870,7 @@ class RedisStorage implements StorageInterface
             return $resolved ?? $default;
         }
 
-        // Otherwise try to resolve as env var or return as-is
-        $resolved = App::env($value);
-        return $resolved ?? $default;
+        // Return the value as-is (it's a plain string, not an env var reference)
+        return $value;
     }
 }

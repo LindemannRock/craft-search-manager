@@ -178,6 +178,17 @@ class Settings extends Model
      */
     public int $popularQueryThreshold = 5;
 
+    /**
+     * @var bool Clear search cache when elements are saved
+     */
+    public bool $clearCacheOnSave = true;
+
+    /**
+     * @var int Status sync interval in minutes (0 = disabled)
+     * Syncs entries that became live (postDate passed) or expired (expiryDate passed)
+     */
+    public int $statusSyncInterval = 15;
+
     // =========================================================================
     // SEARCH SETTINGS (Advanced Search Features)
     // =========================================================================
@@ -299,6 +310,7 @@ class Settings extends Model
             'cacheDeviceDetection',
             'enableCache',
             'cachePopularQueriesOnly',
+            'clearCacheOnSave',
             'enableStopWords',
             'enableHighlighting',
             'enableAutocomplete',
@@ -316,6 +328,7 @@ class Settings extends Model
             'maxFuzzyCandidates',
             'cacheDuration',
             'popularQueryThreshold',
+            'statusSyncInterval',
             'snippetLength',
             'maxSnippets',
             'autocompleteMinLength',
@@ -354,7 +367,8 @@ class Settings extends Model
             [['pluginName', 'logLevel'], 'required'],
             [['pluginName'], 'string', 'max' => 255],
             [['indexPrefix'], 'string', 'max' => 50],
-            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy'], 'boolean'],
+            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy'], 'boolean'],
+            [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
             [['itemsPerPage', 'batchSize', 'analyticsRetention', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],

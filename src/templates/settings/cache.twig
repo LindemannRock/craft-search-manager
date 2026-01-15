@@ -139,6 +139,59 @@
             errors: settings.getErrors('popularQueryThreshold')
         }) }}
 
+		<hr>
+
+		<h2>{{ "Cache Invalidation"|t('search-manager') }}</h2>
+
+		{{ forms.lightswitchField({
+            label: 'Clear Cache on Element Save'|t('search-manager'),
+            instructions: 'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.'|t('search-manager'),
+            id: 'clearCacheOnSave',
+            name: 'settings[clearCacheOnSave]',
+            on: settings.clearCacheOnSave ?? true,
+            tip: 'When disabled, cache expires naturally based on Cache Duration setting'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('clearCacheOnSave'),
+            warning: settings.isOverriddenByConfig('clearCacheOnSave') ?
+                "This is being overridden by config file."|t('search-manager')|raw : null,
+        }) }}
+
+		{{ forms.selectField({
+            label: 'Status Sync Interval'|t('search-manager'),
+            instructions: 'How often to sync entries that become live or expire automatically.'|t('search-manager'),
+            id: 'statusSyncInterval',
+            name: 'settings[statusSyncInterval]',
+            value: settings.statusSyncInterval ?? 15,
+            options: [
+                { value: 0, label: 'Disabled'|t('search-manager') },
+                { value: 5, label: 'Every 5 minutes'|t('search-manager') },
+                { value: 15, label: 'Every 15 minutes (recommended)'|t('search-manager') },
+                { value: 30, label: 'Every 30 minutes'|t('search-manager') },
+                { value: 60, label: 'Every hour'|t('search-manager') },
+                { value: 360, label: 'Every 6 hours'|t('search-manager') },
+                { value: 720, label: 'Every 12 hours'|t('search-manager') },
+                { value: 1440, label: 'Daily'|t('search-manager') },
+            ],
+            tip: 'Handles entries with scheduled postDate or expiryDate that change status without a save event'|t('search-manager'),
+            disabled: settings.isOverriddenByConfig('statusSyncInterval'),
+            warning: settings.isOverriddenByConfig('statusSyncInterval') ?
+                "This is being overridden by config file."|t('search-manager')|raw : null,
+        }) }}
+
+		{% set syncRunning = craft.app.plugins.getPlugin('search-manager').isStatusSyncRunning() %}
+		{% if settings.statusSyncInterval > 0 %}
+			{% if syncRunning %}
+				{% include 'lindemannrock-base/_components/info-box' with {
+					type: 'success',
+					message: '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every ' ~ settings.statusSyncInterval ~ ' minutes.'
+				} %}
+			{% else %}
+				{% include 'lindemannrock-base/_components/info-box' with {
+					type: 'warning',
+					message: '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.'
+				} %}
+			{% endif %}
+		{% endif %}
+
         {% if settings.enableAnalytics ?? true %}
             <hr>
 

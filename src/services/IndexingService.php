@@ -145,6 +145,17 @@ class IndexingService extends Component
         $success = true;
         foreach ($indexHandles as $indexHandle) {
             try {
+                // Get the backend that will be used for this index
+                $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
+                $backendName = $backend ? $backend->getName() : 'none';
+
+                $this->logDebug('Indexing to backend', [
+                    'elementId' => $element->id,
+                    'elementSiteId' => $element->siteId,
+                    'indexHandle' => $indexHandle,
+                    'backendName' => $backendName,
+                ]);
+
                 // Check if document already exists (for accurate count tracking)
                 $isNewDocument = !SearchManager::$plugin->backend->documentExists(
                     $indexHandle,
@@ -155,8 +166,10 @@ class IndexingService extends Component
                 $result = SearchManager::$plugin->backend->index($indexHandle, $data);
 
                 if ($result) {
-                    // Clear search cache for this index
-                    SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                    // Clear search cache for this index (if enabled)
+                    if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+                        SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                    }
 
                     // Increment document count only for new documents
                     if ($isNewDocument) {
@@ -173,9 +186,15 @@ class IndexingService extends Component
                     $this->logInfo('Element indexed successfully', [
                         'elementId' => $element->id,
                         'indexHandle' => $indexHandle,
+                        'backendName' => $backendName,
                         'isNew' => $isNewDocument,
                     ]);
                 } else {
+                    $this->logWarning('Backend index() returned false', [
+                        'elementId' => $element->id,
+                        'indexHandle' => $indexHandle,
+                        'backendName' => $backendName,
+                    ]);
                     $success = false;
                 }
             } catch (\Throwable $e) {
@@ -225,8 +244,10 @@ class IndexingService extends Component
                 $result = SearchManager::$plugin->backend->delete($indexHandle, $element->id, $element->siteId);
 
                 if ($result) {
-                    // Clear search cache for this index
-                    SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                    // Clear search cache for this index (if enabled)
+                    if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+                        SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                    }
 
                     // Decrement document count (only if document actually existed)
                     SearchIndex::decrementDocumentCount($indexHandle);
@@ -342,8 +363,10 @@ class IndexingService extends Component
             $result = SearchManager::$plugin->backend->batchIndex($indexHandle, $items);
 
             if ($result) {
-                // Clear search cache for this index
-                SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                // Clear search cache for this index (if enabled)
+                if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+                    SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                }
             }
 
             return $result;
@@ -405,28 +428,65 @@ class IndexingService extends Component
         $elementClass = get_class($element);
         $handles = [];
 
+        $this->logDebug('Finding indices for element', [
+            'elementId' => $element->id,
+            'elementType' => $elementClass,
+            'elementSiteId' => $element->siteId,
+            'totalIndices' => count($indices),
+        ]);
+
         foreach ($indices as $index) {
             if (!$index->enabled) {
+                $this->logDebug('Index skipped (disabled)', [
+                    'indexHandle' => $index->handle,
+                ]);
                 continue;
             }
 
             // Check element type match
             if ($index->elementType !== $elementClass) {
+                $this->logDebug('Index skipped (element type mismatch)', [
+                    'indexHandle' => $index->handle,
+                    'indexElementType' => $index->elementType,
+                    'elementType' => $elementClass,
+                ]);
                 continue;
             }
 
             // Check site match (if specified)
+            // For all-sites indices (siteId = null), this check passes
             if ($index->siteId && $index->siteId !== $element->siteId) {
+                $this->logDebug('Index skipped (site mismatch)', [
+                    'indexHandle' => $index->handle,
+                    'indexSiteId' => $index->siteId,
+                    'elementSiteId' => $element->siteId,
+                ]);
                 continue;
             }
 
             // Check criteria match
             if (!$this->elementMatchesCriteria($element, $index)) {
+                $this->logDebug('Index skipped (criteria mismatch)', [
+                    'indexHandle' => $index->handle,
+                    'criteria' => is_array($index->criteria) ? $index->criteria : 'Closure',
+                ]);
                 continue;
             }
 
+            $this->logDebug('Index matched', [
+                'indexHandle' => $index->handle,
+                'indexSiteId' => $index->siteId,
+                'isAllSites' => $index->siteId === null,
+            ]);
+
             $handles[] = $index->handle;
         }
+
+        $this->logDebug('Indices matched for element', [
+            'elementId' => $element->id,
+            'matchedCount' => count($handles),
+            'handles' => $handles,
+        ]);
 
         return $handles;
     }

@@ -60,6 +60,7 @@ If you are using this plugin, please be aware that future versions may have diff
 
 ### Comprehensive Analytics
 - **Search Tracking** - Track every search query with hits count and execution time
+- **Per-Index Analytics Toggle** - Enable/disable analytics tracking per index (useful for internal/admin indices)
 - **Query Rules Tracking** - Track which rules fire, how often, and their effectiveness
 - **Promotions Tracking** - Track promotion impressions, positions, and triggering queries
 - **Synonyms Tracking** - Track when synonym expansion is used
@@ -67,6 +68,7 @@ If you are using this plugin, please be aware that future versions may have diff
 - **Platform & App Tracking** - Track platform (iOS 17, Android 14) and app version for mobile apps
 - **Device Detection** - Powered by Matomo DeviceDetector for accurate device, browser, and OS identification
 - **Geographic Detection** - Track visitor location (country, city, region) via ip-api.com
+- **Async Geo-Lookup** - Geographic detection runs asynchronously via queue job to avoid blocking search responses
 - **Bot Filtering** - Identify and filter bot traffic (GoogleBot, BingBot, etc.)
 - **Zero-Hit Tracking** - Identify queries that return no results (content gaps)
 - **Performance Metrics** - Dedicated Performance tab with cache hit rate, response time trends, fastest/slowest queries
@@ -97,11 +99,19 @@ If you are using this plugin, please be aware that future versions may have diff
   - Device cache: `@storage/runtime/search-manager/cache/device/`
   - Search cache: `@storage/runtime/search-manager/cache/search/`
 
+### Cache Invalidation
+- **Clear on Save** - Optionally clear search cache when elements are saved (disable for high-traffic sites)
+- **Status Sync Interval** - Periodic job to sync entries that become live/expired based on dates
+- **Natural TTL Expiry** - When "Clear on Save" is disabled, cache expires based on configured duration
+- **Per-Index Cache Clear** - Cache is cleared per-index, not globally
+
 ### Automatic Indexing
 - Auto-index elements when saved (configurable)
 - Queue-based batch indexing for better performance
 - Manual rebuild via Control Panel or CLI
 - Element deletion automatically removes from index
+- **Status Sync Job** - Automatically syncs entries that become live (postDate passed) or expired (expiryDate passed) without a save event
+- **Per-index sync** - Each site version of an element is synced independently
 
 ### Native Search Replacement
 - **Replace Craft's search service** - Optional setting to replace `Craft::$app->search`
@@ -1817,6 +1827,28 @@ REDIS_DATABASE=0
 - Or use `$REDIS_HOST` format in settings (plugin resolves environment variables automatically)
 - Required fields: Host, Port, Database (Password is optional)
 
+**⚠️ Important: Docker/DDEV Environments**
+
+When running in Docker containers (DDEV, Docker Compose, etc.):
+
+- **`127.0.0.1` won't work** - This refers to localhost inside the container, not your host machine
+- **Use the service hostname** - For DDEV, use `redis` as the host (matches the Redis service name)
+- **Craft's cache may work differently** - Index rebuilds may succeed (using Craft's Redis cache) while auto-sync fails (using configured backend settings)
+
+If you see `Connection refused` errors in logs, check your Redis host setting:
+```
+[ERROR] Redis connection error | {"host":"127.0.0.1","port":6379,"error":"Connection refused"}
+```
+
+**Fix:** Update your config or environment variables to use the correct hostname:
+```bash
+# .env for DDEV
+REDIS_HOST=redis
+
+# .env for Docker Compose (use your service name)
+REDIS_HOST=redis-server
+```
+
 ### Typesense
 
 ```php
@@ -2044,6 +2076,10 @@ return [
         'popularQueryThreshold' => 5, // Minimum search count before caching
         'cacheDeviceDetection' => true, // Cache device detection results
         'deviceDetectionCacheDuration' => 3600, // Device cache TTL in seconds
+
+        // Cache invalidation settings
+        'clearCacheOnSave' => true, // Clear search cache when elements are saved
+        'statusSyncInterval' => 15, // Minutes between status sync jobs (0 = disabled)
     ],
 ];
 ```

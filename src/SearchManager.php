@@ -22,6 +22,7 @@ use craft\web\UrlManager;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\jobs\SyncStatusJob;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\services\AnalyticsService;
 use lindemannrock\searchmanager\services\AutocompleteService;
@@ -147,6 +148,9 @@ class SearchManager extends Plugin
         if ($this->getSettings()->autoIndex) {
             $this->installEventListeners();
         }
+
+        // Schedule status sync job (for pending→live and live→expired)
+        $this->scheduleStatusSync();
 
         // Register console controllers
         if (Craft::$app instanceof ConsoleApplication) {
@@ -454,6 +458,52 @@ class SearchManager extends Plugin
                 ];
             }
         );
+    }
+
+    /**
+     * Schedule status sync job (for pending→live and live→expired transitions)
+     */
+    private function scheduleStatusSync(): void
+    {
+        $settings = $this->getSettings();
+
+        // Only schedule if sync is enabled
+        if ($settings->statusSyncInterval <= 0) {
+            return;
+        }
+
+        // Check if a sync job is already scheduled
+        $existingJob = (new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'SyncStatusJob'])
+            ->exists();
+
+        if (!$existingJob) {
+            // Create sync job with reschedule enabled
+            $job = new SyncStatusJob([
+                'reschedule' => true,
+            ]);
+
+            // Add to queue with a small initial delay (5 minutes)
+            Craft::$app->queue->delay(5 * 60)->push($job);
+
+            $this->logInfo('Scheduled initial status sync job', [
+                'interval' => $settings->statusSyncInterval . ' minutes',
+            ]);
+        }
+    }
+
+    /**
+     * Check if status sync job is running/scheduled
+     */
+    public function isStatusSyncRunning(): bool
+    {
+        return (new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'SyncStatusJob'])
+            ->exists();
     }
 
     /**

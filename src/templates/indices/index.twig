@@ -336,6 +336,7 @@
 							<button type="button" data-sort="elementType">{{ "Element Type"|t('search-manager') }}</button>
 						</th>
 						<th scope="col">{{ "Backend"|t('search-manager') }}</th>
+						<th scope="col">{{ "Type"|t('search-manager') }}</th>
 						<th scope="col">{{ "Craft"|t('search-manager') }}</th>
 						<th scope="col">{{ "Indexed"|t('search-manager') }}</th>
 						<th scope="col">{{ "Last Indexed"|t('search-manager') }}</th>
@@ -378,16 +379,29 @@
 								<td>
 									{% set indexBackendType = index.effectiveBackendType %}
 									{% set configuredBackend = index.configuredBackend %}
+									{% if configuredBackend %}
+										{% if configuredBackend.source == 'config' %}
+											<a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
+										{% else %}
+											<a href="{{ url('search-manager/backends/' ~ configuredBackend.id) }}">{{ configuredBackend.name }}</a>
+										{% endif %}
+									{% elseif indexBackendType %}
+										<span class="light">{{ indexBackendType|capitalize }}</span>
+									{% else %}
+										<span class="light">{{ 'Default'|t('search-manager') }}</span>
+									{% endif %}
+								</td>
+								<td>
 									{% set bColor = backendColors[indexBackendType]|default('#9aa5b1') %}
 									{% set bRgb = backendRgb[indexBackendType]|default('154, 165, 177') %}
 									{% set bTextColor = backendTextColors[indexBackendType]|default('#374151') %}
 									{% if indexBackendType %}
-										<span class="status-label" style="background: rgba({{ bRgb }}, 0.12);" title="{{ configuredBackend ? configuredBackend.name : '' }}">
+										<span class="status-label" style="background: rgba({{ bRgb }}, 0.12); white-space: nowrap;">
 											<span class="status" style="background: {{ bColor }};"></span>
-											<span class="status-label-text" style="color: {{ bTextColor }};">{{ configuredBackend ? configuredBackend.name : indexBackendType|title }}</span>
+											<span class="status-label-text" style="color: {{ bTextColor }};">{{ indexBackendType|upper }}</span>
 										</span>
 									{% else %}
-										<span class="light">{{ 'No backend'|t('search-manager') }}</span>
+										<span class="light">—</span>
 									{% endif %}
 								</td>
 								{% set expected = index.expectedCount %}
@@ -468,7 +482,7 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="{{ 10 + (globalSettings.enableAnalytics ? 1 : 0) + (showActionsColumn ? 1 : 0) }}" style="text-align: center; padding: 2em;">
+							<td colspan="{{ 11 + (globalSettings.enableAnalytics ? 1 : 0) + (showActionsColumn ? 1 : 0) }}" style="text-align: center; padding: 2em;">
 								{{ 'No indices found.'|t('search-manager') }}
 							</td>
 						</tr>

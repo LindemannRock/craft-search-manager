@@ -31,11 +31,14 @@ class SyncElementJob extends BaseJob
     public function execute($queue): void
     {
         // Get element fresh from DB for this specific site
-        $element = Craft::$app->getElements()->getElementById(
-            $this->elementId,
-            $this->elementType,
-            $this->siteId
-        );
+        // Use status(null) to include disabled/expired elements
+        /** @var \craft\elements\db\ElementQuery $query */
+        $query = $this->elementType::find();
+        $element = $query
+            ->id($this->elementId)
+            ->siteId($this->siteId)
+            ->status(null)
+            ->one();
 
         if (!$element) {
             $this->logDebug('Element not found, may have been deleted', [
@@ -60,8 +63,21 @@ class SyncElementJob extends BaseJob
         ]);
 
         if ($shouldIndex) {
-            SearchManager::$plugin->indexing->indexElementNow($element);
+            $this->logDebug('Calling indexElementNow', [
+                'elementId' => $this->elementId,
+                'siteId' => $this->siteId,
+            ]);
+            $result = SearchManager::$plugin->indexing->indexElementNow($element);
+            $this->logDebug('indexElementNow completed', [
+                'elementId' => $this->elementId,
+                'siteId' => $this->siteId,
+                'result' => $result,
+            ]);
         } else {
+            $this->logDebug('Calling removeElement', [
+                'elementId' => $this->elementId,
+                'siteId' => $this->siteId,
+            ]);
             SearchManager::$plugin->indexing->removeElement($element);
         }
     }
