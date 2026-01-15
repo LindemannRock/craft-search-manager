@@ -173,7 +173,7 @@ class AnalyticsController extends Controller
 
             // Generate filename
             $settings = SearchManager::$plugin->getSettings();
-            $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
+            $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
 
             // Get site name for filename
             $sitePart = 'all';
@@ -666,7 +666,7 @@ class AnalyticsController extends Controller
 
         // Generate filename
         $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
         $ruleName = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $rule->name));
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $filename = $filenamePart . '-query-rule-' . $ruleName . '-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
@@ -731,7 +731,7 @@ class AnalyticsController extends Controller
 
         // Generate filename
         $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
         $promotionTitle = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $promotion->title));
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $filename = $filenamePart . '-promotion-' . $promotionTitle . '-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
@@ -779,7 +779,7 @@ class AnalyticsController extends Controller
 
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
         $data = [];
         $filename = '';
 
@@ -927,7 +927,7 @@ class AnalyticsController extends Controller
 
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getPluralLowerDisplayName()));
+        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
 
         if ($type === 'clusters') {
             // Get content gaps clusters
