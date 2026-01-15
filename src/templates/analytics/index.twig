@@ -493,7 +493,7 @@
             return;
         }
         data.forEach(c => {
-            tbody.append(`<tr><td>${Craft.escapeHtml(c.name)}</td><td>${c.count}</td><td>${c.percentage}%</td></tr>`);
+            tbody.append(`<tr><td>${Craft.escapeHtml(c.name)}</td><td>${c.count.toLocaleString()}</td><td>${c.percentage}%</td></tr>`);
         });
     }
 
@@ -505,7 +505,7 @@
             return;
         }
         data.forEach(c => {
-            tbody.append(`<tr><td>${Craft.escapeHtml(c.city)}</td><td>${Craft.escapeHtml(c.countryName)}</td><td>${c.count}</td></tr>`);
+            tbody.append(`<tr><td>${Craft.escapeHtml(c.city)}</td><td>${Craft.escapeHtml(c.countryName)}</td><td>${c.count.toLocaleString()}</td></tr>`);
         });
     }
 
@@ -585,7 +585,7 @@
         data.clusters.forEach(c => {
             let row = `<tr>
                 <td><strong>${Craft.escapeHtml(c.representative)}</strong></td>
-                <td>${c.count}</td>
+                <td>${c.count.toLocaleString()}</td>
                 <td>${c.queries.slice(0, 3).join(', ')}</td>
                 <td>${c.lastSearched}</td>
             </tr>`;
@@ -818,7 +818,7 @@
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
                 <td><strong>${q.avgTime}ms</strong></td>
-                <td>${q.searches}</td>
+                <td>${q.searches.toLocaleString()}</td>
             </tr>`);
         });
     }
@@ -837,7 +837,7 @@
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
                 <td><strong style="color: ${q.avgTime > 100 ? '#e74c3c' : 'inherit'}">${q.avgTime}ms</strong></td>
-                <td>${q.searches}</td>
+                <td>${q.searches.toLocaleString()}</td>
             </tr>`);
         });
     }
@@ -999,7 +999,7 @@
                 <td><strong>${Craft.escapeHtml(r.ruleName)}</strong></td>
                 <td>${actionBadge}</td>
                 <td>${r.hits.toLocaleString()}</td>
-                <td>${r.avgResults}</td>
+                <td>${r.avgResults.toLocaleString()}</td>
             </tr>`);
         });
     }
@@ -1053,7 +1053,7 @@
         data.forEach(q => {
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.rulesTriggered}</td>
+                <td>${q.rulesTriggered.toLocaleString()}</td>
                 <td>${q.count.toLocaleString()}</td>
             </tr>`);
         });
@@ -1127,7 +1127,7 @@
                 <td><strong>${Craft.escapeHtml(p.elementTitle || 'Element #' + p.elementId)}</strong></td>
                 <td>#${p.position}</td>
                 <td>${p.impressions.toLocaleString()}</td>
-                <td>${p.uniqueQueries}</td>
+                <td>${p.uniqueQueries.toLocaleString()}</td>
             </tr>`);
         });
     }
@@ -1174,7 +1174,7 @@
         data.forEach(q => {
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.promotionsShown}</td>
+                <td>${q.promotionsShown.toLocaleString()}</td>
                 <td>${q.count.toLocaleString()}</td>
             </tr>`);
         });

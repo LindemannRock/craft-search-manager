@@ -69,7 +69,7 @@
                                 {% if search.wasRedirected|default(false) %}
                                     <span style="color: #9b59b6;" title="{{ 'Redirected'|t('search-manager') }}">—</span>
                                 {% elseif search.resultsCount > 0 %}
-                                    <span style="color: #27ae60;">{{ search.resultsCount }}</span>
+                                    <span style="color: #27ae60;">{{ search.resultsCount|number }}</span>
                                 {% else %}
                                     <span style="color: #e74c3c;">0</span>
                                 {% endif %}
