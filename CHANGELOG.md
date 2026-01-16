@@ -1,5 +1,42 @@
 # Changelog
 
+## [5.29.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.2...v5.29.0) (2026-01-16)
+
+
+### Features
+
+* Add analytics column to indices table based on global settings ([604e99e](https://github.com/LindemannRock/craft-search-manager/commit/604e99e070a3fc4931022e71d7471adef4640fe2))
+* Add autocomplete caching functionality with clear cache options in UI ([28076ef](https://github.com/LindemannRock/craft-search-manager/commit/28076efaa79ef1e83112b7c27702155e4bd9d562))
+* add backend diagnostics and search testing tabs to the settings interface ([a299f98](https://github.com/LindemannRock/craft-search-manager/commit/a299f98dffe1ebfc5bc788814c639f334a472eb2))
+* add backend handle management and enhance backend index listing functionality ([93582f8](https://github.com/LindemannRock/craft-search-manager/commit/93582f817590088595fb362ce3f5a63941bb2c71))
+* add BackendVariableProxy for backend-specific queries and enhance SearchManagerVariable with withBackend method ([21e0ec5](https://github.com/LindemannRock/craft-search-manager/commit/21e0ec51585a349629aa56b1c77428ef30628979))
+* Add comprehensive cache settings for autocomplete and cache warming functionality ([16ab3d1](https://github.com/LindemannRock/craft-search-manager/commit/16ab3d10e4c2dc91b594764d2d7134d79b70efc1))
+* add functionality to list indices with their respective file sizes ([8f40c7e](https://github.com/LindemannRock/craft-search-manager/commit/8f40c7e61e6193d951e044905a7fc547c9dc1918))
+* Add index-level analytics toggle to disable tracking per index ([6b113f2](https://github.com/LindemannRock/craft-search-manager/commit/6b113f288129da0e432a61e2e6c3a9971fbc813e))
+* Add popular query threshold settings with select options in cache settings ([e5fb6a5](https://github.com/LindemannRock/craft-search-manager/commit/e5fb6a50be46dd6f122d266afca29fa036577bc5))
+* Add query normalization for improved cache key generation and search count accuracy ([45ef300](https://github.com/LindemannRock/craft-search-manager/commit/45ef300078b110c79e9fb24a043f2dd769bf6fda))
+* Enhance cache clearing by adding autocomplete cache clearing in indexing operations ([10206a5](https://github.com/LindemannRock/craft-search-manager/commit/10206a52a16928f6883ad95547a37febd5b8ad2a))
+* Enhance caching with autocomplete support and cache warming functionality ([effe9cb](https://github.com/LindemannRock/craft-search-manager/commit/effe9cbad65801f799b3d1432d09058f4d834cbc))
+* expand element type options in index settings to include Assets, Categories, and SmartLinks ([5d5d837](https://github.com/LindemannRock/craft-search-manager/commit/5d5d8375dde38d2c92fa603089c42d3f0fe3ba68))
+* Implement cache warming functionality after index rebuild with configurable settings ([4c811d9](https://github.com/LindemannRock/craft-search-manager/commit/4c811d9ea89ebe1d452bc969b5ad667712a3a1da))
+* Implement getTermsForAutocomplete method in storage classes for enhanced autocomplete functionality ([e31aec2](https://github.com/LindemannRock/craft-search-manager/commit/e31aec251f8090b90cb4cf3ce592784f24d1114c))
+* Queue geo-location lookups for improved search performance ([1d1a2ea](https://github.com/LindemannRock/craft-search-manager/commit/1d1a2ea080a9d1f5e0f09beadc757ec5da959dec))
+
+
+### Bug Fixes
+
+* format numerical values for better readability in analytics templates ([ecc7929](https://github.com/LindemannRock/craft-search-manager/commit/ecc792957e281f6f684393efa85f020289fc9d3a))
+* Redis env var resolution, indices table layout, and multi-site status sync ([9922a0b](https://github.com/LindemannRock/craft-search-manager/commit/9922a0b485e8580308b07fd1f10d657411d7578e))
+* update cache location message to use searchHelper for dynamic path ([e07e992](https://github.com/LindemannRock/craft-search-manager/commit/e07e99287c996833bb85876063530fd6d4301a63))
+* update filename generation to use lower display name instead of plural lower display name ([93f11ca](https://github.com/LindemannRock/craft-search-manager/commit/93f11ca43d2edc0331e217d28fee385194b4d58e))
+* update hardcoded cache paths with PluginHelper for consistency ([9e46d07](https://github.com/LindemannRock/craft-search-manager/commit/9e46d0759df873127d5c14152e7aac3fd279b0a7))
+* update PluginHelper bootstrap to include download permissions for logging ([301612b](https://github.com/LindemannRock/craft-search-manager/commit/301612bb10ed8ce887d1d9fbcb7096a022c811eb))
+
+
+### Miscellaneous Chores
+
+* update autocomplete cache path for consistency in README ([bb6b301](https://github.com/LindemannRock/craft-search-manager/commit/bb6b30178ba02444d48636afb9e341e2362eed41))
+
 ## [5.28.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.1...v5.28.2) (2026-01-13)
 
 
