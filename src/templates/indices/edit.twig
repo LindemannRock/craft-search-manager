@@ -74,6 +74,23 @@
         class: 'code',
     }) }}
 
+    {% set elementTypeOptions = {
+        'craft\\elements\\Entry': 'Entries',
+        'craft\\elements\\Asset': 'Assets',
+        'craft\\elements\\Category': 'Categories',
+        'craft\\elements\\User': 'Users',
+    } %}
+    {% if craft.app.plugins.getPlugin('smartlink-manager') %}
+        {% set elementTypeOptions = elementTypeOptions|merge({
+            'lindemannrock\\smartlinkmanager\\elements\\SmartLink': 'SmartLinks'
+        }) %}
+    {% endif %}
+    {% if craft.app.plugins.getPlugin('shortlink-manager') %}
+        {% set elementTypeOptions = elementTypeOptions|merge({
+            'lindemannrock\\shortlinkmanager\\elements\\ShortLink': 'ShortLinks'
+        }) %}
+    {% endif %}
+
     {{ forms.selectField({
         label: "Element Type"|t('search-manager'),
         instructions: "The type of elements to index"|t('search-manager'),
@@ -81,12 +98,7 @@
         name: 'elementType',
         value: index.elementType,
         required: true,
-        options: {
-            'craft\\elements\\Entry': 'Entries',
-            'craft\\elements\\Asset': 'Assets',
-            'craft\\elements\\Category': 'Categories',
-            'craft\\elements\\User': 'Users',
-        }
+        options: elementTypeOptions
     }) }}
 
     <div id="entry-criteria" {% if index.elementType != 'craft\\elements\\Entry' %}style="display:none;"{% endif %}>
