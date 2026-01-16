@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\utilities;
 
 use Craft;
 use craft\base\Utility;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -104,21 +105,21 @@ class ClearSearchCache extends Utility
 
         // Only count files when using file storage (Redis counts are not displayed)
         if ($settings->cacheStorageMethod === 'file') {
-            $deviceCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
+            $deviceCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
             if (is_dir($deviceCachePath)) {
-                $files = glob($deviceCachePath . '/*.cache');
+                $files = glob($deviceCachePath . '*.cache');
                 $deviceCacheFiles = count($files ?: []);
             }
 
-            $searchCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
+            $searchCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
             if (is_dir($searchCachePath)) {
-                $files = glob($searchCachePath . '/*.cache');
+                $files = glob($searchCachePath . '*.cache');
                 $searchCacheFiles = count($files ?: []);
             }
 
-            $autocompleteCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/autocomplete-cache';
+            $autocompleteCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
             if (is_dir($autocompleteCachePath)) {
-                $files = glob($autocompleteCachePath . '/*.cache');
+                $files = glob($autocompleteCachePath . '*.cache');
                 $autocompleteCacheFiles = count($files ?: []);
             }
         }

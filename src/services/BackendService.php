@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\services;
 
 use Craft;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
 use lindemannrock\searchmanager\backends\FileBackend;
@@ -871,7 +872,7 @@ class BackendService extends Component
      */
     private function _getCachePath(string $indexName): string
     {
-        return Craft::$app->path->getRuntimePath() . '/search-manager/cache/search/' . $indexName . '/';
+        return PluginHelper::getCachePath(SearchManager::$plugin, 'search') . $indexName . '/';
     }
 
     /**
@@ -946,7 +947,7 @@ class BackendService extends Component
             $this->logInfo('Cleared all search cache (Redis)');
         } else {
             // Clear file cache
-            $cachePath = Craft::$app->path->getRuntimePath() . '/search-manager/cache/search/';
+            $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
 
             if (is_dir($cachePath)) {
                 \craft\helpers\FileHelper::clearDirectory($cachePath);

@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\services;
 
 use Craft;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\SearchManager;
@@ -584,7 +585,7 @@ class AutocompleteService extends Component
      */
     private function getCachePath(): string
     {
-        return \Craft::$app->getPath()->getRuntimePath() . '/search-manager/autocomplete-cache/';
+        return PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
     }
 
     /**

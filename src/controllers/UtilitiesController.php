@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\helpers\FileHelper;
 use craft\web\Controller;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
@@ -213,7 +214,7 @@ class UtilitiesController extends Controller
 
                 $message = Craft::t('search-manager', 'Device cache cleared successfully.');
             } else {
-                $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
+                $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
                 $fileCount = 0;
 
                 if (is_dir($cachePath)) {
@@ -258,7 +259,7 @@ class UtilitiesController extends Controller
                 SearchManager::$plugin->backend->clearAllSearchCache();
                 $message = Craft::t('search-manager', 'Search cache cleared successfully.');
             } else {
-                $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
+                $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
                 $fileCount = 0;
 
                 if (is_dir($cachePath)) {
@@ -303,7 +304,7 @@ class UtilitiesController extends Controller
             if ($settings->cacheStorageMethod === 'redis') {
                 $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully.');
             } else {
-                $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/autocomplete-cache';
+                $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
                 $fileCount = 0;
                 if (is_dir($cachePath)) {
                     $files = glob($cachePath . '/*.cache');
@@ -377,7 +378,7 @@ class UtilitiesController extends Controller
                 $totalFiles = 0;
 
                 // Clear device cache
-                $deviceCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/device';
+                $deviceCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
                 if (is_dir($deviceCachePath)) {
                     $files = glob($deviceCachePath . '/*.cache');
                     $totalFiles += count($files ?: []);
@@ -385,7 +386,7 @@ class UtilitiesController extends Controller
                 }
 
                 // Clear search cache
-                $searchCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/cache/search';
+                $searchCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
                 if (is_dir($searchCachePath)) {
                     $files = glob($searchCachePath . '/*.cache');
                     $totalFiles += count($files ?: []);
@@ -393,7 +394,7 @@ class UtilitiesController extends Controller
                 }
 
                 // Clear autocomplete cache
-                $autocompleteCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/autocomplete-cache';
+                $autocompleteCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
                 if (is_dir($autocompleteCachePath)) {
                     $files = glob($autocompleteCachePath . '/*.cache');
                     $totalFiles += count($files ?: []);
