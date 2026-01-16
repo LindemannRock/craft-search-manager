@@ -32,11 +32,18 @@
  * - siteId: (int) Specific site ID to search (optional)
  * - class: (string) Additional CSS class for the widget
  * - dir: (string) Text direction 'ltr' or 'rtl' (auto-detected from site)
+ * - enableHighlighting: (bool) Enable term highlighting (default: from plugin settings)
+ * - highlightTag: (string) HTML tag for highlights (default: from plugin settings, e.g., 'mark')
+ * - highlightClass: (string) CSS class for highlights (default: from plugin settings)
  *
  * @link https://lindemannrock.com
  * @copyright Copyright (c) 2025 LindemannRock
  */
 #}
+
+{# Get plugin instance and settings #}
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set settings = plugin.getSettings() %}
 
 {# Default values #}
 {% set index = index ?? '' %}
@@ -54,8 +61,10 @@
 {% set class = class ?? '' %}
 {% set dir = dir ?? (craft.app.locale.getOrientation() == 'rtl' ? 'rtl' : 'ltr') %}
 
-{# Get plugin instance for asset URL #}
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{# Highlighting settings - use param override or fall back to plugin settings #}
+{% set enableHighlighting = enableHighlighting ?? settings.enableHighlighting ?? true %}
+{% set highlightTag = highlightTag ?? settings.highlightTag ?? 'mark' %}
+{% set highlightClass = highlightClass ?? settings.highlightClass ?? '' %}
 
 {# Register the widget JS #}
 {% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget', true) ~ '/SearchWidget.js', {
@@ -82,6 +91,9 @@
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}
     dir="{{ dir }}"
+    enable-highlighting="{{ enableHighlighting ? 'true' : 'false' }}"
+    highlight-tag="{{ highlightTag }}"
+    {% if highlightClass %}highlight-class="{{ highlightClass }}"{% endif %}
     {% if not showTrigger %}style="display: none;"{% endif %}
 ></search-widget>
 

@@ -60,7 +60,10 @@ class SearchWidget extends HTMLElement {
             'show-recent',
             'group-results',
             'hotkey',
-            'site-id'
+            'site-id',
+            'enable-highlighting',
+            'highlight-tag',
+            'highlight-class'
         ];
     }
 
@@ -78,7 +81,10 @@ class SearchWidget extends HTMLElement {
             groupResults: this.getAttribute('group-results') !== 'false',
             hotkey: this.getAttribute('hotkey') || 'k',
             siteId: this.getAttribute('site-id') || '',
-            analyticsEndpoint: this.getAttribute('analytics-endpoint') || '/actions/search-manager/search/track-click'
+            analyticsEndpoint: this.getAttribute('analytics-endpoint') || '/actions/search-manager/search/track-click',
+            enableHighlighting: this.getAttribute('enable-highlighting') !== 'false',
+            highlightTag: this.getAttribute('highlight-tag') || 'mark',
+            highlightClass: this.getAttribute('highlight-class') || ''
         };
     }
 
@@ -534,12 +540,26 @@ class SearchWidget extends HTMLElement {
         if (!query) return this.escapeHtml(text);
 
         const escaped = this.escapeHtml(text);
+
+        // Check if highlighting is enabled
+        if (!this.config.enableHighlighting) {
+            return escaped;
+        }
+
         const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 0);
+        const { highlightTag, highlightClass } = this.config;
+        // Always include sm-highlight for consistent widget styling, plus any custom class
+        const classes = ['sm-highlight'];
+        if (highlightClass) {
+            classes.push(highlightClass);
+        }
+        const classAttr = ` class="${classes.join(' ')}"`;
 
         let result = escaped;
         queryWords.forEach(word => {
-            const regex = new RegExp(`(${this.escapeRegex(word)})`, 'gi');
-            result = result.replace(regex, '<mark>$1</mark>');
+            // Use word boundaries to avoid matching partial words (e.g., "a" in "brand")
+            const regex = new RegExp(`\\b(${this.escapeRegex(word)})\\b`, 'gi');
+            result = result.replace(regex, `<${highlightTag}${classAttr}>$1</${highlightTag}>`);
         });
 
         return result;
@@ -988,8 +1008,8 @@ class SearchWidget extends HTMLElement {
                 opacity: 1;
             }
 
-            /* Highlight */
-            mark {
+            /* Highlight - uses .sm-highlight class to work with any tag (mark, em, span, etc.) */
+            .sm-highlight {
                 background: var(--sm-highlight-bg);
                 color: var(--sm-highlight-color);
                 border-radius: 2px;
