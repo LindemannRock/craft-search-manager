@@ -90,20 +90,32 @@ If you are using this plugin, please be aware that future versions may have diff
 
 ### Performance Caching
 - **Search Results Cache** - Cache search results to reduce backend load and improve response times
+- **Autocomplete Cache** - Separate cache for autocomplete suggestions with shorter TTL (default: 5 minutes)
 - **Device Detection Cache** - Cache parsed user-agent strings to avoid re-parsing
 - **Popular Queries Only** - Only cache frequently-searched queries to save storage space
-- **Configurable Durations** - Set cache TTL per cache type (default: 1 hour)
+- **Configurable Durations** - Set cache TTL per cache type (search: 1 hour, autocomplete: 5 minutes, device: 1 hour)
+- **Independent Cache Settings** - Enable/disable search cache and autocomplete cache independently
+- **Per-Index Cache Clearing** - Clear cache for specific indices without affecting others
 - **Cache Management** - Clear caches via Control Panel utilities or Craft's Clear Caches
 - **Craft Integration** - Search caches available in Craft's Clear Caches utility (safe, auto-regenerate)
 - **Storage Locations**:
   - Device cache: `@storage/runtime/search-manager/cache/device/`
   - Search cache: `@storage/runtime/search-manager/cache/search/`
+  - Autocomplete cache: `@storage/runtime/search-manager/autocomplete-cache/`
 
 ### Cache Invalidation
 - **Clear on Save** - Optionally clear search cache when elements are saved (disable for high-traffic sites)
 - **Status Sync Interval** - Periodic job to sync entries that become live/expired based on dates
 - **Natural TTL Expiry** - When "Clear on Save" is disabled, cache expires based on configured duration
 - **Per-Index Cache Clear** - Cache is cleared per-index, not globally
+
+### Cache Warming
+- **Automatic Warming** - After index rebuild, popular queries are pre-cached automatically
+- **Analytics-Driven** - Uses search analytics to identify the most searched queries
+- **Dual Cache Support** - Warms both search results and autocomplete suggestions
+- **Configurable Depth** - Choose how many queries to warm (10-200, default: 50)
+- **Background Processing** - Runs as a queue job after rebuild completes
+- **Prefix Warming** - Autocomplete cache warms common prefixes (2-5 chars) for each query
 
 ### Automatic Indexing
 - Auto-index elements when saved (configurable)
@@ -799,11 +811,34 @@ return [
     'cachePopularQueriesOnly' => false,
     'popularQueryThreshold' => 5, // Cache after 5 searches
 
+    // Autocomplete caching (separate from search cache)
+    'enableAutocompleteCache' => true,
+    'autocompleteCacheDuration' => 300, // 5 minutes (shorter TTL for frequently-typed queries)
+
+    // Cache warming (after index rebuild)
+    'enableCacheWarming' => true,
+    'cacheWarmingQueryCount' => 50, // Number of popular queries to pre-cache (10-200)
+
     // Device detection caching
     'cacheDeviceDetection' => true,
     'deviceDetectionCacheDuration' => 3600, // 1 hour
 ];
 ```
+
+**Autocomplete Caching:**
+- Cached per query prefix, index, and language
+- Uses same storage method as search cache (file or Redis)
+- Shorter default TTL (5 minutes) since autocomplete is called more frequently
+- Can be enabled/disabled independently from search cache
+- Cache keys are unique per index (no overlap between indices)
+
+**Cache Warming:**
+- Automatically runs after index rebuild completes
+- Pulls popular queries from search analytics data
+- Warms both search results cache and autocomplete suggestions
+- Autocomplete warming includes common prefixes (2-5 characters) for each query
+- Requires analytics to be enabled for the index
+- Runs as a background queue job (doesn't block rebuild)
 
 **When to Use Redis Cache:**
 - ✅ Edge networks (Servd, Platform.sh, AWS with ElastiCache)
@@ -932,6 +967,10 @@ return [
     'autocompleteMinLength' => 2,      // Min chars before suggesting
     'autocompleteLimit' => 10,         // Max suggestions
     'autocompleteFuzzy' => false,      // Typo-tolerance (slower)
+
+    // Autocomplete caching (separate from search cache)
+    'enableAutocompleteCache' => true,
+    'autocompleteCacheDuration' => 300, // 5 minutes
 ];
 ```
 
@@ -1926,9 +1965,17 @@ If a config backend has the same handle as a database backend, the config versio
 #### Cache Management
 - **Clear Device Cache** - Delete cached device detection results
 - **Clear Search Cache** - Delete cached search query results
-- **Clear All Caches** - Clear both device and search caches
+- **Clear Autocomplete Cache** - Delete cached autocomplete suggestions
+- **Clear All Caches** - Clear device, search, and autocomplete caches
   - Only shows when at least one cache is enabled
   - Shows cache file counts in real-time
+
+#### Per-Index Cache Clearing
+- **Clear Index Cache** - Available in indices listing and index edit page
+  - Clears both search and autocomplete cache for a specific index
+  - Other indices' caches remain untouched
+  - Requires `searchManager:clearCache` permission
+  - Only shows when search or autocomplete caching is enabled
 
 #### Analytics Data Management
 - **Clear All Analytics** - Permanently delete all search tracking data
@@ -2011,8 +2058,10 @@ Event::on(
   - **Edit indices**: Can edit existing indices
   - **Delete indices**: Can delete indices
   - **Rebuild indices**: Can rebuild indices
+  - **Clear indices**: Can clear index data
   - **Manage promotions**: Can create, edit, delete promotions (pinned results)
   - **Manage query rules**: Can create, edit, delete query rules (synonyms, boosts, etc.)
+- **Clear cache**: Can clear search, autocomplete, and device caches (global and per-index)
 - **View analytics**: Can view analytics dashboard and search statistics
 - **Export analytics**: Can export analytics data
 - **View logs**: Can view plugin logs
@@ -2076,6 +2125,14 @@ return [
         'popularQueryThreshold' => 5, // Minimum search count before caching
         'cacheDeviceDetection' => true, // Cache device detection results
         'deviceDetectionCacheDuration' => 3600, // Device cache TTL in seconds
+
+        // Autocomplete cache settings (separate from search cache)
+        'enableAutocompleteCache' => true, // Cache autocomplete suggestions
+        'autocompleteCacheDuration' => 300, // Autocomplete cache TTL (300 = 5 minutes)
+
+        // Cache warming settings (after index rebuild)
+        'enableCacheWarming' => true, // Pre-cache popular queries after rebuild
+        'cacheWarmingQueryCount' => 50, // Number of queries to warm (10-200)
 
         // Cache invalidation settings
         'clearCacheOnSave' => true, // Clear search cache when elements are saved
