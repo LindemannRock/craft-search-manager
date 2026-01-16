@@ -121,9 +121,65 @@ return [
 
         /**
          * Threshold for popular queries (search count)
+         * Only applies when cachePopularQueriesOnly is true
          * Default: 5
          */
         // 'popularQueryThreshold' => 5,
+
+        /**
+         * Clear cache when elements are saved
+         * Disable for high-traffic sites to reduce cache thrashing
+         * Default: true
+         */
+        // 'clearCacheOnSave' => true,
+
+        /**
+         * Status sync interval in minutes
+         * Syncs entries that become live (postDate) or expire (expiryDate)
+         * Set to 0 to disable
+         * Default: 15
+         */
+        // 'statusSyncInterval' => 15,
+
+        // ========================================
+        // AUTOCOMPLETE CACHE SETTINGS
+        // ========================================
+
+        /**
+         * Enable autocomplete result caching
+         * Separate from search results cache, uses shorter TTL
+         * Default: true
+         */
+        // 'enableAutocompleteCache' => true,
+
+        /**
+         * Autocomplete cache duration in seconds
+         * Recommended: shorter than search cache (60-3600)
+         * Default: 300 (5 minutes)
+         */
+        // 'autocompleteCacheDuration' => 300,
+
+        // ========================================
+        // CACHE WARMING SETTINGS
+        // ========================================
+
+        /**
+         * Enable cache warming after index rebuild
+         * Pre-caches popular queries for faster first visits
+         * Default: true
+         */
+        // 'enableCacheWarming' => true,
+
+        /**
+         * Number of popular queries to warm after rebuild
+         * Queries are pulled from analytics data
+         * Default: 50
+         */
+        // 'cacheWarmingQueryCount' => 50,
+
+        // ========================================
+        // DEVICE DETECTION CACHE SETTINGS
+        // ========================================
 
         /**
          * Cache device detection results
@@ -328,19 +384,6 @@ return [
          */
         // 'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai',
 
-        /**
-         * Cache device detection results
-         * Caches user agent parsing for performance
-         * Default: true
-         */
-        // 'cacheDeviceDetection' => true,
-
-        /**
-         * Device detection cache duration in seconds
-         * Default: 3600 (1 hour)
-         */
-        // 'deviceDetectionCacheDuration' => 3600,
-
         // ========================================
         // BACKEND CONFIGURATION
         // ========================================
@@ -509,7 +552,10 @@ return [
         'indexPrefix' => 'dev_',
         'queueEnabled' => false, // Process immediately in dev
         'enableCache' => false, // Disable cache for testing
+        'enableAutocompleteCache' => false, // Disable autocomplete cache for testing
+        'enableCacheWarming' => false, // No need to warm cache in dev
         'cacheDuration' => 300, // 5 minutes (if enabled)
+        'autocompleteCacheDuration' => 60, // 1 minute (if enabled)
         'deviceDetectionCacheDuration' => 1800, // 30 minutes
         // 'defaultBackendHandle' => 'dev-meilisearch', // Use Meilisearch in dev
     ],
@@ -521,8 +567,12 @@ return [
         'logLevel' => 'info',
         'indexPrefix' => 'staging_',
         'enableCache' => true,
+        'enableAutocompleteCache' => true,
+        'enableCacheWarming' => true,
         'cacheDuration' => 1800, // 30 minutes
+        'autocompleteCacheDuration' => 300, // 5 minutes
         'deviceDetectionCacheDuration' => 3600, // 1 hour
+        'cacheWarmingQueryCount' => 25, // Fewer queries for staging
         // 'defaultBackendHandle' => 'staging-algolia', // Use staging Algolia
     ],
 
@@ -534,11 +584,17 @@ return [
         'indexPrefix' => 'prod_',
         'queueEnabled' => true,
         'enableCache' => true,
+        'enableAutocompleteCache' => true,
+        'enableCacheWarming' => true,
         'cacheStorageMethod' => 'redis',  // Use Redis for production (Servd/AWS/Platform.sh)
         'cacheDuration' => 7200, // 2 hours (optimize for performance)
+        'autocompleteCacheDuration' => 600, // 10 minutes
         'deviceDetectionCacheDuration' => 86400, // 24 hours (user agents rarely change)
         'cachePopularQueriesOnly' => true, // Save cache space
         'popularQueryThreshold' => 3, // Cache after 3 searches
+        'cacheWarmingQueryCount' => 100, // Warm more queries in production
+        'clearCacheOnSave' => true, // Keep cache fresh
+        'statusSyncInterval' => 15, // Check for scheduled entries every 15 min
         // 'defaultBackendHandle' => 'production-algolia', // Use production Algolia
     ],
 ];
