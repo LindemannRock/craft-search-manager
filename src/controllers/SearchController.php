@@ -92,6 +92,7 @@ class SearchController extends Controller
 
             // Transform results for the widget
             $results = [];
+            $seenIds = []; // Track seen element IDs for deduplication
             $hits = $searchResults['hits'] ?? [];
 
             foreach ($hits as $hit) {
@@ -99,6 +100,12 @@ class SearchController extends Controller
                 if (!$elementId) {
                     continue;
                 }
+
+                // Deduplicate by element ID - keep the first (highest scored) occurrence
+                if (isset($seenIds[$elementId])) {
+                    continue;
+                }
+                $seenIds[$elementId] = true;
 
                 // Try to get the actual element for URL and additional data
                 $element = Craft::$app->elements->getElementById($elementId, null, $siteId);

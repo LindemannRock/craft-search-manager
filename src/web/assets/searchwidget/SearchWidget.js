@@ -476,10 +476,11 @@ class SearchWidget extends HTMLElement {
         // Group results by type/section if enabled
         if (groupResults) {
             const groups = this.groupResultsByType(this.results);
+            let globalIndex = 0;
             container.innerHTML = Object.entries(groups).map(([type, items]) => `
                 <div class="sm-section">
                     <div class="sm-section-header">${this.escapeHtml(type)}</div>
-                    ${items.map((result, i) => this.renderResultItem(result, i)).join('')}
+                    ${items.map((result) => this.renderResultItem(result, globalIndex++)).join('')}
                 </div>
             `).join('');
         } else {
