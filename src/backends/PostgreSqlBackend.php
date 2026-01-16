@@ -96,9 +96,9 @@ class PostgreSqlBackend extends BaseBackend
     public function index(string $indexName, array $data): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
-            $storage = new MySqlStorage($fullIndexName);
+            // Pass raw handle - getSearchEngine/getStorage apply prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             // Extract title and content
             $title = $data['title'] ?? '';
@@ -123,7 +123,7 @@ class PostgreSqlBackend extends BaseBackend
                 $storage->storeElement($siteId, $elementId, $title, $elementType);
 
                 $this->logDebug('Document indexed with SearchEngine', [
-                    'index' => $fullIndexName,
+                    'index' => $indexName,
                     'element_id' => $elementId,
                     'element_type' => $elementType,
                 ]);
@@ -193,8 +193,8 @@ class PostgreSqlBackend extends BaseBackend
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
+            // Pass raw handle - getSearchEngine applies prefix internally
+            $engine = $this->getSearchEngine($indexName);
 
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
 
@@ -202,7 +202,7 @@ class PostgreSqlBackend extends BaseBackend
 
             if ($success) {
                 $this->logDebug('Document deleted with SearchEngine', [
-                    'index' => $fullIndexName,
+                    'index' => $indexName,
                     'element_id' => $elementId,
                 ]);
             }
@@ -217,9 +217,9 @@ class PostgreSqlBackend extends BaseBackend
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
-            $storage = $this->getStorage($fullIndexName);
+            // Pass raw handle - getSearchEngine/getStorage apply prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             // Get site ID from options - check raw value first for "all sites" detection
             $rawSiteId = $options['siteId'] ?? null;
@@ -322,7 +322,7 @@ class PostgreSqlBackend extends BaseBackend
             }
 
             $this->logDebug('Search completed with SearchEngine', [
-                'index' => $fullIndexName,
+                'index' => $indexName,
                 'query' => $query,
                 'result_count' => count($hits),
                 'type_filter' => $typeFilter,
@@ -339,13 +339,18 @@ class PostgreSqlBackend extends BaseBackend
     public function clearIndex(string $indexName): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $storage = new MySqlStorage($fullIndexName);
+            // Pass raw handle - getStorage applies prefix internally
+            $storage = $this->getStorage($indexName);
 
             // Clear all data for this index
             $storage->clearAll();
 
-            $this->logInfo('Cleared PostgreSQL index with SearchEngine', ['index' => $fullIndexName]);
+            // Clear cached instances
+            $fullIndexName = $this->getFullIndexName($indexName);
+            unset($this->searchEngines[$fullIndexName]);
+            unset($this->storages[$fullIndexName]);
+
+            $this->logInfo('Cleared PostgreSQL index with SearchEngine', ['index' => $indexName]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to clear PostgreSQL index', ['error' => $e->getMessage()]);
@@ -356,8 +361,8 @@ class PostgreSqlBackend extends BaseBackend
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $storage = $this->getStorage($fullIndexName);
+            // Pass raw handle - getStorage applies prefix internally
+            $storage = $this->getStorage($indexName);
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
             // Check if document has any terms indexed (means it exists)

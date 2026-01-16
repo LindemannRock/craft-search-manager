@@ -9,6 +9,7 @@ use craft\console\Application as ConsoleApplication;
 use craft\events\ElementEvent;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
+use craft\events\RegisterTemplateRootsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\helpers\UrlHelper;
@@ -19,6 +20,7 @@ use craft\services\Utilities;
 use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
+use craft\web\View;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -100,6 +102,9 @@ class SearchManager extends Plugin
         // Set alias for plugin path
         Craft::setAlias('@searchmanager', $this->getBasePath());
 
+        // Register template roots for frontend templates
+        $this->registerTemplateRoots();
+
         // Bootstrap: configure logging, register Twig extension, apply plugin name from config
         PluginHelper::bootstrap(
             $this,
@@ -173,6 +178,35 @@ class SearchManager extends Plugin
             'queryRules' => QueryRuleService::class,
             'transformers' => TransformerService::class,
         ]);
+    }
+
+    /**
+     * Register template roots for frontend templates
+     *
+     * This allows frontend templates to include plugin templates using:
+     * {% include 'search-manager/_widget/search' %}
+     */
+    private function registerTemplateRoots(): void
+    {
+        // Register for site (frontend) requests
+        if (Craft::$app->request->getIsSiteRequest()) {
+            Event::on(
+                View::class,
+                View::EVENT_REGISTER_SITE_TEMPLATE_ROOTS,
+                function(RegisterTemplateRootsEvent $event) {
+                    $event->roots['search-manager'] = $this->getBasePath() . '/templates';
+                }
+            );
+        }
+
+        // Register for CP requests (in case widget is used in CP)
+        Event::on(
+            View::class,
+            View::EVENT_REGISTER_CP_TEMPLATE_ROOTS,
+            function(RegisterTemplateRootsEvent $event) {
+                $event->roots['search-manager'] = $this->getBasePath() . '/templates';
+            }
+        );
     }
 
     /**

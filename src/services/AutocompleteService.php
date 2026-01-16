@@ -376,6 +376,7 @@ class AutocompleteService extends Component
      * Get storage instance with full index name (prefix already applied)
      *
      * Used when the caller has already applied the index prefix.
+     * Supports MySQL, Redis, and File backends (not PostgreSQL - no element suggestions support).
      *
      * @param string $fullIndexName Full index name including prefix
      * @return mixed Storage instance or null
@@ -384,20 +385,39 @@ class AutocompleteService extends Component
     {
         $backendName = $this->getDefaultBackendType();
 
-        // Only support MySQL for now (element suggestions)
-        if ($backendName !== 'mysql') {
-            $this->logWarning('Element suggestions only supported for MySQL backend', [
+        // Support MySQL, PostgreSQL, Redis, and File for element suggestions
+        // Note: PostgreSQL uses MySqlStorage which has getElementSuggestions
+        if (!in_array($backendName, ['mysql', 'pgsql', 'redis', 'file'])) {
+            $this->logWarning('Element suggestions only supported for MySQL, PostgreSQL, Redis, and File backends', [
                 'backend' => $backendName,
             ]);
             return null;
         }
 
         try {
-            // Create storage directly with the full index name
-            $storage = new \lindemannrock\searchmanager\search\storage\MySqlStorage($fullIndexName);
+            if ($backendName === 'mysql' || $backendName === 'pgsql') {
+                // Create MySQL storage directly with the full index name
+                // PostgreSQL also uses MySqlStorage (same SQL structure)
+                $storage = new \lindemannrock\searchmanager\search\storage\MySqlStorage($fullIndexName);
+            } elseif ($backendName === 'redis') {
+                // Create Redis storage directly with the full index name
+                $backend = SearchManager::$plugin->backend->getBackend('redis');
+                $backendSettings = [];
+                if ($backend && method_exists($backend, 'getBackendSettings')) {
+                    // Use reflection to access protected method
+                    $reflection = new \ReflectionMethod($backend, 'getBackendSettings');
+                    $reflection->setAccessible(true);
+                    $backendSettings = $reflection->invoke($backend);
+                }
+                $storage = new \lindemannrock\searchmanager\search\storage\RedisStorage($fullIndexName, $backendSettings);
+            } else {
+                // Create File storage directly with the full index name
+                $storage = new \lindemannrock\searchmanager\search\storage\FileStorage($fullIndexName);
+            }
 
             $this->logDebug('Created storage with full index name', [
                 'index' => $fullIndexName,
+                'backend' => $backendName,
             ]);
 
             return $storage;

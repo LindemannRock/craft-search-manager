@@ -1,0 +1,94 @@
+{#
+/**
+ * Search Manager - Search Widget
+ *
+ * Include this in your templates to add a CMD+K style search modal.
+ *
+ * Usage:
+ * {% include 'search-manager/_widget/search' %}
+ *
+ * With options:
+ * {% include 'search-manager/_widget/search' with {
+ *     index: 'main',
+ *     placeholder: 'Search articles...',
+ *     theme: 'dark',
+ *     maxResults: 10,
+ *     showTrigger: true,
+ *     triggerText: 'Search',
+ * } %}
+ *
+ * Available options:
+ * - index: (string) Search index handle (optional, searches all if not specified)
+ * - placeholder: (string) Input placeholder text (default: 'Search...')
+ * - theme: (string) 'light' or 'dark' (default: 'light')
+ * - maxResults: (int) Maximum results to show (default: 10)
+ * - debounce: (int) Debounce delay in ms (default: 200)
+ * - minChars: (int) Minimum characters before searching (default: 2)
+ * - showRecent: (bool) Show recent searches (default: true)
+ * - groupResults: (bool) Group results by type/section (default: true)
+ * - hotkey: (string) Keyboard shortcut key (default: 'k')
+ * - showTrigger: (bool) Show the trigger button (default: true)
+ * - triggerText: (string) Trigger button text (default: 'Search')
+ * - siteId: (int) Specific site ID to search (optional)
+ * - class: (string) Additional CSS class for the widget
+ * - dir: (string) Text direction 'ltr' or 'rtl' (auto-detected from site)
+ *
+ * @link https://lindemannrock.com
+ * @copyright Copyright (c) 2025 LindemannRock
+ */
+#}
+
+{# Default values #}
+{% set index = index ?? '' %}
+{% set placeholder = placeholder ?? 'Search...'|t('search-manager') %}
+{% set theme = theme ?? 'light' %}
+{% set maxResults = maxResults ?? 10 %}
+{% set debounce = debounce ?? 200 %}
+{% set minChars = minChars ?? 2 %}
+{% set showRecent = showRecent ?? true %}
+{% set groupResults = groupResults ?? true %}
+{% set hotkey = hotkey ?? 'k' %}
+{% set showTrigger = showTrigger ?? true %}
+{% set triggerText = triggerText ?? 'Search'|t('search-manager') %}
+{% set siteId = siteId ?? '' %}
+{% set class = class ?? '' %}
+{% set dir = dir ?? (craft.app.locale.getOrientation() == 'rtl' ? 'rtl' : 'ltr') %}
+
+{# Get plugin instance for asset URL #}
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+
+{# Register the widget JS #}
+{% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget', true) ~ '/SearchWidget.js', {
+    position: 3
+}) %}
+
+{# Build the endpoint URL #}
+{% set endpoint = actionUrl('search-manager/search/query') %}
+{% set analyticsEndpoint = actionUrl('search-manager/search/track-click') %}
+
+{# Render the widget #}
+<search-widget
+    {% if index %}index="{{ index }}"{% endif %}
+    placeholder="{{ placeholder }}"
+    endpoint="{{ endpoint }}"
+    analytics-endpoint="{{ analyticsEndpoint }}"
+    theme="{{ theme }}"
+    max-results="{{ maxResults }}"
+    debounce="{{ debounce }}"
+    min-chars="{{ minChars }}"
+    show-recent="{{ showRecent ? 'true' : 'false' }}"
+    group-results="{{ groupResults ? 'true' : 'false' }}"
+    hotkey="{{ hotkey }}"
+    {% if siteId %}site-id="{{ siteId }}"{% endif %}
+    {% if class %}class="{{ class }}"{% endif %}
+    dir="{{ dir }}"
+    {% if not showTrigger %}style="display: none;"{% endif %}
+></search-widget>
+
+{% if not showTrigger %}
+{# If trigger is hidden, provide a way to open programmatically #}
+{% js %}
+// You can open the search widget programmatically:
+// document.querySelector('search-widget').open();
+{% endjs %}
+{% endif %}

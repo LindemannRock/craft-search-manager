@@ -36,16 +36,22 @@ class RedisBackend extends BaseBackend
     /**
      * Get or create SearchEngine instance for an index
      *
-     * @param string $indexHandle Index handle
+     * NOTE: This method expects a RAW index handle (without prefix).
+     * It will apply the prefix internally.
+     *
+     * @param string $indexHandle Raw index handle (e.g., 'all-sites', not 'searchmanager_all-sites')
      * @return SearchEngine
      */
     private function getSearchEngine(string $indexHandle): SearchEngine
     {
-        if (!isset($this->searchEngines[$indexHandle])) {
-            $storage = $this->getStorage($indexHandle);
+        // Apply prefix to get the full index name for storage
+        $fullIndexName = $this->getFullIndexName($indexHandle);
+
+        if (!isset($this->searchEngines[$fullIndexName])) {
+            $storage = $this->getStorageInternal($fullIndexName);
             $settings = SearchManager::$plugin->getSettings();
 
-            $this->searchEngines[$indexHandle] = new SearchEngine($storage, $indexHandle, [
+            $this->searchEngines[$fullIndexName] = new SearchEngine($storage, $fullIndexName, [
                 'k1' => $settings->bm25K1 ?? 1.5,
                 'b' => $settings->bm25B ?? 0.75,
                 'titleBoost' => $settings->titleBoostFactor ?? 5.0,
@@ -57,13 +63,16 @@ class RedisBackend extends BaseBackend
             ]);
         }
 
-        return $this->searchEngines[$indexHandle];
+        return $this->searchEngines[$fullIndexName];
     }
 
     /**
      * Get or create storage instance (public for autocomplete/other services)
      *
-     * @param string $indexHandle Index handle
+     * NOTE: This method expects a RAW index handle (without prefix).
+     * It will apply the prefix internally.
+     *
+     * @param string $indexHandle Raw index handle (e.g., 'all-sites')
      * @return RedisStorage
      */
     public function getStorage(string $indexHandle): RedisStorage
@@ -71,6 +80,17 @@ class RedisBackend extends BaseBackend
         // Apply index prefix to get the full index name
         $fullIndexName = $this->getFullIndexName($indexHandle);
 
+        return $this->getStorageInternal($fullIndexName);
+    }
+
+    /**
+     * Internal method to get storage by full (already-prefixed) index name
+     *
+     * @param string $fullIndexName Full index name with prefix
+     * @return RedisStorage
+     */
+    private function getStorageInternal(string $fullIndexName): RedisStorage
+    {
         if (!isset($this->storages[$fullIndexName])) {
             $backendSettings = $this->getBackendSettings();
             $this->storages[$fullIndexName] = new RedisStorage($fullIndexName, $backendSettings);
@@ -113,10 +133,9 @@ class RedisBackend extends BaseBackend
     public function index(string $indexName, array $data): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
-            $backendSettings = $this->getBackendSettings();
-            $storage = new RedisStorage($fullIndexName, $backendSettings);
+            // Pass raw handle - getSearchEngine applies prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             // Extract title and content
             $title = $data['title'] ?? '';
@@ -141,7 +160,7 @@ class RedisBackend extends BaseBackend
                 $storage->storeElement($siteId, $elementId, $title, $elementType);
 
                 $this->logDebug('Document indexed with SearchEngine', [
-                    'index' => $fullIndexName,
+                    'index' => $indexName,
                     'element_id' => $elementId,
                     'element_type' => $elementType,
                 ]);
@@ -202,8 +221,9 @@ class RedisBackend extends BaseBackend
     public function batchIndex(string $indexName, array $items): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
+            // Pass raw handle - getSearchEngine applies prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             foreach ($items as $data) {
                 // Extract title and content
@@ -218,12 +238,18 @@ class RedisBackend extends BaseBackend
                 $siteId = $data['siteId'] ?? 1;
                 $elementId = $data['objectID'] ?? $data['id'];
 
+                // Get element type: from data, or derive from index name
+                $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
+
                 // Use SearchEngine to index
                 $engine->indexDocument($siteId, $elementId, $title, $content);
+
+                // Store element metadata for rich autocomplete suggestions
+                $storage->storeElement($siteId, $elementId, $title, $elementType);
             }
 
             $this->logInfo('Batch indexed in Redis', [
-                'index' => $fullIndexName,
+                'index' => $indexName,
                 'count' => count($items),
             ]);
 
@@ -237,15 +263,15 @@ class RedisBackend extends BaseBackend
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
+            // Pass raw handle - getSearchEngine applies prefix internally
+            $engine = $this->getSearchEngine($indexName);
 
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
             $success = $engine->deleteDocument($siteId, $elementId);
 
             if ($success) {
                 $this->logDebug('Document deleted with SearchEngine', [
-                    'index' => $fullIndexName,
+                    'index' => $indexName,
                     'element_id' => $elementId,
                 ]);
             }
@@ -260,9 +286,9 @@ class RedisBackend extends BaseBackend
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
-            $storage = $this->getStorage($fullIndexName);
+            // Pass raw handle - getSearchEngine/getStorage apply prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             // Get site ID from options - check raw value first for "all sites" detection
             $rawSiteId = $options['siteId'] ?? null;
@@ -347,7 +373,7 @@ class RedisBackend extends BaseBackend
             }
 
             $this->logDebug('Search completed with SearchEngine', [
-                'index' => $fullIndexName,
+                'index' => $indexName,
                 'query' => $query,
                 'result_count' => count($hits),
                 'type_filter' => $typeFilter,
@@ -364,15 +390,19 @@ class RedisBackend extends BaseBackend
     public function clearIndex(string $indexName): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $backendSettings = $this->getBackendSettings();
-            $storage = new RedisStorage($fullIndexName, $backendSettings);
+            // Pass raw handle - getStorage applies prefix internally
+            $storage = $this->getStorage($indexName);
 
             // Clear all data for this index
             $storage->clearAll();
 
+            // Also clear cached engine and storage instances
+            $fullIndexName = $this->getFullIndexName($indexName);
+            unset($this->searchEngines[$fullIndexName]);
+            unset($this->storages[$fullIndexName]);
+
             $this->logInfo('Cleared Redis index with SearchEngine', [
-                'index' => $fullIndexName,
+                'index' => $indexName,
             ]);
 
             return true;
@@ -385,8 +415,8 @@ class RedisBackend extends BaseBackend
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $storage = $this->getStorage($fullIndexName);
+            // Pass raw handle - getStorage applies prefix internally
+            $storage = $this->getStorage($indexName);
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
             // Check if document has any terms indexed (means it exists)

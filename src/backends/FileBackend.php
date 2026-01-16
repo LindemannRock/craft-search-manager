@@ -106,9 +106,9 @@ class FileBackend extends BaseBackend
     public function index(string $indexName, array $data): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
-            $storage = new FileStorage($fullIndexName);
+            // Pass raw handle - getSearchEngine/getStorage apply prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             // Extract title and content
             $title = $data['title'] ?? '';
@@ -133,7 +133,7 @@ class FileBackend extends BaseBackend
                 $storage->storeElement($siteId, $elementId, $title, $elementType);
 
                 $this->logDebug('Document indexed with SearchEngine', [
-                    'index' => $fullIndexName,
+                    'index' => $indexName,
                     'element_id' => $elementId,
                     'element_type' => $elementType,
                 ]);
@@ -196,8 +196,9 @@ class FileBackend extends BaseBackend
     public function batchIndex(string $indexName, array $items): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
+            // Pass raw handle - getSearchEngine/getStorage apply prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             $successCount = 0;
             foreach ($items as $data) {
@@ -211,13 +212,18 @@ class FileBackend extends BaseBackend
                 $siteId = $data['siteId'] ?? 1;
                 $elementId = $data['objectID'] ?? $data['id'];
 
+                // Get element type: from data, or derive from index name
+                $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
+
                 if ($engine->indexDocument($siteId, $elementId, $title, $content)) {
+                    // Store element metadata for rich autocomplete suggestions
+                    $storage->storeElement($siteId, $elementId, $title, $elementType);
                     $successCount++;
                 }
             }
 
             $this->logInfo('Batch indexed with SearchEngine', [
-                'index' => $fullIndexName,
+                'index' => $indexName,
                 'count' => $successCount,
             ]);
 
@@ -233,15 +239,15 @@ class FileBackend extends BaseBackend
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
+            // Pass raw handle - getSearchEngine applies prefix internally
+            $engine = $this->getSearchEngine($indexName);
 
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
             $success = $engine->deleteDocument($siteId, $elementId);
 
             if ($success) {
                 $this->logDebug('Document deleted with SearchEngine', [
-                    'index' => $fullIndexName,
+                    'index' => $indexName,
                     'element_id' => $elementId,
                 ]);
             }
@@ -258,9 +264,9 @@ class FileBackend extends BaseBackend
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $engine = $this->getSearchEngine($fullIndexName);
-            $storage = $this->getStorage($fullIndexName);
+            // Pass raw handle - getSearchEngine/getStorage apply prefix internally
+            $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
 
             // Get site ID from options - check raw value first for "all sites" detection
             $rawSiteId = $options['siteId'] ?? null;
@@ -345,7 +351,7 @@ class FileBackend extends BaseBackend
             }
 
             $this->logDebug('Search completed with SearchEngine', [
-                'index' => $fullIndexName,
+                'index' => $indexName,
                 'query' => $query,
                 'result_count' => count($hits),
                 'type_filter' => $typeFilter,
@@ -364,14 +370,19 @@ class FileBackend extends BaseBackend
     public function clearIndex(string $indexName): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $storage = new FileStorage($fullIndexName);
+            // Pass raw handle - getStorage applies prefix internally
+            $storage = $this->getStorage($indexName);
 
             // Clear all data for this index
             $storage->clearAll();
 
+            // Clear cached instances
+            $fullIndexName = $this->getFullIndexName($indexName);
+            unset($this->searchEngines[$fullIndexName]);
+            unset($this->storages[$fullIndexName]);
+
             $this->logInfo('Cleared file storage index with SearchEngine', [
-                'index' => $fullIndexName,
+                'index' => $indexName,
             ]);
 
             return true;
@@ -386,8 +397,8 @@ class FileBackend extends BaseBackend
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $fullIndexName = $this->getFullIndexName($indexName);
-            $storage = $this->getStorage($fullIndexName);
+            // Pass raw handle - getStorage applies prefix internally
+            $storage = $this->getStorage($indexName);
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id;
 
             // Check if document has any terms indexed (means it exists)
