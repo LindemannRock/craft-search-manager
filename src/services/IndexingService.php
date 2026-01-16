@@ -166,9 +166,10 @@ class IndexingService extends Component
                 $result = SearchManager::$plugin->backend->index($indexHandle, $data);
 
                 if ($result) {
-                    // Clear search cache for this index (if enabled)
+                    // Clear caches for this index (if enabled)
                     if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
                         SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                        SearchManager::$plugin->autocomplete->clearCache($indexHandle);
                     }
 
                     // Increment document count only for new documents
@@ -244,9 +245,10 @@ class IndexingService extends Component
                 $result = SearchManager::$plugin->backend->delete($indexHandle, $element->id, $element->siteId);
 
                 if ($result) {
-                    // Clear search cache for this index (if enabled)
+                    // Clear caches for this index (if enabled)
                     if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
                         SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                        SearchManager::$plugin->autocomplete->clearCache($indexHandle);
                     }
 
                     // Decrement document count (only if document actually existed)
@@ -363,9 +365,10 @@ class IndexingService extends Component
             $result = SearchManager::$plugin->backend->batchIndex($indexHandle, $items);
 
             if ($result) {
-                // Clear search cache for this index (if enabled)
+                // Clear caches for this index (if enabled)
                 if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
                     SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+                    SearchManager::$plugin->autocomplete->clearCache($indexHandle);
                 }
             }
 

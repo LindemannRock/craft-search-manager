@@ -191,8 +191,9 @@ class IndicesController extends Controller
         // Update stats to 0
         $index->updateStats(0);
 
-        // Clear search cache
+        // Clear caches
         SearchManager::$plugin->backend->clearSearchCache($index->handle);
+        SearchManager::$plugin->autocomplete->clearCache($index->handle);
 
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', 'Index data cleared.')

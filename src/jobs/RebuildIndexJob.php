@@ -168,8 +168,9 @@ class RebuildIndexJob extends BaseJob
         // Update index stats
         $index->updateStats($totalIndexed);
 
-        // Clear search cache for this index
+        // Clear caches for this index
         SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+        SearchManager::$plugin->autocomplete->clearCache($indexHandle);
 
         $this->logInfo('Index rebuild completed', [
             'handle' => $indexHandle,
