@@ -738,6 +738,21 @@ class BackendService extends Component
     // =========================================================================
 
     /**
+     * Normalize query for cache key generation
+     *
+     * Improves cache hit rate by treating equivalent queries the same:
+     * - "Hello World", "hello world", "  HELLO   WORLD  " all become "hello world"
+     *
+     * @param string $query
+     * @return string
+     */
+    private function _normalizeQueryForCache(string $query): string
+    {
+        // Lowercase, trim, and collapse multiple spaces to single space
+        return mb_strtolower(trim(preg_replace('/\s+/', ' ', $query)));
+    }
+
+    /**
      * Generate cache key for search query
      *
      * @param string $indexName
@@ -747,10 +762,13 @@ class BackendService extends Component
      */
     private function _generateCacheKey(string $indexName, string $query, array $options): string
     {
+        // Normalize query to improve cache hit rate
+        $normalizedQuery = $this->_normalizeQueryForCache($query);
+
         // Include everything that affects the search results
         $keyData = [
             'index' => $indexName,
-            'query' => $query,
+            'query' => $normalizedQuery,
             'options' => $options, // Future-proof: any new options automatically included
         ];
 
@@ -940,15 +958,20 @@ class BackendService extends Component
     /**
      * Get search count for a query from analytics
      *
+     * Uses normalized query matching (case-insensitive) for better accuracy
+     *
      * @param string $query
      * @return int
      */
     private function _getQuerySearchCount(string $query): int
     {
         try {
+            // Normalize the query for matching
+            $normalizedQuery = $this->_normalizeQueryForCache($query);
+
             return (int)(new \craft\db\Query())
                 ->from('{{%searchmanager_analytics}}')
-                ->where(['query' => $query])
+                ->where(['LOWER(query)' => $normalizedQuery])
                 ->count();
         } catch (\Throwable $e) {
             $this->logError('Failed to get query search count', [
