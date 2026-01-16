@@ -101,7 +101,7 @@ If you are using this plugin, please be aware that future versions may have diff
 - **Storage Locations**:
   - Device cache: `@storage/runtime/search-manager/cache/device/`
   - Search cache: `@storage/runtime/search-manager/cache/search/`
-  - Autocomplete cache: `@storage/runtime/search-manager/autocomplete-cache/`
+  - Autocomplete cache: `@storage/runtime/search-manager/cache/autocomplete/`
 
 ### Cache Invalidation
 - **Clear on Save** - Optionally clear search cache when elements are saved (disable for high-traffic sites)
