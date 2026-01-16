@@ -189,6 +189,16 @@ class Settings extends Model
      */
     public int $statusSyncInterval = 15;
 
+    /**
+     * @var bool Enable cache warming after index rebuild
+     */
+    public bool $enableCacheWarming = true;
+
+    /**
+     * @var int Number of popular queries to warm after rebuild
+     */
+    public int $cacheWarmingQueryCount = 50;
+
     // =========================================================================
     // SEARCH SETTINGS (Advanced Search Features)
     // =========================================================================
@@ -326,6 +336,7 @@ class Settings extends Model
             'enableAutocomplete',
             'autocompleteFuzzy',
             'enableAutocompleteCache',
+            'enableCacheWarming',
         ];
     }
 
@@ -345,6 +356,7 @@ class Settings extends Model
             'autocompleteMinLength',
             'autocompleteLimit',
             'autocompleteCacheDuration',
+            'cacheWarmingQueryCount',
         ];
     }
 
@@ -379,7 +391,7 @@ class Settings extends Model
             [['pluginName', 'logLevel'], 'required'],
             [['pluginName'], 'string', 'max' => 255],
             [['indexPrefix'], 'string', 'max' => 50],
-            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy'], 'boolean'],
+            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
@@ -391,6 +403,7 @@ class Settings extends Model
             [['maxSnippets'], 'integer', 'min' => 1, 'max' => 10],
             [['autocompleteMinLength'], 'integer', 'min' => 1, 'max' => 5],
             [['autocompleteLimit'], 'integer', 'min' => 1, 'max' => 50],
+            [['cacheWarmingQueryCount'], 'integer', 'min' => 1, 'max' => 200],
             [['bm25K1'], 'number', 'min' => 0.1, 'max' => 5.0],
             [['bm25B', 'similarityThreshold'], 'number', 'min' => 0.0, 'max' => 1.0],
             [['titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor'], 'number', 'min' => 1.0, 'max' => 20.0],

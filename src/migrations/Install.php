@@ -125,6 +125,9 @@ class Install extends Migration
             'popularQueryThreshold' => $this->integer()->notNull()->defaultValue(5),
             'clearCacheOnSave' => $this->boolean()->notNull()->defaultValue(true),
             'statusSyncInterval' => $this->integer()->notNull()->defaultValue(15),
+            // Cache Warming Settings
+            'enableCacheWarming' => $this->boolean()->notNull()->defaultValue(true),
+            'cacheWarmingQueryCount' => $this->integer()->notNull()->defaultValue(50),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),

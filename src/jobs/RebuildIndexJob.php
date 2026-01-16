@@ -176,6 +176,18 @@ class RebuildIndexJob extends BaseJob
             'handle' => $indexHandle,
             'count' => $totalIndexed,
         ]);
+
+        // Queue cache warming job if enabled
+        $settings = SearchManager::$plugin->getSettings();
+        if ($settings->enableCacheWarming && ($settings->enableCache || $settings->enableAutocompleteCache)) {
+            Craft::$app->getQueue()->push(new CacheWarmJob([
+                'indexHandle' => $indexHandle,
+            ]));
+
+            $this->logInfo('Queued cache warming job', [
+                'handle' => $indexHandle,
+            ]);
+        }
     }
 
     private function rebuildAllIndices($queue): void
