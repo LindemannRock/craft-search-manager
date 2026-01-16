@@ -122,6 +122,30 @@ interface StorageInterface
     public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array;
 
     // =========================================================================
+    // ELEMENT OPERATIONS (for autocomplete suggestions)
+    // =========================================================================
+
+    /**
+     * Store element metadata for autocomplete suggestions
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @param string $title Full title for display
+     * @param string $elementType Element type (product, category, etc.)
+     * @return void
+     */
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void;
+
+    /**
+     * Get element info for a list of element IDs
+     *
+     * @param int $siteId Site ID
+     * @param array $elementIds Array of element IDs
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     */
+    public function getElementsByIds(int $siteId, array $elementIds): array;
+
+    // =========================================================================
     // TITLE OPERATIONS
     // =========================================================================
 
