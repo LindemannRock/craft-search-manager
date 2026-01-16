@@ -118,26 +118,33 @@
             name: 'settings[cachePopularQueriesOnly]',
             on: settings.cachePopularQueriesOnly,
             tip: 'Saves cache space by only caching frequently-used queries'|t('search-manager'),
+            toggle: 'popular-query-threshold-settings',
             disabled: settings.isOverriddenByConfig('cachePopularQueriesOnly'),
             warning: settings.isOverriddenByConfig('cachePopularQueriesOnly') ?
                 "This is being overridden by config file."|t('search-manager')|raw : null,
         }) }}
 
-		{{ forms.textField({
-            label: 'Popular Query Threshold'|t('search-manager'),
-            instructions: 'Number of times a query must be searched before it gets cached'|t('search-manager'),
-            id: 'popularQueryThreshold',
-            name: 'settings[popularQueryThreshold]',
-            value: settings.popularQueryThreshold ?? 5,
-            type: 'number',
-            min: '2',
-            max: '100',
-            tip: 'Only applies when "Cache Popular Queries Only" is enabled'|t('search-manager'),
-            disabled: settings.isOverriddenByConfig('popularQueryThreshold'),
-            warning: settings.isOverriddenByConfig('popularQueryThreshold') ?
-                "This is being overridden by config file."|t('search-manager')|raw : null,
-            errors: settings.getErrors('popularQueryThreshold')
-        }) }}
+		<div id="popular-query-threshold-settings" class="{{ not settings.cachePopularQueriesOnly ? 'hidden' }}">
+			{{ forms.selectField({
+				label: 'Popular Query Threshold'|t('search-manager'),
+				instructions: 'Number of times a query must be searched before it gets cached'|t('search-manager'),
+				id: 'popularQueryThreshold',
+				name: 'settings[popularQueryThreshold]',
+				value: settings.popularQueryThreshold ?? 5,
+				options: [
+					{ value: 2, label: '2 searches (Very Sensitive)'|t('search-manager') },
+					{ value: 3, label: '3 searches (Sensitive)'|t('search-manager') },
+					{ value: 5, label: '5 searches (Recommended)'|t('search-manager') },
+					{ value: 10, label: '10 searches (Moderate)'|t('search-manager') },
+					{ value: 20, label: '20 searches (Conservative)'|t('search-manager') },
+					{ value: 50, label: '50 searches (High Traffic Only)'|t('search-manager') },
+				],
+				disabled: settings.isOverriddenByConfig('popularQueryThreshold'),
+				warning: settings.isOverriddenByConfig('popularQueryThreshold') ?
+					"This is being overridden by config file."|t('search-manager')|raw : null,
+				errors: settings.getErrors('popularQueryThreshold')
+			}) }}
+		</div>
 
 		{% include 'lindemannrock-base/_components/info-box' with {
 			message: '<strong>How it works:</strong><br>
