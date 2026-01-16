@@ -101,19 +101,13 @@ class SearchManager extends Plugin
         Craft::setAlias('@searchmanager', $this->getBasePath());
 
         // Bootstrap: configure logging, register Twig extension, apply plugin name from config
-        PluginHelper::bootstrap($this, 'searchHelper', ['searchManager:viewLogs']);
+        PluginHelper::bootstrap(
+            $this,
+            'searchHelper',
+            ['searchManager:viewLogs'],
+            ['searchManager:downloadLogs']
+        );
         PluginHelper::applyPluginNameFromConfig($this);
-
-        // Configure logging library with download permissions
-        $settings = $this->getSettings();
-        LoggingLibrary::configure([
-            'pluginHandle' => $this->handle,
-            'pluginName' => $settings->getFullName(),
-            'logLevel' => $settings->logLevel ?? 'error',
-            'itemsPerPage' => $settings->itemsPerPage ?? 50,
-            'viewPermissions' => ['searchManager:viewLogs'],
-            'downloadPermissions' => ['searchManager:downloadLogs'],
-        ]);
 
         // Register services
         $this->registerServices();
