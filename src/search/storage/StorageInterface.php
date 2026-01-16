@@ -108,6 +108,19 @@ interface StorageInterface
      */
     public function removeTermDocument(string $term, int $siteId, int $elementId): void;
 
+    /**
+     * Get terms for autocomplete suggestions
+     *
+     * Returns terms with their frequencies, sorted by frequency (most common first).
+     * Used for autocomplete/type-ahead functionality.
+     *
+     * @param int|null $siteId Site ID (null for all sites)
+     * @param string|null $language Language filter (e.g., 'en', 'ar')
+     * @param int $limit Maximum terms to return
+     * @return array Terms with frequencies [term => frequency]
+     */
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array;
+
     // =========================================================================
     // TITLE OPERATIONS
     // =========================================================================

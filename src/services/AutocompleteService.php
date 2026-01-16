@@ -4,9 +4,7 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\search\storage\FileStorage;
-use lindemannrock\searchmanager\search\storage\MySqlStorage;
-use lindemannrock\searchmanager\search\storage\RedisStorage;
+use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
@@ -199,16 +197,10 @@ class AutocompleteService extends Component
      */
     private function getAllTerms($storage, ?int $siteId, ?string $language = null, ?string $indexHandle = null): array
     {
-        // This is backend-specific and simplified
-        // In production, you'd want a dedicated method in StorageInterface
-
         try {
-            if ($storage instanceof MySqlStorage) {
-                return $this->getAllTermsFromMysql($siteId, $language, $indexHandle);
-            } elseif ($storage instanceof RedisStorage) {
-                return $this->getAllTermsFromRedis($storage, $siteId, $language);
-            } elseif ($storage instanceof FileStorage) {
-                return $this->getAllTermsFromFile($storage, $siteId, $language);
+            // Use the StorageInterface method
+            if ($storage instanceof StorageInterface) {
+                return $storage->getTermsForAutocomplete($siteId, $language, 1000);
             }
         } catch (\Throwable $e) {
             $this->logError('Failed to get all terms', [
@@ -217,172 +209,6 @@ class AutocompleteService extends Component
         }
 
         return [];
-    }
-
-    /**
-     * Get all terms from MySQL
-     *
-     * @param int|null $siteId Site ID (null for all-sites indices - skip siteId filter)
-     * @param string|null $language Language filter (e.g., 'en', 'ar')
-     * @param string|null $indexHandle Full index handle (with prefix) to filter by
-     * @return array Terms with frequencies [term => frequency]
-     */
-    private function getAllTermsFromMysql(?int $siteId, ?string $language = null, ?string $indexHandle = null): array
-    {
-        try {
-            $query = (new \craft\db\Query())
-                ->select(['term', 'SUM(frequency) as total_freq'])
-                ->from('{{%searchmanager_search_terms}}');
-
-            // Filter by siteId only if provided (for site-specific indices)
-            // For all-sites indices, skip siteId filter and rely on indexHandle + language
-            if ($siteId !== null) {
-                $query->where(['siteId' => $siteId]);
-            }
-
-            // Filter by index handle if provided
-            if ($indexHandle) {
-                $query->andWhere(['indexHandle' => $indexHandle]);
-            }
-
-            // Filter by language if provided
-            if ($language) {
-                $query->andWhere(['language' => $language]);
-            }
-
-            $results = $query
-                ->groupBy(['term'])
-                ->orderBy(['total_freq' => SORT_DESC])
-                ->limit(1000) // Limit for performance
-                ->all();
-
-            $this->logDebug('Retrieved terms from MySQL', [
-                'site_id' => $siteId,
-                'index_handle' => $indexHandle,
-                'language' => $language,
-                'count' => count($results),
-            ]);
-
-            $terms = [];
-            foreach ($results as $row) {
-                $terms[$row['term']] = (int)$row['total_freq'];
-            }
-
-            return $terms;
-        } catch (\Throwable $e) {
-            $this->logError('Failed to get MySQL terms', [
-                'error' => $e->getMessage(),
-                'site_id' => $siteId,
-            ]);
-            return [];
-        }
-    }
-
-    /**
-     * Get all terms from Redis
-     */
-    private function getAllTermsFromRedis($storage, int $siteId, ?string $language = null): array
-    {
-        try {
-            // Use reflection to access private redis property
-            $reflection = new \ReflectionClass($storage);
-            $redisProperty = $reflection->getProperty('redis');
-            $redisProperty->setAccessible(true);
-            $redis = $redisProperty->getValue($storage);
-
-            $prefixProperty = $reflection->getProperty('keyPrefix');
-            $prefixProperty->setAccessible(true);
-            $prefix = $prefixProperty->getValue($storage);
-
-            // Pattern: sm:idx:all-sites:term:TERM:SITE_ID
-            $pattern = $prefix . 'term:*:' . $siteId;
-            $keys = $redis->keys($pattern);
-
-            $this->logDebug('Redis keys found', [
-                'pattern' => $pattern,
-                'count' => count($keys),
-            ]);
-
-            $terms = [];
-            foreach ($keys as $key) {
-                // Key format: sm:idx:all-sites:term:TERM:SITE_ID
-                // We need to extract TERM (between last two colons)
-                $parts = explode(':', $key);
-
-                // Get the term (second to last part)
-                if (count($parts) >= 2) {
-                    $term = $parts[count($parts) - 2];
-
-                    // Get document count for this term
-                    $count = $redis->hLen($key); // Number of documents containing this term
-                    $terms[$term] = $count;
-                }
-
-                if (count($terms) >= 1000) {
-                    break; // Limit for performance
-                }
-            }
-
-            arsort($terms);
-
-            $this->logDebug('Terms extracted from Redis', [
-                'term_count' => count($terms),
-                'sample' => array_slice($terms, 0, 5, true),
-            ]);
-
-            return $terms;
-        } catch (\Throwable $e) {
-            $this->logError('Failed to get Redis terms', [
-                'error' => $e->getMessage(),
-                'site_id' => $siteId,
-            ]);
-            return [];
-        }
-    }
-
-    /**
-     * Get all terms from File storage
-     */
-    private function getAllTermsFromFile($storage, int $siteId, ?string $language = null): array
-    {
-        // Use reflection to access private basePath property
-        $reflection = new \ReflectionClass($storage);
-        $pathProperty = $reflection->getProperty('basePath');
-        $pathProperty->setAccessible(true);
-        $basePath = $pathProperty->getValue($storage);
-
-        $termsPath = $basePath . '/terms';
-
-        if (!is_dir($termsPath)) {
-            return [];
-        }
-
-        $terms = [];
-        // File storage uses: term_siteId.dat format (e.g., test_1.dat)
-        $files = glob($termsPath . '/*_' . $siteId . '.dat');
-
-        foreach ($files as $file) {
-            $basename = basename($file, '.dat');
-            // Extract term from filename (test_1 → test)
-            $parts = explode('_', $basename);
-            array_pop($parts); // Remove site ID
-            $term = implode('_', $parts);
-
-            // Read serialized data
-            $data = @unserialize(file_get_contents($file));
-            $count = is_array($data) ? count($data) : 0;
-
-            if ($count > 0) {
-                $terms[$term] = $count;
-            }
-
-            if (count($terms) >= 1000) {
-                break; // Limit for performance
-            }
-        }
-
-        arsort($terms);
-        return $terms;
     }
 
     /**
@@ -460,29 +286,30 @@ class AutocompleteService extends Component
     }
 
     /**
-     * Get storage instance for index from active backend
+     * Get storage instance for index's configured backend
      *
      * @param string $indexHandle Index handle
      * @return mixed Storage instance or null
      */
     private function getStorage(string $indexHandle)
     {
-        $backendName = $this->getDefaultBackendType();
-
-        // Only support built-in backends (MySQL, PostgreSQL, Redis, File)
-        if (!in_array($backendName, ['mysql', 'pgsql', 'redis', 'file'])) {
-            $this->logWarning('Autocomplete only supported for MySQL, PostgreSQL, Redis, and File backends', [
-                'backend' => $backendName,
-            ]);
-            return null;
-        }
-
         try {
-            // Get the active backend
-            $backend = SearchManager::$plugin->backend->getActiveBackend();
+            // Get the backend for this specific index (respects per-index backend overrides)
+            $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
 
             if (!$backend) {
-                $this->logError('No active backend available');
+                $this->logError('No backend available for index', ['index' => $indexHandle]);
+                return null;
+            }
+
+            $backendName = $backend->getName();
+
+            // Only support built-in backends (MySQL, PostgreSQL, Redis, File)
+            if (!in_array($backendName, ['mysql', 'pgsql', 'redis', 'file'])) {
+                $this->logWarning('Autocomplete only supported for MySQL, PostgreSQL, Redis, and File backends', [
+                    'backend' => $backendName,
+                    'index' => $indexHandle,
+                ]);
                 return null;
             }
 
@@ -492,8 +319,9 @@ class AutocompleteService extends Component
                 /** @var \lindemannrock\searchmanager\backends\MySqlBackend|\lindemannrock\searchmanager\backends\PostgreSqlBackend|\lindemannrock\searchmanager\backends\RedisBackend|\lindemannrock\searchmanager\backends\FileBackend $backend */
                 $storage = $backend->getStorage($indexHandle);
 
-                $this->logDebug('Retrieved storage from backend', [
+                $this->logDebug('Retrieved storage from backend for index', [
                     'backend' => $backendName,
+                    'index' => $indexHandle,
                     'storage' => get_class($storage),
                 ]);
 
@@ -502,12 +330,13 @@ class AutocompleteService extends Component
 
             $this->logError('Backend does not support getStorage()', [
                 'backend' => $backendName,
+                'index' => $indexHandle,
             ]);
 
             return null;
         } catch (\Throwable $e) {
             $this->logError('Failed to get storage from backend', [
-                'backend' => $backendName,
+                'index' => $indexHandle,
                 'error' => $e->getMessage(),
             ]);
             return null;

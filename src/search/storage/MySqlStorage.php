@@ -296,6 +296,40 @@ class MySqlStorage implements StorageInterface
         )->execute();
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
+    {
+        $query = (new \craft\db\Query())
+            ->select(['term', 'SUM(frequency) as total_freq'])
+            ->from('{{%searchmanager_search_terms}}')
+            ->where(['indexHandle' => $this->indexHandle]);
+
+        // Filter by siteId only if provided (for site-specific indices)
+        if ($siteId !== null) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        // Filter by language if provided
+        if ($language !== null) {
+            $query->andWhere(['language' => $language]);
+        }
+
+        $results = $query
+            ->groupBy(['term'])
+            ->orderBy(['total_freq' => SORT_DESC])
+            ->limit($limit)
+            ->all();
+
+        $terms = [];
+        foreach ($results as $row) {
+            $terms[$row['term']] = (int)$row['total_freq'];
+        }
+
+        return $terms;
+    }
+
     // =========================================================================
     // ELEMENT OPERATIONS (for rich autocomplete suggestions)
     // =========================================================================

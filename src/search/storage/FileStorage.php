@@ -248,6 +248,61 @@ class FileStorage implements StorageInterface
         }
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
+    {
+        $termsPath = $this->basePath . '/terms';
+
+        if (!is_dir($termsPath)) {
+            return [];
+        }
+
+        // File storage uses: term_siteId.dat format (e.g., test_1.dat)
+        if ($siteId !== null) {
+            // Specific site
+            $files = glob($termsPath . '/*_' . $siteId . '.dat');
+        } else {
+            // All sites - get all .dat files
+            $files = glob($termsPath . '/*.dat');
+        }
+
+        if (!is_array($files)) {
+            return [];
+        }
+
+        $terms = [];
+        foreach ($files as $file) {
+            $basename = basename($file, '.dat');
+            // Extract term from filename (test_1 → test)
+            $parts = explode('_', $basename);
+            array_pop($parts); // Remove site ID
+            $term = implode('_', $parts);
+
+            // Read serialized data
+            $data = $this->readFile($file);
+            $count = is_array($data) ? count($data) : 0;
+
+            if ($count > 0) {
+                // Aggregate frequencies for all-sites
+                if (isset($terms[$term])) {
+                    $terms[$term] += $count;
+                } else {
+                    $terms[$term] = $count;
+                }
+            }
+
+            if (count($terms) >= $limit) {
+                break;
+            }
+        }
+
+        arsort($terms);
+
+        return $terms;
+    }
+
     // =========================================================================
     // TITLE OPERATIONS
     // =========================================================================

@@ -281,6 +281,57 @@ class RedisStorage implements StorageInterface
         $this->redis->hDel($key, $docId);
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
+    {
+        // Pattern: {prefix}term:TERM:SITE_ID
+        // For all-sites indices (siteId = null), match all siteIds with wildcard
+        if ($siteId !== null) {
+            $pattern = $this->keyPrefix . 'term:*:' . $siteId;
+        } else {
+            // All sites - use wildcard for siteId
+            $pattern = $this->keyPrefix . 'term:*';
+        }
+
+        $keys = $this->redis->keys($pattern);
+
+        if (!is_array($keys) || empty($keys)) {
+            return [];
+        }
+
+        $terms = [];
+        foreach ($keys as $key) {
+            // Key format: {prefix}term:TERM:SITE_ID
+            // Extract TERM from the key
+            $parts = explode(':', $key);
+            $termIndex = array_search('term', $parts);
+
+            if ($termIndex !== false && isset($parts[$termIndex + 1])) {
+                $term = $parts[$termIndex + 1];
+
+                // Get document count for this term
+                $count = $this->redis->hLen($key);
+
+                // Aggregate frequencies for all-sites
+                if (isset($terms[$term])) {
+                    $terms[$term] += $count;
+                } else {
+                    $terms[$term] = $count;
+                }
+            }
+
+            if (count($terms) >= $limit) {
+                break;
+            }
+        }
+
+        arsort($terms);
+
+        return $terms;
+    }
+
     // =========================================================================
     // TITLE OPERATIONS
     // =========================================================================
