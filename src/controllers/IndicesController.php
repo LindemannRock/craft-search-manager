@@ -202,6 +202,61 @@ class IndicesController extends Controller
     }
 
     /**
+     * Clear cache for a specific index (search cache + autocomplete cache)
+     */
+    public function actionClearCache(): Response
+    {
+        $this->requirePermission('searchManager:clearCache');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
+
+        // Support both numeric IDs (database indices) and string handles (config indices)
+        if (is_numeric($indexId)) {
+            $index = SearchIndex::findById((int)$indexId);
+        } else {
+            $index = SearchIndex::findByHandle($indexId);
+        }
+
+        if (!$index) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Index not found.'),
+            ]);
+        }
+
+        try {
+            // Clear search cache for this index
+            SearchManager::$plugin->backend->clearSearchCache($index->handle);
+
+            // Clear autocomplete cache for this index
+            SearchManager::$plugin->autocomplete->clearCache($index->handle);
+
+            $this->logInfo('Index cache cleared', [
+                'index' => $index->handle,
+            ]);
+
+            return $this->asJson([
+                'success' => true,
+                'message' => Craft::t('search-manager', 'Cache cleared for "{name}".', [
+                    'name' => $index->name,
+                ]),
+            ]);
+        } catch (\Throwable $e) {
+            $this->logError('Failed to clear index cache', [
+                'index' => $index->handle,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Failed to clear cache.'),
+            ]);
+        }
+    }
+
+    /**
      * Rebuild an index
      */
     public function actionRebuild(): Response

@@ -78,8 +78,11 @@
         <button type="button" id="testButton" class="btn submit">{{ "Search"|t('search-manager') }}</button>
         {% if cacheEnabled %}
             <button type="button" id="clearCacheButton" class="btn">{{ "Clear Search Cache"|t('search-manager') }}</button>
-            <span id="cacheStatus" style="font-size: 0.9em; color: #666;"></span>
         {% endif %}
+        {% if settings.enableAutocompleteCache %}
+            <button type="button" id="clearAutocompleteCacheButton" class="btn">{{ "Clear Autocomplete Cache"|t('search-manager') }}</button>
+        {% endif %}
+        <span id="cacheStatus" style="font-size: 0.9em; color: #666;"></span>
     </div>
 </div>
 
@@ -213,6 +216,45 @@ document.addEventListener('DOMContentLoaded', function() {
             .catch(error => {
                 clearCacheButton.disabled = false;
                 clearCacheButton.textContent = 'Clear Search Cache';
+                cacheStatus.textContent = error.message;
+                cacheStatus.style.color = '#dc2626';
+            });
+        });
+    }
+
+    // Clear autocomplete cache handler
+    const clearAutocompleteCacheButton = document.getElementById('clearAutocompleteCacheButton');
+    if (clearAutocompleteCacheButton) {
+        clearAutocompleteCacheButton.addEventListener('click', function() {
+            const indexHandle = testIndexSelect.value;
+            clearAutocompleteCacheButton.disabled = true;
+            clearAutocompleteCacheButton.textContent = 'Clearing...';
+
+            fetch('{{ actionUrl('search-manager/utilities/clear-autocomplete-cache') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+                },
+                body: JSON.stringify({ indexHandle: indexHandle })
+            })
+            .then(response => response.json())
+            .then(data => {
+                clearAutocompleteCacheButton.disabled = false;
+                clearAutocompleteCacheButton.textContent = 'Clear Autocomplete Cache';
+                if (data.success) {
+                    cacheStatus.textContent = data.message;
+                    cacheStatus.style.color = '#059669';
+                    setTimeout(() => { cacheStatus.textContent = ''; }, 3000);
+                } else {
+                    cacheStatus.textContent = data.error || 'Failed to clear autocomplete cache';
+                    cacheStatus.style.color = '#dc2626';
+                }
+            })
+            .catch(error => {
+                clearAutocompleteCacheButton.disabled = false;
+                clearAutocompleteCacheButton.textContent = 'Clear Autocomplete Cache';
                 cacheStatus.textContent = error.message;
                 cacheStatus.style.color = '#dc2626';
             });

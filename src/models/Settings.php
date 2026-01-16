@@ -261,6 +261,16 @@ class Settings extends Model
      */
     public bool $autocompleteFuzzy = false;
 
+    /**
+     * @var bool Enable autocomplete result caching
+     */
+    public bool $enableAutocompleteCache = true;
+
+    /**
+     * @var int Autocomplete cache duration in seconds (default: 5 minutes)
+     */
+    public int $autocompleteCacheDuration = 300;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -315,6 +325,7 @@ class Settings extends Model
             'enableHighlighting',
             'enableAutocomplete',
             'autocompleteFuzzy',
+            'enableAutocompleteCache',
         ];
     }
 
@@ -333,6 +344,7 @@ class Settings extends Model
             'maxSnippets',
             'autocompleteMinLength',
             'autocompleteLimit',
+            'autocompleteCacheDuration',
         ];
     }
 

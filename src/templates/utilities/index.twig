@@ -113,7 +113,7 @@
 {# Determine what sections to show #}
 {% set hasNavigation = canViewIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
 {% set hasIndexManagement = canRebuildIndices %}
-{% set hasCacheManagement = canClearCache and (settings.cacheDeviceDetection or settings.enableCache) %}
+{% set hasCacheManagement = canClearCache and (settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache) %}
 {% set hasAnalyticsManagement = canClearAnalytics and settings.enableAnalytics %}
 {% set hasAnyQuickAction = hasNavigation or hasIndexManagement or hasCacheManagement or hasAnalyticsManagement %}
 
@@ -210,9 +210,15 @@
                     </button>
                 {% endif %}
 
-                {% if settings.cacheDeviceDetection and settings.enableCache %}
+                {% if settings.enableAutocompleteCache %}
+                    <button type="button" class="btn" id="clear-autocomplete-cache">
+                        {{ "Clear Autocomplete Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ autocompleteCacheFiles|number_format }}){% endif %}
+                    </button>
+                {% endif %}
+
+                {% if settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache %}
                     <button type="button" class="btn secondary" id="clear-all-caches">
-                        {{ "Clear All Caches"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ (deviceCacheFiles + searchCacheFiles)|number_format }}){% endif %}
+                        {{ "Clear All Caches"|t('search-manager') }}
                     </button>
                 {% endif %}
             </div>
@@ -324,6 +330,36 @@ $('#clear-search-cache').on('click', function() {
         },
         error: function() {
             Craft.cp.displayError('{{ "Failed to clear search cache"|t('search-manager')|e('js') }}');
+        },
+        complete: function() {
+            $btn.removeClass('loading').prop('disabled', false);
+        }
+    });
+});
+{% endif %}
+
+{% if settings.enableAutocompleteCache %}
+$('#clear-autocomplete-cache').on('click', function() {
+    const $btn = $(this);
+    $btn.addClass('loading').prop('disabled', true);
+
+    $.ajax({
+        url: '{{ actionUrl('search-manager/utilities/clear-autocomplete-cache')|raw }}',
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                Craft.cp.displayNotice(response.message);
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                Craft.cp.displayError(response.error || '{{ "Failed to clear autocomplete cache"|t('search-manager')|e('js') }}');
+            }
+        },
+        error: function() {
+            Craft.cp.displayError('{{ "Failed to clear autocomplete cache"|t('search-manager')|e('js') }}');
         },
         complete: function() {
             $btn.removeClass('loading').prop('disabled', false);

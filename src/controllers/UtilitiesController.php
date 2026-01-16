@@ -39,6 +39,7 @@ class UtilitiesController extends Controller
                 break;
             case 'clear-device-cache':
             case 'clear-search-cache':
+            case 'clear-autocomplete-cache':
             case 'clear-all-caches':
                 $this->requirePermission('searchManager:clearCache');
                 break;
@@ -288,7 +289,49 @@ class UtilitiesController extends Controller
     }
 
     /**
-     * Clear all caches (device + search)
+     * Clear autocomplete cache
+     */
+    public function actionClearAutocompleteCache(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        try {
+            SearchManager::$plugin->autocomplete->clearCache();
+
+            $settings = SearchManager::$plugin->getSettings();
+            if ($settings->cacheStorageMethod === 'redis') {
+                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully.');
+            } else {
+                $cachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/autocomplete-cache';
+                $fileCount = 0;
+                if (is_dir($cachePath)) {
+                    $files = glob($cachePath . '/*.cache');
+                    $fileCount = count($files ?: []);
+                }
+                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully ({count} files).', ['count' => $fileCount]);
+            }
+
+            $this->logInfo('Autocomplete cache cleared via utility');
+
+            return $this->asJson([
+                'success' => true,
+                'message' => $message,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logError('Failed to clear autocomplete cache', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Failed to clear autocomplete cache.'),
+            ]);
+        }
+    }
+
+    /**
+     * Clear all caches (device + search + autocomplete)
      */
     public function actionClearAllCaches(): Response
     {
@@ -306,6 +349,7 @@ class UtilitiesController extends Controller
                     // Get all cache keys from tracking sets
                     $searchKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
                     $deviceKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
+                    $autocompleteKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-autocomplete-keys']) ?: [];
 
                     // Delete search cache keys
                     foreach ($searchKeys as $key) {
@@ -317,9 +361,15 @@ class UtilitiesController extends Controller
                         $cache->delete($key);
                     }
 
+                    // Delete autocomplete cache keys
+                    foreach ($autocompleteKeys as $key) {
+                        $cache->delete($key);
+                    }
+
                     // Clear the tracking sets
                     $redis->executeCommand('DEL', ['searchmanager-search-keys']);
                     $redis->executeCommand('DEL', ['searchmanager-device-keys']);
+                    $redis->executeCommand('DEL', ['searchmanager-autocomplete-keys']);
                 }
 
                 $message = Craft::t('search-manager', 'All caches cleared successfully.');
@@ -340,6 +390,14 @@ class UtilitiesController extends Controller
                     $files = glob($searchCachePath . '/*.cache');
                     $totalFiles += count($files ?: []);
                     FileHelper::clearDirectory($searchCachePath);
+                }
+
+                // Clear autocomplete cache
+                $autocompleteCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/autocomplete-cache';
+                if (is_dir($autocompleteCachePath)) {
+                    $files = glob($autocompleteCachePath . '/*.cache');
+                    $totalFiles += count($files ?: []);
+                    FileHelper::clearDirectory($autocompleteCachePath);
                 }
 
                 $message = Craft::t('search-manager', 'All caches cleared successfully ({count} files).', ['count' => $totalFiles]);

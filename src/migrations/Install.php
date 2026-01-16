@@ -115,6 +115,8 @@ class Install extends Migration
             'autocompleteMinLength' => $this->integer()->notNull()->defaultValue(2),
             'autocompleteLimit' => $this->integer()->notNull()->defaultValue(10),
             'autocompleteFuzzy' => $this->boolean()->notNull()->defaultValue(false),
+            'enableAutocompleteCache' => $this->boolean()->notNull()->defaultValue(true),
+            'autocompleteCacheDuration' => $this->integer()->notNull()->defaultValue(300),
             // Cache Settings
             'enableCache' => $this->boolean()->notNull()->defaultValue(true),
             'cacheDuration' => $this->integer()->notNull()->defaultValue(3600),
@@ -325,6 +327,8 @@ class Install extends Migration
             'autocompleteMinLength' => 2,
             'autocompleteLimit' => 10,
             'autocompleteFuzzy' => 0,
+            'enableAutocompleteCache' => 1,
+            'autocompleteCacheDuration' => 300,
             'enableCache' => 1,
             'cacheDuration' => 3600,
             'cachePopularQueriesOnly' => 0,

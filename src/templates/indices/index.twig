@@ -466,6 +466,14 @@
 												</li>
 											{% endif %}
 
+											{% if currentUser.can('searchManager:clearCache') and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
+												<li>
+													<a class="index-action" data-action="clear-cache" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
+														{{ 'Clear Index Cache'|t('search-manager') }}
+													</a>
+												</li>
+											{% endif %}
+
 											{% if index.canEdit() and currentUser.can('searchManager:deleteIndices') %}
 												<li><hr class="padded"></li>
 												<li>
@@ -724,6 +732,10 @@
 				if (confirm('Clear all data from index "' + indexName + '"? This cannot be undone.')) {
 					submitIndexAction('search-manager/indices/clear', indexId);
 				}
+			} else if (action === 'clear-cache') {
+				if (confirm('Clear cached search results and autocomplete suggestions for "' + indexName + '"?')) {
+					submitIndexCacheAction('search-manager/indices/clear-cache', indexId, indexName);
+				}
 			} else if (action === 'delete') {
 				if (confirm('Delete index "' + indexName + '"? This will remove the index and all its data.')) {
 					submitIndexAction('search-manager/indices/delete', indexId);
@@ -751,6 +763,20 @@
 
 		document.body.appendChild(form);
 		form.submit();
+	}
+
+	function submitIndexCacheAction(action, indexId, indexName) {
+		Craft.sendActionRequest('POST', action, {
+			data: { indexId: indexId }
+		}).then(function(response) {
+			if (response.data.success) {
+				Craft.cp.displayNotice(response.data.message || 'Cache cleared for "' + indexName + '"');
+			} else {
+				Craft.cp.displayError(response.data.error || 'Failed to clear cache');
+			}
+		}).catch(function(error) {
+			Craft.cp.displayError('Failed to clear cache for "' + indexName + '"');
+		});
 	}
 
 	// Config tooltip for config-based indices

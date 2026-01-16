@@ -141,6 +141,47 @@
 
 		<hr>
 
+		<h2>{{ "Autocomplete Caching"|t('search-manager') }}</h2>
+
+		{{ forms.lightswitchField({
+            label: 'Cache Autocomplete Results'|t('search-manager'),
+            instructions: 'Cache autocomplete suggestions separately from search results. Uses a shorter TTL since autocomplete is called more frequently.'|t('search-manager'),
+            id: 'enableAutocompleteCache',
+            name: 'settings[enableAutocompleteCache]',
+            on: settings.enableAutocompleteCache ?? true,
+            toggle: 'autocomplete-cache-settings',
+            disabled: settings.isOverriddenByConfig('enableAutocompleteCache'),
+            warning: settings.isOverriddenByConfig('enableAutocompleteCache') ?
+                "This is being overridden by the <code>enableAutocompleteCache</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+          }) }}
+
+		<div id="autocomplete-cache-settings" class="{{ not (settings.enableAutocompleteCache ?? true) ? 'hidden' }}">
+			{{ forms.textField({
+				label: 'Autocomplete Cache Duration'|t('search-manager'),
+				instructions: ('Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>')|raw,
+				id: 'autocompleteCacheDuration',
+				name: 'settings[autocompleteCacheDuration]',
+				value: settings.autocompleteCacheDuration ?? 300,
+				type: 'number',
+				min: '60',
+				max: '3600',
+				tip: 'Min: 60 (1 minute), Max: 3600 (1 hour). Default: 300 (5 minutes)'|t('search-manager'),
+				disabled: settings.isOverriddenByConfig('autocompleteCacheDuration'),
+				warning: settings.isOverriddenByConfig('autocompleteCacheDuration') ?
+					"This is being overridden by the <code>autocompleteCacheDuration</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+				errors: settings.getErrors('autocompleteCacheDuration')
+			}) }}
+
+			{% include 'lindemannrock-base/_components/info-box' with {
+				message: '<strong>How it works:</strong><br>
+• Autocomplete suggestions are cached per query prefix, index, and language<br>
+• Uses the same storage method as search results (file or Redis)<br>
+• Cache is cleared when content is re-indexed'
+			} %}
+		</div>
+
+		<hr>
+
 		<h2>{{ "Cache Invalidation"|t('search-manager') }}</h2>
 
 		{{ forms.lightswitchField({
@@ -293,8 +334,13 @@ $('#deviceDetectionCacheDuration').on('input', function() {
 	$('#deviceDetectionCacheDuration-human').text(secondsToHuman($(this).val()));
 });
 
+$('#autocompleteCacheDuration').on('input', function() {
+	$('#autocompleteCacheDuration-human').text(secondsToHuman($(this).val()));
+});
+
 // Initialize on page load
 $('#cacheDuration-human').text(secondsToHuman($('#cacheDuration').val()));
 $('#deviceDetectionCacheDuration-human').text(secondsToHuman($('#deviceDetectionCacheDuration').val()));
+$('#autocompleteCacheDuration-human').text(secondsToHuman($('#autocompleteCacheDuration').val()));
 {% endjs %}
 

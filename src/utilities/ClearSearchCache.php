@@ -100,6 +100,7 @@ class ClearSearchCache extends Utility
         // Count cache files (only for file storage)
         $deviceCacheFiles = 0;
         $searchCacheFiles = 0;
+        $autocompleteCacheFiles = 0;
 
         // Only count files when using file storage (Redis counts are not displayed)
         if ($settings->cacheStorageMethod === 'file') {
@@ -114,6 +115,12 @@ class ClearSearchCache extends Utility
                 $files = glob($searchCachePath . '/*.cache');
                 $searchCacheFiles = count($files ?: []);
             }
+
+            $autocompleteCachePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/autocomplete-cache';
+            if (is_dir($autocompleteCachePath)) {
+                $files = glob($autocompleteCachePath . '/*.cache');
+                $autocompleteCacheFiles = count($files ?: []);
+            }
         }
 
         return Craft::$app->getView()->renderTemplate('search-manager/utilities/index', [
@@ -124,6 +131,7 @@ class ClearSearchCache extends Utility
             'indices' => $indices,
             'deviceCacheFiles' => $deviceCacheFiles,
             'searchCacheFiles' => $searchCacheFiles,
+            'autocompleteCacheFiles' => $autocompleteCacheFiles,
             'storageMethod' => $settings->cacheStorageMethod,
             'analyticsCount' => (int) $analyticsCount,
             'settings' => $settings,

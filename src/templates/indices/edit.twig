@@ -378,6 +378,14 @@ document.addEventListener('DOMContentLoaded', function() {
 									</a>
 								</li>
 								{% endif %}
+								{% if currentUser.can('searchManager:clearCache') and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
+								<li><hr class="padded"></li>
+								<li>
+									<a id="clear-index-cache-btn" href="#">
+										{{ "Clear Index Cache"|t('search-manager') }}
+									</a>
+								</li>
+								{% endif %}
 							</ul>
 						</div>
 					</div>
@@ -444,5 +452,28 @@ document.addEventListener('DOMContentLoaded', function() {
 	const saveShortcut = document.getElementById('save-shortcut');
 	if (saveShortcut) {
 		saveShortcut.textContent = isMac ? '⌘S' : 'Ctrl+S';
+	}
+
+	// Clear index cache handler
+	const clearCacheBtn = document.getElementById('clear-index-cache-btn');
+	if (clearCacheBtn) {
+		clearCacheBtn.addEventListener('click', function(e) {
+			e.preventDefault();
+			if (!confirm('{{ "Clear cached search results and autocomplete suggestions for this index?"|t('search-manager')|e('js') }}')) {
+				return;
+			}
+
+			Craft.sendActionRequest('POST', 'search-manager/indices/clear-cache', {
+				data: { indexId: {{ index.id }} }
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(response.data.message || '{{ "Cache cleared successfully"|t('search-manager')|e('js') }}');
+				} else {
+					Craft.cp.displayError(response.data.error || '{{ "Failed to clear cache"|t('search-manager')|e('js') }}');
+				}
+			}).catch(function(error) {
+				Craft.cp.displayError('{{ "Failed to clear cache"|t('search-manager')|e('js') }}');
+			});
+		});
 	}
 {% endjs %}
