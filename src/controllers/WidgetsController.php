@@ -31,7 +31,7 @@ class WidgetsController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePermission('searchManager:viewWidgetConfigs');
 
         $widgetConfigs = SearchManager::$plugin->widgetConfigs->getAll();
 
@@ -45,14 +45,14 @@ class WidgetsController extends Controller
      */
     public function actionEdit(?int $configId = null): Response
     {
-        $this->requirePermission('searchManager:manageSettings');
-
         if ($configId) {
+            $this->requirePermission('searchManager:editWidgetConfigs');
             $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
             if (!$widgetConfig) {
                 throw new NotFoundHttpException('Widget config not found');
             }
         } else {
+            $this->requirePermission('searchManager:createWidgetConfigs');
             $widgetConfig = new WidgetConfig();
             $widgetConfig->settings = WidgetConfig::defaultSettings();
         }
@@ -73,17 +73,18 @@ class WidgetsController extends Controller
     public function actionSave(): ?Response
     {
         $this->requirePostRequest();
-        $this->requirePermission('searchManager:manageSettings');
 
         $request = Craft::$app->getRequest();
         $configId = $request->getBodyParam('configId');
 
         if ($configId) {
+            $this->requirePermission('searchManager:editWidgetConfigs');
             $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
             if (!$widgetConfig) {
                 throw new NotFoundHttpException('Widget config not found');
             }
         } else {
+            $this->requirePermission('searchManager:createWidgetConfigs');
             $widgetConfig = new WidgetConfig();
         }
 
@@ -158,7 +159,7 @@ class WidgetsController extends Controller
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
-        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePermission('searchManager:deleteWidgetConfigs');
 
         $configId = Craft::$app->getRequest()->getRequiredBodyParam('configId');
 
@@ -186,7 +187,7 @@ class WidgetsController extends Controller
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
-        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePermission('searchManager:editWidgetConfigs');
 
         $configId = Craft::$app->getRequest()->getRequiredBodyParam('configId');
 
@@ -211,7 +212,7 @@ class WidgetsController extends Controller
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
-        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePermission('searchManager:editWidgetConfigs');
 
         $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
         $count = 0;
@@ -236,7 +237,7 @@ class WidgetsController extends Controller
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
-        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePermission('searchManager:editWidgetConfigs');
 
         $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
         $count = 0;
@@ -261,7 +262,7 @@ class WidgetsController extends Controller
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
-        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePermission('searchManager:deleteWidgetConfigs');
 
         $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
         $count = 0;

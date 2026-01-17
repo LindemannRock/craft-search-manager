@@ -159,6 +159,22 @@ If you are using this plugin, please be aware that future versions may have diff
 - **Priority System** - Higher priority rules applied first
 - **Global or Index-Specific** - Apply rules to all indices or specific ones
 
+### Search Widget (Frontend)
+- **CMD+K Style Modal** - Beautiful, accessible search modal with keyboard navigation
+- **Customizable Appearance** - Full control over colors, fonts, spacing, and border radius
+- **Light & Dark Themes** - Built-in theme support with customizable colors for each
+- **Term Highlighting** - Highlight matched terms in results with configurable colors
+- **Recent Searches** - Store and display recent search history (optional)
+- **Grouped Results** - Group results by type/section (optional)
+- **Keyboard Shortcuts** - Configurable hotkey to open (default: CMD+K / Ctrl+K)
+- **Trigger Button** - Optional trigger button with customizable text
+- **External Triggers** - Connect any element via CSS selector to open the modal
+- **Click Analytics** - Track which results users click
+- **RTL Support** - Full right-to-left language support
+- **Backdrop Options** - Configurable opacity and blur effect
+- **Multiple Configs** - Create different widget configurations for different use cases
+- **Web Component** - Uses `<search-widget>` custom element for easy integration
+
 ### Control Panel Interface
 - Full CP section for managing indices
 - Promotions management with filtering and bulk actions
@@ -1311,6 +1327,133 @@ The Recent Searches tab displays source information:
 
 Exported analytics include Platform and App Version columns for detailed analysis.
 
+### Search Widget (Frontend Component)
+
+The Search Widget provides a ready-to-use CMD+K style search modal for your frontend. It's a web component that handles all the UI, keyboard navigation, and search functionality.
+
+**Basic Usage:**
+
+```twig
+{# Include the search widget with default config #}
+{% include 'search-manager/_widget/search' %}
+
+{# Include with a specific config handle #}
+{% include 'search-manager/_widget/search' with {
+    config: 'homepage',
+} %}
+```
+
+**Customizing via Twig Parameters:**
+
+```twig
+{% include 'search-manager/_widget/search' with {
+    config: 'homepage',
+    indices: ['blog', 'products'],
+    placeholder: 'Search articles...',
+    theme: 'dark',
+    maxResults: 15,
+    debounce: 300,
+    minChars: 2,
+    showRecent: true,
+    groupResults: true,
+    hotkey: 'k',
+    showTrigger: true,
+    triggerText: 'Search',
+    triggerSelector: '#my-search-btn',
+    enableHighlighting: true,
+    highlightTag: 'mark',
+    highlightClass: 'search-highlight',
+    backdropOpacity: 50,
+    enableBackdropBlur: true,
+    preventBodyScroll: true,
+} %}
+```
+
+**Available Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `config` | string | Widget config handle (loads settings from CP) |
+| `indices` | array | Search index handles (empty = search all) |
+| `placeholder` | string | Input placeholder text |
+| `theme` | string | 'light' or 'dark' |
+| `maxResults` | int | Maximum results to show |
+| `debounce` | int | Debounce delay in ms |
+| `minChars` | int | Minimum characters before searching |
+| `showRecent` | bool | Show recent searches |
+| `groupResults` | bool | Group results by type/section |
+| `hotkey` | string | Keyboard shortcut key |
+| `showTrigger` | bool | Show the trigger button |
+| `triggerText` | string | Trigger button text |
+| `triggerSelector` | string | CSS selector for external trigger |
+| `siteId` | int | Specific site ID to search |
+| `class` | string | Additional CSS class |
+| `dir` | string | Text direction 'ltr' or 'rtl' |
+| `enableHighlighting` | bool | Enable term highlighting |
+| `highlightTag` | string | HTML tag for highlights |
+| `highlightClass` | string | CSS class for highlights |
+| `backdropOpacity` | int | Backdrop opacity 0-100 |
+| `enableBackdropBlur` | bool | Enable backdrop blur |
+| `preventBodyScroll` | bool | Prevent body scroll when open |
+| `styles` | object | Override individual style values |
+
+**Connecting External Triggers:**
+
+```twig
+{# Your custom search button #}
+<button id="my-search-btn" class="search-button">
+    <svg>...</svg> Search
+</button>
+
+{# Widget with external trigger #}
+{% include 'search-manager/_widget/search' with {
+    showTrigger: false,
+    triggerSelector: '#my-search-btn',
+} %}
+```
+
+**Style Overrides:**
+
+```twig
+{% include 'search-manager/_widget/search' with {
+    styles: {
+        modalBg: '#1a1a1a',
+        modalBorderRadius: '16',
+        inputBg: '#2a2a2a',
+        inputTextColor: '#ffffff',
+        resultHoverBg: '#333333',
+    }
+} %}
+```
+
+**Managing Widget Configs (CP):**
+
+Widget configurations can be managed in the Control Panel under Search Manager → Widgets:
+
+- **Settings Tab**: Name, handle, search indices
+- **Behavior Tab**: Debounce, min chars, max results, recent searches, grouped results, hotkey
+- **Appearance Tab**: Colors, fonts, spacing, border radius, highlighting colors
+
+**Programmatic Opening:**
+
+```javascript
+// Get the widget element
+const widget = document.querySelector('search-widget');
+
+// Open programmatically
+widget.open();
+
+// Close programmatically
+widget.close();
+
+// Toggle
+widget.toggle();
+```
+
+**Click Analytics:**
+
+The widget automatically tracks which results users click. This data appears in the Analytics section of the CP.
+
 ### Promotions (Pinned Results)
 
 Promotions allow you to pin specific elements to fixed positions in search results, bypassing normal relevance scoring.
@@ -2052,19 +2195,52 @@ Event::on(
 
 ## Permissions
 
-- **View indices**: Can view search indices in CP
-- **Manage indices**: Can create, edit, delete indices
+### Backends
+- **Manage backends**: Full access to search backends
+  - **View backends**: Can view backends in CP
+  - **Create backends**: Can create new backends
+  - **Edit backends**: Can edit existing backends
+  - **Delete backends**: Can delete backends
+
+### Indices
+- **Manage indices**: Full access to search indices
+  - **View indices**: Can view search indices in CP
   - **Create indices**: Can create new indices
   - **Edit indices**: Can edit existing indices
   - **Delete indices**: Can delete indices
   - **Rebuild indices**: Can rebuild indices
   - **Clear indices**: Can clear index data
-  - **Manage promotions**: Can create, edit, delete promotions (pinned results)
-  - **Manage query rules**: Can create, edit, delete query rules (synonyms, boosts, etc.)
-- **Clear cache**: Can clear search, autocomplete, and device caches (global and per-index)
+
+### Promotions
+- **Manage promotions**: Full access to promotions (pinned results)
+  - **View promotions**: Can view promotions in CP
+  - **Create promotions**: Can create new promotions
+  - **Edit promotions**: Can edit existing promotions
+  - **Delete promotions**: Can delete promotions
+
+### Query Rules
+- **Manage query rules**: Full access to query rules (synonyms, boosts, etc.)
+  - **View query rules**: Can view query rules in CP
+  - **Create query rules**: Can create new query rules
+  - **Edit query rules**: Can edit existing query rules
+  - **Delete query rules**: Can delete query rules
+
+### Widget Configs
+- **Manage widget configs**: Full access to frontend search widget configurations
+  - **View widget configs**: Can view widget configs in CP
+  - **Create widget configs**: Can create new widget configs
+  - **Edit widget configs**: Can edit existing widget configs
+  - **Delete widget configs**: Can delete widget configs
+
+### Analytics
 - **View analytics**: Can view analytics dashboard and search statistics
-- **Export analytics**: Can export analytics data
+  - **Export analytics**: Can export analytics data
+  - **Clear analytics**: Can clear analytics data
+
+### Other
+- **Clear cache**: Can clear search, autocomplete, and device caches (global and per-index)
 - **View logs**: Can view plugin logs
+  - **Download logs**: Can download log files
 - **Manage settings**: Can change plugin settings
 
 ## Configuration

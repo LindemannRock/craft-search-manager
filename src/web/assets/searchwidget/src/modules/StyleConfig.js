@@ -15,6 +15,7 @@ export const STYLE_MAPPINGS = {
     modalBorderColor: '--sm-modal-border-color',
     modalBorderColorDark: '--sm-modal-border-color-dark',
     modalShadow: '--sm-modal-shadow',
+    modalShadowDark: '--sm-modal-shadow-dark',
     modalMaxWidth: '--sm-modal-width',
 
     // Input
@@ -107,6 +108,7 @@ export const DEFAULT_STYLES = {
     modalBorderColor: '#e5e7eb',
     modalBorderColorDark: '#374151',
     modalShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    modalShadowDark: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
     modalMaxWidth: '640',
 
     // Input

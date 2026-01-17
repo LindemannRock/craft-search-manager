@@ -530,6 +530,79 @@ return [
         ],
 
         // ========================================
+        // WIDGET CONFIGURATIONS
+        // ========================================
+
+        /**
+         * Define search widget configurations
+         * These will be merged with configs created via Control Panel
+         * Configs defined here are marked as source='config' and cannot be edited in CP
+         *
+         * Available options:
+         * - name: Display name for the config
+         * - enabled: Whether the config is active
+         * - isDefault: Set as the default config (only one can be default)
+         * - settings: Widget settings (merged with defaults)
+         *   - search.indexHandles: Array of index handles to search (empty = all)
+         *   - highlighting: Highlight settings (enabled, tag, class, colors)
+         *   - backdrop: Modal backdrop (opacity, blur)
+         *   - behavior: Widget behavior (debounce, minChars, maxResults, hotkey, etc.)
+         *   - trigger: Trigger button (showTrigger, triggerText)
+         *   - styles: Visual styles (colors, borders, fonts for light/dark modes)
+         */
+        'widgetConfigs' => [
+            // Example: Brand-themed search widget
+            // 'brand-search' => [
+            //     'name' => 'Brand Search',
+            //     'enabled' => true,
+            //     'isDefault' => false,
+            //     'settings' => [
+            //         'search' => [
+            //             'indexHandles' => ['entries-en'], // Search specific indices
+            //         ],
+            //         'behavior' => [
+            //             'debounce' => 300,
+            //             'minChars' => 2,
+            //             'maxResults' => 8,
+            //             'hotkey' => 'k',
+            //         ],
+            //         'styles' => [
+            //             // Light mode brand colors
+            //             'modalBg' => '#ffffff',
+            //             'modalBorderColor' => '#0066cc',
+            //             'inputTextColor' => '#1a1a1a',
+            //             'resultTextColor' => '#1a1a1a',
+            //             // Dark mode brand colors
+            //             'modalBgDark' => '#1a1a2e',
+            //             'modalBorderColorDark' => '#4da6ff',
+            //             'inputTextColorDark' => '#f0f0f0',
+            //             'resultTextColorDark' => '#f0f0f0',
+            //         ],
+            //     ],
+            // ],
+
+            // Example: Minimal search widget
+            // 'minimal' => [
+            //     'name' => 'Minimal',
+            //     'enabled' => true,
+            //     'settings' => [
+            //         'behavior' => [
+            //             'showRecent' => false,
+            //             'groupResults' => false,
+            //         ],
+            //         'trigger' => [
+            //             'showTrigger' => false,
+            //         ],
+            //         'styles' => [
+            //             'modalBorderRadius' => '4',
+            //             'modalBorderWidth' => '1',
+            //             'resultBorderRadius' => '2',
+            //         ],
+            //     ],
+            // ],
+        ],
+
+        // ========================================
         // TRANSFORMER SETTINGS
         // ========================================
 

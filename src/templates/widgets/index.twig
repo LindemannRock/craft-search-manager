@@ -11,14 +11,23 @@
 {# Get query parameters #}
 {% set search = craft.app.request.getParam('search', '') %}
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
+{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
 {% set sort = craft.app.request.getParam('sort', 'name') %}
 {% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = settings.itemsPerPage %}
 {% set offset = (page - 1) * limit %}
 
+{# Source colors (same as backends/indices) #}
+{% set sourceColors = { config: '#0ea5e9', database: '#84cc16' } %}
+{% set sourceRgb = { config: '14, 165, 233', database: '132, 204, 22' } %}
+{% set sourceTextColors = { config: '#0c4a6e', database: '#1a2e05' } %}
+
 {# Permission checks #}
-{% set showActionsColumn = currentUser.can('searchManager:manageSettings') %}
+{% set canCreate = currentUser.can('searchManager:createWidgetConfigs') %}
+{% set canEdit = currentUser.can('searchManager:editWidgetConfigs') %}
+{% set canDelete = currentUser.can('searchManager:deleteWidgetConfigs') %}
+{% set showActionsColumn = canEdit or canDelete %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -33,6 +42,13 @@
 	{% set filteredConfigs = filteredConfigs|filter(c => c.enabled) %}
 {% elseif statusFilter == 'disabled' %}
 	{% set filteredConfigs = filteredConfigs|filter(c => not c.enabled) %}
+{% endif %}
+
+{# Source filter #}
+{% if sourceFilter == 'config' %}
+	{% set filteredConfigs = filteredConfigs|filter(c => c.source == 'config') %}
+{% elseif sourceFilter == 'database' %}
+	{% set filteredConfigs = filteredConfigs|filter(c => c.source != 'config') %}
 {% endif %}
 
 {# Search filter #}
@@ -69,18 +85,35 @@
 						<div class="menu">
 							<ul>
 								<li>
-									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&search={{ search }}">
+									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&source={{ sourceFilter }}&search={{ search }}">
 										<span class="status all"></span>{{ 'All'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
-									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&search={{ search }}">
+									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&source={{ sourceFilter }}&search={{ search }}">
 										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
-									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&search={{ search }}">
+									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&source={{ sourceFilter }}&search={{ search }}">
 										<span class="status disabled"></span>{{ 'Disabled'|t('search-manager') }}
+									</a>
+								</li>
+								<li><hr class="padded"></li>
+								<li class="menu-header">{{ 'Config Source'|t('search-manager') }}</li>
+								<li>
+									<a class="{{ sourceFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=all&search={{ search }}">
+										<span class="status all"></span>{{ 'All Sources'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=config&search={{ search }}">
+										<span class="status" style="background: {{ sourceFilter == 'config' ? '#0ea5e9' : '#aab6c1' }};"></span>{{ 'Config File'|t('search-manager') }}
+									</a>
+								</li>
+								<li>
+									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=database&search={{ search }}">
+										<span class="status" style="background: {{ sourceFilter == 'database' ? '#84cc16' : '#aab6c1' }};"></span>{{ 'Database'|t('search-manager') }}
 									</a>
 								</li>
 							</ul>
@@ -91,11 +124,12 @@
 						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search widget configs...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
 						<button type="button" class="clear-btn {{ search ? '' : 'hidden' }}" title="Clear search" role="button" aria-label="Clear search"></button>
 						<input type="hidden" name="status" value="{{ statusFilter }}">
+						<input type="hidden" name="source" value="{{ sourceFilter }}">
 					</div>
 				</div>
 			</form>
 		</div>
-		{% if currentUser.can('searchManager:manageSettings') %}
+		{% if canCreate %}
 			<a href="{{ url('search-manager/widgets/new') }}" class="btn submit add icon" id="new-widget-btn">
 				<span class="label-full">{{ 'New Widget Config'|t('search-manager') }}</span>
 				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
@@ -133,6 +167,14 @@
 			min-width: 0;
 			flex-shrink: 1;
 		}
+		.menu-header {
+			font-size: 11px;
+			text-transform: uppercase;
+			color: #7c97b2;
+			padding: 8px 14px 4px;
+			font-weight: 600;
+			letter-spacing: 0.5px;
+		}
 	</style>
 
 	<div id="elements" class="elements">
@@ -152,6 +194,7 @@
 						<th scope="col" data-attribute="isDefault" class="orderable {{ sort == 'isDefault' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="isDefault">{{ "Default"|t('search-manager') }}</button>
 						</th>
+						<th scope="col">{{ "Source"|t('search-manager') }}</th>
 						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
 						</th>
@@ -161,14 +204,25 @@
 				<tbody>
 					{% if paginatedConfigs|length %}
 						{% for config in paginatedConfigs %}
-							<tr data-id="{{ config.id }}" data-name="{{ config.name }}">
+							{% set isConfig = config.source == 'config' %}
+							<tr data-id="{{ config.id ?: config.handle }}" data-name="{{ config.name }}" data-source="{{ isConfig ? 'config' : 'database' }}">
 								<td class="checkbox-cell">
-									<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
+									{% if isConfig %}
+										<span class="status" style="background: {{ sourceColors.config }};" title="{{ 'From config file'|t('search-manager') }}"></span>
+									{% else %}
+										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
+									{% endif %}
 								</td>
 								<td>
-									<a class="label-link" href="{{ url('search-manager/widgets/edit/' ~ config.id) }}">
-										<strong>{{ config.name }}</strong>
-									</a>
+									{% if config.canEdit() %}
+										<a class="label-link" href="{{ url('search-manager/widgets/edit/' ~ config.id) }}">
+											<strong>{{ config.name }}</strong>
+										</a>
+									{% else %}
+										<span class="label-link">
+											<strong>{{ config.name }}</strong>
+										</span>
+									{% endif %}
 								</td>
 								<td>
 									<code>{{ config.handle }}</code>
@@ -178,6 +232,13 @@
 										<span class="status-label green"><span class="status green"></span><span class="status-label-text">{{ 'Yes'|t('search-manager') }}</span></span>
 									{% else %}
 										<span class="light">-</span>
+									{% endif %}
+								</td>
+								<td>
+									{% if isConfig %}
+										<span class="status-label" style="background: rgba({{ sourceRgb.config }}, 0.12);"><span class="status" style="background: {{ sourceColors.config }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.config }};">{{ "Config"|t('search-manager') }}</span></span>
+									{% else %}
+										<span class="status-label" style="background: rgba({{ sourceRgb.database }}, 0.12);"><span class="status" style="background: {{ sourceColors.database }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.database }};">{{ "Database"|t('search-manager') }}</span></span>
 									{% endif %}
 								</td>
 								<td>
@@ -192,23 +253,33 @@
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
 										<ul>
-											<li>
-												<a href="{{ url('search-manager/widgets/edit/' ~ config.id) }}">
-													{{ 'Edit'|t('search-manager') }}
-												</a>
-											</li>
-											{% if not config.isDefault %}
-												<li><hr class="padded"></li>
+											{% if config.canEdit() %}
+												{% if canEdit %}
+													<li>
+														<a href="{{ url('search-manager/widgets/edit/' ~ config.id) }}">
+															{{ 'Edit'|t('search-manager') }}
+														</a>
+													</li>
+													{% if not config.isDefault %}
+														<li><hr class="padded"></li>
+														<li>
+															<a class="widget-action" data-action="set-default" data-id="{{ config.id }}" data-name="{{ config.name }}">
+																{{ 'Set as Default'|t('search-manager') }}
+															</a>
+														</li>
+													{% endif %}
+												{% endif %}
+												{% if canDelete and not config.isDefault %}
+													<li><hr class="padded"></li>
+													<li>
+														<a class="widget-action error" data-action="delete" data-id="{{ config.id }}" data-name="{{ config.name }}">
+															{{ 'Delete'|t('search-manager') }}
+														</a>
+													</li>
+												{% endif %}
+											{% else %}
 												<li>
-													<a class="widget-action" data-action="set-default" data-id="{{ config.id }}" data-name="{{ config.name }}">
-														{{ 'Set as Default'|t('search-manager') }}
-													</a>
-												</li>
-												<li><hr class="padded"></li>
-												<li>
-													<a class="widget-action error" data-action="delete" data-id="{{ config.id }}" data-name="{{ config.name }}">
-														{{ 'Delete'|t('search-manager') }}
-													</a>
+													<span class="disabled">{{ 'Read-only (from config file)'|t('search-manager') }}</span>
 												</li>
 											{% endif %}
 										</ul>
@@ -219,7 +290,7 @@
 						{% endfor %}
 					{% else %}
 						<tr>
-							<td colspan="6" style="text-align: center; padding: 2em;">
+							<td colspan="7" style="text-align: center; padding: 2em;">
 								{{ 'No widget configurations found.'|t('search-manager') }}
 							</td>
 						</tr>
@@ -246,7 +317,9 @@
 				</div>
 			</div>
 		</div>
+		{% if canEdit or canDelete %}
 		<div id="actions-container" class="flex" style="display: none;">
+			{% if canEdit %}
 			<div>
 				<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
 					{{ 'Set status'|t('app') }}
@@ -258,10 +331,14 @@
 					</ul>
 				</div>
 			</div>
+			{% endif %}
+			{% if canDelete %}
 			<button type="button" class="btn secondary" id="bulk-delete-btn">
 				<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
 			</button>
+			{% endif %}
 		</div>
+		{% endif %}
 	</div>
 
 	<script>
@@ -296,11 +373,11 @@
 
 	// Pagination
 	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
+		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
 	});
 
 	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
+		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
 	});
 
 	// Sort buttons
@@ -313,7 +390,7 @@
 			if (sortField === currentSort) {
 				newDir = currentDir === 'asc' ? 'desc' : 'asc';
 			}
-			window.location.href = '?status={{ statusFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
+			window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
 		});
 	});
 

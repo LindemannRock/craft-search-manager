@@ -319,6 +319,24 @@ class SearchManager extends Plugin
                 $event->permissions[] = [
                     'heading' => $fullName,
                     'permissions' => [
+                        // Backends - grouped (first, as indices depend on backends)
+                        'searchManager:manageBackends' => [
+                            'label' => Craft::t('search-manager', 'Manage backends'),
+                            'nested' => [
+                                'searchManager:viewBackends' => [
+                                    'label' => Craft::t('search-manager', 'View backends'),
+                                ],
+                                'searchManager:createBackends' => [
+                                    'label' => Craft::t('search-manager', 'Create backends'),
+                                ],
+                                'searchManager:editBackends' => [
+                                    'label' => Craft::t('search-manager', 'Edit backends'),
+                                ],
+                                'searchManager:deleteBackends' => [
+                                    'label' => Craft::t('search-manager', 'Delete backends'),
+                                ],
+                            ],
+                        ],
                         // Indices - grouped
                         'searchManager:manageIndices' => [
                             'label' => Craft::t('search-manager', 'Manage indices'),
@@ -379,21 +397,21 @@ class SearchManager extends Plugin
                                 ],
                             ],
                         ],
-                        // Backends - grouped
-                        'searchManager:manageBackends' => [
-                            'label' => Craft::t('search-manager', 'Manage backends'),
+                        // Widget Configs - grouped
+                        'searchManager:manageWidgetConfigs' => [
+                            'label' => Craft::t('search-manager', 'Manage widget configs'),
                             'nested' => [
-                                'searchManager:viewBackends' => [
-                                    'label' => Craft::t('search-manager', 'View backends'),
+                                'searchManager:viewWidgetConfigs' => [
+                                    'label' => Craft::t('search-manager', 'View widget configs'),
                                 ],
-                                'searchManager:createBackends' => [
-                                    'label' => Craft::t('search-manager', 'Create backends'),
+                                'searchManager:createWidgetConfigs' => [
+                                    'label' => Craft::t('search-manager', 'Create widget configs'),
                                 ],
-                                'searchManager:editBackends' => [
-                                    'label' => Craft::t('search-manager', 'Edit backends'),
+                                'searchManager:editWidgetConfigs' => [
+                                    'label' => Craft::t('search-manager', 'Edit widget configs'),
                                 ],
-                                'searchManager:deleteBackends' => [
-                                    'label' => Craft::t('search-manager', 'Delete backends'),
+                                'searchManager:deleteWidgetConfigs' => [
+                                    'label' => Craft::t('search-manager', 'Delete widget configs'),
                                 ],
                             ],
                         ],
@@ -665,13 +683,14 @@ class SearchManager extends Plugin
         $hasBackendsAccess = $user->checkPermission('searchManager:viewBackends');
         $hasPromotionsAccess = $user->checkPermission('searchManager:viewPromotions');
         $hasQueryRulesAccess = $user->checkPermission('searchManager:viewQueryRules');
+        $hasWidgetConfigsAccess = $user->checkPermission('searchManager:viewWidgetConfigs');
         $hasAnalyticsAccess = $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics');
         $hasLogsAccess = $user->checkPermission('searchManager:viewLogs');
         $hasSettingsAccess = $user->checkPermission('searchManager:manageSettings');
 
         // If no access at all, hide the plugin from nav
         if (!$hasIndicesAccess && !$hasBackendsAccess && !$hasPromotionsAccess && !$hasQueryRulesAccess &&
-            !$hasAnalyticsAccess && !$hasLogsAccess && !$hasSettingsAccess) {
+            !$hasWidgetConfigsAccess && !$hasAnalyticsAccess && !$hasLogsAccess && !$hasSettingsAccess) {
             return null;
         }
 
@@ -722,7 +741,7 @@ class SearchManager extends Plugin
         }
 
         // Widgets - for managing search widget configurations
-        if ($hasSettingsAccess) {
+        if ($hasWidgetConfigsAccess) {
             $item['subnav']['widgets'] = [
                 'label' => Craft::t('search-manager', 'Widgets'),
                 'url' => 'search-manager/widgets',

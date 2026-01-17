@@ -44,7 +44,7 @@
 			</ul>
 		</div>
 	</div>
-	{% if not isNew and currentUser.can('searchManager:manageSettings') and not widgetConfig.isDefault %}
+	{% if not isNew and currentUser.can('searchManager:deleteWidgetConfigs') and not widgetConfig.isDefault %}
 		<button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('app') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('app') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
 		<div id="action-menu" class="menu menu--disclosure">
 			<ul>
@@ -228,25 +228,71 @@ if (saveShortcut) {
 	});
 })();
 
+// Color scheme toggle (Light/Dark mode editing)
+(function() {
+	const toggleContainer = document.getElementById('color-scheme-toggle');
+	if (!toggleContainer) return;
+
+	const toggleButtons = toggleContainer.querySelectorAll('button[data-color-scheme]');
+	const colorSections = document.querySelectorAll('.color-scheme-section');
+	const lightPreview = document.querySelector('.widget-preview-light');
+	const darkPreview = document.querySelector('.widget-preview-dark');
+	const previewToggleButtons = document.querySelectorAll('.widget-preview-toggle .btn');
+
+	function switchColorScheme(scheme) {
+		// Update toggle buttons (active = secondary/darker, inactive = lighter)
+		toggleButtons.forEach(function(btn) {
+			const isActive = btn.getAttribute('data-color-scheme') === scheme;
+			btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+			btn.classList.toggle('secondary', isActive);
+		});
+
+		// Show/hide color sections
+		colorSections.forEach(function(section) {
+			const sectionScheme = section.getAttribute('data-color-scheme');
+			section.classList.toggle('hidden', sectionScheme !== scheme);
+		});
+
+		// Switch preview to match
+		if (lightPreview && darkPreview) {
+			lightPreview.style.display = scheme === 'light' ? 'block' : 'none';
+			darkPreview.style.display = scheme === 'dark' ? 'block' : 'none';
+
+			// Also update preview toggle buttons to stay in sync (active = secondary/darker)
+			previewToggleButtons.forEach(function(btn) {
+				const btnMode = btn.getAttribute('data-preview-mode');
+				const isActive = btnMode === scheme;
+				btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+				btn.classList.toggle('secondary', isActive);
+			});
+		}
+	}
+
+	// Handle toggle button clicks
+	toggleButtons.forEach(function(btn) {
+		btn.addEventListener('click', function() {
+			const scheme = this.getAttribute('data-color-scheme');
+			switchColorScheme(scheme);
+		});
+	});
+
+	// Also sync when preview toggle is clicked (keep them in sync)
+	previewToggleButtons.forEach(function(btn) {
+		btn.addEventListener('click', function() {
+			const mode = this.getAttribute('data-preview-mode');
+			switchColorScheme(mode);
+		});
+	});
+})();
+
 // Widget Preview functionality
 (function() {
 	const lightPreview = document.querySelector('.widget-preview-light');
 	const darkPreview = document.querySelector('.widget-preview-dark');
 	if (!lightPreview || !darkPreview) return;
 
-	// Light/Dark mode toggle
-	const toggleButtons = document.querySelectorAll('.widget-preview-toggle .btn');
-	toggleButtons.forEach(function(btn) {
-		btn.addEventListener('click', function() {
-			const mode = this.getAttribute('data-preview-mode');
-			lightPreview.style.display = mode === 'light' ? 'block' : 'none';
-			darkPreview.style.display = mode === 'dark' ? 'block' : 'none';
-			toggleButtons.forEach(function(b) {
-				b.setAttribute('aria-pressed', b === btn ? 'true' : 'false');
-				b.classList.toggle('secondary', b !== btn);
-			});
-		});
-	});
+	// Note: Light/Dark mode toggle is handled by the color scheme toggle above
+	// which syncs both the form sections and preview together
 
 	// Preview update configuration
 	// Maps form input names to preview element updates
@@ -273,7 +319,9 @@ if (saveShortcut) {
 			{ container: darkPreview, selector: '.preview-modal', prop: 'borderWidth', unit: 'px' }
 		],
 		'settings[styles][modalShadow]': [
-			{ container: lightPreview, selector: '.preview-modal', prop: 'boxShadow' },
+			{ container: lightPreview, selector: '.preview-modal', prop: 'boxShadow' }
+		],
+		'settings[styles][modalShadowDark]': [
 			{ container: darkPreview, selector: '.preview-modal', prop: 'boxShadow' }
 		],
 

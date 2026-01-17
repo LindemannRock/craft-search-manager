@@ -5,47 +5,75 @@
 <p class="light">{{ "Customize the visual appearance of the search widget. Colors support hex values."|t('search-manager') }}</p>
 
 {# ========================================
+   COLOR SCHEME MODE TOGGLE
+   ======================================== #}
+<div class="btngroup" id="color-scheme-toggle" style="margin-bottom: 24px;">
+	<button type="button" class="btn secondary" data-color-scheme="light" aria-pressed="true">
+		<span class="icon">{{ svg('@app/icons/sun.svg')|attr({ class: 'icon-sun' }) }}</span>
+		{{ "Light Mode"|t('search-manager') }}
+	</button>
+	<button type="button" class="btn" data-color-scheme="dark" aria-pressed="false">
+		<span class="icon">{{ svg('@app/icons/moon.svg')|attr({ class: 'icon-moon' }) }}</span>
+		{{ "Dark Mode"|t('search-manager') }}
+	</button>
+</div>
+
+{# ========================================
    MODAL
    ======================================== #}
 <h2>{{ "Modal"|t('search-manager') }}</h2>
 
-<div class="flex" style="gap: 48px; flex-wrap: wrap;">
-	<div>
-		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-modalBg',
-				name: 'settings[styles][modalBg]',
-				value: styles.modalBg,
-			}) }}
-			{{ forms.colorField({
-				label: 'Border'|t('search-manager'),
-				id: 'styles-modalBorderColor',
-				name: 'settings[styles][modalBorderColor]',
-				value: styles.modalBorderColor,
-			}) }}
-		</div>
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-modalBg',
+			name: 'settings[styles][modalBg]',
+			value: styles.modalBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-modalBorderColor',
+			name: 'settings[styles][modalBorderColor]',
+			value: styles.modalBorderColor,
+		}) }}
 	</div>
-	<div>
-		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-modalBgDark',
-				name: 'settings[styles][modalBgDark]',
-				value: styles.modalBgDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Border'|t('search-manager'),
-				id: 'styles-modalBorderColorDark',
-				name: 'settings[styles][modalBorderColorDark]',
-				value: styles.modalBorderColorDark,
-			}) }}
-		</div>
-	</div>
+	{{ forms.textField({
+		label: 'Box Shadow'|t('search-manager'),
+		instructions: 'CSS box-shadow value (e.g., "0 25px 50px -12px rgba(0,0,0,0.25)")'|t('search-manager'),
+		id: 'styles-modalShadow',
+		name: 'settings[styles][modalShadow]',
+		value: styles.modalShadow,
+	}) }}
 </div>
 
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-modalBgDark',
+			name: 'settings[styles][modalBgDark]',
+			value: styles.modalBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-modalBorderColorDark',
+			name: 'settings[styles][modalBorderColorDark]',
+			value: styles.modalBorderColorDark,
+		}) }}
+	</div>
+	{{ forms.textField({
+		label: 'Box Shadow'|t('search-manager'),
+		instructions: 'CSS box-shadow value (e.g., "0 25px 50px -12px rgba(0,0,0,0.5)")'|t('search-manager'),
+		id: 'styles-modalShadowDark',
+		name: 'settings[styles][modalShadowDark]',
+		value: styles.modalShadowDark,
+	}) }}
+</div>
+
+{# Shared Dimensions #}
 <div style="margin-top: 24px;">
 	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
 	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
@@ -80,13 +108,6 @@
 			size: 10,
 		}) }}
 	</div>
-	{{ forms.textField({
-		label: 'Box Shadow'|t('search-manager'),
-		instructions: 'CSS box-shadow value (e.g., "0 25px 50px -12px rgba(0,0,0,0.25)")'|t('search-manager'),
-		id: 'styles-modalShadow',
-		name: 'settings[styles][modalShadow]',
-		value: styles.modalShadow,
-	}) }}
 </div>
 
 <hr>
@@ -96,67 +117,67 @@
    ======================================== #}
 <h2>{{ "Input Field"|t('search-manager') }}</h2>
 
-<div class="flex" style="gap: 48px; flex-wrap: wrap;">
-	<div>
-		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-inputBg',
-				name: 'settings[styles][inputBg]',
-				value: styles.inputBg,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-inputTextColor',
-				name: 'settings[styles][inputTextColor]',
-				value: styles.inputTextColor,
-			}) }}
-			{{ forms.colorField({
-				label: 'Placeholder'|t('search-manager'),
-				id: 'styles-inputPlaceholderColor',
-				name: 'settings[styles][inputPlaceholderColor]',
-				value: styles.inputPlaceholderColor,
-			}) }}
-			{{ forms.colorField({
-				label: 'Border'|t('search-manager'),
-				id: 'styles-inputBorderColor',
-				name: 'settings[styles][inputBorderColor]',
-				value: styles.inputBorderColor,
-			}) }}
-		</div>
-	</div>
-	<div>
-		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-inputBgDark',
-				name: 'settings[styles][inputBgDark]',
-				value: styles.inputBgDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-inputTextColorDark',
-				name: 'settings[styles][inputTextColorDark]',
-				value: styles.inputTextColorDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Placeholder'|t('search-manager'),
-				id: 'styles-inputPlaceholderColorDark',
-				name: 'settings[styles][inputPlaceholderColorDark]',
-				value: styles.inputPlaceholderColorDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Border'|t('search-manager'),
-				id: 'styles-inputBorderColorDark',
-				name: 'settings[styles][inputBorderColorDark]',
-				value: styles.inputBorderColorDark,
-			}) }}
-		</div>
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-inputBg',
+			name: 'settings[styles][inputBg]',
+			value: styles.inputBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-inputTextColor',
+			name: 'settings[styles][inputTextColor]',
+			value: styles.inputTextColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Placeholder'|t('search-manager'),
+			id: 'styles-inputPlaceholderColor',
+			name: 'settings[styles][inputPlaceholderColor]',
+			value: styles.inputPlaceholderColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-inputBorderColor',
+			name: 'settings[styles][inputBorderColor]',
+			value: styles.inputBorderColor,
+		}) }}
 	</div>
 </div>
 
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-inputBgDark',
+			name: 'settings[styles][inputBgDark]',
+			value: styles.inputBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-inputTextColorDark',
+			name: 'settings[styles][inputTextColorDark]',
+			value: styles.inputTextColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Placeholder'|t('search-manager'),
+			id: 'styles-inputPlaceholderColorDark',
+			name: 'settings[styles][inputPlaceholderColorDark]',
+			value: styles.inputPlaceholderColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-inputBorderColorDark',
+			name: 'settings[styles][inputBorderColorDark]',
+			value: styles.inputBorderColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
 <div style="margin-top: 24px;">
 	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
 	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
@@ -180,67 +201,67 @@
    ======================================== #}
 <h2>{{ "Search Results"|t('search-manager') }}</h2>
 
-<div class="flex" style="gap: 48px; flex-wrap: wrap;">
-	<div>
-		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Hover Background'|t('search-manager'),
-				id: 'styles-resultHoverBg',
-				name: 'settings[styles][resultHoverBg]',
-				value: styles.resultHoverBg,
-			}) }}
-			{{ forms.colorField({
-				label: 'Active Background'|t('search-manager'),
-				id: 'styles-resultActiveBg',
-				name: 'settings[styles][resultActiveBg]',
-				value: styles.resultActiveBg,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-resultTextColor',
-				name: 'settings[styles][resultTextColor]',
-				value: styles.resultTextColor,
-			}) }}
-			{{ forms.colorField({
-				label: 'Description'|t('search-manager'),
-				id: 'styles-resultDescColor',
-				name: 'settings[styles][resultDescColor]',
-				value: styles.resultDescColor,
-			}) }}
-		</div>
-	</div>
-	<div>
-		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Hover Background'|t('search-manager'),
-				id: 'styles-resultHoverBgDark',
-				name: 'settings[styles][resultHoverBgDark]',
-				value: styles.resultHoverBgDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Active Background'|t('search-manager'),
-				id: 'styles-resultActiveBgDark',
-				name: 'settings[styles][resultActiveBgDark]',
-				value: styles.resultActiveBgDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-resultTextColorDark',
-				name: 'settings[styles][resultTextColorDark]',
-				value: styles.resultTextColorDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Description'|t('search-manager'),
-				id: 'styles-resultDescColorDark',
-				name: 'settings[styles][resultDescColorDark]',
-				value: styles.resultDescColorDark,
-			}) }}
-		</div>
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Hover Background'|t('search-manager'),
+			id: 'styles-resultHoverBg',
+			name: 'settings[styles][resultHoverBg]',
+			value: styles.resultHoverBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Active Background'|t('search-manager'),
+			id: 'styles-resultActiveBg',
+			name: 'settings[styles][resultActiveBg]',
+			value: styles.resultActiveBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-resultTextColor',
+			name: 'settings[styles][resultTextColor]',
+			value: styles.resultTextColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Description'|t('search-manager'),
+			id: 'styles-resultDescColor',
+			name: 'settings[styles][resultDescColor]',
+			value: styles.resultDescColor,
+		}) }}
 	</div>
 </div>
 
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Hover Background'|t('search-manager'),
+			id: 'styles-resultHoverBgDark',
+			name: 'settings[styles][resultHoverBgDark]',
+			value: styles.resultHoverBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Active Background'|t('search-manager'),
+			id: 'styles-resultActiveBgDark',
+			name: 'settings[styles][resultActiveBgDark]',
+			value: styles.resultActiveBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-resultTextColorDark',
+			name: 'settings[styles][resultTextColorDark]',
+			value: styles.resultTextColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Description'|t('search-manager'),
+			id: 'styles-resultDescColorDark',
+			name: 'settings[styles][resultDescColorDark]',
+			value: styles.resultDescColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
 <div style="margin-top: 24px;">
 	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
 	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
@@ -265,40 +286,39 @@
 <h2>{{ "Search Highlighting"|t('search-manager') }}</h2>
 <p class="light">{{ "Colors for highlighted matching terms in search results."|t('search-manager') }}</p>
 
-<div class="flex" style="gap: 48px; flex-wrap: wrap;">
-	<div>
-		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'highlighting-bgLight',
-				name: 'settings[highlighting][bgLight]',
-				value: widgetConfig.getHighlightBgLight(),
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'highlighting-colorLight',
-				name: 'settings[highlighting][colorLight]',
-				value: widgetConfig.getHighlightColorLight(),
-			}) }}
-		</div>
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'highlighting-bgLight',
+			name: 'settings[highlighting][bgLight]',
+			value: widgetConfig.getHighlightBgLight(),
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'highlighting-colorLight',
+			name: 'settings[highlighting][colorLight]',
+			value: widgetConfig.getHighlightColorLight(),
+		}) }}
 	</div>
-	<div>
-		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'highlighting-bgDark',
-				name: 'settings[highlighting][bgDark]',
-				value: widgetConfig.getHighlightBgDark(),
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'highlighting-colorDark',
-				name: 'settings[highlighting][colorDark]',
-				value: widgetConfig.getHighlightColorDark(),
-			}) }}
-		</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'highlighting-bgDark',
+			name: 'settings[highlighting][bgDark]',
+			value: widgetConfig.getHighlightBgDark(),
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'highlighting-colorDark',
+			name: 'settings[highlighting][colorDark]',
+			value: widgetConfig.getHighlightColorDark(),
+		}) }}
 	</div>
 </div>
 
@@ -309,55 +329,55 @@
    ======================================== #}
 <h2>{{ "Trigger Button"|t('search-manager') }}</h2>
 
-<div class="flex" style="gap: 48px; flex-wrap: wrap;">
-	<div>
-		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-triggerBg',
-				name: 'settings[styles][triggerBg]',
-				value: styles.triggerBg,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-triggerTextColor',
-				name: 'settings[styles][triggerTextColor]',
-				value: styles.triggerTextColor,
-			}) }}
-			{{ forms.colorField({
-				label: 'Border'|t('search-manager'),
-				id: 'styles-triggerBorderColor',
-				name: 'settings[styles][triggerBorderColor]',
-				value: styles.triggerBorderColor,
-			}) }}
-		</div>
-	</div>
-	<div>
-		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-triggerBgDark',
-				name: 'settings[styles][triggerBgDark]',
-				value: styles.triggerBgDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-triggerTextColorDark',
-				name: 'settings[styles][triggerTextColorDark]',
-				value: styles.triggerTextColorDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Border'|t('search-manager'),
-				id: 'styles-triggerBorderColorDark',
-				name: 'settings[styles][triggerBorderColorDark]',
-				value: styles.triggerBorderColorDark,
-			}) }}
-		</div>
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-triggerBg',
+			name: 'settings[styles][triggerBg]',
+			value: styles.triggerBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-triggerTextColor',
+			name: 'settings[styles][triggerTextColor]',
+			value: styles.triggerTextColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-triggerBorderColor',
+			name: 'settings[styles][triggerBorderColor]',
+			value: styles.triggerBorderColor,
+		}) }}
 	</div>
 </div>
 
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-triggerBgDark',
+			name: 'settings[styles][triggerBgDark]',
+			value: styles.triggerBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-triggerTextColorDark',
+			name: 'settings[styles][triggerTextColorDark]',
+			value: styles.triggerTextColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-triggerBorderColorDark',
+			name: 'settings[styles][triggerBorderColorDark]',
+			value: styles.triggerBorderColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
 <div style="margin-top: 24px;">
 	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
 	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
@@ -421,43 +441,43 @@
    ======================================== #}
 <h2>{{ "Keyboard Badge"|t('search-manager') }}</h2>
 
-<div class="flex" style="gap: 48px; flex-wrap: wrap;">
-	<div>
-		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-kbdBg',
-				name: 'settings[styles][kbdBg]',
-				value: styles.kbdBg,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-kbdTextColor',
-				name: 'settings[styles][kbdTextColor]',
-				value: styles.kbdTextColor,
-			}) }}
-		</div>
-	</div>
-	<div>
-		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
-		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-			{{ forms.colorField({
-				label: 'Background'|t('search-manager'),
-				id: 'styles-kbdBgDark',
-				name: 'settings[styles][kbdBgDark]',
-				value: styles.kbdBgDark,
-			}) }}
-			{{ forms.colorField({
-				label: 'Text'|t('search-manager'),
-				id: 'styles-kbdTextColorDark',
-				name: 'settings[styles][kbdTextColorDark]',
-				value: styles.kbdTextColorDark,
-			}) }}
-		</div>
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-kbdBg',
+			name: 'settings[styles][kbdBg]',
+			value: styles.kbdBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-kbdTextColor',
+			name: 'settings[styles][kbdTextColor]',
+			value: styles.kbdTextColor,
+		}) }}
 	</div>
 </div>
 
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-kbdBgDark',
+			name: 'settings[styles][kbdBgDark]',
+			value: styles.kbdBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-kbdTextColorDark',
+			name: 'settings[styles][kbdTextColorDark]',
+			value: styles.kbdTextColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
 <div style="margin-top: 24px;">
 	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
 	<div class="flex" style="gap: 24px; flex-wrap: wrap;">

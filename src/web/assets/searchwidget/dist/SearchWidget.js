@@ -9,6 +9,7 @@
     modalBorderColor: "--sm-modal-border-color",
     modalBorderColorDark: "--sm-modal-border-color-dark",
     modalShadow: "--sm-modal-shadow",
+    modalShadowDark: "--sm-modal-shadow-dark",
     modalMaxWidth: "--sm-modal-width",
     // Input
     inputBg: "--sm-input-bg",

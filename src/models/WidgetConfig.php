@@ -28,6 +28,11 @@ class WidgetConfig extends Model
      */
     public array|string|null $settings = null;
 
+    /**
+     * @var string Source of config (database|config)
+     */
+    public string $source = 'database';
+
     public ?\DateTime $dateCreated = null;
     public ?\DateTime $dateUpdated = null;
     public ?string $uid = null;
@@ -80,6 +85,7 @@ class WidgetConfig extends Model
                 'modalBorderColor' => '#e5e7eb',
                 'modalBorderColorDark' => '#374151',
                 'modalShadow' => '0 25px 50px -12px rgba(0,0,0,0.25)',
+                'modalShadowDark' => '0 25px 50px -12px rgba(0,0,0,0.5)',
                 'modalMaxWidth' => '640',
                 // Input
                 'inputBg' => '#ffffff',
@@ -324,6 +330,26 @@ class WidgetConfig extends Model
     public function getStyle(string $key, string $default = ''): string
     {
         return (string) $this->getSetting('styles.' . $key, $default);
+    }
+
+    // =========================================================================
+    // CONFIG SOURCE HELPERS
+    // =========================================================================
+
+    /**
+     * Check if this config can be edited (database configs only)
+     */
+    public function canEdit(): bool
+    {
+        return $this->source !== 'config';
+    }
+
+    /**
+     * Check if this config is from config file
+     */
+    public function isFromConfig(): bool
+    {
+        return $this->source === 'config';
     }
 
     // =========================================================================

@@ -94,7 +94,7 @@ class AnalyticsSummaryWidget extends Widget
         $topSearch = $topSearches[0] ?? null;
 
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/analytics-summary/body',
+            'search-manager/dashboard-widgets/analytics-summary/body',
             [
                 'widget' => $this,
                 'analyticsData' => $analyticsData,
@@ -110,7 +110,7 @@ class AnalyticsSummaryWidget extends Widget
     public function getSettingsHtml(): ?string
     {
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/analytics-summary/settings',
+            'search-manager/dashboard-widgets/analytics-summary/settings',
             [
                 'widget' => $this,
             ]

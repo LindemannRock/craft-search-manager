@@ -99,7 +99,7 @@ class TopSearchesWidget extends Widget
         $searches = SearchManager::$plugin->analytics->getMostCommonSearches(null, $this->limit, $this->dateRange);
 
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/top-searches/body',
+            'search-manager/dashboard-widgets/top-searches/body',
             [
                 'widget' => $this,
                 'searches' => $searches,
@@ -114,7 +114,7 @@ class TopSearchesWidget extends Widget
     public function getSettingsHtml(): ?string
     {
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/top-searches/settings',
+            'search-manager/dashboard-widgets/top-searches/settings',
             [
                 'widget' => $this,
             ]

@@ -101,7 +101,7 @@ class ContentGapsWidget extends Widget
         $contentGaps = SearchManager::$plugin->analytics->getZeroResultClusters(null, $this->dateRange, $this->limit);
 
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/content-gaps/body',
+            'search-manager/dashboard-widgets/content-gaps/body',
             [
                 'widget' => $this,
                 'contentGaps' => $contentGaps,
@@ -116,7 +116,7 @@ class ContentGapsWidget extends Widget
     public function getSettingsHtml(): ?string
     {
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/content-gaps/settings',
+            'search-manager/dashboard-widgets/content-gaps/settings',
             [
                 'widget' => $this,
             ]

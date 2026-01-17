@@ -101,7 +101,7 @@ class TrendingSearchesWidget extends Widget
         $trending = SearchManager::$plugin->analytics->getTrendingQueries(null, $this->dateRange, $this->limit);
 
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/trending-searches/body',
+            'search-manager/dashboard-widgets/trending-searches/body',
             [
                 'widget' => $this,
                 'trending' => $trending,
@@ -116,7 +116,7 @@ class TrendingSearchesWidget extends Widget
     public function getSettingsHtml(): ?string
     {
         return Craft::$app->getView()->renderTemplate(
-            'search-manager/widgets/trending-searches/settings',
+            'search-manager/dashboard-widgets/trending-searches/settings',
             [
                 'widget' => $this,
             ]

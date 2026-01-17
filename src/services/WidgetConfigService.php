@@ -15,6 +15,7 @@ use yii\base\Component;
  * Widget Config Service
  *
  * Manages widget configurations for the search widget.
+ * Supports both database-stored configs and config file definitions.
  */
 class WidgetConfigService extends Component
 {
@@ -27,6 +28,11 @@ class WidgetConfigService extends Component
      */
     private ?WidgetConfig $_defaultConfig = null;
 
+    /**
+     * @var array|null Cached config file widget configs
+     */
+    private ?array $_configFileConfigs = null;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -35,6 +41,54 @@ class WidgetConfigService extends Component
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
+    }
+
+    // =========================================================================
+    // CONFIG FILE LOADING
+    // =========================================================================
+
+    /**
+     * Get all widget configs defined in config file
+     */
+    public function getConfigFileConfigs(): array
+    {
+        if ($this->_configFileConfigs !== null) {
+            return $this->_configFileConfigs;
+        }
+
+        $this->_configFileConfigs = [];
+
+        $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
+        $widgetConfigs = $config['widgetConfigs'] ?? [];
+
+        foreach ($widgetConfigs as $handle => $configData) {
+            $widgetConfig = new WidgetConfig();
+            $widgetConfig->handle = $handle;
+            $widgetConfig->name = $configData['name'] ?? ucfirst($handle);
+            $widgetConfig->isDefault = $configData['isDefault'] ?? false;
+            $widgetConfig->enabled = $configData['enabled'] ?? true;
+            $widgetConfig->source = 'config';
+
+            // Merge settings with defaults
+            $settings = $configData['settings'] ?? [];
+            $widgetConfig->settings = array_replace_recursive(
+                WidgetConfig::defaultSettings(),
+                $settings
+            );
+
+            $this->_configFileConfigs[$handle] = $widgetConfig;
+        }
+
+        return $this->_configFileConfigs;
+    }
+
+    /**
+     * Get a config from config file by handle
+     */
+    public function getConfigFileByHandle(string $handle): ?WidgetConfig
+    {
+        $configs = $this->getConfigFileConfigs();
+        return $configs[$handle] ?? null;
     }
 
     // =========================================================================
@@ -57,9 +111,17 @@ class WidgetConfigService extends Component
 
     /**
      * Get widget config by handle
+     * Checks config file first, then database
      */
     public function getByHandle(string $handle): ?WidgetConfig
     {
+        // First, check config file
+        $configFileConfig = $this->getConfigFileByHandle($handle);
+        if ($configFileConfig !== null) {
+            return $configFileConfig;
+        }
+
+        // Then, check database
         $row = (new Query())
             ->select('*')
             ->from(self::TABLE)
@@ -71,6 +133,7 @@ class WidgetConfigService extends Component
 
     /**
      * Get the default widget config
+     * Checks config file first for a default, then database
      */
     public function getDefault(): ?WidgetConfig
     {
@@ -78,6 +141,16 @@ class WidgetConfigService extends Component
             return $this->_defaultConfig;
         }
 
+        // First, check config file for a default
+        $configFileConfigs = $this->getConfigFileConfigs();
+        foreach ($configFileConfigs as $config) {
+            if ($config->isDefault && $config->enabled) {
+                $this->_defaultConfig = $config;
+                return $this->_defaultConfig;
+            }
+        }
+
+        // Then, check database
         $row = (new Query())
             ->select('*')
             ->from(self::TABLE)
@@ -86,8 +159,17 @@ class WidgetConfigService extends Component
 
         $this->_defaultConfig = $row ? $this->createFromRow($row) : null;
 
-        // If no default exists, return first enabled config
+        // If no default exists, return first enabled config (config file first, then database)
         if ($this->_defaultConfig === null) {
+            // Check config file first
+            foreach ($configFileConfigs as $config) {
+                if ($config->enabled) {
+                    $this->_defaultConfig = $config;
+                    return $this->_defaultConfig;
+                }
+            }
+
+            // Then database
             $row = (new Query())
                 ->select('*')
                 ->from(self::TABLE)
@@ -102,10 +184,25 @@ class WidgetConfigService extends Component
     }
 
     /**
-     * Get all widget configs
+     * Get all widget configs (from config file and database)
+     * Config file configs take precedence over database configs with same handle
      */
     public function getAll(bool $enabledOnly = false): array
     {
+        $configs = [];
+        $handlesFromConfig = [];
+
+        // First, load configs from config file
+        $configFileConfigs = $this->getConfigFileConfigs();
+        foreach ($configFileConfigs as $config) {
+            if ($enabledOnly && !$config->enabled) {
+                continue;
+            }
+            $configs[$config->handle] = $config;
+            $handlesFromConfig[] = $config->handle;
+        }
+
+        // Then, load configs from database (excluding those defined in config)
         $query = (new Query())
             ->select('*')
             ->from(self::TABLE)
@@ -117,7 +214,23 @@ class WidgetConfigService extends Component
 
         $rows = $query->all();
 
-        return array_map(fn($row) => $this->createFromRow($row), $rows);
+        foreach ($rows as $row) {
+            // Skip if this handle is already defined in config
+            if (in_array($row['handle'], $handlesFromConfig, true)) {
+                continue;
+            }
+            $configs[$row['handle']] = $this->createFromRow($row);
+        }
+
+        // Sort: default first, then by name
+        usort($configs, function($a, $b) {
+            if ($a->isDefault !== $b->isDefault) {
+                return $b->isDefault <=> $a->isDefault;
+            }
+            return strcasecmp($a->name, $b->name);
+        });
+
+        return array_values($configs);
     }
 
     /**
@@ -164,9 +277,16 @@ class WidgetConfigService extends Component
 
     /**
      * Save a widget config
+     * Config-file configs cannot be saved
      */
     public function save(WidgetConfig $config): bool
     {
+        // Prevent saving config-file configs
+        if ($config->source === 'config') {
+            $this->logWarning('Cannot save config-file widget config', ['handle' => $config->handle]);
+            return false;
+        }
+
         if (!$config->validate()) {
             return false;
         }
@@ -210,9 +330,16 @@ class WidgetConfigService extends Component
 
     /**
      * Delete a widget config
+     * Config-file configs cannot be deleted
      */
     public function delete(WidgetConfig $config): bool
     {
+        // Prevent deleting config-file configs
+        if ($config->source === 'config') {
+            $this->logWarning('Cannot delete config-file widget config', ['handle' => $config->handle]);
+            return false;
+        }
+
         if (!$config->id) {
             return false;
         }
