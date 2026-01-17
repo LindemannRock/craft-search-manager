@@ -1,0 +1,460 @@
+/**
+ * Search Widget Styles
+ * These styles are injected into the shadow DOM
+ */
+
+:host {
+    /* Modal defaults */
+    --sm-modal-bg: #ffffff;
+    --sm-modal-border: #e5e7eb;
+    --sm-modal-border-width: 1px;
+    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --sm-modal-radius: 12px;
+    --sm-modal-width: 640px;
+    --sm-modal-max-height: 80vh;
+
+    /* Input defaults */
+    --sm-input-bg: #ffffff;
+    --sm-input-color: #111827;
+    --sm-input-placeholder: #9ca3af;
+    --sm-input-font-size: 16px;
+
+    /* Text colors */
+    --sm-text-primary: #111827;
+    --sm-text-secondary: #6b7280;
+    --sm-text-muted: #9ca3af;
+
+    /* Borders and backgrounds */
+    --sm-border-color: #e5e7eb;
+    --sm-hover-bg: #f3f4f6;
+    --sm-selected-bg: #e5e7eb;
+    --sm-selected-border: #3b82f6;
+    --sm-result-radius: 8px;
+
+    /* Highlighting */
+    --sm-highlight-bg: #fef08a;
+    --sm-highlight-color: #854d0e;
+
+    /* Kbd / keyboard shortcuts */
+    --sm-kbd-bg: #f3f4f6;
+    --sm-kbd-border: #d1d5db;
+    --sm-kbd-color: #6b7280;
+    --sm-kbd-radius: 4px;
+
+    /* Trigger button */
+    --sm-trigger-bg: #ffffff;
+    --sm-trigger-color: #374151;
+    --sm-trigger-border: #d1d5db;
+    --sm-trigger-radius: 8px;
+    --sm-trigger-border-width: 1px;
+    --sm-trigger-px: 12px;
+    --sm-trigger-py: 8px;
+    --sm-trigger-font-size: 14px;
+
+    /* Accent colors */
+    --sm-accent: #3b82f6;
+    --sm-accent-hover: #2563eb;
+
+    display: inline-block;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+}
+
+/* Dark theme - uses custom dark variables with fallbacks */
+:host([data-theme="dark"]) {
+    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
+    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
+
+    --sm-input-bg: var(--sm-input-bg-dark, #1f2937);
+    --sm-input-color: var(--sm-input-color-dark, #f9fafb);
+    --sm-input-placeholder: var(--sm-input-placeholder-dark, #6b7280);
+
+    --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
+    --sm-text-secondary: var(--sm-result-desc-color-dark, #9ca3af);
+    --sm-text-muted: #6b7280;
+
+    --sm-border-color: var(--sm-input-border-color-dark, #374151);
+    --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
+    --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
+    --sm-selected-border: #3b82f6;
+
+    --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
+    --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
+
+    --sm-kbd-bg: var(--sm-kbd-bg-dark, #4b5563);
+    --sm-kbd-border: #4b5563;
+    --sm-kbd-color: var(--sm-kbd-text-color-dark, #9ca3af);
+
+    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);
+    --sm-trigger-color: var(--sm-trigger-text-color-dark, #d1d5db);
+    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+/* Trigger button */
+.sm-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--sm-trigger-py) var(--sm-trigger-px);
+    background: var(--sm-trigger-bg);
+    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);
+    border-radius: var(--sm-trigger-radius);
+    color: var(--sm-trigger-color);
+    font-size: var(--sm-trigger-font-size);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sm-trigger:hover {
+    border-color: var(--sm-accent);
+    color: var(--sm-text-primary);
+}
+
+.sm-trigger-kbd {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: var(--sm-kbd-bg);
+    border: 1px solid var(--sm-kbd-border);
+    border-radius: var(--sm-kbd-radius);
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--sm-kbd-color);
+}
+
+/* Backdrop */
+.sm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10vh;
+    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));
+    backdrop-filter: var(--sm-backdrop-blur, blur(4px));
+    animation: sm-fade-in 0.15s ease;
+}
+
+.sm-backdrop[hidden] {
+    display: none;
+}
+
+@keyframes sm-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* Modal */
+.sm-modal {
+    width: var(--sm-modal-width);
+    max-width: calc(100vw - 32px);
+    max-height: var(--sm-modal-max-height);
+    background: var(--sm-modal-bg);
+    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);
+    border-radius: var(--sm-modal-radius);
+    box-shadow: var(--sm-modal-shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: sm-slide-up 0.2s ease;
+}
+
+@keyframes sm-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Header */
+.sm-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    border-bottom: 1px solid var(--sm-border-color);
+}
+
+.sm-search-icon {
+    flex-shrink: 0;
+    color: var(--sm-text-muted);
+}
+
+.sm-input {
+    flex: 1;
+    border: none;
+    background: var(--sm-input-bg);
+    color: var(--sm-input-color);
+    font-size: var(--sm-input-font-size);
+    outline: none;
+}
+
+.sm-input::placeholder {
+    color: var(--sm-input-placeholder);
+}
+
+.sm-loading {
+    flex-shrink: 0;
+}
+
+.sm-spinner {
+    animation: sm-spin 1s linear infinite;
+    color: var(--sm-accent);
+}
+
+@keyframes sm-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.sm-close {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.sm-close kbd {
+    padding: 2px 6px;
+    background: var(--sm-kbd-bg);
+    border: 1px solid var(--sm-kbd-border);
+    border-radius: var(--sm-kbd-radius);
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--sm-kbd-color);
+}
+
+/* Results */
+.sm-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+}
+
+.sm-section {
+    margin-bottom: 8px;
+}
+
+.sm-section:last-child {
+    margin-bottom: 0;
+}
+
+.sm-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sm-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.sm-clear-recent {
+    padding: 2px 8px;
+    background: transparent;
+    border: none;
+    border-radius: var(--sm-kbd-radius);
+    font-size: 11px;
+    color: var(--sm-text-muted);
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.sm-clear-recent:hover {
+    background: var(--sm-hover-bg);
+    color: var(--sm-text-secondary);
+}
+
+/* Result item */
+.sm-result-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: var(--sm-result-radius);
+    color: var(--sm-text-primary);
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.1s ease;
+}
+
+.sm-result-item:hover,
+.sm-result-item.sm-selected {
+    background: var(--sm-hover-bg);
+}
+
+.sm-result-item.sm-selected {
+    background: var(--sm-selected-bg);
+    outline: 2px solid var(--sm-selected-border);
+    outline-offset: -2px;
+}
+
+.sm-result-icon {
+    flex-shrink: 0;
+    color: var(--sm-text-muted);
+}
+
+.sm-result-content {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sm-result-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--sm-text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sm-result-desc {
+    font-size: 13px;
+    color: var(--sm-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sm-result-type {
+    flex-shrink: 0;
+    padding: 2px 8px;
+    background: var(--sm-kbd-bg);
+    border-radius: var(--sm-kbd-radius);
+    font-size: 11px;
+    color: var(--sm-text-muted);
+}
+
+.sm-result-arrow {
+    flex-shrink: 0;
+    color: var(--sm-text-muted);
+    opacity: 0;
+    transition: opacity 0.1s ease;
+}
+
+.sm-result-item:hover .sm-result-arrow,
+.sm-result-item.sm-selected .sm-result-arrow {
+    opacity: 1;
+}
+
+/* Highlight - uses .sm-highlight class to work with any tag */
+.sm-highlight {
+    background: var(--sm-highlight-bg);
+    color: var(--sm-highlight-color);
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+/* Empty state */
+.sm-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: var(--sm-text-muted);
+    text-align: center;
+}
+
+.sm-empty p {
+    margin: 0;
+    font-size: 14px;
+}
+
+.sm-empty strong {
+    color: var(--sm-text-secondary);
+}
+
+/* Footer */
+.sm-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--sm-border-color);
+    font-size: 12px;
+    color: var(--sm-text-muted);
+}
+
+.sm-footer-hints {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sm-footer-hints span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sm-footer kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    padding: 2px 4px;
+    background: var(--sm-kbd-bg);
+    border: 1px solid var(--sm-kbd-border);
+    border-radius: var(--sm-kbd-radius);
+    font-size: 10px;
+    font-family: inherit;
+    color: var(--sm-kbd-color);
+}
+
+.sm-footer-brand {
+    color: var(--sm-text-muted);
+}
+
+.sm-footer-brand strong {
+    color: var(--sm-text-secondary);
+}
+
+/* RTL support */
+:host([dir="rtl"]) .sm-header,
+:host([dir="rtl"]) .sm-result-item,
+:host([dir="rtl"]) .sm-footer {
+    direction: rtl;
+}
+
+:host([dir="rtl"]) .sm-result-arrow {
+    transform: scaleX(-1);
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+    .sm-backdrop {
+        padding-top: 0;
+        align-items: flex-end;
+    }
+
+    .sm-modal {
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;
+    }
+
+    .sm-trigger-text,
+    .sm-footer-hints {
+        display: none;
+    }
+}

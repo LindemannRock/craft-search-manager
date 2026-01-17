@@ -106,8 +106,9 @@
     {% set mergedStyles = mergedStyles|merge(styles) %}
 {% endif %}
 
-{# Register the widget JS #}
-{% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget', true) ~ '/SearchWidget.js', {
+{# Register the widget JS (minified in production, unminified in devMode) #}
+{% set widgetJs = craft.app.config.general.devMode ? 'SearchWidget.js' : 'SearchWidget.min.js' %}
+{% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget', true) ~ '/dist/' ~ widgetJs, {
     position: 3
 }) %}
 

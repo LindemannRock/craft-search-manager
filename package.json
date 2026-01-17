@@ -1,0 +1,12 @@
+{
+  "name": "craft-search-manager",
+  "version": "5.29.0",
+  "description": "Build tools for Search Manager plugin",
+  "scripts": {
+    "build": "npm run build:widget",
+    "build:widget": "cd src/web/assets/searchwidget && npm run build",
+    "dev": "cd src/web/assets/searchwidget && npm run dev",
+    "watch": "cd src/web/assets/searchwidget && npm run watch",
+    "test": "cd src/web/assets/searchwidget && npm test"
+  }
+}

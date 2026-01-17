@@ -1,0 +1,14 @@
+{
+  "name": "@lindemannrock/search-manager-widget",
+  "version": "5.29.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "dev": "node build.js --dev",
+    "watch": "node build.js --dev --watch",
+    "test": "node test.js"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.0"
+  }
+}
