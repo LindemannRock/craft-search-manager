@@ -7,64 +7,104 @@
  * Usage:
  * {% include 'search-manager/_widget/search' %}
  *
- * With options:
+ * With a named config:
  * {% include 'search-manager/_widget/search' with {
- *     index: 'main',
+ *     config: 'homepage',
+ * } %}
+ *
+ * With inline overrides:
+ * {% include 'search-manager/_widget/search' with {
+ *     config: 'homepage',
+ *     indices: ['blog', 'products'],
  *     placeholder: 'Search articles...',
  *     theme: 'dark',
- *     maxResults: 10,
- *     showTrigger: true,
- *     triggerText: 'Search',
  * } %}
  *
  * Available options:
- * - index: (string) Search index handle (optional, searches all if not specified)
+ * - config: (string) Widget config handle (loads settings from database)
+ * - indices: (array) Search index handles (optional, empty = search all)
+ * - index: (string) Single index handle (legacy, use indices instead)
  * - placeholder: (string) Input placeholder text (default: 'Search...')
  * - theme: (string) 'light' or 'dark' (default: 'light')
- * - maxResults: (int) Maximum results to show (default: 10)
- * - debounce: (int) Debounce delay in ms (default: 200)
- * - minChars: (int) Minimum characters before searching (default: 2)
- * - showRecent: (bool) Show recent searches (default: true)
- * - groupResults: (bool) Group results by type/section (default: true)
- * - hotkey: (string) Keyboard shortcut key (default: 'k')
- * - showTrigger: (bool) Show the trigger button (default: true)
- * - triggerText: (string) Trigger button text (default: 'Search')
+ * - maxResults: (int) Maximum results to show (default: from config)
+ * - debounce: (int) Debounce delay in ms (default: from config)
+ * - minChars: (int) Minimum characters before searching (default: from config)
+ * - showRecent: (bool) Show recent searches (default: from config)
+ * - groupResults: (bool) Group results by type/section (default: from config)
+ * - hotkey: (string) Keyboard shortcut key (default: from config)
+ * - showTrigger: (bool) Show the trigger button (default: from config)
+ * - triggerText: (string) Trigger button text (default: from config)
+ * - triggerSelector: (string) CSS selector for external trigger element (e.g., '#my-search-btn')
  * - siteId: (int) Specific site ID to search (optional)
  * - class: (string) Additional CSS class for the widget
  * - dir: (string) Text direction 'ltr' or 'rtl' (auto-detected from site)
- * - enableHighlighting: (bool) Enable term highlighting (default: from plugin settings)
- * - highlightTag: (string) HTML tag for highlights (default: from plugin settings, e.g., 'mark')
- * - highlightClass: (string) CSS class for highlights (default: from plugin settings)
+ * - enableHighlighting: (bool) Enable term highlighting (default: from config)
+ * - highlightTag: (string) HTML tag for highlights (default: from config)
+ * - highlightClass: (string) CSS class for highlights (default: from config)
+ * - backdropOpacity: (int) Backdrop opacity 0-100 (default: from config)
+ * - enableBackdropBlur: (bool) Enable backdrop blur effect (default: from config)
+ * - preventBodyScroll: (bool) Prevent body scroll when open (default: from config)
+ * - styles: (object) Override individual style values (see WidgetConfig for keys)
  *
  * @link https://lindemannrock.com
  * @copyright Copyright (c) 2025 LindemannRock
  */
 #}
 
-{# Get plugin instance and settings #}
+{# Get plugin instance and widget config #}
 {% set plugin = craft.app.plugins.getPlugin('search-manager') %}
-{% set settings = plugin.getSettings() %}
+{% set widgetConfig = plugin.widgetConfigs.getConfigForWidget(config ?? null) %}
 
-{# Default values #}
-{% set index = index ?? '' %}
+{# Search settings - support both indices (array) and legacy index (string) #}
+{% if indices is defined and indices is iterable %}
+    {% set indexHandles = indices %}
+{% elseif index is defined and index %}
+    {% set indexHandles = [index] %}
+{% else %}
+    {% set indexHandles = widgetConfig.getIndexHandles() %}
+{% endif %}
+
 {% set placeholder = placeholder ?? 'Search...'|t('search-manager') %}
 {% set theme = theme ?? 'light' %}
-{% set maxResults = maxResults ?? 10 %}
-{% set debounce = debounce ?? 200 %}
-{% set minChars = minChars ?? 2 %}
-{% set showRecent = showRecent ?? true %}
-{% set groupResults = groupResults ?? true %}
-{% set hotkey = hotkey ?? 'k' %}
-{% set showTrigger = showTrigger ?? true %}
-{% set triggerText = triggerText ?? 'Search'|t('search-manager') %}
 {% set siteId = siteId ?? '' %}
 {% set class = class ?? '' %}
 {% set dir = dir ?? (craft.app.locale.getOrientation() == 'rtl' ? 'rtl' : 'ltr') %}
 
-{# Highlighting settings - use param override or fall back to plugin settings #}
-{% set enableHighlighting = enableHighlighting ?? settings.enableHighlighting ?? true %}
-{% set highlightTag = highlightTag ?? settings.highlightTag ?? 'mark' %}
-{% set highlightClass = highlightClass ?? settings.highlightClass ?? '' %}
+{# Behavior settings - use inline param override or fall back to widget config #}
+{% set maxResults = maxResults ?? widgetConfig.getMaxResults() %}
+{% set debounce = debounce ?? widgetConfig.getDebounce() %}
+{% set minChars = minChars ?? widgetConfig.getMinChars() %}
+{% set showRecent = showRecent ?? widgetConfig.isShowRecentEnabled() %}
+{% set groupResults = groupResults ?? widgetConfig.isGroupResultsEnabled() %}
+{% set hotkey = hotkey ?? widgetConfig.getHotkey() %}
+
+{# Trigger settings #}
+{% set showTrigger = showTrigger ?? widgetConfig.isShowTriggerEnabled() %}
+{% set triggerText = triggerText ?? widgetConfig.getTriggerText()|t('search-manager') %}
+{% set triggerSelector = triggerSelector ?? '' %}
+
+{# Highlighting settings #}
+{% set enableHighlighting = enableHighlighting ?? widgetConfig.isHighlightingEnabled() %}
+{% set highlightTag = highlightTag ?? widgetConfig.getHighlightTag() %}
+{% set highlightClass = highlightClass ?? widgetConfig.getHighlightClass() %}
+
+{# Backdrop settings #}
+{% set backdropOpacity = backdropOpacity ?? widgetConfig.getBackdropOpacity() %}
+{% set enableBackdropBlur = enableBackdropBlur ?? widgetConfig.isBackdropBlurEnabled() %}
+{% set preventBodyScroll = preventBodyScroll ?? widgetConfig.isPreventBodyScrollEnabled() %}
+
+{# Get styles - merge config styles with highlighting colors and any inline overrides #}
+{% set configStyles = widgetConfig.getStyles() %}
+{% set highlightStyles = {
+    highlightBgLight: widgetConfig.getHighlightBgLight(),
+    highlightColorLight: widgetConfig.getHighlightColorLight(),
+    highlightBgDark: widgetConfig.getHighlightBgDark(),
+    highlightColorDark: widgetConfig.getHighlightColorDark(),
+} %}
+{% set mergedStyles = configStyles|merge(highlightStyles) %}
+{% if styles is defined and styles is iterable %}
+    {% set mergedStyles = mergedStyles|merge(styles) %}
+{% endif %}
 
 {# Register the widget JS #}
 {% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget', true) ~ '/SearchWidget.js', {
@@ -77,7 +117,7 @@
 
 {# Render the widget #}
 <search-widget
-    {% if index %}index="{{ index }}"{% endif %}
+    {% if indexHandles|length %}indices="{{ indexHandles|join(',') }}"{% endif %}
     placeholder="{{ placeholder }}"
     endpoint="{{ endpoint }}"
     analytics-endpoint="{{ analyticsEndpoint }}"
@@ -94,13 +134,10 @@
     enable-highlighting="{{ enableHighlighting ? 'true' : 'false' }}"
     highlight-tag="{{ highlightTag }}"
     {% if highlightClass %}highlight-class="{{ highlightClass }}"{% endif %}
-    {% if not showTrigger %}style="display: none;"{% endif %}
+    backdrop-opacity="{{ backdropOpacity }}"
+    enable-backdrop-blur="{{ enableBackdropBlur ? 'true' : 'false' }}"
+    prevent-body-scroll="{{ preventBodyScroll ? 'true' : 'false' }}"
+    show-trigger="{{ showTrigger ? 'true' : 'false' }}"
+    {% if triggerSelector %}trigger-selector="{{ triggerSelector }}"{% endif %}
+    styles="{{ mergedStyles|json_encode|e('html_attr') }}"
 ></search-widget>
-
-{% if not showTrigger %}
-{# If trigger is hidden, provide a way to open programmatically #}
-{% js %}
-// You can open the search widget programmatically:
-// document.querySelector('search-widget').open();
-{% endjs %}
-{% endif %}

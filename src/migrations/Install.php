@@ -33,9 +33,11 @@ class Install extends Migration
         $this->createQueryRulesTable();
         $this->createRuleAnalyticsTable();
         $this->createPromotionAnalyticsTable();
+        $this->createWidgetConfigsTable();
 
         // Insert default data
         $this->insertDefaultSettings();
+        $this->insertDefaultWidgetConfig();
 
         return true;
     }
@@ -43,6 +45,7 @@ class Install extends Migration
     public function safeDown(): bool
     {
         // Drop tables in reverse order (respecting dependencies)
+        $this->dropTableIfExists('{{%searchmanager_widget_configs}}');
         $this->dropTableIfExists('{{%searchmanager_promotion_analytics}}');
         $this->dropTableIfExists('{{%searchmanager_rule_analytics}}');
         $this->dropTableIfExists('{{%searchmanager_query_rules}}');
@@ -104,7 +107,7 @@ class Install extends Migration
             // Language & Stop Words
             'enableStopWords' => $this->boolean()->notNull()->defaultValue(true),
             'defaultLanguage' => $this->string(10)->null(),
-            // Highlighting Settings
+            // Highlighting Settings (for template helpers, not widget)
             'enableHighlighting' => $this->boolean()->notNull()->defaultValue(true),
             'highlightTag' => $this->string(20)->notNull()->defaultValue('mark'),
             'highlightClass' => $this->string(100)->null(),
@@ -653,5 +656,79 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_promotion_analytics}}', ['elementId'], false);
         $this->createIndex(null, '{{%searchmanager_promotion_analytics}}', ['dateCreated'], false);
         $this->createIndex(null, '{{%searchmanager_promotion_analytics}}', ['indexHandle', 'siteId'], false);
+    }
+
+    /**
+     * Create widget configs table
+     * Stores named widget configurations with appearance/behavior settings
+     */
+    private function createWidgetConfigsTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_widget_configs}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_widget_configs}}', [
+            'id' => $this->primaryKey(),
+            'handle' => $this->string(64)->notNull(),
+            'name' => $this->string(255)->notNull(),
+            'settings' => $this->text()->null()->comment('JSON settings for highlighting, backdrop, behavior'),
+            'isDefault' => $this->boolean()->notNull()->defaultValue(false),
+            'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        // Create indexes
+        $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['handle'], true);
+        $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['isDefault'], false);
+        $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['enabled'], false);
+    }
+
+    /**
+     * Insert default widget configuration
+     */
+    private function insertDefaultWidgetConfig(): void
+    {
+        $defaultSettings = [
+            'highlighting' => [
+                'enabled' => true,
+                'tag' => 'mark',
+                'class' => null,
+                'bgLight' => '#fef08a',
+                'colorLight' => '#854d0e',
+                'bgDark' => '#854d0e',
+                'colorDark' => '#fef08a',
+            ],
+            'backdrop' => [
+                'opacity' => 50,
+                'blur' => true,
+            ],
+            'behavior' => [
+                'preventBodyScroll' => true,
+                'debounce' => 200,
+                'minChars' => 2,
+                'maxResults' => 10,
+                'showRecent' => true,
+                'groupResults' => true,
+                'hotkey' => 'k',
+            ],
+            'trigger' => [
+                'showTrigger' => true,
+                'triggerText' => 'Search',
+            ],
+        ];
+
+        $this->insert('{{%searchmanager_widget_configs}}', [
+            'handle' => 'default',
+            'name' => 'Default Widget',
+            'settings' => json_encode($defaultSettings),
+            'isDefault' => 1,
+            'enabled' => 1,
+            'dateCreated' => Db::prepareDateForDb(new \DateTime()),
+            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+            'uid' => StringHelper::UUID(),
+        ]);
     }
 }

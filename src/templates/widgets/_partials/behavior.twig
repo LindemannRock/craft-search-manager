@@ -1,0 +1,116 @@
+{% import "_includes/forms" as forms %}
+
+{# Backdrop Settings #}
+<h2>{{ "Backdrop Settings"|t('search-manager') }}</h2>
+
+{{ forms.textField({
+	label: 'Opacity'|t('search-manager'),
+	instructions: 'Opacity of the dark overlay behind the modal (0 = transparent, 100 = opaque)'|t('search-manager'),
+	id: 'backdrop-opacity',
+	name: 'settings[backdrop][opacity]',
+	value: widgetConfig.getBackdropOpacity(),
+	type: 'number',
+	min: 0,
+	max: 100,
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Enable Backdrop Blur'|t('search-manager'),
+	instructions: 'Apply a blur effect to the page content behind the modal'|t('search-manager'),
+	id: 'backdrop-blur',
+	name: 'settings[backdrop][blur]',
+	on: widgetConfig.isBackdropBlurEnabled(),
+}) }}
+
+<hr>
+
+{# Behavior Settings #}
+<h2>{{ "Behavior Settings"|t('search-manager') }}</h2>
+
+{{ forms.lightswitchField({
+	label: 'Prevent Body Scroll'|t('search-manager'),
+	instructions: 'Prevent the page from scrolling when the search modal is open'|t('search-manager'),
+	id: 'behavior-preventBodyScroll',
+	name: 'settings[behavior][preventBodyScroll]',
+	on: widgetConfig.isPreventBodyScrollEnabled(),
+}) }}
+
+{{ forms.textField({
+	label: 'Debounce'|t('search-manager'),
+	instructions: 'Delay in milliseconds before search triggers after typing'|t('search-manager'),
+	id: 'behavior-debounce',
+	name: 'settings[behavior][debounce]',
+	value: widgetConfig.getDebounce(),
+	type: 'number',
+	min: 0,
+	max: 2000,
+}) }}
+
+{{ forms.textField({
+	label: 'Minimum Characters'|t('search-manager'),
+	instructions: 'Minimum characters before search begins'|t('search-manager'),
+	id: 'behavior-minChars',
+	name: 'settings[behavior][minChars]',
+	value: widgetConfig.getMinChars(),
+	type: 'number',
+	min: 1,
+	max: 10,
+}) }}
+
+{{ forms.textField({
+	label: 'Maximum Results'|t('search-manager'),
+	instructions: 'Maximum number of results to display'|t('search-manager'),
+	id: 'behavior-maxResults',
+	name: 'settings[behavior][maxResults]',
+	value: widgetConfig.getMaxResults(),
+	type: 'number',
+	min: 1,
+	max: 50,
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Show Recent Searches'|t('search-manager'),
+	instructions: 'Show recently searched terms when the modal opens'|t('search-manager'),
+	id: 'behavior-showRecent',
+	name: 'settings[behavior][showRecent]',
+	on: widgetConfig.isShowRecentEnabled(),
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Group Results'|t('search-manager'),
+	instructions: 'Group search results by type/section'|t('search-manager'),
+	id: 'behavior-groupResults',
+	name: 'settings[behavior][groupResults]',
+	on: widgetConfig.isGroupResultsEnabled(),
+}) }}
+
+{{ forms.textField({
+	label: 'Hotkey'|t('search-manager'),
+	instructions: 'Keyboard shortcut key (used with Cmd/Ctrl, e.g., "k" for Cmd+K)'|t('search-manager'),
+	id: 'behavior-hotkey',
+	name: 'settings[behavior][hotkey]',
+	value: widgetConfig.getHotkey(),
+	size: 1,
+	maxlength: 1,
+}) }}
+
+<hr>
+
+{# Trigger Button Settings #}
+<h2>{{ "Trigger Button Settings"|t('search-manager') }}</h2>
+
+{{ forms.lightswitchField({
+	label: 'Show Trigger Button'|t('search-manager'),
+	instructions: 'Display a visible search button that opens the modal'|t('search-manager'),
+	id: 'trigger-showTrigger',
+	name: 'settings[trigger][showTrigger]',
+	on: widgetConfig.isShowTriggerEnabled(),
+}) }}
+
+{{ forms.textField({
+	label: 'Trigger Text'|t('search-manager'),
+	instructions: 'Text displayed on the trigger button'|t('search-manager'),
+	id: 'trigger-triggerText',
+	name: 'settings[trigger][triggerText]',
+	value: widgetConfig.getTriggerText(),
+}) }}

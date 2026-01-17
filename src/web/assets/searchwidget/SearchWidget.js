@@ -50,7 +50,7 @@ class SearchWidget extends HTMLElement {
     // Observed attributes
     static get observedAttributes() {
         return [
-            'index',
+            'indices',
             'placeholder',
             'endpoint',
             'theme',
@@ -63,14 +63,38 @@ class SearchWidget extends HTMLElement {
             'site-id',
             'enable-highlighting',
             'highlight-tag',
-            'highlight-class'
+            'highlight-class',
+            'backdrop-opacity',
+            'enable-backdrop-blur',
+            'prevent-body-scroll',
+            'show-trigger',
+            'trigger-selector',
+            'styles'
         ];
+    }
+
+    // Parse styles JSON attribute
+    get styles() {
+        const stylesAttr = this.getAttribute('styles');
+        if (stylesAttr) {
+            try {
+                return JSON.parse(stylesAttr);
+            } catch (e) {
+                console.warn('SearchWidget: Invalid styles JSON', e);
+            }
+        }
+        return {};
     }
 
     // Default config
     get config() {
+        const indicesAttr = this.getAttribute('indices') || '';
+        const indices = indicesAttr ? indicesAttr.split(',').map(s => s.trim()).filter(Boolean) : [];
+
         return {
-            index: this.getAttribute('index') || '',
+            indices: indices,
+            // Legacy: first index for backwards compatibility
+            index: indices[0] || '',
             placeholder: this.getAttribute('placeholder') || 'Search...',
             endpoint: this.getAttribute('endpoint') || '/actions/search-manager/search/query',
             theme: this.getAttribute('theme') || 'light',
@@ -84,7 +108,12 @@ class SearchWidget extends HTMLElement {
             analyticsEndpoint: this.getAttribute('analytics-endpoint') || '/actions/search-manager/search/track-click',
             enableHighlighting: this.getAttribute('enable-highlighting') !== 'false',
             highlightTag: this.getAttribute('highlight-tag') || 'mark',
-            highlightClass: this.getAttribute('highlight-class') || ''
+            highlightClass: this.getAttribute('highlight-class') || '',
+            backdropOpacity: parseInt(this.getAttribute('backdrop-opacity')) || 50,
+            enableBackdropBlur: this.getAttribute('enable-backdrop-blur') !== 'false',
+            preventBodyScroll: this.getAttribute('prevent-body-scroll') !== 'false',
+            showTrigger: this.getAttribute('show-trigger') !== 'false',
+            triggerSelector: this.getAttribute('trigger-selector') || ''
         };
     }
 
@@ -151,13 +180,13 @@ class SearchWidget extends HTMLElement {
 
     // Render the component
     render() {
-        const { theme, placeholder } = this.config;
+        const { theme, placeholder, showTrigger } = this.config;
 
         this.shadowRoot.innerHTML = `
             <style>${this.getStyles()}</style>
 
             <!-- Trigger button (optional, can be hidden) -->
-            <button class="sm-trigger" part="trigger" aria-label="Open search">
+            <button class="sm-trigger" part="trigger" aria-label="Open search" ${showTrigger ? '' : 'style="display: none;"'}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
@@ -228,6 +257,119 @@ class SearchWidget extends HTMLElement {
 
         // Set theme
         this.shadowRoot.host.setAttribute('data-theme', theme);
+
+        // Apply custom CSS properties from config
+        this.applyCustomStyles();
+    }
+
+    // Apply custom CSS properties based on config and styles
+    applyCustomStyles() {
+        const config = this.config;
+        const styles = this.styles;
+        const host = this.shadowRoot.host;
+
+        // Backdrop settings from config
+        const opacity = config.backdropOpacity / 100;
+        host.style.setProperty('--sm-backdrop-opacity', opacity);
+        host.style.setProperty('--sm-backdrop-blur', config.enableBackdropBlur ? 'blur(4px)' : 'none');
+
+        // Apply all styles from the styles JSON
+        // Convert camelCase to kebab-case CSS variable names
+        const styleMapping = {
+            // Modal
+            modalBg: '--sm-modal-bg',
+            modalBgDark: '--sm-modal-bg-dark',
+            modalBorderRadius: '--sm-modal-radius',
+            modalBorderWidth: '--sm-modal-border-width',
+            modalBorderColor: '--sm-modal-border-color',
+            modalBorderColorDark: '--sm-modal-border-color-dark',
+            modalShadow: '--sm-modal-shadow',
+            modalMaxWidth: '--sm-modal-width',
+            // Input
+            inputBg: '--sm-input-bg',
+            inputBgDark: '--sm-input-bg-dark',
+            inputTextColor: '--sm-input-color',
+            inputTextColorDark: '--sm-input-color-dark',
+            inputPlaceholderColor: '--sm-input-placeholder',
+            inputPlaceholderColorDark: '--sm-input-placeholder-dark',
+            inputBorderColor: '--sm-input-border-color',
+            inputBorderColorDark: '--sm-input-border-color-dark',
+            inputFontSize: '--sm-input-font-size',
+            // Results
+            resultBg: '--sm-result-bg',
+            resultBgDark: '--sm-result-bg-dark',
+            resultHoverBg: '--sm-result-hover-bg',
+            resultHoverBgDark: '--sm-result-hover-bg-dark',
+            resultActiveBg: '--sm-result-active-bg',
+            resultActiveBgDark: '--sm-result-active-bg-dark',
+            resultTextColor: '--sm-result-text-color',
+            resultTextColorDark: '--sm-result-text-color-dark',
+            resultDescColor: '--sm-result-desc-color',
+            resultDescColorDark: '--sm-result-desc-color-dark',
+            resultBorderRadius: '--sm-result-radius',
+            // Trigger
+            triggerBg: '--sm-trigger-bg',
+            triggerBgDark: '--sm-trigger-bg-dark',
+            triggerTextColor: '--sm-trigger-text-color',
+            triggerTextColorDark: '--sm-trigger-text-color-dark',
+            triggerBorderRadius: '--sm-trigger-radius',
+            triggerBorderWidth: '--sm-trigger-border-width',
+            triggerBorderColor: '--sm-trigger-border-color',
+            triggerBorderColorDark: '--sm-trigger-border-color-dark',
+            triggerPaddingX: '--sm-trigger-px',
+            triggerPaddingY: '--sm-trigger-py',
+            triggerFontSize: '--sm-trigger-font-size',
+            // Kbd
+            kbdBg: '--sm-kbd-bg',
+            kbdBgDark: '--sm-kbd-bg-dark',
+            kbdTextColor: '--sm-kbd-text-color',
+            kbdTextColorDark: '--sm-kbd-text-color-dark',
+            kbdBorderRadius: '--sm-kbd-radius',
+            // Highlighting (from styles JSON)
+            highlightBgLight: '--sm-highlight-bg',
+            highlightColorLight: '--sm-highlight-color',
+            highlightBgDark: '--sm-highlight-bg-dark',
+            highlightColorDark: '--sm-highlight-color-dark',
+        };
+
+        // Keys that are numeric (need px suffix)
+        const numericKeys = ['modalBorderRadius', 'modalBorderWidth', 'modalMaxWidth', 'inputFontSize',
+             'resultBorderRadius', 'triggerBorderRadius', 'triggerBorderWidth',
+             'triggerPaddingX', 'triggerPaddingY', 'triggerFontSize', 'kbdBorderRadius'];
+
+        // Keys that are colors (need # prefix if missing)
+        const colorKeys = ['modalBg', 'modalBgDark', 'modalBorderColor', 'modalBorderColorDark',
+            'inputBg', 'inputBgDark', 'inputTextColor', 'inputTextColorDark',
+            'inputPlaceholderColor', 'inputPlaceholderColorDark', 'inputBorderColor', 'inputBorderColorDark',
+            'resultBg', 'resultBgDark', 'resultHoverBg', 'resultHoverBgDark',
+            'resultActiveBg', 'resultActiveBgDark', 'resultTextColor', 'resultTextColorDark',
+            'resultDescColor', 'resultDescColorDark',
+            'triggerBg', 'triggerBgDark', 'triggerTextColor', 'triggerTextColorDark',
+            'triggerBorderColor', 'triggerBorderColorDark',
+            'kbdBg', 'kbdBgDark', 'kbdTextColor', 'kbdTextColorDark',
+            'highlightBgLight', 'highlightColorLight', 'highlightBgDark', 'highlightColorDark'];
+
+        // Helper to check if value is a hex color without #
+        const isHexColor = (val) => /^[0-9a-fA-F]{6}$/.test(val);
+
+        // Apply each style as a CSS variable
+        for (const [key, cssVar] of Object.entries(styleMapping)) {
+            if (styles[key] !== undefined && styles[key] !== null && styles[key] !== '') {
+                let value = String(styles[key]);
+
+                // Add # prefix for hex colors
+                if (colorKeys.includes(key) && isHexColor(value)) {
+                    value = '#' + value;
+                }
+
+                // Add px suffix for numeric values
+                if (numericKeys.includes(key)) {
+                    value = value + 'px';
+                }
+
+                host.style.setProperty(cssVar, value);
+            }
+        }
     }
 
     // Get hotkey display
@@ -254,11 +396,26 @@ class SearchWidget extends HTMLElement {
 
         // Global keyboard shortcut
         document.addEventListener('keydown', this.handleGlobalKeydown);
+
+        // External trigger selector
+        const { triggerSelector } = this.config;
+        if (triggerSelector) {
+            this.externalTrigger = document.querySelector(triggerSelector);
+            if (this.externalTrigger) {
+                this.externalTrigger.addEventListener('click', this.toggle);
+            }
+        }
     }
 
     // Detach event listeners
     detachEventListeners() {
         document.removeEventListener('keydown', this.handleGlobalKeydown);
+
+        // Remove external trigger listener
+        if (this.externalTrigger) {
+            this.externalTrigger.removeEventListener('click', this.toggle);
+            this.externalTrigger = null;
+        }
     }
 
     // Handle global keyboard shortcuts
@@ -375,8 +532,9 @@ class SearchWidget extends HTMLElement {
                 limit: this.config.maxResults.toString()
             });
 
-            if (this.config.index) {
-                params.append('index', this.config.index);
+            // Pass indices as comma-separated (empty = search all)
+            if (this.config.indices.length > 0) {
+                params.append('indices', this.config.indices.join(','));
             }
 
             if (this.config.siteId) {
@@ -639,8 +797,10 @@ class SearchWidget extends HTMLElement {
             this.elements.input.focus();
         });
 
-        // Prevent body scroll
-        document.body.style.overflow = 'hidden';
+        // Prevent body scroll (if enabled)
+        if (this.config.preventBodyScroll) {
+            document.body.style.overflow = 'hidden';
+        }
 
         // Dispatch event
         this.dispatchEvent(new CustomEvent('search-open'));
@@ -651,8 +811,10 @@ class SearchWidget extends HTMLElement {
         this.isOpen = false;
         this.elements.backdrop.hidden = true;
 
-        // Restore body scroll
-        document.body.style.overflow = '';
+        // Restore body scroll (if we prevented it)
+        if (this.config.preventBodyScroll) {
+            document.body.style.overflow = '';
+        }
 
         // Dispatch event
         this.dispatchEvent(new CustomEvent('search-close'));
@@ -683,33 +845,52 @@ class SearchWidget extends HTMLElement {
     getStyles() {
         return `
             :host {
-                --sm-backdrop-bg: rgba(0, 0, 0, 0.5);
+                /* Modal - defaults that can be overridden via inline styles */
                 --sm-modal-bg: #ffffff;
                 --sm-modal-border: #e5e7eb;
+                --sm-modal-border-width: 1px;
                 --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
                 --sm-modal-radius: 12px;
-                --sm-modal-width: 600px;
+                --sm-modal-width: 640px;
                 --sm-modal-max-height: 80vh;
 
-                --sm-input-bg: transparent;
+                /* Input */
+                --sm-input-bg: #ffffff;
                 --sm-input-color: #111827;
                 --sm-input-placeholder: #9ca3af;
+                --sm-input-font-size: 16px;
 
+                /* Text colors */
                 --sm-text-primary: #111827;
                 --sm-text-secondary: #6b7280;
                 --sm-text-muted: #9ca3af;
 
+                /* Borders and backgrounds */
                 --sm-border-color: #e5e7eb;
                 --sm-hover-bg: #f3f4f6;
-                --sm-selected-bg: #eff6ff;
+                --sm-selected-bg: #e5e7eb;
                 --sm-selected-border: #3b82f6;
+                --sm-result-radius: 8px;
 
+                /* Highlighting */
                 --sm-highlight-bg: #fef08a;
                 --sm-highlight-color: #854d0e;
 
+                /* Kbd / keyboard shortcuts */
                 --sm-kbd-bg: #f3f4f6;
                 --sm-kbd-border: #d1d5db;
-                --sm-kbd-color: #374151;
+                --sm-kbd-color: #6b7280;
+                --sm-kbd-radius: 4px;
+
+                /* Trigger button */
+                --sm-trigger-bg: #ffffff;
+                --sm-trigger-color: #374151;
+                --sm-trigger-border: #d1d5db;
+                --sm-trigger-radius: 8px;
+                --sm-trigger-border-width: 1px;
+                --sm-trigger-px: 12px;
+                --sm-trigger-py: 8px;
+                --sm-trigger-font-size: 14px;
 
                 --sm-accent: #3b82f6;
                 --sm-accent-hover: #2563eb;
@@ -719,28 +900,32 @@ class SearchWidget extends HTMLElement {
             }
 
             :host([data-theme="dark"]) {
-                --sm-backdrop-bg: rgba(0, 0, 0, 0.7);
-                --sm-modal-bg: #1f2937;
-                --sm-modal-border: #374151;
+                --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
+                --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
 
-                --sm-input-color: #f9fafb;
-                --sm-input-placeholder: #6b7280;
+                --sm-input-bg: var(--sm-input-bg-dark, #1f2937);
+                --sm-input-color: var(--sm-input-color-dark, #f9fafb);
+                --sm-input-placeholder: var(--sm-input-placeholder-dark, #6b7280);
 
-                --sm-text-primary: #f9fafb;
-                --sm-text-secondary: #d1d5db;
+                --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
+                --sm-text-secondary: var(--sm-result-desc-color-dark, #9ca3af);
                 --sm-text-muted: #6b7280;
 
-                --sm-border-color: #374151;
-                --sm-hover-bg: #374151;
-                --sm-selected-bg: #1e3a5f;
+                --sm-border-color: var(--sm-input-border-color-dark, #374151);
+                --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
+                --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
                 --sm-selected-border: #3b82f6;
 
-                --sm-highlight-bg: #854d0e;
-                --sm-highlight-color: #fef08a;
+                --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
+                --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
 
-                --sm-kbd-bg: #374151;
+                --sm-kbd-bg: var(--sm-kbd-bg-dark, #4b5563);
                 --sm-kbd-border: #4b5563;
-                --sm-kbd-color: #d1d5db;
+                --sm-kbd-color: var(--sm-kbd-text-color-dark, #9ca3af);
+
+                --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);
+                --sm-trigger-color: var(--sm-trigger-text-color-dark, #d1d5db);
+                --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);
             }
 
             *, *::before, *::after {
@@ -752,12 +937,12 @@ class SearchWidget extends HTMLElement {
                 display: inline-flex;
                 align-items: center;
                 gap: 8px;
-                padding: 8px 12px;
-                background: var(--sm-modal-bg);
-                border: 1px solid var(--sm-border-color);
-                border-radius: 8px;
-                color: var(--sm-text-secondary);
-                font-size: 14px;
+                padding: var(--sm-trigger-py) var(--sm-trigger-px);
+                background: var(--sm-trigger-bg);
+                border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);
+                border-radius: var(--sm-trigger-radius);
+                color: var(--sm-trigger-color);
+                font-size: var(--sm-trigger-font-size);
                 cursor: pointer;
                 transition: all 0.15s ease;
             }
@@ -773,7 +958,7 @@ class SearchWidget extends HTMLElement {
                 padding: 2px 6px;
                 background: var(--sm-kbd-bg);
                 border: 1px solid var(--sm-kbd-border);
-                border-radius: 4px;
+                border-radius: var(--sm-kbd-radius);
                 font-size: 11px;
                 font-family: inherit;
                 color: var(--sm-kbd-color);
@@ -788,8 +973,8 @@ class SearchWidget extends HTMLElement {
                 align-items: flex-start;
                 justify-content: center;
                 padding-top: 10vh;
-                background: var(--sm-backdrop-bg);
-                backdrop-filter: blur(4px);
+                background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));
+                backdrop-filter: var(--sm-backdrop-blur, blur(4px));
                 animation: sm-fade-in 0.15s ease;
             }
 
@@ -808,7 +993,7 @@ class SearchWidget extends HTMLElement {
                 max-width: calc(100vw - 32px);
                 max-height: var(--sm-modal-max-height);
                 background: var(--sm-modal-bg);
-                border: 1px solid var(--sm-modal-border);
+                border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);
                 border-radius: var(--sm-modal-radius);
                 box-shadow: var(--sm-modal-shadow);
                 display: flex;
@@ -847,7 +1032,7 @@ class SearchWidget extends HTMLElement {
                 border: none;
                 background: var(--sm-input-bg);
                 color: var(--sm-input-color);
-                font-size: 16px;
+                font-size: var(--sm-input-font-size);
                 outline: none;
             }
 
@@ -883,7 +1068,7 @@ class SearchWidget extends HTMLElement {
                 padding: 2px 6px;
                 background: var(--sm-kbd-bg);
                 border: 1px solid var(--sm-kbd-border);
-                border-radius: 4px;
+                border-radius: var(--sm-kbd-radius);
                 font-size: 11px;
                 font-family: inherit;
                 color: var(--sm-kbd-color);
@@ -920,7 +1105,7 @@ class SearchWidget extends HTMLElement {
                 padding: 2px 8px;
                 background: transparent;
                 border: none;
-                border-radius: 4px;
+                border-radius: var(--sm-kbd-radius);
                 font-size: 11px;
                 color: var(--sm-text-muted);
                 cursor: pointer;
@@ -939,7 +1124,7 @@ class SearchWidget extends HTMLElement {
                 align-items: center;
                 gap: 12px;
                 padding: 12px;
-                border-radius: 8px;
+                border-radius: var(--sm-result-radius);
                 color: var(--sm-text-primary);
                 text-decoration: none;
                 cursor: pointer;
@@ -991,7 +1176,7 @@ class SearchWidget extends HTMLElement {
                 flex-shrink: 0;
                 padding: 2px 8px;
                 background: var(--sm-kbd-bg);
-                border-radius: 4px;
+                border-radius: var(--sm-kbd-radius);
                 font-size: 11px;
                 color: var(--sm-text-muted);
             }
@@ -1069,7 +1254,7 @@ class SearchWidget extends HTMLElement {
                 padding: 2px 4px;
                 background: var(--sm-kbd-bg);
                 border: 1px solid var(--sm-kbd-border);
-                border-radius: 4px;
+                border-radius: var(--sm-kbd-radius);
                 font-size: 10px;
                 font-family: inherit;
                 color: var(--sm-kbd-color);

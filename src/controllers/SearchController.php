@@ -33,11 +33,12 @@ class SearchController extends Controller
      *
      * Returns results with URLs, titles, and descriptions suitable for display
      *
-     * GET /actions/search-manager/search/query?q=test&index=main
+     * GET /actions/search-manager/search/query?q=test&indices=blog,products
      *
      * Parameters:
      * - q: Search query (required)
-     * - index: Index handle (optional, searches all if not specified)
+     * - indices: Comma-separated index handles (optional, searches all if not specified)
+     * - index: Single index handle (legacy, use indices instead)
      * - limit: Max results (default: 10)
      * - siteId: Site ID to search (optional)
      *
@@ -47,10 +48,22 @@ class SearchController extends Controller
     {
         $request = Craft::$app->getRequest();
         $query = $request->getParam('q', '');
-        $indexHandle = $request->getParam('index', '');
         $limit = (int) $request->getParam('limit', 10);
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int) $siteId : null;
+
+        // Get indices from new 'indices' param or legacy 'index' param
+        $indicesParam = $request->getParam('indices', '');
+        $indexHandle = $request->getParam('index', '');
+
+        // Parse indices - comma-separated string to array
+        $indexHandles = [];
+        if (!empty($indicesParam)) {
+            $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
+        } elseif (!empty($indexHandle)) {
+            // Legacy single index support
+            $indexHandles = [$indexHandle];
+        }
 
         if (empty(trim($query))) {
             return $this->asJson([
@@ -70,15 +83,18 @@ class SearchController extends Controller
             }
 
             // Get raw search results
-            if ($indexHandle) {
-                // Search specific index
-                $searchResults = SearchManager::$plugin->backend->search($indexHandle, $query, $options);
+            if (count($indexHandles) === 1) {
+                // Search single specified index
+                $searchResults = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);
+            } elseif (count($indexHandles) > 1) {
+                // Search multiple specified indices
+                $searchResults = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
             } else {
-                // Search all indices
-                $indices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-                $indexHandles = array_map(fn($idx) => $idx->handle, $indices);
+                // No indices specified - search all
+                $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+                $allIndexHandles = array_map(fn($idx) => $idx->handle, $allIndices);
 
-                if (empty($indexHandles)) {
+                if (empty($allIndexHandles)) {
                     return $this->asJson([
                         'results' => [],
                         'total' => 0,
@@ -87,7 +103,7 @@ class SearchController extends Controller
                     ]);
                 }
 
-                $searchResults = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
+                $searchResults = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
             }
 
             // Transform results for the widget
@@ -141,7 +157,7 @@ class SearchController extends Controller
         } catch (\Throwable $e) {
             $this->logError('Search widget query failed', [
                 'query' => $query,
-                'index' => $indexHandle,
+                'indices' => $indexHandles,
                 'error' => $e->getMessage(),
             ]);
 

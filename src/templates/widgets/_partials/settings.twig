@@ -1,0 +1,76 @@
+{% import "_includes/forms" as forms %}
+
+{# Basic Settings #}
+{{ forms.textField({
+	first: true,
+	label: "Name"|t('search-manager'),
+	instructions: "Human-readable name for this configuration"|t('search-manager'),
+	id: 'name',
+	name: 'name',
+	value: widgetConfig.name,
+	required: true,
+	autofocus: isNew,
+	errors: widgetConfig.getErrors('name')
+}) }}
+
+{{ forms.textField({
+	label: "Handle"|t('search-manager'),
+	instructions: "Unique identifier used in templates (e.g., `config: 'homepage'`)"|t('search-manager'),
+	id: 'handle',
+	name: 'handle',
+	value: widgetConfig.handle,
+	required: true,
+	errors: widgetConfig.getErrors('handle')
+}) }}
+
+<hr>
+
+<h2>{{ "Search Settings"|t('search-manager') }}</h2>
+
+{% set selectedIndexHandles = widgetConfig.getIndexHandles() %}
+{% set indexOptions = [] %}
+{% for index in indices %}
+	{% set indexOptions = indexOptions|merge([{
+		label: index.name ~ ' (' ~ index.handle ~ ')',
+		value: index.handle
+	}]) %}
+{% endfor %}
+
+{{ forms.checkboxSelectField({
+	label: 'Search Indices'|t('search-manager'),
+	instructions: 'Select which indices this widget searches. Leave all unchecked to search all indices.'|t('search-manager'),
+	id: 'search-indexHandles',
+	name: 'settings[search][indexHandles]',
+	values: selectedIndexHandles,
+	options: indexOptions,
+	showAllOption: true,
+}) }}
+
+<hr>
+
+<h2>{{ "Highlighting Settings"|t('search-manager') }}</h2>
+
+{{ forms.lightswitchField({
+	label: "Enable Highlighting"|t('search-manager'),
+	instructions: "Highlight matching search terms in results"|t('search-manager'),
+	id: 'highlighting-enabled',
+	name: 'settings[highlighting][enabled]',
+	on: widgetConfig.isHighlightingEnabled(),
+}) }}
+
+{{ forms.textField({
+	label: "Highlight Tag"|t('search-manager'),
+	instructions: "HTML tag to wrap highlighted terms (e.g., 'mark', 'span', 'strong')"|t('search-manager'),
+	id: 'highlighting-tag',
+	name: 'settings[highlighting][tag]',
+	value: widgetConfig.getHighlightTag(),
+}) }}
+
+{{ forms.textField({
+	label: "Highlight Class"|t('search-manager'),
+	instructions: "Optional CSS class to add to highlighted terms"|t('search-manager'),
+	id: 'highlighting-class',
+	name: 'settings[highlighting][class]',
+	value: widgetConfig.getHighlightClass(),
+}) }}
+

@@ -5,7 +5,6 @@
 {% set fullPageForm = true %}
 {% set selectedSettingsItem = 'interface' %}
 
-
 {% set crumbs = [
     {
         label: searchHelper.fullName|t('search-manager'),
@@ -33,7 +32,7 @@
 		pluginHandle: 'search-manager',
 		envVarName: 'SEARCH_MANAGER_IP_SALT'
 	} %}
-    
+
 	<form method="post" accept-charset="UTF-8">
 		<input type="hidden" name="action" value="search-manager/settings/save">
 		{{ csrfInput() }}

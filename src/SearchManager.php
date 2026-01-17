@@ -34,6 +34,7 @@ use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\TransformerService;
+use lindemannrock\searchmanager\services\WidgetConfigService;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 use lindemannrock\searchmanager\widgets\AnalyticsSummaryWidget;
 use lindemannrock\searchmanager\widgets\ContentGapsWidget;
@@ -55,6 +56,7 @@ use yii\base\Event;
  * @property-read DeviceDetectionService $deviceDetection
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
+ * @property-read WidgetConfigService $widgetConfigs
  * @property-read Settings $settings
  * @method Settings getSettings()
  */
@@ -177,6 +179,7 @@ class SearchManager extends Plugin
             'promotions' => PromotionService::class,
             'queryRules' => QueryRuleService::class,
             'transformers' => TransformerService::class,
+            'widgetConfigs' => WidgetConfigService::class,
         ]);
     }
 
@@ -267,6 +270,10 @@ class SearchManager extends Plugin
                     'search-manager/query-rules/create' => 'search-manager/query-rules/edit',
                     'search-manager/query-rules/edit/<ruleId:\d+>' => 'search-manager/query-rules/edit',
                     'search-manager/query-rules/delete/<ruleId:\d+>' => 'search-manager/query-rules/delete',
+                    // Widgets
+                    'search-manager/widgets' => 'search-manager/widgets/index',
+                    'search-manager/widgets/new' => 'search-manager/widgets/edit',
+                    'search-manager/widgets/edit/<configId:\d+>' => 'search-manager/widgets/edit',
                     // Backends
                     'search-manager/backends' => 'search-manager/backends/index',
                     'search-manager/backends/new' => 'search-manager/backends/edit',
@@ -711,6 +718,14 @@ class SearchManager extends Plugin
             $item['subnav']['query-rules'] = [
                 'label' => Craft::t('search-manager', 'Query Rules'),
                 'url' => 'search-manager/query-rules',
+            ];
+        }
+
+        // Widgets - for managing search widget configurations
+        if ($hasSettingsAccess) {
+            $item['subnav']['widgets'] = [
+                'label' => Craft::t('search-manager', 'Widgets'),
+                'url' => 'search-manager/widgets',
             ];
         }
 

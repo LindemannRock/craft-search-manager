@@ -5,6 +5,9 @@
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'backends' %}
 
+{# Get plugin settings #}
+{% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
+
 {# Get query parameters #}
 {% set search = craft.app.request.getParam('search', '') %}
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
@@ -13,7 +16,7 @@
 {% set sort = craft.app.request.getParam('sort', 'source') %}
 {% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = 50 %}
+{% set limit = settings.itemsPerPage %}
 {% set offset = (page - 1) * limit %}
 
 {# Permission checks #}

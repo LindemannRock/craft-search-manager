@@ -1,0 +1,475 @@
+{% import "_includes/forms" as forms %}
+
+{% set styles = widgetConfig.getStyles() %}
+
+<p class="light">{{ "Customize the visual appearance of the search widget. Colors support hex values."|t('search-manager') }}</p>
+
+{# ========================================
+   MODAL
+   ======================================== #}
+<h2>{{ "Modal"|t('search-manager') }}</h2>
+
+<div class="flex" style="gap: 48px; flex-wrap: wrap;">
+	<div>
+		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-modalBg',
+				name: 'settings[styles][modalBg]',
+				value: styles.modalBg,
+			}) }}
+			{{ forms.colorField({
+				label: 'Border'|t('search-manager'),
+				id: 'styles-modalBorderColor',
+				name: 'settings[styles][modalBorderColor]',
+				value: styles.modalBorderColor,
+			}) }}
+		</div>
+	</div>
+	<div>
+		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-modalBgDark',
+				name: 'settings[styles][modalBgDark]',
+				value: styles.modalBgDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Border'|t('search-manager'),
+				id: 'styles-modalBorderColorDark',
+				name: 'settings[styles][modalBorderColorDark]',
+				value: styles.modalBorderColorDark,
+			}) }}
+		</div>
+	</div>
+</div>
+
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.textField({
+			label: 'Max Width (px)'|t('search-manager'),
+			id: 'styles-modalMaxWidth',
+			name: 'settings[styles][modalMaxWidth]',
+			value: styles.modalMaxWidth,
+			type: 'number',
+			min: 300,
+			max: 1200,
+			size: 10,
+		}) }}
+		{{ forms.textField({
+			label: 'Border Radius (px)'|t('search-manager'),
+			id: 'styles-modalBorderRadius',
+			name: 'settings[styles][modalBorderRadius]',
+			value: styles.modalBorderRadius,
+			type: 'number',
+			min: 0,
+			max: 50,
+			size: 10,
+		}) }}
+		{{ forms.textField({
+			label: 'Border Width (px)'|t('search-manager'),
+			id: 'styles-modalBorderWidth',
+			name: 'settings[styles][modalBorderWidth]',
+			value: styles.modalBorderWidth,
+			type: 'number',
+			min: 0,
+			max: 10,
+			size: 10,
+		}) }}
+	</div>
+	{{ forms.textField({
+		label: 'Box Shadow'|t('search-manager'),
+		instructions: 'CSS box-shadow value (e.g., "0 25px 50px -12px rgba(0,0,0,0.25)")'|t('search-manager'),
+		id: 'styles-modalShadow',
+		name: 'settings[styles][modalShadow]',
+		value: styles.modalShadow,
+	}) }}
+</div>
+
+<hr>
+
+{# ========================================
+   INPUT FIELD
+   ======================================== #}
+<h2>{{ "Input Field"|t('search-manager') }}</h2>
+
+<div class="flex" style="gap: 48px; flex-wrap: wrap;">
+	<div>
+		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-inputBg',
+				name: 'settings[styles][inputBg]',
+				value: styles.inputBg,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-inputTextColor',
+				name: 'settings[styles][inputTextColor]',
+				value: styles.inputTextColor,
+			}) }}
+			{{ forms.colorField({
+				label: 'Placeholder'|t('search-manager'),
+				id: 'styles-inputPlaceholderColor',
+				name: 'settings[styles][inputPlaceholderColor]',
+				value: styles.inputPlaceholderColor,
+			}) }}
+			{{ forms.colorField({
+				label: 'Border'|t('search-manager'),
+				id: 'styles-inputBorderColor',
+				name: 'settings[styles][inputBorderColor]',
+				value: styles.inputBorderColor,
+			}) }}
+		</div>
+	</div>
+	<div>
+		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-inputBgDark',
+				name: 'settings[styles][inputBgDark]',
+				value: styles.inputBgDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-inputTextColorDark',
+				name: 'settings[styles][inputTextColorDark]',
+				value: styles.inputTextColorDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Placeholder'|t('search-manager'),
+				id: 'styles-inputPlaceholderColorDark',
+				name: 'settings[styles][inputPlaceholderColorDark]',
+				value: styles.inputPlaceholderColorDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Border'|t('search-manager'),
+				id: 'styles-inputBorderColorDark',
+				name: 'settings[styles][inputBorderColorDark]',
+				value: styles.inputBorderColorDark,
+			}) }}
+		</div>
+	</div>
+</div>
+
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.textField({
+			label: 'Font Size (px)'|t('search-manager'),
+			id: 'styles-inputFontSize',
+			name: 'settings[styles][inputFontSize]',
+			value: styles.inputFontSize,
+			type: 'number',
+			min: 12,
+			max: 24,
+			size: 10,
+		}) }}
+	</div>
+</div>
+
+<hr>
+
+{# ========================================
+   SEARCH RESULTS
+   ======================================== #}
+<h2>{{ "Search Results"|t('search-manager') }}</h2>
+
+<div class="flex" style="gap: 48px; flex-wrap: wrap;">
+	<div>
+		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Hover Background'|t('search-manager'),
+				id: 'styles-resultHoverBg',
+				name: 'settings[styles][resultHoverBg]',
+				value: styles.resultHoverBg,
+			}) }}
+			{{ forms.colorField({
+				label: 'Active Background'|t('search-manager'),
+				id: 'styles-resultActiveBg',
+				name: 'settings[styles][resultActiveBg]',
+				value: styles.resultActiveBg,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-resultTextColor',
+				name: 'settings[styles][resultTextColor]',
+				value: styles.resultTextColor,
+			}) }}
+			{{ forms.colorField({
+				label: 'Description'|t('search-manager'),
+				id: 'styles-resultDescColor',
+				name: 'settings[styles][resultDescColor]',
+				value: styles.resultDescColor,
+			}) }}
+		</div>
+	</div>
+	<div>
+		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Hover Background'|t('search-manager'),
+				id: 'styles-resultHoverBgDark',
+				name: 'settings[styles][resultHoverBgDark]',
+				value: styles.resultHoverBgDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Active Background'|t('search-manager'),
+				id: 'styles-resultActiveBgDark',
+				name: 'settings[styles][resultActiveBgDark]',
+				value: styles.resultActiveBgDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-resultTextColorDark',
+				name: 'settings[styles][resultTextColorDark]',
+				value: styles.resultTextColorDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Description'|t('search-manager'),
+				id: 'styles-resultDescColorDark',
+				name: 'settings[styles][resultDescColorDark]',
+				value: styles.resultDescColorDark,
+			}) }}
+		</div>
+	</div>
+</div>
+
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.textField({
+			label: 'Border Radius (px)'|t('search-manager'),
+			id: 'styles-resultBorderRadius',
+			name: 'settings[styles][resultBorderRadius]',
+			value: styles.resultBorderRadius,
+			type: 'number',
+			min: 0,
+			max: 20,
+			size: 10,
+		}) }}
+	</div>
+</div>
+
+<hr>
+
+{# ========================================
+   SEARCH HIGHLIGHTING
+   ======================================== #}
+<h2>{{ "Search Highlighting"|t('search-manager') }}</h2>
+<p class="light">{{ "Colors for highlighted matching terms in search results."|t('search-manager') }}</p>
+
+<div class="flex" style="gap: 48px; flex-wrap: wrap;">
+	<div>
+		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'highlighting-bgLight',
+				name: 'settings[highlighting][bgLight]',
+				value: widgetConfig.getHighlightBgLight(),
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'highlighting-colorLight',
+				name: 'settings[highlighting][colorLight]',
+				value: widgetConfig.getHighlightColorLight(),
+			}) }}
+		</div>
+	</div>
+	<div>
+		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'highlighting-bgDark',
+				name: 'settings[highlighting][bgDark]',
+				value: widgetConfig.getHighlightBgDark(),
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'highlighting-colorDark',
+				name: 'settings[highlighting][colorDark]',
+				value: widgetConfig.getHighlightColorDark(),
+			}) }}
+		</div>
+	</div>
+</div>
+
+<hr>
+
+{# ========================================
+   TRIGGER BUTTON
+   ======================================== #}
+<h2>{{ "Trigger Button"|t('search-manager') }}</h2>
+
+<div class="flex" style="gap: 48px; flex-wrap: wrap;">
+	<div>
+		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-triggerBg',
+				name: 'settings[styles][triggerBg]',
+				value: styles.triggerBg,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-triggerTextColor',
+				name: 'settings[styles][triggerTextColor]',
+				value: styles.triggerTextColor,
+			}) }}
+			{{ forms.colorField({
+				label: 'Border'|t('search-manager'),
+				id: 'styles-triggerBorderColor',
+				name: 'settings[styles][triggerBorderColor]',
+				value: styles.triggerBorderColor,
+			}) }}
+		</div>
+	</div>
+	<div>
+		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-triggerBgDark',
+				name: 'settings[styles][triggerBgDark]',
+				value: styles.triggerBgDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-triggerTextColorDark',
+				name: 'settings[styles][triggerTextColorDark]',
+				value: styles.triggerTextColorDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Border'|t('search-manager'),
+				id: 'styles-triggerBorderColorDark',
+				name: 'settings[styles][triggerBorderColorDark]',
+				value: styles.triggerBorderColorDark,
+			}) }}
+		</div>
+	</div>
+</div>
+
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.textField({
+			label: 'Border Radius (px)'|t('search-manager'),
+			id: 'styles-triggerBorderRadius',
+			name: 'settings[styles][triggerBorderRadius]',
+			value: styles.triggerBorderRadius,
+			type: 'number',
+			min: 0,
+			max: 20,
+			size: 10,
+		}) }}
+		{{ forms.textField({
+			label: 'Border Width (px)'|t('search-manager'),
+			id: 'styles-triggerBorderWidth',
+			name: 'settings[styles][triggerBorderWidth]',
+			value: styles.triggerBorderWidth,
+			type: 'number',
+			min: 0,
+			max: 5,
+			size: 10,
+		}) }}
+		{{ forms.textField({
+			label: 'Padding X (px)'|t('search-manager'),
+			id: 'styles-triggerPaddingX',
+			name: 'settings[styles][triggerPaddingX]',
+			value: styles.triggerPaddingX,
+			type: 'number',
+			min: 0,
+			max: 40,
+			size: 10,
+		}) }}
+		{{ forms.textField({
+			label: 'Padding Y (px)'|t('search-manager'),
+			id: 'styles-triggerPaddingY',
+			name: 'settings[styles][triggerPaddingY]',
+			value: styles.triggerPaddingY,
+			type: 'number',
+			min: 0,
+			max: 40,
+			size: 10,
+		}) }}
+		{{ forms.textField({
+			label: 'Font Size (px)'|t('search-manager'),
+			id: 'styles-triggerFontSize',
+			name: 'settings[styles][triggerFontSize]',
+			value: styles.triggerFontSize,
+			type: 'number',
+			min: 10,
+			max: 24,
+			size: 10,
+		}) }}
+	</div>
+</div>
+
+<hr>
+
+{# ========================================
+   KEYBOARD BADGE
+   ======================================== #}
+<h2>{{ "Keyboard Badge"|t('search-manager') }}</h2>
+
+<div class="flex" style="gap: 48px; flex-wrap: wrap;">
+	<div>
+		<h4 style="margin-top: 0;">{{ "Light Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-kbdBg',
+				name: 'settings[styles][kbdBg]',
+				value: styles.kbdBg,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-kbdTextColor',
+				name: 'settings[styles][kbdTextColor]',
+				value: styles.kbdTextColor,
+			}) }}
+		</div>
+	</div>
+	<div>
+		<h4 style="margin-top: 0;">{{ "Dark Mode"|t('search-manager') }}</h4>
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-kbdBgDark',
+				name: 'settings[styles][kbdBgDark]',
+				value: styles.kbdBgDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-kbdTextColorDark',
+				name: 'settings[styles][kbdTextColorDark]',
+				value: styles.kbdTextColorDark,
+			}) }}
+		</div>
+	</div>
+</div>
+
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.textField({
+			label: 'Border Radius (px)'|t('search-manager'),
+			id: 'styles-kbdBorderRadius',
+			name: 'settings[styles][kbdBorderRadius]',
+			value: styles.kbdBorderRadius,
+			type: 'number',
+			min: 0,
+			max: 20,
+			size: 10,
+		}) }}
+	</div>
+</div>

@@ -1,0 +1,224 @@
+{# Widget Preview Component #}
+{% set styles = widgetConfig.getStyles() %}
+{% set hlBgLight = widgetConfig.getHighlightBgLight() %}
+{% set hlTextLight = widgetConfig.getHighlightColorLight() %}
+{% set hlBgDark = widgetConfig.getHighlightBgDark() %}
+{% set hlTextDark = widgetConfig.getHighlightColorDark() %}
+
+<div class="widget-preview-section">
+	<h6 class="widget-preview-heading">{{ 'Preview'|t('search-manager') }}</h6>
+
+	<div class="widget-preview-toggle">
+		<button type="button" class="btn small" data-preview-mode="light" aria-pressed="true">{{ 'Light'|t('search-manager') }}</button>
+		<button type="button" class="btn small secondary" data-preview-mode="dark" aria-pressed="false">{{ 'Dark'|t('search-manager') }}</button>
+	</div>
+
+	{# Light Mode Preview #}
+	<div class="widget-preview-container widget-preview-light" data-mode="light">
+		<div class="preview-modal" style="background: {{ styles.modalBg }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColor }}; border-radius: {{ styles.modalBorderRadius }}px;">
+			<div class="preview-input" style="background: {{ styles.inputBg }}; border-bottom: 1px solid {{ styles.inputBorderColor }};">
+				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColor }}" stroke-width="2" style="opacity: 0.5;">
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="m21 21-4.35-4.35"></path>
+				</svg>
+				<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColor }};">{{ 'Search...'|t('search-manager') }}</span>
+				<span class="preview-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ widgetConfig.getHotkey()|upper }}</span>
+			</div>
+			<div class="preview-results">
+				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px;">
+					<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Sample Result'|t('search-manager') }}</span>
+					<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Description text'|t('search-manager') }}</span>
+				</div>
+				<div class="preview-result" style="background: {{ styles.resultActiveBg }}; border-radius: {{ styles.resultBorderRadius }}px;">
+					<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
+					<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'With highlight'|t('search-manager') }}</span>
+				</div>
+				<div class="preview-result" style="background: {{ styles.resultHoverBg }}; border-radius: {{ styles.resultBorderRadius }}px;">
+					<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Hovered Item'|t('search-manager') }}</span>
+					<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Another result'|t('search-manager') }}</span>
+				</div>
+			</div>
+		</div>
+		<div class="preview-trigger-container">
+			<span class="preview-label">{{ 'Trigger:'|t('search-manager') }}</span>
+			<button type="button" class="preview-trigger" style="background: {{ styles.triggerBg }}; color: {{ styles.triggerTextColor }}; border: {{ styles.triggerBorderWidth }}px solid {{ styles.triggerBorderColor }}; border-radius: {{ styles.triggerBorderRadius }}px; padding: {{ styles.triggerPaddingY }}px {{ styles.triggerPaddingX }}px; font-size: {{ styles.triggerFontSize }}px;">
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="m21 21-4.35-4.35"></path>
+				</svg>
+				<span>{{ widgetConfig.getTriggerText() ?: 'Search'|t('search-manager') }}</span>
+				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }};">{{ widgetConfig.getHotkey()|upper }}</span>
+			</button>
+		</div>
+	</div>
+
+	{# Dark Mode Preview (hidden by default) #}
+	<div class="widget-preview-container widget-preview-dark" data-mode="dark" style="display: none;">
+		<div class="preview-modal" style="background: {{ styles.modalBgDark }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColorDark }}; border-radius: {{ styles.modalBorderRadius }}px;">
+			<div class="preview-input" style="background: {{ styles.inputBgDark }}; border-bottom: 1px solid {{ styles.inputBorderColorDark }};">
+				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColorDark }}" stroke-width="2" style="opacity: 0.5;">
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="m21 21-4.35-4.35"></path>
+				</svg>
+				<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColorDark }};">{{ 'Search...'|t('search-manager') }}</span>
+				<span class="preview-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ widgetConfig.getHotkey()|upper }}</span>
+			</div>
+			<div class="preview-results">
+				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px;">
+					<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Sample Result'|t('search-manager') }}</span>
+					<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Description text'|t('search-manager') }}</span>
+				</div>
+				<div class="preview-result" style="background: {{ styles.resultActiveBgDark }}; border-radius: {{ styles.resultBorderRadius }}px;">
+					<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
+					<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'With highlight'|t('search-manager') }}</span>
+				</div>
+				<div class="preview-result" style="background: {{ styles.resultHoverBgDark }}; border-radius: {{ styles.resultBorderRadius }}px;">
+					<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Hovered Item'|t('search-manager') }}</span>
+					<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Another result'|t('search-manager') }}</span>
+				</div>
+			</div>
+		</div>
+		<div class="preview-trigger-container">
+			<span class="preview-label" style="color: #9ca3af;">{{ 'Trigger:'|t('search-manager') }}</span>
+			<button type="button" class="preview-trigger" style="background: {{ styles.triggerBgDark }}; color: {{ styles.triggerTextColorDark }}; border: {{ styles.triggerBorderWidth }}px solid {{ styles.triggerBorderColorDark }}; border-radius: {{ styles.triggerBorderRadius }}px; padding: {{ styles.triggerPaddingY }}px {{ styles.triggerPaddingX }}px; font-size: {{ styles.triggerFontSize }}px;">
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					<circle cx="11" cy="11" r="8"></circle>
+					<path d="m21 21-4.35-4.35"></path>
+				</svg>
+				<span>{{ widgetConfig.getTriggerText() ?: 'Search'|t('search-manager') }}</span>
+				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }};">{{ widgetConfig.getHotkey()|upper }}</span>
+			</button>
+		</div>
+	</div>
+</div>
+
+<style>
+.widget-preview-section {
+	margin-top: 14px;
+	margin-inline: var(--neg-padding);
+}
+
+.widget-preview-heading {
+	margin: 0 0 12px 0;
+	color: #596673;
+	font-weight: 600;
+}
+
+.widget-preview-toggle {
+	display: flex;
+	gap: 4px;
+	margin-bottom: 12px;
+}
+
+.widget-preview-toggle .btn {
+	flex: 1;
+	font-size: 11px;
+	padding: 4px 8px;
+}
+
+.widget-preview-toggle .btn.secondary {
+	background: transparent;
+	border-color: #ccc;
+}
+
+.widget-preview-toggle .btn[aria-pressed="true"] {
+	background: #0d6efd;
+	border-color: #0d6efd;
+	color: white;
+}
+
+.widget-preview-container {
+	border-radius: 6px;
+	padding: 12px;
+}
+
+.widget-preview-light {
+	background: #e5e7eb;
+}
+
+.widget-preview-dark {
+	background: #111827;
+}
+
+.preview-modal {
+	overflow: hidden;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+	font-size: 11px;
+}
+
+.preview-input {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 10px;
+}
+
+.preview-placeholder {
+	flex: 1;
+	font-size: 11px;
+}
+
+.preview-kbd {
+	font-size: 9px;
+	padding: 2px 4px;
+	font-family: monospace;
+}
+
+.preview-results {
+	padding: 4px;
+}
+
+.preview-result {
+	padding: 6px 8px;
+	margin-bottom: 2px;
+}
+
+.preview-result:last-child {
+	margin-bottom: 0;
+}
+
+.preview-result-title {
+	display: block;
+	font-size: 10px;
+	font-weight: 500;
+	margin-bottom: 1px;
+}
+
+.preview-result-desc {
+	display: block;
+	font-size: 9px;
+}
+
+.preview-result mark {
+	padding: 1px 3px;
+	border-radius: 2px;
+	font-weight: inherit;
+}
+
+.preview-trigger-container {
+	margin-top: 12px;
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.preview-label {
+	font-size: 10px;
+	color: #6b7280;
+}
+
+.preview-trigger {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	cursor: default;
+}
+
+.preview-trigger-kbd {
+	font-size: 8px;
+	padding: 1px 3px;
+	border-radius: 3px;
+	font-family: monospace;
+	margin-left: 2px;
+}
+</style>
