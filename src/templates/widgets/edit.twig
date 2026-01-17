@@ -44,7 +44,7 @@
 			</ul>
 		</div>
 	</div>
-	{% if not isNew and currentUser.can('searchManager:manageSettings') %}
+	{% if not isNew and currentUser.can('searchManager:manageSettings') and not widgetConfig.isDefault %}
 		<button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('app') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('app') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
 		<div id="action-menu" class="menu menu--disclosure">
 			<ul>
@@ -100,19 +100,35 @@
 			on: widgetConfig.enabled ?? true
 		}) }}
 
-		{{ forms.lightswitchField({
-			label: 'Default'|t('search-manager'),
-			instructions: 'Use as default when no config handle is specified',
-			id: 'isDefault',
-			name: 'isDefault',
-			on: widgetConfig.isDefault ?? false
-		}) }}
+		{% if widgetConfig.isDefault %}
+			{# Default config - show disabled switch with explanation #}
+			{{ forms.lightswitchField({
+				label: 'Default'|t('search-manager'),
+				instructions: 'This is the default config. To change, set another config as default first.',
+				id: 'isDefault',
+				name: 'isDefault',
+				on: true,
+				disabled: true
+			}) }}
+			{# Hidden field to preserve the value since disabled inputs don't submit #}
+			<input type="hidden" name="isDefault" value="1">
+		{% else %}
+			{{ forms.lightswitchField({
+				label: 'Default'|t('search-manager'),
+				instructions: 'Use as default when no config handle is specified',
+				id: 'isDefault',
+				name: 'isDefault',
+				on: false
+			}) }}
+		{% endif %}
 	</div>
 
-	{# Widget Preview #}
-	{% include "search-manager/widgets/_partials/preview" with {
-		widgetConfig: widgetConfig
-	} %}
+	{# Widget Preview - only visible on Appearance tab #}
+	<div id="widget-preview-wrapper" style="display: none;">
+		{% include "search-manager/widgets/_partials/preview" with {
+			widgetConfig: widgetConfig
+		} %}
+	</div>
 
 	{% if not isNew %}
 		<fieldset>
@@ -157,6 +173,60 @@ const saveShortcut = document.getElementById('save-shortcut');
 if (saveShortcut) {
 	saveShortcut.textContent = isMac ? '⌘S' : 'Ctrl+S';
 }
+
+// Handle auto-generation from name
+(function() {
+	const nameInput = document.getElementById('name');
+	const handleInput = document.getElementById('handle');
+	const isNew = {{ isNew ? 'true' : 'false' }};
+	let handleModifiedManually = !isNew; // Don't auto-update existing handles
+
+	// Convert name to handle format
+	function nameToHandle(name) {
+		return name
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '');
+	}
+
+	// Only auto-generate handle for new configs
+	if (isNew && nameInput && handleInput) {
+		nameInput.addEventListener('input', function() {
+			if (!handleModifiedManually) {
+				handleInput.value = nameToHandle(this.value);
+			}
+		});
+
+		// If user manually edits handle, stop auto-generation
+		handleInput.addEventListener('input', function() {
+			handleModifiedManually = true;
+		});
+	}
+})();
+
+// Show preview only on Appearance tab
+(function() {
+	const previewWrapper = document.getElementById('widget-preview-wrapper');
+	if (!previewWrapper) return;
+
+	function updatePreviewVisibility() {
+		const hash = window.location.hash || '#settings';
+		previewWrapper.style.display = hash === '#appearance' ? 'block' : 'none';
+	}
+
+	// Check on load
+	updatePreviewVisibility();
+
+	// Listen for hash changes (tab switches)
+	window.addEventListener('hashchange', updatePreviewVisibility);
+
+	// Also listen for Craft's tab clicks
+	document.querySelectorAll('#tabs a').forEach(function(tab) {
+		tab.addEventListener('click', function() {
+			setTimeout(updatePreviewVisibility, 10);
+		});
+	});
+})();
 
 // Widget Preview functionality
 (function() {

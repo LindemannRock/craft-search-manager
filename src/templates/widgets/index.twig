@@ -204,13 +204,13 @@
 														{{ 'Set as Default'|t('search-manager') }}
 													</a>
 												</li>
+												<li><hr class="padded"></li>
+												<li>
+													<a class="widget-action error" data-action="delete" data-id="{{ config.id }}" data-name="{{ config.name }}">
+														{{ 'Delete'|t('search-manager') }}
+													</a>
+												</li>
 											{% endif %}
-											<li><hr class="padded"></li>
-											<li>
-												<a class="widget-action error" data-action="delete" data-id="{{ config.id }}" data-name="{{ config.name }}">
-													{{ 'Delete'|t('search-manager') }}
-												</a>
-											</li>
 										</ul>
 									</div>
 								</td>
@@ -435,8 +435,14 @@
 		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-delete', {
 			data: { configIds: ids }
 		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`{{ 'Deleted'|t('search-manager') }} ${response.data.count} {{ 'configs'|t('search-manager') }}`);
+			if (response.data.count > 0) {
+				Craft.cp.displayNotice(`{{ 'Deleted'|t('search-manager') }} ${response.data.count} {{ 'config(s)'|t('search-manager') }}`);
+			}
+			if (response.data.errors && response.data.errors.length > 0) {
+				response.data.errors.forEach(err => Craft.cp.displayError(err));
+			}
+			// Only auto-reload if no errors
+			if (!response.data.errors || response.data.errors.length === 0) {
 				setTimeout(() => window.location.reload(), 500);
 			}
 		}).catch(function(error) {

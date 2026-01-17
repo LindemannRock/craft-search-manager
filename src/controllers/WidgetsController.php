@@ -87,11 +87,25 @@ class WidgetsController extends Controller
             $widgetConfig = new WidgetConfig();
         }
 
+        // Check if trying to unset default on the current default config
+        $wasDefault = $configId ? SearchManager::$plugin->widgetConfigs->getById($configId)?->isDefault : false;
+        $newIsDefault = (bool) $request->getBodyParam('isDefault');
+
+        if ($wasDefault && !$newIsDefault) {
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Cannot remove default status. Set another config as default first.'));
+
+            Craft::$app->getUrlManager()->setRouteParams([
+                'widgetConfig' => $widgetConfig,
+            ]);
+
+            return null;
+        }
+
         // Set basic attributes
         $widgetConfig->name = $request->getBodyParam('name');
         $widgetConfig->handle = $request->getBodyParam('handle');
         $widgetConfig->enabled = (bool) $request->getBodyParam('enabled');
-        $widgetConfig->isDefault = (bool) $request->getBodyParam('isDefault');
+        $widgetConfig->isDefault = $newIsDefault;
 
         // Get settings from form
         $settings = $request->getBodyParam('settings', []);
@@ -151,6 +165,11 @@ class WidgetsController extends Controller
         $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
         if (!$widgetConfig) {
             return $this->asJson(['success' => false, 'error' => 'Widget config not found']);
+        }
+
+        // Prevent deleting the default config
+        if ($widgetConfig->isDefault) {
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Cannot delete the default widget config. Set another config as default first.')]);
         }
 
         if (!SearchManager::$plugin->widgetConfigs->delete($configId)) {
@@ -246,13 +265,25 @@ class WidgetsController extends Controller
 
         $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
         $count = 0;
+        $errors = [];
 
         foreach ($configIds as $configId) {
+            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
+            if (!$widgetConfig) {
+                continue;
+            }
+
+            // Skip the default config
+            if ($widgetConfig->isDefault) {
+                $errors[] = Craft::t('search-manager', 'Cannot delete "{name}" because it is the default config.', ['name' => $widgetConfig->name]);
+                continue;
+            }
+
             if (SearchManager::$plugin->widgetConfigs->deleteById((int)$configId)) {
                 $count++;
             }
         }
 
-        return $this->asJson(['success' => true, 'count' => $count]);
+        return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
     }
 }
