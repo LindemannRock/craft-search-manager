@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\models;
 
 use craft\base\Model;
 use craft\helpers\Json;
+use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
  * WidgetConfig model
@@ -13,6 +14,7 @@ use craft\helpers\Json;
  */
 class WidgetConfig extends Model
 {
+    use ConfigSourceTrait;
     // =========================================================================
     // PROPERTIES
     // =========================================================================
@@ -27,11 +29,6 @@ class WidgetConfig extends Model
      * @var array|string|null Settings stored as JSON in database
      */
     public array|string|null $settings = null;
-
-    /**
-     * @var string Source of config (database|config)
-     */
-    public string $source = 'database';
 
     public ?\DateTime $dateCreated = null;
     public ?\DateTime $dateUpdated = null;
@@ -330,26 +327,6 @@ class WidgetConfig extends Model
     public function getStyle(string $key, string $default = ''): string
     {
         return (string) $this->getSetting('styles.' . $key, $default);
-    }
-
-    // =========================================================================
-    // CONFIG SOURCE HELPERS
-    // =========================================================================
-
-    /**
-     * Check if this config can be edited (database configs only)
-     */
-    public function canEdit(): bool
-    {
-        return $this->source !== 'config';
-    }
-
-    /**
-     * Check if this config is from config file
-     */
-    public function isFromConfig(): bool
-    {
-        return $this->source === 'config';
     }
 
     // =========================================================================

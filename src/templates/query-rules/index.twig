@@ -468,9 +468,11 @@
 	const clearBtn = document.querySelector('.clear-btn');
 	if (clearBtn) {
 		clearBtn.addEventListener('click', function() {
-			const searchInput = this.previousElementSibling.previousElementSibling;
-			searchInput.value = '';
-			searchInput.form.submit();
+			const searchInput = document.querySelector('input[name="search"]');
+			if (searchInput) {
+				searchInput.value = '';
+				searchInput.form.submit();
+			}
 		});
 	}
 

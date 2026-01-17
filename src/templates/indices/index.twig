@@ -1,6 +1,6 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
-
+{% import 'search-manager/_macros/index' as indexMacros %}
 
 {% set title = "Indices"|t('search-manager') %}
 {% set fullPageForm = false %}
@@ -20,57 +20,6 @@
 {# Permission checks #}
 {% set showActionsColumn = currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices') or currentUser.can('searchManager:deleteIndices') %}
 {% set globalSettings = craft.searchManager.getSettings() %}
-
-{# Backend colors - prepare for per-index backends in future #}
-{% set backendColors = {
-	'mysql': '#f59e0b',
-	'postgresql': '#3b82f6',
-	'file': '#6b7280',
-	'redis': '#dc2626',
-	'typesense': '#8b5cf6',
-	'algolia': '#06b6d4',
-	'meilisearch': '#ec4899',
-} %}
-
-{# Backend RGB for backgrounds #}
-{% set backendRgb = {
-	'mysql': '245, 158, 11',
-	'postgresql': '59, 130, 246',
-	'file': '107, 114, 128',
-	'redis': '220, 38, 38',
-	'typesense': '139, 92, 246',
-	'algolia': '6, 182, 212',
-	'meilisearch': '236, 72, 153',
-} %}
-
-{# Backend dark colors for text #}
-{% set backendTextColors = {
-	'mysql': '#78350f',
-	'postgresql': '#1e3a8a',
-	'file': '#374151',
-	'redis': '#7f1d1d',
-	'typesense': '#5b21b6',
-	'algolia': '#155e75',
-	'meilisearch': '#831843',
-} %}
-
-{# Config source colors #}
-{% set sourceColors = {
-	'config': '#0ea5e9',
-	'database': '#84cc16',
-} %}
-
-{# Config source RGB for backgrounds #}
-{% set sourceRgb = {
-	'config': '14, 165, 233',
-	'database': '132, 204, 22',
-} %}
-
-{# Config source dark colors for text #}
-{% set sourceTextColors = {
-	'config': '#0c4a6e',
-	'database': '#1a2e05',
-} %}
 
 {# Filter indices based on filters #}
 {% set filteredIndices = indices %}
@@ -158,12 +107,12 @@
 								</li>
 								<li>
 									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=config&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'config' ? '#0ea5e9' : '#aab6c1' }};"></span>{{ 'Config File'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.sourceColor('config', sourceFilter) }};"></span>{{ 'Config File'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
 									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=database&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'database' ? '#84cc16' : '#aab6c1' }};"></span>{{ 'Database'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.sourceColor('database', sourceFilter) }};"></span>{{ 'Database'|t('search-manager') }}
 									</a>
 								</li>
 								<li><hr class="padded"></li>
@@ -175,37 +124,37 @@
 								</li>
 								<li>
 									<a class="{{ backendFilter == 'mysql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=mysql&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'mysql' ? backendColors.mysql : '#aab6c1' }};"></span>{{ 'MySQL'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.backendColor('mysql', backendFilter) }};"></span>{{ 'MySQL'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
-									<a class="{{ backendFilter == 'postgresql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=postgresql&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'postgresql' ? backendColors.postgresql : '#aab6c1' }};"></span>{{ 'PostgreSQL'|t('search-manager') }}
+									<a class="{{ backendFilter == 'pgsql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=pgsql&search={{ search }}">
+										<span class="status" style="background: {{ indexMacros.backendColor('pgsql', backendFilter) }};"></span>{{ 'PostgreSQL'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
 									<a class="{{ backendFilter == 'file' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=file&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'file' ? backendColors.file : '#aab6c1' }};"></span>{{ 'File'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.backendColor('file', backendFilter) }};"></span>{{ 'File'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
 									<a class="{{ backendFilter == 'redis' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=redis&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'redis' ? backendColors.redis : '#aab6c1' }};"></span>{{ 'Redis'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.backendColor('redis', backendFilter) }};"></span>{{ 'Redis'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
 									<a class="{{ backendFilter == 'typesense' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=typesense&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'typesense' ? backendColors.typesense : '#aab6c1' }};"></span>{{ 'Typesense'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.backendColor('typesense', backendFilter) }};"></span>{{ 'Typesense'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
 									<a class="{{ backendFilter == 'algolia' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=algolia&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'algolia' ? backendColors.algolia : '#aab6c1' }};"></span>{{ 'Algolia'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.backendColor('algolia', backendFilter) }};"></span>{{ 'Algolia'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
 									<a class="{{ backendFilter == 'meilisearch' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=meilisearch&search={{ search }}">
-										<span class="status" style="background: {{ backendFilter == 'meilisearch' ? backendColors.meilisearch : '#aab6c1' }};"></span>{{ 'Meilisearch'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.backendColor('meilisearch', backendFilter) }};"></span>{{ 'Meilisearch'|t('search-manager') }}
 									</a>
 								</li>
 							</ul>
@@ -246,77 +195,7 @@
 {% endcss %}
 
 {% block content %}
-	<style>
-		.checkbox-cell {
-			width: 40px !important;
-			text-align: center;
-		}
-		/* Keep toolbar on one row even on smaller screens */
-		#toolbar.flex {
-			flex-wrap: nowrap;
-			gap: 8px;
-		}
-		#toolbar .flex-grow {
-			min-width: 0;
-			flex-shrink: 1;
-		}
-		.menu-header {
-			font-size: 11px;
-			text-transform: uppercase;
-			color: #7c97b2;
-			padding: 8px 14px 4px;
-			font-weight: 600;
-			letter-spacing: 0.5px;
-		}
-		/* Config info icon */
-		.config-info-icon {
-			display: inline-block;
-			width: 16px;
-			height: 16px;
-			margin-left: 5px;
-			border-radius: 50%;
-			background: #9aa5b1;
-			color: #fff;
-			font-size: 11px;
-			font-weight: 600;
-			text-align: center;
-			line-height: 16px;
-			vertical-align: middle;
-			cursor: help;
-		}
-		.config-info-icon::before {
-			content: 'i';
-		}
-		.config-info-icon:hover {
-			background: #7b8794;
-		}
-		/* Config tooltip */
-		.config-tooltip {
-			position: absolute;
-			background: #fff;
-			color: #3f4d5a;
-			padding: 12px 14px;
-			border-radius: 6px;
-			border: 1px solid #cdd8e4;
-			font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-			font-size: 12px;
-			line-height: 1.5;
-			white-space: pre;
-			z-index: 1000;
-			box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-			max-width: 500px;
-			overflow-x: auto;
-		}
-		.config-tooltip::before {
-			content: 'config/search-manager.php';
-			display: block;
-			color: #8f98a3;
-			font-size: 10px;
-			margin-bottom: 8px;
-			padding-bottom: 8px;
-			border-bottom: 1px solid #e3e5e8;
-		}
-	</style>
+	{% include 'search-manager/_partials/common/index-styles' %}
 
 	<div id="elements" class="elements">
 		<div class="tableview tablepane">
@@ -392,17 +271,7 @@
 									{% endif %}
 								</td>
 								<td>
-									{% set bColor = backendColors[indexBackendType]|default('#9aa5b1') %}
-									{% set bRgb = backendRgb[indexBackendType]|default('154, 165, 177') %}
-									{% set bTextColor = backendTextColors[indexBackendType]|default('#374151') %}
-									{% if indexBackendType %}
-										<span class="status-label" style="background: rgba({{ bRgb }}, 0.12); white-space: nowrap;">
-											<span class="status" style="background: {{ bColor }};"></span>
-											<span class="status-label-text" style="color: {{ bTextColor }};">{{ indexBackendType|upper }}</span>
-										</span>
-									{% else %}
-										<span class="light">—</span>
-									{% endif %}
+									{{ indexMacros.backendBadge(indexBackendType) }}
 								</td>
 								{% set expected = index.expectedCount %}
 								<td>{{ expected }}</td>
@@ -423,26 +292,14 @@
 									{% endif %}
 								</td>
 								<td>
-									{% if index.source == 'config' %}
-										<span class="status-label" style="background: rgba({{ sourceRgb.config }}, 0.12);"><span class="status" style="background: {{ sourceColors.config }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.config }};">{{ "Config"|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="status-label" style="background: rgba({{ sourceRgb.database }}, 0.12);"><span class="status" style="background: {{ sourceColors.database }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.database }};">{{ "Database"|t('search-manager') }}</span></span>
-									{% endif %}
+									{{ indexMacros.sourceBadge(index.source) }}
 								</td>
 								<td>
-									{% if index.enabled %}
-										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
-									{% endif %}
+									{{ indexMacros.statusBadge(index.enabled) }}
 								</td>
 								{% if globalSettings.enableAnalytics %}
 									<td>
-										{% if index.enableAnalytics %}
-											<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'On'|t('search-manager') }}</span></span>
-										{% else %}
-											<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Off'|t('search-manager') }}</span></span>
-										{% endif %}
+										{{ indexMacros.statusBadge(index.enableAnalytics) }}
 									</td>
 								{% endif %}
 								{% if showActionsColumn %}
@@ -549,9 +406,11 @@
 	const clearBtn = document.querySelector('.clear-btn');
 	if (clearBtn) {
 		clearBtn.addEventListener('click', function() {
-			const searchInput = this.previousElementSibling.previousElementSibling;
-			searchInput.value = '';
-			searchInput.form.submit();
+			const searchInput = document.querySelector('input[name="search"]');
+			if (searchInput) {
+				searchInput.value = '';
+				searchInput.form.submit();
+			}
 		});
 	}
 

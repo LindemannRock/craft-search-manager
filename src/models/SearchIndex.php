@@ -9,6 +9,8 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\ConfigFileHelper;
+use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
  * Search Index Model
@@ -20,6 +22,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 class SearchIndex extends Model
 {
     use LoggingTrait;
+    use ConfigSourceTrait;
 
     // =========================================================================
     // PROPERTIES
@@ -55,18 +58,9 @@ class SearchIndex extends Model
      */
     public bool $enableAnalytics = true;
 
-    /**
-     * @var string Source (config|database)
-     */
-    public string $source = 'database';
     public ?\DateTime $lastIndexed = null;
     public int $documentCount = 0;
     public int $sortOrder = 0;
-
-    /**
-     * @var array|null Cached parsed config to avoid re-parsing file
-     */
-    private static ?array $_configCache = null;
 
     // =========================================================================
     // INITIALIZATION
@@ -266,8 +260,7 @@ class SearchIndex extends Model
     public static function loadFromConfig(): array
     {
         try {
-            $config = self::getConfig();
-            $configIndices = $config['indices'] ?? [];
+            $configIndices = ConfigFileHelper::getIndices();
             $indices = [];
 
             // Fetch ALL config metadata in one query (instead of N queries)
@@ -316,48 +309,12 @@ class SearchIndex extends Model
     }
 
     /**
-     * Get parsed and cached config
-     * Caches result to avoid re-parsing file on every call
-     *
-     * @return array Merged config array
-     */
-    private static function getConfig(): array
-    {
-        if (self::$_configCache === null) {
-            $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-
-            if (!file_exists($configPath)) {
-                self::$_configCache = [];
-                return self::$_configCache;
-            }
-
-            try {
-                $config = require $configPath;
-                $env = Craft::$app->getConfig()->env;
-
-                // Merge environment config
-                self::$_configCache = $config['*'] ?? [];
-                if ($env && isset($config[$env])) {
-                    self::$_configCache = array_merge(self::$_configCache, $config[$env]);
-                }
-            } catch (\Throwable $e) {
-                LoggingService::log('Failed to parse config file', 'error', 'search-manager', [
-                    'error' => $e->getMessage(),
-                ]);
-                self::$_configCache = [];
-            }
-        }
-
-        return self::$_configCache;
-    }
-
-    /**
      * Clear the config cache
      * Useful for testing or when config file changes during runtime
      */
     public static function clearConfigCache(): void
     {
-        self::$_configCache = null;
+        ConfigFileHelper::clearCache();
     }
 
     /**
@@ -369,10 +326,7 @@ class SearchIndex extends Model
      */
     private static function loadConfigForHandle(string $handle): ?array
     {
-        $config = self::getConfig();
-        $configIndices = $config['indices'] ?? [];
-
-        return $configIndices[$handle] ?? null;
+        return ConfigFileHelper::getConfigByHandle('indices', $handle);
     }
 
     /**
@@ -873,14 +827,6 @@ class SearchIndex extends Model
         }
 
         return ConfiguredBackend::findByHandle($backendHandle);
-    }
-
-    /**
-     * Check if index can be edited
-     */
-    public function canEdit(): bool
-    {
-        return $this->source === 'database';
     }
 
     /**

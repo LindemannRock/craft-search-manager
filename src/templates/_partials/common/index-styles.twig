@@ -1,0 +1,86 @@
+{#
+ # Common Index Listing Styles
+ #
+ # Shared CSS for index listing pages (backends, indices, widgets).
+ #
+ # Usage:
+ #   {% include '_partials/common/index-styles' %}
+ #}
+
+<style>
+	/* Checkbox column */
+	.checkbox-cell {
+		width: 40px !important;
+		text-align: center;
+	}
+
+	/* Keep toolbar on one row even on smaller screens */
+	#toolbar.flex {
+		flex-wrap: nowrap;
+		gap: 8px;
+	}
+	#toolbar .flex-grow {
+		min-width: 0;
+		flex-shrink: 1;
+	}
+
+	/* Menu header for filter dropdowns */
+	.menu-header {
+		font-size: 11px;
+		text-transform: uppercase;
+		color: #7c97b2;
+		padding: 8px 14px 4px;
+		font-weight: 600;
+		letter-spacing: 0.5px;
+	}
+
+	/* Config info icon (shows tooltip on hover) */
+	.config-info-icon {
+		display: inline-block;
+		width: 16px;
+		height: 16px;
+		margin-left: 5px;
+		border-radius: 50%;
+		background: #9aa5b1;
+		color: #fff;
+		font-size: 11px;
+		font-weight: 600;
+		text-align: center;
+		line-height: 16px;
+		vertical-align: middle;
+		cursor: help;
+	}
+	.config-info-icon::before {
+		content: 'i';
+	}
+	.config-info-icon:hover {
+		background: #7b8794;
+	}
+
+	/* Config tooltip (shows PHP config code) */
+	.config-tooltip {
+		position: absolute;
+		background: #fff;
+		color: #3f4d5a;
+		padding: 12px 14px;
+		border-radius: 6px;
+		border: 1px solid #cdd8e4;
+		font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+		font-size: 12px;
+		line-height: 1.5;
+		white-space: pre;
+		z-index: 1000;
+		box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+		max-width: 500px;
+		overflow-x: auto;
+	}
+	.config-tooltip::before {
+		content: 'config/search-manager.php';
+		display: block;
+		color: #8f98a3;
+		font-size: 10px;
+		margin-bottom: 8px;
+		padding-bottom: 8px;
+		border-bottom: 1px solid #e3e5e8;
+	}
+</style>

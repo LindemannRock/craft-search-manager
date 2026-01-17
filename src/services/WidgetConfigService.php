@@ -8,6 +8,7 @@ use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use yii\base\Component;
 
@@ -57,29 +58,35 @@ class WidgetConfigService extends Component
         }
 
         $this->_configFileConfigs = [];
-
-        $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
-        $widgetConfigs = $config['widgetConfigs'] ?? [];
+        $widgetConfigs = ConfigFileHelper::getWidgetConfigs();
 
         foreach ($widgetConfigs as $handle => $configData) {
-            $widgetConfig = new WidgetConfig();
-            $widgetConfig->handle = $handle;
-            $widgetConfig->name = $configData['name'] ?? ucfirst($handle);
-            $widgetConfig->isDefault = $configData['isDefault'] ?? false;
-            $widgetConfig->enabled = $configData['enabled'] ?? true;
-            $widgetConfig->source = 'config';
-
-            // Merge settings with defaults
-            $settings = $configData['settings'] ?? [];
-            $widgetConfig->settings = array_replace_recursive(
-                WidgetConfig::defaultSettings(),
-                $settings
-            );
-
-            $this->_configFileConfigs[$handle] = $widgetConfig;
+            $this->_configFileConfigs[$handle] = $this->createFromConfig($handle, $configData);
         }
 
         return $this->_configFileConfigs;
+    }
+
+    /**
+     * Create a WidgetConfig from config file data
+     */
+    private function createFromConfig(string $handle, array $configData): WidgetConfig
+    {
+        $widgetConfig = new WidgetConfig();
+        $widgetConfig->handle = $handle;
+        $widgetConfig->name = $configData['name'] ?? ucfirst($handle);
+        $widgetConfig->isDefault = $configData['isDefault'] ?? false;
+        $widgetConfig->enabled = $configData['enabled'] ?? true;
+        $widgetConfig->source = 'config';
+
+        // Merge settings with defaults
+        $settings = $configData['settings'] ?? [];
+        $widgetConfig->settings = array_replace_recursive(
+            WidgetConfig::defaultSettings(),
+            $settings
+        );
+
+        return $widgetConfig;
     }
 
     /**

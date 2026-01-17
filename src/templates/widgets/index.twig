@@ -1,5 +1,6 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
+{% import 'search-manager/_macros/index' as indexMacros %}
 
 {% set title = "Widgets"|t('search-manager') %}
 {% set fullPageForm = false %}
@@ -17,11 +18,6 @@
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = settings.itemsPerPage %}
 {% set offset = (page - 1) * limit %}
-
-{# Source colors (same as backends/indices) #}
-{% set sourceColors = { config: '#0ea5e9', database: '#84cc16' } %}
-{% set sourceRgb = { config: '14, 165, 233', database: '132, 204, 22' } %}
-{% set sourceTextColors = { config: '#0c4a6e', database: '#1a2e05' } %}
 
 {# Permission checks #}
 {% set canCreate = currentUser.can('searchManager:createWidgetConfigs') %}
@@ -108,12 +104,12 @@
 								</li>
 								<li>
 									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=config&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'config' ? '#0ea5e9' : '#aab6c1' }};"></span>{{ 'Config File'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.sourceColor('config', sourceFilter) }};"></span>{{ 'Config File'|t('search-manager') }}
 									</a>
 								</li>
 								<li>
 									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=database&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'database' ? '#84cc16' : '#aab6c1' }};"></span>{{ 'Database'|t('search-manager') }}
+										<span class="status" style="background: {{ indexMacros.sourceColor('database', sourceFilter) }};"></span>{{ 'Database'|t('search-manager') }}
 									</a>
 								</li>
 							</ul>
@@ -153,29 +149,7 @@
 {% endcss %}
 
 {% block content %}
-	<style>
-		.checkbox-cell {
-			width: 40px !important;
-			text-align: center;
-		}
-		/* Keep toolbar on one row even on smaller screens */
-		#toolbar.flex {
-			flex-wrap: nowrap;
-			gap: 8px;
-		}
-		#toolbar .flex-grow {
-			min-width: 0;
-			flex-shrink: 1;
-		}
-		.menu-header {
-			font-size: 11px;
-			text-transform: uppercase;
-			color: #7c97b2;
-			padding: 8px 14px 4px;
-			font-weight: 600;
-			letter-spacing: 0.5px;
-		}
-	</style>
+	{% include 'search-manager/_partials/common/index-styles' %}
 
 	<div id="elements" class="elements">
 		<div class="tableview tablepane">
@@ -204,11 +178,11 @@
 				<tbody>
 					{% if paginatedConfigs|length %}
 						{% for config in paginatedConfigs %}
-							{% set isConfig = config.source == 'config' %}
-							<tr data-id="{{ config.id ?: config.handle }}" data-name="{{ config.name }}" data-source="{{ isConfig ? 'config' : 'database' }}">
+							{% set isConfig = config.isFromConfig() %}
+							<tr data-id="{{ config.id ?: config.handle }}" data-name="{{ config.name }}" data-source="{{ config.source }}">
 								<td class="checkbox-cell">
 									{% if isConfig %}
-										<span class="status" style="background: {{ sourceColors.config }};" title="{{ 'From config file'|t('search-manager') }}"></span>
+										<span class="status" style="background: #f59e0b;" title="{{ 'From config file'|t('search-manager') }}"></span>
 									{% else %}
 										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
 									{% endif %}
@@ -235,18 +209,10 @@
 									{% endif %}
 								</td>
 								<td>
-									{% if isConfig %}
-										<span class="status-label" style="background: rgba({{ sourceRgb.config }}, 0.12);"><span class="status" style="background: {{ sourceColors.config }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.config }};">{{ "Config"|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="status-label" style="background: rgba({{ sourceRgb.database }}, 0.12);"><span class="status" style="background: {{ sourceColors.database }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.database }};">{{ "Database"|t('search-manager') }}</span></span>
-									{% endif %}
+									{{ indexMacros.sourceBadge(config.source) }}
 								</td>
 								<td>
-									{% if config.enabled %}
-										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
-									{% endif %}
+									{{ indexMacros.statusBadge(config.enabled) }}
 								</td>
 								{% if showActionsColumn %}
 								<td class="thin" style="text-align: right;">
@@ -355,9 +321,11 @@
 	const clearBtn = document.querySelector('.clear-btn');
 	if (clearBtn) {
 		clearBtn.addEventListener('click', function() {
-			const searchInput = this.previousElementSibling.previousElementSibling;
-			searchInput.value = '';
-			searchInput.form.submit();
+			const searchInput = document.querySelector('input[name="search"]');
+			if (searchInput) {
+				searchInput.value = '';
+				searchInput.form.submit();
+			}
 		});
 	}
 

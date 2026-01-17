@@ -1,9 +1,21 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
+{% import 'search-manager/_macros/index' as indexMacros %}
 
 {% set title = "Backends"|t('search-manager') %}
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'backends' %}
+
+{# Backend types for filter menu #}
+{% set backendTypes = [
+	{ type: 'algolia', label: 'Algolia' },
+	{ type: 'meilisearch', label: 'Meilisearch' },
+	{ type: 'typesense', label: 'Typesense' },
+	{ type: 'mysql', label: 'MySQL' },
+	{ type: 'pgsql', label: 'PostgreSQL' },
+	{ type: 'redis', label: 'Redis' },
+	{ type: 'file', label: 'File' },
+] %}
 
 {# Get plugin settings #}
 {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
@@ -23,53 +35,6 @@
 {% set canCreate = currentUser.can('searchManager:createBackends') %}
 {% set canEdit = currentUser.can('searchManager:editBackends') %}
 {% set canDelete = currentUser.can('searchManager:deleteBackends') %}
-
-{# Source colors #}
-{% set sourceColors = {
-	'config': '#0ea5e9',
-	'database': '#84cc16',
-} %}
-{% set sourceRgb = {
-	'config': '14, 165, 233',
-	'database': '132, 204, 22',
-} %}
-{% set sourceTextColors = {
-	'config': '#0c4a6e',
-	'database': '#3f6212',
-} %}
-
-{# Backend type colors - match indices/index.twig #}
-{% set backendColors = {
-	'mysql': '#f59e0b',
-	'pgsql': '#3b82f6',
-	'file': '#6b7280',
-	'redis': '#dc2626',
-	'typesense': '#8b5cf6',
-	'algolia': '#06b6d4',
-	'meilisearch': '#ec4899',
-} %}
-
-{# Backend RGB for backgrounds #}
-{% set backendRgb = {
-	'mysql': '245, 158, 11',
-	'pgsql': '59, 130, 246',
-	'file': '107, 114, 128',
-	'redis': '220, 38, 38',
-	'typesense': '139, 92, 246',
-	'algolia': '6, 182, 212',
-	'meilisearch': '236, 72, 153',
-} %}
-
-{# Backend dark colors for text #}
-{% set backendTextColors = {
-	'mysql': '#78350f',
-	'pgsql': '#1e3a8a',
-	'file': '#374151',
-	'redis': '#7f1d1d',
-	'typesense': '#5b21b6',
-	'algolia': '#155e75',
-	'meilisearch': '#831843',
-} %}
 
 {# Filter backends #}
 {% set filteredBackends = backends %}
@@ -133,80 +98,9 @@
 						</button>
 						<div class="menu">
 							<ul>
-								<li>
-									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status all"></span>{{ 'All'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status disabled"></span>{{ 'Disabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Backend Type'|t('search-manager') }}</li>
-								<li>
-									<a class="{{ typeFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=all&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status all"></span>{{ 'All Types'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ typeFilter == 'algolia' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=algolia&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ typeFilter == 'algolia' ? backendColors.algolia : '#aab6c1' }};"></span>{{ 'Algolia'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ typeFilter == 'meilisearch' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=meilisearch&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ typeFilter == 'meilisearch' ? backendColors.meilisearch : '#aab6c1' }};"></span>{{ 'Meilisearch'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ typeFilter == 'typesense' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=typesense&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ typeFilter == 'typesense' ? backendColors.typesense : '#aab6c1' }};"></span>{{ 'Typesense'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ typeFilter == 'mysql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=mysql&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ typeFilter == 'mysql' ? backendColors.mysql : '#aab6c1' }};"></span>{{ 'MySQL'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ typeFilter == 'pgsql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=pgsql&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ typeFilter == 'pgsql' ? backendColors.pgsql : '#aab6c1' }};"></span>{{ 'PostgreSQL'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ typeFilter == 'redis' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=redis&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ typeFilter == 'redis' ? backendColors.redis : '#aab6c1' }};"></span>{{ 'Redis'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ typeFilter == 'file' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type=file&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ typeFilter == 'file' ? backendColors.file : '#aab6c1' }};"></span>{{ 'File'|t('search-manager') }}
-									</a>
-								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Config Source'|t('search-manager') }}</li>
-								<li>
-									<a class="{{ sourceFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type={{ typeFilter }}&source=all&search={{ search }}">
-										<span class="status all"></span>{{ 'All Sources'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type={{ typeFilter }}&source=config&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'config' ? sourceColors.config : '#aab6c1' }};"></span>{{ 'Config File'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&type={{ typeFilter }}&source=database&search={{ search }}">
-										<span class="status" style="background: {{ sourceFilter == 'database' ? sourceColors.database : '#aab6c1' }};"></span>{{ 'Database'|t('search-manager') }}
-									</a>
-								</li>
+								{{ indexMacros.statusFilterMenu(statusFilter, sourceFilter, search, { type: typeFilter }) }}
+								{{ indexMacros.backendTypeFilterMenu(typeFilter, statusFilter, sourceFilter, search, backendTypes) }}
+								{{ indexMacros.sourceFilterMenu(sourceFilter, statusFilter, search, { type: typeFilter }) }}
 							</ul>
 						</div>
 					</div>
@@ -245,76 +139,7 @@
 {% endcss %}
 
 {% block content %}
-	<style>
-		.checkbox-cell {
-			width: 40px !important;
-			text-align: center;
-		}
-		#toolbar.flex {
-			flex-wrap: nowrap;
-			gap: 8px;
-		}
-		#toolbar .flex-grow {
-			min-width: 0;
-			flex-shrink: 1;
-		}
-		.menu-header {
-			font-size: 11px;
-			text-transform: uppercase;
-			color: #7c97b2;
-			padding: 8px 14px 4px;
-			font-weight: 600;
-			letter-spacing: 0.5px;
-		}
-		/* Config info icon */
-		.config-info-icon {
-			display: inline-block;
-			width: 16px;
-			height: 16px;
-			margin-left: 5px;
-			border-radius: 50%;
-			background: #9aa5b1;
-			color: #fff;
-			font-size: 11px;
-			font-weight: 600;
-			text-align: center;
-			line-height: 16px;
-			vertical-align: middle;
-			cursor: help;
-		}
-		.config-info-icon::before {
-			content: 'i';
-		}
-		.config-info-icon:hover {
-			background: #7b8794;
-		}
-		/* Config tooltip */
-		.config-tooltip {
-			position: absolute;
-			background: #fff;
-			color: #3f4d5a;
-			padding: 12px 14px;
-			border-radius: 6px;
-			border: 1px solid #cdd8e4;
-			font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
-			font-size: 12px;
-			line-height: 1.5;
-			white-space: pre;
-			z-index: 1000;
-			box-shadow: 0 2px 12px rgba(0,0,0,0.1);
-			max-width: 500px;
-			overflow-x: auto;
-		}
-		.config-tooltip::before {
-			content: 'config/search-manager.php';
-			display: block;
-			color: #8f98a3;
-			font-size: 10px;
-			margin-bottom: 8px;
-			padding-bottom: 8px;
-			border-bottom: 1px solid #e3e5e8;
-		}
-	</style>
+	{% include 'search-manager/_partials/common/index-styles' %}
 
 	<div id="elements" class="elements">
 		<div class="tableview tablepane">
@@ -345,11 +170,8 @@
 				<tbody>
 					{% if paginatedBackends|length %}
 						{% for backend in paginatedBackends %}
-							{% set isConfig = backend.source == 'config' %}
-							{% set bColor = backendColors[backend.backendType]|default('#9aa5b1') %}
-							{% set bRgb = backendRgb[backend.backendType]|default('154, 165, 177') %}
-							{% set bTextColor = backendTextColors[backend.backendType]|default('#374151') %}
-							<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ isConfig ? 'config' : 'database' }}">
+							{% set isConfig = backend.isFromConfig() %}
+							<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ backend.source }}">
 								<td class="checkbox-cell">
 									{% if isConfig %}
 										<div class="checkbox disabled" title="{{ 'Config backends cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
@@ -371,24 +193,13 @@
 								</td>
 								<td><code>{{ backend.handle }}</code></td>
 								<td>
-									<span class="status-label" style="background: rgba({{ bRgb }}, 0.12);">
-										<span class="status" style="background: {{ bColor }};"></span>
-										<span class="status-label-text" style="color: {{ bTextColor }};">{{ backend.getTypeLabel() }}</span>
-									</span>
+									{{ indexMacros.backendBadge(backend.backendType, backend.getTypeLabel()) }}
 								</td>
 								<td>
-									{% if isConfig %}
-										<span class="status-label" style="background: rgba({{ sourceRgb.config }}, 0.12);"><span class="status" style="background: {{ sourceColors.config }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.config }};">{{ "Config"|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="status-label" style="background: rgba({{ sourceRgb.database }}, 0.12);"><span class="status" style="background: {{ sourceColors.database }};"></span><span class="status-label-text" style="color: {{ sourceTextColors.database }};">{{ "Database"|t('search-manager') }}</span></span>
-									{% endif %}
+									{{ indexMacros.sourceBadge(backend.source) }}
 								</td>
 								<td>
-									{% if backend.enabled %}
-										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
-									{% endif %}
+									{{ indexMacros.statusBadge(backend.enabled) }}
 								</td>
 								{% if canEdit or canDelete %}
 								<td class="thin" style="text-align: right;">
@@ -493,9 +304,11 @@
 	const clearBtn = document.querySelector('.clear-btn');
 	if (clearBtn) {
 		clearBtn.addEventListener('click', function() {
-			const searchInput = this.previousElementSibling.previousElementSibling;
-			searchInput.value = '';
-			searchInput.form.submit();
+			const searchInput = document.querySelector('input[name="search"]');
+			if (searchInput) {
+				searchInput.value = '';
+				searchInput.form.submit();
+			}
 		});
 	}
 

@@ -8,6 +8,8 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\ConfigFileHelper;
+use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
  * Configured Backend Model
@@ -18,6 +20,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 class ConfiguredBackend extends Model
 {
     use LoggingTrait;
+    use ConfigSourceTrait;
 
     // =========================================================================
     // PROPERTIES
@@ -39,11 +42,6 @@ class ConfiguredBackend extends Model
 
     public bool $enabled = true;
     public int $sortOrder = 0;
-
-    /**
-     * @var string Source (config|database)
-     */
-    public string $source = 'database';
 
     public ?\DateTime $dateCreated = null;
     public ?\DateTime $dateUpdated = null;
@@ -333,20 +331,10 @@ class ConfiguredBackend extends Model
     public static function findByHandle(string $handle): ?self
     {
         // First, check config file
-        $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
-        $configuredBackends = $config['configuredBackends'] ?? [];
+        $backendConfig = ConfigFileHelper::getConfigByHandle('configuredBackends', $handle);
 
-        if (isset($configuredBackends[$handle])) {
-            $backendConfig = $configuredBackends[$handle];
-            $model = new self();
-            $model->handle = $handle;
-            $model->name = $backendConfig['name'] ?? ucfirst($handle);
-            $model->backendType = $backendConfig['backendType'] ?? '';
-            $model->settings = $backendConfig['settings'] ?? [];
-            $model->enabled = $backendConfig['enabled'] ?? true;
-            $model->sortOrder = $backendConfig['sortOrder'] ?? 0;
-            $model->source = 'config';
-            return $model;
+        if ($backendConfig !== null) {
+            return self::createFromConfig($handle, $backendConfig);
         }
 
         // Then, check database
@@ -368,13 +356,12 @@ class ConfiguredBackend extends Model
     public static function findAll(): array
     {
         $backends = [];
-        $handlesFromConfig = [];
+        $handlesFromConfig = ConfigFileHelper::getHandles('configuredBackends');
 
         // First, load backends from config file
         $configBackends = self::findAllFromConfig();
         foreach ($configBackends as $backend) {
             $backends[$backend->handle] = $backend;
-            $handlesFromConfig[] = $backend->handle;
         }
 
         // Then, load backends from database (excluding those defined in config)
@@ -404,23 +391,29 @@ class ConfiguredBackend extends Model
     public static function findAllFromConfig(): array
     {
         $backends = [];
-
-        $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
-        $configuredBackends = $config['configuredBackends'] ?? [];
+        $configuredBackends = ConfigFileHelper::getConfiguredBackends();
 
         foreach ($configuredBackends as $handle => $backendConfig) {
-            $model = new self();
-            $model->handle = $handle;
-            $model->name = $backendConfig['name'] ?? ucfirst($handle);
-            $model->backendType = $backendConfig['backendType'] ?? '';
-            $model->settings = $backendConfig['settings'] ?? [];
-            $model->enabled = $backendConfig['enabled'] ?? true;
-            $model->sortOrder = $backendConfig['sortOrder'] ?? 0;
-            $model->source = 'config';
-            $backends[] = $model;
+            $backends[] = self::createFromConfig($handle, $backendConfig);
         }
 
         return $backends;
+    }
+
+    /**
+     * Create a model from config file data
+     */
+    private static function createFromConfig(string $handle, array $config): self
+    {
+        $model = new self();
+        $model->handle = $handle;
+        $model->name = $config['name'] ?? ucfirst($handle);
+        $model->backendType = $config['backendType'] ?? '';
+        $model->settings = $config['settings'] ?? [];
+        $model->enabled = $config['enabled'] ?? true;
+        $model->sortOrder = $config['sortOrder'] ?? 0;
+        $model->source = 'config';
+        return $model;
     }
 
     /**
@@ -655,19 +648,11 @@ class ConfiguredBackend extends Model
     }
 
     /**
-     * Check if this backend can be edited (database backends only)
-     */
-    public function canEdit(): bool
-    {
-        return $this->source !== 'config';
-    }
-
-    /**
      * Get raw config display for showing in tooltip (config backends only)
      */
     public function getRawConfigDisplay(): string
     {
-        if ($this->source !== 'config') {
+        if (!$this->isFromConfig()) {
             return '';
         }
 
@@ -677,36 +662,11 @@ class ConfiguredBackend extends Model
             'enabled' => $this->enabled,
         ];
 
-        // Add settings but mask sensitive values
         if (!empty($this->settings)) {
-            $maskedSettings = [];
-            $sensitiveKeys = ['apiKey', 'adminApiKey', 'searchApiKey', 'password'];
-            foreach ($this->settings as $key => $value) {
-                if (in_array($key, $sensitiveKeys, true) && !empty($value)) {
-                    $maskedSettings[$key] = '********';
-                } else {
-                    $maskedSettings[$key] = $value;
-                }
-            }
-            $config['settings'] = $maskedSettings;
+            $config['settings'] = $this->settings;
         }
 
-        $lines = ["'{$this->handle}' => ["];
-        foreach ($config as $key => $value) {
-            if (is_array($value)) {
-                $lines[] = "    '{$key}' => [";
-                foreach ($value as $k => $v) {
-                    $lines[] = "        '{$k}' => " . var_export($v, true) . ",";
-                }
-                $lines[] = "    ],";
-            } elseif (is_bool($value)) {
-                $lines[] = "    '{$key}' => " . ($value ? 'true' : 'false') . ",";
-            } else {
-                $lines[] = "    '{$key}' => " . var_export($value, true) . ",";
-            }
-        }
-        $lines[] = "],";
-
-        return implode("\n", $lines);
+        $sensitiveKeys = ['apiKey', 'adminApiKey', 'searchApiKey', 'password'];
+        return $this->formatConfigDisplay($config, $this->handle, $sensitiveKeys);
     }
 }
