@@ -390,7 +390,43 @@ Add indices to `config/search-manager.php`:
 ],
 ```
 
-### 3. Create a Transformer
+### 3. Configure Widgets (Optional)
+
+Define search widget configurations in `config/search-manager.php`:
+
+```php
+// Default widget to use (must match a handle from widgets)
+'defaultWidgetHandle' => 'brand-search',
+
+// Define widget configurations
+'widgets' => [
+    'brand-search' => [
+        'name' => 'Brand Search',
+        'enabled' => true,
+        'settings' => [
+            'search' => [
+                'indexHandles' => ['entries-en'], // Search specific indices
+            ],
+            'behavior' => [
+                'debounce' => 300,
+                'minChars' => 2,
+                'maxResults' => 8,
+                'hotkey' => 'k',
+            ],
+            'styles' => [
+                // Light mode
+                'modalBg' => '#ffffff',
+                'modalBorderColor' => '#0066cc',
+                // Dark mode
+                'modalBgDark' => '#1a1a2e',
+                'modalBorderColorDark' => '#4da6ff',
+            ],
+        ],
+    ],
+],
+```
+
+### 4. Create a Transformer
 
 ```php
 <?php
@@ -420,7 +456,7 @@ class EntryTransformer extends BaseTransformer
 }
 ```
 
-### 4. Rebuild Indices
+### 5. Rebuild Indices
 
 ```bash
 php craft search-manager/index/rebuild
