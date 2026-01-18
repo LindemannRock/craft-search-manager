@@ -304,6 +304,9 @@ class BackendService extends Component
         $siteId = $searchAllSites ? null : $options['siteId'];
         $settings = SearchManager::$plugin->getSettings();
 
+        // Check if analytics should be skipped (used by cache warming, internal operations)
+        $skipAnalytics = $options['skipAnalytics'] ?? false;
+
         // Extract analytics options from search options (API callers can pass these)
         $analyticsOptions = [
             'source' => $options['source'] ?? null,
@@ -328,22 +331,24 @@ class BackendService extends Component
             ]);
 
             // Track analytics for redirect (no search performed)
-            SearchManager::$plugin->analytics->trackSearch(
-                $indexName,
-                $query,
-                0, // No results
-                0, // No execution time
-                $backend->getName(),
-                $siteId,
-                array_merge($analyticsOptions, [
-                    'synonymsExpanded' => false,
-                    'rulesMatched' => count($matchedRules),
-                    'promotionsShown' => 0,
-                    'wasRedirected' => true,
-                    'matchedRules' => $matchedRules,
-                    'matchedPromotions' => [],
-                ])
-            );
+            if (!$skipAnalytics) {
+                SearchManager::$plugin->analytics->trackSearch(
+                    $indexName,
+                    $query,
+                    0, // No results
+                    0, // No execution time
+                    $backend->getName(),
+                    $siteId,
+                    array_merge($analyticsOptions, [
+                        'synonymsExpanded' => false,
+                        'rulesMatched' => count($matchedRules),
+                        'promotionsShown' => 0,
+                        'wasRedirected' => true,
+                        'matchedRules' => $matchedRules,
+                        'matchedPromotions' => [],
+                    ])
+                );
+            }
 
             return [
                 'hits' => [],
@@ -382,22 +387,24 @@ class BackendService extends Component
                 }
 
                 // Still track analytics for cached results
-                SearchManager::$plugin->analytics->trackSearch(
-                    $indexName,
-                    $query,
-                    $cached['total'] ?? 0,
-                    0, // Cache hit = 0ms execution time
-                    $backend->getName(), // Don't append "(cached)" - breaks analytics grouping
-                    $siteId,
-                    array_merge($analyticsOptions, [
-                        'synonymsExpanded' => $useSynonyms,
-                        'rulesMatched' => count($matchedRules),
-                        'promotionsShown' => count($matchedPromotions),
-                        'wasRedirected' => false,
-                        'matchedRules' => $matchedRules,
-                        'matchedPromotions' => $matchedPromotions,
-                    ])
-                );
+                if (!$skipAnalytics) {
+                    SearchManager::$plugin->analytics->trackSearch(
+                        $indexName,
+                        $query,
+                        $cached['total'] ?? 0,
+                        0, // Cache hit = 0ms execution time
+                        $backend->getName(), // Don't append "(cached)" - breaks analytics grouping
+                        $siteId,
+                        array_merge($analyticsOptions, [
+                            'synonymsExpanded' => $useSynonyms,
+                            'rulesMatched' => count($matchedRules),
+                            'promotionsShown' => count($matchedPromotions),
+                            'wasRedirected' => false,
+                            'matchedRules' => $matchedRules,
+                            'matchedPromotions' => $matchedPromotions,
+                        ])
+                    );
+                }
 
                 // Add metadata about rules and promotions (even for cached results)
                 $cached['meta'] = [
@@ -484,22 +491,24 @@ class BackendService extends Component
         }
 
         // 4. Track analytics
-        SearchManager::$plugin->analytics->trackSearch(
-            $indexName,
-            $query,
-            $results['total'] ?? 0,
-            $executionTime,
-            $backend->getName(),
-            $siteId,
-            array_merge($analyticsOptions, [
-                'synonymsExpanded' => $useSynonyms,
-                'rulesMatched' => count($matchedRules),
-                'promotionsShown' => count($matchedPromotions),
-                'wasRedirected' => false,
-                'matchedRules' => $matchedRules,
-                'matchedPromotions' => $matchedPromotions,
-            ])
-        );
+        if (!$skipAnalytics) {
+            SearchManager::$plugin->analytics->trackSearch(
+                $indexName,
+                $query,
+                $results['total'] ?? 0,
+                $executionTime,
+                $backend->getName(),
+                $siteId,
+                array_merge($analyticsOptions, [
+                    'synonymsExpanded' => $useSynonyms,
+                    'rulesMatched' => count($matchedRules),
+                    'promotionsShown' => count($matchedPromotions),
+                    'wasRedirected' => false,
+                    'matchedRules' => $matchedRules,
+                    'matchedPromotions' => $matchedPromotions,
+                ])
+            );
+        }
 
         // 5. Add metadata about rules and promotions applied
         $results['meta'] = [
