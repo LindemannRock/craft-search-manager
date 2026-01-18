@@ -220,15 +220,21 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     public function clearIndex(string $indexName): bool
     {
         try {
+            $fullIndexName = $this->getFullIndexName($indexName);
+
+            $this->logInfo("clearIndex called", [
+                'inputIndexName' => $indexName,
+                'fullIndexName' => $fullIndexName,
+            ]);
+
             $storage = $this->getStorage($indexName);
             $storage->clearAll();
 
             // Clear cached instances
-            $fullIndexName = $this->getFullIndexName($indexName);
             unset($this->searchEngines[$fullIndexName]);
             unset($this->storages[$fullIndexName]);
 
-            $this->logInfo("Cleared {$this->getBackendLabel()} index with SearchEngine", ['index' => $indexName]);
+            $this->logInfo("Cleared {$this->getBackendLabel()} index with SearchEngine", ['index' => $fullIndexName]);
             return true;
         } catch (\Throwable $e) {
             $this->logError("Failed to clear {$this->getBackendLabel()} index", ['error' => $e->getMessage()]);

@@ -1,4 +1,5 @@
 {% import "_includes/forms" as forms %}
+{% import 'search-manager/_macros/index' as indexMacros %}
 
 {# Permission checks #}
 {% set canViewIndices = currentUser.can('searchManager:viewIndices') %}
@@ -25,13 +26,8 @@
             </div>
 
             <div style="flex: 1; display: flex; flex-direction: column;">
-                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                    <div style="font-size: 28px; font-weight: 700; color: #059669; line-height: 1;">
-                        {{ indexCount }}
-                    </div>
-                    <div style="padding: 3px 10px; border-radius: 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; color: white; background: #059669;">
-                        {{ 'Active'|t('search-manager') }}
-                    </div>
+                <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 12px;">
+                    {{ indexCount }}
                 </div>
                 <div style="font-size: 14px; color: #4b5563; margin-bottom: 12px;">
                     {{ "Total indices configured"|t('search-manager') }}
@@ -46,67 +42,113 @@
             </div>
         </div>
 
-        <!-- Backend Card -->
+        <!-- Backend Distribution Card -->
         <div class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); display: flex; flex-direction: column; height: 100%;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                 <div style="width: 12px; height: 12px; border-radius: 50%; background: #0ea5e9;"></div>
-                <h4 style="margin: 0; color: #374151; font-size: 15px; font-weight: 600;">{{ "Active Backend"|t('search-manager') }}</h4>
+                <h4 style="margin: 0; color: #374151; font-size: 15px; font-weight: 600;">{{ "Backend Distribution"|t('search-manager') }}</h4>
             </div>
 
             <div style="flex: 1; display: flex; flex-direction: column;">
-                <div style="font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 12px;">
-                    {{ activeBackend|title }}
-                </div>
-                <div style="font-size: 14px; color: #4b5563;">
-                    {{ "Current search engine"|t('search-manager') }}
-                </div>
+                {% if backendDistribution|length > 0 %}
+                    <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 12px;">{{ backendDistribution|length }}</div>
+                    <div style="font-size: 14px; color: #4b5563; margin-bottom: 12px;">
+                        {{ "Backend types in use"|t('search-manager') }}
+                        {% if defaultBackendName %}
+                            <span style="color: #6b7280;">({{ "Default: {name}"|t('search-manager', {name: defaultBackendName}) }})</span>
+                        {% endif %}
+                    </div>
+                    <div style="margin-top: auto;">
+                        {% set backendLabels = {
+                            'mysql': 'MySQL',
+                            'pgsql': 'PostgreSQL',
+                            'redis': 'Redis',
+                            'file': 'File',
+                            'algolia': 'Algolia',
+                            'meilisearch': 'Meilisearch',
+                            'typesense': 'Typesense'
+                        } %}
+                        <div style="display: grid; grid-template-columns: repeat({{ backendDistribution|length > 3 ? 3 : backendDistribution|length }}, 1fr); gap: 8px;">
+                            {% for backendType, stats in backendDistribution %}
+                                <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+                                    <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ stats.count }}</div>
+                                    <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ backendLabels[backendType] ?? backendType|capitalize }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div style="font-size: 28px; font-weight: 700; color: #6b7280; line-height: 1; margin-bottom: 12px;">0</div>
+                    <div style="font-size: 14px; color: #6b7280;">{{ "No indices configured"|t('search-manager') }}</div>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Backend Stats Card -->
-        {% if backendStats is defined and backendStats is not empty %}
+        <!-- Cache Status Card -->
         <div class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); display: flex; flex-direction: column; height: 100%;">
             <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #8b5cf6;"></div>
+                <div style="width: 12px; height: 12px; border-radius: 50%; background: #22c55e;"></div>
                 <h4 style="margin: 0; color: #374151; font-size: 15px; font-weight: 600;">
-                    {% if activeBackend == 'file' %}
-                        {{ "File Cache"|t('search-manager') }}
-                    {% elseif activeBackend == 'mysql' %}
-                        {{ "MySQL Storage"|t('search-manager') }}
-                    {% elseif activeBackend == 'redis' %}
-                        {{ "Redis Status"|t('search-manager') }}
-                    {% else %}
-                        {{ "Backend Stats"|t('search-manager') }}
-                    {% endif %}
+                    {{ "Cache Status"|t('search-manager') }} ({{ storageMethod == 'redis' ? 'Redis' : 'File' }})
                 </h4>
             </div>
-
             <div style="flex: 1; display: flex; flex-direction: column;">
-                {% if backendStats.fileCount is defined %}
-                    <div style="font-size: 28px; font-weight: 700; color: #8b5cf6; line-height: 1; margin-bottom: 12px;">
-                        {{ backendStats.fileCount|number_format }}
+                {% if storageMethod == 'redis' %}
+                    <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1;">
+                        {{ "Active"|t('search-manager') }}
                     </div>
-                    <div style="font-size: 14px; color: #4b5563;">
-                        {{ "Cached files"|t('search-manager') }}
+                    <div style="margin-top: auto;">
+                        {% set enabledCacheCount = (settings.enableCache ? 1 : 0) + (settings.enableAutocompleteCache ? 1 : 0) + (settings.cacheDeviceDetection ? 1 : 0) %}
+                        <div style="display: grid; grid-template-columns: repeat({{ enabledCacheCount > 0 ? enabledCacheCount : 1 }}, 1fr); gap: 8px;">
+                            {% if settings.enableCache %}
+                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px;">✓</div>
+                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Search'|t('search-manager') }}</div>
+                            </div>
+                            {% endif %}
+                            {% if settings.enableAutocompleteCache %}
+                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px;">✓</div>
+                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Autocomplete'|t('search-manager') }}</div>
+                            </div>
+                            {% endif %}
+                            {% if settings.cacheDeviceDetection %}
+                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px;">✓</div>
+                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Devices'|t('search-manager') }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                {% elseif backendStats.documentRows is defined %}
-                    <div style="font-size: 28px; font-weight: 700; color: #8b5cf6; line-height: 1; margin-bottom: 12px;">
-                        {{ backendStats.documentRows|number_format }}
-                    </div>
-                    <div style="font-size: 14px; color: #4b5563;">
-                        {{ "Database rows"|t('search-manager') }}
-                    </div>
-                {% elseif backendStats.status is defined %}
-                    <div style="font-size: 20px; font-weight: 700; color: {{ backendStats.status == 'connected' ? '#059669' : '#dc2626' }}; line-height: 1; margin-bottom: 12px; text-transform: uppercase;">
-                        {{ backendStats.status|title }}
-                    </div>
-                    <div style="font-size: 14px; color: #4b5563;">
-                        {{ "Connection status"|t('search-manager') }}
+                {% else %}
+                    <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 12px;">{{ (searchCacheFiles + autocompleteCacheFiles + deviceCacheFiles)|number_format }}</div>
+                    <div style="font-size: 14px; color: #4b5563; margin-bottom: 12px;">{{ "Total cached entries"|t('search-manager') }}</div>
+                    <div style="margin-top: auto;">
+                        {% set enabledCacheCount = (settings.enableCache ? 1 : 0) + (settings.enableAutocompleteCache ? 1 : 0) + (settings.cacheDeviceDetection ? 1 : 0) %}
+                        <div style="display: grid; grid-template-columns: repeat({{ enabledCacheCount > 0 ? enabledCacheCount : 1 }}, 1fr); gap: 8px;">
+                            {% if settings.enableCache %}
+                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ searchCacheFiles|number_format }}</div>
+                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Search'|t('search-manager') }}</div>
+                            </div>
+                            {% endif %}
+                            {% if settings.enableAutocompleteCache %}
+                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ autocompleteCacheFiles|number_format }}</div>
+                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Autocomplete'|t('search-manager') }}</div>
+                            </div>
+                            {% endif %}
+                            {% if settings.cacheDeviceDetection %}
+                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
+                                <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ deviceCacheFiles|number_format }}</div>
+                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Devices'|t('search-manager') }}</div>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
                 {% endif %}
             </div>
         </div>
-        {% endif %}
     </div>
 </div>
 
@@ -152,41 +194,40 @@
 
         <div style="margin-bottom: 24px;">
             <h3 style="margin-bottom: 8px;">{{ "Index Management"|t('search-manager') }}</h3>
-            <p class="light" style="margin-bottom: 16px;">{{ "Manage your search indices: rebuild to refresh data from Craft elements, or clear to reset storage."|t('search-manager') }}</p>
+            <p class="light" style="margin-bottom: 16px;">{{ "Rebuild indices or clear storage data."|t('search-manager') }}</p>
 
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                <form method="post" accept-charset="UTF-8" style="display: inline;">
-                    {{ csrfInput() }}
-                    {{ actionInput('search-manager/utilities/rebuild-all-indices') }}
-                    {{ redirectInput('utilities/clear-search-cache') }}
-                    <button type="submit" class="btn submit">
-                        {{ "Rebuild All Indices"|t('search-manager') }}
-                    </button>
-                </form>
+            <form method="post" accept-charset="UTF-8" style="display: inline; margin-bottom: 20px;">
+                {{ csrfInput() }}
+                {{ actionInput('search-manager/utilities/rebuild-all-indices') }}
+                {{ redirectInput('utilities/clear-search-cache') }}
+                <button type="submit" class="btn submit">
+                    {{ "Rebuild All Indices"|t('search-manager') }}
+                </button>
+            </form>
 
-                <button type="button" class="btn secondary" id="clear-backend-storage">
-                    {% if activeBackend == 'file' and backendStats.fileCount is defined %}
-                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|title}) }} ({{ backendStats.fileCount|number_format }})
-                    {% elseif activeBackend == 'mysql' and backendStats.documentRows is defined %}
-                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|upper}) }} ({{ backendStats.documentRows|number_format }})
-                    {% else %}
-                        {{ "Clear {backend} Storage"|t('search-manager', {backend: activeBackend|title}) }} ({{ indexCount|number_format }} indices)
-                    {% endif %}
+            <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL data from a specific storage type. Use this to remove orphaned data when changing backends."|t('search-manager') }}</p>
+
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                {{ forms.select({
+                    id: 'storage-type-select',
+                    name: 'storageType',
+                    options: [
+                        {label: 'Database (loading...)', value: 'database'},
+                        {label: 'Redis (loading...)', value: 'redis'},
+                        {label: 'File (loading...)', value: 'file'},
+                    ],
+                    value: 'database',
+                }) }}
+
+                <button type="button" class="btn secondary" id="clear-storage-by-type">
+                    {{ "Clear Storage"|t('search-manager') }}
                 </button>
             </div>
-            <p class="light" style="margin-top: 12px; font-size: 12px; color: #64748b;">
-                <strong>{{ "Rebuild"|t('search-manager') }}:</strong> {{ "Refreshes all indexed data from Craft elements"|t('search-manager') }}<br>
-                <strong>{{ "Clear Storage"|t('search-manager') }}:</strong>
-                {% if activeBackend == 'file' %}
-                    {{ "Deletes file-based index storage"|t('search-manager') }}
-                {% elseif activeBackend == 'mysql' %}
-                    {{ "Deletes MySQL database tables"|t('search-manager') }}
-                {% elseif activeBackend == 'redis' %}
-                    {{ "Deletes Redis keys"|t('search-manager') }}
-                {% else %}
-                    {{ "Deletes all indexed data"|t('search-manager') }}
-                {% endif %}
-            </p>
+
+            {% include 'lindemannrock-base/_components/info-box' with {
+                message: 'Clears ALL data from the selected storage type including orphaned data.'|t('search-manager'),
+                type: 'warning'
+            } %}
         </div>
         {% endif %}
 
@@ -198,12 +239,6 @@
             <p class="light" style="margin-bottom: 16px;">{{ "Clear temporary cached data to improve performance and free up storage space."|t('search-manager') }}</p>
 
             <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                {% if settings.cacheDeviceDetection %}
-                    <button type="button" class="btn" id="clear-device-cache">
-                        {{ "Clear Device Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ deviceCacheFiles|number_format }}){% endif %}
-                    </button>
-                {% endif %}
-
                 {% if settings.enableCache %}
                     <button type="button" class="btn" id="clear-search-cache">
                         {{ "Clear Search Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ searchCacheFiles|number_format }}){% endif %}
@@ -213,6 +248,12 @@
                 {% if settings.enableAutocompleteCache %}
                     <button type="button" class="btn" id="clear-autocomplete-cache">
                         {{ "Clear Autocomplete Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ autocompleteCacheFiles|number_format }}){% endif %}
+                    </button>
+                {% endif %}
+
+                {% if settings.cacheDeviceDetection %}
+                    <button type="button" class="btn" id="clear-device-cache">
+                        {{ "Clear Device Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ deviceCacheFiles|number_format }}){% endif %}
                     </button>
                 {% endif %}
 
@@ -244,9 +285,62 @@
 {% endif %}
 
 {% js %}
-// Backend storage clearing handler
-$('#clear-backend-storage').on('click', function() {
-    if (!confirm('{{ "Are you sure you want to clear all {backend} storage? This will delete all indexed data!"|t('search-manager', {backend: activeBackend|title})|e('js') }}')) {
+// Load storage stats and update dropdown options
+function loadStorageStats() {
+    $.ajax({
+        url: '{{ actionUrl('search-manager/utilities/get-storage-stats')|raw }}',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success && response.stats) {
+                var $select = $('#storage-type-select');
+                var currentVal = $select.val();
+
+                // Database (MySQL or PostgreSQL)
+                var dbLabel = 'Database';
+                if (response.stats.database && response.stats.database.driverLabel) {
+                    dbLabel = response.stats.database.driverLabel;
+                }
+                var dbText = dbLabel;
+                if (response.stats.database && response.stats.database.available) {
+                    dbText += ' (' + response.stats.database.totalRows.toLocaleString() + ' rows)';
+                }
+                $select.find('option[value="database"]').text(dbText);
+
+                // Redis
+                var redisText = 'Redis';
+                if (response.stats.redis && response.stats.redis.available) {
+                    redisText += ' (' + response.stats.redis.keyCount.toLocaleString() + ' keys)';
+                } else if (response.stats.redis && response.stats.redis.status === 'not_configured') {
+                    redisText += ' (not configured)';
+                } else if (response.stats.redis && response.stats.redis.status === 'extension_not_installed') {
+                    redisText += ' (n/a)';
+                }
+                $select.find('option[value="redis"]').text(redisText);
+
+                // File
+                var fileText = 'File';
+                if (response.stats.file && response.stats.file.available) {
+                    fileText += ' (' + response.stats.file.fileCount.toLocaleString() + ' files)';
+                }
+                $select.find('option[value="file"]').text(fileText);
+
+                $select.val(currentVal);
+            }
+        }
+    });
+}
+
+$(document).ready(function() {
+    loadStorageStats();
+});
+
+// Clear storage by type handler
+$('#clear-storage-by-type').on('click', function() {
+    var selectedType = $('#storage-type-select').val();
+    var typeName = $('#storage-type-select option:selected').text();
+
+    if (!confirm('{{ "Are you sure you want to clear ALL data from"|t('search-manager')|e('js') }} ' + typeName + '{{ "? This cannot be undone!"|t('search-manager')|e('js') }}')) {
         return;
     }
 
@@ -254,22 +348,23 @@ $('#clear-backend-storage').on('click', function() {
     $btn.addClass('loading').prop('disabled', true);
 
     $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/clear-backend-storage')|raw }}',
+        url: '{{ actionUrl('search-manager/utilities/clear-storage-by-type')|raw }}',
         type: 'POST',
         dataType: 'json',
         data: {
-            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
+            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}',
+            type: selectedType
         },
         success: function(response) {
             if (response.success) {
                 Craft.cp.displayNotice(response.message);
-                setTimeout(() => window.location.reload(), 1500);
+                loadStorageStats();
             } else {
-                Craft.cp.displayError(response.error || '{{ "Failed to clear backend storage"|t('search-manager')|e('js') }}');
+                Craft.cp.displayError(response.error || '{{ "Failed to clear storage"|t('search-manager')|e('js') }}');
             }
         },
         error: function() {
-            Craft.cp.displayError('{{ "Failed to clear backend storage"|t('search-manager')|e('js') }}');
+            Craft.cp.displayError('{{ "Failed to clear storage"|t('search-manager')|e('js') }}');
         },
         complete: function() {
             $btn.removeClass('loading').prop('disabled', false);

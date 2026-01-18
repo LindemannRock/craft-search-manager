@@ -116,8 +116,8 @@ class AutocompleteService extends Component
             'fuzzy' => $fuzzy,
         ]);
 
-        // Get storage for the current backend
-        $storage = $this->getStorage($indexHandle);
+        // Get storage using DRY approach via BackendService
+        $storage = $this->getStorageForIndex($indexHandle);
         if (!$storage) {
             return [];
         }
@@ -172,6 +172,15 @@ class AutocompleteService extends Component
         // Get all terms from storage (filtered by language and index)
         $allTerms = $this->getAllTerms($storage, $siteId, $language, $indexHandle);
 
+        $this->logDebug('getPrefixMatches: Retrieved terms from storage', [
+            'termCount' => count($allTerms),
+            'query' => $query,
+            'siteId' => $siteId,
+            'language' => $language,
+            'indexHandle' => $indexHandle,
+            'sampleTerms' => array_slice(array_keys($allTerms), 0, 10),
+        ]);
+
         foreach ($allTerms as $term => $frequency) {
             if (str_starts_with($term, $query)) {
                 $matches[$term] = $frequency;
@@ -181,6 +190,11 @@ class AutocompleteService extends Component
                 break; // Collect more than needed for sorting
             }
         }
+
+        $this->logDebug('getPrefixMatches: Found matches', [
+            'matchCount' => count($matches),
+            'matches' => array_keys($matches),
+        ]);
 
         // Sort by frequency (most common first)
         arsort($matches);
@@ -226,14 +240,28 @@ class AutocompleteService extends Component
      */
     private function getAllTerms($storage, ?int $siteId, ?string $language = null, ?string $indexHandle = null): array
     {
+        $this->logDebug('getAllTerms: Starting', [
+            'storageClass' => $storage ? get_class($storage) : 'null',
+            'isStorageInterface' => $storage instanceof StorageInterface,
+            'siteId' => $siteId,
+            'language' => $language,
+            'indexHandle' => $indexHandle,
+        ]);
+
         try {
             // Use the StorageInterface method
             if ($storage instanceof StorageInterface) {
-                return $storage->getTermsForAutocomplete($siteId, $language, 1000);
+                $terms = $storage->getTermsForAutocomplete($siteId, $language, 1000);
+                $this->logDebug('getAllTerms: Got terms from storage', [
+                    'termCount' => count($terms),
+                ]);
+                return $terms;
             }
+            $this->logWarning('getAllTerms: Storage is not StorageInterface');
         } catch (\Throwable $e) {
             $this->logError('Failed to get all terms', [
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
         }
 
@@ -277,8 +305,8 @@ class AutocompleteService extends Component
             'type_filter' => $elementType,
         ]);
 
-        // Get storage for the current backend (pass full index name)
-        $storage = $this->getStorageWithFullName($fullIndexHandle);
+        // Get storage using DRY approach via BackendService
+        $storage = $this->getStorageForIndex($indexHandle);
         if (!$storage) {
             return [];
         }
@@ -315,15 +343,20 @@ class AutocompleteService extends Component
     }
 
     /**
-     * Get storage instance for index's configured backend
+     * Get storage instance for an index
      *
-     * @param string $indexHandle Index handle
-     * @return mixed Storage instance or null
+     * Uses BackendService::getBackendForIndex() to get the properly configured
+     * backend, then retrieves storage from it. This is the DRY approach - all
+     * backend/storage creation logic is centralized in BackendService.
+     *
+     * @param string $indexHandle Raw index handle (without prefix)
+     * @return StorageInterface|null Storage instance or null
      */
-    private function getStorage(string $indexHandle)
+    private function getStorageForIndex(string $indexHandle): ?StorageInterface
     {
         try {
-            // Get the backend for this specific index (respects per-index backend overrides)
+            // Use BackendService to get the properly configured backend for this index
+            // This handles all the ConfiguredBackend lookup and settings injection
             $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
 
             if (!$backend) {
@@ -331,99 +364,26 @@ class AutocompleteService extends Component
                 return null;
             }
 
-            $backendName = $backend->getName();
-
-            // Only support built-in backends (MySQL, PostgreSQL, Redis, File)
-            if (!in_array($backendName, ['mysql', 'pgsql', 'redis', 'file'])) {
-                $this->logWarning('Autocomplete only supported for MySQL, PostgreSQL, Redis, and File backends', [
-                    'backend' => $backendName,
+            // Check if backend supports storage (internal backends like MySQL, Redis, File)
+            if (!method_exists($backend, 'getStorage')) {
+                $this->logWarning('Backend does not support direct storage access', [
                     'index' => $indexHandle,
+                    'backend' => $backend->getName(),
                 ]);
                 return null;
             }
 
-            // All built-in backends have getStorage() method
-            // Type assertion for PHPStan since BackendInterface doesn't define getStorage()
-            if (method_exists($backend, 'getStorage')) {
-                /** @var \lindemannrock\searchmanager\backends\MySqlBackend|\lindemannrock\searchmanager\backends\PostgreSqlBackend|\lindemannrock\searchmanager\backends\RedisBackend|\lindemannrock\searchmanager\backends\FileBackend $backend */
-                $storage = $backend->getStorage($indexHandle);
+            $storage = $backend->getStorage($indexHandle);
 
-                $this->logDebug('Retrieved storage from backend for index', [
-                    'backend' => $backendName,
-                    'index' => $indexHandle,
-                    'storage' => get_class($storage),
-                ]);
-
-                return $storage;
-            }
-
-            $this->logError('Backend does not support getStorage()', [
-                'backend' => $backendName,
+            $this->logDebug('Got storage from backend', [
                 'index' => $indexHandle,
-            ]);
-
-            return null;
-        } catch (\Throwable $e) {
-            $this->logError('Failed to get storage from backend', [
-                'index' => $indexHandle,
-                'error' => $e->getMessage(),
-            ]);
-            return null;
-        }
-    }
-
-    /**
-     * Get storage instance with full index name (prefix already applied)
-     *
-     * Used when the caller has already applied the index prefix.
-     * Supports MySQL, Redis, and File backends (not PostgreSQL - no element suggestions support).
-     *
-     * @param string $fullIndexName Full index name including prefix
-     * @return mixed Storage instance or null
-     */
-    private function getStorageWithFullName(string $fullIndexName)
-    {
-        $backendName = $this->getDefaultBackendType();
-
-        // Support MySQL, PostgreSQL, Redis, and File for element suggestions
-        // Note: PostgreSQL uses MySqlStorage which has getElementSuggestions
-        if (!in_array($backendName, ['mysql', 'pgsql', 'redis', 'file'])) {
-            $this->logWarning('Element suggestions only supported for MySQL, PostgreSQL, Redis, and File backends', [
-                'backend' => $backendName,
-            ]);
-            return null;
-        }
-
-        try {
-            if ($backendName === 'mysql' || $backendName === 'pgsql') {
-                // Create MySQL storage directly with the full index name
-                // PostgreSQL also uses MySqlStorage (same SQL structure)
-                $storage = new \lindemannrock\searchmanager\search\storage\MySqlStorage($fullIndexName);
-            } elseif ($backendName === 'redis') {
-                // Create Redis storage directly with the full index name
-                $backend = SearchManager::$plugin->backend->getBackend('redis');
-                $backendSettings = [];
-                if ($backend && method_exists($backend, 'getBackendSettings')) {
-                    // Use reflection to access protected method
-                    $reflection = new \ReflectionMethod($backend, 'getBackendSettings');
-                    $reflection->setAccessible(true);
-                    $backendSettings = $reflection->invoke($backend);
-                }
-                $storage = new \lindemannrock\searchmanager\search\storage\RedisStorage($fullIndexName, $backendSettings);
-            } else {
-                // Create File storage directly with the full index name
-                $storage = new \lindemannrock\searchmanager\search\storage\FileStorage($fullIndexName);
-            }
-
-            $this->logDebug('Created storage with full index name', [
-                'index' => $fullIndexName,
-                'backend' => $backendName,
+                'backend' => $backend->getName(),
             ]);
 
             return $storage;
         } catch (\Throwable $e) {
-            $this->logError('Failed to create storage', [
-                'index' => $fullIndexName,
+            $this->logError('Failed to get storage for index', [
+                'index' => $indexHandle,
                 'error' => $e->getMessage(),
             ]);
             return null;
@@ -442,27 +402,6 @@ class AutocompleteService extends Component
         // Also includes: \x{0750}-\x{077F} (Arabic Supplement)
         // And: \x{08A0}-\x{08FF} (Arabic Extended-A)
         return (bool)preg_match('/[\x{0600}-\x{06FF}\x{0750}-\x{077F}\x{08A0}-\x{08FF}]/u', $text);
-    }
-
-    /**
-     * Get the default backend type from configured backends
-     */
-    private function getDefaultBackendType(): string
-    {
-        $settings = SearchManager::$plugin->getSettings();
-        $defaultHandle = $settings->defaultBackendHandle;
-
-        if (!$defaultHandle) {
-            return 'file'; // Fallback to file if no default configured
-        }
-
-        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
-        if ($configuredBackend) {
-            return $configuredBackend->backendType;
-        }
-
-        // Fallback: might be a backend type directly for backwards compatibility
-        return $defaultHandle;
     }
 
     // =========================================================================

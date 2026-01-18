@@ -52,45 +52,27 @@ class ClearSearchCache extends Utility
         $indices = SearchIndex::findAll();
         $totalDocuments = 0;
 
+        // Count indices per backend type
+        $backendDistribution = [];
         foreach ($indices as $index) {
             $totalDocuments += $index->documentCount;
+
+            $backendType = $index->getEffectiveBackendType() ?: 'file';
+            if (!isset($backendDistribution[$backendType])) {
+                $backendDistribution[$backendType] = ['count' => 0, 'documents' => 0];
+            }
+            $backendDistribution[$backendType]['count']++;
+            $backendDistribution[$backendType]['documents'] += $index->documentCount;
         }
 
-        // Gather backend-specific stats
-        $backendStats = [];
-        $activeBackendType = self::getDefaultBackendType($settings);
-
-        switch ($activeBackendType) {
-            case 'file':
-                $cacheFileCount = 0;
-                $runtimePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/indices';
-                if (is_dir($runtimePath)) {
-                    $files = glob($runtimePath . '/*/docs/*.dat');
-                    $cacheFileCount = count($files ?: []);
-                }
-                $backendStats['fileCount'] = $cacheFileCount;
-                break;
-
-            case 'mysql':
-                // Count rows in searchmanager_search_documents table
-                $docCount = (new \craft\db\Query())
-                    ->from('{{%searchmanager_search_documents}}')
-                    ->count();
-                $backendStats['documentRows'] = (int)$docCount;
-                break;
-
-            case 'redis':
-                // Count Redis keys
-                try {
-                    $backend = SearchManager::getInstance()->backend->getBackend('redis');
-                    if ($backend && $backend->isAvailable()) {
-                        // We'd need access to Redis client, skip for now
-                        $backendStats['status'] = 'connected';
-                    }
-                } catch (\Throwable $e) {
-                    $backendStats['status'] = 'disconnected';
-                }
-                break;
+        // Get default backend name
+        $defaultBackendName = null;
+        $defaultBackendHandle = $settings->defaultBackendHandle;
+        if ($defaultBackendHandle) {
+            $defaultBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultBackendHandle);
+            if ($defaultBackend) {
+                $defaultBackendName = $defaultBackend->name;
+            }
         }
 
         // Get analytics count
@@ -127,8 +109,8 @@ class ClearSearchCache extends Utility
         return Craft::$app->getView()->renderTemplate('search-manager/utilities/index', [
             'indexCount' => count($indices),
             'totalDocuments' => $totalDocuments,
-            'activeBackend' => $activeBackendType,
-            'backendStats' => $backendStats,
+            'backendDistribution' => $backendDistribution,
+            'defaultBackendName' => $defaultBackendName,
             'indices' => $indices,
             'deviceCacheFiles' => $deviceCacheFiles,
             'searchCacheFiles' => $searchCacheFiles,
@@ -137,25 +119,5 @@ class ClearSearchCache extends Utility
             'analyticsCount' => (int) $analyticsCount,
             'settings' => $settings,
         ]);
-    }
-
-    /**
-     * Get the default backend type from configured backends
-     */
-    private static function getDefaultBackendType($settings): string
-    {
-        $defaultHandle = $settings->defaultBackendHandle;
-
-        if (!$defaultHandle) {
-            return 'file'; // Fallback to file if no default configured
-        }
-
-        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
-        if ($configuredBackend) {
-            return $configuredBackend->backendType;
-        }
-
-        // Fallback: might be a backend type directly for backwards compatibility
-        return $defaultHandle;
     }
 }

@@ -301,6 +301,13 @@ class MySqlStorage implements StorageInterface
      */
     public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
     {
+        $this->logDebug('getTermsForAutocomplete: Starting query', [
+            'indexHandle' => $this->indexHandle,
+            'siteId' => $siteId,
+            'language' => $language,
+            'limit' => $limit,
+        ]);
+
         $query = (new \craft\db\Query())
             ->select(['term', 'SUM(frequency) as total_freq'])
             ->from('{{%searchmanager_search_terms}}')
@@ -321,6 +328,23 @@ class MySqlStorage implements StorageInterface
             ->orderBy(['total_freq' => SORT_DESC])
             ->limit($limit)
             ->all();
+
+        $this->logDebug('getTermsForAutocomplete: Query complete', [
+            'indexHandle' => $this->indexHandle,
+            'resultCount' => count($results),
+            'sampleTerms' => array_slice(array_column($results, 'term'), 0, 5),
+        ]);
+
+        // Debug: Check what indexHandles exist in the table
+        $existingHandles = (new \craft\db\Query())
+            ->select(['indexHandle'])
+            ->from('{{%searchmanager_search_terms}}')
+            ->distinct()
+            ->column();
+        $this->logDebug('getTermsForAutocomplete: Existing indexHandles in DB', [
+            'handles' => $existingHandles,
+            'lookingFor' => $this->indexHandle,
+        ]);
 
         $terms = [];
         foreach ($results as $row) {
@@ -827,6 +851,10 @@ class MySqlStorage implements StorageInterface
      */
     public function clearAll(): void
     {
+        $this->logInfo('clearAll() called - about to delete', [
+            'indexHandle' => $this->indexHandle,
+        ]);
+
         $tables = [
             '{{%searchmanager_search_documents}}',
             '{{%searchmanager_search_terms}}',
@@ -844,7 +872,7 @@ class MySqlStorage implements StorageInterface
             )->execute();
         }
 
-        $this->logInfo('Cleared all data', [
+        $this->logInfo('clearAll() completed', [
             'index' => $this->indexHandle,
         ]);
     }

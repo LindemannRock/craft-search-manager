@@ -386,7 +386,7 @@ document.addEventListener('DOMContentLoaded', function() {
 								{% if currentUser.can('searchManager:clearIndices') %}
 								<li>
 									<a class="formsubmit error" data-action="search-manager/indices/clear" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will remove all documents from the index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
-										{{ "Clear Index"|t('search-manager') }}
+										{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})
 									</a>
 								</li>
 								{% endif %}

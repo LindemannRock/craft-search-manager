@@ -318,7 +318,7 @@
 											{% if currentUser.can('searchManager:clearIndices') %}
 												<li>
 													<a class="index-action" data-action="clear" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Clear Index Data'|t('search-manager') }}
+														{{ 'Clear Index Data'|t('search-manager') }} ({{ index.documentCount|number_format }})
 													</a>
 												</li>
 											{% endif %}

@@ -799,6 +799,7 @@ class SearchManager extends Plugin
         // This properly merges '*' with environment-specific configs (e.g., 'production')
         try {
             $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
+
             if (!empty($config) && is_array($config)) {
                 foreach ($config as $key => $value) {
                     // Skip special config keys that are handled elsewhere
