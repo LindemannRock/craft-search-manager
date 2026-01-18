@@ -34,9 +34,12 @@ class WidgetsController extends Controller
         $this->requirePermission('searchManager:viewWidgetConfigs');
 
         $widgetConfigs = SearchManager::$plugin->widgetConfigs->getAll();
+        $settings = SearchManager::$plugin->getSettings();
 
         return $this->renderTemplate('search-manager/widgets/index', [
             'widgetConfigs' => $widgetConfigs,
+            'defaultWidgetHandle' => $settings->defaultWidgetHandle,
+            'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
         ]);
     }
 
@@ -59,11 +62,14 @@ class WidgetsController extends Controller
 
         // Get indices for multi-select
         $indices = SearchIndex::findAll();
+        $settings = SearchManager::$plugin->getSettings();
 
         return $this->renderTemplate('search-manager/widgets/edit', [
             'widgetConfig' => $widgetConfig,
             'isNew' => !$configId,
             'indices' => $indices,
+            'defaultWidgetHandle' => $settings->defaultWidgetHandle,
+            'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
         ]);
     }
 
@@ -88,32 +94,17 @@ class WidgetsController extends Controller
             $widgetConfig = new WidgetConfig();
         }
 
-        // Check if trying to unset default on the current default config
-        $wasDefault = $configId ? SearchManager::$plugin->widgetConfigs->getById($configId)?->isDefault : false;
-        $newIsDefault = (bool) $request->getBodyParam('isDefault');
-
-        if ($wasDefault && !$newIsDefault) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Cannot remove default status. Set another config as default first.'));
-
-            Craft::$app->getUrlManager()->setRouteParams([
-                'widgetConfig' => $widgetConfig,
-            ]);
-
-            return null;
-        }
-
         // Set basic attributes
         $widgetConfig->name = $request->getBodyParam('name');
         $widgetConfig->handle = $request->getBodyParam('handle');
         $widgetConfig->enabled = (bool) $request->getBodyParam('enabled');
-        $widgetConfig->isDefault = $newIsDefault;
 
         // Get settings from form
-        $settings = $request->getBodyParam('settings', []);
+        $widgetSettings = $request->getBodyParam('settings', []);
 
         // Merge with defaults to ensure all keys exist
         $defaults = WidgetConfig::defaultSettings();
-        $mergedSettings = array_replace_recursive($defaults, $settings);
+        $mergedSettings = array_replace_recursive($defaults, $widgetSettings);
 
         // Handle indexHandles - ensure it's always an array
         if (isset($mergedSettings['search']['indexHandles'])) {
@@ -129,22 +120,43 @@ class WidgetsController extends Controller
         if (!$widgetConfig->validate()) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config.'));
 
+            $pluginSettings = SearchManager::$plugin->getSettings();
             Craft::$app->getUrlManager()->setRouteParams([
                 'widgetConfig' => $widgetConfig,
+                'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
+                'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
             ]);
 
             return null;
         }
 
-        // Save
+        // Save widget config
         if (!SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config.'));
 
+            $pluginSettings = SearchManager::$plugin->getSettings();
             Craft::$app->getUrlManager()->setRouteParams([
                 'widgetConfig' => $widgetConfig,
+                'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
+                'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
             ]);
 
             return null;
+        }
+
+        // Handle "Set as Default" toggle (only if not set via config)
+        $isDefault = (bool) $request->getBodyParam('isDefault');
+        if ($isDefault && !$this->isDefaultWidgetFromConfig()) {
+            $pluginSettings = SearchManager::$plugin->getSettings();
+            if ($pluginSettings->defaultWidgetHandle !== $widgetConfig->handle) {
+                $pluginSettings->defaultWidgetHandle = $widgetConfig->handle;
+                $pluginSettings->saveToDatabase();
+
+                $this->logInfo('Default widget changed', [
+                    'handle' => $widgetConfig->handle,
+                    'name' => $widgetConfig->name,
+                ]);
+            }
         }
 
         Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget config saved.'));
@@ -168,9 +180,10 @@ class WidgetsController extends Controller
             return $this->asJson(['success' => false, 'error' => 'Widget config not found']);
         }
 
-        // Prevent deleting the default config
-        if ($widgetConfig->isDefault) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Cannot delete the default widget config. Set another config as default first.')]);
+        // Prevent deleting the default widget
+        $settings = SearchManager::$plugin->getSettings();
+        if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Cannot delete the default widget. Set another widget as default first.')]);
         }
 
         if (!SearchManager::$plugin->widgetConfigs->delete($configId)) {
@@ -189,20 +202,47 @@ class WidgetsController extends Controller
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:editWidgetConfigs');
 
+        // Check if default is set via config - if so, don't allow changes
+        if ($this->isDefaultWidgetFromConfig()) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Default widget is set via config file and cannot be changed here.'),
+            ]);
+        }
+
         $configId = Craft::$app->getRequest()->getRequiredBodyParam('configId');
 
-        $widgetConfig = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
+        // Find the widget - try by ID first, then by handle (for config widgets)
+        if (is_numeric($configId)) {
+            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
+        } else {
+            $widgetConfig = SearchManager::$plugin->widgetConfigs->getByHandle((string)$configId);
+        }
+
         if (!$widgetConfig) {
             return $this->asJson(['success' => false, 'error' => 'Widget config not found']);
         }
 
-        $widgetConfig->isDefault = true;
+        // Update the default widget handle in plugin settings
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->defaultWidgetHandle = $widgetConfig->handle;
 
-        if (!SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
-            return $this->asJson(['success' => false, 'error' => 'Could not set default config']);
+        if (!$settings->saveToDatabase()) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Failed to save settings.'),
+            ]);
         }
 
-        return $this->asJson(['success' => true]);
+        $this->logInfo('Default widget changed', [
+            'handle' => $widgetConfig->handle,
+            'name' => $widgetConfig->name,
+        ]);
+
+        return $this->asJson([
+            'success' => true,
+            'message' => Craft::t('search-manager', 'Default widget updated.'),
+        ]);
     }
 
     /**
@@ -240,11 +280,19 @@ class WidgetsController extends Controller
         $this->requirePermission('searchManager:editWidgetConfigs');
 
         $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
+        $settings = SearchManager::$plugin->getSettings();
         $count = 0;
+        $errors = [];
 
         foreach ($configIds as $configId) {
             $widgetConfig = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
             if ($widgetConfig) {
+                // Skip the default widget
+                if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
+                    $errors[] = Craft::t('search-manager', 'Cannot disable "{name}" because it is the default widget.', ['name' => $widgetConfig->name]);
+                    continue;
+                }
+
                 $widgetConfig->enabled = false;
                 if (SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
                     $count++;
@@ -252,7 +300,7 @@ class WidgetsController extends Controller
             }
         }
 
-        return $this->asJson(['success' => true, 'count' => $count]);
+        return $this->asJson(['success' => count($errors) === 0, 'count' => $count, 'errors' => $errors]);
     }
 
     /**
@@ -265,6 +313,7 @@ class WidgetsController extends Controller
         $this->requirePermission('searchManager:deleteWidgetConfigs');
 
         $configIds = Craft::$app->getRequest()->getRequiredBodyParam('configIds');
+        $settings = SearchManager::$plugin->getSettings();
         $count = 0;
         $errors = [];
 
@@ -274,9 +323,9 @@ class WidgetsController extends Controller
                 continue;
             }
 
-            // Skip the default config
-            if ($widgetConfig->isDefault) {
-                $errors[] = Craft::t('search-manager', 'Cannot delete "{name}" because it is the default config.', ['name' => $widgetConfig->name]);
+            // Skip the default widget
+            if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
+                $errors[] = Craft::t('search-manager', 'Cannot delete "{name}" because it is the default widget.', ['name' => $widgetConfig->name]);
                 continue;
             }
 
@@ -286,5 +335,37 @@ class WidgetsController extends Controller
         }
 
         return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
+    }
+
+    /**
+     * Check if defaultWidgetHandle is set via config file
+     */
+    private function isDefaultWidgetFromConfig(): bool
+    {
+        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
+
+        if (!file_exists($configPath)) {
+            return false;
+        }
+
+        $config = require $configPath;
+
+        // Check in root level
+        if (isset($config['defaultWidgetHandle'])) {
+            return true;
+        }
+
+        // Check in '*' (all environments)
+        if (isset($config['*']['defaultWidgetHandle'])) {
+            return true;
+        }
+
+        // Check in current environment
+        $env = Craft::$app->getConfig()->env;
+        if ($env && isset($config[$env]['defaultWidgetHandle'])) {
+            return true;
+        }
+
+        return false;
     }
 }

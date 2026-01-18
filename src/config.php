@@ -390,19 +390,19 @@ return [
 
         /**
          * Default backend handle
-         * Must match a handle from configuredBackends (or database)
+         * Must match a handle from backends (or database)
          * Default: null (falls back to first enabled backend)
          */
         // 'defaultBackendHandle' => 'production-algolia',
 
         /**
-         * Configured backend instances
+         * Backend instances
          * Define named backend instances with their own credentials
          * These are marked as source='config' and cannot be edited in CP
          *
          * Available backend types: 'algolia', 'meilisearch', 'typesense', 'mysql', 'pgsql', 'redis', 'file'
          */
-        'configuredBackends' => [
+        'backends' => [
             // Example: Algolia for production
             // 'production-algolia' => [
             //     'name' => 'Production Algolia',
@@ -530,18 +530,24 @@ return [
         ],
 
         // ========================================
-        // WIDGET CONFIGURATIONS
+        // WIDGETS
         // ========================================
 
         /**
-         * Define search widget configurations
-         * These will be merged with configs created via Control Panel
-         * Configs defined here are marked as source='config' and cannot be edited in CP
+         * Default widget handle
+         * Must match a handle from widgets (or database)
+         * Default: null (falls back to first enabled widget)
+         */
+        // 'defaultWidgetHandle' => 'brand-search',
+
+        /**
+         * Widget configurations
+         * Define search widget configurations with custom styles and behavior
+         * These are marked as source='config' and cannot be edited in CP
          *
          * Available options:
          * - name: Display name for the config
          * - enabled: Whether the config is active
-         * - isDefault: Set as the default config (only one can be default)
          * - settings: Widget settings (merged with defaults)
          *   - search.indexHandles: Array of index handles to search (empty = all)
          *   - highlighting: Highlight settings (enabled, tag, class, colors)
@@ -550,12 +556,11 @@ return [
          *   - trigger: Trigger button (showTrigger, triggerText)
          *   - styles: Visual styles (colors, borders, fonts for light/dark modes)
          */
-        'widgetConfigs' => [
+        'widgets' => [
             // Example: Brand-themed search widget
             // 'brand-search' => [
             //     'name' => 'Brand Search',
             //     'enabled' => true,
-            //     'isDefault' => false,
             //     'settings' => [
             //         'search' => [
             //             'indexHandles' => ['entries-en'], // Search specific indices

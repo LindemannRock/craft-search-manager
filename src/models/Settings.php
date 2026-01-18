@@ -54,6 +54,11 @@ class Settings extends Model
     public ?string $defaultBackendHandle = null;
 
     /**
+     * @var string|null Handle of the default widget config
+     */
+    public ?string $defaultWidgetHandle = null;
+
+    /**
      * @var int Batch size for bulk indexing operations
      */
     public int $batchSize = 100;
@@ -414,7 +419,7 @@ class Settings extends Model
             [['ngramSizes', 'highlightTag'], 'string'],
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'warning', 'error']],
-            [['defaultBackendHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
+            [['defaultBackendHandle', 'defaultWidgetHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
         ];
     }
 }

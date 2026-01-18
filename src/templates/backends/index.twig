@@ -254,15 +254,18 @@
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
 										<ul>
-											<li>
-												<a href="{{ url('search-manager/backends/view/' ~ (backend.id ?: backend.handle)) }}">
-													{{ 'View'|t('search-manager') }}
-												</a>
-											</li>
-											{% if canEdit and backend.canEdit() %}
+											{% if backend.canEdit() %}
+												{% if canEdit %}
+													<li>
+														<a href="{{ url('search-manager/backends/' ~ backend.id) }}">
+															{{ 'Edit'|t('search-manager') }}
+														</a>
+													</li>
+												{% endif %}
+											{% else %}
 												<li>
-													<a href="{{ url('search-manager/backends/' ~ backend.id) }}">
-														{{ 'Edit'|t('search-manager') }}
+													<a href="{{ url('search-manager/backends/view/' ~ backend.handle) }}">
+														{{ 'View'|t('search-manager') }}
 													</a>
 												</li>
 											{% endif %}

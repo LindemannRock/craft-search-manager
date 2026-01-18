@@ -352,11 +352,11 @@ use craft\helpers\App;
 
 return [
     '*' => [
-        // Default backend to use (must match a handle from configuredBackends)
+        // Default backend to use (must match a handle from backends)
         'defaultBackendHandle' => 'my-meilisearch',
 
         // Define backend instances
-        'configuredBackends' => [
+        'backends' => [
             'my-meilisearch' => [
                 'name' => 'My Meilisearch',
                 'backendType' => 'meilisearch',
@@ -1878,12 +1878,12 @@ SearchManager::$plugin->indexing->rebuildAll();
 
 ## Backend Configuration
 
-Backends are configured as named instances using `configuredBackends`. Each backend has a unique handle and can be defined in config or created via the Control Panel.
+Backends are configured as named instances using `backends`. Each backend has a unique handle and can be defined in config or created via the Control Panel.
 
 ### Algolia
 
 ```php
-'configuredBackends' => [
+'backends' => [
     'production-algolia' => [
         'name' => 'Production Algolia',
         'backendType' => 'algolia',
@@ -1902,7 +1902,7 @@ Backends are configured as named instances using `configuredBackends`. Each back
 ### File (Built-in)
 
 ```php
-'configuredBackends' => [
+'backends' => [
     'local-file' => [
         'name' => 'Local File Storage',
         'backendType' => 'file',
@@ -1918,7 +1918,7 @@ Backends are configured as named instances using `configuredBackends`. Each back
 ### Meilisearch
 
 ```php
-'configuredBackends' => [
+'backends' => [
     'dev-meilisearch' => [
         'name' => 'Development Meilisearch',
         'backendType' => 'meilisearch',
@@ -1937,7 +1937,7 @@ Backends are configured as named instances using `configuredBackends`. Each back
 Uses Craft's existing database connection - no additional configuration needed.
 
 ```php
-'configuredBackends' => [
+'backends' => [
     'craft-mysql' => [
         'name' => 'Craft MySQL',
         'backendType' => 'mysql',
@@ -1965,7 +1965,7 @@ Uses Craft's existing database connection - no additional configuration needed.
 If Craft is configured to use Redis cache in `config/app.php`, Search Manager can automatically reuse that connection:
 
 ```php
-'configuredBackends' => [
+'backends' => [
     'craft-redis' => [
         'name' => 'Craft Redis Cache',
         'backendType' => 'redis',
@@ -1981,7 +1981,7 @@ If Craft is configured to use Redis cache in `config/app.php`, Search Manager ca
 Configure a separate Redis connection for search:
 
 ```php
-'configuredBackends' => [
+'backends' => [
     'dedicated-redis' => [
         'name' => 'Dedicated Redis',
         'backendType' => 'redis',
@@ -2034,7 +2034,7 @@ REDIS_HOST=redis-server
 ### Typesense
 
 ```php
-'configuredBackends' => [
+'backends' => [
     'typesense-server' => [
         'name' => 'Typesense Server',
         'backendType' => 'typesense',
@@ -2058,7 +2058,7 @@ You can configure multiple backends and switch between them per environment:
 return [
     '*' => [
         'defaultBackendHandle' => 'dev-meilisearch',
-        'configuredBackends' => [
+        'backends' => [
             'dev-meilisearch' => [
                 'name' => 'Development Meilisearch',
                 'backendType' => 'meilisearch',
@@ -2272,7 +2272,7 @@ return [
         // Prefix for index names (useful for multi-environment)
         'indexPrefix' => App::env('SEARCH_INDEX_PREFIX'),
 
-        // Default backend to use (must match a handle from configuredBackends)
+        // Default backend to use (must match a handle from backends)
         'defaultBackendHandle' => 'my-backend',
 
         // Analytics settings
@@ -2327,7 +2327,7 @@ return [
         'enableAnalytics' => true,
 
         // Define all backends in one place
-        'configuredBackends' => [
+        'backends' => [
             'dev-mysql' => [
                 'name' => 'Development MySQL',
                 'backendType' => 'mysql',

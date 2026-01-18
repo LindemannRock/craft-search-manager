@@ -123,6 +123,73 @@ class SettingsController extends Controller
         ]);
     }
 
+    public function actionWidget(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $settings = SearchManager::$plugin->getSettings();
+
+        // Load configured widgets via service
+        $configuredWidgets = SearchManager::$plugin->widgetConfigs->getAll();
+        $enabledWidgets = array_filter($configuredWidgets, fn($w) => $w->enabled);
+
+        return $this->renderTemplate('search-manager/settings/widget', [
+            'settings' => $settings,
+            'configuredWidgets' => $configuredWidgets,
+            'enabledWidgets' => $enabledWidgets,
+        ]);
+    }
+
+    public function actionSaveWidget(): ?Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePostRequest();
+
+        $settings = SearchManager::$plugin->getSettings();
+
+        $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
+        $newWidgetHandle = $postedSettings['defaultWidgetHandle'] ?? null;
+
+        // Validate that the selected widget exists and is enabled
+        if ($newWidgetHandle) {
+            $configuredWidget = SearchManager::$plugin->widgetConfigs->getByHandle($newWidgetHandle);
+            if (!$configuredWidget) {
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected widget does not exist.'));
+                $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
+                return $this->renderTemplate('search-manager/settings/widget', [
+                    'settings' => $settings,
+                    'configuredWidgets' => $allWidgets,
+                    'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
+                ]);
+            }
+            if (!$configuredWidget->enabled) {
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected widget is disabled. Enable it first in the Widgets section.'));
+                $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
+                return $this->renderTemplate('search-manager/settings/widget', [
+                    'settings' => $settings,
+                    'configuredWidgets' => $allWidgets,
+                    'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
+                ]);
+            }
+        }
+
+        $settings->defaultWidgetHandle = $newWidgetHandle;
+
+        if (!$settings->saveToDatabase()) {
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
+            $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
+            return $this->renderTemplate('search-manager/settings/widget', [
+                'settings' => $settings,
+                'configuredWidgets' => $allWidgets,
+                'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
+            ]);
+        }
+
+        $this->logInfo('Default widget setting saved', ['handle' => $newWidgetHandle]);
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));
+
+        return $this->redirectToPostedUrl();
+    }
+
     public function actionTest(): Response
     {
         $this->requirePermission('searchManager:manageSettings');

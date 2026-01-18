@@ -6,7 +6,7 @@
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'widgets' %}
 
-{# Get plugin settings #}
+{# Get plugin settings for itemsPerPage #}
 {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
 
 {# Get query parameters #}
@@ -60,7 +60,7 @@
 {% elseif sort == 'enabled' %}
 	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.enabled <=> b.enabled) : filteredConfigs|sort((a, b) => b.enabled <=> a.enabled) %}
 {% elseif sort == 'isDefault' %}
-	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.isDefault <=> b.isDefault) : filteredConfigs|sort((a, b) => b.isDefault <=> a.isDefault) %}
+	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => (defaultWidgetHandle == a.handle) <=> (defaultWidgetHandle == b.handle)) : filteredConfigs|sort((a, b) => (defaultWidgetHandle == b.handle) <=> (defaultWidgetHandle == a.handle)) %}
 {% endif %}
 
 {# Pagination #}
@@ -151,6 +151,30 @@
 {% block content %}
 	{% include 'search-manager/_partials/common/index-styles' %}
 
+	{# Warning if default widget is disabled #}
+	{% if defaultWidgetHandle %}
+		{% set defaultWidget = widgetConfigs|filter(w => w.handle == defaultWidgetHandle)|first %}
+		{% if defaultWidget and not defaultWidget.enabled %}
+			{% set warningMessage %}
+			<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+			{{ 'The default widget "{name}" is disabled. Search widget may not work.'|t('search-manager', {name: defaultWidget.name}) }}
+			{% if not isDefaultFromConfig %}
+				{{ 'Please enable it or set a different widget as default.'|t('search-manager') }}
+			{% else %}
+				{{ 'Update your config/search-manager.php to fix this.'|t('search-manager') }}
+			{% endif %}
+			{% endset %}
+			<div class="info-box-table-wrapper">
+				{% include 'lindemannrock-base/_components/info-box' with {
+					message: warningMessage,
+					type: 'warning',
+					margin: 'none',
+					stretch: true,
+				} %}
+			</div>
+		{% endif %}
+	{% endif %}
+
 	<div id="elements" class="elements">
 		<div class="tableview tablepane">
 			<table class="data fullwidth">
@@ -182,7 +206,7 @@
 							<tr data-id="{{ config.id ?: config.handle }}" data-name="{{ config.name }}" data-source="{{ config.source }}">
 								<td class="checkbox-cell">
 									{% if isConfig %}
-										<span class="status" style="background: #f59e0b;" title="{{ 'From config file'|t('search-manager') }}"></span>
+										<div class="checkbox disabled" title="{{ 'Config widgets cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
 									{% else %}
 										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
 									{% endif %}
@@ -190,12 +214,12 @@
 								<td>
 									{% if config.canEdit() %}
 										<a class="label-link" href="{{ url('search-manager/widgets/edit/' ~ config.id) }}">
-											<strong>{{ config.name }}</strong>
+											<span>{{ config.name }}</span>
 										</a>
 									{% else %}
-										<span class="label-link">
-											<strong>{{ config.name }}</strong>
-										</span>
+										<a class="label-link" href="{{ url('search-manager/widgets/view/' ~ config.handle) }}">
+											<span>{{ config.name }}</span>
+										</a>
 									{% endif %}
 								</td>
 								<td>
@@ -208,7 +232,8 @@
 									{{ indexMacros.statusBadge(config.enabled) }}
 								</td>
 								<td>
-									{% if config.isDefault %}
+									{% set isDefault = defaultWidgetHandle == config.handle %}
+									{% if isDefault %}
 										<span class="status-label green"><span class="status green"></span><span class="status-label-text">{{ 'Yes'|t('search-manager') }}</span></span>
 									{% else %}
 										<span class="light">-</span>
@@ -226,7 +251,7 @@
 															{{ 'Edit'|t('search-manager') }}
 														</a>
 													</li>
-													{% if not config.isDefault %}
+													{% if not isDefault and not isDefaultFromConfig %}
 														<li><hr class="padded"></li>
 														<li>
 															<a class="widget-action" data-action="set-default" data-id="{{ config.id }}" data-name="{{ config.name }}">
@@ -235,7 +260,7 @@
 														</li>
 													{% endif %}
 												{% endif %}
-												{% if canDelete and not config.isDefault %}
+												{% if canDelete and not isDefault %}
 													<li><hr class="padded"></li>
 													<li>
 														<a class="widget-action error" data-action="delete" data-id="{{ config.id }}" data-name="{{ config.name }}">
@@ -244,9 +269,18 @@
 													</li>
 												{% endif %}
 											{% else %}
-												<li>
-													<span class="disabled">{{ 'Read-only (from config file)'|t('search-manager') }}</span>
-												</li>
+												{# Config file widgets - can set default via AJAX #}
+												{% if canEdit and not isDefault and not isDefaultFromConfig %}
+													<li>
+														<a class="widget-action" data-action="set-default" data-id="{{ config.handle }}" data-name="{{ config.name }}">
+															{{ 'Set as Default'|t('search-manager') }}
+														</a>
+													</li>
+												{% else %}
+													<li>
+														<span class="disabled">{{ 'Read-only (from config file)'|t('search-manager') }}</span>
+													</li>
+												{% endif %}
 											{% endif %}
 										</ul>
 									</div>

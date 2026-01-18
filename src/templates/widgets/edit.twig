@@ -44,7 +44,8 @@
 			</ul>
 		</div>
 	</div>
-	{% if not isNew and currentUser.can('searchManager:deleteWidgetConfigs') and not widgetConfig.isDefault %}
+	{% set isDefault = defaultWidgetHandle == widgetConfig.handle %}
+	{% if not isNew and currentUser.can('searchManager:deleteWidgetConfigs') and not isDefault %}
 		<button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('app') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('app') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
 		<div id="action-menu" class="menu menu--disclosure">
 			<ul>
@@ -93,29 +94,56 @@
 
 {% block details %}
 	<div class="meta">
-		{{ forms.lightswitchField({
-			label: 'Enabled'|t('search-manager'),
-			id: 'enabled',
-			name: 'enabled',
-			on: widgetConfig.enabled ?? true
-		}) }}
+		{# Check if this widget is the default #}
+		{% set isDefault = defaultWidgetHandle == widgetConfig.handle %}
 
-		{% if widgetConfig.isDefault %}
-			{# Default config - show disabled switch with explanation #}
+		{# Enabled toggle - disabled when widget is default #}
+		{% if isDefault %}
 			{{ forms.lightswitchField({
-				label: 'Default'|t('search-manager'),
-				instructions: 'This is the default config. To change, set another config as default first.',
-				id: 'isDefault',
-				name: 'isDefault',
+				label: 'Enabled'|t('search-manager'),
+				instructions: 'Default widget cannot be disabled.'|t('search-manager'),
+				id: 'enabled',
 				on: true,
 				disabled: true
 			}) }}
-			{# Hidden field to preserve the value since disabled inputs don't submit #}
-			<input type="hidden" name="isDefault" value="1">
+			<input type="hidden" name="enabled" value="1">
 		{% else %}
 			{{ forms.lightswitchField({
+				label: 'Enabled'|t('search-manager'),
+				id: 'enabled',
+				name: 'enabled',
+				on: widgetConfig.enabled ?? true
+			}) }}
+		{% endif %}
+
+		{# Default toggle with 3 states #}
+		{% if isDefaultFromConfig %}
+			{# Default set via config file - show disabled toggle #}
+			{{ forms.lightswitchField({
 				label: 'Default'|t('search-manager'),
-				instructions: 'Use as default when no config handle is specified',
+				instructions: 'Set via config/search-manager.php'|t('search-manager'),
+				id: 'isDefault',
+				on: isDefault,
+				disabled: true
+			}) }}
+			{% if isDefault %}
+				<input type="hidden" name="isDefault" value="1">
+			{% endif %}
+		{% elseif isDefault %}
+			{# This is the default - show disabled toggle #}
+			{{ forms.lightswitchField({
+				label: 'Default'|t('search-manager'),
+				instructions: 'To change, set another widget as default first.'|t('search-manager'),
+				id: 'isDefault',
+				on: true,
+				disabled: true
+			}) }}
+			<input type="hidden" name="isDefault" value="1">
+		{% else %}
+			{# Not default - show enabled toggle #}
+			{{ forms.lightswitchField({
+				label: 'Default'|t('search-manager'),
+				instructions: 'Use as default when no widget handle is specified'|t('search-manager'),
 				id: 'isDefault',
 				name: 'isDefault',
 				on: false

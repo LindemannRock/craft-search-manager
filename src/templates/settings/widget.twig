@@ -1,0 +1,107 @@
+{% extends "search-manager/_layouts/settings" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = "Widget Settings"|t('search-manager') %}
+{% set fullPageForm = true %}
+{% set selectedSettingsItem = 'widget' %}
+
+{% set crumbs = [
+    {
+        label: searchHelper.fullName|t('search-manager'),
+        url: url('search-manager'),
+    },
+    {
+        label: 'Settings'|t('search-manager'),
+        url: url('search-manager/settings'),
+    },
+    {
+        label: 'Widget'|t('search-manager'),
+        url: url('search-manager/settings/widget'),
+    },
+] %}
+
+{% block actionButton %}
+    {% if enabledWidgets|length > 0 %}
+        <div class="btngroup">
+            <input type="submit" class="btn submit" value="{{ 'Save'|t('app') }}">
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+
+    {% include 'lindemannrock-base/_components/ip-salt-error' with {
+        pluginHandle: 'search-manager',
+        envVarName: 'SEARCH_MANAGER_IP_SALT'
+    } %}
+
+    <form method="post" accept-charset="UTF-8">
+        <input type="hidden" name="action" value="search-manager/settings/save-widget">
+        {{ csrfInput() }}
+        {{ redirectInput('search-manager/settings/widget') }}
+
+        <h2 style="margin-top: 0px;">{{ "Default Search Widget"|t('search-manager') }}</h2>
+        <p class="light">{{ "Select which configured widget to use as the system default. This widget will be used when no specific widget is specified in templates."|t('search-manager') }}</p>
+
+        {% if configuredWidgets|length == 0 %}
+            {# No widgets configured at all #}
+            {% include 'lindemannrock-base/_components/info-box' with {
+                type: 'warning',
+                message: '<strong>No Widgets Configured</strong><br>You need to create at least one widget before you can select a default.<br><br><a href="' ~ url('search-manager/widgets/new') ~ '" class="btn">Create Your First Widget</a>'
+            } %}
+
+        {% elseif enabledWidgets|length == 0 %}
+            {# Widgets exist but none are enabled #}
+            {% include 'lindemannrock-base/_components/info-box' with {
+                type: 'warning',
+                message: '<strong>No Enabled Widgets</strong><br>You have ' ~ configuredWidgets|length ~ ' widget(s) configured, but none are enabled. Enable at least one widget to use it as the default.<br><br><a href="' ~ url('search-manager/widgets') ~ '" class="btn">Manage Widgets</a>'
+            } %}
+
+        {% else %}
+            {# Build options from enabled widgets #}
+            {% set widgetOptions = [{ label: 'Select a default widget...', value: '' }] %}
+            {% for widget in enabledWidgets %}
+                {% set widgetOptions = widgetOptions|merge([{
+                    label: widget.name,
+                    value: widget.handle
+                }]) %}
+            {% endfor %}
+
+            {{ forms.selectField({
+                label: 'Default Widget'|t('search-manager'),
+                instructions: 'The widget configuration that will be used when rendering the search widget without specifying a handle.'|t('search-manager'),
+                id: 'defaultWidgetHandle',
+                name: 'settings[defaultWidgetHandle]',
+                value: settings.defaultWidgetHandle,
+                options: widgetOptions,
+                disabled: settings.isOverriddenByConfig('defaultWidgetHandle'),
+                warning: settings.isOverriddenByConfig('defaultWidgetHandle') ?
+                    "This is being overridden by the <code>defaultWidgetHandle</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            }) }}
+
+            {% include 'lindemannrock-base/_components/info-box' with {
+                type: 'tip',
+                message: '<strong>Manage Widgets:</strong> <a href="' ~ url('search-manager/widgets') ~ '">Configure widget styles and behavior</a> in the Widgets section. You can create multiple widgets with different themes and settings for use on different parts of your site.'
+            } %}
+        {% endif %}
+
+        <hr>
+
+        <h2>{{ "Widget Configuration"|t('search-manager') }}</h2>
+        <div class="field">
+            <p class="light">
+                {{ "Configure widget appearance and behavior:"|t('search-manager') }}<br><br>
+                → <a href="{{ url('search-manager/widgets') }}"><strong>{{ "Widgets"|t('search-manager') }}</strong></a> - {{ "Create and manage search widget configurations"|t('search-manager') }}<br>
+                → <a href="{{ url('search-manager/settings/highlighting') }}"><strong>{{ "Highlighting Settings"|t('search-manager') }}</strong></a> - {{ "Global highlighting and snippet settings"|t('search-manager') }}
+            </p>
+        </div>
+
+        {% if enabledWidgets|length > 0 %}
+            <div class="buttons">
+                <button type="submit" class="btn submit">{{ "Save Settings"|t('search-manager') }}</button>
+            </div>
+        {% endif %}
+    </form>
+
+    {% include 'lindemannrock-base/_components/plugin-credit' %}
+{% endblock %}

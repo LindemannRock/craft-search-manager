@@ -24,6 +24,11 @@
                 </a>
             </li>
             <li>
+                <a href="{{ url('search-manager/settings/widget') }}" {% if selectedSettingsItem == 'widget' %}class="sel"{% endif %}>
+                    {{ 'Widget'|t('search-manager') }}
+                </a>
+            </li>
+            <li>
                 <a href="{{ url('search-manager/settings/indexing') }}" {% if selectedSettingsItem == 'indexing' %}class="sel"{% endif %}>
                     {{ 'Indexing'|t('search-manager') }}
                 </a>

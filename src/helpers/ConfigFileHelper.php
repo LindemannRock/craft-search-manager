@@ -46,13 +46,13 @@ class ConfigFileHelper
     }
 
     /**
-     * Get configured backends from config file
+     * Get backends from config file
      *
      * @return array Array of backend configs keyed by handle
      */
     public static function getConfiguredBackends(): array
     {
-        return self::getConfigSection('configuredBackends');
+        return self::getConfigSection('backends');
     }
 
     /**
@@ -66,13 +66,13 @@ class ConfigFileHelper
     }
 
     /**
-     * Get widget configs from config file
+     * Get widgets from config file
      *
      * @return array Array of widget configs keyed by handle
      */
     public static function getWidgetConfigs(): array
     {
-        return self::getConfigSection('widgetConfigs');
+        return self::getConfigSection('widgets');
     }
 
     /**
