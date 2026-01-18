@@ -36,7 +36,7 @@ class ConfigFileHelper
     /**
      * Get a specific section from the config file
      *
-     * @param string $key The config key (e.g., 'configuredBackends', 'indices', 'widgetConfigs')
+     * @param string $key The config key (e.g., 'backends', 'indices', 'widgets')
      * @return array The config section or empty array if not found
      */
     public static function getConfigSection(string $key): array

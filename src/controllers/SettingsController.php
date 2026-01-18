@@ -43,12 +43,12 @@ class SettingsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         // Load configured backends
-        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
-        $enabledBackends = array_filter($configuredBackends, fn($b) => $b->enabled);
+        $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+        $enabledBackends = array_filter($backends, fn($b) => $b->enabled);
 
         return $this->renderTemplate('search-manager/settings/backend', [
             'settings' => $settings,
-            'configuredBackends' => $configuredBackends,
+            'backends' => $backends,
             'enabledBackends' => $enabledBackends,
         ]);
     }
@@ -129,12 +129,12 @@ class SettingsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         // Load configured widgets via service
-        $configuredWidgets = SearchManager::$plugin->widgetConfigs->getAll();
-        $enabledWidgets = array_filter($configuredWidgets, fn($w) => $w->enabled);
+        $widgets = SearchManager::$plugin->widgetConfigs->getAll();
+        $enabledWidgets = array_filter($widgets, fn($w) => $w->enabled);
 
         return $this->renderTemplate('search-manager/settings/widget', [
             'settings' => $settings,
-            'configuredWidgets' => $configuredWidgets,
+            'widgets' => $widgets,
             'enabledWidgets' => $enabledWidgets,
         ]);
     }
@@ -157,7 +157,7 @@ class SettingsController extends Controller
                 $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
                 return $this->renderTemplate('search-manager/settings/widget', [
                     'settings' => $settings,
-                    'configuredWidgets' => $allWidgets,
+                    'widgets' => $allWidgets,
                     'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
                 ]);
             }
@@ -166,7 +166,7 @@ class SettingsController extends Controller
                 $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
                 return $this->renderTemplate('search-manager/settings/widget', [
                     'settings' => $settings,
-                    'configuredWidgets' => $allWidgets,
+                    'widgets' => $allWidgets,
                     'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
                 ]);
             }
@@ -179,7 +179,7 @@ class SettingsController extends Controller
             $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
             return $this->renderTemplate('search-manager/settings/widget', [
                 'settings' => $settings,
-                'configuredWidgets' => $allWidgets,
+                'widgets' => $allWidgets,
                 'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
             ]);
         }
@@ -197,12 +197,12 @@ class SettingsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         // Get all configured backends for the backend selector
-        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+        $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
 
         return $this->renderTemplate('search-manager/settings/test', [
             'settings' => $settings,
             'cacheEnabled' => $settings->enableCache ?? true,
-            'configuredBackends' => $configuredBackends,
+            'backends' => $backends,
         ]);
     }
 
@@ -625,7 +625,7 @@ class SettingsController extends Controller
                 Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend does not exist.'));
                 return $this->renderTemplate('search-manager/settings/backend', [
                     'settings' => $settings,
-                    'configuredBackends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                    'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
                     'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
                 ]);
             }
@@ -633,7 +633,7 @@ class SettingsController extends Controller
                 Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend is disabled. Enable it first in the Backends section.'));
                 return $this->renderTemplate('search-manager/settings/backend', [
                     'settings' => $settings,
-                    'configuredBackends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                    'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
                     'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
                 ]);
             }
@@ -645,7 +645,7 @@ class SettingsController extends Controller
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
             return $this->renderTemplate('search-manager/settings/backend', [
                 'settings' => $settings,
-                'configuredBackends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
+                'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
                 'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
             ]);
         }

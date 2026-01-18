@@ -708,9 +708,9 @@ class UtilitiesController extends Controller
     private function getRedisConfig(): array
     {
         // First try to get from ConfiguredBackend model (handles both config and database)
-        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+        $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
 
-        foreach ($configuredBackends as $backend) {
+        foreach ($backends as $backend) {
             if ($backend->backendType === 'redis' && $backend->enabled) {
                 return $backend->settings ?? [];
             }
@@ -728,9 +728,9 @@ class UtilitiesController extends Controller
                 $mergedConfig = array_merge($mergedConfig, $config[$env]);
             }
 
-            // Check configuredBackends for any redis backend
-            if (isset($mergedConfig['configuredBackends'])) {
-                foreach ($mergedConfig['configuredBackends'] as $backendConfig) {
+            // Check backends for any redis backend
+            if (isset($mergedConfig['backends'])) {
+                foreach ($mergedConfig['backends'] as $backendConfig) {
                     if (($backendConfig['backendType'] ?? '') === 'redis' && ($backendConfig['enabled'] ?? false)) {
                         return $backendConfig['settings'] ?? [];
                     }

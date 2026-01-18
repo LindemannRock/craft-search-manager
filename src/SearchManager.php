@@ -273,6 +273,7 @@ class SearchManager extends Plugin
                     // Widgets
                     'search-manager/widgets' => 'search-manager/widgets/index',
                     'search-manager/widgets/new' => 'search-manager/widgets/edit',
+                    'search-manager/widgets/view/<handle>' => 'search-manager/widgets/view',
                     'search-manager/widgets/edit/<configId:\d+>' => 'search-manager/widgets/edit',
                     // Backends
                     'search-manager/backends' => 'search-manager/backends/index',
@@ -285,6 +286,7 @@ class SearchManager extends Plugin
                     'search-manager/settings' => 'search-manager/settings/general',
                     'search-manager/settings/general' => 'search-manager/settings/general',
                     'search-manager/settings/backend' => 'search-manager/settings/backend',
+                    'search-manager/settings/widget' => 'search-manager/settings/widget',
                     'search-manager/settings/indexing' => 'search-manager/settings/indexing',
                     'search-manager/settings/search' => 'search-manager/settings/search',
                     'search-manager/settings/language' => 'search-manager/settings/language',

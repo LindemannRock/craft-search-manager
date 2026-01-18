@@ -331,7 +331,7 @@ class ConfiguredBackend extends Model
     public static function findByHandle(string $handle): ?self
     {
         // First, check config file
-        $backendConfig = ConfigFileHelper::getConfigByHandle('configuredBackends', $handle);
+        $backendConfig = ConfigFileHelper::getConfigByHandle('backends', $handle);
 
         if ($backendConfig !== null) {
             return self::createFromConfig($handle, $backendConfig);
@@ -356,7 +356,7 @@ class ConfiguredBackend extends Model
     public static function findAll(): array
     {
         $backends = [];
-        $handlesFromConfig = ConfigFileHelper::getHandles('configuredBackends');
+        $handlesFromConfig = ConfigFileHelper::getHandles('backends');
 
         // First, load backends from config file
         $configBackends = self::findAllFromConfig();
@@ -391,9 +391,9 @@ class ConfiguredBackend extends Model
     public static function findAllFromConfig(): array
     {
         $backends = [];
-        $configuredBackends = ConfigFileHelper::getConfiguredBackends();
+        $backendConfigs = ConfigFileHelper::getConfiguredBackends();
 
-        foreach ($configuredBackends as $handle => $backendConfig) {
+        foreach ($backendConfigs as $handle => $backendConfig) {
             $backends[] = self::createFromConfig($handle, $backendConfig);
         }
 

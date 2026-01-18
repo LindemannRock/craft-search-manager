@@ -183,6 +183,20 @@ class BackendsController extends Controller
             }
         }
 
+        // Auto-set as default if no default is set and this backend is enabled
+        if (!$this->isDefaultBackendFromConfig()) {
+            $pluginSettings = SearchManager::$plugin->getSettings();
+            if (empty($pluginSettings->defaultBackendHandle) && $backend->enabled) {
+                $pluginSettings->defaultBackendHandle = $backend->handle;
+                $pluginSettings->saveToDatabase();
+
+                $this->logInfo('Auto-set default backend (first enabled backend)', [
+                    'handle' => $backend->handle,
+                    'name' => $backend->name,
+                ]);
+            }
+        }
+
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', 'Backend saved.')
         );

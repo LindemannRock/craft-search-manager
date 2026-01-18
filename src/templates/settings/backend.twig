@@ -43,7 +43,7 @@
         <h2 style="margin-top: 0px;">{{ "Default Search Backend"|t('search-manager') }}</h2>
         <p class="light">{{ "Select which configured backend to use as the system default. Indices can override this setting individually."|t('search-manager') }}</p>
 
-        {% if configuredBackends|length == 0 %}
+        {% if backends|length == 0 %}
             {# No backends configured at all #}
             {% include 'lindemannrock-base/_components/info-box' with {
                 type: 'warning',
@@ -54,7 +54,7 @@
             {# Backends exist but none are enabled #}
             {% include 'lindemannrock-base/_components/info-box' with {
                 type: 'warning',
-                message: '<strong>No Enabled Backends</strong><br>You have ' ~ configuredBackends|length ~ ' backend(s) configured, but none are enabled. Enable at least one backend to use it as the default.<br><br><a href="' ~ url('search-manager/backends') ~ '" class="btn">Manage Backends</a>'
+                message: '<strong>No Enabled Backends</strong><br>You have ' ~ backends|length ~ ' backend(s) configured, but none are enabled. Enable at least one backend to use it as the default.<br><br><a href="' ~ url('search-manager/backends') ~ '" class="btn">Manage Backends</a>'
             } %}
 
         {% else %}

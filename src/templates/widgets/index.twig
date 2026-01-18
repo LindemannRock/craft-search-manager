@@ -146,6 +146,15 @@
 		margin-inline-end: 0 !important;
 	}
 }
+
+.info-box-table-wrapper {
+    padding-bottom: 14px;
+}
+@media (min-width: 769px) {
+	.info-box-table-wrapper {
+		padding-bottom: 46px;
+	}
+}
 {% endcss %}
 
 {% block content %}
@@ -269,16 +278,18 @@
 													</li>
 												{% endif %}
 											{% else %}
-												{# Config file widgets - can set default via AJAX #}
+												{# Config file widgets - View only #}
+												<li>
+													<a href="{{ url('search-manager/widgets/view/' ~ config.handle) }}">
+														{{ 'View'|t('search-manager') }}
+													</a>
+												</li>
 												{% if canEdit and not isDefault and not isDefaultFromConfig %}
+													<li><hr class="padded"></li>
 													<li>
 														<a class="widget-action" data-action="set-default" data-id="{{ config.handle }}" data-name="{{ config.name }}">
 															{{ 'Set as Default'|t('search-manager') }}
 														</a>
-													</li>
-												{% else %}
-													<li>
-														<span class="disabled">{{ 'Read-only (from config file)'|t('search-manager') }}</span>
 													</li>
 												{% endif %}
 											{% endif %}
@@ -398,7 +409,7 @@
 
 	// Checkbox functionality
 	const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
-	const checkboxes = document.querySelectorAll('tbody .checkbox');
+	const checkboxes = document.querySelectorAll('tbody .checkbox:not(.disabled)');
 	let selectedIds = new Set();
 
 	function toggleCheckbox(checkbox, checked) {

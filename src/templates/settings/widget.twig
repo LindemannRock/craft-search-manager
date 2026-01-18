@@ -43,7 +43,7 @@
         <h2 style="margin-top: 0px;">{{ "Default Search Widget"|t('search-manager') }}</h2>
         <p class="light">{{ "Select which configured widget to use as the system default. This widget will be used when no specific widget is specified in templates."|t('search-manager') }}</p>
 
-        {% if configuredWidgets|length == 0 %}
+        {% if widgets|length == 0 %}
             {# No widgets configured at all #}
             {% include 'lindemannrock-base/_components/info-box' with {
                 type: 'warning',
@@ -54,7 +54,7 @@
             {# Widgets exist but none are enabled #}
             {% include 'lindemannrock-base/_components/info-box' with {
                 type: 'warning',
-                message: '<strong>No Enabled Widgets</strong><br>You have ' ~ configuredWidgets|length ~ ' widget(s) configured, but none are enabled. Enable at least one widget to use it as the default.<br><br><a href="' ~ url('search-manager/widgets') ~ '" class="btn">Manage Widgets</a>'
+                message: '<strong>No Enabled Widgets</strong><br>You have ' ~ widgets|length ~ ' widget(s) configured, but none are enabled. Enable at least one widget to use it as the default.<br><br><a href="' ~ url('search-manager/widgets') ~ '" class="btn">Manage Widgets</a>'
             } %}
 
         {% else %}

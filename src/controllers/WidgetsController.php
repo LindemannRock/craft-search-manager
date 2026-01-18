@@ -44,6 +44,37 @@ class WidgetsController extends Controller
     }
 
     /**
+     * View a widget configuration (read-only, for config widgets)
+     *
+     * @param string|null $handle Widget handle
+     */
+    public function actionView(?string $handle = null): Response
+    {
+        $this->requirePermission('searchManager:viewWidgetConfigs');
+
+        if (!$handle) {
+            throw new NotFoundHttpException('Widget handle required');
+        }
+
+        $widgetConfig = SearchManager::$plugin->widgetConfigs->getByHandle($handle);
+
+        if (!$widgetConfig) {
+            throw new NotFoundHttpException('Widget config not found');
+        }
+
+        // Get indices for display
+        $indices = SearchIndex::findAll();
+        $settings = SearchManager::$plugin->getSettings();
+
+        return $this->renderTemplate('search-manager/widgets/view', [
+            'widgetConfig' => $widgetConfig,
+            'indices' => $indices,
+            'defaultWidgetHandle' => $settings->defaultWidgetHandle,
+            'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
+        ]);
+    }
+
+    /**
      * Edit or create a widget configuration
      */
     public function actionEdit(?int $configId = null): Response
@@ -153,6 +184,20 @@ class WidgetsController extends Controller
                 $pluginSettings->saveToDatabase();
 
                 $this->logInfo('Default widget changed', [
+                    'handle' => $widgetConfig->handle,
+                    'name' => $widgetConfig->name,
+                ]);
+            }
+        }
+
+        // Auto-set as default if no default is set and this widget is enabled
+        if (!$this->isDefaultWidgetFromConfig()) {
+            $pluginSettings = SearchManager::$plugin->getSettings();
+            if (empty($pluginSettings->defaultWidgetHandle) && $widgetConfig->enabled) {
+                $pluginSettings->defaultWidgetHandle = $widgetConfig->handle;
+                $pluginSettings->saveToDatabase();
+
+                $this->logInfo('Auto-set default widget (first enabled widget)', [
                     'handle' => $widgetConfig->handle,
                     'name' => $widgetConfig->name,
                 ]);

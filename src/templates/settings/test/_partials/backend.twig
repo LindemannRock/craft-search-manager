@@ -4,7 +4,7 @@
 {# Build backend options #}
 {% set backendOptions = [] %}
 {% set defaultBackendHandle = settings.defaultBackendHandle %}
-{% for backend in configuredBackends %}
+{% for backend in backends %}
     {% if backend.enabled %}
         {% set isDefault = backend.handle == defaultBackendHandle %}
         {% set backendOptions = backendOptions|merge([{

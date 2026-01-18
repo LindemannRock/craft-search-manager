@@ -732,5 +732,10 @@ class Install extends Migration
             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
             'uid' => StringHelper::UUID(),
         ]);
+
+        // Set default widget handle in settings
+        $this->update('{{%searchmanager_settings}}', [
+            'defaultWidgetHandle' => 'default',
+        ], ['id' => 1]);
     }
 }
