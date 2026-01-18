@@ -33,9 +33,12 @@ class BackendsController extends Controller
         $this->requirePermission('searchManager:viewBackends');
 
         $backends = ConfiguredBackend::findAll();
+        $settings = SearchManager::$plugin->getSettings();
 
         return $this->renderTemplate('search-manager/backends/index', [
             'backends' => $backends,
+            'defaultBackendHandle' => $settings->defaultBackendHandle,
+            'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
         ]);
     }
 
@@ -65,6 +68,7 @@ class BackendsController extends Controller
 
         // Get database driver for mysql/pgsql availability checks
         $dbDriver = Craft::$app->getDb()->getDriverName();
+        $settings = SearchManager::$plugin->getSettings();
 
         // Render edit.twig - it handles both editable and config backends via tabs
         return $this->renderTemplate('search-manager/backends/edit', [
@@ -73,6 +77,8 @@ class BackendsController extends Controller
             'backendTypes' => ConfiguredBackend::BACKEND_TYPES,
             'settingsSchemas' => ConfiguredBackend::BACKEND_SETTINGS_SCHEMA,
             'dbDriver' => $dbDriver,
+            'defaultBackendHandle' => $settings->defaultBackendHandle,
+            'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
         ]);
     }
 
@@ -94,6 +100,7 @@ class BackendsController extends Controller
 
         // Get database driver for mysql/pgsql availability checks
         $dbDriver = Craft::$app->getDb()->getDriverName();
+        $settings = SearchManager::$plugin->getSettings();
 
         return $this->renderTemplate('search-manager/backends/edit', [
             'backend' => $backend,
@@ -101,6 +108,8 @@ class BackendsController extends Controller
             'backendTypes' => ConfiguredBackend::BACKEND_TYPES,
             'settingsSchemas' => ConfiguredBackend::BACKEND_SETTINGS_SCHEMA,
             'dbDriver' => $dbDriver,
+            'defaultBackendHandle' => $settings->defaultBackendHandle,
+            'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
         ]);
     }
 
@@ -145,6 +154,8 @@ class BackendsController extends Controller
                 Craft::t('search-manager', 'Could not save backend.')
             );
 
+            $pluginSettings = SearchManager::$plugin->getSettings();
+
             // Re-render the edit template with all required variables
             return $this->renderTemplate('search-manager/backends/edit', [
                 'backend' => $backend,
@@ -152,7 +163,24 @@ class BackendsController extends Controller
                 'backendTypes' => ConfiguredBackend::BACKEND_TYPES,
                 'settingsSchemas' => ConfiguredBackend::BACKEND_SETTINGS_SCHEMA,
                 'dbDriver' => Craft::$app->getDb()->getDriverName(),
+                'defaultBackendHandle' => $pluginSettings->defaultBackendHandle,
+                'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
             ]);
+        }
+
+        // Handle "Set as Default" toggle (only if not set via config)
+        $isDefault = (bool)$request->getBodyParam('isDefault');
+        if ($isDefault && !$this->isDefaultBackendFromConfig()) {
+            $pluginSettings = SearchManager::$plugin->getSettings();
+            if ($pluginSettings->defaultBackendHandle !== $backend->handle) {
+                $pluginSettings->defaultBackendHandle = $backend->handle;
+                $pluginSettings->saveToDatabase();
+
+                $this->logInfo('Default backend changed', [
+                    'handle' => $backend->handle,
+                    'name' => $backend->name,
+                ]);
+            }
         }
 
         Craft::$app->getSession()->setNotice(
@@ -443,5 +471,92 @@ class BackendsController extends Controller
             'count' => $count,
             'errors' => $errors,
         ]);
+    }
+
+    /**
+     * Set a backend as the default
+     */
+    public function actionSetDefault(): Response
+    {
+        $this->requirePermission('searchManager:editBackends');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        // Check if default is set via config - if so, don't allow changes
+        if ($this->isDefaultBackendFromConfig()) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Default backend is set via config file and cannot be changed here.'),
+            ]);
+        }
+
+        $backendId = Craft::$app->getRequest()->getBodyParam('backendId');
+
+        // Find the backend - try by ID first, then by handle (for config backends)
+        if (is_numeric($backendId)) {
+            $backend = ConfiguredBackend::findById((int)$backendId);
+        } else {
+            $backend = ConfiguredBackend::findByHandle((string)$backendId);
+        }
+
+        if (!$backend) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Backend not found.'),
+            ]);
+        }
+
+        // Update the default backend handle in plugin settings
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->defaultBackendHandle = $backend->handle;
+
+        if (!$settings->saveToDatabase()) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Failed to save settings.'),
+            ]);
+        }
+
+        $this->logInfo('Default backend changed', [
+            'handle' => $backend->handle,
+            'name' => $backend->name,
+        ]);
+
+        return $this->asJson([
+            'success' => true,
+            'message' => Craft::t('search-manager', 'Default backend updated.'),
+        ]);
+    }
+
+    /**
+     * Check if defaultBackendHandle is set via config file
+     */
+    private function isDefaultBackendFromConfig(): bool
+    {
+        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
+
+        if (!file_exists($configPath)) {
+            return false;
+        }
+
+        $config = require $configPath;
+
+        // Check in root level
+        if (isset($config['defaultBackendHandle'])) {
+            return true;
+        }
+
+        // Check in '*' (all environments)
+        if (isset($config['*']['defaultBackendHandle'])) {
+            return true;
+        }
+
+        // Check in current environment
+        $env = Craft::$app->getConfig()->env;
+        if ($env && isset($config[$env]['defaultBackendHandle'])) {
+            return true;
+        }
+
+        return false;
     }
 }

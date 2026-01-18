@@ -49,7 +49,7 @@
                 </div>
             </div>
         </div>
-        {% if not isNew and currentUser.can('searchManager:deleteBackends') %}
+        {% if not isNew and currentUser.can('searchManager:deleteBackends') and defaultBackendHandle != backend.handle %}
             <button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('app') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('app') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
             <div id="action-menu" class="menu menu--disclosure">
                 <ul>
@@ -66,18 +66,19 @@
 {% endblock %}
 
 {% block content %}
-    {# Settings Tab - wrapped in form for editable backends #}
+    {# Hidden inputs for form (fullPageForm wraps everything) #}
+    {% if canEdit %}
+        <input type="hidden" name="action" value="search-manager/backends/save">
+        <input type="hidden" name="redirect" value="{{ 'search-manager/backends'|hash }}">
+        {% if not isNew %}
+            <input type="hidden" name="backendId" value="{{ backend.id }}">
+        {% endif %}
+        {{ csrfInput() }}
+    {% endif %}
+
+    {# Settings Tab #}
     {% if canEdit %}
     <div id="settings">
-        <form method="post" accept-charset="UTF-8">
-            {{ actionInput('search-manager/backends/save') }}
-            {{ csrfInput() }}
-            {{ redirectInput('search-manager/backends') }}
-
-            {% if not isNew %}
-                {{ hiddenInput('backendId', backend.id) }}
-            {% endif %}
-
             {{ forms.textField({
                 first: true,
                 label: 'Name'|t('search-manager'),
@@ -248,7 +249,6 @@
                 {% endfor %}
             </div>
 
-        </form>
     </div>
     {% endif %}
 
@@ -357,17 +357,66 @@
 
 {% block details %}
     {% if canEdit %}
-        <fieldset>
-            <legend class="h6">{{ 'Status'|t('search-manager') }}</legend>
-            <div class="meta">
+        <div class="meta">
+            {% set isDefault = defaultBackendHandle == backend.handle %}
+            {% if isDefault %}
+                {{ forms.lightswitchField({
+                    label: 'Enabled'|t('search-manager'),
+                    instructions: 'Default backend cannot be disabled.'|t('search-manager'),
+                    id: 'enabled',
+                    name: 'enabled',
+                    on: true,
+                    disabled: true
+                }) }}
+                <input type="hidden" name="enabled" value="1">
+            {% else %}
                 {{ forms.lightswitchField({
                     label: 'Enabled'|t('search-manager'),
                     id: 'enabled',
                     name: 'enabled',
                     on: backend.enabled ?? true
                 }) }}
-            </div>
-        </fieldset>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {# Default toggle - shown for all backends (config or database) #}
+    {% if not isNew %}
+        <div class="meta">
+            {% set isDefault = defaultBackendHandle == backend.handle %}
+            {% if isDefaultFromConfig %}
+                {# Default set via config file - show disabled switch #}
+                {{ forms.lightswitchField({
+                    label: 'Default'|t('search-manager'),
+                    instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+                    id: 'isDefault',
+                    name: 'isDefault',
+                    on: isDefault,
+                    disabled: true
+                }) }}
+            {% elseif isDefault %}
+                {# This is the default - show disabled switch with explanation #}
+                {{ forms.lightswitchField({
+                    label: 'Default'|t('search-manager'),
+                    instructions: 'To change, set another backend as default first.'|t('search-manager'),
+                    id: 'isDefault',
+                    name: 'isDefault',
+                    on: true,
+                    disabled: true
+                }) }}
+                {# Hidden field to preserve the value since disabled inputs don't submit #}
+                <input type="hidden" name="isDefault" value="1">
+            {% else %}
+                {# Not the default - allow setting as default #}
+                {{ forms.lightswitchField({
+                    label: 'Default'|t('search-manager'),
+                    instructions: 'Use as the default for new indices'|t('search-manager'),
+                    id: 'isDefault',
+                    name: 'isDefault',
+                    on: false
+                }) }}
+            {% endif %}
+        </div>
     {% endif %}
 
     {% if not isNew %}
@@ -464,4 +513,32 @@
     if (saveShortcut) {
         saveShortcut.textContent = isMac ? '⌘S' : 'Ctrl+S';
     }
+
+    {% if not isNew and not canEdit and not isDefaultFromConfig and defaultBackendHandle != backend.handle %}
+    // Config backend: Toggle with AJAX (no form available)
+    (function() {
+        const $lightswitch = $('#isDefault').closest('.lightswitch');
+        if (!$lightswitch.length || $lightswitch.hasClass('disabled')) return;
+
+        $lightswitch.on('change', function() {
+            const isOn = $(this).hasClass('on');
+            if (isOn) {
+                Craft.sendActionRequest('POST', 'search-manager/backends/set-default', {
+                    data: { backendId: '{{ backend.handle }}' }
+                }).then(function(response) {
+                    if (response.data.success) {
+                        Craft.cp.displayNotice(response.data.message);
+                        setTimeout(() => window.location.reload(), 500);
+                    } else {
+                        Craft.cp.displayError(response.data.error);
+                        $lightswitch.data('lightswitch').turnOff();
+                    }
+                }).catch(function(error) {
+                    Craft.cp.displayError('{{ "Failed to update default backend"|t('search-manager') }}');
+                    $lightswitch.data('lightswitch').turnOff();
+                });
+            }
+        });
+    })();
+    {% endif %}
 {% endjs %}

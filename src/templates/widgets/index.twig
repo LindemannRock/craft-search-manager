@@ -165,12 +165,12 @@
 						<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
 						</th>
-						<th scope="col" data-attribute="isDefault" class="orderable {{ sort == 'isDefault' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="isDefault">{{ "Default"|t('search-manager') }}</button>
-						</th>
 						<th scope="col">{{ "Source"|t('search-manager') }}</th>
 						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
+						</th>
+						<th scope="col" data-attribute="isDefault" class="orderable {{ sort == 'isDefault' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="isDefault">{{ "Default"|t('search-manager') }}</button>
 						</th>
 						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
 					</tr>
@@ -202,17 +202,17 @@
 									<code>{{ config.handle }}</code>
 								</td>
 								<td>
+									{{ indexMacros.sourceBadge(config.source) }}
+								</td>
+								<td>
+									{{ indexMacros.statusBadge(config.enabled) }}
+								</td>
+								<td>
 									{% if config.isDefault %}
 										<span class="status-label green"><span class="status green"></span><span class="status-label-text">{{ 'Yes'|t('search-manager') }}</span></span>
 									{% else %}
 										<span class="light">-</span>
 									{% endif %}
-								</td>
-								<td>
-									{{ indexMacros.sourceBadge(config.source) }}
-								</td>
-								<td>
-									{{ indexMacros.statusBadge(config.enabled) }}
 								</td>
 								{% if showActionsColumn %}
 								<td class="thin" style="text-align: right;">

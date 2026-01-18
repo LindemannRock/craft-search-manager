@@ -537,7 +537,7 @@ class ConfiguredBackend extends Model
             $defaultBackendHandle = $settings->defaultBackendHandle ?? null;
 
             if ($defaultBackendHandle && $defaultBackendHandle === $this->handle) {
-                $this->addError('handle', Craft::t('search-manager', 'Cannot delete the default backend. Change the default backend in Settings first.'));
+                $this->addError('handle', Craft::t('search-manager', 'Cannot delete the default backend. Set another backend as default first.'));
                 return false;
             }
 

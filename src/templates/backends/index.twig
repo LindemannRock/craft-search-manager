@@ -136,72 +136,120 @@
 		margin-inline-end: 0 !important;
 	}
 }
+.info-box-table-wrapper {
+    padding-bottom: 14px;
+}
+@media (min-width: 769px) {
+	.info-box-table-wrapper {
+		padding-bottom: 46px;
+	}
+}
 {% endcss %}
 
 {% block content %}
-	{% include 'search-manager/_partials/common/index-styles' %}
+{% include 'search-manager/_partials/common/index-styles' %}
 
-	<div id="elements" class="elements">
-		<div class="tableview tablepane">
-			<table class="data fullwidth">
-				<thead>
-					<tr>
-						<th class="checkbox-cell selectallcontainer">
-							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
-						</th>
-						<th scope="col" data-attribute="name" class="orderable {{ sort == 'name' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="name">{{ "Name"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="type" class="orderable {{ sort == 'type' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="type">{{ "Type"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="source">{{ "Config Source"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
-						</th>
-						{% if canEdit or canDelete %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
-					</tr>
-				</thead>
-				<tbody>
-					{% if paginatedBackends|length %}
-						{% for backend in paginatedBackends %}
-							{% set isConfig = backend.isFromConfig() %}
-							<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ backend.source }}">
-								<td class="checkbox-cell">
-									{% if isConfig %}
-										<div class="checkbox disabled" title="{{ 'Config backends cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
-									{% else %}
-										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
-									{% endif %}
-								</td>
-								<td>
-									{% if backend.canEdit() %}
-										<a class="label-link" href="{{ url('search-manager/backends/' ~ backend.id) }}">
-											<span>{{ backend.name }}</span>
-										</a>
-									{% else %}
-										<a class="label-link" href="{{ url('search-manager/backends/view/' ~ backend.handle) }}">
-											<span>{{ backend.name }}</span>
-										</a>
-										<span class="config-info-icon" data-config="{{ backend.rawConfigDisplay|e('html_attr') }}"></span>
-									{% endif %}
-								</td>
-								<td><code>{{ backend.handle }}</code></td>
-								<td>
-									{{ indexMacros.backendBadge(backend.backendType, backend.getTypeLabel()) }}
-								</td>
-								<td>
-									{{ indexMacros.sourceBadge(backend.source) }}
-								</td>
-								<td>
-									{{ indexMacros.statusBadge(backend.enabled) }}
-								</td>
-								{% if canEdit or canDelete %}
+{# Warning if default backend is disabled #}
+{% if defaultBackendHandle %}
+	{% set defaultBackend = backends|filter(b => b.handle == defaultBackendHandle)|first %}
+	{% if defaultBackend and not defaultBackend.enabled %}
+		{% set warningMessage %}
+		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+		{{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: defaultBackend.name}) }}
+		{% if not isDefaultFromConfig %}
+			{{ 'Please enable it or set a different backend as default.'|t('search-manager') }}
+		{% else %}
+			{{ 'Update your config/search-manager.php to fix this.'|t('search-manager') }}
+		{% endif %}
+		{% endset %}
+		<div class="info-box-table-wrapper">
+			{% include 'lindemannrock-base/_components/info-box' with {
+                message: warningMessage,
+                type: 'warning',
+                margin: 'none',
+                stretch: true,
+            } %}
+		</div>
+
+	{% endif %}
+{% endif %}
+
+<div id="elements" class="elements">
+	<div class="tableview tablepane">
+		<table class="data fullwidth">
+			<thead>
+				<tr>
+					<th class="checkbox-cell selectallcontainer">
+						<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
+					</th>
+					<th scope="col" data-attribute="name" class="orderable {{ sort == 'name' ? 'ordered ' ~ dir : '' }}">
+						<button type="button" data-sort="name">{{ "Name"|t('search-manager') }}</button>
+					</th>
+					<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
+						<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
+					</th>
+					<th scope="col" data-attribute="type" class="orderable {{ sort == 'type' ? 'ordered ' ~ dir : '' }}">
+						<button type="button" data-sort="type">{{ "Type"|t('search-manager') }}</button>
+					</th>
+					<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
+						<button type="button" data-sort="source">{{ "Config Source"|t('search-manager') }}</button>
+					</th>
+					<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
+						<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
+					</th>
+					<th scope="col">{{ "Default"|t('search-manager') }}</th>
+					{% if canEdit or canDelete %}
+						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
+					{% endif %}
+				</tr>
+			</thead>
+			<tbody>
+				{% if paginatedBackends|length %}
+					{% for backend in paginatedBackends %}
+						{% set isConfig = backend.isFromConfig() %}
+						<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ backend.source }}">
+							<td class="checkbox-cell">
+								{% if isConfig %}
+									<div class="checkbox disabled" title="{{ 'Config backends cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
+								{% else %}
+									<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
+								{% endif %}
+							</td>
+							<td>
+								{% if backend.canEdit() %}
+									<a class="label-link" href="{{ url('search-manager/backends/' ~ backend.id) }}">
+										<span>{{ backend.name }}</span>
+									</a>
+								{% else %}
+									<a class="label-link" href="{{ url('search-manager/backends/view/' ~ backend.handle) }}">
+										<span>{{ backend.name }}</span>
+									</a>
+									<span class="config-info-icon" data-config="{{ backend.rawConfigDisplay|e('html_attr') }}"></span>
+								{% endif %}
+							</td>
+							<td>
+								<code>{{ backend.handle }}</code>
+							</td>
+							<td>
+								{{ indexMacros.backendBadge(backend.backendType, backend.getTypeLabel()) }}
+							</td>
+							<td>
+								{{ indexMacros.sourceBadge(backend.source) }}
+							</td>
+							<td>
+								{{ indexMacros.statusBadge(backend.enabled) }}
+							</td>
+							<td>
+								{% if defaultBackendHandle == backend.handle %}
+									<span class="status-label green">
+										<span class="status green"></span>
+										<span class="status-label-text">{{ 'Yes'|t('search-manager') }}</span>
+									</span>
+								{% else %}
+									<span class="light">-</span>
+								{% endif %}
+							</td>
+							{% if canEdit or canDelete %}
 								<td class="thin" style="text-align: right;">
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
@@ -223,7 +271,16 @@
 													{{ 'Test Connection'|t('search-manager') }}
 												</a>
 											</li>
-											{% if canDelete and backend.canEdit() %}
+											{% set isDefault = defaultBackendHandle == backend.handle %}
+											{% if canEdit and not isDefaultFromConfig and not isDefault %}
+												<li><hr class="padded"></li>
+												<li>
+													<a class="backend-action" data-action="set-default" data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name }}">
+														{{ 'Set as Default'|t('search-manager') }}
+													</a>
+												</li>
+											{% endif %}
+											{% if canDelete and backend.canEdit() and not isDefault %}
 												<li><hr class="padded"></li>
 												<li>
 													<a class="backend-action error" data-action="delete" data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name }}">
@@ -234,348 +291,357 @@
 										</ul>
 									</div>
 								</td>
-								{% endif %}
-							</tr>
-						{% endfor %}
-					{% else %}
-						<tr>
-							<td colspan="{{ (canEdit or canDelete) ? 7 : 6 }}" style="text-align: center; padding: 2em;">
-								{{ 'No backends found.'|t('search-manager') }}
-							</td>
+							{% endif %}
 						</tr>
-					{% endif %}
-				</tbody>
-			</table>
-		</div>
+					{% endfor %}
+				{% else %}
+					<tr>
+						<td colspan="{{ (canEdit or canDelete) ? 8 : 7 }}" style="text-align: center; padding: 2em;">
+							{{ 'No backends found.'|t('search-manager') }}
+						</td>
+					</tr>
+				{% endif %}
+			</tbody>
+		</table>
 	</div>
+</div>
 
-	<div id="footer" class="flex flex-justify">
-		<div class="light">
-			<div class="flex pagination">
-				<nav class="flex" aria-label="backend pagination">
-					<button type="button" class="page-link prev-page {{ page <= 1 ? 'disabled' : '' }}" {{ page <= 1 ? 'disabled' : '' }} title="Previous Page"></button>
-					<button type="button" class="page-link next-page {{ page >= totalPages ? 'disabled' : '' }}" {{ page >= totalPages ? 'disabled' : '' }} title="Next Page"></button>
-				</nav>
-				<div class="page-info" style="margin: 0 12px; color: #596673;">
-					{% set endRange = min(offset + limit, totalCount) %}
-					{% if totalCount == 0 %}
-						{{ 'no backends'|t('search-manager') }}
-					{% else %}
-						{{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'backend' : 'backends' }}
-					{% endif %}
-				</div>
-			</div>
-		</div>
-		{% if canEdit or canDelete %}
-		<div id="actions-container" class="flex" style="display: none;">
-			{% if canEdit %}
-			<div>
-				<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
-					{{ 'Set status'|t('app') }}
-				</button>
-				<div class="menu">
-					<ul>
-						<li><a id="bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-						<li><a id="bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-					</ul>
-				</div>
-			</div>
-			{% endif %}
-			{% if canDelete %}
-			<button type="button" class="btn secondary" id="bulk-delete-btn">
-				<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
-			</button>
-			{% endif %}
-		</div>
-		{% endif %}
+<div id="footer" class="flex flex-justify">
+	<div class="light">
+		<div class="flex pagination">
+			<nav class="flex" aria-label="backend pagination">
+				<button<a type="button" class="page-link prev-page {{ page <= 1 ? 'disabled' : '' }}" {{ page <= 1 ? 'disabled' : '' }} title="Previous Page"></button> <button type="button" class="page-link next-page {{ page >= totalPages ? 'disabled' : '' }}" {{ page >= totalPages ? 'disabled' : '' }} title="Next Page"></button> </nav> <div class="page-info" style="margin: 0 12px; color: #596673;"> {% set endRange = min(offset + limit, totalCount) %} {% if totalCount == 0 %} {{ 'no backends'|t('search-manager') }} {% else %} {{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'backend' : 'backends' }} {% endif %} </div> </div> </div> {% if canEdit or canDelete %} <div id="actions-container" class="flex" style="display: none;"> {% if canEdit %} <div> <button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status"> {{ 'Set status'|t('app') }} </button> <div class="menu"> <ul> <li> id="bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a>
+			</li>
+			<li>
+				<a id="bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a>
+			</li>
+		</ul>
 	</div>
+</div>{% endif %}{% if canDelete %}
+<button type="button" class="btn secondary" id="bulk-delete-btn">
+	<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
+</button>{% endif %}</div>{% endif %}</div><script>// Initialize menu buttons
+document.querySelectorAll('.menubtn').forEach(btn => {
+if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
+new Craft.MenuBtn(btn);
+} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
+new Garnish.MenuBtn(btn);
+}
+});
 
-	<script>
-	// Initialize menu buttons
-	document.querySelectorAll('.menubtn').forEach(btn => {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(btn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(btn);
-		}
-	});
+// Clear search
+const clearBtn = document.querySelector('.clear-btn');
+if (clearBtn) {
+clearBtn.addEventListener('click', function () {
+const searchInput = document.querySelector('input[name="search"]');
+if (searchInput) {
+searchInput.value = '';
+searchInput.form.submit();
+}
+});
+}
 
-	// Clear search
-	const clearBtn = document.querySelector('.clear-btn');
-	if (clearBtn) {
-		clearBtn.addEventListener('click', function() {
-			const searchInput = document.querySelector('input[name="search"]');
-			if (searchInput) {
-				searchInput.value = '';
-				searchInput.form.submit();
-			}
-		});
-	}
+// Search on Enter
+const searchInput = document.querySelector('input[name="search"]');
+if (searchInput) {
+searchInput.addEventListener('keyup', function (e) {
+if (e.key === 'Enter') {
+this.form.submit();
+}
+});
+}
 
-	// Search on Enter
-	const searchInput = document.querySelector('input[name="search"]');
-	if (searchInput) {
-		searchInput.addEventListener('keyup', function(e) {
-			if (e.key === 'Enter') {
-				this.form.submit();
-			}
-		});
-	}
+// Pagination
+document.querySelector('.prev-page:not(.disabled)') ?. addEventListener('click', function () {
+window.location.href = '?status=   {{ statusFilter }}&type=   {{ typeFilter }}&source=   {{ sourceFilter }}&search=   {{ search }}&sort=   {{ sort }}&dir=   {{ dir }}&page=   {{ page - 1 }}';
+});
 
-	// Pagination
-	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
-	});
+document.querySelector('.next-page:not(.disabled)') ?. addEventListener('click', function () {
+window.location.href = '?status=   {{ statusFilter }}&type=   {{ typeFilter }}&source=   {{ sourceFilter }}&search=   {{ search }}&sort=   {{ sort }}&dir=   {{ dir }}&page=   {{ page + 1 }}';
+});
 
-	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
-	});
+// Sort buttons
+document.querySelectorAll('th.orderable button').forEach(button => {
+button.addEventListener('click', function () {
+const sortField = this.dataset.sort;
+const currentSort = '{{ sort }}';
+const currentDir = '{{ dir }}';
+let newDir = 'asc';
+if (sortField === currentSort) {
+newDir = currentDir === 'asc' ? 'desc' : 'asc';
+}
+window.location.href = '?status=   {{ statusFilter }}&type=   {{ typeFilter }}&source=   {{ sourceFilter }}&search=   {{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
+});
+});
 
-	// Sort buttons
-	document.querySelectorAll('th.orderable button').forEach(button => {
-		button.addEventListener('click', function() {
-			const sortField = this.dataset.sort;
-			const currentSort = '{{ sort }}';
-			const currentDir = '{{ dir }}';
-			let newDir = 'asc';
-			if (sortField === currentSort) {
-				newDir = currentDir === 'asc' ? 'desc' : 'asc';
-			}
-			window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
-		});
-	});
+// Checkbox functionality
+const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
+const checkboxes = document.querySelectorAll('tbody .checkbox:not(.disabled)');
+let selectedIds = new Set();
 
-	// Checkbox functionality
-	const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
-	const checkboxes = document.querySelectorAll('tbody .checkbox:not(.disabled)');
-	let selectedIds = new Set();
+function toggleCheckbox(checkbox, checked) {
+if (checked) {
+checkbox.classList.add('checked');
+checkbox.setAttribute('aria-checked', 'true');
+} else {
+checkbox.classList.remove('checked');
+checkbox.setAttribute('aria-checked', 'false');
+}
+}
 
-	function toggleCheckbox(checkbox, checked) {
-		if (checked) {
-			checkbox.classList.add('checked');
-			checkbox.setAttribute('aria-checked', 'true');
-		} else {
-			checkbox.classList.remove('checked');
-			checkbox.setAttribute('aria-checked', 'false');
-		}
-	}
+function updateBulkButtons() {
+const hasSelection = selectedIds.size > 0;
+const actionsContainer = document.getElementById('actions-container');
+const deleteLabel = document.getElementById('delete-label');
 
-	function updateBulkButtons() {
-		const hasSelection = selectedIds.size > 0;
-		const actionsContainer = document.getElementById('actions-container');
-		const deleteLabel = document.getElementById('delete-label');
+if (hasSelection) {
+actionsContainer.style.display = '';
+const count = selectedIds.size;
+deleteLabel.textContent = `{{ 'Delete'|t('search-manager') }} (${count})`;
+} else {
+actionsContainer.style.display = 'none';
+}
+}
 
-		if (hasSelection) {
-			actionsContainer.style.display = '';
-			const count = selectedIds.size;
-			deleteLabel.textContent = `{{ 'Delete'|t('search-manager') }} (${count})`;
-		} else {
-			actionsContainer.style.display = 'none';
-		}
-	}
+// Select all
+if (selectAllCheckbox) {
+selectAllCheckbox.addEventListener('click', function () {
+const isChecked = !this.classList.contains('checked');
+toggleCheckbox(this, isChecked);
 
-	// Select all
-	if (selectAllCheckbox) {
-		selectAllCheckbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
+checkboxes.forEach(checkbox => {
+toggleCheckbox(checkbox, isChecked);
+const id = checkbox.closest('tr').dataset.id;
+if (isChecked) {
+selectedIds.add(id);
+} else {
+selectedIds.delete(id);
+}
+});
 
-			checkboxes.forEach(checkbox => {
-				toggleCheckbox(checkbox, isChecked);
-				const id = checkbox.closest('tr').dataset.id;
-				if (isChecked) {
-					selectedIds.add(id);
-				} else {
-					selectedIds.delete(id);
-				}
-			});
+updateBulkButtons();
+});
+}
 
-			updateBulkButtons();
-		});
-	}
+// Individual checkboxes
+checkboxes.forEach(checkbox => {
+checkbox.addEventListener('click', function () {
+const isChecked = !this.classList.contains('checked');
+toggleCheckbox(this, isChecked);
 
-	// Individual checkboxes
-	checkboxes.forEach(checkbox => {
-		checkbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
+const id = this.closest('tr').dataset.id;
+if (isChecked) {
+selectedIds.add(id);
+} else {
+selectedIds.delete(id);
+} updateBulkButtons();
+});
+});
 
-			const id = this.closest('tr').dataset.id;
-			if (isChecked) {
-				selectedIds.add(id);
-			} else {
-				selectedIds.delete(id);
-			}
+// Initialize bulk actions menu button
+const bulkActionsBtn = document.getElementById('bulk-actions-btn');
+if (bulkActionsBtn) {
+if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
+new Craft.MenuBtn(bulkActionsBtn);
+} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
+new Garnish.MenuBtn(bulkActionsBtn);
+}
+}
 
-			updateBulkButtons();
-		});
-	});
+// Bulk enable
+document.getElementById('bulk-enable-action') ?. addEventListener('click', function (e) {
+e.preventDefault();
+const ids = Array.from(selectedIds);
 
-	// Initialize bulk actions menu button
-	const bulkActionsBtn = document.getElementById('bulk-actions-btn');
-	if (bulkActionsBtn) {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(bulkActionsBtn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(bulkActionsBtn);
-		}
-	}
+Craft.sendActionRequest('POST', 'search-manager/backends/bulk-enable', {
+data: {
+backendIds: ids
+}
+}).then(function (response) {
+if (response.data.success) {
+Craft.cp.displayNotice(`Enabled ${
+response.data.count
+} backends`);
+setTimeout(() => window.location.reload(), 1000);
+}
+}).catch(function (error) {
+Craft.cp.displayError('Failed to enable backends');
+});
+});
 
-	// Bulk enable
-	document.getElementById('bulk-enable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = Array.from(selectedIds);
+// Bulk disable
+document.getElementById('bulk-disable-action') ?. addEventListener('click', function (e) {
+e.preventDefault();
+const ids = Array.from(selectedIds);
 
-		Craft.sendActionRequest('POST', 'search-manager/backends/bulk-enable', {
-			data: { backendIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Enabled ${response.data.count} backends`);
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to enable backends');
-		});
-	});
+Craft.sendActionRequest('POST', 'search-manager/backends/bulk-disable', {
+data: {
+backendIds: ids
+}
+}).then(function (response) {
+if (response.data.count > 0) {
+Craft.cp.displayNotice(`Disabled ${
+response.data.count
+} backend(s)`);
+}
+if (response.data.errors && response.data.errors.length > 0) {
+response.data.errors.forEach(err => Craft.cp.displayError(err));
+}
+// Only auto-reload if no errors
+if (! response.data.errors || response.data.errors.length === 0) {
+setTimeout(() => window.location.reload(), 1000);
+}
+}).catch(function (error) {
+Craft.cp.displayError('Failed to disable backends');
+});
+});
 
-	// Bulk disable
-	document.getElementById('bulk-disable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = Array.from(selectedIds);
+// Bulk delete
+document.getElementById('bulk-delete-btn') ?. addEventListener('click', function () {
+const ids = Array.from(selectedIds);
+if (!confirm(`Delete ${
+ids.length
+} ${
+ids.length > 1 ? 'backends' : 'backend'
+}? This cannot be undone.`)) 
+return;
 
-		Craft.sendActionRequest('POST', 'search-manager/backends/bulk-disable', {
-			data: { backendIds: ids }
-		}).then(function(response) {
-			if (response.data.count > 0) {
-				Craft.cp.displayNotice(`Disabled ${response.data.count} backend(s)`);
-			}
-			if (response.data.errors && response.data.errors.length > 0) {
-				response.data.errors.forEach(err => Craft.cp.displayError(err));
-			}
-			// Only auto-reload if no errors
-			if (!response.data.errors || response.data.errors.length === 0) {
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to disable backends');
-		});
-	});
 
-	// Bulk delete
-	document.getElementById('bulk-delete-btn')?.addEventListener('click', function() {
-		const ids = Array.from(selectedIds);
-		if (!confirm(`Delete ${ids.length} ${ids.length > 1 ? 'backends' : 'backend'}? This cannot be undone.`)) return;
 
-		Craft.sendActionRequest('POST', 'search-manager/backends/bulk-delete', {
-			data: { backendIds: ids }
-		}).then(function(response) {
-			if (response.data.count > 0) {
-				Craft.cp.displayNotice(`Deleted ${response.data.count} backend(s)`);
-			}
-			if (response.data.errors && response.data.errors.length > 0) {
-				response.data.errors.forEach(err => Craft.cp.displayError(err));
-			}
-			// Only auto-reload if no errors
-			if (!response.data.errors || response.data.errors.length === 0) {
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to delete backends');
-		});
-	});
+Craft.sendActionRequest('POST', 'search-manager/backends/bulk-delete', {
+data: {
+backendIds: ids
+}
+}).then(function (response) {
+if (response.data.count > 0) {
+Craft.cp.displayNotice(`Deleted ${
+response.data.count
+} backend(s)`);
+}
+if (response.data.errors && response.data.errors.length > 0) {
+response.data.errors.forEach(err => Craft.cp.displayError(err));
+}
+// Only auto-reload if no errors
+if (! response.data.errors || response.data.errors.length === 0) {
+setTimeout(() => window.location.reload(), 1000);
+}
+}).catch(function (error) {
+Craft.cp.displayError('Failed to delete backends');
+});
+});
 
-	// Individual backend action menu clicks
-	document.querySelectorAll('.backend-action').forEach(link => {
-		link.addEventListener('click', function(e) {
-			e.preventDefault();
+// Individual backend action menu clicks
+document.querySelectorAll('.backend-action').forEach(link => {
+link.addEventListener('click', function (e) {
+e.preventDefault();
 
-			const action = this.dataset.action;
-			const backendId = this.dataset.id;
-			const backendName = this.dataset.name;
+const action = this.dataset.action;
+const backendId = this.dataset.id;
+const backendName = this.dataset.name;
 
-			if (action === 'test') {
-				Craft.sendActionRequest('POST', 'search-manager/backends/test', {
-					data: { backendId: backendId }
-				}).then(function(response) {
-					if (response.data.success) {
-						Craft.cp.displayNotice('Connection successful: ' + backendName);
-					} else {
-						Craft.cp.displayError('Connection failed: ' + (response.data.error || 'Unknown error'));
-					}
-				}).catch(function(error) {
-					Craft.cp.displayError('Connection test failed');
-				});
-			} else if (action === 'delete') {
-				if (confirm('Delete backend "' + backendName + '"? Indices using this backend will fall back to the default.')) {
-					submitBackendAction('search-manager/backends/delete', backendId);
-				}
-			}
-		});
-	});
+if (action === 'test') {
+Craft.sendActionRequest('POST', 'search-manager/backends/test', {
+data: {
+backendId: backendId
+}
+}).then(function (response) {
+if (response.data.success) {
+Craft.cp.displayNotice('Connection successful: ' + backendName);
+} else {
+Craft.cp.displayError('Connection failed: ' + (
+response.data.error || 'Unknown error'
+));
+}
+}).catch(function (error) {
+Craft.cp.displayError('Connection test failed');
+});
+} else if (action === 'set-default') {
+Craft.sendActionRequest('POST', 'search-manager/backends/set-default', {
+data: {
+backendId: backendId
+}
+}).then(function (response) {
+if (response.data.success) {
+Craft.cp.displayNotice('{{ "Default backend updated"|t('search-manager') }}');
+setTimeout(() => window.location.reload(), 500);
+} else {
+Craft.cp.displayError(response.data.error || '{{ "Failed to update default backend"|t('search-manager') }}');
+}
+}).catch(function (error) {
+Craft.cp.displayError('{{ "Failed to update default backend"|t('search-manager') }}');
+});
+} else if (action === 'delete') {
+if (confirm('Delete backend "' + backendName + '"? Indices using this backend will fall back to the default.')) {
+submitBackendAction('search-manager/backends/delete', backendId);
+}
+}
+});
+});
 
-	function submitBackendAction(action, backendId) {
-		const form = document.createElement('form');
-		form.method = 'POST';
-		form.action = Craft.getActionUrl(action);
+function submitBackendAction(action, backendId) {
+const form = document.createElement('form');
+form.method = 'POST';
+form.action = Craft.getActionUrl(action);
 
-		const csrfInput = document.createElement('input');
-		csrfInput.type = 'hidden';
-		csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
-		csrfInput.value = '{{ craft.app.request.csrfToken }}';
-		form.appendChild(csrfInput);
+const csrfInput = document.createElement('input');
+csrfInput.type = 'hidden';
+csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
+csrfInput.value = '{{ craft.app.request.csrfToken }}';
+form.appendChild(csrfInput);
 
-		const backendIdInput = document.createElement('input');
-		backendIdInput.type = 'hidden';
-		backendIdInput.name = 'backendId';
-		backendIdInput.value = backendId;
-		form.appendChild(backendIdInput);
+const backendIdInput = document.createElement('input');
+backendIdInput.type = 'hidden';
+backendIdInput.name = 'backendId';
+backendIdInput.value = backendId;
+form.appendChild(backendIdInput);
 
-		document.body.appendChild(form);
-		form.submit();
-	}
+document.body.appendChild(form);
+form.submit();
+}
 
-	// Config tooltip for config-based backends
-	let activeTooltip = null;
+// Config tooltip for config-based backends
+let activeTooltip = null;
 
-	document.querySelectorAll('.config-info-icon').forEach(info => {
-		info.addEventListener('mouseenter', function(e) {
-			const config = this.dataset.config;
-			if (!config) return;
+document.querySelectorAll('.config-info-icon').forEach(info => {
+info.addEventListener('mouseenter', function (e) {
+const config = this.dataset.config;
+if (! config) 
+return;
 
-			// Remove any existing tooltip
-			if (activeTooltip) {
-				activeTooltip.remove();
-			}
 
-			// Create tooltip
-			const tooltip = document.createElement('div');
-			tooltip.className = 'config-tooltip';
-			tooltip.textContent = config;
-			document.body.appendChild(tooltip);
-			activeTooltip = tooltip;
 
-			// Position tooltip
-			const rect = this.getBoundingClientRect();
-			const tooltipRect = tooltip.getBoundingClientRect();
+// Remove any existing tooltip
+if (activeTooltip) {
+activeTooltip.remove();
+}
 
-			let left = rect.left + window.scrollX;
-			let top = rect.bottom + window.scrollY + 8;
+// Create tooltip
+const tooltip = document.createElement('div');
+tooltip.className = 'config-tooltip';
+tooltip.textContent = config;
+document.body.appendChild(tooltip);
+activeTooltip = tooltip;
 
-			// Keep within viewport
-			if (left + tooltipRect.width > window.innerWidth - 20) {
-				left = window.innerWidth - tooltipRect.width - 20;
-			}
+// Position tooltip
+const rect = this.getBoundingClientRect();
+const tooltipRect = tooltip.getBoundingClientRect();
 
-			tooltip.style.left = left + 'px';
-			tooltip.style.top = top + 'px';
-		});
+let left = rect.left + window.scrollX;
+let top = rect.bottom + window.scrollY + 8;
 
-		info.addEventListener('mouseleave', function() {
-			if (activeTooltip) {
-				activeTooltip.remove();
-				activeTooltip = null;
-			}
-		});
-	});
-	</script>
-{% endblock %}
+// Keep within viewport
+if (left + tooltipRect.width > window.innerWidth - 20) {
+left = window.innerWidth - tooltipRect.width - 20;
+}
+
+tooltip.style.left = left + 'px';
+tooltip.style.top = top + 'px';
+});
+
+info.addEventListener('mouseleave', function () {
+if (activeTooltip) {
+activeTooltip.remove();
+activeTooltip = null;
+}
+});
+});</script>{% endblock %}
