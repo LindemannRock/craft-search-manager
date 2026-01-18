@@ -13,7 +13,7 @@
 {% set search = craft.app.request.getParam('search', '') %}
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
 {% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'name') %}
+{% set sort = craft.app.request.getParam('sort', 'source') %}
 {% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = settings.itemsPerPage %}
@@ -57,6 +57,8 @@
 	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.name|lower <=> b.name|lower) : filteredConfigs|sort((a, b) => b.name|lower <=> a.name|lower) %}
 {% elseif sort == 'handle' %}
 	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredConfigs|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
+{% elseif sort == 'source' %}
+	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredConfigs|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
 {% elseif sort == 'enabled' %}
 	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.enabled <=> b.enabled) : filteredConfigs|sort((a, b) => b.enabled <=> a.enabled) %}
 {% elseif sort == 'isDefault' %}
@@ -198,7 +200,9 @@
 						<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
 						</th>
-						<th scope="col">{{ "Source"|t('search-manager') }}</th>
+						<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
+							<button type="button" data-sort="source">{{ "Source"|t('search-manager') }}</button>
+						</th>
 						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
 							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
 						</th>
