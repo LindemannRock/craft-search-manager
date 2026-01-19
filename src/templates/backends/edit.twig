@@ -400,7 +400,8 @@ setTimeout(updateActionButton, 10);
                     disabled: true
                 }) }}
 					<input type="hidden" name="isDefault" value="1">
-				{% else %}
+				{% elseif canEdit or currentUser.can('searchManager:editBackends') %}
+					{# Can toggle default: form submission for database, AJAX for config #}
 					{{ forms.lightswitchField({
                     label: 'Default'|t('search-manager'),
                     instructions: 'Use as the default for new indices'|t('search-manager'),
@@ -491,7 +492,7 @@ setTimeout(updateActionButton, 10);
 		        saveShortcut.textContent = isMac ? '⌘S' : 'Ctrl+S';
 		    }
 
-	{% if not isNew and not canEdit and not isDefaultFromConfig and defaultBackendHandle != backend.handle %}
+	{% if not isNew and not canEdit and not isDefaultFromConfig and defaultBackendHandle != backend.handle and currentUser.can('searchManager:editBackends') %}
 		// Config backend: Toggle with AJAX (no form available)
 				    (function() {
 				        const $lightswitch = $('#isDefault').closest('.lightswitch');

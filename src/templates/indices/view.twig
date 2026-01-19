@@ -5,6 +5,11 @@
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'indices' %}
 
+{% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
+{% set canClear = currentUser.can('searchManager:clearIndices') %}
+{% set canClearCache = currentUser.can('searchManager:clearCache') %}
+{% set globalSettings = craft.searchManager.getSettings() %}
+
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') },
@@ -33,16 +38,42 @@
 		}) }}
 
 		{# Actions #}
-		<div class="field">
-			<div class="heading">
-				<label>{{ 'Actions'|t('search-manager') }}</label>
+		{% if canRebuild or canClear or (canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache)) %}
+			<div class="field">
+				<div class="heading">
+					<label>{{ 'Actions'|t('search-manager') }}</label>
+				</div>
+				<div class="input">
+					<button type="button" class="btn menubtn" data-icon="settings" style="width: 100%;">{{ "Index Actions"|t('search-manager') }}</button>
+					<div class="menu">
+						<ul>
+							{% if canRebuild %}
+							<li>
+								<a id="rebuild-btn" href="#">
+									{{ "Rebuild Index"|t('search-manager') }}
+								</a>
+							</li>
+							{% endif %}
+							{% if canClear %}
+							<li>
+								<a id="clear-btn" href="#" class="error">
+									{{ "Clear Index"|t('search-manager') }} ({{ index.documentCount|number_format }})
+								</a>
+							</li>
+							{% endif %}
+							{% if canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
+							<li><hr class="padded"></li>
+							<li>
+								<a id="clear-cache-btn" href="#">
+									{{ "Clear Index Cache"|t('search-manager') }}
+								</a>
+							</li>
+							{% endif %}
+						</ul>
+					</div>
+				</div>
 			</div>
-			<div class="input">
-				{% if currentUser.can('searchManager:rebuildIndices') %}
-					<button type="button" id="rebuild-btn" class="btn">{{ 'Rebuild Index'|t('search-manager') }}</button>
-				{% endif %}
-			</div>
-		</div>
+		{% endif %}
 	</div>
 
 	{# Index Info #}
@@ -112,16 +143,18 @@
 {% endblock %}
 
 {% js %}
-// Rebuild button
-{% if currentUser.can('searchManager:rebuildIndices') %}
-document.getElementById('rebuild-btn')?.addEventListener('click', function() {
-	if (!confirm('{{ "Rebuild index? This will re-index all elements."|t('search-manager')|e('js') }}')) {
-		return;
+// Initialize menu buttons
+document.querySelectorAll('.menubtn').forEach(btn => {
+	if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
+		new Craft.MenuBtn(btn);
 	}
+});
 
+// Helper function for form submissions
+function submitAction(action, indexId) {
 	const form = document.createElement('form');
 	form.method = 'POST';
-	form.action = Craft.getActionUrl('search-manager/indices/rebuild');
+	form.action = Craft.getActionUrl(action);
 
 	const csrfInput = document.createElement('input');
 	csrfInput.type = 'hidden';
@@ -132,11 +165,48 @@ document.getElementById('rebuild-btn')?.addEventListener('click', function() {
 	const indexIdInput = document.createElement('input');
 	indexIdInput.type = 'hidden';
 	indexIdInput.name = 'indexId';
-	indexIdInput.value = '{{ index.handle }}';
+	indexIdInput.value = indexId;
 	form.appendChild(indexIdInput);
 
 	document.body.appendChild(form);
 	form.submit();
+}
+
+// Rebuild button
+{% if canRebuild %}
+document.getElementById('rebuild-btn')?.addEventListener('click', function(e) {
+	e.preventDefault();
+	if (confirm('{{ "Rebuild index? This will re-index all elements."|t('search-manager')|e('js') }}')) {
+		submitAction('search-manager/indices/rebuild', '{{ index.handle }}');
+	}
+});
+{% endif %}
+
+// Clear button
+{% if canClear %}
+document.getElementById('clear-btn')?.addEventListener('click', function(e) {
+	e.preventDefault();
+	if (confirm('{{ "Clear all data from this index? This cannot be undone."|t('search-manager')|e('js') }}')) {
+		submitAction('search-manager/indices/clear', '{{ index.handle }}');
+	}
+});
+{% endif %}
+
+// Clear cache button
+{% if canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
+document.getElementById('clear-cache-btn')?.addEventListener('click', function(e) {
+	e.preventDefault();
+	Craft.sendActionRequest('POST', 'search-manager/indices/clear-cache', {
+		data: { indexId: '{{ index.handle }}' }
+	}).then(function(response) {
+		if (response.data.success) {
+			Craft.cp.displayNotice(response.data.message || '{{ "Cache cleared"|t('search-manager') }}');
+		} else {
+			Craft.cp.displayError(response.data.error || '{{ "Failed to clear cache"|t('search-manager') }}');
+		}
+	}).catch(function(error) {
+		Craft.cp.displayError('{{ "Failed to clear cache"|t('search-manager') }}');
+	});
 });
 {% endif %}
 {% endjs %}

@@ -5,6 +5,7 @@
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'widgets' %}
 {% set isDefault = defaultWidgetHandle == widgetConfig.handle %}
+{% set canEdit = currentUser.can('searchManager:editWidgetConfigs') %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -43,7 +44,7 @@
 				on: true,
 				disabled: true
 			}) }}
-		{% else %}
+		{% elseif canEdit %}
 			{# Not the default - allow setting as default via AJAX #}
 			{{ forms.lightswitchField({
 				label: 'Default'|t('search-manager'),
@@ -131,7 +132,7 @@
 })();
 
 // Default toggle via AJAX (for config widgets that are not already default)
-{% if not isDefaultFromConfig and not isDefault %}
+{% if not isDefaultFromConfig and not isDefault and canEdit %}
 (function() {
 	const $lightswitch = $('#isDefault').closest('.lightswitch');
 	if (!$lightswitch.length) return;
