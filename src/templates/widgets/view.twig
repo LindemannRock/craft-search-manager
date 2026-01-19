@@ -19,16 +19,6 @@
 		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ widgetConfig.settings|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
 	</div>
 
-	<div class="pane">
-		<h2>{{ 'Usage in Templates'|t('search-manager') }}</h2>
-		<p class="light">{{ 'Include this widget in your Twig templates using:'|t('search-manager') }}</p>
-		<div style="background: #f3f7fc; padding: 14px; border-radius: 4px; font-family: monospace; font-size: 12px; line-height: 1.5;">
-			<code style="display: block; white-space: pre-wrap; word-break: break-all;">{% verbatim %}{% include 'search-manager/_widget/search' with {
-    config: '{% endverbatim %}{{ widgetConfig.handle }}{% verbatim %}',
-} %}{% endverbatim %}</code>
-		</div>
-	</div>
-
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
 
@@ -64,59 +54,53 @@
 		{% endif %}
 	</div>
 
-	{# Widget Info #}
-	<div class="meta" style="padding: 12px;">
-		<style>
-			.widget-info-item {
-				display: grid;
-				grid-template-columns: auto 1fr;
-				gap: 8px;
-				align-items: center;
-				padding: 6px 0;
-			}
-			.widget-info-item:not(:last-child) {
-				border-bottom: 1px solid rgba(51, 64, 77, 0.1);
-			}
-			.widget-info-item .label {
-				color: #596673;
-				font-weight: normal;
-				white-space: nowrap;
-			}
-			.widget-info-item .value {
-				text-align: right;
-				word-break: break-word;
-			}
-		</style>
-		<div class="widget-info-item">
-			<div class="label">{{ 'Status'|t('search-manager') }}</div>
-			<div class="value">
-				<span class="status {{ widgetConfig.enabled ? 'live' : 'disabled' }}"></span>
-				{{ widgetConfig.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}
+	{# Template Usage #}
+	<fieldset>
+		<legend class="h6">{{ 'Template Usage'|t('search-manager') }}</legend>
+		<div class="meta">
+			<div class="field">
+				<dd class="value">
+					<div style="background: #f3f7fc; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; line-height: 1.4; overflow-x: auto;">
+						<code style="display: block; white-space: pre; user-select: all;">{% verbatim %}{% include 'search-manager/_widget/search' with {
+    config: '{% endverbatim %}{{ widgetConfig.handle }}{% verbatim %}',
+} %}{% endverbatim %}</code>
+					</div>
+				</dd>
 			</div>
 		</div>
-
-		<div class="widget-info-item">
-			<div class="label">{{ 'Handle'|t('search-manager') }}</div>
-			<div class="value"><code>{{ widgetConfig.handle }}</code></div>
-		</div>
-
-		<div class="widget-info-item">
-			<div class="label">{{ 'Source'|t('search-manager') }}</div>
-			<div class="value">{{ 'Config File'|t('search-manager') }}</div>
-		</div>
-
-		{% if isDefault %}
-			<div class="widget-info-item">
-				<div class="label">{{ 'Default'|t('search-manager') }}</div>
-				<div class="value">{{ 'Yes'|t('search-manager') }}</div>
-			</div>
-		{% endif %}
-	</div>
+	</fieldset>
 
 	{# Widget Preview #}
 	{% include "search-manager/widgets/_partials/preview" with {
 		widgetConfig: widgetConfig
 	} %}
+
+	{# Widget Info #}
+	<fieldset>
+		<dl class="meta read-only">
+			<div class="data">
+				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
+				<dd class="value">
+					<span class="status {{ widgetConfig.enabled ? 'live' : 'disabled' }}"></span>
+					<span>{{ widgetConfig.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+				</dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Handle'|t('search-manager') }}</dt>
+				<dd class="value"><code>{{ widgetConfig.handle }}</code></dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
+				<dd class="value">{{ 'Config File'|t('search-manager') }}</dd>
+			</div>
+			{% if isDefault %}
+				<div class="data">
+					<dt class="heading">{{ 'Default'|t('search-manager') }}</dt>
+					<dd class="value">{{ 'Yes'|t('search-manager') }}</dd>
+				</div>
+			{% endif %}
+		</dl>
+	</fieldset>
 {% endblock %}
 
 {% js %}

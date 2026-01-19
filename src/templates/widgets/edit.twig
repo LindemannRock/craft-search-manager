@@ -121,7 +121,7 @@
 			{# Default set via config file - show disabled toggle #}
 			{{ forms.lightswitchField({
 				label: 'Default'|t('search-manager'),
-				instructions: 'Set via config/search-manager.php'|t('search-manager'),
+				instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
 				id: 'isDefault',
 				on: isDefault,
 				disabled: true
@@ -151,6 +151,24 @@
 		{% endif %}
 	</div>
 
+	{# Template Usage - only for existing widgets #}
+	{% if not isNew %}
+		<fieldset>
+			<legend class="h6">{{ 'Template Usage'|t('search-manager') }}</legend>
+			<div class="meta">
+				<div class="field">
+					<dd class="value">
+						<div style="background: #f3f7fc; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; line-height: 1.4; overflow-x: auto;">
+							<code style="display: block; white-space: pre; user-select: all;">{% verbatim %}{% include 'search-manager/_widget/search' with {
+    config: '{% endverbatim %}{{ widgetConfig.handle }}{% verbatim %}',
+} %}{% endverbatim %}</code>
+						</div>
+					</dd>
+				</div>
+			</div>
+		</fieldset>
+	{% endif %}
+
 	{# Widget Preview - only visible on Appearance tab #}
 	<div id="widget-preview-wrapper" style="display: none;">
 		{% include "search-manager/widgets/_partials/preview" with {
@@ -158,38 +176,32 @@
 		} %}
 	</div>
 
+	{# Widget Info - only for existing widgets #}
 	{% if not isNew %}
 		<fieldset>
 			<dl class="meta read-only">
 				<div class="data">
-					<dt class="heading">{{ 'Handle'|t('search-manager') }}</dt>
-					<dd class="value">
-						<code>{{ widgetConfig.handle }}</code>
-					</dd>
-				</div>
-				<div class="data">
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
 						<span class="status {{ widgetConfig.enabled ? 'live' : 'disabled' }}"></span>
-						<span>{{ widgetConfig.enabled ? 'Live'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+						<span>{{ widgetConfig.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 					</dd>
 				</div>
-			</dl>
-		</fieldset>
-
-		<fieldset>
-			<legend class="h6">{{ 'Usage in Templates'|t('search-manager') }}</legend>
-			<div class="meta read-only">
 				<div class="data">
-					<dd class="value" style="padding: 0;">
-						<div style="background: #f3f7fc; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 11px; line-height: 1.5;">
-							<code style="display: block; white-space: pre-wrap; word-break: break-all;">{% verbatim %}{% include 'search-manager/_widget/search' with {
-    config: '{% endverbatim %}{{ widgetConfig.handle }}{% verbatim %}',
-} %}{% endverbatim %}</code>
-						</div>
-					</dd>
+					<dt class="heading">{{ 'Handle'|t('search-manager') }}</dt>
+					<dd class="value"><code>{{ widgetConfig.handle }}</code></dd>
 				</div>
-			</div>
+				<div class="data">
+					<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
+					<dd class="value">{{ 'Database'|t('search-manager') }}</dd>
+				</div>
+				{% if isDefault %}
+					<div class="data">
+						<dt class="heading">{{ 'Default'|t('search-manager') }}</dt>
+						<dd class="value">{{ 'Yes'|t('search-manager') }}</dd>
+					</div>
+				{% endif %}
+			</dl>
 		</fieldset>
 	{% endif %}
 {% endblock %}

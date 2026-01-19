@@ -5,8 +5,8 @@
 {% set hlBgDark = widgetConfig.getHighlightBgDark() %}
 {% set hlTextDark = widgetConfig.getHighlightColorDark() %}
 
-<div class="widget-preview-section">
-	<h6 class="widget-preview-heading">{{ 'Preview'|t('search-manager') }}</h6>
+<fieldset>
+	<legend class="h6">{{ 'Preview'|t('search-manager') }}</legend>
 
 	<div class="widget-preview-toggle">
 		<button type="button" class="btn small secondary" data-preview-mode="light" aria-pressed="true">{{ 'Light'|t('search-manager') }}</button>
@@ -114,24 +114,15 @@
 			</button>
 		</div>
 	</div>
-</div>
+</fieldset>
 
 <style>
-.widget-preview-section {
-	margin-top: 14px;
-	margin-inline: var(--neg-padding);
-}
-
-.widget-preview-heading {
-	margin: 0 0 12px 0;
-	color: #596673;
-	font-weight: 600;
-}
-
 .widget-preview-toggle {
 	display: flex;
 	gap: 4px;
+	margin-top: 5px;
 	margin-bottom: 12px;
+	margin-inline: var(--neg-padding);
 }
 
 .widget-preview-toggle .btn {
@@ -143,6 +134,7 @@
 .widget-preview-container {
 	border-radius: 6px;
 	padding: 12px;
+	margin-inline: var(--neg-padding);
 }
 
 .widget-preview-light {

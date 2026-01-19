@@ -68,10 +68,10 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response.data.success) {
                 if (capBrowse) capBrowse.innerHTML = response.data.supportsBrowse
                     ? '<span class="status live"></span> {{ 'Yes'|t('search-manager') }}'
-                    : '<span class="status"></span> {{ 'No'|t('search-manager') }}';
+                    : '<span class="status disabled"></span> {{ 'No'|t('search-manager') }}';
                 if (capMulti) capMulti.innerHTML = response.data.supportsMultipleQueries
                     ? '<span class="status live"></span> {{ 'Yes'|t('search-manager') }}'
-                    : '<span class="status"></span> {{ 'No'|t('search-manager') }}';
+                    : '<span class="status disabled"></span> {{ 'No'|t('search-manager') }}';
 
                 const indices = response.data.indices || [];
                 updateIndicesList(indices);
