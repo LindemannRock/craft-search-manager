@@ -18,7 +18,13 @@
 {% set offset = (page - 1) * limit %}
 
 {# Permission checks #}
-{% set showActionsColumn = currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices') or currentUser.can('searchManager:deleteIndices') %}
+{% set canCreate = currentUser.can('searchManager:createIndices') %}
+{% set canEdit = currentUser.can('searchManager:editIndices') %}
+{% set canDelete = currentUser.can('searchManager:deleteIndices') %}
+{% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
+{% set canClear = currentUser.can('searchManager:clearIndices') %}
+{% set canClearCache = currentUser.can('searchManager:clearCache') %}
+{% set showActionsColumn = canEdit or canDelete or canRebuild or canClear %}
 {% set globalSettings = craft.searchManager.getSettings() %}
 
 {# Filter indices based on filters #}
@@ -171,7 +177,7 @@
 				</div>
 			</form>
 		</div>
-		{% if currentUser.can('searchManager:createIndices') %}
+		{% if canCreate %}
 			<a href="{{ url('search-manager/indices/create') }}" class="btn submit add icon" id="new-index-btn">
 				<span class="label-full">{{ 'New Index'|t('search-manager') }}</span>
 				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
@@ -310,7 +316,7 @@
 									<div class="menu">
 										<ul>
 											{% if index.canEdit() %}
-												{% if currentUser.can('searchManager:editIndices') %}
+												{% if canEdit %}
 													<li>
 														<a href="{{ url('search-manager/indices/edit/' ~ index.id) }}">
 															{{ 'Edit'|t('search-manager') }}
@@ -324,7 +330,7 @@
 													</a>
 												</li>
 											{% endif %}
-											{% if currentUser.can('searchManager:rebuildIndices') %}
+											{% if canRebuild %}
 												<li><hr class="padded"></li>
 												<li>
 													<a class="index-action" data-action="rebuild" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
@@ -333,7 +339,7 @@
 												</li>
 											{% endif %}
 
-											{% if currentUser.can('searchManager:clearIndices') %}
+											{% if canClear %}
 												<li>
 													<a class="index-action" data-action="clear" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
 														{{ 'Clear Index Data'|t('search-manager') }} ({{ index.documentCount|number_format }})
@@ -341,7 +347,7 @@
 												</li>
 											{% endif %}
 
-											{% if currentUser.can('searchManager:clearCache') and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
+											{% if canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
 												<li>
 													<a class="index-action" data-action="clear-cache" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
 														{{ 'Clear Index Cache'|t('search-manager') }}
@@ -349,7 +355,7 @@
 												</li>
 											{% endif %}
 
-											{% if index.canEdit() and currentUser.can('searchManager:deleteIndices') %}
+											{% if index.canEdit() and canDelete %}
 												<li><hr class="padded"></li>
 												<li>
 													<a class="index-action error" data-action="delete" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
