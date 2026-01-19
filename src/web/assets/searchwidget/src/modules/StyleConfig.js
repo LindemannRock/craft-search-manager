@@ -3,7 +3,13 @@
  *
  * This module defines the mapping between style property names (from PHP/database)
  * and CSS custom property names used in the widget.
+ *
+ * Style defaults are loaded from a shared JSON file (src/config/style-defaults.json)
+ * which is also read by PHP WidgetConfig.php - this ensures DRY.
  */
+
+// Import style defaults from shared JSON (single source of truth)
+import styleDefaults from '../../../../../config/style-defaults.json';
 
 // CSS variable mappings: PHP style key → CSS variable name
 export const STYLE_MAPPINGS = {
@@ -100,64 +106,11 @@ export const COLOR_KEYS = [
     'highlightBgLight', 'highlightColorLight', 'highlightBgDark', 'highlightColorDark',
 ];
 
-// Default style values (light mode)
+// Default style values - loaded from shared JSON config
+// Highlighting defaults are added here since they come from highlighting settings, not styles
 export const DEFAULT_STYLES = {
-    // Modal
-    modalBg: '#ffffff',
-    modalBgDark: '#1f2937',
-    modalBorderRadius: '12',
-    modalBorderWidth: '1',
-    modalBorderColor: '#e5e7eb',
-    modalBorderColorDark: '#374151',
-    modalShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-    modalShadowDark: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-    modalMaxWidth: '640',
-
-    // Input
-    inputBg: '#ffffff',
-    inputBgDark: '#1f2937',
-    inputTextColor: '#111827',
-    inputTextColorDark: '#f9fafb',
-    inputPlaceholderColor: '#9ca3af',
-    inputPlaceholderColorDark: '#9ca3af',
-    inputBorderColor: '#e5e7eb',
-    inputBorderColorDark: '#374151',
-    inputFontSize: '16',
-
-    // Results
-    resultHoverBg: '#f3f4f6',
-    resultHoverBgDark: '#374151',
-    resultActiveBg: '#e5e7eb',
-    resultActiveBgDark: '#4b5563',
-    resultTextColor: '#111827',
-    resultTextColorDark: '#f9fafb',
-    resultDescColor: '#4b5563',
-    resultDescColorDark: '#d1d5db',
-    resultMutedColor: '#6b7280',
-    resultMutedColorDark: '#d1d5db',
-    resultBorderRadius: '8',
-
-    // Trigger
-    triggerBg: '#ffffff',
-    triggerBgDark: '#374151',
-    triggerTextColor: '#374151',
-    triggerTextColorDark: '#d1d5db',
-    triggerBorderRadius: '8',
-    triggerBorderWidth: '1',
-    triggerBorderColor: '#d1d5db',
-    triggerBorderColorDark: '#4b5563',
-    triggerPaddingX: '12',
-    triggerPaddingY: '8',
-    triggerFontSize: '14',
-
-    // Keyboard badge
-    kbdBg: '#f3f4f6',
-    kbdBgDark: '#4b5563',
-    kbdTextColor: '#4b5563',
-    kbdTextColorDark: '#e5e7eb',
-    kbdBorderRadius: '4',
-
-    // Highlighting
+    ...styleDefaults,
+    // Highlighting (from highlighting settings, not styles config)
     highlightBgLight: '#fef08a',
     highlightColorLight: '#854d0e',
     highlightBgDark: '#854d0e',

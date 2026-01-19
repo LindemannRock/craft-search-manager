@@ -271,6 +271,42 @@ class WidgetConfig extends Model
     }
 
     /**
+     * Get styles with defaults for CP preview
+     * Merges configured styles with defaults so preview renders correctly
+     */
+    public function getStylesForPreview(): array
+    {
+        return array_merge(self::defaultStyleValues(), $this->getStyles());
+    }
+
+    /**
+     * @var array|null Cached style defaults from JSON file
+     */
+    private static ?array $_styleDefaults = null;
+
+    /**
+     * Default style values loaded from shared JSON config
+     * Single source of truth: src/config/style-defaults.json
+     * This is also imported by JavaScript StyleConfig.js
+     */
+    public static function defaultStyleValues(): array
+    {
+        if (self::$_styleDefaults !== null) {
+            return self::$_styleDefaults;
+        }
+
+        $jsonPath = __DIR__ . '/../config/style-defaults.json';
+        if (file_exists($jsonPath)) {
+            $json = file_get_contents($jsonPath);
+            self::$_styleDefaults = json_decode($json, true) ?: [];
+        } else {
+            self::$_styleDefaults = [];
+        }
+
+        return self::$_styleDefaults;
+    }
+
+    /**
      * Get a specific style value
      */
     public function getStyle(string $key, string $default = ''): string

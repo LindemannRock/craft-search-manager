@@ -162,10 +162,30 @@
 {% block content %}
 	{% include 'search-manager/_partials/common/index-styles' %}
 
-	{# Warning if default widget is disabled #}
+	{# Warning if default widget is missing or disabled #}
 	{% if defaultWidgetHandle %}
 		{% set defaultWidget = widgetConfigs|filter(w => w.handle == defaultWidgetHandle)|first %}
-		{% if defaultWidget and not defaultWidget.enabled %}
+		{% if not defaultWidget %}
+			{# Default widget doesn't exist #}
+			{% set warningMessage %}
+			<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+			{{ 'The default widget handle "{handle}" does not exist.'|t('search-manager', {handle: defaultWidgetHandle}) }}
+			{% if isDefaultFromConfig %}
+				{{ 'Update your config/search-manager.php to point to a valid widget handle.'|t('search-manager') }}
+			{% else %}
+				{{ 'Please set a different widget as default.'|t('search-manager') }}
+			{% endif %}
+			{% endset %}
+			<div class="info-box-table-wrapper">
+				{% include 'lindemannrock-base/_components/info-box' with {
+					message: warningMessage,
+					type: 'warning',
+					margin: 'none',
+					stretch: true,
+				} %}
+			</div>
+		{% elseif not defaultWidget.enabled %}
+			{# Default widget exists but is disabled #}
 			{% set warningMessage %}
 			<strong>{{ 'Warning'|t('search-manager') }}:</strong>
 			{{ 'The default widget "{name}" is disabled. Search widget may not work.'|t('search-manager', {name: defaultWidget.name}) }}
@@ -184,6 +204,20 @@
 				} %}
 			</div>
 		{% endif %}
+	{% elseif widgetConfigs|length > 0 %}
+		{# No default handle set but widgets exist #}
+		{% set warningMessage %}
+		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+		{{ 'No default widget is configured. Please set one of the widgets as default.'|t('search-manager') }}
+		{% endset %}
+		<div class="info-box-table-wrapper">
+			{% include 'lindemannrock-base/_components/info-box' with {
+				message: warningMessage,
+				type: 'warning',
+				margin: 'none',
+				stretch: true,
+			} %}
+		</div>
 	{% endif %}
 
 	<div id="elements" class="elements">

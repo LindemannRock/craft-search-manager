@@ -222,20 +222,8 @@ class WidgetConfigService extends Component
             $configs[$row['handle']] = $this->createFromRow($row);
         }
 
-        // Get default handle for sorting
-        $plugin = \lindemannrock\searchmanager\SearchManager::getInstance();
-        $settings = $plugin?->getSettings();
-        $defaultHandle = $settings?->defaultWidgetHandle;
-
-        // Sort: default first, then by name
-        usort($configs, function($a, $b) use ($defaultHandle) {
-            $aIsDefault = $a->handle === $defaultHandle;
-            $bIsDefault = $b->handle === $defaultHandle;
-            if ($aIsDefault !== $bIsDefault) {
-                return $bIsDefault <=> $aIsDefault;
-            }
-            return strcasecmp($a->name, $b->name);
-        });
+        // Sort by name only - template handles default-first and other sorting
+        usort($configs, fn($a, $b) => strcasecmp($a->name, $b->name));
 
         return array_values($configs);
     }
@@ -357,6 +345,34 @@ class WidgetConfigService extends Component
         Craft::$app->db->createCommand()
             ->delete(self::TABLE, ['id' => $config->id])
             ->execute();
+
+        // If we deleted the default, set another widget as the default
+        if ($isDefault && $settings !== null) {
+            // Find another enabled widget to set as default
+            $first = (new Query())
+                ->select('handle')
+                ->from(self::TABLE)
+                ->where(['enabled' => 1])
+                ->orderBy(['id' => SORT_ASC])
+                ->scalar();
+
+            if ($first) {
+                $settings->defaultWidgetHandle = $first;
+                Craft::$app->plugins->savePluginSettings($plugin, $settings->toArray());
+                $this->logInfo('Set new default widget after deletion', ['handle' => $first]);
+            } else {
+                // No database widgets left, check config file widgets
+                $configFileConfigs = $this->getConfigFileConfigs();
+                foreach ($configFileConfigs as $configWidget) {
+                    if ($configWidget->enabled) {
+                        $settings->defaultWidgetHandle = $configWidget->handle;
+                        Craft::$app->plugins->savePluginSettings($plugin, $settings->toArray());
+                        $this->logInfo('Set new default widget after deletion', ['handle' => $configWidget->handle]);
+                        break;
+                    }
+                }
+            }
+        }
 
         // Clear cache
         $this->_defaultConfig = null;

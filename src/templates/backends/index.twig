@@ -149,10 +149,30 @@
 {% block content %}
 {% include 'search-manager/_partials/common/index-styles' %}
 
-{# Warning if default backend is disabled #}
+{# Warning if default backend is missing or disabled #}
 {% if defaultBackendHandle %}
 	{% set defaultBackend = backends|filter(b => b.handle == defaultBackendHandle)|first %}
-	{% if defaultBackend and not defaultBackend.enabled %}
+	{% if not defaultBackend %}
+		{# Default backend doesn't exist #}
+		{% set warningMessage %}
+		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+		{{ 'The default backend handle "{handle}" does not exist.'|t('search-manager', {handle: defaultBackendHandle}) }}
+		{% if isDefaultFromConfig %}
+			{{ 'Update your config/search-manager.php to point to a valid backend handle.'|t('search-manager') }}
+		{% else %}
+			{{ 'Please set a different backend as default.'|t('search-manager') }}
+		{% endif %}
+		{% endset %}
+		<div class="info-box-table-wrapper">
+			{% include 'lindemannrock-base/_components/info-box' with {
+				message: warningMessage,
+				type: 'warning',
+				margin: 'none',
+				stretch: true,
+			} %}
+		</div>
+	{% elseif not defaultBackend.enabled %}
+		{# Default backend exists but is disabled #}
 		{% set warningMessage %}
 		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
 		{{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: defaultBackend.name}) }}
@@ -164,14 +184,27 @@
 		{% endset %}
 		<div class="info-box-table-wrapper">
 			{% include 'lindemannrock-base/_components/info-box' with {
-                message: warningMessage,
-                type: 'warning',
-                margin: 'none',
-                stretch: true,
-            } %}
+				message: warningMessage,
+				type: 'warning',
+				margin: 'none',
+				stretch: true,
+			} %}
 		</div>
-
 	{% endif %}
+{% elseif backends|length > 0 %}
+	{# No default handle set but backends exist #}
+	{% set warningMessage %}
+	<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+	{{ 'No default backend is configured. Please set one of the backends as default.'|t('search-manager') }}
+	{% endset %}
+	<div class="info-box-table-wrapper">
+		{% include 'lindemannrock-base/_components/info-box' with {
+			message: warningMessage,
+			type: 'warning',
+			margin: 'none',
+			stretch: true,
+		} %}
+	</div>
 {% endif %}
 
 <div id="elements" class="elements">
