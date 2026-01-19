@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Widget A11y Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            margin-bottom: 40px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .dark-section {
+            background: #1f2937;
+            color: #f9fafb;
+        }
+        .dark-section h2 {
+            color: #f9fafb;
+        }
+    </style>
+</head>
+<body>
+    <h1>Search Widget Accessibility Tests</h1>
+
+    <!-- Light Theme Test -->
+    <div class="test-section" id="light-theme-test">
+        <h2>Light Theme</h2>
+        <search-widget
+            id="widget-light"
+            indices="test"
+            placeholder="Search..."
+            theme="light"
+            show-trigger="true"
+            endpoint="/mock-search"
+        ></search-widget>
+    </div>
+
+    <!-- Dark Theme Test -->
+    <div class="test-section dark-section" id="dark-theme-test">
+        <h2>Dark Theme</h2>
+        <search-widget
+            id="widget-dark"
+            indices="test"
+            placeholder="Search..."
+            theme="dark"
+            show-trigger="true"
+            endpoint="/mock-search"
+        ></search-widget>
+    </div>
+
+    <!-- Widget with custom styles -->
+    <div class="test-section" id="custom-styles-test">
+        <h2>Custom Styles</h2>
+        <search-widget
+            id="widget-custom"
+            indices="test"
+            placeholder="Search products..."
+            theme="light"
+            show-trigger="true"
+            endpoint="/mock-search"
+            styles='{"modalBg":"#fefefe","accentColor":"#10b981"}'
+        ></search-widget>
+    </div>
+
+    <script type="module">
+        import '../../dist/SearchWidget.js';
+
+        // Helper to open widgets for testing
+        window.openWidget = (id) => {
+            const widget = document.getElementById(id);
+            if (widget) widget.open();
+        };
+
+        // Helper to close widgets
+        window.closeWidget = (id) => {
+            const widget = document.getElementById(id);
+            if (widget) widget.close();
+        };
+
+        // Mock search results for testing
+        window.mockResults = [
+            { id: 1, title: 'First Result', description: 'Description for first result', url: '/first', type: 'Page' },
+            { id: 2, title: 'Second Result', description: 'Description for second result', url: '/second', type: 'Article' },
+            { id: 3, title: 'Third Result', description: 'Description for third result', url: '/third', type: 'Page' },
+        ];
+    </script>
+</body>
+</html>

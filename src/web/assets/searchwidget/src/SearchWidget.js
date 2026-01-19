@@ -11,6 +11,17 @@
 import { applyStylesToElement } from './modules/StyleUtils.js';
 import { loadRecentSearches, saveRecentSearch, clearRecentSearches } from './modules/RecentSearches.js';
 import { performSearch, trackClick, groupResultsByType } from './modules/SearchService.js';
+import {
+    generateId,
+    createLiveRegion,
+    announce,
+    getResultsAnnouncement,
+    getLoadingAnnouncement,
+    getRecentSearchesAnnouncement,
+    updateComboboxAria,
+    getOptionId,
+    scrollIntoViewIfNeeded
+} from './modules/A11yUtils.js';
 import styles from './styles/SearchWidget.css';
 
 class SearchWidget extends HTMLElement {
@@ -27,6 +38,11 @@ class SearchWidget extends HTMLElement {
         this.query = '';
         this.debounceTimer = null;
         this.abortController = null;
+
+        // Unique IDs for ARIA
+        this.listboxId = generateId('sm-listbox');
+        this.inputId = generateId('sm-input');
+        this.liveRegion = null;
 
         // Bind methods
         this.open = this.open.bind(this);
@@ -119,12 +135,12 @@ class SearchWidget extends HTMLElement {
 
             <!-- Trigger button -->
             <button class="sm-trigger" part="trigger" aria-label="Open search" ${showTrigger ? '' : 'style="display: none;"'}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
                 <span class="sm-trigger-text">Search</span>
-                <kbd class="sm-trigger-kbd">${this.getHotkeyDisplay()}</kbd>
+                <kbd class="sm-trigger-kbd" aria-hidden="true">${this.getHotkeyDisplay()}</kbd>
             </button>
 
             <!-- Modal backdrop -->
@@ -132,12 +148,13 @@ class SearchWidget extends HTMLElement {
                 <div class="sm-modal" part="modal" role="dialog" aria-modal="true" aria-label="Search">
                     <!-- Search input -->
                     <div class="sm-header" part="header">
-                        <svg class="sm-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="sm-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <circle cx="11" cy="11" r="8"/>
                             <path d="m21 21-4.35-4.35"/>
                         </svg>
                         <input
                             type="text"
+                            id="${this.inputId}"
                             class="sm-input"
                             part="input"
                             placeholder="${placeholder}"
@@ -145,6 +162,11 @@ class SearchWidget extends HTMLElement {
                             autocorrect="off"
                             autocapitalize="off"
                             spellcheck="false"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                            aria-controls="${this.listboxId}"
                         />
                         <div class="sm-loading" part="loading" hidden>
                             <svg class="sm-spinner" width="20" height="20" viewBox="0 0 24 24">
@@ -158,7 +180,7 @@ class SearchWidget extends HTMLElement {
                     </div>
 
                     <!-- Results -->
-                    <div class="sm-results" part="results" role="listbox"></div>
+                    <div class="sm-results" part="results" id="${this.listboxId}" role="listbox" aria-label="Search results"></div>
 
                     <!-- Footer -->
                     <div class="sm-footer" part="footer">
@@ -185,6 +207,9 @@ class SearchWidget extends HTMLElement {
             loading: this.shadowRoot.querySelector('.sm-loading'),
             close: this.shadowRoot.querySelector('.sm-close'),
         };
+
+        // Create live region for screen reader announcements
+        this.liveRegion = createLiveRegion(this.shadowRoot);
 
         // Set theme
         this.shadowRoot.host.setAttribute('data-theme', theme);
@@ -287,13 +312,26 @@ class SearchWidget extends HTMLElement {
         }
     }
 
-    // Update selection highlight
+    // Update selection highlight and ARIA state
     updateSelection() {
         const items = this.shadowRoot.querySelectorAll('.sm-result-item');
+        const activeId = this.selectedIndex >= 0 ? getOptionId(this.listboxId, this.selectedIndex) : null;
+
+        // Update input's aria-activedescendant
+        updateComboboxAria(this.elements.input, {
+            expanded: items.length > 0,
+            activeDescendant: activeId,
+            listboxId: this.listboxId
+        });
+
+        // Update visual and ARIA state for each item
         items.forEach((item, i) => {
-            item.classList.toggle('sm-selected', i === this.selectedIndex);
-            if (i === this.selectedIndex) {
-                item.scrollIntoView({ block: 'nearest' });
+            const isSelected = i === this.selectedIndex;
+            item.classList.toggle('sm-selected', isSelected);
+            item.setAttribute('aria-selected', String(isSelected));
+
+            if (isSelected) {
+                scrollIntoViewIfNeeded(item, this.elements.results);
             }
         });
     }
@@ -339,6 +377,9 @@ class SearchWidget extends HTMLElement {
         this.loading = true;
         this.elements.loading.hidden = false;
 
+        // Announce loading for screen readers
+        announce(this.liveRegion, getLoadingAnnouncement());
+
         try {
             this.results = await performSearch({
                 query,
@@ -371,12 +412,12 @@ class SearchWidget extends HTMLElement {
             container.innerHTML = `
                 <div class="sm-section">
                     <div class="sm-section-header">
-                        <span>Recent searches</span>
+                        <span id="${this.listboxId}-recent-label">Recent searches</span>
                         <button class="sm-clear-recent" part="clear-recent">Clear</button>
                     </div>
                     ${this.recentSearches.map((item, i) => `
-                        <div class="sm-result-item sm-recent-item" role="option" data-index="${i}" data-url="${item.url || ''}" data-query="${this.escapeHtml(item.query)}">
-                            <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="sm-result-item sm-recent-item" id="${getOptionId(this.listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${item.url || ''}" data-query="${this.escapeHtml(item.query)}">
+                            <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10"/>
                                 <polyline points="12 6 12 12 16 14"/>
                             </svg>
@@ -385,6 +426,9 @@ class SearchWidget extends HTMLElement {
                     `).join('')}
                 </div>
             `;
+
+            // Announce recent searches for screen readers
+            announce(this.liveRegion, getRecentSearchesAnnouncement(this.recentSearches.length));
 
             const clearBtn = container.querySelector('.sm-clear-recent');
             if (clearBtn) {
@@ -402,44 +446,84 @@ class SearchWidget extends HTMLElement {
 
         // No query yet
         if (!this.query.trim()) {
+            // Remove listbox role when empty (aria-required-children: listbox needs options)
+            container.removeAttribute('role');
             container.innerHTML = `
                 <div class="sm-empty" part="empty">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35"/>
                     </svg>
                     <p>Start typing to search</p>
                 </div>
             `;
+
+            // Update ARIA state - no results
+            updateComboboxAria(this.elements.input, {
+                expanded: false,
+                activeDescendant: null,
+                listboxId: this.listboxId
+            });
             return;
         }
 
         // No results
         if (this.results.length === 0) {
+            // Remove listbox role when empty (aria-required-children: listbox needs options)
+            container.removeAttribute('role');
             container.innerHTML = `
                 <div class="sm-empty" part="empty">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="m15 9-6 6M9 9l6 6"/>
                     </svg>
                     <p>No results for "<strong>${this.escapeHtml(this.query)}</strong>"</p>
                 </div>
             `;
+
+            // Announce no results for screen readers
+            announce(this.liveRegion, getResultsAnnouncement(0, this.query));
+
+            // Update ARIA state
+            updateComboboxAria(this.elements.input, {
+                expanded: false,
+                activeDescendant: null,
+                listboxId: this.listboxId
+            });
             return;
         }
+
+        // Re-add listbox role when we have options
+        container.setAttribute('role', 'listbox');
 
         // Group results by type/section if enabled
         if (groupResults) {
             const groups = groupResultsByType(this.results);
             let globalIndex = 0;
             container.innerHTML = Object.entries(groups).map(([type, items]) => `
-                <div class="sm-section">
+                <div class="sm-section" role="group" aria-label="${this.escapeHtml(type)}">
                     <div class="sm-section-header">${this.escapeHtml(type)}</div>
                     ${items.map((result) => this.renderResultItem(result, globalIndex++)).join('')}
                 </div>
             `).join('');
         } else {
             container.innerHTML = this.results.map((result, i) => this.renderResultItem(result, i)).join('');
+        }
+
+        // Announce results for screen readers
+        announce(this.liveRegion, getResultsAnnouncement(this.results.length, this.query));
+
+        // Update ARIA state - listbox now has options
+        updateComboboxAria(this.elements.input, {
+            expanded: true,
+            activeDescendant: null,
+            listboxId: this.listboxId
+        });
+
+        // Auto-select first result for better keyboard navigation
+        if (this.results.length > 0) {
+            this.selectedIndex = 0;
+            this.updateSelection();
         }
 
         this.attachResultHandlers();
@@ -451,18 +535,19 @@ class SearchWidget extends HTMLElement {
         const description = result.description || result.excerpt || result.snippet || '';
         const url = result.url || result.href || '#';
         const type = result.section || result.type || '';
+        const optionId = getOptionId(this.listboxId, index);
 
         const highlightedTitle = this.highlightMatches(title, this.query);
         const highlightedDesc = description ? this.highlightMatches(description, this.query) : '';
 
         return `
-            <a class="sm-result-item" role="option" href="${this.escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${this.escapeHtml(title)}">
+            <a class="sm-result-item" id="${optionId}" role="option" aria-selected="false" href="${this.escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${this.escapeHtml(title)}">
                 <div class="sm-result-content">
                     <span class="sm-result-title">${highlightedTitle}</span>
                     ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
                 </div>
                 ${type && !this.config.groupResults ? `<span class="sm-result-type">${this.escapeHtml(type)}</span>` : ''}
-                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
             </a>

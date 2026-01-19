@@ -20,9 +20,10 @@
     --sm-input-font-size: 16px;
 
     /* Text colors - map from config variable names */
+    /* Color contrast ratios meet WCAG 2.1 AA (4.5:1 for normal text) */
     --sm-text-primary: var(--sm-result-text-color, #111827);
-    --sm-text-secondary: var(--sm-result-desc-color, #6b7280);
-    --sm-text-muted: var(--sm-result-muted-color, #9ca3af);
+    --sm-text-secondary: var(--sm-result-desc-color, #4b5563);
+    --sm-text-muted: var(--sm-result-muted-color, #6b7280);
 
     /* Borders and backgrounds - map from config variable names */
     --sm-border-color: var(--sm-input-border-color, #e5e7eb);
@@ -35,10 +36,10 @@
     --sm-highlight-bg: #fef08a;
     --sm-highlight-color: #854d0e;
 
-    /* Kbd / keyboard shortcuts */
+    /* Kbd / keyboard shortcuts - 4.5:1 contrast ratio minimum */
     --sm-kbd-bg: #f3f4f6;
     --sm-kbd-border: #d1d5db;
-    --sm-kbd-color: var(--sm-kbd-text-color, #6b7280);
+    --sm-kbd-color: var(--sm-kbd-text-color, #4b5563);
     --sm-kbd-radius: 4px;
 
     /* Trigger button */
@@ -60,17 +61,18 @@
 }
 
 /* Dark theme - uses custom dark variables with fallbacks */
+/* Color contrast ratios meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large text) */
 :host([data-theme="dark"]) {
     --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
     --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
 
     --sm-input-bg: var(--sm-input-bg-dark, #1f2937);
     --sm-input-color: var(--sm-input-color-dark, #f9fafb);
-    --sm-input-placeholder: var(--sm-input-placeholder-dark, #6b7280);
+    --sm-input-placeholder: var(--sm-input-placeholder-dark, #9ca3af);
 
     --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
-    --sm-text-secondary: var(--sm-result-desc-color-dark, #9ca3af);
-    --sm-text-muted: var(--sm-result-muted-color-dark, #6b7280);
+    --sm-text-secondary: var(--sm-result-desc-color-dark, #d1d5db);
+    --sm-text-muted: var(--sm-result-muted-color-dark, #9ca3af);
 
     --sm-border-color: var(--sm-input-border-color-dark, #374151);
     --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
@@ -80,12 +82,12 @@
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
     --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
 
-    --sm-kbd-bg: var(--sm-kbd-bg-dark, #4b5563);
+    --sm-kbd-bg: var(--sm-kbd-bg-dark, #374151);
     --sm-kbd-border: #4b5563;
-    --sm-kbd-color: var(--sm-kbd-text-color-dark, #9ca3af);
+    --sm-kbd-color: var(--sm-kbd-text-color-dark, #e5e7eb);
 
     --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);
-    --sm-trigger-color: var(--sm-trigger-text-color-dark, #d1d5db);
+    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);
     --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);
 }
 
@@ -438,6 +440,19 @@
 
 :host([dir="rtl"]) .sm-result-arrow {
     transform: scaleX(-1);
+}
+
+/* Screen reader only - visually hidden but accessible */
+.sm-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
 /* Mobile */

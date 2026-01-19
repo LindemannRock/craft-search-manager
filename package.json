@@ -7,6 +7,10 @@
     "build:widget": "cd src/web/assets/searchwidget && npm run build",
     "dev": "cd src/web/assets/searchwidget && npm run dev",
     "watch": "cd src/web/assets/searchwidget && npm run watch",
-    "test": "cd src/web/assets/searchwidget && npm test"
+    "test": "cd src/web/assets/searchwidget && npm test",
+    "test:a11y": "cd src/web/assets/searchwidget && npm run test:a11y",
+    "test:a11y:ui": "cd src/web/assets/searchwidget && npm run test:a11y:ui",
+    "test:a11y:live": "cd src/web/assets/searchwidget && npm run test:a11y:live",
+    "test:a11y:live:ui": "cd src/web/assets/searchwidget && npm run test:a11y:live:ui"
   }
 }

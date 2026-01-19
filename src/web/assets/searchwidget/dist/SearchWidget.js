@@ -245,6 +245,73 @@
     return groups;
   }
 
+  // src/modules/A11yUtils.js
+  var idCounter = 0;
+  function generateId(prefix = "sm") {
+    return `${prefix}-${++idCounter}-${Date.now().toString(36)}`;
+  }
+  function createLiveRegion(shadowRoot) {
+    const liveRegion = document.createElement("div");
+    liveRegion.setAttribute("role", "status");
+    liveRegion.setAttribute("aria-live", "polite");
+    liveRegion.setAttribute("aria-atomic", "true");
+    liveRegion.className = "sm-sr-only";
+    shadowRoot.appendChild(liveRegion);
+    return liveRegion;
+  }
+  function announce(liveRegion, message, delay = 100) {
+    if (!liveRegion)
+      return;
+    liveRegion.textContent = "";
+    setTimeout(() => {
+      liveRegion.textContent = message;
+    }, delay);
+  }
+  function getResultsAnnouncement(count, query) {
+    if (count === 0) {
+      return `No results found for "${query}"`;
+    }
+    if (count === 1) {
+      return `1 result found for "${query}"`;
+    }
+    return `${count} results found for "${query}"`;
+  }
+  function getLoadingAnnouncement() {
+    return "Searching...";
+  }
+  function getRecentSearchesAnnouncement(count) {
+    if (count === 0) {
+      return "No recent searches";
+    }
+    if (count === 1) {
+      return "1 recent search available";
+    }
+    return `${count} recent searches available`;
+  }
+  function updateComboboxAria(input, { expanded, activeDescendant, listboxId }) {
+    input.setAttribute("aria-expanded", String(expanded));
+    input.setAttribute("aria-controls", listboxId);
+    if (activeDescendant) {
+      input.setAttribute("aria-activedescendant", activeDescendant);
+    } else {
+      input.removeAttribute("aria-activedescendant");
+    }
+  }
+  function getOptionId(baseId, index) {
+    return `${baseId}-option-${index}`;
+  }
+  function scrollIntoViewIfNeeded(element, container) {
+    if (!element || !container)
+      return;
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    if (elementRect.top < containerRect.top) {
+      element.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    } else if (elementRect.bottom > containerRect.bottom) {
+      element.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    }
+  }
+
   // src/styles/SearchWidget.css
   var SearchWidget_default = `/**
  * Search Widget Styles
@@ -268,9 +335,10 @@
     --sm-input-font-size: 16px;
 
     /* Text colors - map from config variable names */
+    /* Color contrast ratios meet WCAG 2.1 AA (4.5:1 for normal text) */
     --sm-text-primary: var(--sm-result-text-color, #111827);
-    --sm-text-secondary: var(--sm-result-desc-color, #6b7280);
-    --sm-text-muted: var(--sm-result-muted-color, #9ca3af);
+    --sm-text-secondary: var(--sm-result-desc-color, #4b5563);
+    --sm-text-muted: var(--sm-result-muted-color, #6b7280);
 
     /* Borders and backgrounds - map from config variable names */
     --sm-border-color: var(--sm-input-border-color, #e5e7eb);
@@ -283,10 +351,10 @@
     --sm-highlight-bg: #fef08a;
     --sm-highlight-color: #854d0e;
 
-    /* Kbd / keyboard shortcuts */
+    /* Kbd / keyboard shortcuts - 4.5:1 contrast ratio minimum */
     --sm-kbd-bg: #f3f4f6;
     --sm-kbd-border: #d1d5db;
-    --sm-kbd-color: var(--sm-kbd-text-color, #6b7280);
+    --sm-kbd-color: var(--sm-kbd-text-color, #4b5563);
     --sm-kbd-radius: 4px;
 
     /* Trigger button */
@@ -308,17 +376,18 @@
 }
 
 /* Dark theme - uses custom dark variables with fallbacks */
+/* Color contrast ratios meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large text) */
 :host([data-theme="dark"]) {
     --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
     --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
 
     --sm-input-bg: var(--sm-input-bg-dark, #1f2937);
     --sm-input-color: var(--sm-input-color-dark, #f9fafb);
-    --sm-input-placeholder: var(--sm-input-placeholder-dark, #6b7280);
+    --sm-input-placeholder: var(--sm-input-placeholder-dark, #9ca3af);
 
     --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
-    --sm-text-secondary: var(--sm-result-desc-color-dark, #9ca3af);
-    --sm-text-muted: var(--sm-result-muted-color-dark, #6b7280);
+    --sm-text-secondary: var(--sm-result-desc-color-dark, #d1d5db);
+    --sm-text-muted: var(--sm-result-muted-color-dark, #9ca3af);
 
     --sm-border-color: var(--sm-input-border-color-dark, #374151);
     --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
@@ -328,12 +397,12 @@
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
     --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
 
-    --sm-kbd-bg: var(--sm-kbd-bg-dark, #4b5563);
+    --sm-kbd-bg: var(--sm-kbd-bg-dark, #374151);
     --sm-kbd-border: #4b5563;
-    --sm-kbd-color: var(--sm-kbd-text-color-dark, #9ca3af);
+    --sm-kbd-color: var(--sm-kbd-text-color-dark, #e5e7eb);
 
     --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);
-    --sm-trigger-color: var(--sm-trigger-text-color-dark, #d1d5db);
+    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);
     --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);
 }
 
@@ -688,6 +757,19 @@
     transform: scaleX(-1);
 }
 
+/* Screen reader only - visually hidden but accessible */
+.sm-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* Mobile */
 @media (max-width: 640px) {
     .sm-backdrop {
@@ -721,6 +803,9 @@
       this.query = "";
       this.debounceTimer = null;
       this.abortController = null;
+      this.listboxId = generateId("sm-listbox");
+      this.inputId = generateId("sm-input");
+      this.liveRegion = null;
       this.open = this.open.bind(this);
       this.close = this.close.bind(this);
       this.toggle = this.toggle.bind(this);
@@ -816,12 +901,12 @@
 
             <!-- Trigger button -->
             <button class="sm-trigger" part="trigger" aria-label="Open search" ${showTrigger ? "" : 'style="display: none;"'}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
                 <span class="sm-trigger-text">Search</span>
-                <kbd class="sm-trigger-kbd">${this.getHotkeyDisplay()}</kbd>
+                <kbd class="sm-trigger-kbd" aria-hidden="true">${this.getHotkeyDisplay()}</kbd>
             </button>
 
             <!-- Modal backdrop -->
@@ -829,12 +914,13 @@
                 <div class="sm-modal" part="modal" role="dialog" aria-modal="true" aria-label="Search">
                     <!-- Search input -->
                     <div class="sm-header" part="header">
-                        <svg class="sm-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <svg class="sm-search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <circle cx="11" cy="11" r="8"/>
                             <path d="m21 21-4.35-4.35"/>
                         </svg>
                         <input
                             type="text"
+                            id="${this.inputId}"
                             class="sm-input"
                             part="input"
                             placeholder="${placeholder}"
@@ -842,6 +928,11 @@
                             autocorrect="off"
                             autocapitalize="off"
                             spellcheck="false"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-haspopup="listbox"
+                            aria-expanded="false"
+                            aria-controls="${this.listboxId}"
                         />
                         <div class="sm-loading" part="loading" hidden>
                             <svg class="sm-spinner" width="20" height="20" viewBox="0 0 24 24">
@@ -855,7 +946,7 @@
                     </div>
 
                     <!-- Results -->
-                    <div class="sm-results" part="results" role="listbox"></div>
+                    <div class="sm-results" part="results" id="${this.listboxId}" role="listbox" aria-label="Search results"></div>
 
                     <!-- Footer -->
                     <div class="sm-footer" part="footer">
@@ -880,6 +971,7 @@
         loading: this.shadowRoot.querySelector(".sm-loading"),
         close: this.shadowRoot.querySelector(".sm-close")
       };
+      this.liveRegion = createLiveRegion(this.shadowRoot);
       this.shadowRoot.host.setAttribute("data-theme", theme);
       this.applyCustomStyles();
     }
@@ -962,13 +1054,21 @@
           break;
       }
     }
-    // Update selection highlight
+    // Update selection highlight and ARIA state
     updateSelection() {
       const items = this.shadowRoot.querySelectorAll(".sm-result-item");
+      const activeId = this.selectedIndex >= 0 ? getOptionId(this.listboxId, this.selectedIndex) : null;
+      updateComboboxAria(this.elements.input, {
+        expanded: items.length > 0,
+        activeDescendant: activeId,
+        listboxId: this.listboxId
+      });
       items.forEach((item, i) => {
-        item.classList.toggle("sm-selected", i === this.selectedIndex);
-        if (i === this.selectedIndex) {
-          item.scrollIntoView({ block: "nearest" });
+        const isSelected = i === this.selectedIndex;
+        item.classList.toggle("sm-selected", isSelected);
+        item.setAttribute("aria-selected", String(isSelected));
+        if (isSelected) {
+          scrollIntoViewIfNeeded(item, this.elements.results);
         }
       });
     }
@@ -1005,6 +1105,7 @@
       this.abortController = new AbortController();
       this.loading = true;
       this.elements.loading.hidden = false;
+      announce(this.liveRegion, getLoadingAnnouncement());
       try {
         this.results = await performSearch({
           query,
@@ -1034,12 +1135,12 @@
         container.innerHTML = `
                 <div class="sm-section">
                     <div class="sm-section-header">
-                        <span>Recent searches</span>
+                        <span id="${this.listboxId}-recent-label">Recent searches</span>
                         <button class="sm-clear-recent" part="clear-recent">Clear</button>
                     </div>
                     ${this.recentSearches.map((item, i) => `
-                        <div class="sm-result-item sm-recent-item" role="option" data-index="${i}" data-url="${item.url || ""}" data-query="${this.escapeHtml(item.query)}">
-                            <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <div class="sm-result-item sm-recent-item" id="${getOptionId(this.listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${item.url || ""}" data-query="${this.escapeHtml(item.query)}">
+                            <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10"/>
                                 <polyline points="12 6 12 12 16 14"/>
                             </svg>
@@ -1048,6 +1149,7 @@
                     `).join("")}
                 </div>
             `;
+        announce(this.liveRegion, getRecentSearchesAnnouncement(this.recentSearches.length));
         const clearBtn = container.querySelector(".sm-clear-recent");
         if (clearBtn) {
           clearBtn.addEventListener("click", (e) => {
@@ -1061,40 +1163,64 @@
         return;
       }
       if (!this.query.trim()) {
+        container.removeAttribute("role");
         container.innerHTML = `
                 <div class="sm-empty" part="empty">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <circle cx="11" cy="11" r="8"/>
                         <path d="m21 21-4.35-4.35"/>
                     </svg>
                     <p>Start typing to search</p>
                 </div>
             `;
+        updateComboboxAria(this.elements.input, {
+          expanded: false,
+          activeDescendant: null,
+          listboxId: this.listboxId
+        });
         return;
       }
       if (this.results.length === 0) {
+        container.removeAttribute("role");
         container.innerHTML = `
                 <div class="sm-empty" part="empty">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"/>
                         <path d="m15 9-6 6M9 9l6 6"/>
                     </svg>
                     <p>No results for "<strong>${this.escapeHtml(this.query)}</strong>"</p>
                 </div>
             `;
+        announce(this.liveRegion, getResultsAnnouncement(0, this.query));
+        updateComboboxAria(this.elements.input, {
+          expanded: false,
+          activeDescendant: null,
+          listboxId: this.listboxId
+        });
         return;
       }
+      container.setAttribute("role", "listbox");
       if (groupResults) {
         const groups = groupResultsByType(this.results);
         let globalIndex = 0;
         container.innerHTML = Object.entries(groups).map(([type, items]) => `
-                <div class="sm-section">
+                <div class="sm-section" role="group" aria-label="${this.escapeHtml(type)}">
                     <div class="sm-section-header">${this.escapeHtml(type)}</div>
                     ${items.map((result) => this.renderResultItem(result, globalIndex++)).join("")}
                 </div>
             `).join("");
       } else {
         container.innerHTML = this.results.map((result, i) => this.renderResultItem(result, i)).join("");
+      }
+      announce(this.liveRegion, getResultsAnnouncement(this.results.length, this.query));
+      updateComboboxAria(this.elements.input, {
+        expanded: true,
+        activeDescendant: null,
+        listboxId: this.listboxId
+      });
+      if (this.results.length > 0) {
+        this.selectedIndex = 0;
+        this.updateSelection();
       }
       this.attachResultHandlers();
     }
@@ -1104,16 +1230,17 @@
       const description = result.description || result.excerpt || result.snippet || "";
       const url = result.url || result.href || "#";
       const type = result.section || result.type || "";
+      const optionId = getOptionId(this.listboxId, index);
       const highlightedTitle = this.highlightMatches(title, this.query);
       const highlightedDesc = description ? this.highlightMatches(description, this.query) : "";
       return `
-            <a class="sm-result-item" role="option" href="${this.escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${this.escapeHtml(title)}">
+            <a class="sm-result-item" id="${optionId}" role="option" aria-selected="false" href="${this.escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${this.escapeHtml(title)}">
                 <div class="sm-result-content">
                     <span class="sm-result-title">${highlightedTitle}</span>
                     ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
                 </div>
                 ${type && !this.config.groupResults ? `<span class="sm-result-type">${this.escapeHtml(type)}</span>` : ""}
-                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="M5 12h14M12 5l7 7-7 7"/>
                 </svg>
             </a>

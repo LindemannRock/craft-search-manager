@@ -73,60 +73,9 @@ class WidgetConfig extends Model
                 'showTrigger' => true,
                 'triggerText' => 'Search',
             ],
-            'styles' => [
-                // Modal
-                'modalBg' => '#ffffff',
-                'modalBgDark' => '#1f2937',
-                'modalBorderRadius' => '12',
-                'modalBorderWidth' => '0',
-                'modalBorderColor' => '#e5e7eb',
-                'modalBorderColorDark' => '#374151',
-                'modalShadow' => '0 25px 50px -12px rgba(0,0,0,0.25)',
-                'modalShadowDark' => '0 25px 50px -12px rgba(0,0,0,0.5)',
-                'modalMaxWidth' => '640',
-                // Input
-                'inputBg' => '#ffffff',
-                'inputBgDark' => '#1f2937',
-                'inputTextColor' => '#111827',
-                'inputTextColorDark' => '#f9fafb',
-                'inputPlaceholderColor' => '#9ca3af',
-                'inputPlaceholderColorDark' => '#6b7280',
-                'inputBorderColor' => '#e5e7eb',
-                'inputBorderColorDark' => '#374151',
-                'inputFontSize' => '16',
-                // Results
-                'resultBg' => 'transparent',
-                'resultBgDark' => 'transparent',
-                'resultHoverBg' => '#f3f4f6',
-                'resultHoverBgDark' => '#374151',
-                'resultActiveBg' => '#e5e7eb',
-                'resultActiveBgDark' => '#4b5563',
-                'resultTextColor' => '#111827',
-                'resultTextColorDark' => '#f9fafb',
-                'resultDescColor' => '#6b7280',
-                'resultDescColorDark' => '#9ca3af',
-                'resultMutedColor' => '#9ca3af',
-                'resultMutedColorDark' => '#6b7280',
-                'resultBorderRadius' => '8',
-                // Trigger button
-                'triggerBg' => '#ffffff',
-                'triggerBgDark' => '#374151',
-                'triggerTextColor' => '#374151',
-                'triggerTextColorDark' => '#d1d5db',
-                'triggerBorderRadius' => '8',
-                'triggerBorderWidth' => '1',
-                'triggerBorderColor' => '#d1d5db',
-                'triggerBorderColorDark' => '#4b5563',
-                'triggerPaddingX' => '12',
-                'triggerPaddingY' => '8',
-                'triggerFontSize' => '14',
-                // Kbd (keyboard shortcut badge)
-                'kbdBg' => '#f3f4f6',
-                'kbdBgDark' => '#4b5563',
-                'kbdTextColor' => '#6b7280',
-                'kbdTextColorDark' => '#9ca3af',
-                'kbdBorderRadius' => '4',
-            ],
+            // Note: 'styles' defaults are handled by JavaScript (StyleConfig.js)
+            // PHP only passes explicitly configured styles to avoid duplication
+            'styles' => [],
         ];
     }
 
@@ -315,12 +264,11 @@ class WidgetConfig extends Model
         return $this->getSetting('trigger.triggerText', 'Search');
     }
 
-    // Styles - returns all styles as an array for passing to JS
+    // Styles - returns only explicitly configured styles (JS handles defaults)
     public function getStyles(): array
     {
-        $defaults = self::defaultSettings()['styles'];
         $styles = $this->getSetting('styles', []);
-        return array_merge($defaults, is_array($styles) ? $styles : []);
+        return is_array($styles) ? $styles : [];
     }
 
     /**

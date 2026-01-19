@@ -119,7 +119,7 @@ export const DEFAULT_STYLES = {
     inputTextColor: '#111827',
     inputTextColorDark: '#f9fafb',
     inputPlaceholderColor: '#9ca3af',
-    inputPlaceholderColorDark: '#6b7280',
+    inputPlaceholderColorDark: '#9ca3af',
     inputBorderColor: '#e5e7eb',
     inputBorderColorDark: '#374151',
     inputFontSize: '16',
@@ -131,10 +131,10 @@ export const DEFAULT_STYLES = {
     resultActiveBgDark: '#4b5563',
     resultTextColor: '#111827',
     resultTextColorDark: '#f9fafb',
-    resultDescColor: '#6b7280',
-    resultDescColorDark: '#9ca3af',
-    resultMutedColor: '#9ca3af',
-    resultMutedColorDark: '#6b7280',
+    resultDescColor: '#4b5563',
+    resultDescColorDark: '#d1d5db',
+    resultMutedColor: '#6b7280',
+    resultMutedColorDark: '#d1d5db',
     resultBorderRadius: '8',
 
     // Trigger
@@ -153,8 +153,8 @@ export const DEFAULT_STYLES = {
     // Keyboard badge
     kbdBg: '#f3f4f6',
     kbdBgDark: '#4b5563',
-    kbdTextColor: '#6b7280',
-    kbdTextColorDark: '#9ca3af',
+    kbdTextColor: '#4b5563',
+    kbdTextColorDark: '#e5e7eb',
     kbdBorderRadius: '4',
 
     // Highlighting

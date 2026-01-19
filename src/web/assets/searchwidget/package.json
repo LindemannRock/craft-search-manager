@@ -6,9 +6,16 @@
     "build": "node build.js",
     "dev": "node build.js --dev",
     "watch": "node build.js --dev --watch",
-    "test": "node test.js"
+    "test": "node test.js",
+    "test:a11y": "npx playwright test --config=tests/playwright-static.config.js",
+    "test:a11y:ui": "npx playwright test --config=tests/playwright-static.config.js --ui",
+    "test:a11y:live": "npx playwright test --config=tests/playwright-live.config.js",
+    "test:a11y:live:ui": "npx playwright test --config=tests/playwright-live.config.js --ui"
   },
   "devDependencies": {
-    "esbuild": "^0.20.0"
+    "@axe-core/playwright": "^4.8.0",
+    "@playwright/test": "^1.40.0",
+    "esbuild": "^0.20.0",
+    "http-server": "^14.1.1"
   }
 }
