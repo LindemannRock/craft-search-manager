@@ -35,6 +35,39 @@ class BackendsController extends Controller
         $backends = ConfiguredBackend::findAll();
         $settings = SearchManager::$plugin->getSettings();
 
+        // Auto-assign default if needed (only if not set via config file)
+        if (!$this->isDefaultBackendFromConfig()) {
+            $defaultHandle = $settings->defaultBackendHandle;
+            $needsReassign = false;
+
+            if (empty($defaultHandle)) {
+                // No default set
+                $needsReassign = true;
+            } else {
+                // Check if default exists and is enabled
+                $defaultBackend = ConfiguredBackend::findByHandle($defaultHandle);
+                if (!$defaultBackend || !$defaultBackend->enabled) {
+                    $needsReassign = true;
+                }
+            }
+
+            if ($needsReassign && !empty($backends)) {
+                // Find first enabled backend
+                foreach ($backends as $backend) {
+                    if ($backend->enabled) {
+                        $settings->defaultBackendHandle = $backend->handle;
+                        $settings->saveToDatabase();
+
+                        $this->logInfo('Auto-assigned default backend', [
+                            'handle' => $backend->handle,
+                            'reason' => empty($defaultHandle) ? 'no default set' : 'previous default invalid',
+                        ]);
+                        break;
+                    }
+                }
+            }
+        }
+
         return $this->renderTemplate('search-manager/backends/index', [
             'backends' => $backends,
             'defaultBackendHandle' => $settings->defaultBackendHandle,

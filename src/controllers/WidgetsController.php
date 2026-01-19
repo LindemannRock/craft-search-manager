@@ -36,6 +36,39 @@ class WidgetsController extends Controller
         $widgetConfigs = SearchManager::$plugin->widgetConfigs->getAll();
         $settings = SearchManager::$plugin->getSettings();
 
+        // Auto-assign default if needed (only if not set via config file)
+        if (!$this->isDefaultWidgetFromConfig()) {
+            $defaultHandle = $settings->defaultWidgetHandle;
+            $needsReassign = false;
+
+            if (empty($defaultHandle)) {
+                // No default set
+                $needsReassign = true;
+            } else {
+                // Check if default exists and is enabled
+                $defaultWidget = SearchManager::$plugin->widgetConfigs->getByHandle($defaultHandle);
+                if (!$defaultWidget || !$defaultWidget->enabled) {
+                    $needsReassign = true;
+                }
+            }
+
+            if ($needsReassign && !empty($widgetConfigs)) {
+                // Find first enabled widget
+                foreach ($widgetConfigs as $widget) {
+                    if ($widget->enabled) {
+                        $settings->defaultWidgetHandle = $widget->handle;
+                        $settings->saveToDatabase();
+
+                        $this->logInfo('Auto-assigned default widget', [
+                            'handle' => $widget->handle,
+                            'reason' => empty($defaultHandle) ? 'no default set' : 'previous default invalid',
+                        ]);
+                        break;
+                    }
+                }
+            }
+        }
+
         return $this->renderTemplate('search-manager/widgets/index', [
             'widgetConfigs' => $widgetConfigs,
             'defaultWidgetHandle' => $settings->defaultWidgetHandle,
