@@ -391,7 +391,8 @@ return [
         /**
          * Default backend handle
          * Must match a handle from backends (or database)
-         * Default: null (falls back to first enabled backend)
+         * Auto-assigned: If not set, deleted, or disabled, automatically assigns first enabled backend
+         * Default: null
          */
         // 'defaultBackendHandle' => 'production-algolia',
 
@@ -536,7 +537,8 @@ return [
         /**
          * Default widget handle
          * Must match a handle from widgets (or database)
-         * Default: null (falls back to first enabled widget)
+         * Auto-assigned: If not set, deleted, or disabled, automatically assigns first enabled widget
+         * Default: null
          */
         // 'defaultWidgetHandle' => 'brand-search',
 
