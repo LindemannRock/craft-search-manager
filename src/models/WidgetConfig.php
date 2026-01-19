@@ -315,6 +315,56 @@ class WidgetConfig extends Model
     }
 
     // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
+
+    /**
+     * Get raw config display for showing in tooltip (config widgets only)
+     */
+    public function getRawConfigDisplay(): string
+    {
+        if (!$this->isFromConfig()) {
+            return '';
+        }
+
+        $settings = $this->getSettingsArray();
+
+        // Build a summary config (exclude verbose style arrays for tooltip)
+        $config = [
+            'name' => $this->name,
+            'enabled' => $this->enabled,
+        ];
+
+        // Add index handles if set
+        $indexHandles = $settings['search']['indexHandles'] ?? [];
+        if (!empty($indexHandles)) {
+            $config['search']['indexHandles'] = $indexHandles;
+        }
+
+        // Add behavior settings if customized
+        if (!empty($settings['behavior'])) {
+            $config['behavior'] = $settings['behavior'];
+        }
+
+        // Add trigger settings if customized
+        if (!empty($settings['trigger'])) {
+            $config['trigger'] = $settings['trigger'];
+        }
+
+        // Indicate styles exist without showing all values
+        if (!empty($settings['styles'])) {
+            $config['styles'] = '[ ... ' . count($settings['styles']) . ' properties ]';
+        }
+
+        // Indicate highlighting exists without showing all values
+        if (!empty($settings['highlighting'])) {
+            $config['highlighting'] = '[ ... ]';
+        }
+
+        return $this->formatConfigDisplay($config, $this->handle, []);
+    }
+
+    // =========================================================================
     // VALIDATION
     // =========================================================================
 

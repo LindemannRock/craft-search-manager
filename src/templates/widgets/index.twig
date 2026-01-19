@@ -267,6 +267,7 @@
 										<a class="label-link" href="{{ url('search-manager/widgets/view/' ~ config.handle) }}">
 											<span>{{ config.name }}</span>
 										</a>
+										<span class="config-info-icon" data-config="{{ config.rawConfigDisplay|e('html_attr') }}"></span>
 									{% endif %}
 								</td>
 								<td>
@@ -613,6 +614,50 @@
 				}).catch(function(error) {
 					Craft.cp.displayError('{{ "Failed to update default config"|t('search-manager') }}');
 				});
+			}
+		});
+	});
+
+	// Config tooltip for config-based widgets
+	let activeTooltip = null;
+
+	document.querySelectorAll('.config-info-icon').forEach(info => {
+		info.addEventListener('mouseenter', function(e) {
+			const config = this.dataset.config;
+			if (!config) return;
+
+			// Remove any existing tooltip
+			if (activeTooltip) {
+				activeTooltip.remove();
+			}
+
+			// Create tooltip
+			const tooltip = document.createElement('div');
+			tooltip.className = 'config-tooltip';
+			tooltip.textContent = config;
+			document.body.appendChild(tooltip);
+			activeTooltip = tooltip;
+
+			// Position tooltip
+			const rect = this.getBoundingClientRect();
+			const tooltipRect = tooltip.getBoundingClientRect();
+
+			let left = rect.left + window.scrollX;
+			let top = rect.bottom + window.scrollY + 8;
+
+			// Keep within viewport
+			if (left + tooltipRect.width > window.innerWidth - 20) {
+				left = window.innerWidth - tooltipRect.width - 20;
+			}
+
+			tooltip.style.left = left + 'px';
+			tooltip.style.top = top + 'px';
+		});
+
+		info.addEventListener('mouseleave', function() {
+			if (activeTooltip) {
+				activeTooltip.remove();
+				activeTooltip = null;
 			}
 		});
 	});

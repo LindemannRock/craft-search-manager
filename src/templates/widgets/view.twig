@@ -4,6 +4,7 @@
 {% set title = widgetConfig.name %}
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'widgets' %}
+{% set isDefault = defaultWidgetHandle == widgetConfig.handle %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -13,51 +14,8 @@
 
 {% block content %}
 	<div class="pane">
-		<h2>{{ 'Widget Details'|t('search-manager') }}</h2>
-		<p class="light">{{ 'This widget is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
-
-		<table class="data fullwidth">
-			<tbody>
-				<tr>
-					<th class="light" style="width: 150px;">{{ 'Name'|t('search-manager') }}</th>
-					<td>{{ widgetConfig.name }}</td>
-				</tr>
-				<tr>
-					<th class="light">{{ 'Handle'|t('search-manager') }}</th>
-					<td><code>{{ widgetConfig.handle }}</code></td>
-				</tr>
-				<tr>
-					<th class="light">{{ 'Status'|t('search-manager') }}</th>
-					<td>
-						<span class="status {{ widgetConfig.enabled ? 'live' : 'disabled' }}"></span>
-						{{ widgetConfig.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}
-					</td>
-				</tr>
-				<tr>
-					<th class="light">{{ 'Default'|t('search-manager') }}</th>
-					<td>
-						{% set isDefault = defaultWidgetHandle == widgetConfig.handle %}
-						{% if isDefault %}
-							<span class="status live"></span> {{ 'Yes'|t('search-manager') }}
-						{% else %}
-							<span class="light">{{ 'No'|t('search-manager') }}</span>
-						{% endif %}
-					</td>
-				</tr>
-				<tr>
-					<th class="light">{{ 'Source'|t('search-manager') }}</th>
-					<td>
-						<span class="token orange">{{ 'config'|t('search-manager') }}</span>
-						<span class="light"> - config/search-manager.php</span>
-					</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
-
-	<div class="pane">
 		<h2>{{ 'Configuration'|t('search-manager') }}</h2>
-		<p class="light">{{ 'The settings for this widget as defined in your config file.'|t('search-manager') }}</p>
+		<p class="light">{{ 'This widget is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
 		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ widgetConfig.settings|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
 	</div>
 
@@ -71,21 +29,88 @@
 		</div>
 	</div>
 
+	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
 
 {% block details %}
-	<div class="meta read-only">
-		<div class="data">
-			<h5 class="heading">{{ 'Handle'|t('search-manager') }}</h5>
-			<div class="value"><code>{{ widgetConfig.handle }}</code></div>
-		</div>
-		<div class="data">
-			<h5 class="heading">{{ 'Status'|t('search-manager') }}</h5>
+	{# Default toggle #}
+	<div class="meta">
+		{% if isDefaultFromConfig %}
+			{# Default set via config file - show disabled switch #}
+			{{ forms.lightswitchField({
+				label: 'Default'|t('search-manager'),
+				instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+				id: 'isDefault',
+				on: isDefault,
+				disabled: true
+			}) }}
+		{% elseif isDefault %}
+			{# This is the default - show disabled switch with explanation #}
+			{{ forms.lightswitchField({
+				label: 'Default'|t('search-manager'),
+				instructions: 'To change, set another widget as default first.'|t('search-manager'),
+				id: 'isDefault',
+				on: true,
+				disabled: true
+			}) }}
+		{% else %}
+			{# Not the default - allow setting as default via AJAX #}
+			{{ forms.lightswitchField({
+				label: 'Default'|t('search-manager'),
+				instructions: 'Use as default when no widget handle is specified'|t('search-manager'),
+				id: 'isDefault',
+				on: false
+			}) }}
+		{% endif %}
+	</div>
+
+	{# Widget Info #}
+	<div class="meta" style="padding: 12px;">
+		<style>
+			.widget-info-item {
+				display: grid;
+				grid-template-columns: auto 1fr;
+				gap: 8px;
+				align-items: center;
+				padding: 6px 0;
+			}
+			.widget-info-item:not(:last-child) {
+				border-bottom: 1px solid rgba(51, 64, 77, 0.1);
+			}
+			.widget-info-item .label {
+				color: #596673;
+				font-weight: normal;
+				white-space: nowrap;
+			}
+			.widget-info-item .value {
+				text-align: right;
+				word-break: break-word;
+			}
+		</style>
+		<div class="widget-info-item">
+			<div class="label">{{ 'Status'|t('search-manager') }}</div>
 			<div class="value">
 				<span class="status {{ widgetConfig.enabled ? 'live' : 'disabled' }}"></span>
 				{{ widgetConfig.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}
 			</div>
 		</div>
+
+		<div class="widget-info-item">
+			<div class="label">{{ 'Handle'|t('search-manager') }}</div>
+			<div class="value"><code>{{ widgetConfig.handle }}</code></div>
+		</div>
+
+		<div class="widget-info-item">
+			<div class="label">{{ 'Source'|t('search-manager') }}</div>
+			<div class="value">{{ 'Config File'|t('search-manager') }}</div>
+		</div>
+
+		{% if isDefault %}
+			<div class="widget-info-item">
+				<div class="label">{{ 'Default'|t('search-manager') }}</div>
+				<div class="value">{{ 'Yes'|t('search-manager') }}</div>
+			</div>
+		{% endif %}
 	</div>
 
 	{# Widget Preview #}
@@ -120,4 +145,32 @@
 		});
 	});
 })();
+
+// Default toggle via AJAX (for config widgets that are not already default)
+{% if not isDefaultFromConfig and not isDefault %}
+(function() {
+	const $lightswitch = $('#isDefault').closest('.lightswitch');
+	if (!$lightswitch.length) return;
+
+	$lightswitch.on('change', function() {
+		const isOn = $(this).hasClass('on');
+		if (isOn) {
+			Craft.sendActionRequest('POST', 'search-manager/widgets/set-default', {
+				data: { configId: '{{ widgetConfig.handle }}' }
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(response.data.message || '{{ "Default widget updated"|t('search-manager') }}');
+					setTimeout(() => window.location.reload(), 500);
+				} else {
+					Craft.cp.displayError(response.data.error);
+					$lightswitch.data('lightswitch').turnOff();
+				}
+			}).catch(function(error) {
+				Craft.cp.displayError('{{ "Failed to update default widget"|t('search-manager') }}');
+				$lightswitch.data('lightswitch').turnOff();
+			});
+		}
+	});
+})();
+{% endif %}
 {% endjs %}
