@@ -55,21 +55,24 @@
 	id: 'highlighting-enabled',
 	name: 'settings[highlighting][enabled]',
 	on: widgetConfig.isHighlightingEnabled(),
+	toggle: 'highlighting-options',
 }) }}
 
-{{ forms.textField({
-	label: "Highlight Tag"|t('search-manager'),
-	instructions: "HTML tag to wrap highlighted terms (e.g., 'mark', 'span', 'strong')"|t('search-manager'),
-	id: 'highlighting-tag',
-	name: 'settings[highlighting][tag]',
-	value: widgetConfig.getHighlightTag(),
-}) }}
+<div id="highlighting-options"{% if not widgetConfig.isHighlightingEnabled() %} class="hidden"{% endif %}>
+	{{ forms.textField({
+		label: "Highlight Tag"|t('search-manager'),
+		instructions: "HTML tag to wrap highlighted terms (e.g., 'mark', 'span', 'strong')"|t('search-manager'),
+		id: 'highlighting-tag',
+		name: 'settings[highlighting][tag]',
+		value: widgetConfig.getHighlightTag(),
+	}) }}
 
-{{ forms.textField({
-	label: "Highlight Class"|t('search-manager'),
-	instructions: "Optional CSS class to add to highlighted terms"|t('search-manager'),
-	id: 'highlighting-class',
-	name: 'settings[highlighting][class]',
-	value: widgetConfig.getHighlightClass(),
-}) }}
+	{{ forms.textField({
+		label: "Highlight Class"|t('search-manager'),
+		instructions: "Optional CSS class to add to highlighted terms"|t('search-manager'),
+		id: 'highlighting-class',
+		name: 'settings[highlighting][class]',
+		value: widgetConfig.getHighlightClass(),
+	}) }}
+</div>
 
