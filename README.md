@@ -161,6 +161,8 @@ If you are using this plugin, please be aware that future versions may have diff
 
 ### Search Widget (Frontend)
 - **CMD+K Style Modal** - Beautiful, accessible search modal with keyboard navigation
+- **WCAG 2.1 AA Compliant** - Tested with axe-core for accessibility compliance
+- **Accessible Color Contrast** - All default colors meet 4.5:1 contrast ratio requirements
 - **Customizable Appearance** - Full control over colors, fonts, spacing, and border radius
 - **Light & Dark Themes** - Built-in theme support with customizable colors for each
 - **Term Highlighting** - Highlight matched terms in results with configurable colors
@@ -173,6 +175,7 @@ If you are using this plugin, please be aware that future versions may have diff
 - **RTL Support** - Full right-to-left language support
 - **Backdrop Options** - Configurable opacity and blur effect
 - **Multiple Configs** - Create different widget configurations for different use cases
+- **Default Widget Auto-Assignment** - Automatically assigns a default widget when needed
 - **Web Component** - Uses `<search-widget>` custom element for easy integration
 
 ### Control Panel Interface
@@ -395,7 +398,7 @@ Add indices to `config/search-manager.php`:
 Define search widget configurations in `config/search-manager.php`:
 
 ```php
-// Default widget to use (must match a handle from widgets)
+// Default widget to use (auto-assigned if not set or invalid)
 'defaultWidgetHandle' => 'brand-search',
 
 // Define widget configurations
@@ -1367,6 +1370,18 @@ Exported analytics include Platform and App Version columns for detailed analysi
 
 The Search Widget provides a ready-to-use CMD+K style search modal for your frontend. It's a web component that handles all the UI, keyboard navigation, and search functionality.
 
+**Accessibility:**
+
+The widget is built with accessibility as a core feature:
+
+- **WCAG 2.1 AA Compliant** - Tested with axe-core and Playwright
+- **Color Contrast** - All default colors meet 4.5:1 contrast ratio for normal text
+- **Keyboard Navigation** - Full keyboard support (Arrow keys, Enter, Escape)
+- **Focus Management** - Proper focus trapping within the modal
+- **ARIA Labels** - Comprehensive ARIA attributes for screen readers
+- **Reduced Motion** - Respects `prefers-reduced-motion` user preference
+- **Shadow DOM Isolation** - Styles are encapsulated and don't affect your site
+
 **Basic Usage:**
 
 ```twig
@@ -1462,6 +1477,8 @@ The Search Widget provides a ready-to-use CMD+K style search modal for your fron
 } %}
 ```
 
+All style defaults are defined in `src/config/style-defaults.json` and are WCAG 2.1 AA compliant. When overriding colors, ensure you maintain sufficient contrast ratios (4.5:1 for normal text, 3:1 for large text).
+
 **Managing Widget Configs (CP):**
 
 Widget configurations can be managed in the Control Panel under Search Manager → Widgets:
@@ -1469,6 +1486,14 @@ Widget configurations can be managed in the Control Panel under Search Manager �
 - **Settings Tab**: Name, handle, search indices
 - **Behavior Tab**: Debounce, min chars, max results, recent searches, grouped results, hotkey
 - **Appearance Tab**: Colors, fonts, spacing, border radius, highlighting colors
+- **Preview**: Live preview of both light and dark mode appearance
+
+**Default Widget Handling:**
+
+- Set a default widget via `defaultWidgetHandle` in config or CP settings
+- If the default widget is deleted or doesn't exist, another enabled widget is automatically assigned
+- If the default widget is disabled, a warning is shown in the CP
+- Config-file widgets take precedence over database widgets with the same handle
 
 **Programmatic Opening:**
 
@@ -2131,6 +2156,14 @@ Backends can be defined in two ways:
 
 If a config backend has the same handle as a database backend, the config version takes precedence.
 
+**Default Backend Handling:**
+
+- Set a default backend via `defaultBackendHandle` in config or CP settings
+- If the default backend is deleted or doesn't exist, another enabled backend is automatically assigned
+- If the default backend is disabled, a warning is shown in the CP
+- Backends cannot be deleted if indices are actively using them
+- Config-file backends take precedence over database backends with the same handle
+
 ## Utilities & Cache Management
 
 ### Plugin Utilities (Control Panel → Utilities → Search Manager)
@@ -2309,7 +2342,12 @@ return [
         'indexPrefix' => App::env('SEARCH_INDEX_PREFIX'),
 
         // Default backend to use (must match a handle from backends)
+        // Auto-assigned if missing, deleted, or disabled
         'defaultBackendHandle' => 'my-backend',
+
+        // Default widget to use (must match a handle from widgets)
+        // Auto-assigned if missing, deleted, or disabled
+        'defaultWidgetHandle' => 'my-widget',
 
         // Analytics settings
         'enableAnalytics' => true,
