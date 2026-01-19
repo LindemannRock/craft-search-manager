@@ -1,5 +1,39 @@
 # Changelog
 
+## [5.30.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.29.0...v5.30.0) (2026-01-19)
+
+
+### Features
+
+* **a11y:** Enhance accessibility features and tests for search widget ([43e0690](https://github.com/LindemannRock/craft-search-manager/commit/43e06907766fc7eedfc6b33546484f025469153a))
+* add deduplication for search results and improve result rendering in SearchWidget ([1180b19](https://github.com/LindemannRock/craft-search-manager/commit/1180b19e12377d81ce58f2697741121cad62b472))
+* add highlighting feature to SearchWidget with customizable options ([ba05ed9](https://github.com/LindemannRock/craft-search-manager/commit/ba05ed9f85f2a5a4dd15e553cc2c12f51e11bffb))
+* add muted color styles for search widget ([2b7dc77](https://github.com/LindemannRock/craft-search-manager/commit/2b7dc778d3c484384cb00de49ae724b3c0932d05))
+* Add option to skip analytics tracking for internal operations ([b424e63](https://github.com/LindemannRock/craft-search-manager/commit/b424e631743f3f1617e39ae94a7c5fd7a8449d34))
+* add search widget and fix backend prefix/autocomplete bugs ([a67d52d](https://github.com/LindemannRock/craft-search-manager/commit/a67d52df47d51f05e7762832a8c464d718b1f2f5))
+* Add tooltip display for raw widget configuration in the widget view ([0930f6a](https://github.com/LindemannRock/craft-search-manager/commit/0930f6ad0079a70af91710341023f5db2c0fd028))
+* Add view action and template for index details in IndicesController ([619c715](https://github.com/LindemannRock/craft-search-manager/commit/619c71541afc9e82c02809f406f8e59cc46920d2))
+* Add widget management interface and enhance search widget functionality ([070db8e](https://github.com/LindemannRock/craft-search-manager/commit/070db8ede5e209564e0361b8bd4d56097e798fd2))
+* Add widget view functionality and improve backend/widget settings handling ([5ac2670](https://github.com/LindemannRock/craft-search-manager/commit/5ac26704393e8c2fbd65510a88c909c6e7182a99))
+* Enhance permissions for backend and widget configurations with user capability checks ([e79d39d](https://github.com/LindemannRock/craft-search-manager/commit/e79d39d16bcafbb90bd152d56e7e884a4c180ff2))
+* Enhance widget configuration management by preventing deletion of default configs and improving error handling ([bedbf58](https://github.com/LindemannRock/craft-search-manager/commit/bedbf58445301780c54a98998cef4807e059b7b3))
+* Implement auto-assignment of default backend and widget after deletion ([3e705da](https://github.com/LindemannRock/craft-search-manager/commit/3e705da25318819aa308f1de61d34d550c4d68f5))
+* Implement widget management settings and update backend configuration references ([f32fb70](https://github.com/LindemannRock/craft-search-manager/commit/f32fb7068142cde63476d58145bb58981dd96829))
+* Remove isDefault property from WidgetConfig and related logic ([434277f](https://github.com/LindemannRock/craft-search-manager/commit/434277ff6d2fda2171da3dea70d3303fda776fc0))
+* Update column headers and sorting functionality for source in backend and widget templates ([1fc9c63](https://github.com/LindemannRock/craft-search-manager/commit/1fc9c631a8476a067da9cc6016b5f5b1f94c51da))
+* Update default backend and widget handle descriptions for auto-assignment behavior ([4f48fa1](https://github.com/LindemannRock/craft-search-manager/commit/4f48fa1e32463cc9c47623ea5e0802ea3c132207))
+
+
+### Bug Fixes
+
+* Autocomplete for Redis/File backends and redesign utilities overview ([b6d5e9d](https://github.com/LindemannRock/craft-search-manager/commit/b6d5e9d659a80cbbcf8c0695555e76dbe293eef9))
+* Update widget styles retrieval to use preview method for appearance customization ([59f432e](https://github.com/LindemannRock/craft-search-manager/commit/59f432e6935fd0f7673321ea0f8ad2075969a0dc))
+
+
+### Miscellaneous Chores
+
+* Add optional widget configuration section to README ([b736491](https://github.com/LindemannRock/craft-search-manager/commit/b7364916cbf83da444e4968b8ae696c0b30c254e))
+
 ## [5.29.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.2...v5.29.0) (2026-01-16)
 
 
