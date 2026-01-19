@@ -1,5 +1,13 @@
 # Changelog
 
+## [5.31.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.30.0...v5.31.0) (2026-01-19)
+
+
+### Features
+
+* Add maxRecentSearches configuration for recent searches functionality ([a36ab2f](https://github.com/LindemannRock/craft-search-manager/commit/a36ab2f082d16f7be55d8956c59044e1223a12dd))
+* Refactor highlighting settings to group fields within a toggleable section ([9a872e6](https://github.com/LindemannRock/craft-search-manager/commit/9a872e60f886a8902952f1d2dd9b36cfd3640da4))
+
 ## [5.30.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.29.0...v5.30.0) (2026-01-19)
 
 
