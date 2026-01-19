@@ -675,7 +675,6 @@ class Install extends Migration
             'handle' => $this->string(64)->notNull(),
             'name' => $this->string(255)->notNull(),
             'settings' => $this->text()->null()->comment('JSON settings for highlighting, backdrop, behavior'),
-            'isDefault' => $this->boolean()->notNull()->defaultValue(false),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'dateCreated' => $this->dateTime()->notNull(),
             'dateUpdated' => $this->dateTime()->notNull(),
@@ -684,7 +683,6 @@ class Install extends Migration
 
         // Create indexes
         $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['handle'], true);
-        $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['isDefault'], false);
         $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['enabled'], false);
     }
 
@@ -726,7 +724,6 @@ class Install extends Migration
             'handle' => 'default',
             'name' => 'Default Widget',
             'settings' => json_encode($defaultSettings),
-            'isDefault' => 1,
             'enabled' => 1,
             'dateCreated' => Db::prepareDateForDb(new \DateTime()),
             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),

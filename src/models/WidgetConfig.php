@@ -22,7 +22,6 @@ class WidgetConfig extends Model
     public ?int $id = null;
     public string $handle = '';
     public string $name = '';
-    public bool $isDefault = false;
     public bool $enabled = true;
 
     /**
@@ -290,7 +289,7 @@ class WidgetConfig extends Model
             [['handle'], 'string', 'max' => 64],
             [['name'], 'string', 'max' => 255],
             [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.'],
-            [['isDefault', 'enabled'], 'boolean'],
+            [['enabled'], 'boolean'],
         ];
     }
 
@@ -307,7 +306,6 @@ class WidgetConfig extends Model
             'handle' => $this->handle,
             'name' => $this->name,
             'settings' => is_array($this->settings) ? Json::encode($this->settings) : $this->settings,
-            'isDefault' => $this->isDefault ? 1 : 0,
             'enabled' => $this->enabled ? 1 : 0,
         ];
     }

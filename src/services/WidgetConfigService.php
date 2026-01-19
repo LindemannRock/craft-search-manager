@@ -75,7 +75,6 @@ class WidgetConfigService extends Component
         $widgetConfig = new WidgetConfig();
         $widgetConfig->handle = $handle;
         $widgetConfig->name = $configData['name'] ?? ucfirst($handle);
-        $widgetConfig->isDefault = $configData['isDefault'] ?? false;
         $widgetConfig->enabled = $configData['enabled'] ?? true;
         $widgetConfig->source = 'config';
 
@@ -140,7 +139,7 @@ class WidgetConfigService extends Component
 
     /**
      * Get the default widget config
-     * Checks config file first for a default, then database
+     * Uses defaultWidgetHandle from plugin settings to determine the default
      */
     public function getDefault(): ?WidgetConfig
     {
@@ -148,44 +147,38 @@ class WidgetConfigService extends Component
             return $this->_defaultConfig;
         }
 
-        // First, check config file for a default
-        $configFileConfigs = $this->getConfigFileConfigs();
-        foreach ($configFileConfigs as $config) {
-            if ($config->isDefault && $config->enabled) {
+        // Get defaultWidgetHandle from plugin settings
+        $plugin = \lindemannrock\searchmanager\SearchManager::getInstance();
+        $settings = $plugin?->getSettings();
+        $defaultHandle = $settings?->defaultWidgetHandle;
+
+        // If a default handle is set, look it up
+        if ($defaultHandle) {
+            $config = $this->getByHandle($defaultHandle);
+            if ($config !== null && $config->enabled) {
                 $this->_defaultConfig = $config;
                 return $this->_defaultConfig;
             }
         }
 
-        // Then, check database
+        // Fallback: return first enabled config (config file first, then database)
+        $configFileConfigs = $this->getConfigFileConfigs();
+        foreach ($configFileConfigs as $config) {
+            if ($config->enabled) {
+                $this->_defaultConfig = $config;
+                return $this->_defaultConfig;
+            }
+        }
+
+        // Then database
         $row = (new Query())
             ->select('*')
             ->from(self::TABLE)
-            ->where(['isDefault' => 1])
+            ->where(['enabled' => 1])
+            ->orderBy(['id' => SORT_ASC])
             ->one();
 
         $this->_defaultConfig = $row ? $this->createFromRow($row) : null;
-
-        // If no default exists, return first enabled config (config file first, then database)
-        if ($this->_defaultConfig === null) {
-            // Check config file first
-            foreach ($configFileConfigs as $config) {
-                if ($config->enabled) {
-                    $this->_defaultConfig = $config;
-                    return $this->_defaultConfig;
-                }
-            }
-
-            // Then database
-            $row = (new Query())
-                ->select('*')
-                ->from(self::TABLE)
-                ->where(['enabled' => 1])
-                ->orderBy(['id' => SORT_ASC])
-                ->one();
-
-            $this->_defaultConfig = $row ? $this->createFromRow($row) : null;
-        }
 
         return $this->_defaultConfig;
     }
@@ -213,7 +206,7 @@ class WidgetConfigService extends Component
         $query = (new Query())
             ->select('*')
             ->from(self::TABLE)
-            ->orderBy(['isDefault' => SORT_DESC, 'name' => SORT_ASC]);
+            ->orderBy(['name' => SORT_ASC]);
 
         if ($enabledOnly) {
             $query->where(['enabled' => 1]);
@@ -229,10 +222,17 @@ class WidgetConfigService extends Component
             $configs[$row['handle']] = $this->createFromRow($row);
         }
 
+        // Get default handle for sorting
+        $plugin = \lindemannrock\searchmanager\SearchManager::getInstance();
+        $settings = $plugin?->getSettings();
+        $defaultHandle = $settings?->defaultWidgetHandle;
+
         // Sort: default first, then by name
-        usort($configs, function($a, $b) {
-            if ($a->isDefault !== $b->isDefault) {
-                return $b->isDefault <=> $a->isDefault;
+        usort($configs, function($a, $b) use ($defaultHandle) {
+            $aIsDefault = $a->handle === $defaultHandle;
+            $bIsDefault = $b->handle === $defaultHandle;
+            if ($aIsDefault !== $bIsDefault) {
+                return $bIsDefault <=> $aIsDefault;
             }
             return strcasecmp($a->name, $b->name);
         });
@@ -271,7 +271,6 @@ class WidgetConfigService extends Component
             $default->handle = 'default';
             $default->name = 'Default';
             $default->settings = WidgetConfig::defaultSettings();
-            $default->isDefault = true;
             $default->enabled = true;
         }
 
@@ -300,13 +299,6 @@ class WidgetConfigService extends Component
 
         $now = Db::prepareDateForDb(new \DateTime());
         $data = $config->prepareForDb();
-
-        // If setting as default, unset others
-        if ($config->isDefault) {
-            Craft::$app->db->createCommand()
-                ->update(self::TABLE, ['isDefault' => 0])
-                ->execute();
-        }
 
         if ($config->id) {
             // Update
@@ -351,8 +343,13 @@ class WidgetConfigService extends Component
             return false;
         }
 
+        // Check if this is the default widget
+        $plugin = \lindemannrock\searchmanager\SearchManager::getInstance();
+        $settings = $plugin?->getSettings();
+        $isDefault = $settings?->defaultWidgetHandle === $config->handle;
+
         // Don't delete the default config if it's the only one
-        if ($config->isDefault && $this->getCount() <= 1) {
+        if ($isDefault && $this->getCount() <= 1) {
             $this->logWarning('Cannot delete the only widget config');
             return false;
         }
@@ -360,21 +357,6 @@ class WidgetConfigService extends Component
         Craft::$app->db->createCommand()
             ->delete(self::TABLE, ['id' => $config->id])
             ->execute();
-
-        // If we deleted the default, set another as default
-        if ($config->isDefault) {
-            $first = (new Query())
-                ->select('id')
-                ->from(self::TABLE)
-                ->orderBy(['id' => SORT_ASC])
-                ->scalar();
-
-            if ($first) {
-                Craft::$app->db->createCommand()
-                    ->update(self::TABLE, ['isDefault' => 1], ['id' => $first])
-                    ->execute();
-            }
-        }
 
         // Clear cache
         $this->_defaultConfig = null;
@@ -411,7 +393,6 @@ class WidgetConfigService extends Component
         $config->handle = $row['handle'];
         $config->name = $row['name'];
         $config->settings = Json::decodeIfJson($row['settings']) ?: WidgetConfig::defaultSettings();
-        $config->isDefault = (bool) $row['isDefault'];
         $config->enabled = (bool) $row['enabled'];
         $config->dateCreated = $row['dateCreated'] ? new \DateTime($row['dateCreated']) : null;
         $config->dateUpdated = $row['dateUpdated'] ? new \DateTime($row['dateUpdated']) : null;
