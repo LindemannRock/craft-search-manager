@@ -4,9 +4,9 @@
  */
 
 :host {
-    /* Modal defaults */
+    /* Modal defaults - inline styles from config will override same-name vars */
     --sm-modal-bg: #ffffff;
-    --sm-modal-border: #e5e7eb;
+    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);
     --sm-modal-border-width: 1px;
     --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
     --sm-modal-radius: 12px;
@@ -19,15 +19,15 @@
     --sm-input-placeholder: #9ca3af;
     --sm-input-font-size: 16px;
 
-    /* Text colors */
-    --sm-text-primary: #111827;
-    --sm-text-secondary: #6b7280;
-    --sm-text-muted: #9ca3af;
+    /* Text colors - map from config variable names */
+    --sm-text-primary: var(--sm-result-text-color, #111827);
+    --sm-text-secondary: var(--sm-result-desc-color, #6b7280);
+    --sm-text-muted: var(--sm-result-muted-color, #9ca3af);
 
-    /* Borders and backgrounds */
-    --sm-border-color: #e5e7eb;
-    --sm-hover-bg: #f3f4f6;
-    --sm-selected-bg: #e5e7eb;
+    /* Borders and backgrounds - map from config variable names */
+    --sm-border-color: var(--sm-input-border-color, #e5e7eb);
+    --sm-hover-bg: var(--sm-result-hover-bg, #f3f4f6);
+    --sm-selected-bg: var(--sm-result-active-bg, #e5e7eb);
     --sm-selected-border: #3b82f6;
     --sm-result-radius: 8px;
 
@@ -38,13 +38,13 @@
     /* Kbd / keyboard shortcuts */
     --sm-kbd-bg: #f3f4f6;
     --sm-kbd-border: #d1d5db;
-    --sm-kbd-color: #6b7280;
+    --sm-kbd-color: var(--sm-kbd-text-color, #6b7280);
     --sm-kbd-radius: 4px;
 
     /* Trigger button */
     --sm-trigger-bg: #ffffff;
-    --sm-trigger-color: #374151;
-    --sm-trigger-border: #d1d5db;
+    --sm-trigger-color: var(--sm-trigger-text-color, #374151);
+    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);
     --sm-trigger-radius: 8px;
     --sm-trigger-border-width: 1px;
     --sm-trigger-px: 12px;
@@ -70,7 +70,7 @@
 
     --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
     --sm-text-secondary: var(--sm-result-desc-color-dark, #9ca3af);
-    --sm-text-muted: #6b7280;
+    --sm-text-muted: var(--sm-result-muted-color-dark, #6b7280);
 
     --sm-border-color: var(--sm-input-border-color-dark, #374151);
     --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);

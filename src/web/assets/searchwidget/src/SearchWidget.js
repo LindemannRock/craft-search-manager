@@ -195,15 +195,15 @@ class SearchWidget extends HTMLElement {
 
     // Apply custom CSS properties
     applyCustomStyles() {
-        const { backdropOpacity, enableBackdropBlur } = this.config;
+        const { backdropOpacity, enableBackdropBlur, theme } = this.config;
         const host = this.shadowRoot.host;
 
         // Backdrop settings
         host.style.setProperty('--sm-backdrop-opacity', backdropOpacity / 100);
         host.style.setProperty('--sm-backdrop-blur', enableBackdropBlur ? 'blur(4px)' : 'none');
 
-        // Apply all styles from config
-        applyStylesToElement(host, this.styles);
+        // Apply styles from config (theme-aware: only sets appropriate variables)
+        applyStylesToElement(host, this.styles, theme);
     }
 
     // Get hotkey display

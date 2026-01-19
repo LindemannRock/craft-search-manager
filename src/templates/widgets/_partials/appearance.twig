@@ -228,6 +228,12 @@
 			name: 'settings[styles][resultDescColor]',
 			value: styles.resultDescColor,
 		}) }}
+		{{ forms.colorField({
+			label: 'Muted (icons, arrows)'|t('search-manager'),
+			id: 'styles-resultMutedColor',
+			name: 'settings[styles][resultMutedColor]',
+			value: styles.resultMutedColor,
+		}) }}
 	</div>
 </div>
 
@@ -257,6 +263,12 @@
 			id: 'styles-resultDescColorDark',
 			name: 'settings[styles][resultDescColorDark]',
 			value: styles.resultDescColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Muted (icons, arrows)'|t('search-manager'),
+			id: 'styles-resultMutedColorDark',
+			name: 'settings[styles][resultMutedColorDark]',
+			value: styles.resultMutedColorDark,
 		}) }}
 	</div>
 </div>

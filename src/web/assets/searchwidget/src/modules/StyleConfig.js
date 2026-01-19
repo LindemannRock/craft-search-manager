@@ -40,6 +40,8 @@ export const STYLE_MAPPINGS = {
     resultTextColorDark: '--sm-result-text-color-dark',
     resultDescColor: '--sm-result-desc-color',
     resultDescColorDark: '--sm-result-desc-color-dark',
+    resultMutedColor: '--sm-result-muted-color',
+    resultMutedColorDark: '--sm-result-muted-color-dark',
     resultBorderRadius: '--sm-result-radius',
 
     // Trigger
@@ -91,7 +93,7 @@ export const COLOR_KEYS = [
     'inputPlaceholderColor', 'inputPlaceholderColorDark', 'inputBorderColor', 'inputBorderColorDark',
     'resultBg', 'resultBgDark', 'resultHoverBg', 'resultHoverBgDark',
     'resultActiveBg', 'resultActiveBgDark', 'resultTextColor', 'resultTextColorDark',
-    'resultDescColor', 'resultDescColorDark',
+    'resultDescColor', 'resultDescColorDark', 'resultMutedColor', 'resultMutedColorDark',
     'triggerBg', 'triggerBgDark', 'triggerTextColor', 'triggerTextColorDark',
     'triggerBorderColor', 'triggerBorderColorDark',
     'kbdBg', 'kbdBgDark', 'kbdTextColor', 'kbdTextColorDark',
@@ -131,6 +133,8 @@ export const DEFAULT_STYLES = {
     resultTextColorDark: '#f9fafb',
     resultDescColor: '#6b7280',
     resultDescColorDark: '#9ca3af',
+    resultMutedColor: '#9ca3af',
+    resultMutedColorDark: '#6b7280',
     resultBorderRadius: '8',
 
     // Trigger

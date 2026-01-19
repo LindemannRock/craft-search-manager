@@ -105,6 +105,8 @@ class WidgetConfig extends Model
                 'resultTextColorDark' => '#f9fafb',
                 'resultDescColor' => '#6b7280',
                 'resultDescColorDark' => '#9ca3af',
+                'resultMutedColor' => '#9ca3af',
+                'resultMutedColorDark' => '#6b7280',
                 'resultBorderRadius' => '8',
                 // Trigger button
                 'triggerBg' => '#ffffff',

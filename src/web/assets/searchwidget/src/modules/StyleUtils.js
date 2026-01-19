@@ -59,11 +59,22 @@ export function processStyleValue(key, value) {
  * Apply styles object to an element as CSS custom properties
  * @param {HTMLElement} element - The element to apply styles to
  * @param {Object} styles - The styles object from config
+ * @param {string} theme - Current theme ('light' or 'dark')
  */
-export function applyStylesToElement(element, styles) {
+export function applyStylesToElement(element, styles, theme = 'light') {
     if (!styles || typeof styles !== 'object') return;
 
+    const isDark = theme === 'dark';
+
     for (const [key, cssVar] of Object.entries(STYLE_MAPPINGS)) {
+        // Only set variables appropriate for the current theme
+        // Dark theme: only set *Dark variables
+        // Light theme: only set non-Dark variables
+        const isDarkKey = key.endsWith('Dark');
+
+        if (isDark && !isDarkKey) continue;
+        if (!isDark && isDarkKey) continue;
+
         if (styles[key] !== undefined && styles[key] !== null && styles[key] !== '') {
             const value = processStyleValue(key, styles[key]);
             if (value) {

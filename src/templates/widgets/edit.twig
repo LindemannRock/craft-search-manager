@@ -408,6 +408,12 @@ if (saveShortcut) {
 		'settings[styles][resultActiveBgDark]': [
 			{ container: darkPreview, selector: '.preview-result', prop: 'backgroundColor', index: 1 }
 		],
+		'settings[styles][resultMutedColor]': [
+			{ container: lightPreview, selector: '.preview-result-arrow', prop: 'stroke', all: true }
+		],
+		'settings[styles][resultMutedColorDark]': [
+			{ container: darkPreview, selector: '.preview-result-arrow', prop: 'stroke', all: true }
+		],
 		'settings[styles][resultBorderRadius]': [
 			{ container: lightPreview, selector: '.preview-result', prop: 'borderRadius', unit: 'px', all: true },
 			{ container: darkPreview, selector: '.preview-result', prop: 'borderRadius', unit: 'px', all: true }

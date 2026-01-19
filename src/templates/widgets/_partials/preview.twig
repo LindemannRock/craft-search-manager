@@ -26,16 +26,28 @@
 			</div>
 			<div class="preview-results">
 				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px;">
-					<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Sample Result'|t('search-manager') }}</span>
-					<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Description text'|t('search-manager') }}</span>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Sample Result'|t('search-manager') }}</span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Description text'|t('search-manager') }}</span>
+					</div>
 				</div>
 				<div class="preview-result" style="background: {{ styles.resultActiveBg }}; border-radius: {{ styles.resultBorderRadius }}px;">
-					<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
-					<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'With highlight'|t('search-manager') }}</span>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'With highlight'|t('search-manager') }}</span>
+					</div>
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColor }}" stroke-width="2">
+						<path d="M5 12h14M12 5l7 7-7 7"/>
+					</svg>
 				</div>
 				<div class="preview-result" style="background: {{ styles.resultHoverBg }}; border-radius: {{ styles.resultBorderRadius }}px;">
-					<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Hovered Item'|t('search-manager') }}</span>
-					<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Another result'|t('search-manager') }}</span>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Hovered Item'|t('search-manager') }}</span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Another result'|t('search-manager') }}</span>
+					</div>
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColor }}" stroke-width="2">
+						<path d="M5 12h14M12 5l7 7-7 7"/>
+					</svg>
 				</div>
 			</div>
 		</div>
@@ -65,16 +77,28 @@
 			</div>
 			<div class="preview-results">
 				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px;">
-					<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Sample Result'|t('search-manager') }}</span>
-					<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Description text'|t('search-manager') }}</span>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Sample Result'|t('search-manager') }}</span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Description text'|t('search-manager') }}</span>
+					</div>
 				</div>
 				<div class="preview-result" style="background: {{ styles.resultActiveBgDark }}; border-radius: {{ styles.resultBorderRadius }}px;">
-					<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
-					<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'With highlight'|t('search-manager') }}</span>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'With highlight'|t('search-manager') }}</span>
+					</div>
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColorDark }}" stroke-width="2">
+						<path d="M5 12h14M12 5l7 7-7 7"/>
+					</svg>
 				</div>
 				<div class="preview-result" style="background: {{ styles.resultHoverBgDark }}; border-radius: {{ styles.resultBorderRadius }}px;">
-					<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Hovered Item'|t('search-manager') }}</span>
-					<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Another result'|t('search-manager') }}</span>
+					<div class="preview-result-content">
+						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Hovered Item'|t('search-manager') }}</span>
+						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Another result'|t('search-manager') }}</span>
+					</div>
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColorDark }}" stroke-width="2">
+						<path d="M5 12h14M12 5l7 7-7 7"/>
+					</svg>
 				</div>
 			</div>
 		</div>
@@ -158,12 +182,20 @@
 }
 
 .preview-result {
+	display: flex;
+	align-items: center;
+	gap: 6px;
 	padding: 6px 8px;
 	margin-bottom: 2px;
 }
 
 .preview-result:last-child {
 	margin-bottom: 0;
+}
+
+.preview-result-content {
+	flex: 1;
+	min-width: 0;
 }
 
 .preview-result-title {
@@ -176,6 +208,10 @@
 .preview-result-desc {
 	display: block;
 	font-size: 9px;
+}
+
+.preview-result-arrow {
+	flex-shrink: 0;
 }
 
 .preview-result mark {

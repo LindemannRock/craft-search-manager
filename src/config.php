@@ -607,19 +607,6 @@ return [
             // ],
         ],
 
-        // ========================================
-        // TRANSFORMER SETTINGS
-        // ========================================
-
-        /**
-         * Default transformers for element types
-         * Maps element types to transformer classes
-         */
-        // 'transformers' => [
-        //     Entry::class => \lindemannrock\searchmanager\transformers\EntryTransformer::class,
-        //     \craft\elements\Asset::class => \lindemannrock\searchmanager\transformers\AssetTransformer::class,
-        //     \craft\elements\Category::class => \lindemannrock\searchmanager\transformers\CategoryTransformer::class,
-        // ],
     ],
 
     // ========================================
