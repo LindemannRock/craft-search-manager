@@ -74,7 +74,21 @@
 	id: 'behavior-showRecent',
 	name: 'settings[behavior][showRecent]',
 	on: widgetConfig.isShowRecentEnabled(),
+	toggle: 'max-recent-searches-field',
 }) }}
+
+<div id="max-recent-searches-field"{% if not widgetConfig.isShowRecentEnabled() %} class="hidden"{% endif %}>
+	{{ forms.textField({
+		label: 'Max Recent Searches'|t('search-manager'),
+		instructions: 'Maximum number of recent searches to store and display'|t('search-manager'),
+		id: 'behavior-maxRecentSearches',
+		name: 'settings[behavior][maxRecentSearches]',
+		value: widgetConfig.getMaxRecentSearches(),
+		type: 'number',
+		min: 1,
+		max: 20,
+	}) }}
+</div>
 
 {{ forms.lightswitchField({
 	label: 'Group Results'|t('search-manager'),
@@ -105,12 +119,15 @@
 	id: 'trigger-showTrigger',
 	name: 'settings[trigger][showTrigger]',
 	on: widgetConfig.isShowTriggerEnabled(),
+	toggle: 'trigger-text-field',
 }) }}
 
-{{ forms.textField({
-	label: 'Trigger Text'|t('search-manager'),
-	instructions: 'Text displayed on the trigger button'|t('search-manager'),
-	id: 'trigger-triggerText',
-	name: 'settings[trigger][triggerText]',
-	value: widgetConfig.getTriggerText(),
-}) }}
+<div id="trigger-text-field"{% if not widgetConfig.isShowTriggerEnabled() %} class="hidden"{% endif %}>
+	{{ forms.textField({
+		label: 'Trigger Text'|t('search-manager'),
+		instructions: 'Text displayed on the trigger button'|t('search-manager'),
+		id: 'trigger-triggerText',
+		name: 'settings[trigger][triggerText]',
+		value: widgetConfig.getTriggerText(),
+	}) }}
+</div>

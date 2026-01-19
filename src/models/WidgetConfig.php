@@ -65,6 +65,7 @@ class WidgetConfig extends Model
                 'minChars' => 2,
                 'maxResults' => 10,
                 'showRecent' => true,
+                'maxRecentSearches' => 5,
                 'groupResults' => true,
                 'hotkey' => 'k',
             ],
@@ -240,6 +241,11 @@ class WidgetConfig extends Model
     public function isShowRecentEnabled(): bool
     {
         return (bool) $this->getSetting('behavior.showRecent', true);
+    }
+
+    public function getMaxRecentSearches(): int
+    {
+        return (int) $this->getSetting('behavior.maxRecentSearches', 5);
     }
 
     public function isGroupResultsEnabled(): bool

@@ -30,6 +30,7 @@
  * - debounce: (int) Debounce delay in ms (default: from config)
  * - minChars: (int) Minimum characters before searching (default: from config)
  * - showRecent: (bool) Show recent searches (default: from config)
+ * - maxRecentSearches: (int) Maximum recent searches to store (default: from config)
  * - groupResults: (bool) Group results by type/section (default: from config)
  * - hotkey: (string) Keyboard shortcut key (default: from config)
  * - showTrigger: (bool) Show the trigger button (default: from config)
@@ -75,6 +76,7 @@
 {% set debounce = debounce ?? widgetConfig.getDebounce() %}
 {% set minChars = minChars ?? widgetConfig.getMinChars() %}
 {% set showRecent = showRecent ?? widgetConfig.isShowRecentEnabled() %}
+{% set maxRecentSearches = maxRecentSearches ?? widgetConfig.getMaxRecentSearches() %}
 {% set groupResults = groupResults ?? widgetConfig.isGroupResultsEnabled() %}
 {% set hotkey = hotkey ?? widgetConfig.getHotkey() %}
 
@@ -127,6 +129,7 @@
     debounce="{{ debounce }}"
     min-chars="{{ minChars }}"
     show-recent="{{ showRecent ? 'true' : 'false' }}"
+    max-recent-searches="{{ maxRecentSearches }}"
     group-results="{{ groupResults ? 'true' : 'false' }}"
     hotkey="{{ hotkey }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}

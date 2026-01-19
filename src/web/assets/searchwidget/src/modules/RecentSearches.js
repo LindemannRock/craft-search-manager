@@ -2,7 +2,7 @@
  * Recent Searches - localStorage handling for search history
  */
 
-const MAX_RECENT_SEARCHES = 5;
+const DEFAULT_MAX_RECENT_SEARCHES = 5;
 const STORAGE_PREFIX = 'sm-recent-';
 
 /**
@@ -34,9 +34,10 @@ export function loadRecentSearches(index) {
  * @param {string} index - The search index identifier
  * @param {string} query - The search query
  * @param {Object} result - Optional result object with title and url
+ * @param {number} maxRecent - Maximum number of recent searches to store
  * @returns {Array} - Updated array of recent searches
  */
-export function saveRecentSearch(index, query, result = null) {
+export function saveRecentSearch(index, query, result = null, maxRecent = DEFAULT_MAX_RECENT_SEARCHES) {
     if (!query || !query.trim()) return loadRecentSearches(index);
 
     const key = getStorageKey(index);
@@ -52,7 +53,7 @@ export function saveRecentSearch(index, query, result = null) {
     // Remove duplicates and add to front
     recentSearches = recentSearches.filter(s => s.query !== entry.query);
     recentSearches.unshift(entry);
-    recentSearches = recentSearches.slice(0, MAX_RECENT_SEARCHES);
+    recentSearches = recentSearches.slice(0, maxRecent);
 
     try {
         localStorage.setItem(key, JSON.stringify(recentSearches));

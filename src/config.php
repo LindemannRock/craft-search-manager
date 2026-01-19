@@ -554,7 +554,7 @@ return [
          *   - search.indexHandles: Array of index handles to search (empty = all)
          *   - highlighting: Highlight settings (enabled, tag, class, colors)
          *   - backdrop: Modal backdrop (opacity, blur)
-         *   - behavior: Widget behavior (debounce, minChars, maxResults, hotkey, etc.)
+         *   - behavior: Widget behavior (debounce, minChars, maxResults, showRecent, maxRecentSearches, groupResults, hotkey, etc.)
          *   - trigger: Trigger button (showTrigger, triggerText)
          *   - styles: Visual styles (colors, borders, fonts for light/dark modes)
          */
@@ -571,6 +571,9 @@ return [
             //             'debounce' => 300,
             //             'minChars' => 2,
             //             'maxResults' => 8,
+            //             'showRecent' => true,
+            //             'maxRecentSearches' => 5,
+            //             'groupResults' => true,
             //             'hotkey' => 'k',
             //         ],
             //         'styles' => [

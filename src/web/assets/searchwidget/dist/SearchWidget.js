@@ -209,7 +209,7 @@
   }
 
   // src/modules/RecentSearches.js
-  var MAX_RECENT_SEARCHES = 5;
+  var DEFAULT_MAX_RECENT_SEARCHES = 5;
   var STORAGE_PREFIX = "sm-recent-";
   function getStorageKey(index) {
     return `${STORAGE_PREFIX}${index || "default"}`;
@@ -223,7 +223,7 @@
       return [];
     }
   }
-  function saveRecentSearch(index, query, result = null) {
+  function saveRecentSearch(index, query, result = null, maxRecent = DEFAULT_MAX_RECENT_SEARCHES) {
     if (!query || !query.trim())
       return loadRecentSearches(index);
     const key = getStorageKey(index);
@@ -236,7 +236,7 @@
     let recentSearches = loadRecentSearches(index);
     recentSearches = recentSearches.filter((s) => s.query !== entry.query);
     recentSearches.unshift(entry);
-    recentSearches = recentSearches.slice(0, MAX_RECENT_SEARCHES);
+    recentSearches = recentSearches.slice(0, maxRecent);
     try {
       localStorage.setItem(key, JSON.stringify(recentSearches));
     } catch (e) {
@@ -925,6 +925,7 @@
         debounce: parseInt(this.getAttribute("debounce")) || 200,
         minChars: parseInt(this.getAttribute("min-chars")) || 2,
         showRecent: this.getAttribute("show-recent") !== "false",
+        maxRecentSearches: parseInt(this.getAttribute("max-recent-searches")) || 5,
         groupResults: this.getAttribute("group-results") !== "false",
         hotkey: this.getAttribute("hotkey") || "k",
         siteId: this.getAttribute("site-id") || "",
@@ -1340,11 +1341,16 @@
     }
     // Handle result click
     handleResultClick(e, item) {
-      const url = item.getAttribute("href") || item.dataset.url;
+      const href = item.getAttribute("href");
+      const dataUrl = item.dataset.url;
+      const url = href || dataUrl;
       const title = item.dataset.title || item.querySelector(".sm-result-title")?.textContent;
       const id = item.dataset.id;
       const query = item.dataset.query || this.query;
-      this.recentSearches = saveRecentSearch(this.config.index, query, { title, url });
+      const isRecentItem = item.classList.contains("sm-recent-item");
+      if (!isRecentItem) {
+        this.recentSearches = saveRecentSearch(this.config.index, query, { title, url }, this.config.maxRecentSearches);
+      }
       if (id && this.config.index) {
         trackClick({
           endpoint: this.config.analyticsEndpoint,
@@ -1354,6 +1360,10 @@
         });
       }
       if (url && url !== "#") {
+        if (isRecentItem) {
+          e.preventDefault();
+          window.location.href = url;
+        }
         this.close();
       } else if (query) {
         e.preventDefault();

@@ -1406,6 +1406,7 @@ The widget is built with accessibility as a core feature:
     debounce: 300,
     minChars: 2,
     showRecent: true,
+    maxRecentSearches: 5,
     groupResults: true,
     hotkey: 'k',
     showTrigger: true,
@@ -1432,6 +1433,7 @@ The widget is built with accessibility as a core feature:
 | `debounce` | int | Debounce delay in ms |
 | `minChars` | int | Minimum characters before searching |
 | `showRecent` | bool | Show recent searches |
+| `maxRecentSearches` | int | Maximum recent searches to store and display (default: 5) |
 | `groupResults` | bool | Group results by type/section |
 | `hotkey` | string | Keyboard shortcut key |
 | `showTrigger` | bool | Show the trigger button |

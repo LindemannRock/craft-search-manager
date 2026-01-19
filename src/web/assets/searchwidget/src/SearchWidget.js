@@ -95,6 +95,7 @@ class SearchWidget extends HTMLElement {
             debounce: parseInt(this.getAttribute('debounce')) || 200,
             minChars: parseInt(this.getAttribute('min-chars')) || 2,
             showRecent: this.getAttribute('show-recent') !== 'false',
+            maxRecentSearches: parseInt(this.getAttribute('max-recent-searches')) || 5,
             groupResults: this.getAttribute('group-results') !== 'false',
             hotkey: this.getAttribute('hotkey') || 'k',
             siteId: this.getAttribute('site-id') || '',
@@ -595,13 +596,20 @@ class SearchWidget extends HTMLElement {
 
     // Handle result click
     handleResultClick(e, item) {
-        const url = item.getAttribute('href') || item.dataset.url;
+        const href = item.getAttribute('href');
+        const dataUrl = item.dataset.url;
+        const url = href || dataUrl;
         const title = item.dataset.title || item.querySelector('.sm-result-title')?.textContent;
         const id = item.dataset.id;
         const query = item.dataset.query || this.query;
+        const isRecentItem = item.classList.contains('sm-recent-item');
 
-        this.recentSearches = saveRecentSearch(this.config.index, query, { title, url });
+        // Save to recent searches (for regular results, not for re-clicking recent items)
+        if (!isRecentItem) {
+            this.recentSearches = saveRecentSearch(this.config.index, query, { title, url }, this.config.maxRecentSearches);
+        }
 
+        // Track analytics for search results (not recent items)
         if (id && this.config.index) {
             trackClick({
                 endpoint: this.config.analyticsEndpoint,
@@ -611,9 +619,17 @@ class SearchWidget extends HTMLElement {
             });
         }
 
+        // Handle navigation/action
         if (url && url !== '#') {
+            // For <a> elements, browser handles navigation naturally
+            // For recent items (<div> elements), navigate explicitly
+            if (isRecentItem) {
+                e.preventDefault();
+                window.location.href = url;
+            }
             this.close();
         } else if (query) {
+            // No URL - populate search and trigger new search
             e.preventDefault();
             this.elements.input.value = query;
             this.query = query;
