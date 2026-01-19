@@ -24,8 +24,25 @@
 {% endblock %}
 
 {% block details %}
-	{# Default toggle #}
 	<div class="meta">
+		{# Enabled toggle (disabled, showing current state) #}
+		{{ forms.lightswitchField({
+			label: 'Enabled'|t('search-manager'),
+			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			id: 'enabled',
+			on: widgetConfig.enabled,
+			disabled: true
+		}) }}
+
+		{{ forms.lightswitchField({
+			label: 'Hide Results Without URL'|t('search-manager'),
+			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			id: 'hideResultsWithoutUrl',
+			on: widgetConfig.isHideResultsWithoutUrlEnabled(),
+			disabled: true
+		}) }}
+
+		{# Default toggle #}
 		{% if isDefaultFromConfig %}
 			{# Default set via config file - show disabled switch #}
 			{{ forms.lightswitchField({

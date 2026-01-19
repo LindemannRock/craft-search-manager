@@ -65,7 +65,7 @@
 	value: widgetConfig.getMaxResults(),
 	type: 'number',
 	min: 1,
-	max: 50,
+	max: 100,
 }) }}
 
 {{ forms.lightswitchField({
@@ -86,7 +86,7 @@
 		value: widgetConfig.getMaxRecentSearches(),
 		type: 'number',
 		min: 1,
-		max: 20,
+		max: 50,
 	}) }}
 </div>
 
@@ -106,6 +106,14 @@
 	value: widgetConfig.getHotkey(),
 	size: 1,
 	maxlength: 1,
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Hide Results Without URL'|t('search-manager'),
+	instructions: 'Hide search results that do not have a URL (e.g., entries without landing pages)'|t('search-manager'),
+	id: 'behavior-hideResultsWithoutUrl',
+	name: 'settings[behavior][hideResultsWithoutUrl]',
+	on: widgetConfig.isHideResultsWithoutUrlEnabled(),
 }) }}
 
 <hr>

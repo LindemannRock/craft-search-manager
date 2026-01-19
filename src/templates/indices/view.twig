@@ -37,6 +37,14 @@
 			disabled: true
 		}) }}
 
+		{{ forms.lightswitchField({
+			label: 'Skip Entries Without URL'|t('search-manager'),
+			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			id: 'skipEntriesWithoutUrl',
+			on: index.skipEntriesWithoutUrl,
+			disabled: true
+		}) }}
+
 		{# Actions #}
 		{% if canRebuild or canClear or (canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache)) %}
 			<div class="field">

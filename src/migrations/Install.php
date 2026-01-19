@@ -188,6 +188,7 @@ class Install extends Migration
             'language' => $this->string(10)->null(),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'enableAnalytics' => $this->boolean()->notNull()->defaultValue(true),
+            'skipEntriesWithoutUrl' => $this->boolean()->notNull()->defaultValue(false),
             'source' => $this->enum('source', ['config', 'database'])->notNull()->defaultValue('database'),
             'backend' => $this->string(255)->null()->comment('Handle of configured backend to use'),
             'lastIndexed' => $this->dateTime()->null(),
@@ -711,8 +712,10 @@ class Install extends Migration
                 'minChars' => 2,
                 'maxResults' => 10,
                 'showRecent' => true,
+                'maxRecentSearches' => 5,
                 'groupResults' => true,
                 'hotkey' => 'k',
+                'hideResultsWithoutUrl' => false,
             ],
             'trigger' => [
                 'showTrigger' => true,

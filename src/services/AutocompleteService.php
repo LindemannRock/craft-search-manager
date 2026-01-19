@@ -118,8 +118,21 @@ class AutocompleteService extends Component
 
         // Get storage using DRY approach via BackendService
         $storage = $this->getStorageForIndex($indexHandle);
+
+        // If no storage (external backend like Meilisearch/Algolia/Typesense),
+        // try to use the backend's native autocomplete
         if (!$storage) {
-            return [];
+            $suggestions = $this->getBackendAutocomplete($indexHandle, $normalizedQuery, [
+                'limit' => $limit,
+                'siteId' => $siteIdProvided ? $siteId : null,
+            ]);
+
+            // Cache and return
+            if ($settings->enableAutocompleteCache && !empty($suggestions)) {
+                $this->saveToCache($cacheKey, $suggestions);
+            }
+
+            return $suggestions;
         }
 
         $suggestions = [];
@@ -387,6 +400,63 @@ class AutocompleteService extends Component
                 'error' => $e->getMessage(),
             ]);
             return null;
+        }
+    }
+
+    /**
+     * Get autocomplete suggestions from the backend directly
+     *
+     * Used for external backends (Meilisearch, Algolia, Typesense) that don't
+     * use the storage abstraction but have native autocomplete/search support.
+     *
+     * @param string $indexHandle Raw index handle (without prefix)
+     * @param string $query Partial search query
+     * @param array $options Options like limit, siteId
+     * @return array Array of suggestion strings
+     */
+    private function getBackendAutocomplete(string $indexHandle, string $query, array $options = []): array
+    {
+        try {
+            // Get the backend for this index
+            $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
+
+            if (!$backend) {
+                $this->logError('No backend available for index', ['index' => $indexHandle]);
+                return [];
+            }
+
+            // Check if backend supports autocomplete
+            if (!method_exists($backend, 'autocomplete') || !method_exists($backend, 'supportsAutocomplete')) {
+                $this->logWarning('Backend does not support autocomplete', [
+                    'index' => $indexHandle,
+                    'backend' => $backend->getName(),
+                ]);
+                return [];
+            }
+
+            if (!$backend->supportsAutocomplete()) {
+                $this->logWarning('Backend autocomplete not enabled', [
+                    'index' => $indexHandle,
+                    'backend' => $backend->getName(),
+                ]);
+                return [];
+            }
+
+            $suggestions = $backend->autocomplete($indexHandle, $query, $options);
+
+            $this->logDebug('Got autocomplete from backend', [
+                'index' => $indexHandle,
+                'backend' => $backend->getName(),
+                'suggestions' => count($suggestions),
+            ]);
+
+            return $suggestions;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to get backend autocomplete', [
+                'index' => $indexHandle,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
         }
     }
 

@@ -389,6 +389,7 @@ Add indices to `config/search-manager.php`:
         },
         'transformer' => \modules\transformers\EntryTransformer::class,
         'enabled' => true,
+        'skipEntriesWithoutUrl' => false, // Skip entries without a URL
     ],
 ],
 ```
@@ -1409,6 +1410,7 @@ The widget is built with accessibility as a core feature:
     maxRecentSearches: 5,
     groupResults: true,
     hotkey: 'k',
+    hideResultsWithoutUrl: false,
     showTrigger: true,
     triggerText: 'Search',
     triggerSelector: '#my-search-btn',
@@ -1436,6 +1438,7 @@ The widget is built with accessibility as a core feature:
 | `maxRecentSearches` | int | Maximum recent searches to store and display (default: 5) |
 | `groupResults` | bool | Group results by type/section |
 | `hotkey` | string | Keyboard shortcut key |
+| `hideResultsWithoutUrl` | bool | Hide results without a URL (e.g., entries without landing pages) |
 | `showTrigger` | bool | Show the trigger button |
 | `triggerText` | string | Trigger button text |
 | `triggerSelector` | string | CSS selector for external trigger |
@@ -1472,6 +1475,7 @@ The widget is built with accessibility as a core feature:
     styles: {
         modalBg: '#1a1a1a',
         modalBorderRadius: '16',
+        modalMaxHeight: '70',
         inputBg: '#2a2a2a',
         inputTextColor: '#ffffff',
         resultHoverBg: '#333333',
@@ -1487,7 +1491,7 @@ Widget configurations can be managed in the Control Panel under Search Manager â
 
 - **Settings Tab**: Name, handle, search indices
 - **Behavior Tab**: Debounce, min chars, max results, recent searches, grouped results, hotkey
-- **Appearance Tab**: Colors, fonts, spacing, border radius, highlighting colors
+- **Appearance Tab**: Colors, fonts, spacing, border radius, max height, highlighting colors
 - **Preview**: Live preview of both light and dark mode appearance
 
 **Default Widget Handling:**
@@ -2165,6 +2169,89 @@ If a config backend has the same handle as a database backend, the config versio
 - If the default backend is disabled, a warning is shown in the CP
 - Backends cannot be deleted if indices are actively using them
 - Config-file backends take precedence over database backends with the same handle
+
+### External Backends - Features & Considerations
+
+The external backends (Algolia, Meilisearch, Typesense) have some differences from built-in backends (MySQL, Redis, File, PostgreSQL).
+
+#### Multi-Site Support
+
+All external backends support multi-site indexing with **composite document IDs**:
+
+- Document IDs are formatted as `{elementId}_{siteId}` (e.g., `5_1`, `5_2`)
+- This ensures the same element across different sites doesn't overwrite each other
+- When searching, results include the correct site-specific data
+- Built-in backends handle multi-site differently (storing siteId as a separate field)
+
+#### Autocomplete Support
+
+External backends support autocomplete using their native search:
+
+- Returns **title-based suggestions** (full entry titles matching the query)
+- Built-in backends return **term-based suggestions** (individual words)
+- This difference is by design - external backends leverage their instant search capabilities
+
+#### Backend-Specific Considerations
+
+**Meilisearch**
+- Schemaless - indexes all fields automatically
+- Searches all fields by default
+- Uses `deleteAllDocuments()` to clear index
+- Host can be full URL: `https://meilisearch.example.com`
+
+**Algolia**
+- Schemaless - indexes all fields automatically
+- Searches all searchable attributes by default
+- Uses `clearObjects()` to clear index
+- Requires `applicationId`, `adminApiKey`, and optionally `searchApiKey`
+
+**Typesense**
+- **Schema-based** - requires explicit field definitions
+- Collections are auto-created with a flexible schema on first index
+- **`query_by` is required** - must specify which fields to search
+- Default search fields: `title`, `content`, `url`
+- Custom transformer fields need to be added to `query_by` for searching
+- Clears index by deleting and recreating the collection
+
+```php
+// Typesense searches these fields by default
+'query_by' => 'title,content,url'
+
+// To search custom fields, pass them in search options:
+$results = Craft::$app->search->search('query', [
+    'query_by' => 'title,content,url,customField,anotherField',
+]);
+```
+
+**Environment Variables Example**
+
+```bash
+# Meilisearch
+MEILISEARCH_HOST="https://meilisearch.example.com"
+MEILISEARCH_ADMIN_API_KEY="your-master-key"
+
+# Algolia
+ALGOLIA_APPLICATION_ID="your-app-id"
+ALGOLIA_ADMIN_API_KEY="your-admin-key"
+ALGOLIA_SEARCH_API_KEY="your-search-key"
+
+# Typesense (separate host, port, protocol)
+TYPESENSE_HOST="typesense.example.com"
+TYPESENSE_PORT="443"
+TYPESENSE_PROTOCOL="https"
+TYPESENSE_ADMIN_API_KEY="your-api-key"
+```
+
+#### Troubleshooting External Backends
+
+| Issue | Cause | Solution |
+|-------|-------|----------|
+| 0 results after indexing | Index not rebuilt after config change | Clear index, then rebuild |
+| Wrong result count after changing `skipEntriesWithoutUrl` | Old documents still in index | Clear index, then rebuild |
+| Search returns different results than other backends | Different search algorithms | Expected - each engine has different ranking |
+| Typesense: "field not found" error | Custom field not in schema | Rebuild index (auto-creates schema) |
+| Typesense: field not searchable | Field not in `query_by` | Add field to `query_by` parameter |
+| Connection refused | Wrong host/port | Check env vars, use service name in Docker |
 
 ## Utilities & Cache Management
 

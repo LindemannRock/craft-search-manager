@@ -41,6 +41,7 @@ class SearchController extends Controller
      * - index: Single index handle (legacy, use indices instead)
      * - limit: Max results (default: 10)
      * - siteId: Site ID to search (optional)
+     * - hideResultsWithoutUrl: Hide results that don't have a URL (optional, default: false)
      *
      * @return Response
      */
@@ -51,6 +52,7 @@ class SearchController extends Controller
         $limit = (int) $request->getParam('limit', 10);
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int) $siteId : null;
+        $hideResultsWithoutUrl = (bool) $request->getParam('hideResultsWithoutUrl', false);
 
         // Get indices from new 'indices' param or legacy 'index' param
         $indicesParam = $request->getParam('indices', '');
@@ -131,10 +133,24 @@ class SearchController extends Controller
                     continue;
                 }
 
+                // Determine URL with proper priority:
+                // 1. Transformer-provided custom URL from hit data
+                // 2. Element's native URL
+                // 3. cpEditUrl only for CP requests (never for frontend)
+                $url = $hit['url'] ?? $element->url ?? null;
+                if ($url === null && Craft::$app->getRequest()->getIsCpRequest()) {
+                    $url = $element->cpEditUrl;
+                }
+
+                // Skip results without URL if hideResultsWithoutUrl is enabled
+                if ($hideResultsWithoutUrl && $url === null) {
+                    continue;
+                }
+
                 $result = [
                     'id' => $elementId,
                     'title' => $hit['title'] ?? $element->title ?? 'Untitled',
-                    'url' => $element->url ?? $element->cpEditUrl ?? null,
+                    'url' => $url,
                     'description' => $this->getDescription($hit, $element),
                     'section' => $this->getSectionName($element),
                     'type' => $hit['type'] ?? $element::displayName(),

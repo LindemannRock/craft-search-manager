@@ -56,8 +56,15 @@ class TypesenseBackend extends BaseBackend
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
+
+            // Ensure collection exists
+            $this->ensureCollectionExists($fullIndexName);
+
+            // Create composite id for multi-site uniqueness
+            $data = $this->prepareDocument($data);
+
             $client->collections[$fullIndexName]->documents->upsert($data);
-            $this->logDebug('Document indexed in Typesense', ['index' => $fullIndexName]);
+            $this->logDebug('Document indexed in Typesense', ['index' => $fullIndexName, 'id' => $data['id']]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to index in Typesense', ['error' => $e->getMessage()]);
@@ -70,6 +77,13 @@ class TypesenseBackend extends BaseBackend
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
+
+            // Ensure collection exists
+            $this->ensureCollectionExists($fullIndexName);
+
+            // Create composite id for multi-site uniqueness
+            $items = array_map(fn($item) => $this->prepareDocument($item), $items);
+
             $client->collections[$fullIndexName]->documents->import($items, ['action' => 'upsert']);
             $this->logInfo('Batch indexed in Typesense', ['index' => $fullIndexName, 'count' => count($items)]);
             return true;
@@ -79,13 +93,37 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    /**
+     * Prepare document for Typesense by creating composite id
+     *
+     * Note: Typesense uses 'id' as primary key (not 'objectID' like Algolia/Meilisearch)
+     */
+    private function prepareDocument(array $data): array
+    {
+        $elementId = $data['id'] ?? $data['objectID'];
+        $siteId = $data['siteId'] ?? null;
+
+        // Create composite id for multi-site uniqueness
+        // Store original element ID for Craft lookups
+        if ($siteId !== null) {
+            $data['elementId'] = $elementId;
+            $data['id'] = $elementId . '_' . $siteId;
+        }
+
+        return $data;
+    }
+
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-            $client->collections[$fullIndexName]->documents[(string)$elementId]->delete();
-            $this->logDebug('Document deleted from Typesense', ['index' => $fullIndexName, 'id' => $elementId]);
+
+            // Use composite key matching the id format
+            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+
+            $client->collections[$fullIndexName]->documents[$documentId]->delete();
+            $this->logDebug('Document deleted from Typesense', ['index' => $fullIndexName, 'id' => $documentId]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to delete from Typesense', ['error' => $e->getMessage()]);
@@ -98,9 +136,28 @@ class TypesenseBackend extends BaseBackend
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-            $searchParams = array_merge(['q' => $query, 'query_by' => 'title,content'], $options);
+
+            // Filter out internal options that Typesense doesn't understand
+            $internalOptions = ['siteId', 'source', 'platform', 'appVersion'];
+            $searchParams = array_diff_key($options, array_flip($internalOptions));
+            $searchParams['q'] = $query;
+            // Search all common string fields for consistency with other backends
+            $searchParams['query_by'] = $searchParams['query_by'] ?? 'title,content,url';
+
             $results = $client->collections[$fullIndexName]->documents->search($searchParams);
-            return ['hits' => $results['hits'] ?? [], 'total' => $results['found'] ?? 0];
+
+            // Unwrap documents - Typesense wraps each hit in a 'document' key
+            // Also add score from text_match for consistency with other backends
+            $hits = array_map(function($hit) {
+                $doc = $hit['document'] ?? [];
+                // Add score from Typesense's text_match (normalize to 0-1 range)
+                if (isset($hit['text_match'])) {
+                    $doc['score'] = $hit['text_match'] / 1000000000000000; // Typesense uses large integers
+                }
+                return $doc;
+            }, $results['hits'] ?? []);
+
+            return ['hits' => $hits, 'total' => $results['found'] ?? 0];
         } catch (\Throwable $e) {
             $this->logError('Typesense search failed', ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0];
@@ -112,8 +169,19 @@ class TypesenseBackend extends BaseBackend
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-            $client->collections[$fullIndexName]->documents->delete(['filter_by' => 'id:>0']);
-            $this->logInfo('Cleared Typesense index', ['index' => $fullIndexName]);
+
+            // Delete the entire collection (cleanest way to clear all documents)
+            // It will be auto-recreated on next index operation
+            $client->collections[$fullIndexName]->delete();
+
+            // Clear from our cache so it gets recreated
+            unset($this->_existingCollections[$fullIndexName]);
+
+            $this->logInfo('Cleared Typesense index (deleted collection)', ['index' => $fullIndexName]);
+            return true;
+        } catch (\Typesense\Exceptions\ObjectNotFound $e) {
+            // Collection doesn't exist - that's fine, it's already "clear"
+            $this->logDebug('Typesense collection not found (already clear)', ['index' => $fullIndexName]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to clear Typesense index', ['error' => $e->getMessage()]);
@@ -127,8 +195,11 @@ class TypesenseBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
+            // Use composite key matching the id format
+            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+
             // Try to retrieve the document - if it exists, return true
-            $client->collections[$fullIndexName]->documents[(string)$elementId]->retrieve();
+            $client->collections[$fullIndexName]->documents[$documentId]->retrieve();
             return true;
         } catch (\Typesense\Exceptions\ObjectNotFound $e) {
             // Document not found - this is expected
@@ -275,6 +346,103 @@ class TypesenseBackend extends BaseBackend
         return true;
     }
 
+    /**
+     * List all collections (indices) in Typesense
+     *
+     * @return array Array of index information
+     */
+    public function listIndices(): array
+    {
+        try {
+            $client = $this->getClient();
+            $collections = $client->collections->retrieve();
+
+            $indices = [];
+            foreach ($collections as $collection) {
+                $indices[] = [
+                    'name' => $collection['name'] ?? '',
+                    'entries' => $collection['num_documents'] ?? 0,
+                    'fields' => count($collection['fields'] ?? []),
+                    'createdAt' => $collection['created_at'] ?? null,
+                    'source' => 'typesense',
+                ];
+            }
+
+            return $indices;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to list Typesense collections', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    // =========================================================================
+    // AUTOCOMPLETE SUPPORT
+    // =========================================================================
+
+    /**
+     * Get autocomplete suggestions using native Typesense search
+     *
+     * @param string $indexName Index to search
+     * @param string $query Partial search query
+     * @param array $options Options like limit, siteId
+     * @return array Array of suggestion strings (titles)
+     */
+    public function autocomplete(string $indexName, string $query, array $options = []): array
+    {
+        try {
+            $limit = $options['limit'] ?? 10;
+            $siteId = $options['siteId'] ?? null;
+
+            // Build search options for Typesense
+            $searchOptions = [
+                'per_page' => $limit,
+                'query_by' => 'title,content',
+                'include_fields' => 'title,elementId,siteId',
+            ];
+
+            // Apply siteId filter if specified
+            if ($siteId !== null && $siteId !== '*') {
+                $searchOptions['filter_by'] = 'siteId:=' . (int)$siteId;
+            }
+
+            $results = $this->search($indexName, $query, $searchOptions);
+
+            // Extract unique titles from results
+            $suggestions = [];
+            foreach ($results['hits'] ?? [] as $hit) {
+                // Typesense wraps document in 'document' key
+                $doc = $hit['document'] ?? $hit;
+                $title = $doc['title'] ?? null;
+                if ($title && !in_array($title, $suggestions, true)) {
+                    $suggestions[] = $title;
+                }
+            }
+
+            $this->logDebug('Typesense autocomplete', [
+                'index' => $indexName,
+                'query' => $query,
+                'suggestions' => count($suggestions),
+            ]);
+
+            return $suggestions;
+        } catch (\Throwable $e) {
+            $this->logError('Typesense autocomplete failed', [
+                'error' => $e->getMessage(),
+                'index' => $indexName,
+                'query' => $query,
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Check if this backend supports autocomplete
+     */
+    public function supportsAutocomplete(): bool
+    {
+        return true;
+    }
+
     // =========================================================================
     // PRIVATE METHODS
     // =========================================================================
@@ -294,5 +462,74 @@ class TypesenseBackend extends BaseBackend
             ]);
         }
         return $this->_client;
+    }
+
+    /**
+     * Cache of collections we've already verified exist
+     */
+    private array $_existingCollections = [];
+
+    /**
+     * Ensure collection exists, create with auto-schema if not
+     *
+     * Typesense requires collections to have a schema before indexing.
+     * We use auto-schema detection which infers types from the first document.
+     */
+    private function ensureCollectionExists(string $collectionName): void
+    {
+        // Skip if we've already verified this collection
+        if (isset($this->_existingCollections[$collectionName])) {
+            return;
+        }
+
+        try {
+            $client = $this->getClient();
+
+            // Try to retrieve collection info
+            $client->collections[$collectionName]->retrieve();
+            $this->_existingCollections[$collectionName] = true;
+        } catch (\Typesense\Exceptions\ObjectNotFound $e) {
+            // Collection doesn't exist - create it with auto-schema
+            $this->createCollection($collectionName);
+            $this->_existingCollections[$collectionName] = true;
+        }
+    }
+
+    /**
+     * Create a collection with a flexible schema for Search Manager documents
+     */
+    private function createCollection(string $collectionName): void
+    {
+        $client = $this->getClient();
+
+        // Define schema with common Search Manager fields
+        // Using 'auto' type where possible for flexibility
+        $schema = [
+            'name' => $collectionName,
+            'fields' => [
+                // Required ID field (string for composite IDs like "5_1")
+                ['name' => 'id', 'type' => 'string'],
+
+                // Core fields
+                ['name' => 'objectID', 'type' => 'int32', 'optional' => true],
+                ['name' => 'elementId', 'type' => 'int32', 'optional' => true],
+                ['name' => 'siteId', 'type' => 'int32', 'optional' => true, 'facet' => true],
+                ['name' => 'title', 'type' => 'string', 'optional' => true],
+                ['name' => 'url', 'type' => 'string', 'optional' => true],
+                ['name' => 'content', 'type' => 'string', 'optional' => true],
+
+                // Dates (stored as timestamps)
+                ['name' => 'dateCreated', 'type' => 'int64', 'optional' => true],
+                ['name' => 'dateUpdated', 'type' => 'int64', 'optional' => true],
+
+                // Allow any additional fields with auto-detection
+                ['name' => '.*', 'type' => 'auto', 'optional' => true],
+            ],
+            'enable_nested_fields' => true,
+        ];
+
+        $client->collections->create($schema);
+
+        $this->logInfo('Created Typesense collection', ['name' => $collectionName]);
     }
 }

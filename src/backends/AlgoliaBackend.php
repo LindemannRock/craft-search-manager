@@ -56,8 +56,15 @@ class AlgoliaBackend extends BaseBackend
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
+
+            // Ensure index has filterable attributes configured
+            $this->ensureFilterableAttributes($fullIndexName);
+
+            // Create composite objectID for multi-site uniqueness
+            $data = $this->prepareDocument($data);
+
             $client->saveObject($fullIndexName, $data);
-            $this->logDebug('Document indexed in Algolia', ['index' => $fullIndexName]);
+            $this->logDebug('Document indexed in Algolia', ['index' => $fullIndexName, 'id' => $data['objectID']]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to index in Algolia', ['error' => $e->getMessage()]);
@@ -70,6 +77,13 @@ class AlgoliaBackend extends BaseBackend
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
+
+            // Ensure index has filterable attributes configured
+            $this->ensureFilterableAttributes($fullIndexName);
+
+            // Create composite objectID for multi-site uniqueness
+            $items = array_map(fn($item) => $this->prepareDocument($item), $items);
+
             $client->saveObjects($fullIndexName, $items);
             $this->logInfo('Batch indexed in Algolia', ['index' => $fullIndexName, 'count' => count($items)]);
             return true;
@@ -79,13 +93,33 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    /**
+     * Prepare document for Algolia by creating composite objectID
+     */
+    private function prepareDocument(array $data): array
+    {
+        $elementId = $data['objectID'] ?? $data['id'];
+        $siteId = $data['siteId'] ?? null;
+
+        // Create composite objectID for multi-site uniqueness
+        if ($siteId !== null) {
+            $data['objectID'] = $elementId . '_' . $siteId;
+        }
+
+        return $data;
+    }
+
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-            $client->deleteObject($fullIndexName, (string)$elementId);
-            $this->logDebug('Document deleted from Algolia', ['index' => $fullIndexName, 'id' => $elementId]);
+
+            // Use composite key matching the objectID format
+            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+
+            $client->deleteObject($fullIndexName, $documentId);
+            $this->logDebug('Document deleted from Algolia', ['index' => $fullIndexName, 'id' => $documentId]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to delete from Algolia', ['error' => $e->getMessage()]);
@@ -243,8 +277,11 @@ class AlgoliaBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
+            // Use composite key matching the objectID format
+            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+
             // Try to get the object - if it exists, return true
-            $client->getObject($fullIndexName, (string)$elementId);
+            $client->getObject($fullIndexName, $documentId);
             return true;
         } catch (\Algolia\AlgoliaSearch\Exceptions\NotFoundException $e) {
             // Object not found - this is expected
@@ -300,6 +337,71 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    // =========================================================================
+    // AUTOCOMPLETE SUPPORT
+    // =========================================================================
+
+    /**
+     * Get autocomplete suggestions using native Algolia search
+     *
+     * @param string $indexName Index to search
+     * @param string $query Partial search query
+     * @param array $options Options like limit, siteId
+     * @return array Array of suggestion strings (titles)
+     */
+    public function autocomplete(string $indexName, string $query, array $options = []): array
+    {
+        try {
+            $limit = $options['limit'] ?? 10;
+            $siteId = $options['siteId'] ?? null;
+
+            // Build search options
+            $searchOptions = [
+                'hitsPerPage' => $limit,
+                'attributesToRetrieve' => ['title', 'id', 'siteId'],
+            ];
+
+            // Apply siteId filter if specified
+            if ($siteId !== null && $siteId !== '*') {
+                $searchOptions['filters'] = 'siteId:' . (int)$siteId;
+            }
+
+            $results = $this->search($indexName, $query, $searchOptions);
+
+            // Extract unique titles from results
+            $suggestions = [];
+            foreach ($results['hits'] ?? [] as $hit) {
+                $title = $hit['title'] ?? null;
+                if ($title && !in_array($title, $suggestions, true)) {
+                    $suggestions[] = $title;
+                }
+            }
+
+            $this->logDebug('Algolia autocomplete', [
+                'index' => $indexName,
+                'query' => $query,
+                'suggestions' => count($suggestions),
+            ]);
+
+            return $suggestions;
+        } catch (\Throwable $e) {
+            $this->logError('Algolia autocomplete failed', [
+                'error' => $e->getMessage(),
+                'index' => $indexName,
+                'query' => $query,
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Check if this backend supports autocomplete
+     */
+    public function supportsAutocomplete(): bool
+    {
+        return true;
+    }
+
     private function getClient(): SearchClient
     {
         if ($this->_client === null) {
@@ -310,5 +412,64 @@ class AlgoliaBackend extends BaseBackend
             );
         }
         return $this->_client;
+    }
+
+    /**
+     * Cache of indices we've already configured
+     */
+    private array $_configuredIndices = [];
+
+    /**
+     * Ensure index has filterable attributes configured for siteId filtering
+     *
+     * Algolia requires attributes to be set as facets (attributesForFaceting)
+     * before they can be used in filter queries.
+     */
+    private function ensureFilterableAttributes(string $indexName): void
+    {
+        // Skip if we've already configured this index
+        if (isset($this->_configuredIndices[$indexName])) {
+            return;
+        }
+
+        try {
+            $client = $this->getClient();
+
+            // Get current settings
+            $currentSettings = $client->getSettings($indexName);
+            $currentFacets = $currentSettings['attributesForFaceting'] ?? [];
+
+            // Required filterable attributes for Search Manager
+            // Using filterOnly() to allow filtering without facet counts
+            $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementType)'];
+
+            // Check if already configured (normalize for comparison)
+            $normalizedCurrent = array_map(fn($f) => str_replace('filterOnly(', '', str_replace(')', '', $f)), $currentFacets);
+            $missingFacets = [];
+            foreach (['siteId', 'elementType'] as $attr) {
+                if (!in_array($attr, $normalizedCurrent, true)) {
+                    $missingFacets[] = 'filterOnly(' . $attr . ')';
+                }
+            }
+
+            if (!empty($missingFacets)) {
+                // Add missing facets while preserving existing ones
+                $newFacets = array_unique(array_merge($currentFacets, $missingFacets));
+                $client->setSettings($indexName, ['attributesForFaceting' => $newFacets]);
+
+                $this->logInfo('Configured Algolia filterable attributes', [
+                    'index' => $indexName,
+                    'attributes' => $newFacets,
+                ]);
+            }
+
+            $this->_configuredIndices[$indexName] = true;
+        } catch (\Throwable $e) {
+            // Log but don't fail - filtering just won't work
+            $this->logWarning('Failed to configure Algolia filterable attributes', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

@@ -64,12 +64,18 @@ class MeilisearchBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
+            // Ensure index has filterable attributes configured
+            $this->ensureFilterableAttributes($fullIndexName);
+
+            // Create composite objectID for multi-site uniqueness
+            $data = $this->prepareDocument($data);
+
             $index = $client->index($fullIndexName);
             $index->addDocuments([$data], 'objectID');
 
             $this->logDebug('Document indexed in Meilisearch', [
                 'index' => $fullIndexName,
-                'id' => $data['objectID'] ?? $data['id'] ?? 'unknown',
+                'id' => $data['objectID'],
             ]);
 
             return true;
@@ -86,6 +92,12 @@ class MeilisearchBackend extends BaseBackend
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
+
+            // Ensure index has filterable attributes configured
+            $this->ensureFilterableAttributes($fullIndexName);
+
+            // Create composite objectID for multi-site uniqueness
+            $items = array_map(fn($item) => $this->prepareDocument($item), $items);
 
             $index = $client->index($fullIndexName);
             $index->addDocuments($items, 'objectID');
@@ -104,6 +116,22 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /**
+     * Prepare document for Meilisearch by creating composite objectID
+     */
+    private function prepareDocument(array $data): array
+    {
+        $elementId = $data['objectID'] ?? $data['id'];
+        $siteId = $data['siteId'] ?? null;
+
+        // Create composite objectID for multi-site uniqueness
+        if ($siteId !== null) {
+            $data['objectID'] = $elementId . '_' . $siteId;
+        }
+
+        return $data;
+    }
+
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
@@ -111,11 +139,14 @@ class MeilisearchBackend extends BaseBackend
             $fullIndexName = $this->getFullIndexName($indexName);
 
             $index = $client->index($fullIndexName);
-            $index->deleteDocument($elementId);
+
+            // Use composite key matching the objectID format from transformer
+            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            $index->deleteDocument($documentId);
 
             $this->logDebug('Document deleted from Meilisearch', [
                 'index' => $fullIndexName,
-                'id' => $elementId,
+                'id' => $documentId,
             ]);
 
             return true;
@@ -133,17 +164,58 @@ class MeilisearchBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
+            // Extract siteId for filtering (internal option, not Meilisearch param)
+            $siteId = $options['siteId'] ?? null;
+
+            // Build Meilisearch-compatible search options
+            $searchParams = [
+                'showRankingScore' => true, // Include ranking scores in results
+            ];
+
+            // Map supported options
+            if (isset($options['limit'])) {
+                $searchParams['limit'] = $options['limit'];
+            }
+            if (isset($options['offset'])) {
+                $searchParams['offset'] = $options['offset'];
+            }
+            if (isset($options['attributesToRetrieve'])) {
+                $searchParams['attributesToRetrieve'] = $options['attributesToRetrieve'];
+            }
+
+            // Apply siteId filter if specified (not '*' or null for all sites)
+            if ($siteId !== null && $siteId !== '*') {
+                $searchParams['filter'] = 'siteId = ' . (int)$siteId;
+            }
+
             $index = $client->index($fullIndexName);
-            $results = $index->search($query, $options);
+            $results = $index->search($query, $searchParams);
+
+            // Map Meilisearch _rankingScore to standard score field
+            $rawHits = $results->getHits();
+            $this->logDebug('Meilisearch search raw hits', [
+                'count' => count($rawHits),
+                'firstHitKeys' => !empty($rawHits) ? array_keys($rawHits[0]) : [],
+                'hasRankingScore' => !empty($rawHits) && isset($rawHits[0]['_rankingScore']),
+            ]);
+
+            $hits = array_map(function($hit) {
+                if (isset($hit['_rankingScore'])) {
+                    $hit['score'] = $hit['_rankingScore'];
+                }
+                return $hit;
+            }, $rawHits);
 
             return [
-                'hits' => $results->getHits(),
+                'hits' => $hits,
                 'total' => $results->getEstimatedTotalHits(),
                 'processingTime' => $results->getProcessingTimeMs(),
             ];
         } catch (\Throwable $e) {
             $this->logError('Meilisearch search failed', [
                 'error' => $e->getMessage(),
+                'index' => $indexName,
+                'query' => $query,
             ]);
             return ['hits' => [], 'total' => 0];
         }
@@ -177,8 +249,11 @@ class MeilisearchBackend extends BaseBackend
 
             $index = $client->index($fullIndexName);
 
+            // Use composite key matching the objectID format from transformer
+            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+
             // Try to get the document - if it exists, return true
-            $index->getDocument($elementId);
+            $index->getDocument($documentId);
             return true;
         } catch (\Meilisearch\Exceptions\ApiException $e) {
             // Document not found - this is expected
@@ -325,6 +400,113 @@ class MeilisearchBackend extends BaseBackend
         return true;
     }
 
+    /**
+     * List all indices in Meilisearch
+     *
+     * @return array Array of index information
+     */
+    public function listIndices(): array
+    {
+        try {
+            $client = $this->getClient();
+            $indexesResult = $client->getIndexes();
+
+            $indices = [];
+            foreach ($indexesResult->getResults() as $index) {
+                // Try to get stats for document count (may fail due to API key permissions)
+                $entries = 0;
+                try {
+                    $stats = $index->stats();
+                    $entries = $stats['numberOfDocuments'] ?? 0;
+                } catch (\Throwable $e) {
+                    // Stats endpoint may require different permissions - continue without count
+                }
+
+                $indices[] = [
+                    'name' => $index->getUid(),
+                    'uid' => $index->getUid(),
+                    'entries' => $entries,
+                    'primaryKey' => $index->getPrimaryKey(),
+                    'createdAt' => $index->getCreatedAt()?->format('c'),
+                    'updatedAt' => $index->getUpdatedAt()?->format('c'),
+                    'source' => 'meilisearch',
+                ];
+            }
+
+            return $indices;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to list Meilisearch indices', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    // =========================================================================
+    // AUTOCOMPLETE SUPPORT
+    // =========================================================================
+
+    /**
+     * Get autocomplete suggestions using native Meilisearch search
+     *
+     * Meilisearch is designed for instant search / search-as-you-type,
+     * so we simply use the search endpoint with the partial query.
+     *
+     * @param string $indexName Index to search
+     * @param string $query Partial search query
+     * @param array $options Options like limit, siteId
+     * @return array Array of suggestion strings (titles)
+     */
+    public function autocomplete(string $indexName, string $query, array $options = []): array
+    {
+        try {
+            $limit = $options['limit'] ?? 10;
+            $siteId = $options['siteId'] ?? null;
+
+            // Use native search - Meilisearch handles prefix matching automatically
+            $searchOptions = [
+                'limit' => $limit,
+                'attributesToRetrieve' => ['title', 'id', 'siteId'],
+            ];
+
+            if ($siteId !== null && $siteId !== '*') {
+                $searchOptions['siteId'] = $siteId;
+            }
+
+            $results = $this->search($indexName, $query, $searchOptions);
+
+            // Extract unique titles from results
+            $suggestions = [];
+            foreach ($results['hits'] ?? [] as $hit) {
+                $title = $hit['title'] ?? null;
+                if ($title && !in_array($title, $suggestions, true)) {
+                    $suggestions[] = $title;
+                }
+            }
+
+            $this->logDebug('Meilisearch autocomplete', [
+                'index' => $indexName,
+                'query' => $query,
+                'suggestions' => count($suggestions),
+            ]);
+
+            return $suggestions;
+        } catch (\Throwable $e) {
+            $this->logError('Meilisearch autocomplete failed', [
+                'error' => $e->getMessage(),
+                'index' => $indexName,
+                'query' => $query,
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Check if this backend supports autocomplete
+     */
+    public function supportsAutocomplete(): bool
+    {
+        return true;
+    }
+
     // =========================================================================
     // PRIVATE METHODS
     // =========================================================================
@@ -341,5 +523,57 @@ class MeilisearchBackend extends BaseBackend
         }
 
         return $this->_client;
+    }
+
+    /**
+     * Cache of indices we've already configured
+     */
+    private array $_configuredIndices = [];
+
+    /**
+     * Ensure index has filterable attributes configured for siteId filtering
+     *
+     * Meilisearch requires attributes to be explicitly set as filterable
+     * before they can be used in filter queries.
+     */
+    private function ensureFilterableAttributes(string $indexName): void
+    {
+        // Skip if we've already configured this index
+        if (isset($this->_configuredIndices[$indexName])) {
+            return;
+        }
+
+        try {
+            $client = $this->getClient();
+            $index = $client->index($indexName);
+
+            // Get current filterable attributes
+            $currentFilterable = $index->getFilterableAttributes();
+
+            // Required filterable attributes for Search Manager
+            $requiredFilterable = ['siteId', 'elementType'];
+
+            // Check if already configured
+            $missingAttributes = array_diff($requiredFilterable, $currentFilterable);
+
+            if (!empty($missingAttributes)) {
+                // Add missing attributes while preserving existing ones
+                $newFilterable = array_unique(array_merge($currentFilterable, $requiredFilterable));
+                $index->updateFilterableAttributes($newFilterable);
+
+                $this->logInfo('Configured Meilisearch filterable attributes', [
+                    'index' => $indexName,
+                    'attributes' => $newFilterable,
+                ]);
+            }
+
+            $this->_configuredIndices[$indexName] = true;
+        } catch (\Throwable $e) {
+            // Log but don't fail - filtering just won't work
+            $this->logWarning('Failed to configure Meilisearch filterable attributes', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

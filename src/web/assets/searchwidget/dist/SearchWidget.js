@@ -10,6 +10,7 @@
     modalShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
     modalShadowDark: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
     modalMaxWidth: "640",
+    modalMaxHeight: "80",
     inputBg: "#ffffff",
     inputBgDark: "#1f2937",
     inputTextColor: "#111827",
@@ -62,6 +63,7 @@
     modalShadow: "--sm-modal-shadow",
     modalShadowDark: "--sm-modal-shadow-dark",
     modalMaxWidth: "--sm-modal-width",
+    modalMaxHeight: "--sm-modal-max-height",
     // Input
     inputBg: "--sm-input-bg",
     inputBgDark: "--sm-input-bg-dark",
@@ -122,6 +124,9 @@
     "triggerPaddingY",
     "triggerFontSize",
     "kbdBorderRadius"
+  ];
+  var VH_KEYS = [
+    "modalMaxHeight"
   ];
   var COLOR_KEYS = [
     "modalBg",
@@ -186,6 +191,9 @@
     }
     if (NUMERIC_KEYS.includes(key)) {
       processedValue = processedValue + "px";
+    }
+    if (VH_KEYS.includes(key)) {
+      processedValue = processedValue + "vh";
     }
     return processedValue;
   }
@@ -1205,6 +1213,9 @@
                                 <polyline points="12 6 12 12 16 14"/>
                             </svg>
                             <span class="sm-result-title">${this.escapeHtml(item.title || item.query)}</span>
+                            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
                         </div>
                     `).join("")}
                 </div>

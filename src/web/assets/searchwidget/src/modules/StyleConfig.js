@@ -23,6 +23,7 @@ export const STYLE_MAPPINGS = {
     modalShadow: '--sm-modal-shadow',
     modalShadowDark: '--sm-modal-shadow-dark',
     modalMaxWidth: '--sm-modal-width',
+    modalMaxHeight: '--sm-modal-max-height',
 
     // Input
     inputBg: '--sm-input-bg',
@@ -90,6 +91,11 @@ export const NUMERIC_KEYS = [
     'triggerPaddingY',
     'triggerFontSize',
     'kbdBorderRadius',
+];
+
+// Keys that require 'vh' suffix
+export const VH_KEYS = [
+    'modalMaxHeight',
 ];
 
 // Keys that are color values (need # prefix if missing)

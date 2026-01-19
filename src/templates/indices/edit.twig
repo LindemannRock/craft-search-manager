@@ -366,6 +366,14 @@ document.addEventListener('DOMContentLoaded', function() {
 			<input type="hidden" name="enableAnalytics" value="{{ index.enableAnalytics ?? true ? '1' : '0' }}">
 		{% endif %}
 
+		{{ forms.lightswitchField({
+			label: 'Skip Entries Without URL'|t('search-manager'),
+			instructions: 'Skip indexing entries that do not have a URL (e.g., entries from sections without URL format)'|t('search-manager'),
+			id: 'skipEntriesWithoutUrl',
+			name: 'skipEntriesWithoutUrl',
+			on: index.skipEntriesWithoutUrl ?? false
+		}) }}
+
 		{% if not isNew and (currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices')) %}
 			<div class="field">
 				<div class="heading">

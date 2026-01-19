@@ -134,6 +134,7 @@ class IndicesController extends Controller
         $index->backend = $request->getBodyParam('backend') ?: null;
         $index->enabled = (bool)$request->getBodyParam('enabled');
         $index->enableAnalytics = (bool)$request->getBodyParam('enableAnalytics', true);
+        $index->skipEntriesWithoutUrl = (bool)$request->getBodyParam('skipEntriesWithoutUrl', false);
         $index->criteria = $request->getBodyParam('criteria', []);
 
         if (!$index->validate() || !$index->save()) {

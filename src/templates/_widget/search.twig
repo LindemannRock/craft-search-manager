@@ -33,6 +33,7 @@
  * - maxRecentSearches: (int) Maximum recent searches to store (default: from config)
  * - groupResults: (bool) Group results by type/section (default: from config)
  * - hotkey: (string) Keyboard shortcut key (default: from config)
+ * - hideResultsWithoutUrl: (bool) Hide results that don't have a URL (default: from config)
  * - showTrigger: (bool) Show the trigger button (default: from config)
  * - triggerText: (string) Trigger button text (default: from config)
  * - triggerSelector: (string) CSS selector for external trigger element (e.g., '#my-search-btn')
@@ -79,6 +80,7 @@
 {% set maxRecentSearches = maxRecentSearches ?? widgetConfig.getMaxRecentSearches() %}
 {% set groupResults = groupResults ?? widgetConfig.isGroupResultsEnabled() %}
 {% set hotkey = hotkey ?? widgetConfig.getHotkey() %}
+{% set hideResultsWithoutUrl = hideResultsWithoutUrl ?? widgetConfig.isHideResultsWithoutUrlEnabled() %}
 
 {# Trigger settings #}
 {% set showTrigger = showTrigger ?? widgetConfig.isShowTriggerEnabled() %}
@@ -132,6 +134,7 @@
     max-recent-searches="{{ maxRecentSearches }}"
     group-results="{{ groupResults ? 'true' : 'false' }}"
     hotkey="{{ hotkey }}"
+    hide-results-without-url="{{ hideResultsWithoutUrl ? 'true' : 'false' }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}
     dir="{{ dir }}"

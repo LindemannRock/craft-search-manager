@@ -145,6 +145,16 @@ class IndexingService extends Component
         $success = true;
         foreach ($indexHandles as $indexHandle) {
             try {
+                // Check if index should skip entries without URL
+                $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+                if ($index && $index->skipEntriesWithoutUrl && $element->url === null) {
+                    $this->logDebug('Skipping element without URL for index', [
+                        'elementId' => $element->id,
+                        'indexHandle' => $indexHandle,
+                    ]);
+                    continue;
+                }
+
                 // Get the backend that will be used for this index
                 $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
                 $backendName = $backend ? $backend->getName() : 'none';

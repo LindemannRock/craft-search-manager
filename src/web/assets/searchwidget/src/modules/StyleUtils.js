@@ -2,7 +2,7 @@
  * Style Utilities - Color normalization and CSS helpers
  */
 
-import { STYLE_MAPPINGS, NUMERIC_KEYS, COLOR_KEYS } from './StyleConfig.js';
+import { STYLE_MAPPINGS, NUMERIC_KEYS, VH_KEYS, COLOR_KEYS } from './StyleConfig.js';
 
 /**
  * Check if a value is a 6-character hex color without # prefix
@@ -50,6 +50,11 @@ export function processStyleValue(key, value) {
     // Add px suffix for numeric values
     if (NUMERIC_KEYS.includes(key)) {
         processedValue = processedValue + 'px';
+    }
+
+    // Add vh suffix for viewport height values
+    if (VH_KEYS.includes(key)) {
+        processedValue = processedValue + 'vh';
     }
 
     return processedValue;

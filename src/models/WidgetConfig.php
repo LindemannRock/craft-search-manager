@@ -68,6 +68,7 @@ class WidgetConfig extends Model
                 'maxRecentSearches' => 5,
                 'groupResults' => true,
                 'hotkey' => 'k',
+                'hideResultsWithoutUrl' => false,
             ],
             'trigger' => [
                 'showTrigger' => true,
@@ -256,6 +257,11 @@ class WidgetConfig extends Model
     public function getHotkey(): string
     {
         return $this->getSetting('behavior.hotkey', 'k');
+    }
+
+    public function isHideResultsWithoutUrlEnabled(): bool
+    {
+        return (bool) $this->getSetting('behavior.hideResultsWithoutUrl', false);
     }
 
     // Trigger

@@ -58,6 +58,11 @@ class SearchIndex extends Model
      */
     public bool $enableAnalytics = true;
 
+    /**
+     * @var bool Whether to skip indexing entries that don't have a URL
+     */
+    public bool $skipEntriesWithoutUrl = false;
+
     public ?\DateTime $lastIndexed = null;
     public int $documentCount = 0;
     public int $sortOrder = 0;
@@ -160,6 +165,7 @@ class SearchIndex extends Model
             $model->backend = $configData['backend'] ?? null;
             $model->enabled = $configData['enabled'] ?? true;
             $model->enableAnalytics = $configData['enableAnalytics'] ?? true;
+            $model->skipEntriesWithoutUrl = $configData['skipEntriesWithoutUrl'] ?? false;
             $model->source = 'config';
 
             // Load stats from database if metadata record exists
@@ -282,6 +288,7 @@ class SearchIndex extends Model
                 $model->backend = $indexConfig['backend'] ?? null;
                 $model->enabled = $indexConfig['enabled'] ?? true;
                 $model->enableAnalytics = $indexConfig['enableAnalytics'] ?? true;
+                $model->skipEntriesWithoutUrl = $indexConfig['skipEntriesWithoutUrl'] ?? false;
                 $model->source = 'config';
 
                 // Check if database metadata exists for this config index (array lookup)
@@ -363,6 +370,7 @@ class SearchIndex extends Model
         $model->backend = $row['backend'] ?? null;
         $model->enabled = (bool)$row['enabled'];
         $model->enableAnalytics = (bool)($row['enableAnalytics'] ?? true);
+        $model->skipEntriesWithoutUrl = (bool)($row['skipEntriesWithoutUrl'] ?? false);
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
         $model->documentCount = (int)$row['documentCount'];
@@ -405,6 +413,7 @@ class SearchIndex extends Model
                 'backend' => $this->backend ?: null,
                 'enabled' => (int)$this->enabled,
                 'enableAnalytics' => (int)$this->enableAnalytics,
+                'skipEntriesWithoutUrl' => (int)$this->skipEntriesWithoutUrl,
                 'source' => $this->source,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
                 'documentCount' => $this->documentCount,
@@ -961,7 +970,16 @@ class SearchIndex extends Model
                     $query->status(\craft\elements\Entry::STATUS_LIVE);
                 }
 
-                $totalCount += $query->count();
+                // If skipEntriesWithoutUrl is enabled, we need to iterate and check URLs
+                if ($this->skipEntriesWithoutUrl) {
+                    foreach ($query->all() as $element) {
+                        if ($element->url !== null) {
+                            $totalCount++;
+                        }
+                    }
+                } else {
+                    $totalCount += $query->count();
+                }
             }
 
             return $totalCount;

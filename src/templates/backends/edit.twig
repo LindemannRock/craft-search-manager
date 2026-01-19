@@ -377,6 +377,15 @@ setTimeout(updateActionButton, 10);
                     on: backend.enabled ?? true
                 }) }}
 				{% endif %}
+			{% else %}
+				{# Config backend - show as read-only #}
+				{{ forms.lightswitchField({
+					label: 'Enabled'|t('search-manager'),
+					instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+					id: 'enabled',
+					on: backend.enabled ?? true,
+					disabled: true
+				}) }}
 			{% endif %}
 
 			{# Default toggle - shown for all backends (config or database) #}

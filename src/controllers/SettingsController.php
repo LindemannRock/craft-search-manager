@@ -237,7 +237,8 @@ class SettingsController extends Controller
             $results = SearchManager::$plugin->backend->search($indexHandle, $query, $searchOptions);
             $executionTime = round((microtime(true) - $startTime) * 1000, 2);
 
-            $backend = SearchManager::$plugin->backend->getActiveBackend();
+            // Get the actual backend used for this index (not the default)
+            $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
             $backendName = $backend ? $backend->getName() : 'unknown';
 
             // Check if result was actually cached from metadata
@@ -260,7 +261,9 @@ class SettingsController extends Controller
                 // Load elements per site to get correct site-specific data
                 $elementsById = [];
                 foreach ($hitsBySite as $siteId => $siteHits) {
-                    $elementIds = array_column($siteHits, 'objectID');
+                    // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
+                    // External backends may use composite keys, so we need the original element ID
+                    $elementIds = array_map(fn($hit) => $hit['elementId'] ?? $hit['id'], $siteHits);
                     $elements = $elementType::find()
                         ->id($elementIds)
                         ->siteId($siteId)
@@ -276,7 +279,9 @@ class SettingsController extends Controller
                 // Enhance hits with element data including site info
                 foreach ($results['hits'] as &$hit) {
                     $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
-                    $elementKey = $hitSiteId . ':' . $hit['objectID'];
+                    // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
+                    $actualElementId = $hit['elementId'] ?? $hit['id'];
+                    $elementKey = $hitSiteId . ':' . $actualElementId;
                     $element = $elementsById[$elementKey] ?? null;
 
                     if ($element) {

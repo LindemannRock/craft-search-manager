@@ -10,10 +10,11 @@
  * @param {Array} options.indices - Search index handles
  * @param {string} options.siteId - Optional site ID
  * @param {number} options.maxResults - Maximum results to return
+ * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
  * @param {AbortSignal} options.signal - AbortController signal
  * @returns {Promise<Array>} - Array of search results
  */
-export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, signal }) {
+export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, signal }) {
     const params = new URLSearchParams({
         q: query,
         limit: maxResults.toString(),
@@ -26,6 +27,10 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
 
     if (siteId) {
         params.append('siteId', siteId);
+    }
+
+    if (hideResultsWithoutUrl) {
+        params.append('hideResultsWithoutUrl', '1');
     }
 
     // Check if endpoint already has query params (Craft's actionUrl includes ?p=...)

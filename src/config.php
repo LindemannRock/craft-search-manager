@@ -499,6 +499,7 @@ return [
          * - backend: Handle of configured backend (optional, uses defaultBackendHandle if not set)
          * - enabled: Whether the index is active
          * - enableAnalytics: Whether to track search analytics for this index (default: true)
+         * - skipEntriesWithoutUrl: Skip indexing entries that don't have a URL (default: false)
          */
         'indices' => [
             // Example: English entries index using default backend
@@ -527,6 +528,7 @@ return [
             //     'backend' => 'production-algolia', // Use specific backend for this index
             //     'enabled' => true,
             //     'enableAnalytics' => true, // Track search analytics for this index
+            //     'skipEntriesWithoutUrl' => false, // Skip entries without a URL
             // ],
         ],
 
@@ -554,9 +556,9 @@ return [
          *   - search.indexHandles: Array of index handles to search (empty = all)
          *   - highlighting: Highlight settings (enabled, tag, class, colors)
          *   - backdrop: Modal backdrop (opacity, blur)
-         *   - behavior: Widget behavior (debounce, minChars, maxResults, showRecent, maxRecentSearches, groupResults, hotkey, etc.)
+         *   - behavior: Widget behavior (debounce, minChars, maxResults, showRecent, maxRecentSearches, groupResults, hotkey, hideResultsWithoutUrl, etc.)
          *   - trigger: Trigger button (showTrigger, triggerText)
-         *   - styles: Visual styles (colors, borders, fonts for light/dark modes)
+         *   - styles: Visual styles (colors, borders, fonts, modalMaxHeight for light/dark modes)
          */
         'widgets' => [
             // Example: Brand-themed search widget
@@ -575,6 +577,7 @@ return [
             //             'maxRecentSearches' => 5,
             //             'groupResults' => true,
             //             'hotkey' => 'k',
+            //             'hideResultsWithoutUrl' => false, // Hide results without a URL
             //         ],
             //         'styles' => [
             //             // Light mode brand colors
@@ -606,6 +609,7 @@ return [
             //         'styles' => [
             //             'modalBorderRadius' => '4',
             //             'modalBorderWidth' => '1',
+            //             'modalMaxHeight' => '70', // 70vh
             //             'resultBorderRadius' => '2',
             //         ],
             //     ],

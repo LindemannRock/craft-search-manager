@@ -88,6 +88,16 @@
 			size: 10,
 		}) }}
 		{{ forms.textField({
+			label: 'Max Height (vh)'|t('search-manager'),
+			id: 'styles-modalMaxHeight',
+			name: 'settings[styles][modalMaxHeight]',
+			value: styles.modalMaxHeight,
+			type: 'number',
+			min: 30,
+			max: 95,
+			size: 10,
+		}) }}
+		{{ forms.textField({
 			label: 'Border Radius (px)'|t('search-manager'),
 			id: 'styles-modalBorderRadius',
 			name: 'settings[styles][modalBorderRadius]',

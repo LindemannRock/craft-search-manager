@@ -63,7 +63,7 @@ class SearchWidget extends HTMLElement {
             'group-results', 'hotkey', 'site-id', 'enable-highlighting',
             'highlight-tag', 'highlight-class', 'backdrop-opacity',
             'enable-backdrop-blur', 'prevent-body-scroll', 'show-trigger',
-            'trigger-selector', 'styles'
+            'trigger-selector', 'styles', 'hide-results-without-url'
         ];
     }
 
@@ -108,6 +108,7 @@ class SearchWidget extends HTMLElement {
             preventBodyScroll: this.getAttribute('prevent-body-scroll') !== 'false',
             showTrigger: this.getAttribute('show-trigger') !== 'false',
             triggerSelector: this.getAttribute('trigger-selector') || '',
+            hideResultsWithoutUrl: this.getAttribute('hide-results-without-url') === 'true',
         };
     }
 
@@ -388,6 +389,7 @@ class SearchWidget extends HTMLElement {
                 indices: this.config.indices,
                 siteId: this.config.siteId,
                 maxResults: this.config.maxResults,
+                hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
                 signal: this.abortController.signal,
             });
             this.renderResults();
@@ -423,6 +425,9 @@ class SearchWidget extends HTMLElement {
                                 <polyline points="12 6 12 12 16 14"/>
                             </svg>
                             <span class="sm-result-title">${this.escapeHtml(item.title || item.query)}</span>
+                            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
                         </div>
                     `).join('')}
                 </div>

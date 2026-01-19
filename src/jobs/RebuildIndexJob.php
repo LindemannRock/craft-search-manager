@@ -139,6 +139,11 @@ class RebuildIndexJob extends BaseJob
 
                     // Only index if element exists and is enabled for this site
                     if ($element && $element->enabled && $element->getEnabledForSite()) {
+                        // Skip entries without URL if index is configured to do so
+                        if ($index->skipEntriesWithoutUrl && $element->url === null) {
+                            continue;
+                        }
+
                         // For entries, also check if live (not pending/expired)
                         if ($element instanceof \craft\elements\Entry) {
                             if ($element->getStatus() === \craft\elements\Entry::STATUS_LIVE) {
