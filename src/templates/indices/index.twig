@@ -249,7 +249,9 @@
 											<span>{{ index.name }}</span>
 										</a>
 									{% else %}
-										{{ index.name }}
+										<a class="label-link" href="{{ url('search-manager/indices/view/' ~ index.handle) }}">
+											<span>{{ index.name }}</span>
+										</a>
 										<span class="config-info-icon" data-config="{{ index.rawConfigDisplay|e('html_attr') }}"></span>
 									{% endif %}
 								</td>
@@ -307,7 +309,23 @@
 									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
 									<div class="menu">
 										<ul>
+											{% if index.canEdit() %}
+												{% if currentUser.can('searchManager:editIndices') %}
+													<li>
+														<a href="{{ url('search-manager/indices/edit/' ~ index.id) }}">
+															{{ 'Edit'|t('search-manager') }}
+														</a>
+													</li>
+												{% endif %}
+											{% else %}
+												<li>
+													<a href="{{ url('search-manager/indices/view/' ~ index.handle) }}">
+														{{ 'View'|t('search-manager') }}
+													</a>
+												</li>
+											{% endif %}
 											{% if currentUser.can('searchManager:rebuildIndices') %}
+												<li><hr class="padded"></li>
 												<li>
 													<a class="index-action" data-action="rebuild" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
 														{{ 'Rebuild Index'|t('search-manager') }}

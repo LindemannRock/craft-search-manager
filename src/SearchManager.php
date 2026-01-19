@@ -256,6 +256,7 @@ class SearchManager extends Plugin
                     'search-manager/dashboard' => 'search-manager/dashboard/index',
                     'search-manager/indices' => 'search-manager/indices/index',
                     'search-manager/indices/create' => 'search-manager/indices/edit',
+                    'search-manager/indices/view/<handle>' => 'search-manager/indices/view',
                     'search-manager/indices/edit/<indexId:\d+>' => 'search-manager/indices/edit',
                     'search-manager/indices/rebuild/<indexId:\d+>' => 'search-manager/indices/rebuild',
                     'search-manager/indices/clear/<indexId:\d+>' => 'search-manager/indices/clear',

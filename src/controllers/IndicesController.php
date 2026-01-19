@@ -38,6 +38,33 @@ class IndicesController extends Controller
     }
 
     /**
+     * View an index (read-only, for config indices)
+     */
+    public function actionView(?string $handle = null): Response
+    {
+        $this->requirePermission('searchManager:viewIndices');
+
+        if (!$handle) {
+            throw new NotFoundHttpException('Index handle required');
+        }
+
+        $index = SearchIndex::findByHandle($handle);
+
+        if (!$index) {
+            throw new NotFoundHttpException('Index not found');
+        }
+
+        // If the index is editable (database), redirect to edit page
+        if ($index->canEdit()) {
+            return $this->redirect('search-manager/indices/edit/' . $index->id);
+        }
+
+        return $this->renderTemplate('search-manager/indices/view', [
+            'index' => $index,
+        ]);
+    }
+
+    /**
      * Edit or create an index
      */
     public function actionEdit(?int $indexId = null): Response

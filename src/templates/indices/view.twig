@@ -1,0 +1,142 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = index.name %}
+{% set fullPageForm = false %}
+{% set selectedSubnavItem = 'indices' %}
+
+{% set crumbs = [
+    { label: searchHelper.fullName, url: url('search-manager') },
+    { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') },
+    { label: index.name }
+] %}
+
+{% block content %}
+	<div class="pane">
+		<h2>{{ 'Configuration'|t('search-manager') }}</h2>
+		<p class="light">{{ 'This index is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ index.rawConfigDisplay }}</code></pre>
+	</div>
+
+	{% include 'lindemannrock-base/_components/plugin-credit' %}
+{% endblock %}
+
+{% block details %}
+	{# Enabled toggle (disabled, showing current state) #}
+	<div class="meta">
+		{{ forms.lightswitchField({
+			label: 'Enabled'|t('search-manager'),
+			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			id: 'enabled',
+			on: index.enabled,
+			disabled: true
+		}) }}
+
+		{# Actions #}
+		<div class="field">
+			<div class="heading">
+				<label>{{ 'Actions'|t('search-manager') }}</label>
+			</div>
+			<div class="input">
+				{% if currentUser.can('searchManager:rebuildIndices') %}
+					<button type="button" id="rebuild-btn" class="btn">{{ 'Rebuild Index'|t('search-manager') }}</button>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+
+	{# Index Info #}
+	<fieldset>
+		<dl class="meta read-only">
+			<div class="data">
+				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
+				<dd class="value">
+					<span class="status {{ index.enabled ? 'live' : 'disabled' }}"></span>
+					<span>{{ index.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+				</dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Handle'|t('search-manager') }}</dt>
+				<dd class="value"><code>{{ index.handle }}</code></dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
+				<dd class="value">{{ 'Config File'|t('search-manager') }}</dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Element Type'|t('search-manager') }}</dt>
+				<dd class="value">{{ index.elementType|split('\\')|last }}</dd>
+			</div>
+			{% set configuredBackend = index.configuredBackend %}
+			<div class="data">
+				<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% if configuredBackend %}
+						{% if configuredBackend.source == 'config' %}
+							<a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
+						{% else %}
+							<a href="{{ url('search-manager/backends/' ~ configuredBackend.id) }}">{{ configuredBackend.name }}</a>
+						{% endif %}
+					{% elseif index.effectiveBackendType %}
+						<span>{{ index.effectiveBackendType|capitalize }}</span>
+					{% else %}
+						<span class="light">{{ 'Default'|t('search-manager') }}</span>
+					{% endif %}
+				</dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% set expected = index.expectedCount %}
+					{% if index.documentCount == expected %}
+						<span style="color: #059669;">{{ index.documentCount }}</span> / {{ expected }}
+					{% elseif index.documentCount < expected %}
+						<span style="color: #d97706;">{{ index.documentCount }}</span> / {{ expected }}
+					{% else %}
+						<span style="color: #dc2626;">{{ index.documentCount }}</span> / {{ expected }}
+					{% endif %}
+				</dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Last Indexed'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% if index.lastIndexed %}
+						{{ index.lastIndexed|datetime('short') }}
+					{% else %}
+						<span class="light">{{ 'Never'|t('search-manager') }}</span>
+					{% endif %}
+				</dd>
+			</div>
+		</dl>
+	</fieldset>
+{% endblock %}
+
+{% js %}
+// Rebuild button
+{% if currentUser.can('searchManager:rebuildIndices') %}
+document.getElementById('rebuild-btn')?.addEventListener('click', function() {
+	if (!confirm('{{ "Rebuild index? This will re-index all elements."|t('search-manager')|e('js') }}')) {
+		return;
+	}
+
+	const form = document.createElement('form');
+	form.method = 'POST';
+	form.action = Craft.getActionUrl('search-manager/indices/rebuild');
+
+	const csrfInput = document.createElement('input');
+	csrfInput.type = 'hidden';
+	csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
+	csrfInput.value = '{{ craft.app.request.csrfToken }}';
+	form.appendChild(csrfInput);
+
+	const indexIdInput = document.createElement('input');
+	indexIdInput.type = 'hidden';
+	indexIdInput.name = 'indexId';
+	indexIdInput.value = '{{ index.handle }}';
+	form.appendChild(indexIdInput);
+
+	document.body.appendChild(form);
+	form.submit();
+});
+{% endif %}
+{% endjs %}
