@@ -260,7 +260,7 @@
   }
 
   // src/modules/SearchService.js
-  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, signal }) {
+  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, signal }) {
     const params = new URLSearchParams({
       q: query,
       limit: maxResults.toString()
@@ -270,6 +270,9 @@
     }
     if (siteId) {
       params.append("siteId", siteId);
+    }
+    if (hideResultsWithoutUrl) {
+      params.append("hideResultsWithoutUrl", "1");
     }
     const separator = endpoint.includes("?") ? "&" : "?";
     const response = await fetch(`${endpoint}${separator}${params}`, {
@@ -282,7 +285,11 @@
       throw new Error("Search failed");
     }
     const data = await response.json();
-    return data.results || data.hits || [];
+    return {
+      results: data.results || data.hits || [],
+      total: data.total || 0,
+      meta: data.meta || null
+    };
   }
   function trackClick({ endpoint, elementId, query, index }) {
     if (!elementId || !endpoint)
@@ -381,9 +388,25 @@
 
   // src/styles/SearchWidget.css
   var SearchWidget_default = `/**
- * Search Widget Styles
- * These styles are injected into the shadow DOM
+ * Search Widget Styles (Combined)
+ *
+ * Combined stylesheet for the modal search widget.
+ * This file is used by the legacy SearchWidget.js for backward compatibility.
+ *
+ * For the refactored architecture, styles are split into:
+ * - base.css: Shared styles for all widget types
+ * - modal.css: Modal-specific styles
+ *
+ * The new SearchModalWidget.js imports and concatenates both files.
+ *
+ * @module styles/SearchWidget
+ * @author Search Manager
+ * @since 5.x
  */
+
+/* =========================================================================
+   HOST & RESET
+   ========================================================================= */
 
 :host {
     /* Modal defaults - inline styles from config will override same-name vars */
@@ -477,7 +500,10 @@
     box-sizing: border-box;
 }
 
-/* Trigger button */
+/* =========================================================================
+   TRIGGER BUTTON
+   ========================================================================= */
+
 .sm-trigger {
     display: inline-flex;
     align-items: center;
@@ -509,7 +535,10 @@
     color: var(--sm-kbd-color);
 }
 
-/* Backdrop */
+/* =========================================================================
+   BACKDROP
+   ========================================================================= */
+
 .sm-backdrop {
     position: fixed;
     inset: 0;
@@ -532,7 +561,10 @@
     to { opacity: 1; }
 }
 
-/* Modal */
+/* =========================================================================
+   MODAL CONTAINER
+   ========================================================================= */
+
 .sm-modal {
     width: var(--sm-modal-width);
     max-width: calc(100vw - 32px);
@@ -558,7 +590,10 @@
     }
 }
 
-/* Header */
+/* =========================================================================
+   MODAL HEADER
+   ========================================================================= */
+
 .sm-header {
     display: flex;
     align-items: center;
@@ -619,12 +654,19 @@
     color: var(--sm-kbd-color);
 }
 
-/* Results */
+/* =========================================================================
+   RESULTS CONTAINER
+   ========================================================================= */
+
 .sm-results {
     flex: 1;
     overflow-y: auto;
     padding: 8px;
 }
+
+/* =========================================================================
+   SECTION GROUPING
+   ========================================================================= */
 
 .sm-section {
     margin-bottom: 8px;
@@ -663,7 +705,10 @@
     color: var(--sm-text-secondary);
 }
 
-/* Result item */
+/* =========================================================================
+   RESULT ITEM
+   ========================================================================= */
+
 .sm-result-item {
     display: flex;
     align-items: center;
@@ -738,7 +783,46 @@
     opacity: 1;
 }
 
-/* Highlight - uses .sm-highlight class to work with any tag */
+/* =========================================================================
+   PROMOTED RESULTS
+   ========================================================================= */
+
+.sm-result-item.sm-promoted {
+    position: relative;
+}
+
+.sm-promoted-badge {
+    position: absolute;
+    padding: 2px 6px;
+    background: var(--sm-accent);
+    color: #ffffff;
+    font-size: 10px;
+    font-weight: 600;
+    border-radius: var(--sm-kbd-radius);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.sm-promoted-badge--top-right {
+    top: 4px;
+    right: 4px;
+}
+
+.sm-promoted-badge--top-left {
+    top: 4px;
+    left: 4px;
+}
+
+.sm-promoted-badge--inline {
+    position: static;
+    margin-left: 8px;
+}
+
+/* =========================================================================
+   HIGHLIGHTING
+   ========================================================================= */
+
+/* Uses .sm-highlight class to work with any tag (mark, span, etc.) */
 .sm-highlight {
     background: var(--sm-highlight-bg);
     color: var(--sm-highlight-color);
@@ -746,7 +830,10 @@
     padding: 0 2px;
 }
 
-/* Empty state */
+/* =========================================================================
+   EMPTY STATE
+   ========================================================================= */
+
 .sm-empty {
     display: flex;
     flex-direction: column;
@@ -767,7 +854,30 @@
     color: var(--sm-text-secondary);
 }
 
-/* Footer */
+/* =========================================================================
+   LOADING STATE
+   ========================================================================= */
+
+.sm-loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 48px 24px;
+    color: var(--sm-text-muted);
+    text-align: center;
+}
+
+.sm-loading-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* =========================================================================
+   MODAL FOOTER
+   ========================================================================= */
+
 .sm-footer {
     display: flex;
     align-items: center;
@@ -813,7 +923,10 @@
     color: var(--sm-text-secondary);
 }
 
-/* RTL support */
+/* =========================================================================
+   RTL SUPPORT
+   ========================================================================= */
+
 :host([dir="rtl"]) .sm-header,
 :host([dir="rtl"]) .sm-result-item,
 :host([dir="rtl"]) .sm-footer {
@@ -823,6 +936,10 @@
 :host([dir="rtl"]) .sm-result-arrow {
     transform: scaleX(-1);
 }
+
+/* =========================================================================
+   ACCESSIBILITY
+   ========================================================================= */
 
 /* Screen reader only - visually hidden but accessible */
 .sm-sr-only {
@@ -837,7 +954,10 @@
     border: 0;
 }
 
-/* Mobile */
+/* =========================================================================
+   MOBILE RESPONSIVE
+   ========================================================================= */
+
 @media (max-width: 640px) {
     .sm-backdrop {
         padding-top: 0;
@@ -904,7 +1024,8 @@
         "prevent-body-scroll",
         "show-trigger",
         "trigger-selector",
-        "styles"
+        "styles",
+        "hide-results-without-url"
       ];
     }
     // Parse styles JSON attribute
@@ -945,7 +1066,8 @@
         enableBackdropBlur: this.getAttribute("enable-backdrop-blur") !== "false",
         preventBodyScroll: this.getAttribute("prevent-body-scroll") !== "false",
         showTrigger: this.getAttribute("show-trigger") !== "false",
-        triggerSelector: this.getAttribute("trigger-selector") || ""
+        triggerSelector: this.getAttribute("trigger-selector") || "",
+        hideResultsWithoutUrl: this.getAttribute("hide-results-without-url") === "true"
       };
     }
     connectedCallback() {
@@ -1181,6 +1303,7 @@
           indices: this.config.indices,
           siteId: this.config.siteId,
           maxResults: this.config.maxResults,
+          hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
           signal: this.abortController.signal
         });
         this.renderResults();

@@ -1,0 +1,127 @@
+{#
+/**
+ * Search Manager - Search Modal Widget (Refactored)
+ *
+ * Include this in your templates to add a CMD+K style search modal.
+ * Uses the new refactored SearchModalWidget architecture.
+ *
+ * Usage:
+ * {% include 'search-manager/_widget/search-modal' %}
+ *
+ * With a named config:
+ * {% include 'search-manager/_widget/search-modal' with {
+ *     config: 'homepage',
+ * } %}
+ *
+ * With inline overrides:
+ * {% include 'search-manager/_widget/search-modal' with {
+ *     config: 'homepage',
+ *     indices: ['blog', 'products'],
+ *     placeholder: 'Search articles...',
+ *     theme: 'dark',
+ * } %}
+ *
+ * @link https://lindemannrock.com
+ * @copyright Copyright (c) 2025 LindemannRock
+ */
+#}
+
+{# Get plugin instance and widget config #}
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set widgetConfig = plugin.widgetConfigs.getConfigForWidget(config ?? null) %}
+
+{# Search settings - support both indices (array) and legacy index (string) #}
+{% if indices is defined and indices is iterable %}
+    {% set indexHandles = indices %}
+{% elseif index is defined and index %}
+    {% set indexHandles = [index] %}
+{% else %}
+    {% set indexHandles = widgetConfig.getIndexHandles() %}
+{% endif %}
+
+{% set placeholder = placeholder ?? 'Search...'|t('search-manager') %}
+{% set theme = theme ?? 'light' %}
+{% set siteId = siteId ?? '' %}
+{% set class = class ?? '' %}
+{% set dir = dir ?? (craft.app.locale.getOrientation() == 'rtl' ? 'rtl' : 'ltr') %}
+
+{# Behavior settings - use inline param override or fall back to widget config #}
+{% set maxResults = maxResults ?? widgetConfig.getMaxResults() %}
+{% set debounce = debounce ?? widgetConfig.getDebounce() %}
+{% set minChars = minChars ?? widgetConfig.getMinChars() %}
+{% set showRecent = showRecent ?? widgetConfig.isShowRecentEnabled() %}
+{% set maxRecentSearches = maxRecentSearches ?? widgetConfig.getMaxRecentSearches() %}
+{% set groupResults = groupResults ?? widgetConfig.isGroupResultsEnabled() %}
+{% set hotkey = hotkey ?? widgetConfig.getHotkey() %}
+{% set hideResultsWithoutUrl = hideResultsWithoutUrl ?? widgetConfig.isHideResultsWithoutUrlEnabled() %}
+
+{# Trigger settings #}
+{% set showTrigger = showTrigger ?? widgetConfig.isShowTriggerEnabled() %}
+{% set triggerText = triggerText ?? widgetConfig.getTriggerText()|t('search-manager') %}
+{% set triggerSelector = triggerSelector ?? '' %}
+
+{# Highlighting settings #}
+{% set enableHighlighting = enableHighlighting ?? widgetConfig.isHighlightingEnabled() %}
+{% set highlightTag = highlightTag ?? widgetConfig.getHighlightTag() %}
+{% set highlightClass = highlightClass ?? widgetConfig.getHighlightClass() %}
+
+{# Backdrop settings #}
+{% set backdropOpacity = backdropOpacity ?? widgetConfig.getBackdropOpacity() %}
+{% set enableBackdropBlur = enableBackdropBlur ?? widgetConfig.isBackdropBlurEnabled() %}
+{% set preventBodyScroll = preventBodyScroll ?? widgetConfig.isPreventBodyScrollEnabled() %}
+
+{# Debug mode - shows index handle, score, element ID for each result #}
+{% set debug = debug ?? false %}
+
+{# Get styles - merge config styles with highlighting colors and any inline overrides #}
+{% set configStyles = widgetConfig.getStyles() %}
+{% set highlightStyles = {
+    highlightBgLight: widgetConfig.getHighlightBgLight(),
+    highlightColorLight: widgetConfig.getHighlightColorLight(),
+    highlightBgDark: widgetConfig.getHighlightBgDark(),
+    highlightColorDark: widgetConfig.getHighlightColorDark(),
+} %}
+{% set mergedStyles = configStyles|merge(highlightStyles) %}
+{% if styles is defined and styles is iterable %}
+    {% set mergedStyles = mergedStyles|merge(styles) %}
+{% endif %}
+
+{# Register the NEW SearchModalWidget JS (minified in production, unminified in devMode) #}
+{% set widgetJs = craft.app.config.general.devMode ? 'SearchModalWidget.js' : 'SearchModalWidget.min.js' %}
+{% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget', true) ~ '/dist/' ~ widgetJs, {
+    position: 3
+}) %}
+
+{# Build the endpoint URL #}
+{% set endpoint = actionUrl('search-manager/search/query') %}
+{% set analyticsEndpoint = actionUrl('search-manager/search/track-click') %}
+
+{# Render the widget #}
+<search-modal
+    {% if indexHandles|length %}indices="{{ indexHandles|join(',') }}"{% endif %}
+    placeholder="{{ placeholder }}"
+    endpoint="{{ endpoint }}"
+    analytics-endpoint="{{ analyticsEndpoint }}"
+    theme="{{ theme }}"
+    max-results="{{ maxResults }}"
+    debounce="{{ debounce }}"
+    min-chars="{{ minChars }}"
+    show-recent="{{ showRecent ? 'true' : 'false' }}"
+    max-recent-searches="{{ maxRecentSearches }}"
+    group-results="{{ groupResults ? 'true' : 'false' }}"
+    hotkey="{{ hotkey }}"
+    hide-results-without-url="{{ hideResultsWithoutUrl ? 'true' : 'false' }}"
+    {% if siteId %}site-id="{{ siteId }}"{% endif %}
+    {% if class %}class="{{ class }}"{% endif %}
+    dir="{{ dir }}"
+    enable-highlighting="{{ enableHighlighting ? 'true' : 'false' }}"
+    highlight-tag="{{ highlightTag }}"
+    {% if highlightClass %}highlight-class="{{ highlightClass }}"{% endif %}
+    backdrop-opacity="{{ backdropOpacity }}"
+    enable-backdrop-blur="{{ enableBackdropBlur ? 'true' : 'false' }}"
+    prevent-body-scroll="{{ preventBodyScroll ? 'true' : 'false' }}"
+    show-trigger="{{ showTrigger ? 'true' : 'false' }}"
+    {% if triggerSelector %}trigger-selector="{{ triggerSelector }}"{% endif %}
+    styles="{{ mergedStyles|json_encode|e('html_attr') }}"
+    {% if debug %}debug="true"{% endif %}
+></search-modal>

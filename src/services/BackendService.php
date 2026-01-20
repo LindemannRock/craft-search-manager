@@ -408,6 +408,11 @@ class BackendService extends Component
 
                 // Add metadata about rules and promotions (even for cached results)
                 $cached['meta'] = [
+                    'cached' => true,
+                    'took' => 0,
+                    'cacheEnabled' => true,
+                    'cacheDriver' => $this->_getCacheDriver(),
+                    'backend' => $backend->getName(),
                     'synonymsExpanded' => $useSynonyms,
                     'expandedQueries' => $useSynonyms ? $expandedQueries : [],
                     'rulesMatched' => array_map(function($rule) {
@@ -512,6 +517,11 @@ class BackendService extends Component
 
         // 5. Add metadata about rules and promotions applied
         $results['meta'] = [
+            'cached' => false,
+            'took' => round($executionTime, 2),
+            'cacheEnabled' => $settings->enableCache,
+            'cacheDriver' => $this->_getCacheDriver(),
+            'backend' => $backend->getName(),
             'synonymsExpanded' => $useSynonyms,
             'expandedQueries' => $useSynonyms ? $expandedQueries : [],
             'rulesMatched' => array_map(function($rule) {
@@ -666,6 +676,9 @@ class BackendService extends Component
             ];
         }
 
+        $startTime = microtime(true);
+        $settings = SearchManager::$plugin->getSettings();
+
         $allHits = [];
         $totalCount = 0;
         $indicesSearched = [];
@@ -674,10 +687,16 @@ class BackendService extends Component
             'expandedQueries' => [],
             'rulesMatched' => [],
             'promotionsMatched' => [],
+            'cached' => true, // Will be set to false if any index isn't cached
         ];
 
         foreach ($indexNames as $indexName) {
             $indexResults = $this->search($indexName, $query, $options);
+
+            // Track cache status (if any index is not cached, mark as not cached)
+            if (!empty($indexResults['meta']) && !$indexResults['meta']['cached']) {
+                $meta['cached'] = false;
+            }
 
             // Tag each hit with its source index
             if (!empty($indexResults['hits'])) {
@@ -730,11 +749,18 @@ class BackendService extends Component
             $allHits = array_slice($allHits, 0, (int)$options['limit']);
         }
 
+        $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
+
         return [
             'hits' => $allHits,
             'total' => $totalCount,
             'indices' => $indicesSearched,
             'meta' => [
+                'cached' => $meta['cached'],
+                'took' => round($executionTime, 2),
+                'cacheEnabled' => $settings->enableCache,
+                'cacheDriver' => $this->_getCacheDriver(),
+                'backend' => $backend->getName(),
                 'synonymsExpanded' => $meta['synonymsExpanded'],
                 'expandedQueries' => $meta['expandedQueries'],
                 'rulesMatched' => array_values($meta['rulesMatched']),
@@ -760,6 +786,44 @@ class BackendService extends Component
     {
         // Lowercase, trim, and collapse multiple spaces to single space
         return mb_strtolower(trim(preg_replace('/\s+/', ' ', $query)));
+    }
+
+    /**
+     * Get cache driver type for debug info
+     *
+     * @return string Cache driver name (file, redis, memcached, etc.)
+     */
+    private function _getCacheDriver(): string
+    {
+        $cache = \Craft::$app->getCache();
+        $className = get_class($cache);
+        $classNameLower = strtolower($className);
+
+        // Extract simple name from class (case-insensitive)
+        if (str_contains($classNameLower, 'redis')) {
+            return 'redis';
+        }
+        if (str_contains($classNameLower, 'memcache')) {
+            return 'memcached';
+        }
+        if (str_contains($classNameLower, 'file')) {
+            return 'file';
+        }
+        if (str_contains($classNameLower, 'apcu') || str_contains($classNameLower, '\\apc')) {
+            return 'apcu';
+        }
+        if (str_contains($classNameLower, 'dummy') || str_contains($classNameLower, 'array')) {
+            return 'none';
+        }
+        if (str_contains($classNameLower, 'db') || str_contains($classNameLower, 'database')) {
+            return 'database';
+        }
+
+        // Return shortened class name as fallback
+        $parts = explode('\\', $className);
+        $driverName = strtolower(str_replace(['Cache', 'cache'], '', end($parts)));
+
+        return $driverName ?: 'unknown';
     }
 
     /**

@@ -3,6 +3,13 @@
  */
 
 /**
+ * @typedef {Object} SearchResponse
+ * @property {Array} results - Search results array
+ * @property {number} total - Total results count
+ * @property {Object|null} meta - Debug metadata (timing, cache, etc.)
+ */
+
+/**
  * Perform a search query
  * @param {Object} options - Search options
  * @param {string} options.query - The search query
@@ -12,7 +19,7 @@
  * @param {number} options.maxResults - Maximum results to return
  * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
  * @param {AbortSignal} options.signal - AbortController signal
- * @returns {Promise<Array>} - Array of search results
+ * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
 export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, signal }) {
     const params = new URLSearchParams({
@@ -48,7 +55,13 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
     }
 
     const data = await response.json();
-    return data.results || data.hits || [];
+
+    // Return structured response with results and meta
+    return {
+        results: data.results || data.hits || [],
+        total: data.total || 0,
+        meta: data.meta || null,
+    };
 }
 
 /**

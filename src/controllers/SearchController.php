@@ -110,7 +110,6 @@ class SearchController extends Controller
 
             // Transform results for the widget
             $results = [];
-            $seenIds = []; // Track seen element IDs for deduplication
             $hits = $searchResults['hits'] ?? [];
 
             foreach ($hits as $hit) {
@@ -118,12 +117,8 @@ class SearchController extends Controller
                 if (!$elementId) {
                     continue;
                 }
-
-                // Deduplicate by element ID - keep the first (highest scored) occurrence
-                if (isset($seenIds[$elementId])) {
-                    continue;
-                }
-                $seenIds[$elementId] = true;
+                // Cast to int for getElementById (search backends may return strings)
+                $elementId = (int) $elementId;
 
                 // Try to get the actual element for URL and additional data
                 $element = Craft::$app->elements->getElementById($elementId, null, $siteId);
@@ -157,6 +152,26 @@ class SearchController extends Controller
                     'score' => $hit['score'] ?? null,
                 ];
 
+                // Add index handle and backend for multi-index searches (debug info)
+                if (!empty($hit['_index'])) {
+                    $result['_index'] = $hit['_index'];
+                    // Get backend name for this index
+                    $backend = SearchManager::$plugin->backend->getBackendForIndex($hit['_index']);
+                    if ($backend) {
+                        $result['backend'] = $backend->getName();
+                    }
+                }
+
+                // Add site info (for multi-site debugging)
+                if ($element->siteId) {
+                    $result['siteId'] = $element->siteId;
+                    $site = Craft::$app->getSites()->getSiteById($element->siteId);
+                    if ($site) {
+                        $result['site'] = $site->handle;
+                        $result['language'] = $site->language;
+                    }
+                }
+
                 // Add thumbnail if available
                 if (method_exists($element, 'getThumbUrl')) {
                     $result['thumbnail'] = $element->getThumbUrl(80);
@@ -165,11 +180,21 @@ class SearchController extends Controller
                 $results[] = $result;
             }
 
-            return $this->asJson([
+            // Build response with optional debug meta
+            $response = [
                 'results' => $results,
                 'total' => $searchResults['total'] ?? count($results),
                 'query' => $query,
-            ]);
+            ];
+
+            // Include debug meta if available (timing, cache status, etc.)
+            if (!empty($searchResults['meta'])) {
+                $response['meta'] = $searchResults['meta'];
+                // Add indices searched info
+                $response['meta']['indices'] = $indexHandles ?: ['all'];
+            }
+
+            return $this->asJson($response);
         } catch (\Throwable $e) {
             $this->logError('Search widget query failed', [
                 'query' => $query,

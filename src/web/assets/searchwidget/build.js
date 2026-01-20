@@ -18,7 +18,7 @@ const cssTextPlugin = {
 const isWatch = process.argv.includes('--watch');
 const isDev = process.argv.includes('--dev');
 
-// Base options
+// Base options for legacy widget
 const baseOptions = {
     entryPoints: ['src/SearchWidget.js'],
     bundle: true,
@@ -26,46 +26,91 @@ const baseOptions = {
     plugins: [cssTextPlugin],
 };
 
+// Options for new modal widget (refactored architecture)
+const modalOptions = {
+    entryPoints: ['src/widgets/SearchModalWidget.js'],
+    bundle: true,
+    format: 'iife',
+    globalName: 'SearchModalWidget',
+    plugins: [cssTextPlugin],
+    footer: {
+        // Auto-register the custom element
+        js: `if(typeof customElements!=='undefined'&&!customElements.get('search-modal')){customElements.define('search-modal',SearchModalWidget.default);}`,
+    },
+};
+
 async function build() {
     try {
         if (isWatch) {
-            // Watch mode - only build dev version
-            const ctx = await esbuild.context({
-                ...baseOptions,
-                outfile: 'dist/SearchWidget.js',
-                minify: false,
-                sourcemap: true,
-            });
-            await ctx.watch();
-            console.log('Watching for changes...');
+            // Watch mode - build both widgets in dev mode
+            const [legacyCtx, modalCtx] = await Promise.all([
+                esbuild.context({
+                    ...baseOptions,
+                    outfile: 'dist/SearchWidget.js',
+                    minify: false,
+                    sourcemap: true,
+                }),
+                esbuild.context({
+                    ...modalOptions,
+                    outfile: 'dist/SearchModalWidget.js',
+                    minify: false,
+                    sourcemap: true,
+                }),
+            ]);
+            await Promise.all([legacyCtx.watch(), modalCtx.watch()]);
+            console.log('Watching for changes (SearchWidget + SearchModalWidget)...');
         } else if (isDev) {
             // Dev build - unminified with sourcemap
-            await esbuild.build({
-                ...baseOptions,
-                outfile: 'dist/SearchWidget.js',
-                minify: false,
-                sourcemap: true,
-            });
-            console.log('Dev build complete!');
-        } else {
-            // Production build - both versions
             await Promise.all([
-                // Unminified (for devMode)
+                esbuild.build({
+                    ...baseOptions,
+                    outfile: 'dist/SearchWidget.js',
+                    minify: false,
+                    sourcemap: true,
+                }),
+                esbuild.build({
+                    ...modalOptions,
+                    outfile: 'dist/SearchModalWidget.js',
+                    minify: false,
+                    sourcemap: true,
+                }),
+            ]);
+            console.log('Dev build complete! (SearchWidget + SearchModalWidget)');
+        } else {
+            // Production build - both widgets, both versions
+            await Promise.all([
+                // Legacy widget - unminified
                 esbuild.build({
                     ...baseOptions,
                     outfile: 'dist/SearchWidget.js',
                     minify: false,
                     sourcemap: false,
                 }),
-                // Minified (for production)
+                // Legacy widget - minified
                 esbuild.build({
                     ...baseOptions,
                     outfile: 'dist/SearchWidget.min.js',
                     minify: true,
                     sourcemap: false,
                 }),
+                // New modal widget - unminified
+                esbuild.build({
+                    ...modalOptions,
+                    outfile: 'dist/SearchModalWidget.js',
+                    minify: false,
+                    sourcemap: false,
+                }),
+                // New modal widget - minified
+                esbuild.build({
+                    ...modalOptions,
+                    outfile: 'dist/SearchModalWidget.min.js',
+                    minify: true,
+                    sourcemap: false,
+                }),
             ]);
-            console.log('Production build complete! (SearchWidget.js + SearchWidget.min.js)');
+            console.log('Production build complete!');
+            console.log('  - SearchWidget.js + SearchWidget.min.js (legacy)');
+            console.log('  - SearchModalWidget.js + SearchModalWidget.min.js (new)');
         }
     } catch (error) {
         console.error('Build failed:', error);

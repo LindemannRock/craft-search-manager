@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SearchModalWidget Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 { margin-bottom: 10px; }
+        .subtitle { color: #666; margin-bottom: 30px; }
+        .test-section {
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            font-size: 16px;
+        }
+        .instructions {
+            background: #e8f4fd;
+            border-left: 4px solid #0066cc;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        .comparison > div {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .comparison h3 {
+            margin-top: 0;
+            font-size: 14px;
+            color: #666;
+        }
+        code {
+            background: #e0e0e0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <h1>SearchModalWidget Test Page</h1>
+    <p class="subtitle">Testing the new refactored architecture</p>
+
+    <div class="instructions">
+        <strong>Test Instructions:</strong>
+        <ol>
+            <li>Press <code>Cmd+K</code> (Mac) or <code>Ctrl+K</code> (Windows) to open the modal</li>
+            <li>Click the trigger button to open</li>
+            <li>Type to search (uses mock endpoint - will show "no results")</li>
+            <li>Test keyboard navigation (↑↓ arrows, Enter, Escape)</li>
+            <li>Click backdrop to close</li>
+            <li>Test dark theme version below</li>
+        </ol>
+    </div>
+
+    <div class="comparison">
+        <div>
+            <h3>NEW: SearchModalWidget (Light)</h3>
+            <search-modal
+                indices="products,articles"
+                placeholder="Search products & articles..."
+                hotkey="k"
+                show-trigger="true"
+                theme="light"
+            ></search-modal>
+        </div>
+        <div>
+            <h3>NEW: SearchModalWidget (Dark)</h3>
+            <search-modal
+                indices="products"
+                placeholder="Search in dark mode..."
+                hotkey="j"
+                show-trigger="true"
+                theme="dark"
+            ></search-modal>
+        </div>
+    </div>
+
+    <div class="test-section" style="margin-top: 30px;">
+        <h2>External Trigger Test</h2>
+        <p>This button triggers the modal via <code>trigger-selector</code> attribute:</p>
+        <button id="external-trigger" style="padding: 10px 20px; cursor: pointer;">
+            Open Search (External Trigger)
+        </button>
+        <search-modal
+            indices="all"
+            placeholder="Triggered externally..."
+            show-trigger="false"
+            trigger-selector="#external-trigger"
+        ></search-modal>
+    </div>
+
+    <div class="test-section">
+        <h2>Configuration Test</h2>
+        <p>Modal with custom settings:</p>
+        <search-modal
+            indices="blog,docs"
+            placeholder="Custom config test..."
+            hotkey="/"
+            show-trigger="true"
+            backdrop-opacity="70"
+            enable-backdrop-blur="true"
+            max-results="5"
+            min-chars="1"
+            debounce="100"
+        ></search-modal>
+        <ul style="font-size: 13px; color: #666; margin-top: 10px;">
+            <li>Hotkey: <code>/</code></li>
+            <li>Backdrop opacity: 70%</li>
+            <li>Min chars: 1</li>
+            <li>Debounce: 100ms</li>
+        </ul>
+    </div>
+
+    <hr style="margin: 40px 0;">
+
+    <h2>Legacy Widget Comparison</h2>
+    <p>For comparison, here's the original SearchWidget (should behave identically):</p>
+
+    <div class="test-section">
+        <h3 style="font-size: 14px; color: #666;">LEGACY: SearchWidget</h3>
+        <search-widget
+            indices="products,articles"
+            placeholder="Legacy widget..."
+            hotkey="l"
+            show-trigger="true"
+            theme="light"
+        ></search-widget>
+    </div>
+
+    <!-- Load both widgets -->
+    <script src="dist/SearchModalWidget.js"></script>
+    <script src="dist/SearchWidget.js"></script>
+
+    <script>
+        // Log when widgets are registered
+        console.log('Custom elements registered:');
+        console.log('  search-modal:', customElements.get('search-modal') ? 'YES' : 'NO');
+        console.log('  search-widget:', customElements.get('search-widget') ? 'YES' : 'NO');
+
+        // Add event listeners for debugging
+        document.querySelectorAll('search-modal').forEach((widget, i) => {
+            widget.addEventListener('search-open', () => console.log(`Modal ${i+1}: opened`));
+            widget.addEventListener('search-close', () => console.log(`Modal ${i+1}: closed`));
+            widget.addEventListener('search-search', (e) => console.log(`Modal ${i+1}: search`, e.detail));
+        });
+    </script>
+</body>
+</html>
