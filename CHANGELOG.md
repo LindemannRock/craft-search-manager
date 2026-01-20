@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.32.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.31.0...v5.32.0) (2026-01-20)
+
+
+### Features
+
+* add debug enhancements, loading indicator config, and spinner customization ([3143156](https://github.com/LindemannRock/craft-search-manager/commit/3143156774d72d747982ab97fd68abb324ce0c7b))
+* add debug option to performSearch function ([084a54d](https://github.com/LindemannRock/craft-search-manager/commit/084a54d7a4fc28ef4b5a38b1e57a8bf80fa46305))
+* Add SearchModalWidget with modular architecture and debug toolbar ([853d607](https://github.com/LindemannRock/craft-search-manager/commit/853d607e0cd910ae2a16456b2218554855a78866))
+* add skipEntriesWithoutUrl, hideResultsWithoutUrl, and external backend improvements ([1c88bab](https://github.com/LindemannRock/craft-search-manager/commit/1c88bab5af66d1122188d931776f6b7a96177820))
+
 ## [5.31.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.30.0...v5.31.0) (2026-01-19)
 
 
