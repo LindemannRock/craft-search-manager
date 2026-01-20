@@ -260,7 +260,7 @@
   }
 
   // src/modules/SearchService.js
-  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, signal }) {
+  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, debug = false, signal }) {
     const params = new URLSearchParams({
       q: query,
       limit: maxResults.toString()
@@ -273,6 +273,9 @@
     }
     if (hideResultsWithoutUrl) {
       params.append("hideResultsWithoutUrl", "1");
+    }
+    if (debug) {
+      params.append("debug", "1");
     }
     const separator = endpoint.includes("?") ? "&" : "?";
     const response = await fetch(`${endpoint}${separator}${params}`, {

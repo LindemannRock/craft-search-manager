@@ -357,6 +357,7 @@ class SearchWidgetBase extends HTMLElement {
                 siteId: this.config.siteId,
                 maxResults: this.config.maxResults,
                 hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
+                debug: this.config.debug,
                 signal: this.abortController.signal,
             });
 

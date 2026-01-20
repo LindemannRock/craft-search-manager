@@ -18,10 +18,11 @@
  * @param {string} options.siteId - Optional site ID
  * @param {number} options.maxResults - Maximum results to return
  * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
+ * @param {boolean} options.debug - Request debug metadata (overrides devMode default)
  * @param {AbortSignal} options.signal - AbortController signal
  * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
-export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, signal }) {
+export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, debug = false, signal }) {
     const params = new URLSearchParams({
         q: query,
         limit: maxResults.toString(),
@@ -38,6 +39,11 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
 
     if (hideResultsWithoutUrl) {
         params.append('hideResultsWithoutUrl', '1');
+    }
+
+    // Request debug metadata explicitly (overrides server devMode default)
+    if (debug) {
+        params.append('debug', '1');
     }
 
     // Check if endpoint already has query params (Craft's actionUrl includes ?p=...)

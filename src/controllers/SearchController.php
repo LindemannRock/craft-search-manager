@@ -54,6 +54,12 @@ class SearchController extends Controller
         $siteId = $siteId ? (int) $siteId : null;
         $hideResultsWithoutUrl = (bool) $request->getParam('hideResultsWithoutUrl', false);
 
+        // Debug mode: explicit param overrides devMode default
+        $debugParam = $request->getParam('debug');
+        $includeDebugMeta = $debugParam !== null
+            ? (bool) $debugParam
+            : Craft::$app->config->general->devMode;
+
         // Get indices from new 'indices' param or legacy 'index' param
         $indicesParam = $request->getParam('indices', '');
         $indexHandle = $request->getParam('index', '');
@@ -187,8 +193,8 @@ class SearchController extends Controller
                 'query' => $query,
             ];
 
-            // Include debug meta if available (timing, cache status, etc.)
-            if (!empty($searchResults['meta'])) {
+            // Include debug meta only when devMode is on OR debug param explicitly set
+            if ($includeDebugMeta && !empty($searchResults['meta'])) {
                 $response['meta'] = $searchResults['meta'];
                 // Add indices searched info
                 $response['meta']['indices'] = $indexHandles ?: ['all'];

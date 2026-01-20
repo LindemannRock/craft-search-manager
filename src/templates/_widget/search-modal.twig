@@ -26,6 +26,21 @@
  */
 #}
 
+{# ============================================================================
+   Boolean normalizer - handles true/false, 'true'/'false', 1/0, 'yes'/'no'
+   ============================================================================ #}
+{% macro toBool(value, default) %}
+    {%- if value is same as(true) or value in ['true', '1', 'yes'] -%}
+        true
+    {%- elseif value is same as(false) or value in ['false', '0', 'no'] -%}
+        false
+    {%- elseif value -%}
+        true
+    {%- else -%}
+        {{ default ? 'true' : 'false' }}
+    {%- endif -%}
+{% endmacro %}
+
 {# Get plugin instance and widget config #}
 {% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 {% set widgetConfig = plugin.widgetConfigs.getConfigForWidget(config ?? null) %}
@@ -106,22 +121,22 @@
     max-results="{{ maxResults }}"
     debounce="{{ debounce }}"
     min-chars="{{ minChars }}"
-    show-recent="{{ showRecent ? 'true' : 'false' }}"
+    show-recent="{{ _self.toBool(showRecent, widgetConfig.isShowRecentEnabled()) }}"
     max-recent-searches="{{ maxRecentSearches }}"
-    group-results="{{ groupResults ? 'true' : 'false' }}"
+    group-results="{{ _self.toBool(groupResults, widgetConfig.isGroupResultsEnabled()) }}"
     hotkey="{{ hotkey }}"
-    hide-results-without-url="{{ hideResultsWithoutUrl ? 'true' : 'false' }}"
+    hide-results-without-url="{{ _self.toBool(hideResultsWithoutUrl, widgetConfig.isHideResultsWithoutUrlEnabled()) }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}
     dir="{{ dir }}"
-    enable-highlighting="{{ enableHighlighting ? 'true' : 'false' }}"
+    enable-highlighting="{{ _self.toBool(enableHighlighting, widgetConfig.isHighlightingEnabled()) }}"
     highlight-tag="{{ highlightTag }}"
     {% if highlightClass %}highlight-class="{{ highlightClass }}"{% endif %}
     backdrop-opacity="{{ backdropOpacity }}"
-    enable-backdrop-blur="{{ enableBackdropBlur ? 'true' : 'false' }}"
-    prevent-body-scroll="{{ preventBodyScroll ? 'true' : 'false' }}"
-    show-trigger="{{ showTrigger ? 'true' : 'false' }}"
+    enable-backdrop-blur="{{ _self.toBool(enableBackdropBlur, widgetConfig.isBackdropBlurEnabled()) }}"
+    prevent-body-scroll="{{ _self.toBool(preventBodyScroll, widgetConfig.isPreventBodyScrollEnabled()) }}"
+    show-trigger="{{ _self.toBool(showTrigger, widgetConfig.isShowTriggerEnabled()) }}"
     {% if triggerSelector %}trigger-selector="{{ triggerSelector }}"{% endif %}
     styles="{{ mergedStyles|json_encode|e('html_attr') }}"
-    {% if debug %}debug="true"{% endif %}
+    debug="{{ _self.toBool(debug, false) }}"
 ></search-modal>

@@ -385,7 +385,7 @@ var SearchModalWidget = (() => {
   }
 
   // src/modules/SearchService.js
-  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, signal }) {
+  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, debug = false, signal }) {
     const params = new URLSearchParams({
       q: query,
       limit: maxResults.toString()
@@ -398,6 +398,9 @@ var SearchModalWidget = (() => {
     }
     if (hideResultsWithoutUrl) {
       params.append("hideResultsWithoutUrl", "1");
+    }
+    if (debug) {
+      params.append("debug", "1");
     }
     const separator = endpoint.includes("?") ? "&" : "?";
     const response = await fetch(`${endpoint}${separator}${params}`, {
@@ -1398,6 +1401,7 @@ var SearchModalWidget = (() => {
           siteId: this.config.siteId,
           maxResults: this.config.maxResults,
           hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
+          debug: this.config.debug,
           signal: this.abortController.signal
         });
         this.state.set({
