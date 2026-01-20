@@ -76,6 +76,10 @@ export const STYLE_MAPPINGS = {
     highlightColorLight: '--sm-highlight-color',
     highlightBgDark: '--sm-highlight-bg-dark',
     highlightColorDark: '--sm-highlight-color-dark',
+
+    // Spinner
+    spinnerColor: '--sm-spinner-color-light',
+    spinnerColorDark: '--sm-spinner-color-dark',
 };
 
 // Keys that require 'px' suffix
@@ -110,6 +114,7 @@ export const COLOR_KEYS = [
     'triggerBorderColor', 'triggerBorderColorDark',
     'kbdBg', 'kbdBgDark', 'kbdTextColor', 'kbdTextColorDark',
     'highlightBgLight', 'highlightColorLight', 'highlightBgDark', 'highlightColorDark',
+    'spinnerColor', 'spinnerColorDark',
 ];
 
 // Default style values - loaded from shared JSON config

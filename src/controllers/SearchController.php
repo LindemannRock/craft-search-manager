@@ -183,6 +183,21 @@ class SearchController extends Controller
                     $result['thumbnail'] = $element->getThumbUrl(80);
                 }
 
+                // Add matched fields info (which fields contained the search query)
+                if (!empty($hit['matchedIn'])) {
+                    $result['matchedIn'] = $hit['matchedIn'];
+                }
+
+                // Add promoted flag (result was injected via promotion, not found via search)
+                if (!empty($hit['promoted'])) {
+                    $result['promoted'] = true;
+                }
+
+                // Add boosted flag (result score was boosted via query rule)
+                if (!empty($hit['boosted'])) {
+                    $result['boosted'] = true;
+                }
+
                 $results[] = $result;
             }
 

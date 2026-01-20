@@ -81,6 +81,7 @@ export const BASE_DEFAULTS = {
     highlightTag: 'mark',
     highlightClass: '',
     hideResultsWithoutUrl: false,
+    showLoadingIndicator: true,
     debug: false,
     styles: {},
     promotions: {
@@ -258,6 +259,7 @@ export function parseConfig(element, widgetType = 'modal') {
         showRecent: parseBoolean(element.getAttribute('show-recent'), defaults.showRecent),
         groupResults: parseBoolean(element.getAttribute('group-results'), defaults.groupResults),
         enableHighlighting: parseBoolean(element.getAttribute('enable-highlighting'), defaults.enableHighlighting),
+        showLoadingIndicator: parseBoolean(element.getAttribute('show-loading-indicator'), defaults.showLoadingIndicator),
 
         // Boolean attributes (default false - check for presence)
         hideResultsWithoutUrl: parseBoolean(element.getAttribute('hide-results-without-url'), defaults.hideResultsWithoutUrl),
@@ -318,7 +320,8 @@ export function getObservedAttributes(widgetType = 'modal') {
         'max-results', 'debounce', 'min-chars', 'show-recent',
         'max-recent-searches', 'group-results', 'site-id',
         'analytics-endpoint', 'enable-highlighting', 'highlight-tag',
-        'highlight-class', 'hide-results-without-url', 'debug', 'styles', 'promotions',
+        'highlight-class', 'hide-results-without-url', 'show-loading-indicator',
+        'debug', 'styles', 'promotions',
     ];
 
     // Modal-specific attributes

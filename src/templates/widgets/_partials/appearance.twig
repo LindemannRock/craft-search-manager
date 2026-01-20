@@ -347,6 +347,38 @@
 <hr>
 
 {# ========================================
+   LOADING SPINNER
+   ======================================== #}
+<h2>{{ "Loading Spinner"|t('search-manager') }}</h2>
+<p class="light">{{ "Color of the loading spinner shown while searching."|t('search-manager') }}</p>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Spinner Color'|t('search-manager'),
+			id: 'styles-spinnerColor',
+			name: 'settings[styles][spinnerColor]',
+			value: styles.spinnerColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Spinner Color'|t('search-manager'),
+			id: 'styles-spinnerColorDark',
+			name: 'settings[styles][spinnerColorDark]',
+			value: styles.spinnerColorDark,
+		}) }}
+	</div>
+</div>
+
+<hr>
+
+{# ========================================
    TRIGGER BUTTON
    ======================================== #}
 <h2>{{ "Trigger Button"|t('search-manager') }}</h2>

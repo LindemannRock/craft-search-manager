@@ -217,6 +217,22 @@ function renderDebugInfo(result) {
         debugItems.push(debugItem('lang', result.language, 'generic'));
     }
 
+    // Matched fields - which fields contained the search query
+    if (result.matchedIn && Array.isArray(result.matchedIn) && result.matchedIn.length > 0) {
+        const matchedDisplay = result.matchedIn.join(', ');
+        debugItems.push(debugItem('matched', matchedDisplay, 'matched'));
+    }
+
+    // Promoted flag - result was injected via promotion
+    if (result.promoted) {
+        debugItems.push(debugItem('promoted', 'yes', 'promoted'));
+    }
+
+    // Boosted flag - result score was boosted via query rule
+    if (result.boosted) {
+        debugItems.push(debugItem('boosted', 'yes', 'boosted'));
+    }
+
     if (debugItems.length === 0) {
         return '';
     }
@@ -389,10 +405,11 @@ export function renderLoadingState() {
  */
 export function getContentToRender(state, options) {
     const { query, results, recentSearches, loading, showRecent } = state;
+    const { showLoadingIndicator = true } = options;
     const hasQuery = query && query.trim();
 
-    // Loading state
-    if (loading) {
+    // Loading state (only if showLoadingIndicator is enabled)
+    if (loading && showLoadingIndicator) {
         return {
             html: renderLoadingState(),
             hasResults: false,

@@ -154,6 +154,18 @@ class TypesenseBackend extends BaseBackend
                 if (isset($hit['text_match'])) {
                     $doc['score'] = $hit['text_match'] / 1000000000000000; // Typesense uses large integers
                 }
+                // Extract matched field names from highlights
+                if (isset($hit['highlights']) && is_array($hit['highlights'])) {
+                    $matchedFields = [];
+                    foreach ($hit['highlights'] as $highlight) {
+                        if (isset($highlight['field'])) {
+                            $matchedFields[] = $highlight['field'];
+                        }
+                    }
+                    if (!empty($matchedFields)) {
+                        $doc['matchedIn'] = array_unique($matchedFields);
+                    }
+                }
                 return $doc;
             }, $results['hits'] ?? []);
 

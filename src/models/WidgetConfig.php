@@ -69,6 +69,7 @@ class WidgetConfig extends Model
                 'groupResults' => true,
                 'hotkey' => 'k',
                 'hideResultsWithoutUrl' => false,
+                'showLoadingIndicator' => true,
             ],
             'trigger' => [
                 'showTrigger' => true,
@@ -262,6 +263,11 @@ class WidgetConfig extends Model
     public function isHideResultsWithoutUrlEnabled(): bool
     {
         return (bool) $this->getSetting('behavior.hideResultsWithoutUrl', false);
+    }
+
+    public function isShowLoadingIndicatorEnabled(): bool
+    {
+        return (bool) $this->getSetting('behavior.showLoadingIndicator', true);
     }
 
     // Trigger

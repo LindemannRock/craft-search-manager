@@ -140,7 +140,25 @@ class AlgoliaBackend extends BaseBackend
 
             $results = $client->searchSingleIndex($fullIndexName, $searchParams);
 
-            return ['hits' => $results['hits'] ?? [], 'total' => $results['nbHits'] ?? 0];
+            // Extract matched field names from _highlightResult
+            $hits = array_map(function($hit) {
+                if (isset($hit['_highlightResult']) && is_array($hit['_highlightResult'])) {
+                    $matchedFields = [];
+                    foreach ($hit['_highlightResult'] as $field => $highlight) {
+                        // Check if this field has a match (matchLevel !== 'none')
+                        $matchLevel = $highlight['matchLevel'] ?? ($highlight[0]['matchLevel'] ?? 'none');
+                        if ($matchLevel !== 'none') {
+                            $matchedFields[] = $field;
+                        }
+                    }
+                    if (!empty($matchedFields)) {
+                        $hit['matchedIn'] = $matchedFields;
+                    }
+                }
+                return $hit;
+            }, $results['hits'] ?? []);
+
+            return ['hits' => $hits, 'total' => $results['nbHits'] ?? 0];
         } catch (\Throwable $e) {
             $this->logError('Algolia search failed', ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0];

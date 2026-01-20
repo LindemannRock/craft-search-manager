@@ -4,7 +4,9 @@ namespace lindemannrock\searchmanager\backends;
 
 use Craft;
 use lindemannrock\searchmanager\search\SearchEngine;
+use lindemannrock\searchmanager\search\StopWords;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
+use lindemannrock\searchmanager\search\Tokenizer;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -373,6 +375,11 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $hits = array_slice($hits, 0, $limit);
         }
 
+        // Add matchedIn field indicating which fields matched the query
+        // Use first site's ID as default (helper uses per-hit siteId when available)
+        $defaultSiteId = !empty($allSites) ? $allSites[0]->id : 1;
+        $hits = $this->addMatchedFieldsToHits($hits, $query, $defaultSiteId, $storage);
+
         return $hits;
     }
 
@@ -417,6 +424,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 'type' => $elementType,
             ];
         }
+
+        // Add matchedIn field indicating which fields matched the query
+        $hits = $this->addMatchedFieldsToHits($hits, $query, $siteId, $storage);
 
         return $hits;
     }
@@ -480,5 +490,101 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         }
 
         return 'entry';
+    }
+
+    // =========================================================================
+    // MATCHED FIELDS DETECTION
+    // =========================================================================
+
+    /**
+     * Add matchedIn field to hits indicating which fields matched the query
+     *
+     * This method determines whether the query matched in 'title', 'content', or both
+     * by checking if query terms appear in the stored title terms and document terms.
+     *
+     * @param array $hits Search results
+     * @param string $query Original search query
+     * @param int $siteId Site ID
+     * @param StorageInterface $storage Storage instance
+     * @return array Hits with matchedIn field added
+     */
+    protected function addMatchedFieldsToHits(array $hits, string $query, int $siteId, StorageInterface $storage): array
+    {
+        if (empty($hits) || empty($query)) {
+            return $hits;
+        }
+
+        // Tokenize and filter query terms (same as SearchEngine does)
+        $tokenizer = new Tokenizer();
+        $stopWords = new StopWords('en'); // TODO: Could detect language from site
+
+        $queryTerms = $tokenizer->tokenize($query);
+        $queryTerms = $stopWords->filter($queryTerms);
+
+        if (empty($queryTerms)) {
+            return $hits;
+        }
+
+        foreach ($hits as &$hit) {
+            $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
+            if ($elementId === null) {
+                continue;
+            }
+
+            // Use siteId from hit if available (for multi-site searches)
+            $hitSiteId = $hit['siteId'] ?? $siteId;
+
+            $matchedIn = [];
+
+            // Get title terms for this element
+            $titleTerms = $storage->getTitleTerms($hitSiteId, (int)$elementId);
+
+            // Get all document terms
+            $docTerms = $storage->getDocumentTerms($hitSiteId, (int)$elementId);
+            $docTermKeys = array_keys($docTerms);
+
+            // Check if any query terms match in title
+            $titleMatches = array_intersect($queryTerms, $titleTerms);
+            if (!empty($titleMatches)) {
+                $matchedIn[] = 'title';
+            }
+
+            // Check if any query terms match in content (terms not in title)
+            $contentOnlyTerms = array_diff($docTermKeys, $titleTerms);
+            $contentMatches = array_intersect($queryTerms, $contentOnlyTerms);
+            if (!empty($contentMatches)) {
+                $matchedIn[] = 'content';
+            }
+
+            // If we have doc terms but no specific matches found, it might be fuzzy matching
+            // In that case, just indicate both fields as potential matches
+            if (empty($matchedIn) && !empty($docTermKeys)) {
+                // Check for partial/fuzzy matches in title
+                foreach ($queryTerms as $queryTerm) {
+                    foreach ($titleTerms as $titleTerm) {
+                        if (str_contains($titleTerm, $queryTerm) || str_contains($queryTerm, $titleTerm)) {
+                            $matchedIn[] = 'title';
+                            break 2;
+                        }
+                    }
+                }
+
+                // Check for partial/fuzzy matches in content
+                foreach ($queryTerms as $queryTerm) {
+                    foreach ($contentOnlyTerms as $contentTerm) {
+                        if (str_contains($contentTerm, $queryTerm) || str_contains($queryTerm, $contentTerm)) {
+                            $matchedIn[] = 'content';
+                            break 2;
+                        }
+                    }
+                }
+            }
+
+            if (!empty($matchedIn)) {
+                $hit['matchedIn'] = array_unique($matchedIn);
+            }
+        }
+
+        return $hits;
     }
 }

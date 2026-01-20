@@ -85,6 +85,9 @@
 {% set enableBackdropBlur = enableBackdropBlur ?? widgetConfig.isBackdropBlurEnabled() %}
 {% set preventBodyScroll = preventBodyScroll ?? widgetConfig.isPreventBodyScrollEnabled() %}
 
+{# Loading indicator - shows spinner during search (defaults to true) #}
+{% set showLoadingIndicator = showLoadingIndicator ?? widgetConfig.isShowLoadingIndicatorEnabled() %}
+
 {# Debug mode - shows index handle, score, element ID for each result #}
 {% set debug = debug ?? false %}
 
@@ -138,5 +141,6 @@
     show-trigger="{{ _self.toBool(showTrigger, widgetConfig.isShowTriggerEnabled()) }}"
     {% if triggerSelector %}trigger-selector="{{ triggerSelector }}"{% endif %}
     styles="{{ mergedStyles|json_encode|e('html_attr') }}"
+    show-loading-indicator="{{ _self.toBool(showLoadingIndicator, true) }}"
     debug="{{ _self.toBool(debug, false) }}"
 ></search-modal>

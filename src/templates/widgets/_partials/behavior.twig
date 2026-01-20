@@ -116,6 +116,14 @@
 	on: widgetConfig.isHideResultsWithoutUrlEnabled(),
 }) }}
 
+{{ forms.lightswitchField({
+	label: 'Show Loading Indicator'|t('search-manager'),
+	instructions: 'Display a spinner while search results are loading'|t('search-manager'),
+	id: 'behavior-showLoadingIndicator',
+	name: 'settings[behavior][showLoadingIndicator]',
+	on: widgetConfig.isShowLoadingIndicatorEnabled(),
+}) }}
+
 <hr>
 
 {# Trigger Button Settings #}

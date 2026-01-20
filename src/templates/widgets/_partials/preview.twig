@@ -22,6 +22,10 @@
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
 				<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColor }};">{{ 'Search...'|t('search-manager') }}</span>
+				<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColor }};">
+					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
+					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
+				</svg>
 				<span class="preview-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ widgetConfig.getHotkey()|upper }}</span>
 			</div>
 			<div class="preview-results">
@@ -73,6 +77,10 @@
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
 				<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColorDark }};">{{ 'Search...'|t('search-manager') }}</span>
+				<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColorDark }};">
+					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
+					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
+				</svg>
 				<span class="preview-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ widgetConfig.getHotkey()|upper }}</span>
 			</div>
 			<div class="preview-results">
@@ -237,5 +245,15 @@
 	border-radius: 3px;
 	font-family: monospace;
 	margin-left: 2px;
+}
+
+.preview-spinner {
+	flex-shrink: 0;
+	animation: preview-spin 1s linear infinite;
+}
+
+@keyframes preview-spin {
+	from { transform: rotate(0deg); }
+	to { transform: rotate(360deg); }
 }
 </style>

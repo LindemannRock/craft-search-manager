@@ -1,4 +1,6 @@
 {
+  "spinnerColor": "#3b82f6",
+  "spinnerColorDark": "#60a5fa",
   "modalBg": "#ffffff",
   "modalBgDark": "#1f2937",
   "modalBorderRadius": "12",

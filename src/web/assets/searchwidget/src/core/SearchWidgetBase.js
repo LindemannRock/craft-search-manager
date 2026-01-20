@@ -410,7 +410,7 @@ class SearchWidgetBase extends HTMLElement {
         if (!container) return;
 
         const state = this.state.getAll();
-        const { showRecent, groupResults, enableHighlighting, highlightTag, highlightClass, debug } = this.config;
+        const { showRecent, groupResults, enableHighlighting, highlightTag, highlightClass, showLoadingIndicator, debug } = this.config;
 
         // Get appropriate content based on state
         const { html, hasResults, showListbox } = getContentToRender(
@@ -427,6 +427,7 @@ class SearchWidgetBase extends HTMLElement {
                 enableHighlighting,
                 highlightTag,
                 highlightClass,
+                showLoadingIndicator,
                 debug,
                 promotions: this.config.promotions,
             }
@@ -660,11 +661,15 @@ class SearchWidgetBase extends HTMLElement {
 
     /**
      * Update loading indicator visibility
+     *
+     * Respects showLoadingIndicator config - if disabled, spinner stays hidden.
      */
     updateLoadingVisual() {
         const loading = this.getLoadingElement();
         if (loading) {
-            loading.hidden = !this.state.get('loading');
+            const isLoading = this.state.get('loading');
+            const showIndicator = this.config?.showLoadingIndicator !== false;
+            loading.hidden = !isLoading || !showIndicator;
         }
     }
 

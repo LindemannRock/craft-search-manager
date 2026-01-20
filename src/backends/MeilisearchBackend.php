@@ -170,6 +170,7 @@ class MeilisearchBackend extends BaseBackend
             // Build Meilisearch-compatible search options
             $searchParams = [
                 'showRankingScore' => true, // Include ranking scores in results
+                'showMatchesPosition' => true, // Include which fields matched
             ];
 
             // Map supported options
@@ -202,6 +203,10 @@ class MeilisearchBackend extends BaseBackend
             $hits = array_map(function($hit) {
                 if (isset($hit['_rankingScore'])) {
                     $hit['score'] = $hit['_rankingScore'];
+                }
+                // Extract matched field names from _matchesPosition
+                if (isset($hit['_matchesPosition']) && is_array($hit['_matchesPosition'])) {
+                    $hit['matchedIn'] = array_keys($hit['_matchesPosition']);
                 }
                 return $hit;
             }, $rawHits);

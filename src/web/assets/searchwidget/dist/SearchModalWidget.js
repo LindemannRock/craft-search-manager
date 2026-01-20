@@ -41,6 +41,7 @@ var SearchModalWidget = (() => {
     highlightTag: "mark",
     highlightClass: "",
     hideResultsWithoutUrl: false,
+    showLoadingIndicator: true,
     debug: false,
     styles: {},
     promotions: {
@@ -138,6 +139,7 @@ var SearchModalWidget = (() => {
       showRecent: parseBoolean(element.getAttribute("show-recent"), defaults.showRecent),
       groupResults: parseBoolean(element.getAttribute("group-results"), defaults.groupResults),
       enableHighlighting: parseBoolean(element.getAttribute("enable-highlighting"), defaults.enableHighlighting),
+      showLoadingIndicator: parseBoolean(element.getAttribute("show-loading-indicator"), defaults.showLoadingIndicator),
       // Boolean attributes (default false - check for presence)
       hideResultsWithoutUrl: parseBoolean(element.getAttribute("hide-results-without-url"), defaults.hideResultsWithoutUrl),
       debug: parseBoolean(element.getAttribute("debug"), defaults.debug),
@@ -191,6 +193,7 @@ var SearchModalWidget = (() => {
       "highlight-tag",
       "highlight-class",
       "hide-results-without-url",
+      "show-loading-indicator",
       "debug",
       "styles",
       "promotions"
@@ -492,6 +495,8 @@ var SearchModalWidget = (() => {
 
   // ../../../config/style-defaults.json
   var style_defaults_default = {
+    spinnerColor: "#3b82f6",
+    spinnerColorDark: "#60a5fa",
     modalBg: "#ffffff",
     modalBgDark: "#1f2937",
     modalBorderRadius: "12",
@@ -601,7 +606,10 @@ var SearchModalWidget = (() => {
     highlightBgLight: "--sm-highlight-bg",
     highlightColorLight: "--sm-highlight-color",
     highlightBgDark: "--sm-highlight-bg-dark",
-    highlightColorDark: "--sm-highlight-color-dark"
+    highlightColorDark: "--sm-highlight-color-dark",
+    // Spinner
+    spinnerColor: "--sm-spinner-color-light",
+    spinnerColorDark: "--sm-spinner-color-dark"
   };
   var NUMERIC_KEYS = [
     "modalBorderRadius",
@@ -657,7 +665,9 @@ var SearchModalWidget = (() => {
     "highlightBgLight",
     "highlightColorLight",
     "highlightBgDark",
-    "highlightColorDark"
+    "highlightColorDark",
+    "spinnerColor",
+    "spinnerColorDark"
   ];
   var DEFAULT_STYLES = {
     ...style_defaults_default,
@@ -913,6 +923,16 @@ var SearchModalWidget = (() => {
     if (result.language) {
       debugItems.push(debugItem("lang", result.language, "generic"));
     }
+    if (result.matchedIn && Array.isArray(result.matchedIn) && result.matchedIn.length > 0) {
+      const matchedDisplay = result.matchedIn.join(", ");
+      debugItems.push(debugItem("matched", matchedDisplay, "matched"));
+    }
+    if (result.promoted) {
+      debugItems.push(debugItem("promoted", "yes", "promoted"));
+    }
+    if (result.boosted) {
+      debugItems.push(debugItem("boosted", "yes", "boosted"));
+    }
     if (debugItems.length === 0) {
       return "";
     }
@@ -994,8 +1014,9 @@ var SearchModalWidget = (() => {
   }
   function getContentToRender(state, options) {
     const { query, results, recentSearches, loading, showRecent } = state;
+    const { showLoadingIndicator = true } = options;
     const hasQuery = query && query.trim();
-    if (loading) {
+    if (loading && showLoadingIndicator) {
       return {
         html: renderLoadingState(),
         hasResults: false,
@@ -1440,7 +1461,7 @@ var SearchModalWidget = (() => {
       if (!container)
         return;
       const state = this.state.getAll();
-      const { showRecent, groupResults, enableHighlighting, highlightTag, highlightClass, debug } = this.config;
+      const { showRecent, groupResults, enableHighlighting, highlightTag, highlightClass, showLoadingIndicator, debug } = this.config;
       const { html, hasResults, showListbox } = getContentToRender(
         {
           query: state.query,
@@ -1455,6 +1476,7 @@ var SearchModalWidget = (() => {
           enableHighlighting,
           highlightTag,
           highlightClass,
+          showLoadingIndicator,
           debug,
           promotions: this.config.promotions
         }
@@ -1642,11 +1664,15 @@ var SearchModalWidget = (() => {
     // =========================================================================
     /**
      * Update loading indicator visibility
+     *
+     * Respects showLoadingIndicator config - if disabled, spinner stays hidden.
      */
     updateLoadingVisual() {
       const loading = this.getLoadingElement();
       if (loading) {
-        loading.hidden = !this.state.get("loading");
+        const isLoading = this.state.get("loading");
+        const showIndicator = this.config?.showLoadingIndicator !== false;
+        loading.hidden = !isLoading || !showIndicator;
       }
     }
     /**
@@ -1811,6 +1837,9 @@ var SearchModalWidget = (() => {
     --sm-accent: #3b82f6;
     --sm-accent-hover: #2563eb;
 
+    /* Spinner */
+    --sm-spinner-color: var(--sm-spinner-color-light, #3b82f6);
+
     display: inline-block;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
@@ -1837,6 +1866,8 @@ var SearchModalWidget = (() => {
     --sm-kbd-bg: var(--sm-kbd-bg-dark, #374151);
     --sm-kbd-border: #4b5563;
     --sm-kbd-color: var(--sm-kbd-text-color-dark, #e5e7eb);
+
+    --sm-spinner-color: var(--sm-spinner-color-dark, #60a5fa);
 }
 
 *, *::before, *::after {
@@ -1870,7 +1901,7 @@ var SearchModalWidget = (() => {
 
 .sm-spinner {
     animation: sm-spin 1s linear infinite;
-    color: var(--sm-accent);
+    color: var(--sm-spinner-color);
 }
 
 @keyframes sm-spin {
@@ -2122,8 +2153,13 @@ var SearchModalWidget = (() => {
 :host([dir="rtl"]) .sm-result-arrow {
     transform: scaleX(-1);
 }
+`;
 
-/* =========================================================================
+  // src/styles/modal.css
+  var modal_default = '/**\n * Search Widget Modal Styles\n *\n * Styles specific to the modal widget variant.\n * Includes backdrop, modal container, trigger button,\n * header, footer, and mobile responsive behavior.\n *\n * @module styles/modal\n * @author Search Manager\n * @since 5.x\n */\n\n/* =========================================================================\n   MODAL-SPECIFIC HOST VARIABLES\n   ========================================================================= */\n\n:host {\n    /* Modal container */\n    --sm-modal-bg: #ffffff;\n    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);\n    --sm-modal-border-width: 1px;\n    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);\n    --sm-modal-radius: 12px;\n    --sm-modal-width: 640px;\n    --sm-modal-max-height: 80vh;\n\n    /* Trigger button */\n    --sm-trigger-bg: #ffffff;\n    --sm-trigger-color: var(--sm-trigger-text-color, #374151);\n    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);\n    --sm-trigger-radius: 8px;\n    --sm-trigger-border-width: 1px;\n    --sm-trigger-px: 12px;\n    --sm-trigger-py: 8px;\n    --sm-trigger-font-size: 14px;\n}\n\n/* Dark theme - modal-specific overrides */\n:host([data-theme="dark"]) {\n    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);\n    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);\n\n    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);\n    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);\n    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);\n}\n\n/* =========================================================================\n   TRIGGER BUTTON\n   ========================================================================= */\n\n.sm-trigger {\n    display: inline-flex;\n    align-items: center;\n    gap: 8px;\n    padding: var(--sm-trigger-py) var(--sm-trigger-px);\n    background: var(--sm-trigger-bg);\n    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);\n    border-radius: var(--sm-trigger-radius);\n    color: var(--sm-trigger-color);\n    font-size: var(--sm-trigger-font-size);\n    cursor: pointer;\n    transition: all 0.15s ease;\n}\n\n.sm-trigger:hover {\n    border-color: var(--sm-accent);\n    color: var(--sm-text-primary);\n}\n\n.sm-trigger-text {\n    /* Text shown next to search icon */\n}\n\n.sm-trigger-kbd {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   BACKDROP\n   ========================================================================= */\n\n.sm-backdrop {\n    position: fixed;\n    inset: 0;\n    z-index: 99999;\n    display: flex;\n    align-items: flex-start;\n    justify-content: center;\n    padding-top: 10vh;\n    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));\n    backdrop-filter: var(--sm-backdrop-blur, blur(4px));\n    animation: sm-fade-in 0.15s ease;\n}\n\n.sm-backdrop[hidden] {\n    display: none;\n}\n\n@keyframes sm-fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n/* =========================================================================\n   MODAL CONTAINER\n   ========================================================================= */\n\n.sm-modal {\n    width: var(--sm-modal-width);\n    max-width: calc(100vw - 32px);\n    max-height: var(--sm-modal-max-height);\n    background: var(--sm-modal-bg);\n    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);\n    border-radius: var(--sm-modal-radius);\n    box-shadow: var(--sm-modal-shadow);\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    animation: sm-slide-up 0.2s ease;\n}\n\n@keyframes sm-slide-up {\n    from {\n        opacity: 0;\n        transform: translateY(-10px) scale(0.98);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0) scale(1);\n    }\n}\n\n/* =========================================================================\n   MODAL HEADER\n   ========================================================================= */\n\n.sm-header {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: 16px;\n    border-bottom: 1px solid var(--sm-border-color);\n}\n\n.sm-search-icon {\n    flex-shrink: 0;\n    color: var(--sm-text-muted);\n}\n\n.sm-close {\n    flex-shrink: 0;\n    display: flex;\n    align-items: center;\n    padding: 4px 8px;\n    background: transparent;\n    border: none;\n    cursor: pointer;\n}\n\n.sm-close kbd {\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   MODAL FOOTER\n   ========================================================================= */\n\n.sm-footer {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 16px;\n    padding: 12px 16px;\n    border-top: 1px solid var(--sm-border-color);\n    font-size: 12px;\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-hints {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n}\n\n.sm-footer-hints span {\n    display: flex;\n    align-items: center;\n    gap: 4px;\n}\n\n.sm-footer kbd {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 20px;\n    padding: 2px 4px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 10px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n.sm-footer-brand {\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-brand strong {\n    color: var(--sm-text-secondary);\n}\n\n/* =========================================================================\n   RTL SUPPORT (MODAL-SPECIFIC)\n   ========================================================================= */\n\n:host([dir="rtl"]) .sm-header,\n:host([dir="rtl"]) .sm-footer {\n    direction: rtl;\n}\n\n/* =========================================================================\n   MOBILE RESPONSIVE\n   ========================================================================= */\n\n@media (max-width: 640px) {\n    .sm-backdrop {\n        padding-top: 0;\n        align-items: flex-end;\n    }\n\n    .sm-modal {\n        max-width: 100%;\n        max-height: 90vh;\n        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;\n    }\n\n    .sm-trigger-text,\n    .sm-footer-hints {\n        display: none;\n    }\n}\n';
+
+  // src/styles/debug.css
+  var debug_default = `/* =========================================================================
    DEBUG MODE - Developer Tools Panel
    Extensible key:value format with labels for clarity
    ========================================================================= */
@@ -2260,6 +2296,39 @@ var SearchModalWidget = (() => {
 }
 
 :host([data-theme="dark"]) .sm-debug-value[data-type="score"] {
+    background: rgba(34, 197, 94, 0.15);
+    color: #86efac;
+}
+
+/* Matched fields value - purple/blue to highlight important debug info */
+.sm-debug-value[data-type="matched"] {
+    background: rgba(99, 102, 241, 0.1);
+    color: #4338ca;
+}
+
+:host([data-theme="dark"]) .sm-debug-value[data-type="matched"] {
+    background: rgba(99, 102, 241, 0.15);
+    color: #a5b4fc;
+}
+
+/* Promoted value - gold/yellow to indicate featured/promoted */
+.sm-debug-value[data-type="promoted"] {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+:host([data-theme="dark"]) .sm-debug-value[data-type="promoted"] {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+}
+
+/* Boosted value - green to indicate positive boost */
+.sm-debug-value[data-type="boosted"] {
+    background: rgba(34, 197, 94, 0.1);
+    color: #166534;
+}
+
+:host([data-theme="dark"]) .sm-debug-value[data-type="boosted"] {
     background: rgba(34, 197, 94, 0.15);
     color: #86efac;
 }
@@ -2635,11 +2704,8 @@ var SearchModalWidget = (() => {
 }
 `;
 
-  // src/styles/modal.css
-  var modal_default = '/**\n * Search Widget Modal Styles\n *\n * Styles specific to the modal widget variant.\n * Includes backdrop, modal container, trigger button,\n * header, footer, and mobile responsive behavior.\n *\n * @module styles/modal\n * @author Search Manager\n * @since 5.x\n */\n\n/* =========================================================================\n   MODAL-SPECIFIC HOST VARIABLES\n   ========================================================================= */\n\n:host {\n    /* Modal container */\n    --sm-modal-bg: #ffffff;\n    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);\n    --sm-modal-border-width: 1px;\n    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);\n    --sm-modal-radius: 12px;\n    --sm-modal-width: 640px;\n    --sm-modal-max-height: 80vh;\n\n    /* Trigger button */\n    --sm-trigger-bg: #ffffff;\n    --sm-trigger-color: var(--sm-trigger-text-color, #374151);\n    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);\n    --sm-trigger-radius: 8px;\n    --sm-trigger-border-width: 1px;\n    --sm-trigger-px: 12px;\n    --sm-trigger-py: 8px;\n    --sm-trigger-font-size: 14px;\n}\n\n/* Dark theme - modal-specific overrides */\n:host([data-theme="dark"]) {\n    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);\n    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);\n\n    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);\n    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);\n    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);\n}\n\n/* =========================================================================\n   TRIGGER BUTTON\n   ========================================================================= */\n\n.sm-trigger {\n    display: inline-flex;\n    align-items: center;\n    gap: 8px;\n    padding: var(--sm-trigger-py) var(--sm-trigger-px);\n    background: var(--sm-trigger-bg);\n    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);\n    border-radius: var(--sm-trigger-radius);\n    color: var(--sm-trigger-color);\n    font-size: var(--sm-trigger-font-size);\n    cursor: pointer;\n    transition: all 0.15s ease;\n}\n\n.sm-trigger:hover {\n    border-color: var(--sm-accent);\n    color: var(--sm-text-primary);\n}\n\n.sm-trigger-text {\n    /* Text shown next to search icon */\n}\n\n.sm-trigger-kbd {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   BACKDROP\n   ========================================================================= */\n\n.sm-backdrop {\n    position: fixed;\n    inset: 0;\n    z-index: 99999;\n    display: flex;\n    align-items: flex-start;\n    justify-content: center;\n    padding-top: 10vh;\n    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));\n    backdrop-filter: var(--sm-backdrop-blur, blur(4px));\n    animation: sm-fade-in 0.15s ease;\n}\n\n.sm-backdrop[hidden] {\n    display: none;\n}\n\n@keyframes sm-fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n/* =========================================================================\n   MODAL CONTAINER\n   ========================================================================= */\n\n.sm-modal {\n    width: var(--sm-modal-width);\n    max-width: calc(100vw - 32px);\n    max-height: var(--sm-modal-max-height);\n    background: var(--sm-modal-bg);\n    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);\n    border-radius: var(--sm-modal-radius);\n    box-shadow: var(--sm-modal-shadow);\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    animation: sm-slide-up 0.2s ease;\n}\n\n@keyframes sm-slide-up {\n    from {\n        opacity: 0;\n        transform: translateY(-10px) scale(0.98);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0) scale(1);\n    }\n}\n\n/* =========================================================================\n   MODAL HEADER\n   ========================================================================= */\n\n.sm-header {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: 16px;\n    border-bottom: 1px solid var(--sm-border-color);\n}\n\n.sm-search-icon {\n    flex-shrink: 0;\n    color: var(--sm-text-muted);\n}\n\n.sm-close {\n    flex-shrink: 0;\n    display: flex;\n    align-items: center;\n    padding: 4px 8px;\n    background: transparent;\n    border: none;\n    cursor: pointer;\n}\n\n.sm-close kbd {\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   MODAL FOOTER\n   ========================================================================= */\n\n.sm-footer {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 16px;\n    padding: 12px 16px;\n    border-top: 1px solid var(--sm-border-color);\n    font-size: 12px;\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-hints {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n}\n\n.sm-footer-hints span {\n    display: flex;\n    align-items: center;\n    gap: 4px;\n}\n\n.sm-footer kbd {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 20px;\n    padding: 2px 4px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 10px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n.sm-footer-brand {\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-brand strong {\n    color: var(--sm-text-secondary);\n}\n\n/* =========================================================================\n   RTL SUPPORT (MODAL-SPECIFIC)\n   ========================================================================= */\n\n:host([dir="rtl"]) .sm-header,\n:host([dir="rtl"]) .sm-footer {\n    direction: rtl;\n}\n\n/* =========================================================================\n   MOBILE RESPONSIVE\n   ========================================================================= */\n\n@media (max-width: 640px) {\n    .sm-backdrop {\n        padding-top: 0;\n        align-items: flex-end;\n    }\n\n    .sm-modal {\n        max-width: 100%;\n        max-height: 90vh;\n        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;\n    }\n\n    .sm-trigger-text,\n    .sm-footer-hints {\n        display: none;\n    }\n}\n';
-
   // src/widgets/SearchModalWidget.js
-  var styles = base_default + "\n" + modal_default;
+  var styles = base_default + "\n" + modal_default + "\n" + debug_default;
   var SearchModalWidget = class extends SearchWidgetBase_default {
     /**
      * Initialize modal widget

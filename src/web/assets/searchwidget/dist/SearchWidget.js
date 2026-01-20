@@ -1,6 +1,8 @@
 (() => {
   // ../../../config/style-defaults.json
   var style_defaults_default = {
+    spinnerColor: "#3b82f6",
+    spinnerColorDark: "#60a5fa",
     modalBg: "#ffffff",
     modalBgDark: "#1f2937",
     modalBorderRadius: "12",
@@ -110,7 +112,10 @@
     highlightBgLight: "--sm-highlight-bg",
     highlightColorLight: "--sm-highlight-color",
     highlightBgDark: "--sm-highlight-bg-dark",
-    highlightColorDark: "--sm-highlight-color-dark"
+    highlightColorDark: "--sm-highlight-color-dark",
+    // Spinner
+    spinnerColor: "--sm-spinner-color-light",
+    spinnerColorDark: "--sm-spinner-color-dark"
   };
   var NUMERIC_KEYS = [
     "modalBorderRadius",
@@ -166,7 +171,9 @@
     "highlightBgLight",
     "highlightColorLight",
     "highlightBgDark",
-    "highlightColorDark"
+    "highlightColorDark",
+    "spinnerColor",
+    "spinnerColorDark"
   ];
   var DEFAULT_STYLES = {
     ...style_defaults_default,

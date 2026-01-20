@@ -32,9 +32,10 @@ import SearchWidgetBase from '../core/SearchWidgetBase.js';
 import { getObservedAttributes } from '../core/ConfigParser.js';
 import baseStyles from '../styles/base.css';
 import modalStyles from '../styles/modal.css';
+import debugStyles from '../styles/debug.css';
 
-// Combine base and modal-specific styles
-const styles = baseStyles + '\n' + modalStyles;
+// Combine base, modal-specific, and debug styles
+const styles = baseStyles + '\n' + modalStyles + '\n' + debugStyles;
 
 class SearchModalWidget extends SearchWidgetBase {
     /**
