@@ -36,7 +36,7 @@
 		{{ redirectInput('search-manager/settings/general') }}
 		{{ hiddenInput('section', 'general') }}
 
-		<h2 style="margin-top: 0px;">{{ "Plugin Settings"|t('search-manager') }}</h2>
+		<h2 style="margin-top: 0px;">{{ "General Settings"|t('search-manager') }}</h2>
 
 		{{ forms.textField({
             label: "Plugin Name"|t('search-manager'),
@@ -49,6 +49,60 @@
             warning: settings.isOverriddenByConfig('pluginName') ?
                 "This is being overridden by the <code>pluginName</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
+
+		{% if enabledBackends|length == 0 %}
+			{% include 'lindemannrock-base/_components/info-box' with {
+				type: 'notice',
+				message: 'No enabled backends. <a href="' ~ url('search-manager/backends/new') ~ '">Create a backend</a> to use as the default.'
+			} %}
+		{% else %}
+			{% set backendOptions = [{ label: 'Select a default backend...', value: '' }] %}
+			{% for backend in enabledBackends %}
+				{% set backendOptions = backendOptions|merge([{
+					label: backend.name ~ ' (' ~ backend.getTypeLabel() ~ ')',
+					value: backend.handle
+				}]) %}
+			{% endfor %}
+
+			{{ forms.selectField({
+				label: 'Default Backend'|t('search-manager'),
+				instructions: 'The backend that will be used for new indices and as the fallback when no specific backend is assigned.'|t('search-manager'),
+				id: 'defaultBackendHandle',
+				name: 'settings[defaultBackendHandle]',
+				value: settings.defaultBackendHandle,
+				options: backendOptions,
+				disabled: settings.isOverriddenByConfig('defaultBackendHandle'),
+				warning: settings.isOverriddenByConfig('defaultBackendHandle') ?
+					"This is being overridden by the <code>defaultBackendHandle</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+			}) }}
+		{% endif %}
+
+		{% if enabledWidgets|length == 0 %}
+			{% include 'lindemannrock-base/_components/info-box' with {
+				type: 'notice',
+				message: 'No enabled widgets. <a href="' ~ url('search-manager/widgets/new') ~ '">Create a widget</a> to use as the default.'
+			} %}
+		{% else %}
+			{% set widgetOptions = [{ label: 'Select a default widget...', value: '' }] %}
+			{% for widget in enabledWidgets %}
+				{% set widgetOptions = widgetOptions|merge([{
+					label: widget.name,
+					value: widget.handle
+				}]) %}
+			{% endfor %}
+
+			{{ forms.selectField({
+				label: 'Default Widget'|t('search-manager'),
+				instructions: 'The widget configuration that will be used when rendering the search widget without specifying a handle.'|t('search-manager'),
+				id: 'defaultWidgetHandle',
+				name: 'settings[defaultWidgetHandle]',
+				value: settings.defaultWidgetHandle,
+				options: widgetOptions,
+				disabled: settings.isOverriddenByConfig('defaultWidgetHandle'),
+				warning: settings.isOverriddenByConfig('defaultWidgetHandle') ?
+					"This is being overridden by the <code>defaultWidgetHandle</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+			}) }}
+		{% endif %}
 
 		<hr>
 

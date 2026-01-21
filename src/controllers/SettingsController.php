@@ -32,25 +32,29 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $settings = SearchManager::$plugin->getSettings();
 
-        return $this->renderTemplate('search-manager/settings/general', [
-            'settings' => $settings,
-        ]);
-    }
-
-    public function actionBackend(): Response
-    {
-        $this->requirePermission('searchManager:manageSettings');
-        $settings = SearchManager::$plugin->getSettings();
-
         // Load configured backends
         $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
         $enabledBackends = array_filter($backends, fn($b) => $b->enabled);
 
-        return $this->renderTemplate('search-manager/settings/backend', [
+        // Load configured widgets
+        $widgets = SearchManager::$plugin->widgetConfigs->getAll();
+        $enabledWidgets = array_filter($widgets, fn($w) => $w->enabled);
+
+        return $this->renderTemplate('search-manager/settings/general', [
             'settings' => $settings,
             'backends' => $backends,
             'enabledBackends' => $enabledBackends,
+            'widgets' => $widgets,
+            'enabledWidgets' => $enabledWidgets,
         ]);
+    }
+
+    /**
+     * Redirect to general settings (backend settings consolidated)
+     */
+    public function actionBackend(): Response
+    {
+        return $this->redirect('search-manager/settings/general');
     }
 
     public function actionIndexing(): Response
@@ -123,52 +127,35 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * Redirect to general settings (widget settings consolidated)
+     */
     public function actionWidget(): Response
     {
-        $this->requirePermission('searchManager:manageSettings');
-        $settings = SearchManager::$plugin->getSettings();
-
-        // Load configured widgets via service
-        $widgets = SearchManager::$plugin->widgetConfigs->getAll();
-        $enabledWidgets = array_filter($widgets, fn($w) => $w->enabled);
-
-        return $this->renderTemplate('search-manager/settings/widget', [
-            'settings' => $settings,
-            'widgets' => $widgets,
-            'enabledWidgets' => $enabledWidgets,
-        ]);
+        return $this->redirect('search-manager/settings/general');
     }
 
+    /**
+     * @deprecated Use actionSave() instead. Widget settings consolidated into general.
+     */
     public function actionSaveWidget(): ?Response
     {
         $this->requirePermission('searchManager:manageSettings');
         $this->requirePostRequest();
 
         $settings = SearchManager::$plugin->getSettings();
-
         $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
         $newWidgetHandle = $postedSettings['defaultWidgetHandle'] ?? null;
 
-        // Validate that the selected widget exists and is enabled
         if ($newWidgetHandle) {
             $configuredWidget = SearchManager::$plugin->widgetConfigs->getByHandle($newWidgetHandle);
             if (!$configuredWidget) {
                 Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected widget does not exist.'));
-                $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
-                return $this->renderTemplate('search-manager/settings/widget', [
-                    'settings' => $settings,
-                    'widgets' => $allWidgets,
-                    'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
-                ]);
+                return $this->redirect('search-manager/settings/general');
             }
             if (!$configuredWidget->enabled) {
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected widget is disabled. Enable it first in the Widgets section.'));
-                $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
-                return $this->renderTemplate('search-manager/settings/widget', [
-                    'settings' => $settings,
-                    'widgets' => $allWidgets,
-                    'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
-                ]);
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected widget is disabled.'));
+                return $this->redirect('search-manager/settings/general');
             }
         }
 
@@ -176,18 +163,13 @@ class SettingsController extends Controller
 
         if (!$settings->saveToDatabase()) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
-            $allWidgets = SearchManager::$plugin->widgetConfigs->getAll();
-            return $this->renderTemplate('search-manager/settings/widget', [
-                'settings' => $settings,
-                'widgets' => $allWidgets,
-                'enabledWidgets' => array_filter($allWidgets, fn($w) => $w->enabled),
-            ]);
+            return $this->redirect('search-manager/settings/general');
         }
 
         $this->logInfo('Default widget setting saved', ['handle' => $newWidgetHandle]);
         Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));
 
-        return $this->redirectToPostedUrl();
+        return $this->redirect('search-manager/settings/general');
     }
 
     public function actionTest(): Response
@@ -612,6 +594,9 @@ class SettingsController extends Controller
         return $this->redirectToPostedUrl();
     }
 
+    /**
+     * @deprecated Use actionSave() instead. Backend settings consolidated into general.
+     */
     public function actionSaveBackend(): ?Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -619,28 +604,18 @@ class SettingsController extends Controller
 
         $settings = SearchManager::$plugin->getSettings();
         $oldBackend = $settings->defaultBackendHandle ?? null;
-
         $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
         $newBackendHandle = $postedSettings['defaultBackendHandle'] ?? null;
 
-        // Validate that the selected backend exists and is enabled
         if ($newBackendHandle) {
             $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($newBackendHandle);
             if (!$configuredBackend) {
                 Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend does not exist.'));
-                return $this->renderTemplate('search-manager/settings/backend', [
-                    'settings' => $settings,
-                    'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
-                    'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
-                ]);
+                return $this->redirect('search-manager/settings/general');
             }
             if (!$configuredBackend->enabled) {
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend is disabled. Enable it first in the Backends section.'));
-                return $this->renderTemplate('search-manager/settings/backend', [
-                    'settings' => $settings,
-                    'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
-                    'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
-                ]);
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend is disabled.'));
+                return $this->redirect('search-manager/settings/general');
             }
         }
 
@@ -648,11 +623,7 @@ class SettingsController extends Controller
 
         if (!$settings->saveToDatabase()) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
-            return $this->renderTemplate('search-manager/settings/backend', [
-                'settings' => $settings,
-                'backends' => \lindemannrock\searchmanager\models\ConfiguredBackend::findAll(),
-                'enabledBackends' => array_filter(\lindemannrock\searchmanager\models\ConfiguredBackend::findAll(), fn($b) => $b->enabled),
-            ]);
+            return $this->redirect('search-manager/settings/general');
         }
 
         $this->logInfo('Default backend setting saved', ['handle' => $newBackendHandle]);
@@ -667,7 +638,7 @@ class SettingsController extends Controller
             Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));
         }
 
-        return $this->redirectToPostedUrl();
+        return $this->redirect('search-manager/settings/general');
     }
 
     public function actionCleanupAnalytics(): Response
