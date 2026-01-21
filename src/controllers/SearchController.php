@@ -37,6 +37,21 @@ class SearchController extends Controller
      */
     protected array|bool|int $allowAnonymous = ['query', 'track-click', 'track-search'];
 
+    /**
+     * @inheritdoc
+     */
+    public function beforeAction($action): bool
+    {
+        // Disable CSRF validation for analytics tracking endpoints
+        // These are fire-and-forget, low-risk endpoints called from frontend JS
+        // Adding CSRF would require passing tokens to the widget, adding complexity
+        if (in_array($action->id, ['track-click', 'track-search'], true)) {
+            $this->enableCsrfValidation = false;
+        }
+
+        return parent::beforeAction($action);
+    }
+
     public function init(): void
     {
         parent::init();
