@@ -97,12 +97,12 @@ class AnalyticsService extends Component
             // Use resolved handles so record doesn't implicitly include disabled indices
             $indexHandle = implode(',', $analyticsEnabledHandles);
         } elseif (str_contains($indexHandle, ',')) {
-            // Comma-joined indices: filter to only those with analytics enabled
+            // Comma-joined indices: filter to only those that are enabled AND have analytics enabled
             $handles = array_map('trim', explode(',', $indexHandle));
             $analyticsEnabledHandles = [];
             foreach ($handles as $handle) {
                 $idx = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($handle);
-                if ($idx && $idx->enableAnalytics) {
+                if ($idx && $idx->enabled && $idx->enableAnalytics) {
                     $analyticsEnabledHandles[] = $handle;
                 }
             }
@@ -113,10 +113,10 @@ class AnalyticsService extends Component
             // Use filtered handles so disabled indices aren't represented
             $indexHandle = implode(',', $analyticsEnabledHandles);
         } else {
-            // Single index handle
+            // Single index handle - require both enabled and enableAnalytics
             $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
-            if ($index && !$index->enableAnalytics) {
-                $this->logDebug('Analytics disabled for index', ['indexHandle' => $indexHandle]);
+            if ($index && (!$index->enabled || !$index->enableAnalytics)) {
+                $this->logDebug('Analytics disabled for index', ['indexHandle' => $indexHandle, 'enabled' => $index->enabled, 'enableAnalytics' => $index->enableAnalytics]);
                 return;
             }
         }

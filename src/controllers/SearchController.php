@@ -119,11 +119,14 @@ class SearchController extends Controller
         $indexHandle = $request->getParam('index', '');
 
         // Parse indices - comma-separated string to array
+        // Track whether caller explicitly provided indices
         $indexHandles = [];
+        $indicesProvided = false;
         if (!empty($indicesParam)) {
+            $indicesProvided = true;
             $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
         } elseif (!empty($indexHandle)) {
-            // Legacy single index support
+            $indicesProvided = true;
             $indexHandles = [$indexHandle];
         }
 
@@ -159,6 +162,16 @@ class SearchController extends Controller
                 );
                 // Filter to only enabled indices
                 $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
+            }
+
+            // If indices were explicitly provided but none are valid/enabled, return empty
+            // Don't fall back to "all enabled" - that would expose unintended results
+            if ($indicesProvided && empty($indexHandles)) {
+                return $this->asJson([
+                    'results' => [],
+                    'total' => 0,
+                    'query' => $query,
+                ]);
             }
 
             // Get raw search results
@@ -416,7 +429,9 @@ class SearchController extends Controller
 
         // Parse indices and validate against enabled indices
         $indexHandles = [];
+        $indicesProvided = false;
         if (!empty($indicesParam)) {
+            $indicesProvided = true;
             $requestedHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
 
             // Get all enabled index handles
@@ -430,7 +445,12 @@ class SearchController extends Controller
             $indexHandles = array_values(array_intersect($requestedHandles, $enabledHandles));
         }
 
-        // Use 'all' if no valid indices specified
+        // If indices were explicitly provided but none are valid/enabled, don't track
+        if ($indicesProvided && empty($indexHandles)) {
+            return $this->asJson(['success' => true, 'tracked' => false]);
+        }
+
+        // Use 'all' only if no indices were specified (not if they were invalid)
         $indexHandle = !empty($indexHandles) ? implode(',', $indexHandles) : 'all';
 
         // Get first index's backend for logging (or default)
