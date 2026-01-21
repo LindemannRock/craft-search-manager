@@ -155,7 +155,7 @@
 							<h2 style="margin-top: 0;">{{ typeDesc.title|t('search-manager') }}</h2>
 							<p class="light">{{ typeDesc.description|t('search-manager')|raw }}</p>
 
-							{% if typeDesc.infoBox %}
+							{% if typeDesc.infoBox and type != 'redis' %}
 								{% include 'lindemannrock-base/_components/info-box' with {
                                     message: typeDesc.infoBox
                                 } %}
@@ -177,6 +177,7 @@
 
 						{# Show Redis configuration info #}
 						{% if type == 'redis' %}
+							{# 1. Redis Detected status #}
 							{% if craftUsesRedis %}
 								{% include 'lindemannrock-base/_components/info-box' with {
                                     type: 'success',
@@ -188,11 +189,13 @@
                                     message: '<strong>Redis Not Detected in Craft:</strong> Redis caching is not configured in <code>config/app.php</code>. You must provide connection settings below, or <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">configure Redis in Craft</a> first.'
                                 } %}
                             {% endif %}
+
+							{# 2. Important notes (database isolation + hosting platform) #}
                             {% include 'lindemannrock-base/_components/info-box' with {
-                                type: 'tip',
-                                message: '<strong>Hosting Platform Note:</strong> If you\'re using a managed hosting platform like Servd, they may provide reserved environment variables (e.g., <code>REDIS_HOST</code>, <code>REDIS_PORT</code>) with custom values. In that case, configure the settings below using those env vars to ensure proper connectivity.'
+                                type: 'warning',
+                                message: '<strong>Important:</strong> If no host is configured, Search Manager will reuse Craft\'s existing Redis connection but store its data in a separate Redis database (Craft database + 1), preventing search data from being lost when Craft\'s cache is cleared. When using managed platforms such as Servd, Fortrabbit, or Platform.sh, Redis should be configured explicitly via their environment variables (for example, <code>REDIS_HOST</code>, <code>REDIS_PORT</code>).'
                             } %}
-							{% endif %}
+						{% endif %}
 
 							{% if schema|length > 0 %}
 								{% for key, config in schema %}
