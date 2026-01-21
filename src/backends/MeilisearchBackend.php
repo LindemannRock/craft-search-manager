@@ -14,7 +14,8 @@ use Meilisearch\Contracts\SearchQuery;
  */
 class MeilisearchBackend extends BaseBackend
 {
-    private ?Client $_client = null;
+    private ?Client $_adminClient = null;
+    private ?Client $_searchClient = null;
 
     // =========================================================================
     // BACKEND INTERFACE IMPLEMENTATION
@@ -34,7 +35,7 @@ class MeilisearchBackend extends BaseBackend
         }
 
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $client->health();
             return true;
         } catch (\Throwable $e) {
@@ -61,7 +62,7 @@ class MeilisearchBackend extends BaseBackend
     public function index(string $indexName, array $data): bool
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             // Ensure index has filterable attributes configured
@@ -90,7 +91,7 @@ class MeilisearchBackend extends BaseBackend
     public function batchIndex(string $indexName, array $items): bool
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             // Ensure index has filterable attributes configured
@@ -135,7 +136,7 @@ class MeilisearchBackend extends BaseBackend
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             $index = $client->index($fullIndexName);
@@ -161,7 +162,7 @@ class MeilisearchBackend extends BaseBackend
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             // Extract siteId for filtering (internal option, not Meilisearch param)
@@ -229,7 +230,7 @@ class MeilisearchBackend extends BaseBackend
     public function clearIndex(string $indexName): bool
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             $index = $client->index($fullIndexName);
@@ -249,7 +250,7 @@ class MeilisearchBackend extends BaseBackend
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             $index = $client->index($fullIndexName);
@@ -291,7 +292,7 @@ class MeilisearchBackend extends BaseBackend
     public function browse(string $indexName, string $query = '', array $parameters = []): iterable
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
             $index = $client->index($fullIndexName);
 
@@ -325,7 +326,7 @@ class MeilisearchBackend extends BaseBackend
     public function multipleQueries(array $queries = []): array
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getSearchClient();
 
             // Build Meilisearch multi-search format using SearchQuery objects
             $searchQueries = array_map(function($query) {
@@ -413,7 +414,7 @@ class MeilisearchBackend extends BaseBackend
     public function listIndices(): array
     {
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $indexesResult = $client->getIndexes();
 
             $indices = [];
@@ -516,18 +517,45 @@ class MeilisearchBackend extends BaseBackend
     // PRIVATE METHODS
     // =========================================================================
 
-    private function getClient(): Client
+    /**
+     * Get admin client for write operations (indexing, deleting)
+     */
+    private function getAdminClient(): Client
     {
-        if ($this->_client === null) {
+        if ($this->_adminClient === null) {
             $settings = $this->getBackendSettings();
 
-            $this->_client = new Client(
+            // Support both old 'apiKey' and new 'adminApiKey' for backward compatibility
+            $adminKey = $settings['adminApiKey'] ?? $settings['apiKey'] ?? null;
+
+            $this->_adminClient = new Client(
                 $this->resolveEnvVar($settings['host'] ?? null, 'http://localhost:7700'),
-                $this->resolveEnvVar($settings['apiKey'] ?? null, null)
+                $this->resolveEnvVar($adminKey, null)
             );
         }
 
-        return $this->_client;
+        return $this->_adminClient;
+    }
+
+    /**
+     * Get search client for read operations (searching, autocomplete)
+     * Uses searchApiKey if configured, otherwise falls back to admin key
+     */
+    private function getSearchClient(): Client
+    {
+        if ($this->_searchClient === null) {
+            $settings = $this->getBackendSettings();
+
+            // Use search key if set, otherwise fall back to admin key
+            $searchKey = $settings['searchApiKey'] ?? $settings['adminApiKey'] ?? $settings['apiKey'] ?? null;
+
+            $this->_searchClient = new Client(
+                $this->resolveEnvVar($settings['host'] ?? null, 'http://localhost:7700'),
+                $this->resolveEnvVar($searchKey, null)
+            );
+        }
+
+        return $this->_searchClient;
     }
 
     /**
@@ -549,7 +577,7 @@ class MeilisearchBackend extends BaseBackend
         }
 
         try {
-            $client = $this->getClient();
+            $client = $this->getAdminClient();
             $index = $client->index($indexName);
 
             // Get current filterable attributes

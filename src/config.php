@@ -423,7 +423,8 @@ return [
             //     'enabled' => true,
             //     'settings' => [
             //         'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
-            //         'apiKey' => App::env('MEILISEARCH_API_KEY'),
+            //         'adminApiKey' => App::env('MEILISEARCH_ADMIN_API_KEY'),
+            //         'searchApiKey' => App::env('MEILISEARCH_SEARCH_API_KEY'), // Optional: for frontend
             //     ],
             // ],
 
@@ -549,52 +550,100 @@ return [
          * Define search widget configurations with custom styles and behavior
          * These are marked as source='config' and cannot be edited in CP
          *
+         * SERVER-ENFORCED LIMITS (security):
+         * - Query length: Max 256 characters (widget input enforces this client-side)
+         * - Max results: Capped at 100 (behavior.maxResults values above 100 are silently capped)
+         * - Max indices: Max 5 indices per search (search.indexHandles arrays with >5 items are truncated)
+         * - Analytics resultsCount: Capped at 1000
+         * - Analytics source: Alphanumeric + dash/underscore only, max 64 chars
+         *
          * Available options:
          * - name: Display name for the config
          * - enabled: Whether the config is active
          * - settings: Widget settings (merged with defaults)
-         *   - search.indexHandles: Array of index handles to search (empty = all)
+         *   - search.indexHandles: Array of index handles to search (empty = all, max 5)
          *   - highlighting: Highlight settings (enabled, tag, class, colors)
          *   - backdrop: Modal backdrop (opacity, blur)
-         *   - behavior: Widget behavior (debounce, minChars, maxResults, showRecent, maxRecentSearches, groupResults, hotkey, hideResultsWithoutUrl, etc.)
+         *   - behavior: Widget behavior (debounce, minChars, maxResults [max 100], showRecent, maxRecentSearches, groupResults, hotkey, hideResultsWithoutUrl, etc.)
          *   - trigger: Trigger button (showTrigger, triggerText)
+         *   - analytics: Analytics tracking (source [alphanumeric, max 64 chars], idleTimeout)
          *   - styles: Visual styles (colors, borders, fonts, modalMaxHeight for light/dark modes)
          */
         'widgets' => [
-            // Example: Brand-themed search widget
-            // 'brand-search' => [
-            //     'name' => 'Brand Search',
+            // Example: Full widget config showing all available options
+            // 'main-search' => [
+            //     'name' => 'Main Search',
             //     'enabled' => true,
             //     'settings' => [
+            //         // Search settings
             //         'search' => [
-            //             'indexHandles' => ['entries-en'], // Search specific indices
+            //             'indexHandles' => ['entries-en', 'products'], // Empty array = search all indices
             //         ],
+            //         // Highlighting settings
+            //         'highlighting' => [
+            //             'enabled' => true,
+            //             'tag' => 'mark',           // HTML tag for highlights
+            //             'class' => null,           // Optional CSS class
+            //             'bgLight' => '#fef08a',    // Light mode highlight background
+            //             'colorLight' => '#854d0e', // Light mode highlight text
+            //             'bgDark' => '#854d0e',     // Dark mode highlight background
+            //             'colorDark' => '#fef08a',  // Dark mode highlight text
+            //         ],
+            //         // Backdrop settings
+            //         'backdrop' => [
+            //             'opacity' => 50,           // 0-100 (backdrop darkness)
+            //             'blur' => true,            // Blur background when modal open
+            //         ],
+            //         // Behavior settings
             //         'behavior' => [
-            //             'debounce' => 300,
-            //             'minChars' => 2,
-            //             'maxResults' => 8,
-            //             'showRecent' => true,
-            //             'maxRecentSearches' => 5,
-            //             'groupResults' => true,
-            //             'hotkey' => 'k',
-            //             'hideResultsWithoutUrl' => false, // Hide results without a URL
+            //             'preventBodyScroll' => true,
+            //             'debounce' => 200,         // Delay before search triggers (ms)
+            //             'minChars' => 2,           // Minimum chars before search
+            //             'maxResults' => 10,        // Max results to show
+            //             'showRecent' => true,      // Show recent searches
+            //             'maxRecentSearches' => 5,  // Max recent searches stored
+            //             'groupResults' => true,    // Group by section/type
+            //             'hotkey' => 'k',           // Cmd/Ctrl+K to open
+            //             'hideResultsWithoutUrl' => false,
+            //             'showLoadingIndicator' => true,
             //         ],
+            //         // Trigger button settings
+            //         'trigger' => [
+            //             'showTrigger' => true,     // Show search button
+            //             'triggerText' => 'Search', // Button text
+            //         ],
+            //         // Analytics settings
+            //         'analytics' => [
+            //             'source' => 'header-search', // Identifier in analytics
+            //             'idleTimeout' => 1500,       // Track after idle (ms), 0 = disabled
+            //         ],
+            //         // Visual styles (only override what you need)
             //         'styles' => [
-            //             // Light mode brand colors
+            //             // Modal - Light mode
             //             'modalBg' => '#ffffff',
-            //             'modalBorderColor' => '#0066cc',
-            //             'inputTextColor' => '#1a1a1a',
-            //             'resultTextColor' => '#1a1a1a',
-            //             // Dark mode brand colors
-            //             'modalBgDark' => '#1a1a2e',
-            //             'modalBorderColorDark' => '#4da6ff',
-            //             'inputTextColorDark' => '#f0f0f0',
-            //             'resultTextColorDark' => '#f0f0f0',
+            //             'modalBorderColor' => '#e5e7eb',
+            //             'modalBorderWidth' => '1',
+            //             'modalBorderRadius' => '12',
+            //             'modalShadow' => '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            //             'modalMaxHeight' => '80',  // vh units
+            //             // Modal - Dark mode
+            //             'modalBgDark' => '#1f2937',
+            //             'modalBorderColorDark' => '#374151',
+            //             // Input
+            //             'inputTextColor' => '#111827',
+            //             'inputTextColorDark' => '#f9fafb',
+            //             'inputPlaceholderColor' => '#9ca3af',
+            //             'inputPlaceholderColorDark' => '#6b7280',
+            //             // Results
+            //             'resultTextColor' => '#111827',
+            //             'resultTextColorDark' => '#f9fafb',
+            //             'resultHoverBg' => '#f3f4f6',
+            //             'resultHoverBgDark' => '#374151',
             //         ],
             //     ],
             // ],
 
-            // Example: Minimal search widget
+            // Example: Minimal widget (hotkey-only, no trigger button)
             // 'minimal' => [
             //     'name' => 'Minimal',
             //     'enabled' => true,
@@ -605,12 +654,6 @@ return [
             //         ],
             //         'trigger' => [
             //             'showTrigger' => false,
-            //         ],
-            //         'styles' => [
-            //             'modalBorderRadius' => '4',
-            //             'modalBorderWidth' => '1',
-            //             'modalMaxHeight' => '70', // 70vh
-            //             'resultBorderRadius' => '2',
             //         ],
             //     ],
             // ],

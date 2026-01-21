@@ -95,11 +95,18 @@ class ConfiguredBackend extends Model
                 'placeholder' => '$MEILISEARCH_HOST or http://localhost:7700',
                 'required' => true,
             ],
-            'apiKey' => [
+            'adminApiKey' => [
                 'type' => 'password',
-                'label' => 'API Key',
-                'instructions' => 'Meilisearch Master Key',
-                'placeholder' => '$MEILISEARCH_API_KEY',
+                'label' => 'Admin API Key',
+                'instructions' => 'Meilisearch Admin/Master Key (for indexing). Required for write operations.',
+                'placeholder' => '$MEILISEARCH_ADMIN_API_KEY',
+                'required' => false,
+            ],
+            'searchApiKey' => [
+                'type' => 'password',
+                'label' => 'Search API Key',
+                'instructions' => 'Meilisearch Search-Only API Key (for frontend). If not set, Admin Key is used for search.',
+                'placeholder' => '$MEILISEARCH_SEARCH_API_KEY',
                 'required' => false,
             ],
         ],
@@ -114,10 +121,9 @@ class ConfiguredBackend extends Model
             'port' => [
                 'type' => 'number',
                 'label' => 'Port',
-                'instructions' => 'Typesense server port',
-                'placeholder' => '8108',
+                'instructions' => 'Typesense server port (default: 8108)',
+                'placeholder' => '$TYPESENSE_PORT or 8108',
                 'required' => true,
-                'default' => 8108,
             ],
             'protocol' => [
                 'type' => 'select',
@@ -139,17 +145,16 @@ class ConfiguredBackend extends Model
             'host' => [
                 'type' => 'text',
                 'label' => 'Host',
-                'instructions' => 'Redis server host (e.g., redis or localhost)',
-                'placeholder' => '$REDIS_HOST or redis',
-                'required' => true,
+                'instructions' => 'Redis server host. Leave empty to use Craft\'s Redis cache settings.',
+                'placeholder' => '$REDIS_HOST or leave empty',
+                'required' => false,
             ],
             'port' => [
                 'type' => 'number',
                 'label' => 'Port',
-                'instructions' => 'Redis server port',
-                'placeholder' => '6379',
-                'required' => true,
-                'default' => 6379,
+                'instructions' => 'Redis server port. Leave empty to use Craft\'s Redis settings or default (6379).',
+                'placeholder' => '$REDIS_PORT or leave empty',
+                'required' => false,
             ],
             'password' => [
                 'type' => 'password',
@@ -161,10 +166,9 @@ class ConfiguredBackend extends Model
             'database' => [
                 'type' => 'number',
                 'label' => 'Database',
-                'instructions' => 'Redis database number',
-                'placeholder' => '0',
+                'instructions' => 'Redis database number. When using Craft\'s Redis settings, defaults to Craft database + 1 to isolate search data.',
+                'placeholder' => 'Leave empty for auto',
                 'required' => false,
-                'default' => 0,
             ],
         ],
         'mysql' => [],
@@ -202,7 +206,7 @@ class ConfiguredBackend extends Model
         'redis' => [
             'title' => 'Redis Configuration',
             'description' => 'In-memory search storage. Requires Redis server and PHP Redis extension. <a href="https://redis.io/docs/getting-started/" target="_blank" rel="noopener">Redis Documentation</a>',
-            'infoBox' => null,
+            'infoBox' => '<strong>Important:</strong> When no host is configured, Search Manager uses Craft\'s Redis cache settings but stores data in a separate database (Craft database + 1) to prevent data loss when Craft cache is cleared.',
         ],
         'mysql' => [
             'title' => 'MySQL Configuration',

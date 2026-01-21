@@ -371,6 +371,7 @@ class Install extends Migration
             // Analytics enhancement fields
             'intent' => $this->enum('intent', ['informational', 'product', 'navigational', 'question'])->null(),
             'source' => $this->string(50)->notNull()->defaultValue('frontend'),
+            'trigger' => $this->enum('trigger', ['click', 'enter', 'idle', 'unknown'])->null()->comment('What triggered the analytics tracking'),
             'platform' => $this->string(50)->null(),
             'appVersion' => $this->string(20)->null(),
             'ip' => $this->string(64)->null(),
@@ -412,6 +413,7 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['backend'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['intent'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['source'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['trigger'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['isHit'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['deviceType'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['browser'], false);
@@ -716,10 +718,15 @@ class Install extends Migration
                 'groupResults' => true,
                 'hotkey' => 'k',
                 'hideResultsWithoutUrl' => false,
+                'showLoadingIndicator' => true,
             ],
             'trigger' => [
                 'showTrigger' => true,
                 'triggerText' => 'Search',
+            ],
+            'analytics' => [
+                'source' => '',        // Custom source identifier
+                'idleTimeout' => 1500, // Track search after idle timeout in ms (0 = disabled)
             ],
         ];
 

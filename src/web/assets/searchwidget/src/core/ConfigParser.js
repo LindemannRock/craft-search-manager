@@ -14,7 +14,6 @@
  * @property {Array<string>} indices - Search index handles
  * @property {string} index - Primary index (first of indices)
  * @property {string} placeholder - Input placeholder text
- * @property {string} endpoint - Search API endpoint
  * @property {string} theme - Color theme ('light' or 'dark')
  * @property {number} maxResults - Maximum results to display
  * @property {number} debounce - Debounce delay in milliseconds
@@ -23,7 +22,11 @@
  * @property {number} maxRecentSearches - Max recent searches to store
  * @property {boolean} groupResults - Group results by type/section
  * @property {string} siteId - Site ID filter
- * @property {string} analyticsEndpoint - Analytics tracking endpoint
+ * @property {string} searchEndpoint - Search API endpoint (internal)
+ * @property {string} trackClickEndpoint - Click tracking endpoint (internal)
+ * @property {string} trackSearchEndpoint - Search tracking endpoint (internal)
+ * @property {number} idleTimeout - Idle timeout for analytics tracking (ms)
+ * @property {string} source - Analytics source identifier
  * @property {boolean} enableHighlighting - Enable text highlighting
  * @property {string} highlightTag - HTML tag for highlights
  * @property {string} highlightClass - CSS class for highlights
@@ -67,7 +70,6 @@
 export const BASE_DEFAULTS = {
     indices: [],
     placeholder: 'Search...',
-    endpoint: '/actions/search-manager/search/query',
     theme: 'light',
     maxResults: 10,
     debounce: 200,
@@ -76,7 +78,13 @@ export const BASE_DEFAULTS = {
     maxRecentSearches: 5,
     groupResults: true,
     siteId: '',
-    analyticsEndpoint: '/actions/search-manager/search/track-click',
+    // Internal endpoints (not user-configurable)
+    searchEndpoint: '/actions/search-manager/search/query',
+    trackClickEndpoint: '/actions/search-manager/search/track-click',
+    trackSearchEndpoint: '/actions/search-manager/search/track-search',
+    // Analytics settings (user-configurable)
+    idleTimeout: 1500, // Track search after 1.5s idle (0 = disabled)
+    source: '', // Custom source identifier (empty = 'frontend-widget')
     enableHighlighting: true,
     highlightTag: 'mark',
     highlightClass: '',
@@ -240,20 +248,25 @@ export function parseConfig(element, widgetType = 'modal') {
         indices,
         index: indices[0] || '',
 
-        // String attributes
+        // String attributes (user-configurable)
         placeholder: element.getAttribute('placeholder') || defaults.placeholder,
-        endpoint: element.getAttribute('endpoint') || defaults.endpoint,
         theme: element.getAttribute('theme') || defaults.theme,
         siteId: element.getAttribute('site-id') || defaults.siteId,
-        analyticsEndpoint: element.getAttribute('analytics-endpoint') || defaults.analyticsEndpoint,
+        source: element.getAttribute('source') || defaults.source,
         highlightTag: element.getAttribute('highlight-tag') || defaults.highlightTag,
         highlightClass: element.getAttribute('highlight-class') || defaults.highlightClass,
+
+        // Internal endpoints (not user-configurable, use defaults)
+        searchEndpoint: defaults.searchEndpoint,
+        trackClickEndpoint: defaults.trackClickEndpoint,
+        trackSearchEndpoint: defaults.trackSearchEndpoint,
 
         // Integer attributes
         maxResults: parseInt(element.getAttribute('max-results'), defaults.maxResults),
         debounce: parseInt(element.getAttribute('debounce'), defaults.debounce),
         minChars: parseInt(element.getAttribute('min-chars'), defaults.minChars),
         maxRecentSearches: parseInt(element.getAttribute('max-recent-searches'), defaults.maxRecentSearches),
+        idleTimeout: parseInt(element.getAttribute('idle-timeout'), defaults.idleTimeout),
 
         // Boolean attributes (default true - check for 'false')
         showRecent: parseBoolean(element.getAttribute('show-recent'), defaults.showRecent),
@@ -315,11 +328,13 @@ export function parseConfig(element, widgetType = 'modal') {
  */
 export function getObservedAttributes(widgetType = 'modal') {
     // Base attributes (all widget types)
+    // Note: endpoint attributes are internal and not included here
     const baseAttrs = [
-        'indices', 'placeholder', 'endpoint', 'theme',
+        'indices', 'placeholder', 'theme',
         'max-results', 'debounce', 'min-chars', 'show-recent',
         'max-recent-searches', 'group-results', 'site-id',
-        'analytics-endpoint', 'enable-highlighting', 'highlight-tag',
+        'idle-timeout', 'source',
+        'enable-highlighting', 'highlight-tag',
         'highlight-class', 'hide-results-without-url', 'show-loading-indicator',
         'debug', 'styles', 'promotions',
     ];

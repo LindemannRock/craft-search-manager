@@ -9,10 +9,20 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
 /**
  * Redis Backend
  *
- * Search backend using BM25 algorithm with Redis storage
+ * Search backend using BM25 algorithm with Redis storage.
+ *
+ * IMPORTANT: When using Craft's Redis cache settings (no explicit host configured),
+ * search data is stored in a SEPARATE database (Craft database + 1) to prevent
+ * data loss when Craft cache is cleared.
  */
 class RedisBackend extends AbstractSearchEngineBackend
 {
+    /**
+     * Default database offset from Craft's Redis database.
+     * This ensures search data is isolated from Craft cache data.
+     */
+    private const SEARCH_DATABASE_OFFSET = 1;
+
     /**
      * @var \Redis|null Redis client for availability checks
      */
@@ -23,8 +33,58 @@ class RedisBackend extends AbstractSearchEngineBackend
      */
     protected function createStorage(string $fullIndexName): StorageInterface
     {
+        // Use resolved settings (with Craft fallback applied)
+        $resolvedSettings = $this->getResolvedRedisSettings();
+        return new RedisStorage($fullIndexName, $resolvedSettings);
+    }
+
+    /**
+     * Get resolved Redis settings, applying Craft cache fallback if needed.
+     *
+     * When no explicit Redis host is configured, falls back to Craft's Redis
+     * cache settings but uses a DIFFERENT database to isolate search data.
+     *
+     * @return array Resolved Redis settings
+     */
+    private function getResolvedRedisSettings(): array
+    {
         $backendSettings = $this->getBackendSettings();
-        return new RedisStorage($fullIndexName, $backendSettings);
+
+        // If host is explicitly configured, use those settings as-is
+        $configuredHost = $this->resolveEnvVar($backendSettings['host'] ?? null, null);
+        if (!empty($configuredHost)) {
+            return $backendSettings;
+        }
+
+        // Fall back to Craft's Redis cache settings
+        if (Craft::$app->cache instanceof \yii\redis\Cache) {
+            $redisConnection = Craft::$app->cache->redis;
+
+            $craftDatabase = (int) ($redisConnection->database ?? 0);
+
+            // Use separate database for search data to prevent cache flush conflicts
+            // Unless user has explicitly configured a database
+            $searchDatabase = isset($backendSettings['database']) && $backendSettings['database'] !== ''
+                ? (int) $this->resolveEnvVar($backendSettings['database'], 0)
+                : $craftDatabase + self::SEARCH_DATABASE_OFFSET;
+
+            $this->logInfo('Using Craft Redis cache settings for Search Manager', [
+                'host' => $redisConnection->hostname ?? 'localhost',
+                'port' => $redisConnection->port ?? 6379,
+                'craftDatabase' => $craftDatabase,
+                'searchDatabase' => $searchDatabase,
+            ]);
+
+            return [
+                'host' => $redisConnection->hostname ?? 'localhost',
+                'port' => $redisConnection->port ?? 6379,
+                'password' => $redisConnection->password ?? null,
+                'database' => $searchDatabase,
+            ];
+        }
+
+        // No Craft Redis, use defaults
+        return $backendSettings;
     }
 
     /**
@@ -83,56 +143,31 @@ class RedisBackend extends AbstractSearchEngineBackend
     /**
      * Get or create Redis client
      *
+     * Uses the same resolved settings as storage to ensure consistency.
+     *
      * @return \Redis
      * @throws \Exception
      */
     private function getClient(): \Redis
     {
         if ($this->_client === null) {
-            $settings = $this->getBackendSettings();
+            // Use resolved settings (same as storage uses)
+            $settings = $this->getResolvedRedisSettings();
 
-            // If no host configured, use Craft's Redis cache settings
-            if (empty($settings['host']) && Craft::$app->cache instanceof \yii\redis\Cache) {
-                $this->logInfo('Using Craft Redis cache settings for Search Manager');
+            $this->_client = new \Redis();
 
-                $redisConnection = Craft::$app->cache->redis;
-                $this->_client = new \Redis();
+            $host = $settings['host'] ?? '127.0.0.1';
+            $port = (int) ($settings['port'] ?? 6379);
+            $password = $settings['password'] ?? null;
+            $database = (int) ($settings['database'] ?? 0);
 
-                $craftHost = $redisConnection->hostname ?? 'localhost';
-                $craftPort = $redisConnection->port ?? 6379;
-                $craftPassword = $redisConnection->password ?? null;
-                $craftDatabase = $redisConnection->database ?? 0;
+            $this->_client->connect($host, $port);
 
-                $this->logInfo('Connecting to Craft Redis', [
-                    'host' => $craftHost,
-                    'port' => $craftPort,
-                    'database' => $craftDatabase,
-                ]);
-
-                $this->_client->connect($craftHost, (int)$craftPort);
-
-                if ($craftPassword) {
-                    $this->_client->auth($craftPassword);
-                }
-
-                $this->_client->select((int)$craftDatabase);
-            } else {
-                // Use configured host/port
-                $this->_client = new \Redis();
-
-                $host = $this->resolveEnvVar($settings['host'] ?? null, '127.0.0.1');
-                $port = (int)$this->resolveEnvVar($settings['port'] ?? null, 6379);
-                $password = $this->resolveEnvVar($settings['password'] ?? null, null);
-                $database = (int)$this->resolveEnvVar($settings['database'] ?? null, 0);
-
-                $this->_client->connect($host, $port);
-
-                if ($password) {
-                    $this->_client->auth($password);
-                }
-
-                $this->_client->select($database);
+            if ($password) {
+                $this->_client->auth($password);
             }
+
+            $this->_client->select($database);
         }
 
         return $this->_client;

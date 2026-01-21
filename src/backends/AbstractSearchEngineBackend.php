@@ -79,15 +79,38 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      * @param string $indexHandle Raw index handle (e.g., 'all-sites')
      * @return SearchEngine
      */
-    protected function getSearchEngine(string $indexHandle): SearchEngine
+    protected function getSearchEngine(string $indexHandle, ?string $languageOverride = null): SearchEngine
     {
         $fullIndexName = $this->getFullIndexName($indexHandle);
 
-        if (!isset($this->searchEngines[$fullIndexName])) {
+        // Determine language for stop-word filtering
+        // Priority: explicit override > index language > site language > 'en' default
+        $language = 'en';
+        $searchIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+        $hasExplicitLanguage = $searchIndex && !empty($searchIndex->language);
+
+        if ($languageOverride) {
+            $language = $languageOverride;
+        } elseif ($hasExplicitLanguage) {
+            $language = $searchIndex->language;
+        } elseif ($currentSite = \Craft::$app->getSites()->getCurrentSite()) {
+            // Fall back to current site's language (e.g., 'en-US' -> 'en')
+            $siteLanguage = $currentSite->language;
+            if (!empty($siteLanguage)) {
+                $language = strtolower(substr($siteLanguage, 0, 2));
+            }
+        }
+
+        // Cache key includes language when derived from site (not explicit in index)
+        // This ensures each site gets correct stop words
+        $cacheKey = $hasExplicitLanguage ? $fullIndexName : $fullIndexName . '_' . $language;
+
+        if (!isset($this->searchEngines[$cacheKey])) {
             $storage = $this->getStorage($indexHandle);
             $settings = SearchManager::$plugin->getSettings();
 
-            $this->searchEngines[$fullIndexName] = new SearchEngine($storage, $fullIndexName, [
+            $this->searchEngines[$cacheKey] = new SearchEngine($storage, $fullIndexName, [
+                'language' => $language,
                 'k1' => $settings->bm25K1 ?? 1.5,
                 'b' => $settings->bm25B ?? 0.75,
                 'titleBoost' => $settings->titleBoostFactor ?? 5.0,
@@ -99,7 +122,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             ]);
         }
 
-        return $this->searchEngines[$fullIndexName];
+        return $this->searchEngines[$cacheKey];
     }
 
     // =========================================================================
@@ -276,18 +299,29 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            $engine = $this->getSearchEngine($indexName);
-            $storage = $this->getStorage($indexName);
-
             // Get site ID from options - check raw value first for "all sites" detection
             $rawSiteId = $options['siteId'] ?? null;
+
+            // Pass language override to get correctly configured SearchEngine
+            // Derive language from siteId if no explicit language and a specific siteId is provided
+            $languageOverride = $options['language'] ?? null;
+            if ($languageOverride === null && $rawSiteId !== null && $rawSiteId !== '*' && is_numeric($rawSiteId)) {
+                $site = Craft::$app->getSites()->getSiteById((int) $rawSiteId);
+                if ($site && !empty($site->language)) {
+                    $languageOverride = strtolower(substr($site->language, 0, 2));
+                }
+            }
+
+            $engine = $this->getSearchEngine($indexName, $languageOverride);
+            $storage = $this->getStorage($indexName);
+
             $limit = $options['limit'] ?? 0;
             $typeFilter = $options['type'] ?? null;
 
             // Build search options (pass language for localized operators)
             $searchOptions = [];
-            if (isset($options['language'])) {
-                $searchOptions['language'] = $options['language'];
+            if ($languageOverride) {
+                $searchOptions['language'] = $languageOverride;
             }
 
             // Handle "all sites" search (siteId = '*' or null/not set)

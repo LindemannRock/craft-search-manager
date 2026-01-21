@@ -75,6 +75,10 @@ class WidgetConfig extends Model
                 'showTrigger' => true,
                 'triggerText' => 'Search',
             ],
+            'analytics' => [
+                'source' => '',           // Custom source identifier (e.g., 'header-search', 'mobile-nav')
+                'idleTimeout' => 1500,    // Track search after idle timeout in ms (0 = disabled)
+            ],
             // Note: 'styles' defaults are handled by JavaScript (StyleConfig.js)
             // PHP only passes explicitly configured styles to avoid duplication
             'styles' => [],
@@ -279,6 +283,17 @@ class WidgetConfig extends Model
     public function getTriggerText(): string
     {
         return $this->getSetting('trigger.triggerText', 'Search');
+    }
+
+    // Analytics
+    public function getAnalyticsSource(): string
+    {
+        return $this->getSetting('analytics.source', '');
+    }
+
+    public function getIdleTimeout(): int
+    {
+        return (int) $this->getSetting('analytics.idleTimeout', 1500);
     }
 
     // Styles - returns only explicitly configured styles (JS handles defaults)

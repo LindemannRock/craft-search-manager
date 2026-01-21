@@ -89,7 +89,6 @@ class SearchWidget extends HTMLElement {
             indices,
             index: indices[0] || '',
             placeholder: this.getAttribute('placeholder') || 'Search...',
-            endpoint: this.getAttribute('endpoint') || '/actions/search-manager/search/query',
             theme: this.getAttribute('theme') || 'light',
             maxResults: parseInt(this.getAttribute('max-results')) || 10,
             debounce: parseInt(this.getAttribute('debounce')) || 200,
@@ -99,7 +98,10 @@ class SearchWidget extends HTMLElement {
             groupResults: this.getAttribute('group-results') !== 'false',
             hotkey: this.getAttribute('hotkey') || 'k',
             siteId: this.getAttribute('site-id') || '',
-            analyticsEndpoint: this.getAttribute('analytics-endpoint') || '/actions/search-manager/search/track-click',
+            // Internal endpoints (not user-configurable)
+            searchEndpoint: '/actions/search-manager/search/query',
+            trackClickEndpoint: '/actions/search-manager/search/track-click',
+            trackSearchEndpoint: '/actions/search-manager/search/track-search',
             enableHighlighting: this.getAttribute('enable-highlighting') !== 'false',
             highlightTag: this.getAttribute('highlight-tag') || 'mark',
             highlightClass: this.getAttribute('highlight-class') || '',
@@ -160,6 +162,7 @@ class SearchWidget extends HTMLElement {
                             class="sm-input"
                             part="input"
                             placeholder="${placeholder}"
+                            maxlength="256"
                             autocomplete="off"
                             autocorrect="off"
                             autocapitalize="off"
@@ -385,7 +388,7 @@ class SearchWidget extends HTMLElement {
         try {
             this.results = await performSearch({
                 query,
-                endpoint: this.config.endpoint,
+                endpoint: this.config.searchEndpoint,
                 indices: this.config.indices,
                 siteId: this.config.siteId,
                 maxResults: this.config.maxResults,
@@ -617,7 +620,7 @@ class SearchWidget extends HTMLElement {
         // Track analytics for search results (not recent items)
         if (id && this.config.index) {
             trackClick({
-                endpoint: this.config.analyticsEndpoint,
+                endpoint: this.config.trackClickEndpoint,
                 elementId: id,
                 query,
                 index: this.config.index,

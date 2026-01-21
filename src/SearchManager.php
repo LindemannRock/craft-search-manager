@@ -434,6 +434,10 @@ class SearchManager extends Plugin
                         'searchManager:clearCache' => [
                             'label' => Craft::t('search-manager', 'Clear cache'),
                         ],
+                        // Debug (for testing search in production without devMode)
+                        'searchManager:viewDebug' => [
+                            'label' => Craft::t('search-manager', 'View debug info in search responses'),
+                        ],
                         // Logs - grouped
                         'searchManager:viewLogs' => [
                             'label' => Craft::t('search-manager', 'View logs'),

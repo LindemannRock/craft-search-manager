@@ -25,7 +25,7 @@
 
 import { parseConfig } from './ConfigParser.js';
 import { createStateManager, DEFAULT_STATE } from './StateManager.js';
-import { performSearch, trackClick } from '../modules/SearchService.js';
+import { performSearch, trackClick, trackSearch } from '../modules/SearchService.js';
 import { loadRecentSearches, saveRecentSearch, clearRecentSearches } from '../modules/RecentSearches.js';
 import { applyStylesToElement } from '../modules/StyleUtils.js';
 import {
@@ -80,6 +80,12 @@ class SearchWidgetBase extends HTMLElement {
 
         // Debounce timer for search input
         this.debounceTimer = null;
+
+        // Analytics idle timeout timer (for "browsing" behavior tracking)
+        this.analyticsIdleTimer = null;
+
+        // Last query that was tracked for analytics (prevent double tracking)
+        this.lastTrackedQuery = null;
 
         // Unique IDs for ARIA accessibility
         this.listboxId = generateId('sm-listbox');
@@ -312,6 +318,12 @@ class SearchWidgetBase extends HTMLElement {
             clearTimeout(this.debounceTimer);
         }
 
+        // Cancel analytics idle timer (user is still typing)
+        if (this.analyticsIdleTimer) {
+            clearTimeout(this.analyticsIdleTimer);
+            this.analyticsIdleTimer = null;
+        }
+
         // If query is empty, just re-render (shows recent or empty state)
         if (!query.trim()) {
             this.state.set({ results: [] });
@@ -352,7 +364,7 @@ class SearchWidgetBase extends HTMLElement {
         try {
             const { results, meta } = await performSearch({
                 query,
-                endpoint: this.config.endpoint,
+                endpoint: this.config.searchEndpoint,
                 indices: this.config.indices,
                 siteId: this.config.siteId,
                 maxResults: this.config.maxResults,
@@ -376,6 +388,9 @@ class SearchWidgetBase extends HTMLElement {
 
             // Dispatch search event
             this.dispatchWidgetEvent('search', { query, results, meta });
+
+            // Start analytics idle timer (track "browsing" behavior)
+            this.startAnalyticsIdleTimer(query, results.length);
 
         } catch (error) {
             // Ignore abort errors (expected when search is cancelled)
@@ -539,6 +554,16 @@ class SearchWidgetBase extends HTMLElement {
         const items = container.querySelectorAll('.sm-result-item');
         const currentIndex = this.state.get('selectedIndex');
 
+        // Track search analytics on Enter key (explicit intent signal)
+        // This fires before selection so we track even if no item is selected
+        if (e.key === 'Enter') {
+            const query = this.state.get('query');
+            const results = this.state.get('results') || [];
+            if (query && results.length > 0) {
+                this.trackSearchAnalytics(query, results.length, 'enter');
+            }
+        }
+
         // Delegate to keyboard navigator
         this.keyboardNavigator.handleKeydown(e, items.length, currentIndex);
     }
@@ -603,11 +628,16 @@ class SearchWidgetBase extends HTMLElement {
         // Track analytics for search results (not recent items)
         if (id && this.config.index) {
             trackClick({
-                endpoint: this.config.analyticsEndpoint,
+                endpoint: this.config.trackClickEndpoint,
                 elementId: id,
                 query,
                 index: this.config.index,
             });
+        }
+
+        // Track search analytics on click (explicit intent signal)
+        if (!isRecentItem && query) {
+            this.trackSearchAnalytics(query, this.state.get('results')?.length || 0, 'click');
         }
 
         // Dispatch result-click event
@@ -785,6 +815,91 @@ class SearchWidgetBase extends HTMLElement {
      */
     initializeLiveRegion() {
         this.liveRegion = createLiveRegion(this.shadowRoot);
+    }
+
+    // =========================================================================
+    // ANALYTICS TRACKING
+    // =========================================================================
+
+    /**
+     * Start analytics idle timer
+     *
+     * Tracks search when user stops typing for analyticsIdleTimeout ms
+     * (captures "browsing" behavior - user reads results without clicking).
+     *
+     * @param {string} query - The search query
+     * @param {number} resultsCount - Number of results returned
+     */
+    startAnalyticsIdleTimer(query, resultsCount) {
+        // Cancel any existing timer
+        if (this.analyticsIdleTimer) {
+            clearTimeout(this.analyticsIdleTimer);
+        }
+
+        // Check if idle tracking is enabled
+        const idleTimeout = this.config.idleTimeout;
+        if (!idleTimeout || idleTimeout <= 0) {
+            return;
+        }
+
+        // Start timer
+        this.analyticsIdleTimer = setTimeout(() => {
+            this.trackSearchAnalytics(query, resultsCount, 'idle');
+        }, idleTimeout);
+    }
+
+    /**
+     * Track search analytics (explicit tracking)
+     *
+     * Called when user shows intent:
+     * - Clicks a result (trigger='click')
+     * - Presses Enter (trigger='enter')
+     * - Stops typing for idle timeout (trigger='idle')
+     *
+     * Prevents double tracking of the same query.
+     *
+     * @param {string} query - The search query
+     * @param {number} resultsCount - Number of results
+     * @param {string} trigger - What triggered tracking ('click', 'enter', 'idle')
+     */
+    trackSearchAnalytics(query, resultsCount, trigger) {
+        // Skip if no query or already tracked this query
+        if (!query || query === this.lastTrackedQuery) {
+            return;
+        }
+
+        // Mark as tracked
+        this.lastTrackedQuery = query;
+
+        // Cancel idle timer (if tracking via click or enter)
+        if (this.analyticsIdleTimer) {
+            clearTimeout(this.analyticsIdleTimer);
+            this.analyticsIdleTimer = null;
+        }
+
+        // Track via endpoint
+        trackSearch({
+            endpoint: this.config.trackSearchEndpoint,
+            query,
+            indices: this.config.indices,
+            resultsCount,
+            trigger,
+            source: this.config.source,
+            siteId: this.config.siteId,
+        });
+    }
+
+    /**
+     * Reset analytics tracking state
+     *
+     * Call when modal closes or search context changes.
+     */
+    resetAnalyticsTracking() {
+        this.lastTrackedQuery = null;
+        if (this.analyticsIdleTimer) {
+            clearTimeout(this.analyticsIdleTimer);
+            this.analyticsIdleTimer = null;
+        }
     }
 
     // =========================================================================

@@ -366,7 +366,8 @@ return [
                 'enabled' => true,
                 'settings' => [
                     'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
-                    'apiKey' => App::env('MEILISEARCH_API_KEY'),
+                    'adminApiKey' => App::env('MEILISEARCH_ADMIN_API_KEY'),
+                    'searchApiKey' => App::env('MEILISEARCH_SEARCH_API_KEY'), // Optional
                 ],
             ],
         ],
@@ -416,6 +417,10 @@ Define search widget configurations in `config/search-manager.php`:
                 'minChars' => 2,
                 'maxResults' => 8,
                 'hotkey' => 'k',
+            ],
+            'analytics' => [
+                'source' => 'header-search',   // Custom identifier for analytics
+                'idleTimeout' => 1500,         // Track search after idle (ms), 0 to disable
             ],
             'styles' => [
                 // Light mode
@@ -1420,6 +1425,8 @@ The widget is built with accessibility as a core feature:
     backdropOpacity: 50,
     enableBackdropBlur: true,
     preventBodyScroll: true,
+    source: 'header-search',
+    idleTimeout: 1500,
 } %}
 ```
 
@@ -1452,6 +1459,8 @@ The widget is built with accessibility as a core feature:
 | `enableBackdropBlur` | bool | Enable backdrop blur |
 | `preventBodyScroll` | bool | Prevent body scroll when open |
 | `styles` | object | Override individual style values |
+| `source` | string | Custom identifier for analytics (e.g., 'header-search', 'mobile-nav') |
+| `idleTimeout` | int | Track search after user stops typing (ms). 0 to disable idle tracking |
 
 **Connecting External Triggers:**
 
@@ -1490,7 +1499,7 @@ All style defaults are defined in `src/config/style-defaults.json` and are WCAG 
 Widget configurations can be managed in the Control Panel under Search Manager → Widgets:
 
 - **Settings Tab**: Name, handle, search indices
-- **Behavior Tab**: Debounce, min chars, max results, recent searches, grouped results, hotkey
+- **Behavior Tab**: Backdrop settings, debounce, min chars, max results, recent searches, grouped results, hotkey, trigger button settings, analytics settings (source identifier, idle timeout)
 - **Appearance Tab**: Colors, fonts, spacing, border radius, max height, highlighting colors
 - **Preview**: Live preview of both light and dark mode appearance
 
@@ -1517,9 +1526,18 @@ widget.close();
 widget.toggle();
 ```
 
-**Click Analytics:**
+**Widget Analytics:**
 
-The widget automatically tracks which results users click. This data appears in the Analytics section of the CP.
+The widget tracks searches and clicks to provide meaningful analytics without keystroke spam:
+
+- **Click Tracking**: Automatically tracks which results users click
+- **Search Tracking**: Records searches only when users show intent:
+  - Clicking a result
+  - Pressing Enter
+  - Stopping typing for the configured idle timeout (default: 1.5s)
+- **Source Identification**: Use `source` parameter to identify different widget placements (e.g., 'header-search', 'mobile-nav', 'footer-search')
+
+This data appears in the Analytics section of the CP and can be exported for analysis.
 
 ### Promotions (Pinned Results)
 
@@ -1992,8 +2010,8 @@ Backends are configured as named instances using `backends`. Each backend has a 
         'enabled' => true,
         'settings' => [
             'host' => App::env('MEILISEARCH_HOST') ?: 'http://localhost:7700',
-            'apiKey' => App::env('MEILISEARCH_API_KEY'),
-            'timeout' => 5,
+            'adminApiKey' => App::env('MEILISEARCH_ADMIN_API_KEY'),  // For indexing
+            'searchApiKey' => App::env('MEILISEARCH_SEARCH_API_KEY'), // Optional: for frontend search
         ],
     ],
 ],
@@ -2039,11 +2057,14 @@ If Craft is configured to use Redis cache in `config/app.php`, Search Manager ca
         'enabled' => true,
         'settings' => [],
         // Leave settings empty to use Craft's Redis connection
+        // Search data stored in Craft's database + 1 automatically
     ],
 ],
 ```
 
-**Option 2: Dedicated Redis Connection**
+> **Note:** When using Craft's Redis settings with empty config, Search Manager automatically stores data in a separate database (Craft's database + 1) to prevent data loss when Craft cache is cleared.
+
+**Option 2: Dedicated Redis Connection (Recommended for Production)**
 
 Configure a separate Redis connection for search:
 
@@ -2057,7 +2078,7 @@ Configure a separate Redis connection for search:
             'host' => App::env('REDIS_HOST') ?: 'redis',
             'port' => App::env('REDIS_PORT') ?: 6379,
             'password' => App::env('REDIS_PASSWORD'),
-            'database' => App::env('REDIS_DATABASE') ?: 0,
+            'database' => App::env('REDIS_SEARCH_DATABASE') ?: 1, // Use different database than Craft cache
         ],
     ],
 ],
@@ -2068,13 +2089,27 @@ Configure a separate Redis connection for search:
 REDIS_HOST=redis
 REDIS_PORT=6379
 REDIS_PASSWORD=
-REDIS_DATABASE=0
+REDIS_DATABASE=0           # Craft cache
+REDIS_SEARCH_DATABASE=1    # Search Manager (separate from cache)
 ```
 
+> **Note: Database Isolation**
+>
+> The automatic database offset (+1) **only applies when**:
+> - Using Craft's Redis cache fallback (no explicit `host` configured), AND
+> - No explicit `database` value is set
+>
+> **If you explicitly configure `database`** (as in Option 2 above), that exact value is used - no offset applied. This gives you full control when using a dedicated Redis connection.
+>
+> The automatic isolation relies on:
+> - Redis supporting multiple databases (0-15 by default)
+> - Cache clearing using `FLUSHDB` (clears single database) not `FLUSHALL` (clears all)
+>
+> **Test this on your hosting platform** by clearing Craft cache and verifying search still works. If your search index is wiped when clearing cache, your host may use `FLUSHALL` or restrict to a single database - in that case, consider MySQL/PostgreSQL backend instead.
+
 **Or via Control Panel:**
-- Leave all fields empty to reuse Craft's Redis cache
+- Leave all fields empty to reuse Craft's Redis cache (auto uses database + 1)
 - Or use `$REDIS_HOST` format in settings (plugin resolves environment variables automatically)
-- Required fields: Host, Port, Database (Password is optional)
 
 **⚠️ Important: Docker/DDEV Environments**
 
@@ -2132,7 +2167,8 @@ return [
                 'enabled' => true,
                 'settings' => [
                     'host' => 'http://localhost:7700',
-                    'apiKey' => App::env('MEILISEARCH_API_KEY'),
+                    'adminApiKey' => App::env('MEILISEARCH_ADMIN_API_KEY'),
+                    'searchApiKey' => App::env('MEILISEARCH_SEARCH_API_KEY'), // Optional
                 ],
             ],
             'production-algolia' => [
@@ -2228,7 +2264,8 @@ $results = Craft::$app->search->search('query', [
 ```bash
 # Meilisearch
 MEILISEARCH_HOST="https://meilisearch.example.com"
-MEILISEARCH_ADMIN_API_KEY="your-master-key"
+MEILISEARCH_ADMIN_API_KEY="your-admin-key"
+MEILISEARCH_SEARCH_API_KEY="your-search-key"  # Optional: for frontend search
 
 # Algolia
 ALGOLIA_APPLICATION_ID="your-app-id"
@@ -2400,6 +2437,48 @@ Event::on(
 - **View logs**: Can view plugin logs
   - **Download logs**: Can download log files
 - **Manage settings**: Can change plugin settings
+- **View debug info**: Can view debug metadata in search responses (index names, backend info, timing)
+
+## Security Guardrails
+
+The plugin enforces server-side security limits on all public search endpoints to prevent abuse:
+
+### Query Limits
+
+| Limit | Value | Behavior |
+|-------|-------|----------|
+| Query length | 256 characters | Returns error, widget enforces via `maxlength` |
+| Max results | 100 | Silently capped (values >100 become 100) |
+| Max indices per search | 5 | Silently truncated to first 5 |
+
+### Analytics Protection
+
+| Input | Validation | Behavior |
+|-------|------------|----------|
+| `source` | Alphanumeric + `-_`, max 64 chars | Sanitized, invalid chars removed |
+| `resultsCount` | 0–1000 | Clamped to range |
+| `indices` | Must be enabled | Unknown/disabled indices ignored |
+| `trigger` | Allowlist: `click`, `enter`, `idle` | Invalid values become `unknown` |
+
+### Debug Metadata
+
+Debug information (index names, backend details, timing) in search responses requires either:
+- Craft's `devMode` enabled, OR
+- User has `searchManager:viewDebug` permission
+
+### Disabled Index Protection
+
+- Only **enabled** indices are publicly searchable
+- Disabled indices are excluded from "search all" queries
+- Analytics only accepts enabled index handles
+
+### Recommendations
+
+For production sites with high traffic:
+
+1. **Rate limiting**: Configure at server level (nginx/Apache) or use a Craft rate-limiting plugin
+2. **API keys**: For mobile apps using `/actions/search-manager/api/*`, consider adding authentication
+3. **Index visibility**: Keep sensitive content in separate indices that aren't searched by default
 
 ## Configuration
 

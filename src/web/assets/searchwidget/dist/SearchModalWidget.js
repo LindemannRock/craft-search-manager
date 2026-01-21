@@ -27,7 +27,6 @@ var SearchModalWidget = (() => {
   var BASE_DEFAULTS = {
     indices: [],
     placeholder: "Search...",
-    endpoint: "/actions/search-manager/search/query",
     theme: "light",
     maxResults: 10,
     debounce: 200,
@@ -36,7 +35,15 @@ var SearchModalWidget = (() => {
     maxRecentSearches: 5,
     groupResults: true,
     siteId: "",
-    analyticsEndpoint: "/actions/search-manager/search/track-click",
+    // Internal endpoints (not user-configurable)
+    searchEndpoint: "/actions/search-manager/search/query",
+    trackClickEndpoint: "/actions/search-manager/search/track-click",
+    trackSearchEndpoint: "/actions/search-manager/search/track-search",
+    // Analytics settings (user-configurable)
+    idleTimeout: 1500,
+    // Track search after 1.5s idle (0 = disabled)
+    source: "",
+    // Custom source identifier (empty = 'frontend-widget')
     enableHighlighting: true,
     highlightTag: "mark",
     highlightClass: "",
@@ -122,19 +129,23 @@ var SearchModalWidget = (() => {
       // Array/special parsing
       indices,
       index: indices[0] || "",
-      // String attributes
+      // String attributes (user-configurable)
       placeholder: element.getAttribute("placeholder") || defaults.placeholder,
-      endpoint: element.getAttribute("endpoint") || defaults.endpoint,
       theme: element.getAttribute("theme") || defaults.theme,
       siteId: element.getAttribute("site-id") || defaults.siteId,
-      analyticsEndpoint: element.getAttribute("analytics-endpoint") || defaults.analyticsEndpoint,
+      source: element.getAttribute("source") || defaults.source,
       highlightTag: element.getAttribute("highlight-tag") || defaults.highlightTag,
       highlightClass: element.getAttribute("highlight-class") || defaults.highlightClass,
+      // Internal endpoints (not user-configurable, use defaults)
+      searchEndpoint: defaults.searchEndpoint,
+      trackClickEndpoint: defaults.trackClickEndpoint,
+      trackSearchEndpoint: defaults.trackSearchEndpoint,
       // Integer attributes
       maxResults: parseInt(element.getAttribute("max-results"), defaults.maxResults),
       debounce: parseInt(element.getAttribute("debounce"), defaults.debounce),
       minChars: parseInt(element.getAttribute("min-chars"), defaults.minChars),
       maxRecentSearches: parseInt(element.getAttribute("max-recent-searches"), defaults.maxRecentSearches),
+      idleTimeout: parseInt(element.getAttribute("idle-timeout"), defaults.idleTimeout),
       // Boolean attributes (default true - check for 'false')
       showRecent: parseBoolean(element.getAttribute("show-recent"), defaults.showRecent),
       groupResults: parseBoolean(element.getAttribute("group-results"), defaults.groupResults),
@@ -179,7 +190,6 @@ var SearchModalWidget = (() => {
     const baseAttrs = [
       "indices",
       "placeholder",
-      "endpoint",
       "theme",
       "max-results",
       "debounce",
@@ -188,7 +198,8 @@ var SearchModalWidget = (() => {
       "max-recent-searches",
       "group-results",
       "site-id",
-      "analytics-endpoint",
+      "idle-timeout",
+      "source",
       "enable-highlighting",
       "highlight-tag",
       "highlight-class",
@@ -405,6 +416,7 @@ var SearchModalWidget = (() => {
     if (debug) {
       params.append("debug", "1");
     }
+    params.append("skipAnalytics", "1");
     const separator = endpoint.includes("?") ? "&" : "?";
     const response = await fetch(`${endpoint}${separator}${params}`, {
       signal,
@@ -416,10 +428,14 @@ var SearchModalWidget = (() => {
       throw new Error("Search failed");
     }
     const data = await response.json();
+    if (data.error) {
+      console.warn("Search warning:", data.error);
+    }
     return {
       results: data.results || data.hits || [],
       total: data.total || 0,
-      meta: data.meta || null
+      meta: data.meta || null,
+      error: data.error || null
     };
   }
   function trackClick({ endpoint, elementId, query, index }) {
@@ -430,6 +446,27 @@ var SearchModalWidget = (() => {
       formData.append("elementId", elementId);
       formData.append("query", query);
       formData.append("index", index);
+      fetch(endpoint, {
+        method: "POST",
+        body: formData
+      }).catch(() => {
+      });
+    } catch (e) {
+    }
+  }
+  function trackSearch({ endpoint, query, indices = [], resultsCount = 0, trigger = "unknown", source = "", siteId = "" }) {
+    if (!query || !endpoint)
+      return;
+    try {
+      const formData = new FormData();
+      formData.append("q", query);
+      formData.append("indices", indices.join(","));
+      formData.append("resultsCount", resultsCount.toString());
+      formData.append("trigger", trigger);
+      formData.append("source", source || "frontend-widget");
+      if (siteId) {
+        formData.append("siteId", siteId);
+      }
       fetch(endpoint, {
         method: "POST",
         body: formData
@@ -1205,6 +1242,8 @@ var SearchModalWidget = (() => {
       );
       this.abortController = null;
       this.debounceTimer = null;
+      this.analyticsIdleTimer = null;
+      this.lastTrackedQuery = null;
       this.listboxId = generateId("sm-listbox");
       this.inputId = generateId("sm-input");
       this.liveRegion = null;
@@ -1389,6 +1428,10 @@ var SearchModalWidget = (() => {
       if (this.debounceTimer) {
         clearTimeout(this.debounceTimer);
       }
+      if (this.analyticsIdleTimer) {
+        clearTimeout(this.analyticsIdleTimer);
+        this.analyticsIdleTimer = null;
+      }
       if (!query.trim()) {
         this.state.set({ results: [] });
         return;
@@ -1417,7 +1460,7 @@ var SearchModalWidget = (() => {
       try {
         const { results, meta } = await performSearch({
           query,
-          endpoint: this.config.endpoint,
+          endpoint: this.config.searchEndpoint,
           indices: this.config.indices,
           siteId: this.config.siteId,
           maxResults: this.config.maxResults,
@@ -1435,6 +1478,7 @@ var SearchModalWidget = (() => {
           announce(this.liveRegion, getResultsAnnouncement(results.length, query));
         }
         this.dispatchWidgetEvent("search", { query, results, meta });
+        this.startAnalyticsIdleTimer(query, results.length);
       } catch (error) {
         if (error.name === "AbortError") {
           return;
@@ -1564,6 +1608,13 @@ var SearchModalWidget = (() => {
         return;
       const items = container.querySelectorAll(".sm-result-item");
       const currentIndex = this.state.get("selectedIndex");
+      if (e.key === "Enter") {
+        const query = this.state.get("query");
+        const results = this.state.get("results") || [];
+        if (query && results.length > 0) {
+          this.trackSearchAnalytics(query, results.length, "enter");
+        }
+      }
       this.keyboardNavigator.handleKeydown(e, items.length, currentIndex);
     }
     /**
@@ -1618,11 +1669,14 @@ var SearchModalWidget = (() => {
       }
       if (id && this.config.index) {
         trackClick({
-          endpoint: this.config.analyticsEndpoint,
+          endpoint: this.config.trackClickEndpoint,
           elementId: id,
           query,
           index: this.config.index
         });
+      }
+      if (!isRecentItem && query) {
+        this.trackSearchAnalytics(query, this.state.get("results")?.length || 0, "click");
       }
       this.dispatchWidgetEvent("result-click", {
         id,
@@ -1760,6 +1814,75 @@ var SearchModalWidget = (() => {
      */
     initializeLiveRegion() {
       this.liveRegion = createLiveRegion(this.shadowRoot);
+    }
+    // =========================================================================
+    // ANALYTICS TRACKING
+    // =========================================================================
+    /**
+     * Start analytics idle timer
+     *
+     * Tracks search when user stops typing for analyticsIdleTimeout ms
+     * (captures "browsing" behavior - user reads results without clicking).
+     *
+     * @param {string} query - The search query
+     * @param {number} resultsCount - Number of results returned
+     */
+    startAnalyticsIdleTimer(query, resultsCount) {
+      if (this.analyticsIdleTimer) {
+        clearTimeout(this.analyticsIdleTimer);
+      }
+      const idleTimeout = this.config.idleTimeout;
+      if (!idleTimeout || idleTimeout <= 0) {
+        return;
+      }
+      this.analyticsIdleTimer = setTimeout(() => {
+        this.trackSearchAnalytics(query, resultsCount, "idle");
+      }, idleTimeout);
+    }
+    /**
+     * Track search analytics (explicit tracking)
+     *
+     * Called when user shows intent:
+     * - Clicks a result (trigger='click')
+     * - Presses Enter (trigger='enter')
+     * - Stops typing for idle timeout (trigger='idle')
+     *
+     * Prevents double tracking of the same query.
+     *
+     * @param {string} query - The search query
+     * @param {number} resultsCount - Number of results
+     * @param {string} trigger - What triggered tracking ('click', 'enter', 'idle')
+     */
+    trackSearchAnalytics(query, resultsCount, trigger) {
+      if (!query || query === this.lastTrackedQuery) {
+        return;
+      }
+      this.lastTrackedQuery = query;
+      if (this.analyticsIdleTimer) {
+        clearTimeout(this.analyticsIdleTimer);
+        this.analyticsIdleTimer = null;
+      }
+      trackSearch({
+        endpoint: this.config.trackSearchEndpoint,
+        query,
+        indices: this.config.indices,
+        resultsCount,
+        trigger,
+        source: this.config.source,
+        siteId: this.config.siteId
+      });
+    }
+    /**
+     * Reset analytics tracking state
+     *
+     * Call when modal closes or search context changes.
+     */
+    resetAnalyticsTracking() {
+      this.lastTrackedQuery = null;
+      if (this.analyticsIdleTimer) {
+        clearTimeout(this.analyticsIdleTimer);
+        this.analyticsIdleTimer = null;
+      }
     }
     // =========================================================================
     // EVENT DISPATCHING
@@ -2787,6 +2910,7 @@ var SearchModalWidget = (() => {
                             class="sm-input"
                             part="input"
                             placeholder="${placeholder}"
+                            maxlength="256"
                             autocomplete="off"
                             autocorrect="off"
                             autocapitalize="off"
@@ -2942,6 +3066,7 @@ var SearchModalWidget = (() => {
       if (this.config.preventBodyScroll) {
         document.body.style.overflow = "";
       }
+      this.resetAnalyticsTracking();
       this.dispatchWidgetEvent("close");
     }
     /**

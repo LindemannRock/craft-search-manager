@@ -39,7 +39,7 @@
             <p>{{ "Enter a search query to test. Supports all operators."|t('search-manager') }}</p>
         </div>
         <div style="position: relative;">
-            <input type="text" id="testQuery" name="testQuery" class="text fullwidth" value="" placeholder="Try: 'exact phrase', test NOT spam, title:blog, test*" autocomplete="off">
+            <input type="text" id="testQuery" name="testQuery" class="text fullwidth" value="" placeholder="Try: 'exact phrase', test NOT spam, title:blog, test*" maxlength="256" autocomplete="off">
             {# Autocomplete dropdown #}
             <div id="autocomplete-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 4px; margin-top: 4px; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100;"></div>
         </div>
@@ -565,12 +565,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     const excerpt = showHighlighting.checked && hit.excerptHighlighted ? hit.excerptHighlighted : (hit.excerpt || hit.content || '');
                     const url = hit.url || '';
                     const isPromoted = hit.promoted === true;
+                    const isBoosted = hit.boosted === true;
+                    const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.join(', ') : null;
+                    const indexHandle = hit._index || null;
 
                     html += `
-<div style="padding: 16px; border: 1px solid ${isPromoted ? '#fbbf24' : '#e5e7eb'}; border-radius: 4px; background: ${isPromoted ? '#fffbeb' : '#fff'};">
+<div style="padding: 16px; border: 1px solid ${isPromoted ? '#fbbf24' : (isBoosted ? '#34d399' : '#e5e7eb')}; border-radius: 4px; background: ${isPromoted ? '#fffbeb' : (isBoosted ? '#ecfdf5' : '#fff')};">
     <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
         <div style="flex: 1;">
             ${isPromoted ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">PROMOTED</span>' : ''}
+            ${isBoosted ? '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">BOOSTED</span>' : ''}
             <strong style="color: #111827; font-size: 15px;">${title}</strong>
             ${url ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><a href="${url}" target="_blank" style="color: #0d78f2;">${url}</a></div>` : ''}
         </div>
@@ -581,8 +585,9 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
     <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
-        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}${hit.section ? ' • Section: ' + hit.section : ''} • <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Site: ${hit.siteName || 'Unknown'} (${hit.language || '??'})</span>
+        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}${hit.section ? ' • Section: ' + hit.section : ''}${indexHandle ? ' • Index: <code>' + indexHandle + '</code>' : ''} • <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Site: ${hit.siteName || 'Unknown'} (${hit.language || '??'})</span>
     </div>
+    ${matchedIn ? `<div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;"><strong>Matched in:</strong> <code>${matchedIn}</code></div>` : ''}
     ${excerpt ? `<div style="color: #4b5563; line-height: 1.6; font-size: 14px;">${excerpt.substring(0, 300)}${excerpt.length > 300 ? '...' : ''}</div>` : ''}
 </div>
 `;

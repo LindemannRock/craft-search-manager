@@ -147,3 +147,28 @@
 		value: widgetConfig.getTriggerText(),
 	}) }}
 </div>
+
+<hr>
+
+{# Analytics Settings #}
+<h2>{{ "Analytics Settings"|t('search-manager') }}</h2>
+
+{{ forms.textField({
+	label: 'Source Identifier'|t('search-manager'),
+	instructions: 'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.'|t('search-manager'),
+	id: 'analytics-source',
+	name: 'settings[analytics][source]',
+	value: widgetConfig.getAnalyticsSource(),
+	placeholder: 'frontend-widget',
+}) }}
+
+{{ forms.textField({
+	label: 'Idle Timeout'|t('search-manager'),
+	instructions: 'Track search after user stops typing for this duration (milliseconds). Set to 0 to disable idle tracking.'|t('search-manager'),
+	id: 'analytics-idleTimeout',
+	name: 'settings[analytics][idleTimeout]',
+	value: widgetConfig.getIdleTimeout(),
+	type: 'number',
+	min: 0,
+	max: 10000,
+}) }}

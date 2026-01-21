@@ -15,6 +15,11 @@ use yii\web\Response;
 class ApiController extends Controller
 {
     /**
+     * Maximum query length to prevent resource exhaustion
+     */
+    private const MAX_QUERY_LENGTH = 256;
+
+    /**
      * @inheritdoc
      */
     protected array|bool|int $allowAnonymous = true;
@@ -41,8 +46,23 @@ class ApiController extends Controller
     public function actionAutocomplete(): Response
     {
         $query = Craft::$app->getRequest()->getParam('q', '');
+
+        // Enforce query length cap to prevent resource exhaustion
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            return $this->asJson([
+                'suggestions' => [],
+                'results' => [],
+                'error' => 'Query too long',
+            ]);
+        }
+
         $indexHandle = Craft::$app->getRequest()->getParam('index', 'all-sites');
-        $limit = (int)Craft::$app->getRequest()->getParam('limit', 10);
+        $limit = (int) Craft::$app->getRequest()->getParam('limit', 10);
+        // Clamp limit to prevent expensive queries (max 100, 0 or negative = use default)
+        if ($limit <= 0) {
+            $limit = 10;
+        }
+        $limit = min(100, $limit);
         $only = Craft::$app->getRequest()->getParam('only', null);
         $typeFilter = Craft::$app->getRequest()->getParam('type', null);
         $siteId = Craft::$app->getRequest()->getParam('siteId');
@@ -118,9 +138,25 @@ class ApiController extends Controller
     {
         $request = Craft::$app->getRequest();
         $query = $request->getParam('q', '');
+
+        // Enforce query length cap to prevent resource exhaustion
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            return $this->asJson([
+                'hits' => [],
+                'total' => 0,
+                'error' => 'Query too long',
+            ]);
+        }
+
         $indexHandle = $request->getParam('index', 'all-sites');
-        // TODO: Make default limit configurable via settings (add 'apiDefaultLimit' config option)
-        $limit = (int)$request->getParam('limit', 20);
+        $limit = (int) $request->getParam('limit', 20);
+        // Normalize limit: negative = default, 0 = no limit, positive = capped at 100
+        if ($limit < 0) {
+            $limit = 20;
+        } elseif ($limit > 0) {
+            $limit = min(100, $limit);
+        }
+        // $limit === 0 means "no limit" (passed through to backend)
         $typeFilter = $request->getParam('type', null);
         $language = $request->getParam('language', null);
 

@@ -49,6 +49,7 @@ class AnalyticsService extends Component
      * @param int|null $siteId The site ID
      * @param array $analyticsOptions Optional analytics options:
      *   - source: The source of the search (frontend, cp, api, ios-app, android-app, etc.)
+     *   - trigger: What triggered the tracking (click, enter, idle, unknown)
      *   - platform: The platform info (iOS 17, Android 14, Windows 11, etc.)
      *   - appVersion: The app version (1.0.0, 2.3.1, etc.)
      *   - synonymsExpanded: Whether query was expanded with synonyms
@@ -89,6 +90,7 @@ class AnalyticsService extends Component
 
         // Extract analytics options
         $source = $analyticsOptions['source'] ?? null;
+        $trigger = $analyticsOptions['trigger'] ?? null;
         $platform = $analyticsOptions['platform'] ?? null;
         $appVersion = $analyticsOptions['appVersion'] ?? null;
 
@@ -157,6 +159,7 @@ class AnalyticsService extends Component
                     'siteId' => $siteId,
                     'intent' => $intent,
                     'source' => $source,
+                    'trigger' => $trigger,
                     'platform' => $platform,
                     'appVersion' => $appVersion,
                     'ip' => $ip,

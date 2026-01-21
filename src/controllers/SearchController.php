@@ -18,9 +18,24 @@ class SearchController extends Controller
     use LoggingTrait;
 
     /**
+     * Maximum query length to prevent resource exhaustion
+     */
+    private const MAX_QUERY_LENGTH = 256;
+
+    /**
+     * Maximum number of indices that can be searched at once
+     */
+    private const MAX_INDICES_COUNT = 5;
+
+    /**
+     * Maximum resultsCount for analytics to prevent pollution
+     */
+    private const MAX_ANALYTICS_RESULTS_COUNT = 1000;
+
+    /**
      * @inheritdoc
      */
-    protected array|bool|int $allowAnonymous = ['query', 'track-click'];
+    protected array|bool|int $allowAnonymous = ['query', 'track-click', 'track-search'];
 
     public function init(): void
     {
@@ -42,6 +57,7 @@ class SearchController extends Controller
      * - limit: Max results (default: 10)
      * - siteId: Site ID to search (optional)
      * - hideResultsWithoutUrl: Hide results that don't have a URL (optional, default: false)
+     * - skipAnalytics: Skip analytics tracking (default: true for widget, prevents keystroke spam)
      *
      * @return Response
      */
@@ -49,16 +65,39 @@ class SearchController extends Controller
     {
         $request = Craft::$app->getRequest();
         $query = $request->getParam('q', '');
+
+        // Enforce query length cap to prevent resource exhaustion
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            return $this->asJson([
+                'results' => [],
+                'total' => 0,
+                'query' => mb_substr($query, 0, self::MAX_QUERY_LENGTH),
+                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
+            ]);
+        }
+
         $limit = (int) $request->getParam('limit', 10);
+        // Normalize limit: negative = default, 0 = no limit, positive = capped at 100
+        if ($limit < 0) {
+            $limit = 10;
+        } elseif ($limit > 0) {
+            $limit = min(100, $limit);
+        }
+        // $limit === 0 means "no limit" (passed through to backend)
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int) $siteId : null;
         $hideResultsWithoutUrl = (bool) $request->getParam('hideResultsWithoutUrl', false);
 
-        // Debug mode: explicit param overrides devMode default
+        // Skip analytics if explicitly requested (e.g., widget passes skipAnalytics=1 to prevent keystroke spam)
+        // Default: false (track analytics as normal)
+        $skipAnalytics = (bool) $request->getParam('skipAnalytics', false);
+
+        // Debug mode: requires devMode OR searchManager:viewDebug permission
+        // This prevents leaking internal index/backend info in production
         $debugParam = $request->getParam('debug');
-        $includeDebugMeta = $debugParam !== null
-            ? (bool) $debugParam
-            : Craft::$app->config->general->devMode;
+        $canViewDebug = Craft::$app->config->general->devMode
+            || Craft::$app->getUser()->checkPermission('searchManager:viewDebug');
+        $includeDebugMeta = $canViewDebug && ($debugParam !== null ? (bool) $debugParam : Craft::$app->config->general->devMode);
 
         // Get indices from new 'indices' param or legacy 'index' param
         $indicesParam = $request->getParam('indices', '');
@@ -73,6 +112,11 @@ class SearchController extends Controller
             $indexHandles = [$indexHandle];
         }
 
+        // Cap indices count to prevent fan-out attacks
+        if (count($indexHandles) > self::MAX_INDICES_COUNT) {
+            $indexHandles = array_slice($indexHandles, 0, self::MAX_INDICES_COUNT);
+        }
+
         if (empty(trim($query))) {
             return $this->asJson([
                 'results' => [],
@@ -84,6 +128,7 @@ class SearchController extends Controller
         try {
             $options = [
                 'limit' => $limit,
+                'skipAnalytics' => $skipAnalytics,
             ];
 
             if ($siteId !== null) {
@@ -98,9 +143,13 @@ class SearchController extends Controller
                 // Search multiple specified indices
                 $searchResults = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
             } else {
-                // No indices specified - search all
+                // No indices specified - search all enabled indices
                 $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-                $allIndexHandles = array_map(fn($idx) => $idx->handle, $allIndices);
+                // Filter to only enabled indices (disabled indices should not be publicly searchable)
+                $allIndexHandles = array_map(
+                    fn($idx) => $idx->handle,
+                    array_filter($allIndices, fn($idx) => $idx->enabled)
+                );
 
                 if (empty($allIndexHandles)) {
                     return $this->asJson([
@@ -274,6 +323,133 @@ class SearchController extends Controller
         ]);
 
         return $this->asJson(['success' => true]);
+    }
+
+    /**
+     * Track a search query for analytics (explicit tracking)
+     *
+     * This endpoint is called by the widget when the user shows intent:
+     * - Clicks a result
+     * - Presses Enter
+     * - Stops typing for idle timeout (browsing behavior)
+     *
+     * POST /actions/search-manager/search/track-search
+     *
+     * Parameters:
+     * - q: The search query
+     * - indices: Comma-separated index handles (or empty for all)
+     * - resultsCount: Number of results returned
+     * - trigger: What triggered tracking ('click', 'enter', 'idle')
+     * - source: Source identifier (e.g., 'header-search', 'mobile-nav')
+     * - siteId: Site ID (optional)
+     *
+     * @return Response
+     */
+    public function actionTrackSearch(): Response
+    {
+        $this->requirePostRequest();
+
+        $request = Craft::$app->getRequest();
+        $query = $request->getParam('q', '');
+        $indicesParam = $request->getParam('indices', '');
+        $resultsCount = (int) $request->getParam('resultsCount', 0);
+        $trigger = $request->getParam('trigger', 'unknown');
+        $source = $request->getParam('source', 'frontend-widget');
+        $siteId = $request->getParam('siteId');
+        $siteId = $siteId ? (int) $siteId : null;
+
+        // Validate and sanitize inputs to prevent analytics pollution
+
+        // Query: cap length (same as search endpoints)
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            $query = mb_substr($query, 0, self::MAX_QUERY_LENGTH);
+        }
+
+        // Results count: clamp to reasonable range
+        $resultsCount = max(0, min(self::MAX_ANALYTICS_RESULTS_COUNT, $resultsCount));
+
+        // Trigger: must be from allowed list
+        $validTriggers = ['click', 'enter', 'idle', 'unknown'];
+        if (!in_array($trigger, $validTriggers, true)) {
+            $trigger = 'unknown';
+        }
+
+        // Source: sanitize and limit length (max 64 chars, alphanumeric + dash/underscore)
+        $source = preg_replace('/[^a-zA-Z0-9_-]/', '', $source);
+        $source = substr($source, 0, 64) ?: 'frontend-widget';
+
+        if (empty(trim($query))) {
+            return $this->asJson(['success' => false, 'error' => 'Query is required']);
+        }
+
+        // Check if analytics is enabled
+        $settings = SearchManager::$plugin->getSettings();
+        if (!$settings->enableAnalytics) {
+            return $this->asJson(['success' => true, 'tracked' => false]);
+        }
+
+        // Parse indices and validate against enabled indices
+        $indexHandles = [];
+        if (!empty($indicesParam)) {
+            $requestedHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
+
+            // Get all enabled index handles
+            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $enabledHandles = array_map(
+                fn($idx) => $idx->handle,
+                array_filter($allIndices, fn($idx) => $idx->enabled)
+            );
+
+            // Only allow indices that exist and are enabled
+            $indexHandles = array_values(array_intersect($requestedHandles, $enabledHandles));
+        }
+
+        // Use 'all' if no valid indices specified
+        $indexHandle = !empty($indexHandles) ? implode(',', $indexHandles) : 'all';
+
+        // Get first index's backend for logging (or default)
+        $backend = 'unknown';
+        if (!empty($indexHandles)) {
+            $backendInstance = SearchManager::$plugin->backend->getBackendForIndex($indexHandles[0]);
+            if ($backendInstance) {
+                $backend = $backendInstance->getName();
+            }
+        } else {
+            $backend = SearchManager::$plugin->getSettings()->defaultBackendHandle ?? 'unknown';
+        }
+
+        try {
+            // Track with source and trigger info
+            SearchManager::$plugin->analytics->trackSearch(
+                $indexHandle,
+                $query,
+                $resultsCount,
+                null, // No execution time for explicit tracking
+                $backend,
+                $siteId,
+                [
+                    'source' => $source,
+                    'trigger' => $trigger, // Will be stored once we add the column
+                ]
+            );
+
+            $this->logDebug('Explicit search tracking', [
+                'query' => $query,
+                'indices' => $indexHandle,
+                'trigger' => $trigger,
+                'source' => $source,
+                'resultsCount' => $resultsCount,
+            ]);
+
+            return $this->asJson(['success' => true, 'tracked' => true]);
+        } catch (\Throwable $e) {
+            $this->logError('Failed to track search', [
+                'query' => $query,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->asJson(['success' => false, 'error' => 'Tracking failed']);
+        }
     }
 
     /**

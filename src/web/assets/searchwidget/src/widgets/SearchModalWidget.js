@@ -130,6 +130,7 @@ class SearchModalWidget extends SearchWidgetBase {
                             class="sm-input"
                             part="input"
                             placeholder="${placeholder}"
+                            maxlength="256"
                             autocomplete="off"
                             autocorrect="off"
                             autocapitalize="off"
@@ -333,6 +334,9 @@ class SearchModalWidget extends SearchWidgetBase {
         if (this.config.preventBodyScroll) {
             document.body.style.overflow = '';
         }
+
+        // Reset analytics tracking (allows new search session to be tracked)
+        this.resetAnalyticsTracking();
 
         // Dispatch close event
         this.dispatchWidgetEvent('close');
