@@ -2472,11 +2472,40 @@ Debug information (index names, backend details, timing) in search responses req
 - Disabled indices are excluded from "search all" queries
 - Analytics only accepts enabled index handles
 
+### Rate Limiting (Not Included)
+
+This plugin **does not implement rate limiting**. Rate limiting is an infrastructure concern best handled at the edge:
+
+**Why not plugin-level?**
+- By the time PHP executes, the request has already consumed server resources
+- Requires shared state (Redis/database) across requests, adding complexity
+- Race conditions on multi-server deployments
+- Every public endpoint needs rate limiting, not just search
+
+**Recommended Solutions:**
+
+| Layer | Solution | Benefit |
+|-------|----------|---------|
+| CDN/Edge | Cloudflare, AWS WAF, Fastly | Blocks before hitting origin |
+| Web Server | nginx `limit_req`, Apache `mod_ratelimit` | Blocks before PHP loads |
+| Craft Plugin | [Rate Limiter](https://plugins.craftcms.com/craft-rate-limiter) | Shared state handled properly |
+
+**Example nginx config:**
+```nginx
+limit_req_zone $binary_remote_addr zone=search:10m rate=10r/s;
+
+location /actions/search-manager/ {
+    limit_req zone=search burst=20 nodelay;
+}
+```
+
+The guardrails above (query length, result caps, indices cap) reduce the **cost per request**, so even without rate limiting, abuse causes less damage.
+
 ### Recommendations
 
-For production sites with high traffic:
+For production sites:
 
-1. **Rate limiting**: Configure at server level (nginx/Apache) or use a Craft rate-limiting plugin
+1. **Rate limiting**: Configure at CDN/edge or server level (see above)
 2. **API keys**: For mobile apps using `/actions/search-manager/api/*`, consider adding authentication
 3. **Index visibility**: Keep sensitive content in separate indices that aren't searched by default
 
