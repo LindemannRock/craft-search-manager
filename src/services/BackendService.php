@@ -297,11 +297,15 @@ class BackendService extends Component
         $rawSiteId = $options['siteId'] ?? null;
         $searchAllSites = $rawSiteId === '*' || $rawSiteId === null;
 
-        // Ensure siteId is in options for cache key generation
-        if (!isset($options['siteId'])) {
-            $options['siteId'] = \Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+        // For cache key consistency: use '*' sentinel for all-sites, otherwise keep provided siteId
+        // IMPORTANT: Don't inject current site when siteId was intentionally omitted
+        // Backend receives '*' which AbstractSearchEngineBackend treats as all-sites
+        if ($searchAllSites) {
+            $options['siteId'] = '*';
+            $siteId = null; // Used for analytics/query rules (null = all sites)
+        } else {
+            $siteId = (int) $options['siteId'];
         }
-        $siteId = $searchAllSites ? null : $options['siteId'];
         $settings = SearchManager::$plugin->getSettings();
 
         // Check if analytics should be skipped (used by cache warming, internal operations)
@@ -861,7 +865,8 @@ class BackendService extends Component
     {
         $settings = SearchManager::$plugin->getSettings();
         $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
-        $fullCacheKey = 'searchmanager:search:' . $cacheKey;
+        // Include index name in key path for per-index cache clearing
+        $fullCacheKey = 'searchmanager:search:' . $indexName . ':' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -907,7 +912,8 @@ class BackendService extends Component
     {
         $settings = SearchManager::$plugin->getSettings();
         $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
-        $fullCacheKey = 'searchmanager:search:' . $cacheKey;
+        // Include index name in key path for per-index cache clearing
+        $fullCacheKey = 'searchmanager:search:' . $indexName . ':' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -967,10 +973,12 @@ class BackendService extends Component
                 // Get all search cache keys from tracking set
                 $allKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
 
-                // Filter keys for this specific index (keys contain index name)
+                // Filter keys for this specific index using the index-prefixed key format
+                // Key format: searchmanager:search:{indexName}:{hash}
+                $indexPrefix = 'searchmanager:search:' . $indexName . ':';
                 foreach ($allKeys as $key) {
-                    if (strpos($key, 'searchmanager:search:') === 0) {
-                        // Delete individual key
+                    if (strpos($key, $indexPrefix) === 0) {
+                        // Delete individual key for this index only
                         $cache->delete($key);
                         // Remove from tracking set
                         $redis->executeCommand('SREM', ['searchmanager-search-keys', $key]);

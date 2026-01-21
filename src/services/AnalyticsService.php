@@ -79,10 +79,46 @@ class AnalyticsService extends Component
         }
 
         // Check if index-level analytics is enabled
-        $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
-        if ($index && !$index->enableAnalytics) {
-            $this->logDebug('Analytics disabled for index', ['indexHandle' => $indexHandle]);
-            return;
+        // Handle 'all', comma-joined indices, and single index handles
+        // IMPORTANT: Resolve to only indices with enableAnalytics=true to avoid recording disabled indices
+        if ($indexHandle === 'all') {
+            // For 'all': resolve enabled indices, filter to those with analytics enabled
+            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $analyticsEnabledHandles = [];
+            foreach ($allIndices as $idx) {
+                if ($idx->enabled && $idx->enableAnalytics) {
+                    $analyticsEnabledHandles[] = $idx->handle;
+                }
+            }
+            if (empty($analyticsEnabledHandles)) {
+                $this->logDebug('Analytics disabled for all indices', ['indexHandle' => $indexHandle]);
+                return;
+            }
+            // Use resolved handles so record doesn't implicitly include disabled indices
+            $indexHandle = implode(',', $analyticsEnabledHandles);
+        } elseif (str_contains($indexHandle, ',')) {
+            // Comma-joined indices: filter to only those with analytics enabled
+            $handles = array_map('trim', explode(',', $indexHandle));
+            $analyticsEnabledHandles = [];
+            foreach ($handles as $handle) {
+                $idx = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($handle);
+                if ($idx && $idx->enableAnalytics) {
+                    $analyticsEnabledHandles[] = $handle;
+                }
+            }
+            if (empty($analyticsEnabledHandles)) {
+                $this->logDebug('Analytics disabled for all specified indices', ['indexHandle' => $indexHandle]);
+                return;
+            }
+            // Use filtered handles so disabled indices aren't represented
+            $indexHandle = implode(',', $analyticsEnabledHandles);
+        } else {
+            // Single index handle
+            $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+            if ($index && !$index->enableAnalytics) {
+                $this->logDebug('Analytics disabled for index', ['indexHandle' => $indexHandle]);
+                return;
+            }
         }
 
         // Get site ID if not provided

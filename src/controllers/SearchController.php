@@ -150,12 +150,23 @@ class SearchController extends Controller
                 $options['siteId'] = $siteId;
             }
 
+            // Validate requested indices - only allow enabled indices on public endpoints
+            if (!empty($indexHandles)) {
+                $enabledIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+                $enabledHandles = array_map(
+                    fn($idx) => $idx->handle,
+                    array_filter($enabledIndices, fn($idx) => $idx->enabled)
+                );
+                // Filter to only enabled indices
+                $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
+            }
+
             // Get raw search results
             if (count($indexHandles) === 1) {
-                // Search single specified index
+                // Search single specified index (validated as enabled above)
                 $searchResults = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);
             } elseif (count($indexHandles) > 1) {
-                // Search multiple specified indices
+                // Search multiple specified indices (validated as enabled above)
                 $searchResults = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
             } else {
                 // No indices specified - search all enabled indices

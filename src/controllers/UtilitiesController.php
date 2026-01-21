@@ -827,7 +827,7 @@ class UtilitiesController extends Controller
 
         $configuredBackend = SearchManager::$plugin->getConfiguredBackend($handle);
         if ($configuredBackend) {
-            return $configuredBackend->type ?? 'mysql';
+            return $configuredBackend->backendType ?: 'mysql';
         }
 
         return 'mysql';

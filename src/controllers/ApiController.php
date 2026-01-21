@@ -85,6 +85,21 @@ class ApiController extends Controller
 
         $autocomplete = SearchManager::$plugin->autocomplete;
 
+        // Validate index handle - block disabled indices on public endpoints
+        if ($indexHandle !== 'all-sites') {
+            $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+            if (!$index || !$index->enabled) {
+                // Return empty results for disabled or unknown indices
+                if ($only === 'suggestions') {
+                    return $this->asJson([]);
+                }
+                if ($only === 'results') {
+                    return $this->asJson([]);
+                }
+                return $this->asJson(['suggestions' => [], 'results' => []]);
+            }
+        }
+
         // Build options array
         $options = ['limit' => $limit];
         if ($siteId !== null) {
@@ -170,6 +185,18 @@ class ApiController extends Controller
                 'hits' => [],
                 'total' => 0,
             ]);
+        }
+
+        // Validate index handle - block disabled indices on public endpoints
+        if ($indexHandle !== 'all-sites') {
+            $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+            if (!$index || !$index->enabled) {
+                // Return empty results for disabled or unknown indices
+                return $this->asJson([
+                    'hits' => [],
+                    'total' => 0,
+                ]);
+            }
         }
 
         $options = [
