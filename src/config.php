@@ -361,6 +361,24 @@ return [
         // 'enableGeoDetection' => false,
 
         /**
+         * Geo IP lookup provider
+         * Options: 'ip-api.com', 'ipapi.co', 'ipinfo.io'
+         * - ip-api.com: HTTP free (45/min), HTTPS requires paid key (default, backward compatible)
+         * - ipapi.co: HTTPS, 1,000 requests/day free
+         * - ipinfo.io: HTTPS, 50,000 requests/month free
+         * Default: 'ip-api.com'
+         */
+        // 'geoProvider' => 'ip-api.com',
+
+        /**
+         * Geo provider API key
+         * Required for ip-api.com HTTPS (Pro tier)
+         * Optional for ipapi.co and ipinfo.io (increases rate limits)
+         * Default: null
+         */
+        // 'geoApiKey' => App::env('SEARCH_MANAGER_GEO_API_KEY'),
+
+        /**
          * IP hash salt (REQUIRED for analytics)
          * Use App::env() to reference .env variable
          * Generate via: php craft search-manager/security/generate-salt

@@ -13,6 +13,7 @@ use craft\base\Component;
 use craft\db\Query;
 use craft\helpers\Db;
 use lindemannrock\base\helpers\GeoHelper;
+use lindemannrock\base\traits\GeoLookupTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -28,6 +29,7 @@ use lindemannrock\searchmanager\SearchManager;
 class AnalyticsService extends Component
 {
     use LoggingTrait;
+    use GeoLookupTrait;
 
     /**
      * Initialize the service
@@ -1150,99 +1152,111 @@ class AnalyticsService extends Component
         try {
             // Skip local/private IPs - return default location data for local development
             if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false) {
-                // Get default location from settings or env
-                $settings = SearchManager::$plugin->getSettings();
-                $defaultCountry = $settings->defaultCountry ?: (getenv('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'AE');
-                $defaultCity = $settings->defaultCity ?: (getenv('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai');
-
-                // Predefined locations for common cities worldwide
-                $locations = [
-                    'US' => [
-                        'New York' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'New York', 'region' => 'New York', 'lat' => 40.7128, 'lon' => -74.0060],
-                        'Los Angeles' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'Los Angeles', 'region' => 'California', 'lat' => 34.0522, 'lon' => -118.2437],
-                        'Chicago' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'Chicago', 'region' => 'Illinois', 'lat' => 41.8781, 'lon' => -87.6298],
-                        'San Francisco' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'San Francisco', 'region' => 'California', 'lat' => 37.7749, 'lon' => -122.4194],
-                    ],
-                    'GB' => [
-                        'London' => ['countryCode' => 'GB', 'country' => 'United Kingdom', 'city' => 'London', 'region' => 'England', 'lat' => 51.5074, 'lon' => -0.1278],
-                        'Manchester' => ['countryCode' => 'GB', 'country' => 'United Kingdom', 'city' => 'Manchester', 'region' => 'England', 'lat' => 53.4808, 'lon' => -2.2426],
-                    ],
-                    'AE' => [
-                        'Dubai' => ['countryCode' => 'AE', 'country' => 'United Arab Emirates', 'city' => 'Dubai', 'region' => 'Dubai', 'lat' => 25.2048, 'lon' => 55.2708],
-                        'Abu Dhabi' => ['countryCode' => 'AE', 'country' => 'United Arab Emirates', 'city' => 'Abu Dhabi', 'region' => 'Abu Dhabi', 'lat' => 24.4539, 'lon' => 54.3773],
-                    ],
-                    'SA' => [
-                        'Riyadh' => ['countryCode' => 'SA', 'country' => 'Saudi Arabia', 'city' => 'Riyadh', 'region' => 'Riyadh Province', 'lat' => 24.7136, 'lon' => 46.6753],
-                        'Jeddah' => ['countryCode' => 'SA', 'country' => 'Saudi Arabia', 'city' => 'Jeddah', 'region' => 'Makkah Province', 'lat' => 21.5433, 'lon' => 39.1728],
-                    ],
-                    'DE' => [
-                        'Berlin' => ['countryCode' => 'DE', 'country' => 'Germany', 'city' => 'Berlin', 'region' => 'Berlin', 'lat' => 52.5200, 'lon' => 13.4050],
-                        'Munich' => ['countryCode' => 'DE', 'country' => 'Germany', 'city' => 'Munich', 'region' => 'Bavaria', 'lat' => 48.1351, 'lon' => 11.5820],
-                    ],
-                    'FR' => [
-                        'Paris' => ['countryCode' => 'FR', 'country' => 'France', 'city' => 'Paris', 'region' => 'Île-de-France', 'lat' => 48.8566, 'lon' => 2.3522],
-                    ],
-                    'CA' => [
-                        'Toronto' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Toronto', 'region' => 'Ontario', 'lat' => 43.6532, 'lon' => -79.3832],
-                        'Vancouver' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Vancouver', 'region' => 'British Columbia', 'lat' => 49.2827, 'lon' => -123.1207],
-                    ],
-                    'AU' => [
-                        'Sydney' => ['countryCode' => 'AU', 'country' => 'Australia', 'city' => 'Sydney', 'region' => 'New South Wales', 'lat' => -33.8688, 'lon' => 151.2093],
-                        'Melbourne' => ['countryCode' => 'AU', 'country' => 'Australia', 'city' => 'Melbourne', 'region' => 'Victoria', 'lat' => -37.8136, 'lon' => 144.9631],
-                    ],
-                    'JP' => [
-                        'Tokyo' => ['countryCode' => 'JP', 'country' => 'Japan', 'city' => 'Tokyo', 'region' => 'Tokyo', 'lat' => 35.6762, 'lon' => 139.6503],
-                    ],
-                    'SG' => [
-                        'Singapore' => ['countryCode' => 'SG', 'country' => 'Singapore', 'city' => 'Singapore', 'region' => 'Singapore', 'lat' => 1.3521, 'lon' => 103.8198],
-                    ],
-                    'IN' => [
-                        'Mumbai' => ['countryCode' => 'IN', 'country' => 'India', 'city' => 'Mumbai', 'region' => 'Maharashtra', 'lat' => 19.0760, 'lon' => 72.8777],
-                        'Delhi' => ['countryCode' => 'IN', 'country' => 'India', 'city' => 'Delhi', 'region' => 'Delhi', 'lat' => 28.7041, 'lon' => 77.1025],
-                    ],
-                ];
-
-                // Return the configured location if it exists
-                if (isset($locations[$defaultCountry][$defaultCity])) {
-                    return $locations[$defaultCountry][$defaultCity];
-                }
-
-                // Fallback to Dubai if configuration not found
-                return $locations['AE']['Dubai'];
+                return $this->getDefaultLocation();
             }
 
-            // Use ip-api.com (free, no API key required, 45 requests per minute)
-            $url = "http://ip-api.com/json/{$ip}?fields=status,countryCode,country,city,regionName,region,lat,lon";
+            // Use centralized geo lookup from base plugin
+            $geoData = $this->lookupGeoIp($ip, $this->getGeoConfig());
 
-            $ch = curl_init();
-            curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 2);
-            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-
-            $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-
-            if ($httpCode === 200 && $response) {
-                $data = json_decode($response, true);
-                if (isset($data['status']) && $data['status'] === 'success') {
-                    return [
-                        'countryCode' => $data['countryCode'] ?? null,
-                        'country' => $data['country'] ?? null,
-                        'city' => $data['city'] ?? null,
-                        'region' => $data['regionName'] ?? null,
-                        'lat' => $data['lat'] ?? null,
-                        'lon' => $data['lon'] ?? null,
-                    ];
-                }
+            if ($geoData === null) {
+                return null;
             }
 
-            return null;
+            // Map to expected format (lat/lon instead of latitude/longitude)
+            return [
+                'countryCode' => $geoData['countryCode'] ?? null,
+                'country' => $geoData['country'] ?? null,
+                'city' => $geoData['city'] ?? null,
+                'region' => $geoData['region'] ?? null,
+                'lat' => $geoData['latitude'] ?? null,
+                'lon' => $geoData['longitude'] ?? null,
+            ];
         } catch (\Exception $e) {
             $this->logWarning('Failed to get location from IP', ['error' => $e->getMessage()]);
             return null;
         }
+    }
+
+    /**
+     * Get geo lookup configuration from plugin settings
+     *
+     * @return array<string, mixed>
+     */
+    protected function getGeoConfig(): array
+    {
+        $settings = SearchManager::$plugin->getSettings();
+
+        return [
+            'provider' => $settings->geoProvider ?? 'ip-api.com',
+            'apiKey' => $settings->geoApiKey ?? null,
+        ];
+    }
+
+    /**
+     * Get default location for local/private IPs
+     *
+     * @return array
+     */
+    private function getDefaultLocation(): array
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $defaultCountry = $settings->defaultCountry ?: (getenv('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'AE');
+        $defaultCity = $settings->defaultCity ?: (getenv('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai');
+
+        // Predefined locations for common cities worldwide
+        $locations = [
+            'US' => [
+                'New York' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'New York', 'region' => 'New York', 'lat' => 40.7128, 'lon' => -74.0060],
+                'Los Angeles' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'Los Angeles', 'region' => 'California', 'lat' => 34.0522, 'lon' => -118.2437],
+                'Chicago' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'Chicago', 'region' => 'Illinois', 'lat' => 41.8781, 'lon' => -87.6298],
+                'San Francisco' => ['countryCode' => 'US', 'country' => 'United States', 'city' => 'San Francisco', 'region' => 'California', 'lat' => 37.7749, 'lon' => -122.4194],
+            ],
+            'GB' => [
+                'London' => ['countryCode' => 'GB', 'country' => 'United Kingdom', 'city' => 'London', 'region' => 'England', 'lat' => 51.5074, 'lon' => -0.1278],
+                'Manchester' => ['countryCode' => 'GB', 'country' => 'United Kingdom', 'city' => 'Manchester', 'region' => 'England', 'lat' => 53.4808, 'lon' => -2.2426],
+            ],
+            'AE' => [
+                'Dubai' => ['countryCode' => 'AE', 'country' => 'United Arab Emirates', 'city' => 'Dubai', 'region' => 'Dubai', 'lat' => 25.2048, 'lon' => 55.2708],
+                'Abu Dhabi' => ['countryCode' => 'AE', 'country' => 'United Arab Emirates', 'city' => 'Abu Dhabi', 'region' => 'Abu Dhabi', 'lat' => 24.4539, 'lon' => 54.3773],
+            ],
+            'SA' => [
+                'Riyadh' => ['countryCode' => 'SA', 'country' => 'Saudi Arabia', 'city' => 'Riyadh', 'region' => 'Riyadh Province', 'lat' => 24.7136, 'lon' => 46.6753],
+                'Jeddah' => ['countryCode' => 'SA', 'country' => 'Saudi Arabia', 'city' => 'Jeddah', 'region' => 'Makkah Province', 'lat' => 21.5433, 'lon' => 39.1728],
+            ],
+            'DE' => [
+                'Berlin' => ['countryCode' => 'DE', 'country' => 'Germany', 'city' => 'Berlin', 'region' => 'Berlin', 'lat' => 52.5200, 'lon' => 13.4050],
+                'Munich' => ['countryCode' => 'DE', 'country' => 'Germany', 'city' => 'Munich', 'region' => 'Bavaria', 'lat' => 48.1351, 'lon' => 11.5820],
+            ],
+            'FR' => [
+                'Paris' => ['countryCode' => 'FR', 'country' => 'France', 'city' => 'Paris', 'region' => 'Île-de-France', 'lat' => 48.8566, 'lon' => 2.3522],
+            ],
+            'CA' => [
+                'Toronto' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Toronto', 'region' => 'Ontario', 'lat' => 43.6532, 'lon' => -79.3832],
+                'Vancouver' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Vancouver', 'region' => 'British Columbia', 'lat' => 49.2827, 'lon' => -123.1207],
+            ],
+            'AU' => [
+                'Sydney' => ['countryCode' => 'AU', 'country' => 'Australia', 'city' => 'Sydney', 'region' => 'New South Wales', 'lat' => -33.8688, 'lon' => 151.2093],
+                'Melbourne' => ['countryCode' => 'AU', 'country' => 'Australia', 'city' => 'Melbourne', 'region' => 'Victoria', 'lat' => -37.8136, 'lon' => 144.9631],
+            ],
+            'JP' => [
+                'Tokyo' => ['countryCode' => 'JP', 'country' => 'Japan', 'city' => 'Tokyo', 'region' => 'Tokyo', 'lat' => 35.6762, 'lon' => 139.6503],
+            ],
+            'SG' => [
+                'Singapore' => ['countryCode' => 'SG', 'country' => 'Singapore', 'city' => 'Singapore', 'region' => 'Singapore', 'lat' => 1.3521, 'lon' => 103.8198],
+            ],
+            'IN' => [
+                'Mumbai' => ['countryCode' => 'IN', 'country' => 'India', 'city' => 'Mumbai', 'region' => 'Maharashtra', 'lat' => 19.0760, 'lon' => 72.8777],
+                'Delhi' => ['countryCode' => 'IN', 'country' => 'India', 'city' => 'Delhi', 'region' => 'Delhi', 'lat' => 28.7041, 'lon' => 77.1025],
+            ],
+        ];
+
+        // Return the configured location if it exists
+        if (isset($locations[$defaultCountry][$defaultCity])) {
+            return $locations[$defaultCountry][$defaultCity];
+        }
+
+        // Fallback to Dubai if configuration not found
+        return $locations['AE']['Dubai'];
     }
 
     /**

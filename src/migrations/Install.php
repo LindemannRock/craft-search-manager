@@ -93,6 +93,8 @@ class Install extends Migration
             'analyticsRetention' => $this->integer()->notNull()->defaultValue(90),
             'anonymizeIpAddress' => $this->boolean()->notNull()->defaultValue(false),
             'enableGeoDetection' => $this->boolean()->notNull()->defaultValue(false),
+            'geoProvider' => $this->string(50)->notNull()->defaultValue('ip-api.com'),
+            'geoApiKey' => $this->string(255)->null(),
             'cacheDeviceDetection' => $this->boolean()->notNull()->defaultValue(true),
             'deviceDetectionCacheDuration' => $this->integer()->notNull()->defaultValue(3600),
             'indexPrefix' => $this->string(50)->null(),

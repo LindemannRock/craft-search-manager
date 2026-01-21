@@ -249,16 +249,36 @@ class BackendsController extends Controller
         $backend = ConfiguredBackend::findById((int)$backendId);
 
         if (!$backend) {
+            if (Craft::$app->getRequest()->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Backend not found.')]);
+            }
             throw new NotFoundHttpException('Backend not found');
         }
 
+        // Check if this is the default backend
+        $settings = SearchManager::$plugin->getSettings();
+        if ($settings->defaultBackendHandle === $backend->handle) {
+            $error = Craft::t('search-manager', 'Cannot delete the default backend. Set another backend as default first.');
+            if (Craft::$app->getRequest()->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/backends');
+        }
+
         if ($backend->delete()) {
+            if (Craft::$app->getRequest()->getAcceptsJson()) {
+                return $this->asJson(['success' => true]);
+            }
             Craft::$app->getSession()->setNotice(
                 Craft::t('search-manager', 'Backend deleted.')
             );
         } else {
             $errors = $backend->getErrors();
             $errorMessage = !empty($errors['handle']) ? $errors['handle'][0] : 'Could not delete backend.';
+            if (Craft::$app->getRequest()->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', $errorMessage)]);
+            }
             Craft::$app->getSession()->setError(
                 Craft::t('search-manager', $errorMessage)
             );
@@ -463,12 +483,18 @@ class BackendsController extends Controller
         $this->requireAcceptsJson();
 
         $backendIds = Craft::$app->getRequest()->getBodyParam('backendIds', []);
+        $settings = SearchManager::$plugin->getSettings();
         $count = 0;
         $errors = [];
 
         foreach ($backendIds as $id) {
             $backend = ConfiguredBackend::findById((int)$id);
             if ($backend) {
+                // Cannot disable default backend
+                if ($settings->defaultBackendHandle === $backend->handle) {
+                    $errors[] = Craft::t('search-manager', 'Cannot disable default backend "{name}".', ['name' => $backend->name]);
+                    continue;
+                }
                 $backend->enabled = false;
                 if ($backend->save()) {
                     $count++;
@@ -480,11 +506,15 @@ class BackendsController extends Controller
             }
         }
 
-        return $this->asJson([
-            'success' => count($errors) === 0,
-            'count' => $count,
-            'errors' => $errors,
-        ]);
+        if ($count > 0 && empty($errors)) {
+            return $this->asJson(['success' => true, 'count' => $count]);
+        }
+
+        if ($count > 0) {
+            return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
+        }
+
+        return $this->asJson(['success' => false, 'errors' => $errors]);
     }
 
     /**
@@ -497,12 +527,18 @@ class BackendsController extends Controller
         $this->requireAcceptsJson();
 
         $backendIds = Craft::$app->getRequest()->getBodyParam('backendIds', []);
+        $settings = SearchManager::$plugin->getSettings();
         $count = 0;
         $errors = [];
 
         foreach ($backendIds as $id) {
             $backend = ConfiguredBackend::findById((int)$id);
             if ($backend) {
+                // Cannot delete default backend
+                if ($settings->defaultBackendHandle === $backend->handle) {
+                    $errors[] = Craft::t('search-manager', 'Cannot delete default backend "{name}". Set another backend as default first.', ['name' => $backend->name]);
+                    continue;
+                }
                 if ($backend->delete()) {
                     $count++;
                 } else {
@@ -513,11 +549,15 @@ class BackendsController extends Controller
             }
         }
 
-        return $this->asJson([
-            'success' => count($errors) === 0,
-            'count' => $count,
-            'errors' => $errors,
-        ]);
+        if ($count > 0 && empty($errors)) {
+            return $this->asJson(['success' => true, 'count' => $count]);
+        }
+
+        if ($count > 0) {
+            return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
+        }
+
+        return $this->asJson(['success' => false, 'errors' => $errors]);
     }
 
     /**

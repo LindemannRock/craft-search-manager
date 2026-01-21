@@ -547,8 +547,16 @@
 		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-disable', {
 			data: { configIds: ids }
 		}).then(function(response) {
-			if (response.data.success) {
+			if (response.data.count > 0) {
 				Craft.cp.displayNotice(`{{ 'Disabled'|t('search-manager') }} ${response.data.count} {{ 'configs'|t('search-manager') }}`);
+			}
+			if (response.data.errors && response.data.errors.length > 0) {
+				response.data.errors.forEach(err => Craft.cp.displayError(err));
+			} else if (response.data.error) {
+				Craft.cp.displayError(response.data.error);
+			}
+			// Only auto-reload if count > 0 and no errors
+			if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
 				setTimeout(() => window.location.reload(), 500);
 			}
 		}).catch(function(error) {
@@ -569,9 +577,11 @@
 			}
 			if (response.data.errors && response.data.errors.length > 0) {
 				response.data.errors.forEach(err => Craft.cp.displayError(err));
+			} else if (response.data.error) {
+				Craft.cp.displayError(response.data.error);
 			}
-			// Only auto-reload if no errors
-			if (!response.data.errors || response.data.errors.length === 0) {
+			// Only auto-reload if count > 0 and no errors
+			if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
 				setTimeout(() => window.location.reload(), 500);
 			}
 		}).catch(function(error) {

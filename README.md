@@ -2559,6 +2559,8 @@ return [
         'analyticsRetention' => 90, // days
         'anonymizeIpAddress' => false, // Subnet masking for privacy
         'enableGeoDetection' => false, // Track visitor location
+        'geoProvider' => 'ip-api.com', // Options: 'ip-api.com', 'ipapi.co', 'ipinfo.io'
+        'geoApiKey' => App::env('SEARCH_MANAGER_GEO_API_KEY'), // Required for ip-api.com HTTPS
         'ipHashSalt' => App::env('SEARCH_MANAGER_IP_SALT'),
         'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'AE',
         'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai',
