@@ -8,8 +8,10 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 /**
  * FileStorage
  *
- * File-based storage implementation using PHP serialize() for persistence.
- * Stores inverted index data in .dat files organized by directory structure.
+ * File-based storage implementation using JSON for persistence.
+ * Stores inverted index data in .json files organized by directory structure.
+ *
+ * Note: Changed from serialize() to json_encode() for security (no object injection risk).
  *
  * Directory structure:
  * - docs/      - Document term frequencies and lengths
@@ -778,8 +780,10 @@ class FileStorage implements StorageInterface
     /**
      * Read data from file
      *
+     * Uses JSON for safe deserialization (no object injection risk).
+     *
      * @param string $path File path
-     * @return mixed Unserialized data or null
+     * @return mixed Decoded data or null
      */
     private function readFile(string $path)
     {
@@ -789,24 +793,38 @@ class FileStorage implements StorageInterface
 
         $contents = @file_get_contents($path);
 
-        if ($contents === false) {
+        if ($contents === false || $contents === '') {
             return null;
         }
 
-        return unserialize($contents);
+        $data = json_decode($contents, true);
+
+        // Return null on JSON decode failure
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return null;
+        }
+
+        return $data;
     }
 
     /**
      * Write data to file
      *
+     * Uses JSON for safe serialization.
+     *
      * @param string $path File path
-     * @param mixed $data Data to serialize
+     * @param mixed $data Data to encode
      * @return bool Success
      */
     private function writeFile(string $path, $data): bool
     {
-        $serialized = serialize($data);
-        $result = @file_put_contents($path, $serialized, LOCK_EX);
+        $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        if ($json === false) {
+            return false;
+        }
+
+        $result = @file_put_contents($path, $json, LOCK_EX);
 
         return $result !== false;
     }
