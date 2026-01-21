@@ -2472,6 +2472,14 @@ Debug information (index names, backend details, timing) in search responses req
 - Disabled indices are excluded from "search all" queries
 - Analytics only accepts enabled index handles
 
+### CSRF Protection
+
+CSRF validation is **disabled** for analytics tracking endpoints only:
+- `track-click` - Fire-and-forget click tracking
+- `track-search` - Fire-and-forget search tracking
+
+All other POST endpoints (CP settings, index management, etc.) remain CSRF-protected. Analytics endpoints are low-risk since they only write sanitized/validated data and don't expose sensitive information.
+
 ### Rate Limiting (Not Included)
 
 This plugin **does not implement rate limiting**. Rate limiting is an infrastructure concern best handled at the edge:
