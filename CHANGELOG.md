@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.33.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.32.0...v5.33.0) (2026-01-21)
+
+
+### Features
+
+* Add configurable geo IP provider settings with HTTPS support ([706dc9e](https://github.com/LindemannRock/craft-search-manager/commit/706dc9e32bb19d46359c29fa863c88e589da63c9))
+* add security guardrails for public search endpoints ([69913a9](https://github.com/LindemannRock/craft-search-manager/commit/69913a9d7397aa8b28ca285845a73127a9a590d5))
+* disable CSRF validation for analytics tracking endpoints to simplify frontend integration ([b917eea](https://github.com/LindemannRock/craft-search-manager/commit/b917eea8909f197b8196cb2dc1c52e239e8467d2))
+* switch from PHP serialize() to JSON for file storage to enhance security and prevent object injection risks ([ebe3184](https://github.com/LindemannRock/craft-search-manager/commit/ebe31846d3cecb1d3e8a33396ed17e3e18109967))
+
+
+### Bug Fixes
+
+* enhance index validation logic to ensure both enabled and analytics settings are checked ([a6791ce](https://github.com/LindemannRock/craft-search-manager/commit/a6791ce098ed0fbcee703e402b68cc54cd855ef4))
+* **security:** address multiple security vulnerabilities ([67a3d49](https://github.com/LindemannRock/craft-search-manager/commit/67a3d495a9b4041e36374b9b5552da664cfd1a2a))
+* swap cache and interface links in settings layout ([1f88238](https://github.com/LindemannRock/craft-search-manager/commit/1f8823897c3a9edd7ab2f631ecfc5de6d709e5c9))
+* update Redis configuration info box to include important notes on database isolation and managed hosting platforms ([c647a02](https://github.com/LindemannRock/craft-search-manager/commit/c647a02d0c59871d126536454c41bfe11fba7f44))
+
 ## [5.32.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.31.0...v5.32.0) (2026-01-20)
 
 
