@@ -898,7 +898,17 @@ class BackendService extends Component
 
         $data = file_get_contents($cacheFile);
         $this->logDebug('Cache hit (File)', ['cacheKey' => $cacheKey, 'query' => $query]);
-        return unserialize($data);
+
+        // Use JSON instead of unserialize to prevent object injection attacks
+        $decoded = json_decode($data, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            // Invalid JSON (possibly old serialized format) - delete and return miss
+            @unlink($cacheFile);
+            $this->logDebug('Cache invalid JSON, deleted', ['cacheKey' => $cacheKey]);
+            return null;
+        }
+
+        return $decoded;
     }
 
     /**
@@ -933,16 +943,25 @@ class BackendService extends Component
         }
 
         // Use file-based cache (default)
-        $cachePath = $this->_getCachePath($indexName);
+        try {
+            $cachePath = $this->_getCachePath($indexName);
 
-        // Create directory if it doesn't exist
-        if (!is_dir($cachePath)) {
-            \craft\helpers\FileHelper::createDirectory($cachePath);
+            // Create directory if it doesn't exist
+            if (!is_dir($cachePath)) {
+                \craft\helpers\FileHelper::createDirectory($cachePath);
+            }
+
+            $cacheFile = $cachePath . $cacheKey . '.cache';
+            // Use JSON instead of serialize to prevent object injection attacks on read
+            file_put_contents($cacheFile, json_encode($results, JSON_THROW_ON_ERROR));
+            $this->logDebug('Results cached (File)', ['cacheKey' => $cacheKey, 'query' => $query]);
+        } catch (\Throwable $e) {
+            // Cache failure shouldn't crash the search - log and continue
+            $this->logError('Failed to cache results', [
+                'cacheKey' => $cacheKey,
+                'error' => $e->getMessage(),
+            ]);
         }
-
-        $cacheFile = $cachePath . $cacheKey . '.cache';
-        file_put_contents($cacheFile, serialize($results));
-        $this->logDebug('Results cached (File)', ['cacheKey' => $cacheKey, 'query' => $query]);
     }
 
     /**

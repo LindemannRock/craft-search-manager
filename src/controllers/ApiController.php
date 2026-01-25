@@ -222,6 +222,11 @@ class ApiController extends Controller
 
         $results = SearchManager::$plugin->backend->search($indexHandle, $query, $options);
 
+        // Strip internal meta from public API response
+        // Meta contains rule IDs, names, action values which expose internal logic
+        // TODO: Add API key authentication with debug flag to allow meta for trusted clients
+        unset($results['meta']);
+
         return $this->asJson($results);
     }
 }

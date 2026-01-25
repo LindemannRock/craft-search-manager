@@ -539,7 +539,14 @@ class AutocompleteService extends Component
             return null;
         }
 
-        $data = @unserialize($content);
+        // Use JSON instead of unserialize to prevent object injection attacks
+        $data = json_decode($content, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            // Invalid JSON (possibly old serialized format) - delete and return miss
+            @unlink($cacheFile);
+            return null;
+        }
+
         return is_array($data) ? $data : null;
     }
 
@@ -592,7 +599,8 @@ class AutocompleteService extends Component
             }
 
             $cacheFile = $cachePath . $cacheKey . '.cache';
-            $result = file_put_contents($cacheFile, serialize($data));
+            // Use JSON instead of serialize to prevent object injection attacks on read
+            $result = file_put_contents($cacheFile, json_encode($data, JSON_THROW_ON_ERROR));
 
             if ($result === false) {
                 $this->logError('Failed to write autocomplete cache file', ['file' => $cacheFile]);

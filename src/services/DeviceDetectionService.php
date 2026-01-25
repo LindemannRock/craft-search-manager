@@ -209,7 +209,16 @@ class DeviceDetectionService extends Component
         }
 
         $data = file_get_contents($cacheFile);
-        return unserialize($data);
+
+        // Use JSON instead of unserialize to prevent object injection attacks
+        $decoded = json_decode($data, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            // Invalid JSON (possibly old serialized format) - delete and return miss
+            @unlink($cacheFile);
+            return null;
+        }
+
+        return $decoded;
     }
 
     /**
@@ -240,15 +249,23 @@ class DeviceDetectionService extends Component
         }
 
         // Use file-based cache (default)
-        $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
+        try {
+            $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
 
-        // Create directory if it doesn't exist
-        if (!is_dir($cachePath)) {
-            \craft\helpers\FileHelper::createDirectory($cachePath);
+            // Create directory if it doesn't exist
+            if (!is_dir($cachePath)) {
+                \craft\helpers\FileHelper::createDirectory($cachePath);
+            }
+
+            $cacheFile = $cachePath . md5($userAgent) . '.cache';
+            // Use JSON instead of serialize to prevent object injection attacks on read
+            file_put_contents($cacheFile, json_encode($data, JSON_THROW_ON_ERROR));
+        } catch (\Throwable $e) {
+            // Cache failure shouldn't crash device detection - log and continue
+            $this->logError('Failed to cache device info', [
+                'error' => $e->getMessage(),
+            ]);
         }
-
-        $cacheFile = $cachePath . md5($userAgent) . '.cache';
-        file_put_contents($cacheFile, serialize($data));
     }
 
     /**
