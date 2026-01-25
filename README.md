@@ -1392,10 +1392,10 @@ The widget is built with accessibility as a core feature:
 
 ```twig
 {# Include the search widget with default config #}
-{% include 'search-manager/_widget/search' %}
+{% include 'search-manager/_widget/search-modal' %}
 
 {# Include with a specific config handle #}
-{% include 'search-manager/_widget/search' with {
+{% include 'search-manager/_widget/search-modal' with {
     config: 'homepage',
 } %}
 ```
@@ -1403,7 +1403,7 @@ The widget is built with accessibility as a core feature:
 **Customizing via Twig Parameters:**
 
 ```twig
-{% include 'search-manager/_widget/search' with {
+{% include 'search-manager/_widget/search-modal' with {
     config: 'homepage',
     indices: ['blog', 'products'],
     placeholder: 'Search articles...',
@@ -1471,7 +1471,7 @@ The widget is built with accessibility as a core feature:
 </button>
 
 {# Widget with external trigger #}
-{% include 'search-manager/_widget/search' with {
+{% include 'search-manager/_widget/search-modal' with {
     showTrigger: false,
     triggerSelector: '#my-search-btn',
 } %}
@@ -1480,7 +1480,7 @@ The widget is built with accessibility as a core feature:
 **Style Overrides:**
 
 ```twig
-{% include 'search-manager/_widget/search' with {
+{% include 'search-manager/_widget/search-modal' with {
     styles: {
         modalBg: '#1a1a1a',
         modalBorderRadius: '16',

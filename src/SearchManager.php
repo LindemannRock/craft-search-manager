@@ -187,7 +187,7 @@ class SearchManager extends Plugin
      * Register template roots for frontend templates
      *
      * This allows frontend templates to include plugin templates using:
-     * {% include 'search-manager/_widget/search' %}
+     * {% include 'search-manager/_widget/search-modal' %}
      */
     private function registerTemplateRoots(): void
     {

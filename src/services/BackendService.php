@@ -469,7 +469,9 @@ class BackendService extends Component
         if ($settings->enableCache) {
             if ($settings->cachePopularQueriesOnly) {
                 // Check if query is popular enough
-                $searchCount = $this->_getQuerySearchCount($query);
+                // +1 because current search will be tracked AFTER this check (line ~504)
+                // Without +1, threshold of 3 would require 4 searches before caching
+                $searchCount = $this->_getQuerySearchCount($query) + 1;
                 if ($searchCount >= $settings->popularQueryThreshold) {
                     $this->_saveToCache($indexName, $query, $options, $results);
                 } else {
