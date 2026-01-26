@@ -24,6 +24,7 @@ use craft\web\View;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
 use lindemannrock\searchmanager\jobs\SyncStatusJob;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\services\AnalyticsService;
@@ -152,6 +153,9 @@ class SearchManager extends Plugin
 
         // Schedule status sync job (for pending→live and live→expired)
         $this->scheduleStatusSync();
+
+        // Schedule analytics cleanup job (respects analyticsRetention setting)
+        $this->scheduleAnalyticsCleanup();
 
         // Register console controllers
         if (Craft::$app instanceof ConsoleApplication) {
@@ -563,6 +567,55 @@ class SearchManager extends Plugin
             ->from('{{%queue}}')
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', 'SyncStatusJob'])
+            ->exists();
+    }
+
+    /**
+     * Schedule analytics cleanup job
+     *
+     * Respects analyticsRetention setting from config (e.g., 30 days dev, 60 staging, 365 prod)
+     */
+    private function scheduleAnalyticsCleanup(): void
+    {
+        $settings = $this->getSettings();
+
+        // Only schedule if analytics is enabled and retention is set
+        if (!$settings->enableAnalytics || $settings->analyticsRetention <= 0) {
+            return;
+        }
+
+        // Check if a cleanup job is already scheduled
+        $existingJob = (new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'CleanupAnalyticsJob'])
+            ->exists();
+
+        if (!$existingJob) {
+            $job = new CleanupAnalyticsJob([
+                'reschedule' => true,
+            ]);
+
+            // Add to queue with a small initial delay (5 minutes)
+            // The job will re-queue itself to run every 24 hours
+            Craft::$app->queue->delay(5 * 60)->push($job);
+
+            $this->logInfo('Scheduled initial analytics cleanup job', [
+                'retention' => $settings->analyticsRetention . ' days',
+                'interval' => '24 hours',
+            ]);
+        }
+    }
+
+    /**
+     * Check if analytics cleanup job is running/scheduled
+     */
+    public function isAnalyticsCleanupRunning(): bool
+    {
+        return (new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'CleanupAnalyticsJob'])
             ->exists();
     }
 

@@ -216,6 +216,19 @@ class SyncStatusJob extends BaseJob
             return;
         }
 
+        // Prevent duplicate scheduling - check if another sync job already exists
+        // This prevents fan-out if multiple jobs end up in the queue (manual runs, retries, etc.)
+        $existingJob = (new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', 'SyncStatusJob'])
+            ->exists();
+
+        if ($existingJob) {
+            $this->logDebug('Skipping reschedule - sync job already exists');
+            return;
+        }
+
         $delay = $this->calculateNextRunDelay();
 
         if ($delay > 0) {
