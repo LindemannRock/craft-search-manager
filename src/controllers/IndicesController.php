@@ -286,6 +286,95 @@ class IndicesController extends Controller
     }
 
     /**
+     * Sync document count from backend
+     *
+     * Reads the actual document count from the backend (e.g., Algolia)
+     * and updates the local record to match.
+     *
+     * @since 5.35.0
+     */
+    public function actionSyncCount(): Response
+    {
+        $this->requirePermission('searchManager:rebuildIndices');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
+
+        // Support both numeric IDs (database indices) and string handles (config indices)
+        if (is_numeric($indexId)) {
+            $index = SearchIndex::findById((int)$indexId);
+        } else {
+            $index = SearchIndex::findByHandle($indexId);
+        }
+
+        if (!$index) {
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Index not found.'),
+            ]);
+        }
+
+        try {
+            // Get the backend for this index
+            $backend = SearchManager::$plugin->backend->getBackendForIndex($index->handle);
+
+            if (!$backend) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => Craft::t('search-manager', 'No backend configured for this index.'),
+                ]);
+            }
+
+            // Get all indices from the backend
+            $backendIndices = $backend->listIndices();
+
+            // Build full index name with prefix
+            $settings = SearchManager::$plugin->getSettings();
+            $prefix = $settings->indexPrefix ?? '';
+            $fullIndexName = $prefix . $index->handle;
+
+            // Find matching index by full name (with prefix)
+            $backendCount = 0;
+            foreach ($backendIndices as $backendIndex) {
+                if (($backendIndex['name'] ?? '') === $fullIndexName) {
+                    $backendCount = $backendIndex['entries'] ?? 0;
+                    break;
+                }
+            }
+
+            // Update the local document count
+            $index->updateStats($backendCount);
+
+            $this->logInfo('Synced document count from backend', [
+                'index' => $index->handle,
+                'count' => $backendCount,
+            ]);
+
+            return $this->asJson([
+                'success' => true,
+                'message' => Craft::t('search-manager', 'Count synced for "{name}": {count} documents.', [
+                    'name' => $index->name,
+                    'count' => number_format($backendCount),
+                ]),
+                'count' => $backendCount,
+            ]);
+        } catch (\Throwable $e) {
+            $this->logError('Failed to sync count from backend', [
+                'index' => $index->handle,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Failed to sync count: {error}', [
+                    'error' => $e->getMessage(),
+                ]),
+            ]);
+        }
+    }
+
+    /**
      * Rebuild an index
      */
     public function actionRebuild(): Response

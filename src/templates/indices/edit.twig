@@ -390,6 +390,13 @@ document.addEventListener('DOMContentLoaded', function() {
 										{{ "Rebuild Index"|t('search-manager') }}
 									</a>
 								</li>
+								{% if index.effectiveBackendType in ['algolia', 'meilisearch', 'typesense'] %}
+								<li>
+									<a id="sync-count-btn" href="#">
+										{{ "Sync Count from Backend"|t('search-manager') }}
+									</a>
+								</li>
+								{% endif %}
 								{% endif %}
 								{% if currentUser.can('searchManager:clearIndices') %}
 								<li>
@@ -493,6 +500,26 @@ document.addEventListener('DOMContentLoaded', function() {
 				}
 			}).catch(function(error) {
 				Craft.cp.displayError('{{ "Failed to clear cache"|t('search-manager')|e('js') }}');
+			});
+		});
+	}
+
+	const syncCountBtn = document.getElementById('sync-count-btn');
+	if (syncCountBtn) {
+		syncCountBtn.addEventListener('click', function(e) {
+			e.preventDefault();
+
+			Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
+				data: { indexId: {{ index.id }} }
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(response.data.message || '{{ "Count synced successfully"|t('search-manager')|e('js') }}');
+					setTimeout(() => window.location.reload(), 1000);
+				} else {
+					Craft.cp.displayError(response.data.error || '{{ "Failed to sync count"|t('search-manager')|e('js') }}');
+				}
+			}).catch(function(error) {
+				Craft.cp.displayError('{{ "Failed to sync count"|t('search-manager')|e('js') }}');
 			});
 		});
 	}

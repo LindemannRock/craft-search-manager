@@ -337,6 +337,13 @@
 														{{ 'Rebuild Index'|t('search-manager') }}
 													</a>
 												</li>
+												{% if indexBackendType in ['algolia', 'meilisearch', 'typesense'] %}
+													<li>
+														<a class="index-action" data-action="sync-count" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
+															{{ 'Sync Count from Backend'|t('search-manager') }}
+														</a>
+													</li>
+												{% endif %}
 											{% endif %}
 
 											{% if canClear %}
@@ -623,6 +630,8 @@
 				if (confirm('Delete index "' + indexName + '"? This will remove the index and all its data.')) {
 					submitIndexAction('search-manager/indices/delete', indexId);
 				}
+			} else if (action === 'sync-count') {
+				syncCountFromBackend(indexId, indexName);
 			}
 		});
 	});
@@ -659,6 +668,21 @@
 			}
 		}).catch(function(error) {
 			Craft.cp.displayError('Failed to clear cache for "' + indexName + '"');
+		});
+	}
+
+	function syncCountFromBackend(indexId, indexName) {
+		Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
+			data: { indexId: indexId }
+		}).then(function(response) {
+			if (response.data.success) {
+				Craft.cp.displayNotice(response.data.message || 'Count synced for "' + indexName + '"');
+				setTimeout(() => window.location.reload(), 1000);
+			} else {
+				Craft.cp.displayError(response.data.error || 'Failed to sync count');
+			}
+		}).catch(function(error) {
+			Craft.cp.displayError('Failed to sync count for "' + indexName + '"');
 		});
 	}
 

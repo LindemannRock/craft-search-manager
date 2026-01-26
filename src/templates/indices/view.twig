@@ -61,6 +61,13 @@
 									{{ "Rebuild Index"|t('search-manager') }}
 								</a>
 							</li>
+							{% if index.effectiveBackendType in ['algolia', 'meilisearch', 'typesense'] %}
+							<li>
+								<a id="sync-count-btn" href="#">
+									{{ "Sync Count from Backend"|t('search-manager') }}
+								</a>
+							</li>
+							{% endif %}
 							{% endif %}
 							{% if canClear %}
 							<li>
@@ -214,6 +221,25 @@ document.getElementById('clear-cache-btn')?.addEventListener('click', function(e
 		}
 	}).catch(function(error) {
 		Craft.cp.displayError('{{ "Failed to clear cache"|t('search-manager') }}');
+	});
+});
+{% endif %}
+
+// Sync count button
+{% if canRebuild and index.effectiveBackendType in ['algolia', 'meilisearch', 'typesense'] %}
+document.getElementById('sync-count-btn')?.addEventListener('click', function(e) {
+	e.preventDefault();
+	Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
+		data: { indexId: '{{ index.handle }}' }
+	}).then(function(response) {
+		if (response.data.success) {
+			Craft.cp.displayNotice(response.data.message || '{{ "Count synced"|t('search-manager') }}');
+			setTimeout(() => window.location.reload(), 1000);
+		} else {
+			Craft.cp.displayError(response.data.error || '{{ "Failed to sync count"|t('search-manager') }}');
+		}
+	}).catch(function(error) {
+		Craft.cp.displayError('{{ "Failed to sync count"|t('search-manager') }}');
 	});
 });
 {% endif %}
