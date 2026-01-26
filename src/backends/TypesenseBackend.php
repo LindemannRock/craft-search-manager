@@ -97,17 +97,27 @@ class TypesenseBackend extends BaseBackend
      * Prepare document for Typesense by creating composite id
      *
      * Note: Typesense uses 'id' as primary key (not 'objectID' like Algolia/Meilisearch)
+     *
+     * id is ALWAYS set to ensure Typesense can identify documents:
+     * - With siteId: "123_1" (multi-site safe, prevents collisions)
+     * - Without siteId: "123" (single-site or custom transformers)
      */
     private function prepareDocument(array $data): array
     {
-        $elementId = $data['id'] ?? $data['objectID'];
+        $elementId = $data['id'] ?? $data['objectID'] ?? null;
         $siteId = $data['siteId'] ?? null;
 
-        // Create composite id for multi-site uniqueness
-        // Store original element ID for Craft lookups
+        if ($elementId === null) {
+            throw new \InvalidArgumentException('Document must have either "id" or "objectID" field');
+        }
+
+        // Always set id - use composite key for multi-site, simple key otherwise
+        // Store original element ID for Craft lookups when using composite key
         if ($siteId !== null) {
             $data['elementId'] = $elementId;
             $data['id'] = $elementId . '_' . $siteId;
+        } else {
+            $data['id'] = (string)$elementId;
         }
 
         return $data;

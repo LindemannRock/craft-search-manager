@@ -119,15 +119,25 @@ class MeilisearchBackend extends BaseBackend
 
     /**
      * Prepare document for Meilisearch by creating composite objectID
+     *
+     * objectID is ALWAYS set to ensure Meilisearch can identify documents:
+     * - With siteId: "123_1" (multi-site safe, prevents collisions)
+     * - Without siteId: "123" (single-site or custom transformers)
      */
     private function prepareDocument(array $data): array
     {
-        $elementId = $data['objectID'] ?? $data['id'];
+        $elementId = $data['objectID'] ?? $data['id'] ?? null;
         $siteId = $data['siteId'] ?? null;
 
-        // Create composite objectID for multi-site uniqueness
+        if ($elementId === null) {
+            throw new \InvalidArgumentException('Document must have either "objectID" or "id" field');
+        }
+
+        // Always set objectID - use composite key for multi-site, simple key otherwise
         if ($siteId !== null) {
             $data['objectID'] = $elementId . '_' . $siteId;
+        } else {
+            $data['objectID'] = (string)$elementId;
         }
 
         return $data;

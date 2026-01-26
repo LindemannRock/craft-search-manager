@@ -465,6 +465,31 @@ class EntryTransformer extends BaseTransformer
 }
 ```
 
+> **⚠️ Important: Required Transformer Fields**
+>
+> Your transformer's `transform()` method MUST return an array containing:
+>
+> | Field | Required | Description |
+> |-------|----------|-------------|
+> | `id` or `objectID` | **Yes** | Element identifier for the search backend |
+> | `siteId` | **Recommended** | Required for multi-site to prevent collisions |
+>
+> **Recommended:** Use `$this->getCommonData($element)` as shown above - it includes all required fields automatically (`id`, `objectID`, `siteId`, `title`, `url`, `dateCreated`, `dateUpdated`).
+>
+> **If building your own array:**
+> ```php
+> return [
+>     'id' => $element->id,           // Required
+>     'siteId' => $element->siteId,   // Required for multi-site
+>     'title' => $element->title,
+>     // ... your custom fields
+> ];
+> ```
+>
+> **Multi-site behavior:**
+> - With `siteId`: Documents use composite ID (`123_1`) preventing collisions across sites
+> - Without `siteId`: Documents use simple ID (`123`) - only safe for single-site setups
+
 ### 5. Rebuild Indices
 
 ```bash
