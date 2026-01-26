@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.35.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.0...v5.35.1) (2026-01-26)
+
+
+### Bug Fixes
+
+* **backends:** enhance document preparation for multi-site support ([ef4287b](https://github.com/LindemannRock/craft-search-manager/commit/ef4287b34e43df5fa5f51740f94c72e86b74cd7c))
+
 ## [5.35.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.1...v5.35.0) (2026-01-26)
 
 
