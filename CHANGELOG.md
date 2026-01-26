@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.35.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.1...v5.35.0) (2026-01-26)
+
+
+### Features
+
+* **indices:** add sync count functionality for backend indices ([981b015](https://github.com/LindemannRock/craft-search-manager/commit/981b015d7f92543d30cd85603273bdd5df0b021a))
+
 ## [5.34.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.0...v5.34.1) (2026-01-26)
 
 
