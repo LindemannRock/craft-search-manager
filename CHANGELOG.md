@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.35.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.1...v5.35.2) (2026-01-26)
+
+
+### Bug Fixes
+
+* **models:** ensure type-safe handling of siteId in SearchIndex model ([1256089](https://github.com/LindemannRock/craft-search-manager/commit/12560891b988b432b8ce2a877d83d3499b6b2727))
+
 ## [5.35.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.0...v5.35.1) (2026-01-26)
 
 
