@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.34.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.33.0...v5.34.0) (2026-01-26)
+
+
+### Features
+
+* **jobs:** add analytics cleanup job and enhance sync status job scheduling ([4708d82](https://github.com/LindemannRock/craft-search-manager/commit/4708d828565a12cc46e9e4cb14744d646c365be9))
+
+
+### Bug Fixes
+
+* **cache:** correct popular query threshold check and remove legacy widget template ([4325d48](https://github.com/LindemannRock/craft-search-manager/commit/4325d48369a51122fae302d21532c86d0f19d24b))
+* **security:** replace unserialize with JSON and strip API meta exposure ([da51780](https://github.com/LindemannRock/craft-search-manager/commit/da517805f37831ec43e313f4c6d9a89587be900d))
+
 ## [5.33.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.32.0...v5.33.0) (2026-01-21)
 
 
