@@ -468,7 +468,8 @@ class IndexingService extends Component
 
             // Check site match (if specified)
             // For all-sites indices (siteId = null), this check passes
-            if ($index->siteId && $index->siteId !== $element->siteId) {
+            // Use explicit int casting to ensure type-safe comparison
+            if ($index->siteId !== null && (int)$index->siteId !== (int)$element->siteId) {
                 $this->logDebug('Index skipped (site mismatch)', [
                     'indexHandle' => $index->handle,
                     'indexSiteId' => $index->siteId,

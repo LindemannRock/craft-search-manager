@@ -158,7 +158,7 @@ class SearchIndex extends Model
             $model->handle = $handle;
             $model->name = $configData['name'] ?? $handle;
             $model->elementType = $configData['elementType'] ?? \craft\elements\Entry::class;
-            $model->siteId = $configData['siteId'] ?? null;
+            $model->siteId = isset($configData['siteId']) ? (int)$configData['siteId'] : null;
             $model->criteria = $configData['criteria'] ?? [];
             $model->transformerClass = $configData['transformer'] ?? null;
             $model->language = $configData['language'] ?? null;
@@ -281,7 +281,7 @@ class SearchIndex extends Model
                 $model->handle = $handle;
                 $model->name = $indexConfig['name'] ?? $handle;
                 $model->elementType = $indexConfig['elementType'] ?? \craft\elements\Entry::class;
-                $model->siteId = $indexConfig['siteId'] ?? null;
+                $model->siteId = isset($indexConfig['siteId']) ? (int)$indexConfig['siteId'] : null;
                 $model->criteria = $indexConfig['criteria'] ?? [];
                 $model->transformerClass = $indexConfig['transformer'] ?? null;
                 $model->language = $indexConfig['language'] ?? null;
@@ -937,9 +937,15 @@ class SearchIndex extends Model
                 // Create base query matching RebuildIndexJob logic
                 /** @var \craft\elements\db\ElementQuery $query */
                 $query = $elementType::find()
-                    ->siteId($siteId)
+                    ->siteId((int)$siteId)
                     ->drafts(false)
                     ->revisions(false);
+
+                $this->logDebug('Building expected count query', [
+                    'indexHandle' => $this->handle,
+                    'indexSiteId' => $this->siteId,
+                    'querySiteId' => $siteId,
+                ]);
 
                 // Apply criteria
                 if (!empty($this->criteria)) {
@@ -947,9 +953,8 @@ class SearchIndex extends Model
                     if ($this->criteria instanceof \Closure) {
                         $criteriaCallback = $this->criteria;
                         $query = $criteriaCallback($query);
-                    }
-                    // Database indices: criteria is an array with section/volume/group filters
-                    elseif (is_array($this->criteria)) {
+                    } elseif (is_array($this->criteria)) {
+                        // Database indices: criteria is an array with section/volume/group filters
                         if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections'])) {
                             /** @var \craft\elements\db\EntryQuery $query */
                             $query->section($this->criteria['sections']);
@@ -978,7 +983,18 @@ class SearchIndex extends Model
                         }
                     }
                 } else {
-                    $totalCount += $query->count();
+                    // Use ids() instead of count() to ensure custom query scopes are properly evaluated
+                    // Some custom scopes may not work correctly with count() but work with ids()
+                    $ids = $query->ids();
+                    $siteCount = count($ids);
+                    $totalCount += $siteCount;
+
+                    $this->logDebug('Expected count result', [
+                        'indexHandle' => $this->handle,
+                        'siteId' => $siteId,
+                        'count' => $siteCount,
+                        'firstIds' => array_slice($ids, 0, 5),
+                    ]);
                 }
             }
 
