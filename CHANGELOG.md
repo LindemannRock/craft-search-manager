@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.34.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.0...v5.34.1) (2026-01-26)
+
+
+### Miscellaneous Chores
+
+* remove unused document ([7d9d063](https://github.com/LindemannRock/craft-search-manager/commit/7d9d063845c6ff61b94ee738a131f50b6832f89e))
+
 ## [5.34.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.33.0...v5.34.0) (2026-01-26)
 
 
