@@ -384,13 +384,20 @@ Add indices to `config/search-manager.php`:
     'entries-en' => [
         'name' => 'Entries (English)',
         'elementType' => \craft\elements\Entry::class,
-        'siteId' => 1,
+        'siteId' => 1,                    // Single site (int), multiple sites (array), or all sites (null)
         'criteria' => function($query) {
             return $query->section(['news', 'blog']);
         },
         'transformer' => \modules\transformers\EntryTransformer::class,
         'enabled' => true,
+        'disableStopWords' => false,      // Disable stop word filtering for this index
         'skipEntriesWithoutUrl' => false, // Skip entries without a URL
+    ],
+    'entries-regional' => [
+        'name' => 'Entries (Regional)',
+        'elementType' => \craft\elements\Entry::class,
+        'siteId' => [1, 3],               // Multiple specific sites
+        // ...
     ],
 ],
 ```
@@ -1837,15 +1844,19 @@ Search Manager automatically handles multiple languages:
 // config/search-manager.php
 'indices' => [
     'entries-en' => [
-        'siteId' => 1,
-        'language' => 'en',  // Optional override (auto-detected from site)
+        'siteId' => 1,           // Single site
+        'language' => 'en',      // Optional override (auto-detected from site)
     ],
     'entries-ar' => [
-        'siteId' => 2,
-        'language' => 'ar',  // Arabic with regional fallback
+        'siteId' => 2,           // Single site
+        'language' => 'ar',      // Arabic with regional fallback
+    ],
+    'entries-regional' => [
+        'siteId' => [1, 3],      // Multiple specific sites
+        // Language auto-detected per site
     ],
     'all-entries' => [
-        'siteId' => null,    // All sites - language per document
+        'siteId' => null,        // All sites - language per document
     ],
 ],
 ```
