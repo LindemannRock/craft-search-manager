@@ -679,16 +679,18 @@ class SearchManager extends Plugin
                 continue;
             }
 
-            // Get siteId for this index
-            $siteId = $index->siteId;
+            // Determine site IDs for this index
+            $siteIds = $index->getSiteIds();
+            if ($siteIds === null) {
+                $siteIds = Craft::$app->getSites()->getAllSiteIds();
+            }
 
-            if ($siteId) {
-                // Index is for a specific site - queue job for that site
-                if (!in_array($siteId, $queuedSites)) {
+            foreach ($siteIds as $siteId) {
+                if (!in_array($siteId, $queuedSites, true)) {
                     Craft::$app->getQueue()->push(new \lindemannrock\searchmanager\jobs\SyncElementJob([
                         'elementId' => $element->id,
                         'elementType' => $elementClass,
-                        'siteId' => $siteId,
+                        'siteId' => (int)$siteId,
                     ]));
                     $queuedSites[] = $siteId;
 
@@ -696,25 +698,6 @@ class SearchManager extends Plugin
                         'elementId' => $element->id,
                         'siteId' => $siteId,
                     ]);
-                }
-            } else {
-                // Index is for ALL sites - queue a job for each site
-                $allSites = Craft::$app->getSites()->getAllSites();
-                foreach ($allSites as $site) {
-                    if (!in_array($site->id, $queuedSites)) {
-                        Craft::$app->getQueue()->push(new \lindemannrock\searchmanager\jobs\SyncElementJob([
-                            'elementId' => $element->id,
-                            'elementType' => $elementClass,
-                            'siteId' => $site->id,
-                        ]));
-                        $queuedSites[] = $site->id;
-
-                        $this->logDebug('Queued sync job for all-sites index', [
-                            'elementId' => $element->id,
-                            'siteId' => $site->id,
-                            'indexHandle' => $index->handle,
-                        ]);
-                    }
                 }
             }
         }

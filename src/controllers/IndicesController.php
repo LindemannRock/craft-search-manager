@@ -128,12 +128,19 @@ class IndicesController extends Controller
         $index->name = $request->getBodyParam('name');
         $index->handle = $request->getBodyParam('handle');
         $index->elementType = $request->getBodyParam('elementType');
-        $index->siteId = $request->getBodyParam('siteId') ?: null;
+        $siteIdParam = $request->getBodyParam('siteId');
+        if (is_array($siteIdParam)) {
+            $siteIds = array_values(array_unique(array_filter(array_map('intval', $siteIdParam), fn($id) => $id > 0)));
+            $index->siteId = $siteIds ?: null;
+        } else {
+            $index->siteId = $siteIdParam ?: null;
+        }
         $index->transformerClass = $request->getBodyParam('transformerClass');
         $index->language = $request->getBodyParam('language') ?: null;
         $index->backend = $request->getBodyParam('backend') ?: null;
         $index->enabled = (bool)$request->getBodyParam('enabled');
         $index->enableAnalytics = (bool)$request->getBodyParam('enableAnalytics', true);
+        $index->disableStopWords = (bool)$request->getBodyParam('disableStopWords', false);
         $index->skipEntriesWithoutUrl = (bool)$request->getBodyParam('skipEntriesWithoutUrl', false);
         $index->criteria = $request->getBodyParam('criteria', []);
 

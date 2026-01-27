@@ -72,14 +72,18 @@ class RebuildIndexJob extends BaseJob
         $elementType = $index->elementType;
 
         // For "All Sites" indices, we need to index each site separately
-        $sitesToIndex = [];
-        if ($index->siteId) {
-            $sitesToIndex[] = $index->siteId;
-        } else {
+        $sitesToIndex = $index->getSiteIds();
+        if ($sitesToIndex === null) {
             // Get all site IDs
+            $sitesToIndex = [];
             foreach (Craft::$app->getSites()->getAllSites() as $site) {
                 $sitesToIndex[] = $site->id;
             }
+        }
+
+        if (empty($sitesToIndex)) {
+            $this->logWarning('No sites to index for index', ['handle' => $index->handle]);
+            return;
         }
 
         $totalIndexed = 0;

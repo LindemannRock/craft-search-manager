@@ -108,9 +108,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         if (!isset($this->searchEngines[$cacheKey])) {
             $storage = $this->getStorage($indexHandle);
             $settings = SearchManager::$plugin->getSettings();
+            $disableStopWords = $searchIndex ? (bool)$searchIndex->disableStopWords : false;
 
             $this->searchEngines[$cacheKey] = new SearchEngine($storage, $fullIndexName, [
                 'language' => $language,
+                'enableStopWords' => $settings->enableStopWords ?? true,
+                'disableStopWords' => $disableStopWords,
                 'k1' => $settings->bm25K1 ?? 1.5,
                 'b' => $settings->bm25B ?? 0.75,
                 'titleBoost' => $settings->titleBoostFactor ?? 5.0,

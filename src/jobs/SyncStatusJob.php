@@ -118,49 +118,50 @@ class SyncStatusJob extends BaseJob
             $lastSyncDb = \craft\helpers\Db::prepareDateForDb($lastSync);
             $nowDb = \craft\helpers\Db::prepareDateForDb($now);
 
-            // Find entries that became live since last sync (postDate between lastSync and now)
-            $newlyLive = Entry::find()
-                ->status('live')
-                ->siteId($index->siteId ?: '*')
-                ->andWhere(['>=', 'entries.postDate', $lastSyncDb])
-                ->andWhere(['<=', 'entries.postDate', $nowDb])
-                ->limit(null)
-                ->ids();
-
-            // Find entries that expired since last sync (expiryDate between lastSync and now)
-            $newlyExpired = Entry::find()
-                ->status('expired')
-                ->siteId($index->siteId ?: '*')
-                ->andWhere(['>=', 'entries.expiryDate', $lastSyncDb])
-                ->andWhere(['<=', 'entries.expiryDate', $nowDb])
-                ->limit(null)
-                ->ids();
-
-            $this->logDebug('Status sync for index', [
-                'index' => $index->handle,
-                'newlyLive' => count($newlyLive),
-                'newlyExpired' => count($newlyExpired),
-            ]);
-
             // Determine which sites to process
-            $sitesToProcess = [];
-            if ($index->siteId) {
-                // Single site index
-                $sitesToProcess = [$index->siteId];
-            } else {
-                // All sites index - get all site IDs
+            $sitesToProcess = $index->getSiteIds();
+            if ($sitesToProcess === null) {
                 $sitesToProcess = Craft::$app->getSites()->getAllSiteIds();
             }
 
-            // Index newly live entries in batches
-            if (!empty($newlyLive)) {
-                $chunks = array_chunk($newlyLive, $batchSize);
-                foreach ($chunks as $i => $chunk) {
-                    $this->setProgress($queue, ($i + 1) / count($chunks) * 0.5, Craft::t('search-manager', 'Adding newly live entries to {index}', ['index' => $index->name]));
+            if (empty($sitesToProcess)) {
+                $this->logWarning('No sites to process for status sync', ['index' => $index->handle]);
+                continue;
+            }
 
-                    foreach ($chunk as $entryId) {
-                        // Process each site for all-sites indices
-                        foreach ($sitesToProcess as $siteId) {
+            foreach ($sitesToProcess as $siteId) {
+                // Find entries that became live since last sync (postDate between lastSync and now)
+                $newlyLive = Entry::find()
+                    ->status('live')
+                    ->siteId($siteId)
+                    ->andWhere(['>=', 'entries.postDate', $lastSyncDb])
+                    ->andWhere(['<=', 'entries.postDate', $nowDb])
+                    ->limit(null)
+                    ->ids();
+
+                // Find entries that expired since last sync (expiryDate between lastSync and now)
+                $newlyExpired = Entry::find()
+                    ->status('expired')
+                    ->siteId($siteId)
+                    ->andWhere(['>=', 'entries.expiryDate', $lastSyncDb])
+                    ->andWhere(['<=', 'entries.expiryDate', $nowDb])
+                    ->limit(null)
+                    ->ids();
+
+                $this->logDebug('Status sync for index site', [
+                    'index' => $index->handle,
+                    'siteId' => $siteId,
+                    'newlyLive' => count($newlyLive),
+                    'newlyExpired' => count($newlyExpired),
+                ]);
+
+                // Index newly live entries in batches
+                if (!empty($newlyLive)) {
+                    $chunks = array_chunk($newlyLive, $batchSize);
+                    foreach ($chunks as $i => $chunk) {
+                        $this->setProgress($queue, ($i + 1) / count($chunks) * 0.5, Craft::t('search-manager', 'Adding newly live entries to {index}', ['index' => $index->name]));
+
+                        foreach ($chunk as $entryId) {
                             $entry = Entry::find()->id($entryId)->siteId($siteId)->status('live')->one();
                             if ($entry) {
                                 SearchManager::$plugin->indexing->indexElement($entry);
@@ -169,17 +170,14 @@ class SyncStatusJob extends BaseJob
                         }
                     }
                 }
-            }
 
-            // Remove expired entries in batches
-            if (!empty($newlyExpired)) {
-                $chunks = array_chunk($newlyExpired, $batchSize);
-                foreach ($chunks as $i => $chunk) {
-                    $this->setProgress($queue, 0.5 + ($i + 1) / count($chunks) * 0.5, Craft::t('search-manager', 'Removing expired entries from {index}', ['index' => $index->name]));
+                // Remove expired entries in batches
+                if (!empty($newlyExpired)) {
+                    $chunks = array_chunk($newlyExpired, $batchSize);
+                    foreach ($chunks as $i => $chunk) {
+                        $this->setProgress($queue, 0.5 + ($i + 1) / count($chunks) * 0.5, Craft::t('search-manager', 'Removing expired entries from {index}', ['index' => $index->name]));
 
-                    foreach ($chunk as $entryId) {
-                        // Process each site for all-sites indices
-                        foreach ($sitesToProcess as $siteId) {
+                        foreach ($chunk as $entryId) {
                             $entry = Entry::find()->id($entryId)->siteId($siteId)->status(null)->one();
                             if ($entry) {
                                 SearchManager::$plugin->indexing->removeElement($entry);

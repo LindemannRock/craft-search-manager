@@ -496,7 +496,7 @@ class IndexingService extends Component
             // Check site match (if specified)
             // For all-sites indices (siteId = null), this check passes
             // Use explicit int casting to ensure type-safe comparison
-            if ($index->siteId !== null && (int)$index->siteId !== (int)$element->siteId) {
+            if (!$index->appliesToSiteId((int)$element->siteId)) {
                 $this->logDebug('Index skipped (site mismatch)', [
                     'indexHandle' => $index->handle,
                     'indexSiteId' => $index->siteId,
@@ -593,8 +593,8 @@ class IndexingService extends Component
             $query = $elementType::find();
 
             // Set site context - MUST match element's site for proper per-site checks
-            if ($index->siteId) {
-                $query->siteId($index->siteId);
+            if ($index->siteId !== null) {
+                $query->siteId($element->siteId);
             }
 
             // Apply the Closure criteria (section, type filters, etc.)

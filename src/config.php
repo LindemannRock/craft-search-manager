@@ -518,6 +518,7 @@ return [
          * - backend: Handle of configured backend (optional, uses defaultBackendHandle if not set)
          * - enabled: Whether the index is active
          * - enableAnalytics: Whether to track search analytics for this index (default: true)
+         * - disableStopWords: Disable stop words filtering for this index (default: false)
          * - skipEntriesWithoutUrl: Skip indexing entries that don't have a URL (default: false)
          */
         'indices' => [

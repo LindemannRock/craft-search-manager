@@ -41,6 +41,11 @@ class SearchEngine
     private StopWords $stopWords;
 
     /**
+     * @var bool Whether stop words filtering is enabled for this index
+     */
+    private bool $stopWordsEnabled = true;
+
+    /**
      * @var NgramGenerator N-gram generator
      */
     private NgramGenerator $ngramGenerator;
@@ -82,6 +87,7 @@ class SearchEngine
         // Initialize components with configuration
         $this->tokenizer = new Tokenizer();
         $this->stopWords = new StopWords($config['language'] ?? 'en');
+        $this->stopWordsEnabled = ($config['enableStopWords'] ?? true) && !($config['disableStopWords'] ?? false);
 
         $this->ngramGenerator = new NgramGenerator(
             $config['ngramSizes'] ?? [2, 3]
@@ -105,6 +111,18 @@ class SearchEngine
             'storage' => get_class($storage),
             'config' => $config,
         ]);
+    }
+
+    /**
+     * Filter stop words if enabled for this index
+     */
+    private function filterTokens(array $tokens): array
+    {
+        if (!$this->stopWordsEnabled) {
+            return $tokens;
+        }
+
+        return $this->stopWords->filter($tokens, true);
     }
 
     /**
@@ -141,11 +159,11 @@ class SearchEngine
 
             // Tokenize and filter title separately
             $titleTokens = $this->tokenizer->tokenize($title);
-            $titleTokens = $this->stopWords->filter($titleTokens);
+            $titleTokens = $this->filterTokens($titleTokens);
 
             // Tokenize and filter all content
             $allTokens = $this->tokenizer->tokenize($title . ' ' . $content);
-            $allTokens = $this->stopWords->filter($allTokens);
+            $allTokens = $this->filterTokens($allTokens);
 
             // Calculate term frequencies and document length
             $termFreqs = array_count_values($allTokens);
@@ -375,7 +393,7 @@ class SearchEngine
 
             // Tokenize and filter query
             $tokens = $this->tokenizer->tokenize($query);
-            $tokens = $this->stopWords->filter($tokens);
+            $tokens = $this->filterTokens($tokens);
 
             if (empty($tokens)) {
                 $this->logDebug('Empty query after filtering', ['query' => $query]);
@@ -566,7 +584,7 @@ class SearchEngine
         foreach ($phrases as $phrase) {
             // Tokenize phrase
             $phraseTokens = $this->tokenizer->tokenize($phrase);
-            $phraseTokens = $this->stopWords->filter($phraseTokens);
+            $phraseTokens = $this->filterTokens($phraseTokens);
 
             if (empty($phraseTokens)) {
                 continue;
@@ -606,7 +624,7 @@ class SearchEngine
         $processedTerms = [];
         foreach ($terms as $term) {
             $tokens = $this->tokenizer->tokenize($term);
-            $tokens = $this->stopWords->filter($tokens);
+            $tokens = $this->filterTokens($tokens);
             $processedTerms = array_merge($processedTerms, $tokens);
         }
 
@@ -831,7 +849,7 @@ class SearchEngine
         foreach ($notTerms as $notTerm) {
             // Tokenize and filter
             $tokens = $this->tokenizer->tokenize($notTerm);
-            $tokens = $this->stopWords->filter($tokens);
+            $tokens = $this->filterTokens($tokens);
 
             foreach ($tokens as $token) {
                 $termDocs = $this->storage->getTermDocuments($token, $siteId);

@@ -96,7 +96,7 @@ class SyncElementJob extends BaseJob
             if ($index->elementType !== $this->elementType) {
                 continue;
             }
-            if ($index->siteId && $index->siteId !== $this->siteId) {
+            if (!$index->appliesToSiteId($this->siteId)) {
                 continue;
             }
 

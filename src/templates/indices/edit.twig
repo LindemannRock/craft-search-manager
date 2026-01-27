@@ -11,6 +11,7 @@
 {% set retainScrollOnSaveShortcut = true %}
 
 {% import "_includes/forms" as forms %}
+{% import "search-manager/_macros/index" as indexMacros %}
 
 {% block actionButton %}
 	<div class="btngroup submit">
@@ -120,13 +121,20 @@
         }) }}
     </div>
 
-    {{ forms.selectField({
-        label: "Site"|t('search-manager'),
-        instructions: "Which site to index (select 'All Sites' to index all sites)"|t('search-manager'),
+    {% set selectedSiteIds = [] %}
+    {% if index.siteId is iterable %}
+        {% set selectedSiteIds = index.siteId %}
+    {% elseif index.siteId %}
+        {% set selectedSiteIds = [index.siteId] %}
+    {% endif %}
+
+    {{ forms.checkboxGroupField({
+        label: "Sites"|t('search-manager'),
+        instructions: "Which sites to index (leave all unchecked to index all sites)"|t('search-manager'),
         id: 'siteId',
         name: 'siteId',
-        value: index.siteId,
-        options: [{ label: 'All Sites'|t('search-manager'), value: '' }]|merge(craft.app.sites.getAllSites()|map(s => { label: s.name, value: s.id })),
+        options: craft.app.sites.getAllSites()|map(s => { label: s.name, value: s.id }),
+        values: selectedSiteIds,
     }) }}
 
     {% set settings = craft.searchManager.getSettings() %}
@@ -138,8 +146,8 @@
         {% endfor %}
 
         {{ forms.selectField({
-            label: "Language"|t('search-manager'),
-            instructions: "Select 'Auto-detect from site' to automatically use the site's language setting. Only override if you need different stop words than the site language."|t('search-manager'),
+            label: "Language (Search Processing)"|t('search-manager'),
+            instructions: "Auto-detect uses each site's language for stop words, query operator parsing, and internal autocomplete language. Only override if you want a different processing language."|t('search-manager'),
             id: 'language',
             name: 'language',
             value: index.language,
@@ -159,9 +167,11 @@
         {{ hiddenInput('language', '') }}
     {% endif %}
 
-    <div id="language-preview" style="margin-top: -15px; margin-bottom: 20px; padding: 10px; background: #f9fafb; border-left: 3px solid #0d78f2; display: none;">
-        <strong>{{ "Auto-detected language:"|t('search-manager') }}</strong> <span id="detected-language">-</span><br>
-        <small style="color: #666;">{{ "Stop words file:"|t('search-manager') }} <code id="stopwords-file">-</code></small>
+    <div id="language-preview" style="display: none;">
+        {% include 'lindemannrock-base/_components/info-box' with {
+            type: 'info',
+            message: '<strong>' ~ "Auto-detected language:"|t('search-manager') ~ '</strong> <span id="detected-language">-</span><br>' ~ "Stop words file:"|t('search-manager') ~ ' <span id="stopwords-file">-</span><br>' ~ "Used for:"|t('search-manager') ~ ' ' ~ "stop words, query operators, and internal autocomplete language."|t('search-manager') ~ '<span id="multi-site-note" style="display:none;"><br>' ~ "For multiple sites, language is resolved per site unless manually set."|t('search-manager') ~ '</span>'
+        } %}
     </div>
 
     {{ forms.textField({
@@ -242,11 +252,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const handleInput = document.getElementById('handle');
     const elementTypeSelect = document.getElementById('elementType');
     const entryCriteria = document.getElementById('entry-criteria');
-    const siteSelect = document.getElementById('siteId');
+    const siteInputs = document.querySelectorAll('input[name="siteId[]"], input[name="siteId"]');
     const languageSelect = document.getElementById('language');
     const languagePreview = document.getElementById('language-preview');
     const detectedLanguageSpan = document.getElementById('detected-language');
     const stopwordsFileSpan = document.getElementById('stopwords-file');
+    const multiSiteNote = document.getElementById('multi-site-note');
     const isNew = {{ isNew ? 'true' : 'false' }};
     let handleModifiedManually = !isNew; // Don't auto-update existing handles
 
@@ -254,6 +265,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const siteLanguages = {
         {% for site in craft.app.sites.getAllSites() %}
         '{{ site.id }}': '{{ site.language|lower }}',
+        {% endfor %}
+    };
+    const siteNames = {
+        {% for site in craft.app.sites.getAllSites() %}
+        '{{ site.id }}': '{{ site.name|e('js') }}',
         {% endfor %}
     };
 
@@ -266,31 +282,80 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Update language preview based on selected site
-    function updateLanguagePreview() {
-        const selectedSiteId = siteSelect.value;
-        const manualLanguage = languageSelect.value;
+    function getSelectedSiteIds() {
+        return Array.from(siteInputs)
+            .filter(input => input.checked)
+            .map(input => input.value);
+    }
 
-        if (!selectedSiteId || manualLanguage) {
-            // Hide preview if All Sites or manual language selected
-            languagePreview.style.display = 'none';
+    function updateLanguagePreview() {
+        const selectedSiteIds = getSelectedSiteIds();
+        const manualLanguage = languageSelect.value;
+        const resolvedSiteIds = selectedSiteIds.length ? selectedSiteIds : Object.keys(siteLanguages);
+
+        if (manualLanguage) {
+            detectedLanguageSpan.textContent = 'Manual override: ' + manualLanguage;
+            const manualBase = manualLanguage.split('-')[0];
+            if (manualLanguage.includes('-')) {
+                stopwordsFileSpan.textContent = manualLanguage + '.php → ' + manualBase + '.php';
+            } else {
+                stopwordsFileSpan.textContent = manualLanguage + '.php';
+            }
+            if (multiSiteNote) {
+                multiSiteNote.style.display = 'none';
+            }
+            languagePreview.style.display = 'block';
             return;
         }
 
-        const siteLanguage = siteLanguages[selectedSiteId];
-        if (siteLanguage) {
-            detectedLanguageSpan.textContent = siteLanguage;
+        if (resolvedSiteIds.length === 1) {
+            const siteLanguage = siteLanguages[resolvedSiteIds[0]];
+            if (siteLanguage) {
+                detectedLanguageSpan.textContent = siteLanguage;
 
-            // Show fallback chain
-            const baseLang = siteLanguage.split('-')[0];
-            if (siteLanguage.includes('-')) {
-                stopwordsFileSpan.textContent = siteLanguage + '.php → ' + baseLang + '.php';
-            } else {
-                stopwordsFileSpan.textContent = siteLanguage + '.php';
+                const baseLang = siteLanguage.split('-')[0];
+                if (siteLanguage.includes('-')) {
+                    stopwordsFileSpan.textContent = siteLanguage + '.php → ' + baseLang + '.php';
+                } else {
+                    stopwordsFileSpan.textContent = siteLanguage + '.php';
+                }
             }
-
+            if (multiSiteNote) {
+                multiSiteNote.style.display = 'none';
+            }
             languagePreview.style.display = 'block';
+            return;
         }
+
+        const languageList = resolvedSiteIds.map(siteId => {
+            const name = siteNames[siteId] || siteId;
+            const lang = siteLanguages[siteId] || '-';
+            return `${name}: ${lang}`;
+        }).join(', ');
+
+        const stopwordsList = resolvedSiteIds.map(siteId => {
+            const name = siteNames[siteId] || siteId;
+            const lang = siteLanguages[siteId] || '';
+            if (!lang) {
+                return `${name}: -`;
+            }
+            const baseLang = lang.split('-')[0];
+            const fileLabel = lang.includes('-') ? `${lang}.php → ${baseLang}.php` : `${lang}.php`;
+            return `${name}: ${fileLabel}`;
+        }).join(', ');
+
+        detectedLanguageSpan.textContent = languageList || '-';
+        stopwordsFileSpan.textContent = stopwordsList || '-';
+        if (multiSiteNote) {
+            multiSiteNote.style.display = 'inline';
+        }
+        languagePreview.style.display = 'block';
     }
+
+    // Update preview on site selection change
+    siteInputs.forEach(input => {
+        input.addEventListener('change', updateLanguagePreview);
+    });
 
     // Only auto-generate handle for new indices
     if (isNew && nameInput && handleInput) {
@@ -324,11 +389,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Language preview updates (only if stop words enabled)
-    if (siteSelect && languageSelect && languagePreview) {
+    if (siteInputs.length && languageSelect && languagePreview) {
         const stopWordsEnabled = {{ settings.enableStopWords ? 'true' : 'false' }};
 
         if (stopWordsEnabled) {
-            siteSelect.addEventListener('change', updateLanguagePreview);
             languageSelect.addEventListener('change', updateLanguagePreview);
 
             // Initial state
@@ -372,6 +436,16 @@ document.addEventListener('DOMContentLoaded', function() {
 			id: 'skipEntriesWithoutUrl',
 			name: 'skipEntriesWithoutUrl',
 			on: index.skipEntriesWithoutUrl ?? false
+		}) }}
+
+		{{ forms.lightswitchField({
+			label: 'Disable Stop Words'|t('search-manager'),
+			instructions: 'Keep all words during indexing and search for this index.'|t('search-manager'),
+			id: 'disableStopWords',
+			name: 'disableStopWords',
+			on: index.disableStopWords ?? false,
+			disabled: not index.canEdit(),
+			warning: not index.canEdit() ? "Set via config/search-manager.php. Edit the file to change."|t('search-manager') : null
 		}) }}
 
 		{% if not isNew and (currentUser.can('searchManager:rebuildIndices') or currentUser.can('searchManager:clearIndices')) %}
@@ -432,36 +506,50 @@ document.addEventListener('DOMContentLoaded', function() {
 					</dd>
 				</div>
 				<div class="data">
-					<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
-					<dd class="value">
-						{% if index.backend %}
-							{# Show configured backend name #}
-							{% set configuredBackend = index.configuredBackend %}
-							{% if configuredBackend %}
-								{{ configuredBackend.name }}&nbsp;<span style="color: #f59e0b; font-size: 0.85em;">({{ configuredBackend.getTypeLabel() }})</span>
+				<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% set configuredBackend = index.configuredBackend %}
+					{% set defaultBackendHandle = craft.searchManager.getSettings().defaultBackendHandle %}
+					{% set defaultConfiguredBackend = defaultBackendHandle ? craft.searchManager.getPlugin().getConfiguredBackend(defaultBackendHandle) : null %}
+					{% if index.backend %}
+						{# Show configured backend name #}
+						{% if configuredBackend %}
+							{{ configuredBackend.name }}
+						{% else %}
+							{{ index.backend }}&nbsp;<span style="color: #ef4444; font-size: 0.85em;">(not found)</span>
+						{% endif %}
+					{% else %}
+						{# Show default backend from settings #}
+						{% if defaultBackendHandle %}
+							{% if defaultConfiguredBackend %}
+								{{ defaultConfiguredBackend.name }}
 							{% else %}
-								{{ index.backend }}&nbsp;<span style="color: #ef4444; font-size: 0.85em;">(not found)</span>
+								{{ defaultBackendHandle }}&nbsp;<span style="color: #8f98a3; font-size: 0.85em;">(default, not found)</span>
 							{% endif %}
 						{% else %}
-							{# Show default backend from settings #}
-							{% set defaultBackendHandle = craft.searchManager.getSettings().defaultBackendHandle %}
-							{% if defaultBackendHandle %}
-								{% set defaultConfiguredBackend = craft.searchManager.getPlugin().getConfiguredBackend(defaultBackendHandle) %}
-								{% if defaultConfiguredBackend %}
-									{{ defaultConfiguredBackend.name }}&nbsp;<span style="color: #8f98a3; font-size: 0.85em;">(default)</span>
-								{% else %}
-									{{ defaultBackendHandle }}&nbsp;<span style="color: #8f98a3; font-size: 0.85em;">(default, not found)</span>
-								{% endif %}
-							{% else %}
-								<span class="light">{{ 'No default backend'|t('search-manager') }}</span>
-							{% endif %}
+							<span class="light">{{ 'No default backend'|t('search-manager') }}</span>
 						{% endif %}
-					</dd>
-				</div>
-				<div class="data">
-					<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
-					<dd class="value">{{ index.documentCount }}</dd>
-				</div>
+					{% endif %}
+					{% set backendType = index.effectiveBackendType %}
+					{% if backendType %}
+						&nbsp;{{ indexMacros.backendBadge(backendType, configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize)) }}
+					{% endif %}
+				</dd>
+			</div>
+					<div class="data">
+						<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
+						<dd class="value">
+							{% set expected = index.expectedCount %}
+							{% if index.documentCount == expected %}
+								{% include 'lindemannrock-base/_components/status-dot' with { value: 'ok', colorSet: 'healthStatus' } only %}
+							{% elseif index.documentCount < expected %}
+								{% include 'lindemannrock-base/_components/status-dot' with { value: 'low', colorSet: 'healthStatus' } only %}
+							{% else %}
+								{% include 'lindemannrock-base/_components/status-dot' with { value: 'high', colorSet: 'healthStatus' } only %}
+							{% endif %}
+							{{ index.documentCount }}&nbsp;/&nbsp;{{ expected }}
+						</dd>
+					</div>
 				{% if index.lastIndexed %}
 					<div class="data">
 						<dt class="heading">{{ 'Last indexed'|t('search-manager') }}</dt>

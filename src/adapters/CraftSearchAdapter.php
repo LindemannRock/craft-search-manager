@@ -214,8 +214,13 @@ class CraftSearchAdapter extends \craft\services\Search
             }
 
             // Match site if specified
-            if ($index->siteId && $index->siteId !== $siteId) {
-                continue;
+            if ($siteId !== null && $siteId !== '*') {
+                $querySiteIds = is_array($siteId) ? array_map('intval', $siteId) : [(int)$siteId];
+                $indexSiteIds = $index->getSiteIds();
+
+                if ($indexSiteIds !== null && empty(array_intersect($querySiteIds, $indexSiteIds))) {
+                    continue;
+                }
             }
 
             return $index->handle;

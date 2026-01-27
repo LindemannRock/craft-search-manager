@@ -32,7 +32,7 @@ class SearchIndex extends Model
     public string $name = '';
     public string $handle = '';
     public string $elementType = '';
-    public ?int $siteId = null;
+    public int|array|null $siteId = null;
 
     /**
      * @var array|\Closure Decoded from criteriaJson (array) or callable from config (Closure)
@@ -57,6 +57,11 @@ class SearchIndex extends Model
      * @var bool Whether to track analytics for searches on this index
      */
     public bool $enableAnalytics = true;
+
+    /**
+     * @var bool Whether to disable stop words for this index
+     */
+    public bool $disableStopWords = false;
 
     /**
      * @var bool Whether to skip indexing entries that don't have a URL
@@ -90,8 +95,9 @@ class SearchIndex extends Model
             [['language'], 'string', 'max' => 10],
             [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => 'Language must be a valid language code (e.g., en, ar, fr-ca)'],
             [['backend'], 'string', 'max' => 255],
-            [['enabled'], 'boolean'],
-            [['siteId', 'documentCount', 'sortOrder'], 'integer'],
+            [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl'], 'boolean'],
+            [['documentCount', 'sortOrder'], 'integer'],
+            [['siteId'], 'validateSiteId'],
             [['source'], 'in', 'range' => ['config', 'database']],
             [['criteria'], 'safe'],
             [['transformerClass'], 'validateTransformerClass'],
@@ -117,6 +123,37 @@ class SearchIndex extends Model
         }
     }
 
+    /**
+     * Validate siteId (int, array of ints, or null)
+     */
+    public function validateSiteId($attribute): void
+    {
+        $value = $this->$attribute;
+
+        if ($value === null || $value === '') {
+            $this->$attribute = null;
+            return;
+        }
+
+        if (is_array($value)) {
+            $ids = array_values(array_unique(array_filter(array_map('intval', $value), fn($id) => $id > 0)));
+            if (empty($ids)) {
+                $this->addError($attribute, 'siteId array must contain at least one valid site ID.');
+                return;
+            }
+
+            $this->$attribute = $ids;
+            return;
+        }
+
+        if (is_numeric($value)) {
+            $this->$attribute = (int)$value;
+            return;
+        }
+
+        $this->addError($attribute, 'siteId must be an integer, an array of integers, or null.');
+    }
+
     // =========================================================================
     // DATABASE OPERATIONS
     // =========================================================================
@@ -136,7 +173,7 @@ class SearchIndex extends Model
                 return null;
             }
 
-            return self::fromRow($row);
+            return self::fromRow($row, self::loadSiteIdsForIndexId((int)$row['id']));
         } catch (\Throwable $e) {
             LoggingService::log('Failed to load index', 'error', 'search-manager', ['error' => $e->getMessage()]);
             return null;
@@ -158,13 +195,14 @@ class SearchIndex extends Model
             $model->handle = $handle;
             $model->name = $configData['name'] ?? $handle;
             $model->elementType = $configData['elementType'] ?? \craft\elements\Entry::class;
-            $model->siteId = isset($configData['siteId']) ? (int)$configData['siteId'] : null;
+            $model->siteId = isset($configData['siteId']) ? self::normalizeSiteIdValue($configData['siteId']) : null;
             $model->criteria = $configData['criteria'] ?? [];
             $model->transformerClass = $configData['transformer'] ?? null;
             $model->language = $configData['language'] ?? null;
             $model->backend = $configData['backend'] ?? null;
             $model->enabled = $configData['enabled'] ?? true;
             $model->enableAnalytics = $configData['enableAnalytics'] ?? true;
+            $model->disableStopWords = $configData['disableStopWords'] ?? false;
             $model->skipEntriesWithoutUrl = $configData['skipEntriesWithoutUrl'] ?? false;
             $model->source = 'config';
 
@@ -198,7 +236,7 @@ class SearchIndex extends Model
                 ->one();
 
             if ($row) {
-                return self::fromRow($row);
+                return self::fromRow($row, self::loadSiteIdsForIndexId((int)$row['id']));
             }
         } catch (\Throwable $e) {
             LoggingService::log('Failed to load index from database', 'error', 'search-manager', [
@@ -225,8 +263,12 @@ class SearchIndex extends Model
                 ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
                 ->all();
 
+            $indexIds = array_map(fn($row) => (int)$row['id'], $rows);
+            $siteIdMap = self::loadSiteIdsForIndexIds($indexIds);
+
             foreach ($rows as $row) {
-                $indices[] = self::fromRow($row);
+                $rowId = (int)$row['id'];
+                $indices[] = self::fromRow($row, $siteIdMap[$rowId] ?? null);
             }
         } catch (\Throwable $e) {
             LoggingService::log('Failed to load database indices', 'error', 'search-manager', ['error' => $e->getMessage()]);
@@ -281,13 +323,14 @@ class SearchIndex extends Model
                 $model->handle = $handle;
                 $model->name = $indexConfig['name'] ?? $handle;
                 $model->elementType = $indexConfig['elementType'] ?? \craft\elements\Entry::class;
-                $model->siteId = isset($indexConfig['siteId']) ? (int)$indexConfig['siteId'] : null;
+                $model->siteId = isset($indexConfig['siteId']) ? self::normalizeSiteIdValue($indexConfig['siteId']) : null;
                 $model->criteria = $indexConfig['criteria'] ?? [];
                 $model->transformerClass = $indexConfig['transformer'] ?? null;
                 $model->language = $indexConfig['language'] ?? null;
                 $model->backend = $indexConfig['backend'] ?? null;
                 $model->enabled = $indexConfig['enabled'] ?? true;
                 $model->enableAnalytics = $indexConfig['enableAnalytics'] ?? true;
+                $model->disableStopWords = $indexConfig['disableStopWords'] ?? false;
                 $model->skipEntriesWithoutUrl = $indexConfig['skipEntriesWithoutUrl'] ?? false;
                 $model->source = 'config';
 
@@ -356,20 +399,25 @@ class SearchIndex extends Model
     /**
      * Create model from database row
      */
-    private static function fromRow(array $row): self
+    private static function fromRow(array $row, ?array $siteIds = null): self
     {
         $model = new self();
         $model->id = (int)$row['id'];
         $model->name = $row['name'];
         $model->handle = $row['handle'];
         $model->elementType = $row['elementType'];
-        $model->siteId = $row['siteId'] ? (int)$row['siteId'] : null;
+        if ($siteIds !== null) {
+            $model->siteId = count($siteIds) === 1 ? (int)$siteIds[0] : $siteIds;
+        } else {
+            $model->siteId = $row['siteId'] ? (int)$row['siteId'] : null;
+        }
         $model->criteria = json_decode($row['criteriaJson'], true) ?? [];
         $model->transformerClass = $row['transformerClass'];
         $model->language = $row['language'] ?? null;
         $model->backend = $row['backend'] ?? null;
         $model->enabled = (bool)$row['enabled'];
         $model->enableAnalytics = (bool)($row['enableAnalytics'] ?? true);
+        $model->disableStopWords = (bool)($row['disableStopWords'] ?? false);
         $model->skipEntriesWithoutUrl = (bool)($row['skipEntriesWithoutUrl'] ?? false);
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
@@ -406,13 +454,14 @@ class SearchIndex extends Model
                 'name' => $this->name,
                 'handle' => $this->handle,
                 'elementType' => $this->elementType,
-                'siteId' => $this->siteId,
+                'siteId' => is_array($this->siteId) ? null : $this->siteId,
                 'criteriaJson' => json_encode($this->criteria),
                 'transformerClass' => $this->transformerClass,
                 'language' => $this->language,
                 'backend' => $this->backend ?: null,
                 'enabled' => (int)$this->enabled,
                 'enableAnalytics' => (int)$this->enableAnalytics,
+                'disableStopWords' => (int)$this->disableStopWords,
                 'skipEntriesWithoutUrl' => (int)$this->skipEntriesWithoutUrl,
                 'source' => $this->source,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
@@ -423,12 +472,13 @@ class SearchIndex extends Model
 
             if ($this->id) {
                 // Update existing
-                $result = Craft::$app->getDb()
+                Craft::$app->getDb()
                     ->createCommand()
                     ->update('{{%searchmanager_indices}}', $attributes, ['id' => $this->id])
                     ->execute();
 
-                return $result !== false;
+                $this->saveIndexSites($this->getSiteIds());
+                return true;
             } else {
                 // Insert new
                 $attributes['dateCreated'] = Db::prepareDateForDb(new \DateTime());
@@ -441,6 +491,7 @@ class SearchIndex extends Model
 
                 $this->id = (int)Craft::$app->getDb()->getLastInsertID();
 
+                $this->saveIndexSites($this->getSiteIds());
                 return true;
             }
         } catch (\Throwable $e) {
@@ -481,6 +532,7 @@ class SearchIndex extends Model
                 ->execute();
 
             if ($result > 0) {
+                $this->clearIndexSites();
                 $this->logInfo('Index deleted successfully', [
                     'handle' => $this->handle,
                     'name' => $this->name,
@@ -527,6 +579,7 @@ class SearchIndex extends Model
             $freshTransformer = $configData['transformer'] ?? null;
             $freshLanguage = $configData['language'] ?? null;
             $freshEnabled = $configData['enabled'] ?? true;
+            $freshDisableStopWords = $configData['disableStopWords'] ?? false;
 
             // Validate transformer class before syncing
             if ($freshTransformer && !class_exists($freshTransformer)) {
@@ -554,6 +607,7 @@ class SearchIndex extends Model
                         'transformerClass' => $freshTransformer ?: '',
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
+                        'disableStopWords' => (int)$freshDisableStopWords,
                         'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
                     ],
                     ['id' => $this->id]
@@ -565,6 +619,7 @@ class SearchIndex extends Model
             $this->transformerClass = $freshTransformer;
             $this->language = $freshLanguage;
             $this->enabled = $freshEnabled;
+            $this->disableStopWords = (bool)$freshDisableStopWords;
 
             $this->logInfo('Metadata synced successfully', ['handle' => $this->handle]);
             return true;
@@ -597,6 +652,7 @@ class SearchIndex extends Model
             $freshTransformer = $configData['transformer'] ?? null;
             $freshLanguage = $configData['language'] ?? null;
             $freshEnabled = $configData['enabled'] ?? true;
+            $freshDisableStopWords = $configData['disableStopWords'] ?? false;
 
             // Validate transformer class before updating stats
             if ($freshTransformer && !class_exists($freshTransformer)) {
@@ -624,6 +680,7 @@ class SearchIndex extends Model
                             'transformerClass' => $freshTransformer ?: '',
                             'language' => $freshLanguage,
                             'enabled' => (int)$freshEnabled,
+                            'disableStopWords' => (int)$freshDisableStopWords,
                             'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
                             'documentCount' => $documentCount,
                             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
@@ -639,11 +696,12 @@ class SearchIndex extends Model
                         'name' => $freshName,
                         'handle' => $this->handle,
                         'elementType' => $this->elementType,
-                        'siteId' => $this->siteId,
+                        'siteId' => is_array($this->siteId) ? null : $this->siteId,
                         'criteriaJson' => '{}', // Empty - actual criteria is in config
                         'transformerClass' => $freshTransformer ?: '',
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
+                        'disableStopWords' => (int)$freshDisableStopWords,
                         'source' => 'config',
                         'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
                         'documentCount' => $documentCount,
@@ -660,6 +718,7 @@ class SearchIndex extends Model
             $this->transformerClass = $freshTransformer;
             $this->language = $freshLanguage;
             $this->enabled = $freshEnabled;
+            $this->disableStopWords = (bool)$freshDisableStopWords;
             $this->lastIndexed = new \DateTime();
             $this->documentCount = $documentCount;
             return true;
@@ -757,6 +816,10 @@ class SearchIndex extends Model
             'language' => $this->language,
             'enabled' => $this->enabled,
         ];
+
+        if ($this->disableStopWords) {
+            $config['disableStopWords'] = true;
+        }
 
         // Only include backend if set (optional override)
         if ($this->backend) {
@@ -870,7 +933,12 @@ class SearchIndex extends Model
 
         // Site ID
         if (isset($configData['siteId'])) {
-            $lines[] = "    'siteId' => {$configData['siteId']},";
+            if (is_array($configData['siteId'])) {
+                $siteIds = array_map('intval', $configData['siteId']);
+                $lines[] = "    'siteId' => [" . implode(', ', $siteIds) . "],";
+            } else {
+                $lines[] = "    'siteId' => {$configData['siteId']},";
+            }
         }
 
         // Transformer
@@ -882,6 +950,11 @@ class SearchIndex extends Model
         // Language
         if (!empty($configData['language'])) {
             $lines[] = "    'language' => '{$configData['language']}',";
+        }
+
+        // Disable stop words
+        if (!empty($configData['disableStopWords'])) {
+            $lines[] = "    'disableStopWords' => true,";
         }
 
         // Criteria - show as closure placeholder if it's a closure
@@ -924,10 +997,9 @@ class SearchIndex extends Model
             $totalCount = 0;
 
             // Handle multi-site indices (siteId = null means all sites)
-            $sitesToCount = [];
-            if ($this->siteId) {
-                $sitesToCount[] = $this->siteId;
-            } else {
+            $sitesToCount = $this->getSiteIds();
+            if ($sitesToCount === null) {
+                $sitesToCount = [];
                 foreach (Craft::$app->getSites()->getAllSites() as $site) {
                     $sitesToCount[] = $site->id;
                 }
@@ -977,8 +1049,27 @@ class SearchIndex extends Model
                     $query->status(\craft\elements\Entry::STATUS_LIVE);
                 }
 
-                // If skipEntriesWithoutUrl is enabled, we need to iterate and check URLs
-                if ($this->skipEntriesWithoutUrl) {
+                // If skipEntriesWithoutUrl is enabled, filter by URI when possible
+                if ($this->skipEntriesWithoutUrl && $elementType === \craft\elements\Entry::class) {
+                    $query->andWhere(['not', ['elements_sites.uri' => null]])
+                        ->andWhere(['<>', 'elements_sites.uri', '']);
+
+                    if ($hasClosure) {
+                        $ids = $query->ids();
+                        $siteCount = count($ids);
+                    } else {
+                        $siteCount = (int) $query->count();
+                    }
+
+                    $totalCount += $siteCount;
+
+                    $this->logDebug('Expected count result (skip URL)', [
+                        'indexHandle' => $this->handle,
+                        'siteId' => $siteId,
+                        'count' => $siteCount,
+                    ]);
+                } elseif ($this->skipEntriesWithoutUrl) {
+                    // Fallback for non-entry element types
                     foreach ($query->all() as $element) {
                         if ($element->url !== null) {
                             $totalCount++;
@@ -1017,5 +1108,175 @@ class SearchIndex extends Model
             ]);
             return 0;
         }
+    }
+
+    /**
+     * Load site IDs for a single index ID.
+     */
+    private static function loadSiteIdsForIndexId(int $indexId): ?array
+    {
+        try {
+            $rows = (new Query())
+                ->select(['siteId'])
+                ->from('{{%searchmanager_index_sites}}')
+                ->where(['indexId' => $indexId])
+                ->orderBy(['siteId' => SORT_ASC])
+                ->all();
+
+            if (empty($rows)) {
+                return null;
+            }
+
+            return array_map(fn($row) => (int)$row['siteId'], $rows);
+        } catch (\Throwable $e) {
+            LoggingService::log('Failed to load index sites', 'error', 'search-manager', [
+                'indexId' => $indexId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+    }
+
+    /**
+     * Load site IDs for multiple index IDs.
+     */
+    private static function loadSiteIdsForIndexIds(array $indexIds): array
+    {
+        if (empty($indexIds)) {
+            return [];
+        }
+
+        try {
+            $rows = (new Query())
+                ->select(['indexId', 'siteId'])
+                ->from('{{%searchmanager_index_sites}}')
+                ->where(['indexId' => $indexIds])
+                ->orderBy(['indexId' => SORT_ASC, 'siteId' => SORT_ASC])
+                ->all();
+
+            $map = [];
+            foreach ($rows as $row) {
+                $idx = (int)$row['indexId'];
+                $map[$idx][] = (int)$row['siteId'];
+            }
+
+            return $map;
+        } catch (\Throwable $e) {
+            LoggingService::log('Failed to load index sites', 'error', 'search-manager', [
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Save index site mappings for database indices.
+     */
+    private function saveIndexSites(?array $siteIds): void
+    {
+        if (!$this->id || $this->source !== 'database') {
+            return;
+        }
+
+        try {
+            $db = Craft::$app->getDb();
+            $this->clearIndexSites();
+
+            if ($siteIds === null) {
+                return;
+            }
+
+            foreach ($siteIds as $siteId) {
+                $db->createCommand()
+                    ->insert('{{%searchmanager_index_sites}}', [
+                        'indexId' => $this->id,
+                        'siteId' => (int)$siteId,
+                    ])
+                    ->execute();
+            }
+        } catch (\Throwable $e) {
+            $this->logError('Failed to save index sites', [
+                'id' => $this->id,
+                'handle' => $this->handle,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Clear index site mappings.
+     */
+    private function clearIndexSites(): void
+    {
+        if (!$this->id || $this->source !== 'database') {
+            return;
+        }
+
+        try {
+            Craft::$app->getDb()
+                ->createCommand()
+                ->delete('{{%searchmanager_index_sites}}', ['indexId' => $this->id])
+                ->execute();
+        } catch (\Throwable $e) {
+            $this->logError('Failed to clear index sites', [
+                'id' => $this->id,
+                'handle' => $this->handle,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * Get normalized site IDs for this index.
+     * Returns null for "all sites".
+     */
+    public function getSiteIds(): ?array
+    {
+        if ($this->siteId === null) {
+            return null;
+        }
+
+        if (is_array($this->siteId)) {
+            return array_values(array_unique(array_filter(array_map('intval', $this->siteId), fn($id) => $id > 0)));
+        }
+
+        return [(int)$this->siteId];
+    }
+
+    /**
+     * Check whether this index applies to the given site ID.
+     */
+    public function appliesToSiteId(int $siteId): bool
+    {
+        $siteIds = $this->getSiteIds();
+        if ($siteIds === null) {
+            return true;
+        }
+
+        return in_array($siteId, $siteIds, true);
+    }
+
+    /**
+     * Normalize siteId values from config.
+     */
+    private static function normalizeSiteIdValue(mixed $value): int|array|null
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_array($value)) {
+            $ids = array_values(array_unique(array_filter(array_map('intval', $value), fn($id) => $id > 0)));
+            return $ids;
+        }
+
+        if (is_numeric($value)) {
+            return (int)$value;
+        }
+
+        LoggingService::log('Invalid siteId value in config', 'warning', 'search-manager', [
+            'siteId' => $value,
+        ]);
+        return null;
     }
 }

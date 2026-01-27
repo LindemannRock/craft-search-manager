@@ -24,6 +24,7 @@ class Install extends Migration
         $this->createSettingsTable();
         $this->createBackendsTable();
         $this->createIndicesTable();
+        $this->createIndexSitesTable();
         $this->createTransformersTable();
         $this->createIndexQueueTable();
         $this->createIndexStatsTable();
@@ -61,6 +62,7 @@ class Install extends Migration
         $this->dropTableIfExists('{{%searchmanager_index_stats}}');
         $this->dropTableIfExists('{{%searchmanager_index_queue}}');
         $this->dropTableIfExists('{{%searchmanager_transformers}}');
+        $this->dropTableIfExists('{{%searchmanager_index_sites}}');
         $this->dropTableIfExists('{{%searchmanager_indices}}');
         $this->dropTableIfExists('{{%searchmanager_backends}}');
         $this->dropTableIfExists('{{%searchmanager_settings}}');
@@ -190,6 +192,7 @@ class Install extends Migration
             'language' => $this->string(10)->null(),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'enableAnalytics' => $this->boolean()->notNull()->defaultValue(true),
+            'disableStopWords' => $this->boolean()->notNull()->defaultValue(false),
             'skipEntriesWithoutUrl' => $this->boolean()->notNull()->defaultValue(false),
             'source' => $this->enum('source', ['config', 'database'])->notNull()->defaultValue('database'),
             'backend' => $this->string(255)->null()->comment('Handle of configured backend to use'),
@@ -206,6 +209,48 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_indices}}', ['elementType'], false);
         $this->createIndex(null, '{{%searchmanager_indices}}', ['enabled'], false);
         $this->createIndex(null, '{{%searchmanager_indices}}', ['source'], false);
+    }
+
+    /**
+     * Create index sites table
+     * Stores multi-site mappings for indices (database indices only)
+     */
+    private function createIndexSitesTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_index_sites}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_index_sites}}', [
+            'indexId' => $this->integer()->notNull(),
+            'siteId' => $this->integer()->notNull(),
+        ]);
+
+        // Composite primary key
+        $this->addPrimaryKey(null, '{{%searchmanager_index_sites}}', ['indexId', 'siteId']);
+
+        // Indexes
+        $this->createIndex(null, '{{%searchmanager_index_sites}}', ['siteId'], false);
+
+        // Foreign keys
+        $this->addForeignKey(
+            null,
+            '{{%searchmanager_index_sites}}',
+            ['indexId'],
+            '{{%searchmanager_indices}}',
+            ['id'],
+            'CASCADE',
+            'CASCADE'
+        );
+        $this->addForeignKey(
+            null,
+            '{{%searchmanager_index_sites}}',
+            ['siteId'],
+            '{{%sites}}',
+            ['id'],
+            'CASCADE',
+            'CASCADE'
+        );
     }
 
     /**

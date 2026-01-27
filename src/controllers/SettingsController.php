@@ -228,7 +228,8 @@ class SettingsController extends Controller
 
             // Hydrate element data for display (title, url, type, section)
             $elementType = $index->elementType ?? \craft\elements\Entry::class;
-            $indexSiteId = $index->siteId ?? null;
+            $indexSiteIds = $index->getSiteIds();
+            $indexSiteId = $indexSiteIds ? $indexSiteIds[0] : null;
 
             if (!empty($results['hits'])) {
                 // Group hits by siteId so we can batch-load elements per site

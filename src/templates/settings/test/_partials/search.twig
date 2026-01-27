@@ -7,14 +7,26 @@
 {% set indexSiteIds = {} %}
 {% for index in allIndices %}
     {% if index.enabled %}
-        {% if index.siteId %}
+        {% if index.siteId is iterable %}
+            {% set siteNames = [] %}
+            {% for siteId in index.siteId %}
+                {% set site = craft.app.sites.getSiteById(siteId) %}
+                {% set siteNames = siteNames|merge([site ? site.name : 'Site ' ~ siteId]) %}
+            {% endfor %}
+            {% set siteLabel = siteNames|join(', ') %}
+        {% elseif index.siteId %}
             {% set site = craft.app.sites.getSiteById(index.siteId) %}
             {% set siteLabel = site ? site.name : 'Site ' ~ index.siteId %}
         {% else %}
             {% set siteLabel = 'All Sites'|t('search-manager') %}
         {% endif %}
         {% set enabledIndices = enabledIndices|merge([{value: index.handle, label: index.name ~ ' — ' ~ siteLabel}]) %}
-        {% set indexSiteIds = indexSiteIds|merge({(index.handle): index.siteId}) %}
+        {% if index.siteId is iterable %}
+            {% set normalizedSiteId = index.siteId|length == 1 ? index.siteId|first : null %}
+        {% else %}
+            {% set normalizedSiteId = index.siteId %}
+        {% endif %}
+        {% set indexSiteIds = indexSiteIds|merge({(index.handle): normalizedSiteId}) %}
     {% endif %}
 {% endfor %}
 

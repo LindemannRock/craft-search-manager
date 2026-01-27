@@ -1,5 +1,6 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
+{% import "search-manager/_macros/index" as indexMacros %}
 
 {% set title = index.name %}
 {% set fullPageForm = false %}
@@ -42,6 +43,14 @@
 			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
 			id: 'skipEntriesWithoutUrl',
 			on: index.skipEntriesWithoutUrl,
+			disabled: true
+		}) }}
+
+		{{ forms.lightswitchField({
+			label: 'Disable Stop Words'|t('search-manager'),
+			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			id: 'disableStopWords',
+			on: index.disableStopWords ?? false,
 			disabled: true
 		}) }}
 
@@ -117,32 +126,36 @@
 			<div class="data">
 				<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
 				<dd class="value">
+					{% set configuredBackend = index.configuredBackend %}
 					{% if configuredBackend %}
 						{% if configuredBackend.source == 'config' %}
 							<a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
 						{% else %}
 							<a href="{{ url('search-manager/backends/' ~ configuredBackend.id) }}">{{ configuredBackend.name }}</a>
 						{% endif %}
-					{% elseif index.effectiveBackendType %}
-						<span>{{ index.effectiveBackendType|capitalize }}</span>
-					{% else %}
+					{% elseif not index.effectiveBackendType %}
 						<span class="light">{{ 'Default'|t('search-manager') }}</span>
 					{% endif %}
-				</dd>
-			</div>
-			<div class="data">
-				<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
-				<dd class="value">
-					{% set expected = index.expectedCount %}
-					{% if index.documentCount == expected %}
-						<span style="color: #059669;">{{ index.documentCount }}</span> / {{ expected }}
-					{% elseif index.documentCount < expected %}
-						<span style="color: #d97706;">{{ index.documentCount }}</span> / {{ expected }}
-					{% else %}
-						<span style="color: #dc2626;">{{ index.documentCount }}</span> / {{ expected }}
+					{% set backendType = index.effectiveBackendType %}
+					{% if backendType %}
+						&nbsp;{{ indexMacros.backendBadge(backendType, configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize)) }}
 					{% endif %}
 				</dd>
 			</div>
+				<div class="data">
+					<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
+					<dd class="value">
+						{% set expected = index.expectedCount %}
+						{% if index.documentCount == expected %}
+							{% include 'lindemannrock-base/_components/status-dot' with { value: 'ok', colorSet: 'healthStatus' } only %}
+						{% elseif index.documentCount < expected %}
+							{% include 'lindemannrock-base/_components/status-dot' with { value: 'low', colorSet: 'healthStatus' } only %}
+						{% else %}
+							{% include 'lindemannrock-base/_components/status-dot' with { value: 'high', colorSet: 'healthStatus' } only %}
+						{% endif %}
+						{{ index.documentCount }}&nbsp;/&nbsp;{{ expected }}
+					</dd>
+				</div>
 			<div class="data">
 				<dt class="heading">{{ 'Last Indexed'|t('search-manager') }}</dt>
 				<dd class="value">
