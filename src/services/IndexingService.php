@@ -141,6 +141,19 @@ class IndexingService extends Component
             return false;
         }
 
+        // Always ensure siteId is set from element (source of truth)
+        // This guarantees backends receive correct siteId for objectID generation
+        if (!isset($data['siteId'])) {
+            $data['siteId'] = $element->siteId;
+        } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
+            $this->logWarning('Transformer siteId mismatch; overriding', [
+                'elementId' => $element->id,
+                'elementSiteId' => $element->siteId,
+                'transformerSiteId' => $data['siteId'],
+            ]);
+            $data['siteId'] = $element->siteId;
+        }
+
         // Index to all matching indices
         $success = true;
         foreach ($indexHandles as $indexHandle) {
@@ -357,6 +370,20 @@ class IndexingService extends Component
 
             try {
                 $data = $transformer->transform($element);
+
+                // Always ensure siteId is set from element (source of truth)
+                // This guarantees backends receive correct siteId for objectID generation
+                if (!isset($data['siteId'])) {
+                    $data['siteId'] = $element->siteId;
+                } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
+                    $this->logWarning('Transformer siteId mismatch in batch; overriding', [
+                        'elementId' => $element->id,
+                        'elementSiteId' => $element->siteId,
+                        'transformerSiteId' => $data['siteId'],
+                    ]);
+                    $data['siteId'] = $element->siteId;
+                }
+
                 $items[] = $data;
             } catch (\Throwable $e) {
                 $this->logError('Failed to transform element in batch', [

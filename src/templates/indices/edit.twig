@@ -510,7 +510,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			e.preventDefault();
 
 			Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
-				data: { indexId: {{ index.id }} }
+				data: { indexId: '{{ index.id ?: index.handle }}' }
 			}).then(function(response) {
 				if (response.data.success) {
 					Craft.cp.displayNotice(response.data.message || '{{ "Count synced successfully"|t('search-manager')|e('js') }}');

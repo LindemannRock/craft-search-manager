@@ -948,9 +948,11 @@ class SearchIndex extends Model
                 ]);
 
                 // Apply criteria
+                $hasClosure = false;
                 if (!empty($this->criteria)) {
                     // Config indices: criteria is a Closure that returns the modified query
                     if ($this->criteria instanceof \Closure) {
+                        $hasClosure = true;
                         $criteriaCallback = $this->criteria;
                         $query = $criteriaCallback($query);
                     } elseif (is_array($this->criteria)) {
@@ -982,18 +984,27 @@ class SearchIndex extends Model
                             $totalCount++;
                         }
                     }
-                } else {
-                    // Use ids() instead of count() to ensure custom query scopes are properly evaluated
+                } elseif ($hasClosure) {
+                    // Use ids() for Closure criteria to ensure custom query scopes are properly evaluated
                     // Some custom scopes may not work correctly with count() but work with ids()
                     $ids = $query->ids();
                     $siteCount = count($ids);
+                    $totalCount += $siteCount;
+
+                    $this->logDebug('Expected count result (closure)', [
+                        'indexHandle' => $this->handle,
+                        'siteId' => $siteId,
+                        'count' => $siteCount,
+                    ]);
+                } else {
+                    // Use count() for array criteria or no criteria (more efficient for large indices)
+                    $siteCount = (int) $query->count();
                     $totalCount += $siteCount;
 
                     $this->logDebug('Expected count result', [
                         'indexHandle' => $this->handle,
                         'siteId' => $siteId,
                         'count' => $siteCount,
-                        'firstIds' => array_slice($ids, 0, 5),
                     ]);
                 }
             }

@@ -431,17 +431,20 @@ class MeilisearchBackend extends BaseBackend
             foreach ($indexesResult->getResults() as $index) {
                 // Try to get stats for document count (may fail due to API key permissions)
                 $entries = 0;
+                $entriesAvailable = true;
                 try {
                     $stats = $index->stats();
                     $entries = $stats['numberOfDocuments'] ?? 0;
                 } catch (\Throwable $e) {
-                    // Stats endpoint may require different permissions - continue without count
+                    // Stats endpoint may require different permissions - mark as unavailable
+                    $entriesAvailable = false;
                 }
 
                 $indices[] = [
                     'name' => $index->getUid(),
                     'uid' => $index->getUid(),
                     'entries' => $entries,
+                    'entriesAvailable' => $entriesAvailable,
                     'primaryKey' => $index->getPrimaryKey(),
                     'createdAt' => $index->getCreatedAt()?->format('c'),
                     'updatedAt' => $index->getUpdatedAt()?->format('c'),

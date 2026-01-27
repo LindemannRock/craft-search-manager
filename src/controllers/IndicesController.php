@@ -336,15 +336,42 @@ class IndicesController extends Controller
 
             // Find matching index by full name (with prefix)
             $backendCount = 0;
+            $entriesAvailable = true;
+            $indexFound = false;
             foreach ($backendIndices as $backendIndex) {
                 if (($backendIndex['name'] ?? '') === $fullIndexName) {
+                    $indexFound = true;
                     $backendCount = $backendIndex['entries'] ?? 0;
+                    $entriesAvailable = $backendIndex['entriesAvailable'] ?? true;
                     break;
                 }
             }
 
+            // Check if index was found on backend
+            if (!$indexFound) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => Craft::t('search-manager', 'Index "{name}" not found on backend.', [
+                        'name' => $fullIndexName,
+                    ]),
+                ]);
+            }
+
+            // Check if count is available (stats may fail due to permissions)
+            if ($entriesAvailable === false) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => Craft::t('search-manager', 'Could not retrieve document count from backend (permission issue).'),
+                ]);
+            }
+
             // Update the local document count
-            $index->updateStats($backendCount);
+            if (!$index->updateStats($backendCount)) {
+                return $this->asJson([
+                    'success' => false,
+                    'error' => Craft::t('search-manager', 'Failed to update index stats.'),
+                ]);
+            }
 
             $this->logInfo('Synced document count from backend', [
                 'index' => $index->handle,

@@ -384,6 +384,7 @@ class TypesenseBackend extends BaseBackend
                 $indices[] = [
                     'name' => $collection['name'] ?? '',
                     'entries' => $collection['num_documents'] ?? 0,
+                    'entriesAvailable' => true,
                     'fields' => count($collection['fields'] ?? []),
                     'createdAt' => $collection['created_at'] ?? null,
                     'source' => 'typesense',

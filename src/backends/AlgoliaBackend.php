@@ -350,6 +350,7 @@ class AlgoliaBackend extends BaseBackend
                 $indices[] = [
                     'name' => $index['name'] ?? '',
                     'entries' => $index['entries'] ?? 0,
+                    'entriesAvailable' => true,
                     'dataSize' => $index['dataSize'] ?? 0,
                     'lastBuildTimeS' => $index['lastBuildTimeS'] ?? 0,
                     'updatedAt' => $index['updatedAt'] ?? null,
