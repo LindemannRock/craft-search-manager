@@ -26,6 +26,8 @@ class AutocompleteService extends Component
 {
     use LoggingTrait;
 
+    private static bool $redisFallbackLogged = false;
+
     /**
      * @inheritdoc
      */
@@ -58,18 +60,20 @@ class AutocompleteService extends Component
         $siteIdProvided = isset($options['siteId']) && $options['siteId'] !== null;
         $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
 
-        // Auto-detect language from query script if not provided and no specific site
+        // Auto-detect language only when a specific site is targeted
         if ($language === null) {
-            if (!$siteIdProvided && $this->containsArabicScript($query)) {
-                // Query contains Arabic script, use Arabic language
-                $language = 'ar';
-            } else {
-                // Detect from site
-                $site = Craft::$app->getSites()->getSiteById($siteId);
-                if ($site) {
-                    $language = substr($site->language, 0, 2);  // en-US → en
+            if ($siteIdProvided) {
+                if ($this->containsArabicScript($query)) {
+                    // Query contains Arabic script, use Arabic language
+                    $language = 'ar';
                 } else {
-                    $language = 'en';
+                    // Detect from site
+                    $site = Craft::$app->getSites()->getSiteById($siteId);
+                    if ($site) {
+                        $language = substr($site->language, 0, 2);  // en-US → en
+                    } else {
+                        $language = 'en';
+                    }
                 }
             }
         }
@@ -95,7 +99,7 @@ class AutocompleteService extends Component
 
         if ($settings->enableAutocompleteCache) {
             $cacheKey = $this->generateCacheKey('suggest', $fullIndexHandle, $normalizedQuery, $siteIdProvided ? $siteId : null, $language);
-            $cached = $this->getFromCache($cacheKey);
+            $cached = $this->getFromCache($cacheKey, $fullIndexHandle);
             if ($cached !== null) {
                 $this->logDebug('Autocomplete cache hit', [
                     'query' => $normalizedQuery,
@@ -129,7 +133,7 @@ class AutocompleteService extends Component
 
             // Cache and return
             if ($settings->enableAutocompleteCache && !empty($suggestions)) {
-                $this->saveToCache($cacheKey, $suggestions);
+                $this->saveToCache($cacheKey, $suggestions, $fullIndexHandle);
             }
 
             return $suggestions;
@@ -144,7 +148,7 @@ class AutocompleteService extends Component
 
         // Method 2: Fuzzy matching (slower, typo-tolerant)
         if ($fuzzy && count($suggestions) < $limit) {
-            $fuzzyMatches = $this->getFuzzyMatches($storage, $normalizedQuery, $siteId, $limit - count($suggestions));
+            $fuzzyMatches = $this->getFuzzyMatches($storage, $normalizedQuery, $siteIdProvided ? $siteId : null, $limit - count($suggestions));
             $suggestions = array_merge($suggestions, $fuzzyMatches);
         }
 
@@ -154,7 +158,7 @@ class AutocompleteService extends Component
 
         // Save to cache
         if ($settings->enableAutocompleteCache) {
-            $this->saveToCache($cacheKey, $suggestions);
+            $this->saveToCache($cacheKey, $suggestions, $fullIndexHandle);
         }
 
         $duration = round((microtime(true) - $startTime) * 1000, 2);
@@ -224,7 +228,7 @@ class AutocompleteService extends Component
      * @param int $limit Maximum suggestions
      * @return array Matching terms
      */
-    private function getFuzzyMatches($storage, string $query, int $siteId, int $limit): array
+    private function getFuzzyMatches($storage, string $query, ?int $siteId, int $limit): array
     {
         $settings = SearchManager::$plugin->getSettings();
 
@@ -239,7 +243,24 @@ class AutocompleteService extends Component
             $limit
         );
 
-        return $fuzzyMatcher->findMatches($query, $storage, $siteId);
+        if ($siteId !== null) {
+            return $fuzzyMatcher->findMatches($query, $storage, $siteId);
+        }
+
+        $matches = [];
+        foreach (Craft::$app->getSites()->getAllSites() as $site) {
+            $siteMatches = $fuzzyMatcher->findMatches($query, $storage, (int)$site->id);
+            foreach ($siteMatches as $term) {
+                if (!in_array($term, $matches, true)) {
+                    $matches[] = $term;
+                }
+                if (count($matches) >= $limit) {
+                    return $matches;
+                }
+            }
+        }
+
+        return $matches;
     }
 
     /**
@@ -505,22 +526,32 @@ class AutocompleteService extends Component
     /**
      * Get from autocomplete cache
      */
-    private function getFromCache(string $cacheKey): ?array
+    private function getFromCache(string $cacheKey, ?string $indexHandle = null): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
         $fullCacheKey = 'searchmanager:autocomplete:' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
-            $cached = \Craft::$app->cache->get($fullCacheKey);
-            if ($cached !== false) {
-                return $cached;
+            $cache = \Craft::$app->cache;
+            if ($cache instanceof \yii\redis\Cache) {
+                $cached = $cache->get($fullCacheKey);
+                if ($cached !== false) {
+                    return $cached;
+                }
+                return null;
             }
-            return null;
+
+            if (!self::$redisFallbackLogged) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
+                    'cacheClass' => get_class($cache),
+                ]);
+                self::$redisFallbackLogged = true;
+            }
         }
 
         // Use file-based cache (default)
-        $cachePath = $this->getCachePath();
+        $cachePath = $this->getCachePath($indexHandle);
         $cacheFile = $cachePath . $cacheKey . '.cache';
 
         if (!file_exists($cacheFile)) {
@@ -553,7 +584,7 @@ class AutocompleteService extends Component
     /**
      * Save to autocomplete cache
      */
-    private function saveToCache(string $cacheKey, array $data): void
+    private function saveToCache(string $cacheKey, array $data, ?string $indexHandle = null): void
     {
         $settings = SearchManager::$plugin->getSettings();
         $fullCacheKey = 'searchmanager:autocomplete:' . $cacheKey;
@@ -567,30 +598,37 @@ class AutocompleteService extends Component
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
-            try {
-                $cache = \Craft::$app->cache;
-                $cache->set($fullCacheKey, $data, $settings->autocompleteCacheDuration);
+            $cache = \Craft::$app->cache;
+            if ($cache instanceof \yii\redis\Cache) {
+                try {
+                    $cache->set($fullCacheKey, $data, $settings->autocompleteCacheDuration);
 
-                // Track key in set for selective deletion
-                if ($cache instanceof \yii\redis\Cache) {
+                    // Track key in set for selective deletion
                     $redis = $cache->redis;
                     $redis->executeCommand('SADD', ['searchmanager-autocomplete-keys', $fullCacheKey]);
+
+                    $this->logDebug('Saved to Redis autocomplete cache', ['key' => $fullCacheKey]);
+                } catch (\Throwable $e) {
+                    $this->logError('Failed to save to Redis autocomplete cache', [
+                        'key' => $fullCacheKey,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
 
-                $this->logDebug('Saved to Redis autocomplete cache', ['key' => $fullCacheKey]);
-            } catch (\Throwable $e) {
-                $this->logError('Failed to save to Redis autocomplete cache', [
-                    'key' => $fullCacheKey,
-                    'error' => $e->getMessage(),
-                ]);
+                return;
             }
 
-            return;
+            if (!self::$redisFallbackLogged) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
+                    'cacheClass' => get_class($cache),
+                ]);
+                self::$redisFallbackLogged = true;
+            }
         }
 
         // Use file-based cache (default)
         try {
-            $cachePath = $this->getCachePath();
+            $cachePath = $this->getCachePath($indexHandle);
 
             // Create directory if it doesn't exist
             if (!is_dir($cachePath)) {
@@ -620,9 +658,10 @@ class AutocompleteService extends Component
     /**
      * Get cache path for autocomplete
      */
-    private function getCachePath(): string
+    private function getCachePath(?string $indexHandle = null): string
     {
-        return PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
+        $base = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
+        return $indexHandle ? $base . $indexHandle . '/' : $base;
     }
 
     /**
@@ -631,6 +670,11 @@ class AutocompleteService extends Component
     public function clearCache(?string $indexHandle = null): void
     {
         $settings = SearchManager::$plugin->getSettings();
+        $fullIndexHandle = null;
+        if ($indexHandle !== null) {
+            $indexPrefix = $settings->indexPrefix ?? '';
+            $fullIndexHandle = $indexPrefix . $indexHandle;
+        }
 
         if ($settings->cacheStorageMethod === 'redis') {
             $cache = \Craft::$app->cache;
@@ -641,28 +685,31 @@ class AutocompleteService extends Component
                 if (!empty($keys)) {
                     foreach ($keys as $key) {
                         // If indexHandle specified, only delete keys for that index
-                        if ($indexHandle === null || str_contains($key, $indexHandle)) {
+                        if ($fullIndexHandle === null || str_contains($key, $fullIndexHandle)) {
                             $cache->delete($key);
                             $redis->executeCommand('SREM', ['searchmanager-autocomplete-keys', $key]);
                         }
                     }
                 }
+
+                $this->logInfo('Cleared autocomplete cache (Redis)', ['index' => $indexHandle]);
+                return;
             }
 
-            $this->logInfo('Cleared autocomplete cache (Redis)', ['index' => $indexHandle]);
-            return;
+            if (!self::$redisFallbackLogged) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
+                    'index' => $indexHandle,
+                    'cacheClass' => get_class($cache),
+                ]);
+                self::$redisFallbackLogged = true;
+            }
         }
 
         // File-based cache
-        $cachePath = $this->getCachePath();
+        $cachePath = $this->getCachePath($fullIndexHandle);
 
         if (is_dir($cachePath)) {
-            $files = glob($cachePath . '*.cache');
-            if ($files) {
-                foreach ($files as $file) {
-                    @unlink($file);
-                }
-            }
+            \craft\helpers\FileHelper::clearDirectory($cachePath);
         }
 
         $this->logInfo('Cleared autocomplete cache (file)', ['index' => $indexHandle]);

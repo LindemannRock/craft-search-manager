@@ -91,23 +91,28 @@ class UtilitiesController extends Controller
 
         try {
             $settings = SearchManager::$plugin->getSettings();
+            $cache = Craft::$app->cache;
+            $useRedis = $settings->cacheStorageMethod === 'redis' && $cache instanceof \yii\redis\Cache;
 
-            if ($settings->cacheStorageMethod === 'redis') {
-                $cache = Craft::$app->cache;
-                if ($cache instanceof \yii\redis\Cache) {
-                    $redis = $cache->redis;
+            if ($settings->cacheStorageMethod === 'redis' && !$useRedis) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
+                    'cacheClass' => get_class($cache),
+                ]);
+            }
 
-                    // Get all device cache keys from tracking set
-                    $keys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
+            if ($useRedis) {
+                $redis = $cache->redis;
 
-                    // Delete device cache keys
-                    foreach ($keys as $key) {
-                        $cache->delete($key);
-                    }
+                // Get all device cache keys from tracking set
+                $keys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
 
-                    // Clear the tracking set
-                    $redis->executeCommand('DEL', ['searchmanager-device-keys']);
+                // Delete device cache keys
+                foreach ($keys as $key) {
+                    $cache->delete($key);
                 }
+
+                // Clear the tracking set
+                $redis->executeCommand('DEL', ['searchmanager-device-keys']);
 
                 $message = Craft::t('search-manager', 'Device cache cleared successfully.');
             } else {
@@ -198,7 +203,16 @@ class UtilitiesController extends Controller
             SearchManager::$plugin->autocomplete->clearCache();
 
             $settings = SearchManager::$plugin->getSettings();
-            if ($settings->cacheStorageMethod === 'redis') {
+            $cache = Craft::$app->cache;
+            $useRedis = $settings->cacheStorageMethod === 'redis' && $cache instanceof \yii\redis\Cache;
+
+            if ($settings->cacheStorageMethod === 'redis' && !$useRedis) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
+                    'cacheClass' => get_class($cache),
+                ]);
+            }
+
+            if ($useRedis) {
                 $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully.');
             } else {
                 $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
@@ -239,36 +253,42 @@ class UtilitiesController extends Controller
         try {
             $settings = SearchManager::$plugin->getSettings();
 
-            if ($settings->cacheStorageMethod === 'redis') {
-                $cache = Craft::$app->cache;
-                if ($cache instanceof \yii\redis\Cache) {
-                    $redis = $cache->redis;
+            $cache = Craft::$app->cache;
+            $useRedis = $settings->cacheStorageMethod === 'redis' && $cache instanceof \yii\redis\Cache;
 
-                    // Get all cache keys from tracking sets
-                    $searchKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
-                    $deviceKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
-                    $autocompleteKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-autocomplete-keys']) ?: [];
+            if ($settings->cacheStorageMethod === 'redis' && !$useRedis) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
+                    'cacheClass' => get_class($cache),
+                ]);
+            }
 
-                    // Delete search cache keys
-                    foreach ($searchKeys as $key) {
-                        $cache->delete($key);
-                    }
+            if ($useRedis) {
+                $redis = $cache->redis;
 
-                    // Delete device cache keys
-                    foreach ($deviceKeys as $key) {
-                        $cache->delete($key);
-                    }
+                // Get all cache keys from tracking sets
+                $searchKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
+                $deviceKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
+                $autocompleteKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-autocomplete-keys']) ?: [];
 
-                    // Delete autocomplete cache keys
-                    foreach ($autocompleteKeys as $key) {
-                        $cache->delete($key);
-                    }
-
-                    // Clear the tracking sets
-                    $redis->executeCommand('DEL', ['searchmanager-search-keys']);
-                    $redis->executeCommand('DEL', ['searchmanager-device-keys']);
-                    $redis->executeCommand('DEL', ['searchmanager-autocomplete-keys']);
+                // Delete search cache keys
+                foreach ($searchKeys as $key) {
+                    $cache->delete($key);
                 }
+
+                // Delete device cache keys
+                foreach ($deviceKeys as $key) {
+                    $cache->delete($key);
+                }
+
+                // Delete autocomplete cache keys
+                foreach ($autocompleteKeys as $key) {
+                    $cache->delete($key);
+                }
+
+                // Clear the tracking sets
+                $redis->executeCommand('DEL', ['searchmanager-search-keys']);
+                $redis->executeCommand('DEL', ['searchmanager-device-keys']);
+                $redis->executeCommand('DEL', ['searchmanager-autocomplete-keys']);
 
                 $message = Craft::t('search-manager', 'All caches cleared successfully.');
             } else {

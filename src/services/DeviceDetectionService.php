@@ -24,6 +24,8 @@ class DeviceDetectionService extends Component
 {
     use LoggingTrait;
 
+    private static bool $redisFallbackLogged = false;
+
     /**
      * @var DeviceDetector|null
      */
@@ -189,8 +191,18 @@ class DeviceDetectionService extends Component
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
-            $cached = Craft::$app->cache->get($cacheKey);
-            return $cached !== false ? $cached : null;
+            $cache = Craft::$app->cache;
+            if ($cache instanceof \yii\redis\Cache) {
+                $cached = $cache->get($cacheKey);
+                return $cached !== false ? $cached : null;
+            }
+
+            if (!self::$redisFallbackLogged) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
+                    'cacheClass' => get_class($cache),
+                ]);
+                self::$redisFallbackLogged = true;
+            }
         }
 
         // Use file-based cache (default)
@@ -237,15 +249,22 @@ class DeviceDetectionService extends Component
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
             $cache = Craft::$app->cache;
-            $cache->set($cacheKey, $data, $duration);
-
-            // Track key in set for selective deletion
             if ($cache instanceof \yii\redis\Cache) {
+                $cache->set($cacheKey, $data, $duration);
+
+                // Track key in set for selective deletion
                 $redis = $cache->redis;
                 $redis->executeCommand('SADD', ['searchmanager-device-keys', $cacheKey]);
+
+                return;
             }
 
-            return;
+            if (!self::$redisFallbackLogged) {
+                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
+                    'cacheClass' => get_class($cache),
+                ]);
+                self::$redisFallbackLogged = true;
+            }
         }
 
         // Use file-based cache (default)

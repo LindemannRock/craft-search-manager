@@ -634,7 +634,14 @@ class BackendService extends Component
             return ['hits' => [], 'total' => 0, 'indices' => []];
         }
 
-        $siteId = $options['siteId'] ?? Craft::$app->getSites()->getCurrentSite()->id;
+        // Match search(): if siteId is omitted, search all sites
+        $rawSiteId = $options['siteId'] ?? null;
+        if ($rawSiteId === null || $rawSiteId === '*') {
+            $siteId = null;
+            $options['siteId'] = '*';
+        } else {
+            $siteId = (int)$rawSiteId;
+        }
 
         // Check for redirects first across all indexes (including global rules)
         // Global rules (indexHandle = null) apply to all indexes
@@ -845,11 +852,17 @@ class BackendService extends Component
         // Normalize query to improve cache hit rate
         $normalizedQuery = $this->_normalizeQueryForCache($query);
 
+        // Remove analytics-only options that don't affect results
+        $cacheOptions = $options;
+        foreach (['source', 'platform', 'appVersion', 'skipAnalytics'] as $key) {
+            unset($cacheOptions[$key]);
+        }
+
         // Include everything that affects the search results
         $keyData = [
             'index' => $indexName,
             'query' => $normalizedQuery,
-            'options' => $options, // Future-proof: any new options automatically included
+            'options' => $cacheOptions, // Future-proof: any new options automatically included
         ];
 
         return md5(json_encode($keyData));
@@ -1005,17 +1018,23 @@ class BackendService extends Component
                         $redis->executeCommand('SREM', ['searchmanager-search-keys', $key]);
                     }
                 }
+
+                $this->logInfo('Cleared search cache for index (Redis)', ['index' => $indexName]);
+                return;
             }
 
-            $this->logInfo('Cleared search cache for index (Redis)', ['index' => $indexName]);
-        } else {
-            // Clear file cache
-            $cachePath = $this->_getCachePath($indexName);
+            $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
+                'index' => $indexName,
+                'cacheClass' => get_class($cache),
+            ]);
+        }
 
-            if (is_dir($cachePath)) {
-                \craft\helpers\FileHelper::clearDirectory($cachePath);
-                $this->logInfo('Cleared search cache for index (File)', ['index' => $indexName]);
-            }
+        // Clear file cache (fallback/default)
+        $cachePath = $this->_getCachePath($indexName);
+
+        if (is_dir($cachePath)) {
+            \craft\helpers\FileHelper::clearDirectory($cachePath);
+            $this->logInfo('Cleared search cache for index (File)', ['index' => $indexName]);
         }
     }
 
@@ -1044,17 +1063,22 @@ class BackendService extends Component
 
                 // Clear the tracking set
                 $redis->executeCommand('DEL', ['searchmanager-search-keys']);
+
+                $this->logInfo('Cleared all search cache (Redis)');
+                return;
             }
 
-            $this->logInfo('Cleared all search cache (Redis)');
-        } else {
-            // Clear file cache
-            $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
+            $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
+                'cacheClass' => get_class($cache),
+            ]);
+        }
 
-            if (is_dir($cachePath)) {
-                \craft\helpers\FileHelper::clearDirectory($cachePath);
-                $this->logInfo('Cleared all search cache (File)');
-            }
+        // Clear file cache (fallback/default)
+        $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
+
+        if (is_dir($cachePath)) {
+            \craft\helpers\FileHelper::clearDirectory($cachePath);
+            $this->logInfo('Cleared all search cache (File)');
         }
     }
 
