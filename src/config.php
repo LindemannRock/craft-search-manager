@@ -511,7 +511,7 @@ return [
          * Available options:
          * - name: Display name for the index
          * - elementType: Element class (Entry::class, Asset::class, etc.)
-         * - siteId: Site ID (null for all sites)
+         * - siteId: Site ID - int for single site, array of ints for multiple sites, null for all sites
          * - criteria: Closure to filter elements
          * - transformer: Custom transformer class (optional)
          * - language: Language code for stemming/stop words (optional, auto-detected from site)
@@ -549,6 +549,16 @@ return [
             //     'enabled' => true,
             //     'enableAnalytics' => true, // Track search analytics for this index
             //     'skipEntriesWithoutUrl' => false, // Skip entries without a URL
+            // ],
+
+            // Example: Multi-site index (specific sites only)
+            // 'entries-regional' => [
+            //     'name' => 'Entries (Regional)',
+            //     'elementType' => Entry::class,
+            //     'siteId' => [1, 3], // Multiple specific sites
+            //     'criteria' => function(\craft\elements\db\EntryQuery $query) {
+            //         return $query->section('news');
+            //     },
             // ],
         ],
 

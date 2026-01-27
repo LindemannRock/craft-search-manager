@@ -110,6 +110,10 @@ class SyncElementJob extends BaseJob
             if ($exists) {
                 SearchManager::$plugin->backend->delete($index->handle, $this->elementId, $this->siteId);
                 SearchIndex::decrementDocumentCount($index->handle);
+                if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+                    SearchManager::$plugin->backend->clearSearchCache($index->handle);
+                    SearchManager::$plugin->autocomplete->clearCache($index->handle);
+                }
                 $this->logInfo('Removed deleted element from index', [
                     'elementId' => $this->elementId,
                     'indexHandle' => $index->handle,

@@ -115,45 +115,6 @@ class IndexingService extends Component
             return true; // Not an error, just not indexed
         }
 
-        // Get transformer (use first index for transformer config)
-        $firstIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandles[0]);
-        $transformer = SearchManager::$plugin->transformers->getTransformer(
-            $element,
-            $firstIndex?->transformerClass
-        );
-
-        if (!$transformer) {
-            $this->logWarning('No transformer found for element', [
-                'elementId' => $element->id,
-                'elementType' => get_class($element),
-            ]);
-            return false;
-        }
-
-        // Transform element
-        try {
-            $data = $transformer->transform($element);
-        } catch (\Throwable $e) {
-            $this->logError('Failed to transform element', [
-                'elementId' => $element->id,
-                'error' => $e->getMessage(),
-            ]);
-            return false;
-        }
-
-        // Always ensure siteId is set from element (source of truth)
-        // This guarantees backends receive correct siteId for objectID generation
-        if (!isset($data['siteId'])) {
-            $data['siteId'] = $element->siteId;
-        } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
-            $this->logWarning('Transformer siteId mismatch; overriding', [
-                'elementId' => $element->id,
-                'elementSiteId' => $element->siteId,
-                'transformerSiteId' => $data['siteId'],
-            ]);
-            $data['siteId'] = $element->siteId;
-        }
-
         // Index to all matching indices
         $success = true;
         foreach ($indexHandles as $indexHandle) {
@@ -166,6 +127,48 @@ class IndexingService extends Component
                         'indexHandle' => $indexHandle,
                     ]);
                     continue;
+                }
+
+                // Get transformer for this index
+                $transformer = SearchManager::$plugin->transformers->getTransformer(
+                    $element,
+                    $index?->transformerClass
+                );
+
+                if (!$transformer) {
+                    $this->logWarning('No transformer found for index', [
+                        'elementId' => $element->id,
+                        'elementType' => get_class($element),
+                        'indexHandle' => $indexHandle,
+                    ]);
+                    $success = false;
+                    continue;
+                }
+
+                // Transform element for this index
+                try {
+                    $data = $transformer->transform($element);
+                } catch (\Throwable $e) {
+                    $this->logError('Failed to transform element for index', [
+                        'elementId' => $element->id,
+                        'indexHandle' => $indexHandle,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $success = false;
+                    continue;
+                }
+
+                // Always ensure siteId is set from element (source of truth)
+                // This guarantees backends receive correct siteId for objectID generation
+                if (!isset($data['siteId'])) {
+                    $data['siteId'] = $element->siteId;
+                } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
+                    $this->logWarning('Transformer siteId mismatch; overriding', [
+                        'elementId' => $element->id,
+                        'elementSiteId' => $element->siteId,
+                        'transformerSiteId' => $data['siteId'],
+                    ]);
+                    $data['siteId'] = $element->siteId;
                 }
 
                 // Get the backend that will be used for this index
