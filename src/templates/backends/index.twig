@@ -149,6 +149,23 @@
 {% block content %}
 {% include 'search-manager/_partials/common/index-styles' %}
 
+{% if collisionHandles is defined and collisionHandles|length %}
+	{% set warningMessage %}
+	<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+	{{ 'These backend handles exist in both config/search-manager.php and the database: {handles}.'|t('search-manager', { handles: collisionHandles|join(', ') }) }}
+	{{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
+	{{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
+	{% endset %}
+	<div class="info-box-table-wrapper">
+		{% include 'lindemannrock-base/_components/info-box' with {
+			message: warningMessage,
+			type: 'warning',
+			margin: 'none',
+			stretch: true,
+		} %}
+	</div>
+{% endif %}
+
 {# Warning if default backend is missing or disabled #}
 {% if defaultBackendHandle %}
 	{% set defaultBackend = backends|filter(b => b.handle == defaultBackendHandle)|first %}

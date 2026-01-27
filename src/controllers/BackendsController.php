@@ -3,8 +3,10 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -34,6 +36,12 @@ class BackendsController extends Controller
 
         $backends = ConfiguredBackend::findAll();
         $settings = SearchManager::$plugin->getSettings();
+        $configHandles = ConfigFileHelper::getHandles('backends');
+        $databaseHandles = (new Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_backends}}')
+            ->column();
+        $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
         // Auto-assign default if needed (only if not set via config file)
         if (!$this->isDefaultBackendFromConfig()) {
@@ -72,6 +80,7 @@ class BackendsController extends Controller
             'backends' => $backends,
             'defaultBackendHandle' => $settings->defaultBackendHandle,
             'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
+            'collisionHandles' => $collisionHandles,
         ]);
     }
 

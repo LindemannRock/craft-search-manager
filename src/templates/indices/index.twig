@@ -198,10 +198,35 @@
 		margin-inline-end: 0 !important;
 	}
 }
+.info-box-table-wrapper {
+	padding-bottom: 14px;
+}
+@media (min-width: 769px) {
+	.info-box-table-wrapper {
+		padding-bottom: 46px;
+	}
+}
 {% endcss %}
 
 {% block content %}
 	{% include 'search-manager/_partials/common/index-styles' %}
+
+	{% if collisionHandles is defined and collisionHandles|length %}
+		{% set warningMessage %}
+		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+		{{ 'These index handles exist in both config/search-manager.php and the database: {handles}.'|t('search-manager', { handles: collisionHandles|join(', ') }) }}
+		{{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
+		{{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
+		{% endset %}
+		<div class="info-box-table-wrapper">
+			{% include 'lindemannrock-base/_components/info-box' with {
+				message: warningMessage,
+				type: 'warning',
+				margin: 'none',
+				stretch: true,
+			} %}
+		</div>
+	{% endif %}
 
 	<div id="elements" class="elements">
 		<div class="tableview tablepane">

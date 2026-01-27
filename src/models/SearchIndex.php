@@ -255,7 +255,13 @@ class SearchIndex extends Model
     {
         $indices = [];
 
-        // 1. Load database indices (only source='database')
+        // 1. Load config file indices first (source of truth)
+        $configIndices = self::loadFromConfig();
+        foreach ($configIndices as $configIndex) {
+            $indices[$configIndex->handle] = $configIndex;
+        }
+
+        // 2. Load database indices (only source='database'), excluding config handles
         try {
             $rows = (new Query())
                 ->from('{{%searchmanager_indices}}')
@@ -267,39 +273,17 @@ class SearchIndex extends Model
             $siteIdMap = self::loadSiteIdsForIndexIds($indexIds);
 
             foreach ($rows as $row) {
+                if (isset($indices[$row['handle']])) {
+                    continue;
+                }
                 $rowId = (int)$row['id'];
-                $indices[] = self::fromRow($row, $siteIdMap[$rowId] ?? null);
+                $indices[$row['handle']] = self::fromRow($row, $siteIdMap[$rowId] ?? null);
             }
         } catch (\Throwable $e) {
             LoggingService::log('Failed to load database indices', 'error', 'search-manager', ['error' => $e->getMessage()]);
         }
 
-        // 2. Load config file indices (these are the source of truth)
-        // Database metadata for config indices is only used for stats
-        $configIndices = self::loadFromConfig();
-        foreach ($configIndices as $configIndex) {
-            // Check for handle collision with database indices
-            $collision = false;
-            foreach ($indices as $dbIndex) {
-                if ($dbIndex->handle === $configIndex->handle) {
-                    $collision = true;
-                    LoggingService::log(
-                        'Index handle collision: handle exists in both database and config. Database index takes precedence.',
-                        'warning',
-                        'search-manager',
-                        ['handle' => $configIndex->handle]
-                    );
-                    break;
-                }
-            }
-
-            // Only add config index if no collision
-            if (!$collision) {
-                $indices[] = $configIndex;
-            }
-        }
-
-        return $indices;
+        return array_values($indices);
     }
 
     /**

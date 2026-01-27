@@ -3,8 +3,10 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -31,9 +33,17 @@ class IndicesController extends Controller
         $this->requirePermission('searchManager:viewIndices');
 
         $indices = SearchIndex::findAll();
+        $configHandles = ConfigFileHelper::getHandles('indices');
+        $databaseHandles = (new Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_indices}}')
+            ->where(['source' => 'database'])
+            ->column();
+        $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
         return $this->renderTemplate('search-manager/indices/index', [
             'indices' => $indices,
+            'collisionHandles' => $collisionHandles,
         ]);
     }
 
