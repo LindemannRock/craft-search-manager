@@ -1,5 +1,18 @@
 # Changelog
 
+## [5.36.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.2...v5.36.0) (2026-01-28)
+
+
+### Features
+
+* **backends, indices:** Add collision detection for backend and index handles ([5b0c4ac](https://github.com/LindemannRock/craft-search-manager/commit/5b0c4ac3d5d22e107314c3543126a8a8dd3145a2))
+* **search:** Enhance site ID handling and stop words functionality ([bb92504](https://github.com/LindemannRock/craft-search-manager/commit/bb92504a4330055fcc9ae0db94e745d672973ef6))
+
+
+### Bug Fixes
+
+* **backends:** add entriesAvailable flag to index responses ([e7def18](https://github.com/LindemannRock/craft-search-manager/commit/e7def18ad908fc9a72a3771c2ce1de48bc1d01f4))
+
 ## [5.35.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.1...v5.35.2) (2026-01-26)
 
 
