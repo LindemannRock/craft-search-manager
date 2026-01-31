@@ -444,10 +444,10 @@ class SearchManager extends Plugin
                         ],
                         // Logs - grouped
                         'searchManager:viewLogs' => [
-                            'label' => Craft::t('search-manager', 'View logs'),
+                            'label' => Craft::t('search-manager', 'View system logs'),
                             'nested' => [
                                 'searchManager:downloadLogs' => [
-                                    'label' => Craft::t('search-manager', 'Download logs'),
+                                    'label' => Craft::t('search-manager', 'Download system logs'),
                                 ],
                             ],
                         ],

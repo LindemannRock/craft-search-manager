@@ -48,7 +48,7 @@ return [
     'Edit indices' => 'Edit indices',
     'Delete indices' => 'Delete indices',
     'Rebuild indices' => 'Rebuild indices',
-    'View logs' => 'View logs',
+    'View system logs' => 'View system logs',
     'Manage settings' => 'Manage settings',
 
     // Job descriptions
