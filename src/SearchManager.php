@@ -21,6 +21,7 @@ use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
+use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -723,86 +724,11 @@ class SearchManager extends Plugin
         $user = Craft::$app->getUser();
         $settings = $this->getSettings();
 
-        // Check if any backends are configured
-        $hasBackends = !empty(\lindemannrock\searchmanager\models\ConfiguredBackend::findAllEnabled());
-
-        // Check if user has view access to each section
-        $hasIndicesAccess = $user->checkPermission('searchManager:viewIndices');
-        $hasBackendsAccess = $user->checkPermission('searchManager:viewBackends');
-        $hasPromotionsAccess = $user->checkPermission('searchManager:viewPromotions');
-        $hasQueryRulesAccess = $user->checkPermission('searchManager:viewQueryRules');
-        $hasWidgetConfigsAccess = $user->checkPermission('searchManager:viewWidgetConfigs');
-        $hasAnalyticsAccess = $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics');
-        $hasLogsAccess = $user->checkPermission('searchManager:viewSystemLogs');
-        $hasSettingsAccess = $user->checkPermission('searchManager:manageSettings');
-
-        // If no access at all, hide the plugin from nav
-        if (!$hasIndicesAccess && !$hasBackendsAccess && !$hasPromotionsAccess && !$hasQueryRulesAccess &&
-            !$hasWidgetConfigsAccess && !$hasAnalyticsAccess && !$hasLogsAccess && !$hasSettingsAccess) {
-            return null;
-        }
-
         $item['label'] = $settings->getFullName();
         $item['icon'] = '@appicons/magnifying-glass.svg';
 
-        // Add subnav items
-        $item['subnav'] = [];
-
-        // Dashboard - requires viewIndices permission AND configured backends
-        if ($hasIndicesAccess && $hasBackends) {
-            $item['subnav']['dashboard'] = [
-                'label' => Craft::t('search-manager', 'Dashboard'),
-                'url' => 'search-manager',
-            ];
-        }
-
-        // Backends (always show - users need this to configure backends)
-        if ($hasBackendsAccess) {
-            $item['subnav']['backends'] = [
-                'label' => Craft::t('search-manager', 'Backends'),
-                'url' => 'search-manager/backends',
-            ];
-        }
-
-        // Indices - requires configured backends
-        if ($hasIndicesAccess && $hasBackends) {
-            $item['subnav']['indices'] = [
-                'label' => Craft::t('search-manager', 'Indices'),
-                'url' => 'search-manager/indices',
-            ];
-        }
-
-        // Promotions - requires configured backends
-        if ($hasPromotionsAccess && $hasBackends) {
-            $item['subnav']['promotions'] = [
-                'label' => Craft::t('search-manager', 'Promotions'),
-                'url' => 'search-manager/promotions',
-            ];
-        }
-
-        // Query Rules - requires configured backends
-        if ($hasQueryRulesAccess && $hasBackends) {
-            $item['subnav']['query-rules'] = [
-                'label' => Craft::t('search-manager', 'Query Rules'),
-                'url' => 'search-manager/query-rules',
-            ];
-        }
-
-        // Widgets - for managing search widget configurations
-        if ($hasWidgetConfigsAccess) {
-            $item['subnav']['widgets'] = [
-                'label' => Craft::t('search-manager', 'Widgets'),
-                'url' => 'search-manager/widgets',
-            ];
-        }
-
-        // Analytics - requires configured backends (only show if enabled in settings)
-        if ($hasAnalyticsAccess && $hasBackends) {
-            $item['subnav']['analytics'] = [
-                'label' => Craft::t('search-manager', 'Analytics'),
-                'url' => 'search-manager/analytics',
-            ];
-        }
+        $sections = $this->getCpSections($settings);
+        $item['subnav'] = CpNavHelper::buildSubnav($user, $settings, $sections);
 
         // Add logs section if logging library is enabled (always show)
         if (PluginHelper::isPluginEnabled('logging-library')) {
@@ -811,15 +737,104 @@ class SearchManager extends Plugin
             ]);
         }
 
-        // Settings (always show - users need this for configuration)
-        if ($hasSettingsAccess) {
-            $item['subnav']['settings'] = [
-                'label' => Craft::t('search-manager', 'Settings'),
-                'url' => 'search-manager/settings',
-            ];
+        // Hide from nav if no accessible subnav items
+        if (empty($item['subnav'])) {
+            return null;
         }
 
         return $item;
+    }
+
+    /**
+     * Get CP sections for nav + default route resolution
+     *
+     * @param Settings $settings
+     * @param bool $includeDashboard
+     * @param bool $includeLogs
+     * @return array
+     * @since 5.14.0
+     */
+    public function getCpSections(Settings $settings, bool $includeDashboard = true, bool $includeLogs = false): array
+    {
+        $sections = [];
+
+        // Check if any backends are configured
+        $hasBackends = !empty(\lindemannrock\searchmanager\models\ConfiguredBackend::findAllEnabled());
+
+        if ($includeDashboard) {
+            $sections[] = [
+                'key' => 'dashboard',
+                'label' => Craft::t('search-manager', 'Dashboard'),
+                'url' => 'search-manager',
+                'permissionsAll' => ['searchManager:viewIndices'],
+                'when' => $hasBackends,
+            ];
+        }
+
+        $sections[] = [
+            'key' => 'backends',
+            'label' => Craft::t('search-manager', 'Backends'),
+            'url' => 'search-manager/backends',
+            'permissionsAll' => ['searchManager:viewBackends'],
+        ];
+
+        $sections[] = [
+            'key' => 'indices',
+            'label' => Craft::t('search-manager', 'Indices'),
+            'url' => 'search-manager/indices',
+            'permissionsAll' => ['searchManager:viewIndices'],
+            'when' => $hasBackends,
+        ];
+
+        $sections[] = [
+            'key' => 'promotions',
+            'label' => Craft::t('search-manager', 'Promotions'),
+            'url' => 'search-manager/promotions',
+            'permissionsAll' => ['searchManager:viewPromotions'],
+            'when' => $hasBackends,
+        ];
+
+        $sections[] = [
+            'key' => 'query-rules',
+            'label' => Craft::t('search-manager', 'Query Rules'),
+            'url' => 'search-manager/query-rules',
+            'permissionsAll' => ['searchManager:viewQueryRules'],
+            'when' => $hasBackends,
+        ];
+
+        $sections[] = [
+            'key' => 'widgets',
+            'label' => Craft::t('search-manager', 'Widgets'),
+            'url' => 'search-manager/widgets',
+            'permissionsAll' => ['searchManager:viewWidgetConfigs'],
+        ];
+
+        $sections[] = [
+            'key' => 'analytics',
+            'label' => Craft::t('search-manager', 'Analytics'),
+            'url' => 'search-manager/analytics',
+            'permissionsAll' => ['searchManager:viewAnalytics'],
+            'when' => $settings->enableAnalytics && $hasBackends,
+        ];
+
+        if ($includeLogs) {
+            $sections[] = [
+                'key' => 'logs',
+                'label' => Craft::t('search-manager', 'Logs'),
+                'url' => 'search-manager/logs',
+                'permissionsAll' => ['searchManager:viewSystemLogs'],
+                'when' => fn() => PluginHelper::isPluginEnabled('logging-library'),
+            ];
+        }
+
+        $sections[] = [
+            'key' => 'settings',
+            'label' => Craft::t('search-manager', 'Settings'),
+            'url' => 'search-manager/settings',
+            'permissionsAll' => ['searchManager:manageSettings'],
+        ];
+
+        return $sections;
     }
 
     // =========================================================================

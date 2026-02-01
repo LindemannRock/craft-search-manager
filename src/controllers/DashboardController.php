@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -29,21 +30,10 @@ class DashboardController extends Controller
 
         // If user doesn't have viewIndices permission, redirect to first accessible section
         if (!$user->checkPermission('searchManager:viewIndices')) {
-            // Check other permissions and redirect accordingly
-            if ($user->checkPermission('searchManager:viewPromotions')) {
-                return $this->redirect('search-manager/promotions');
-            }
-            if ($user->checkPermission('searchManager:viewQueryRules')) {
-                return $this->redirect('search-manager/query-rules');
-            }
-            if ($settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics')) {
-                return $this->redirect('search-manager/analytics');
-            }
-            if ($user->checkPermission('searchManager:viewSystemLogs')) {
-                return $this->redirect('search-manager/logs');
-            }
-            if ($user->checkPermission('searchManager:manageSettings')) {
-                return $this->redirect('search-manager/settings');
+            $sections = SearchManager::$plugin->getCpSections($settings, false, true);
+            $route = CpNavHelper::firstAccessibleRoute($user, $settings, $sections);
+            if ($route) {
+                return $this->redirect($route);
             }
 
             // No access at all - require permission (will show 403)
