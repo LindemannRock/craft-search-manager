@@ -39,8 +39,8 @@ class DashboardController extends Controller
             if ($settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics')) {
                 return $this->redirect('search-manager/analytics');
             }
-            if ($user->checkPermission('searchManager:viewLogs')) {
-                return $this->redirect('search-manager/logs/system');
+            if ($user->checkPermission('searchManager:viewSystemLogs')) {
+                return $this->redirect('search-manager/logs');
             }
             if ($user->checkPermission('searchManager:manageSettings')) {
                 return $this->redirect('search-manager/settings');

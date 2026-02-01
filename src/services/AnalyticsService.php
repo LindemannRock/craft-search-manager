@@ -12,6 +12,7 @@ use Craft;
 use craft\base\Component;
 use craft\db\Query;
 use craft\helpers\Db;
+use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\base\helpers\GeoHelper;
 use lindemannrock\base\traits\GeoLookupTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -1100,51 +1101,7 @@ class AnalyticsService extends Component
     public function applyDateRangeFilter(Query $query, string $dateRange, ?string $column = null): void
     {
         $column = $column ?: 'dateCreated';
-        $tz = new \DateTimeZone(Craft::$app->getTimeZone());
-
-        // Create dates in user's timezone, then convert to UTC for database comparison
-        switch ($dateRange) {
-            case 'today':
-                $start = new \DateTime('now', $tz);
-                $start->setTime(0, 0, 0);
-                $start->setTimezone(new \DateTimeZone('UTC'));
-                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
-                break;
-            case 'yesterday':
-                $start = new \DateTime('now', $tz);
-                $start->modify('-1 day')->setTime(0, 0, 0);
-                $start->setTimezone(new \DateTimeZone('UTC'));
-
-                $end = new \DateTime('now', $tz);
-                $end->setTime(0, 0, 0);
-                $end->setTimezone(new \DateTimeZone('UTC'));
-
-                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
-                $query->andWhere(['<', $column, $end->format('Y-m-d H:i:s')]);
-                break;
-            case 'last7days':
-                $start = new \DateTime('now', $tz);
-                $start->modify('-7 days');
-                $start->setTimezone(new \DateTimeZone('UTC'));
-                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
-                break;
-            case 'last30days':
-                $start = new \DateTime('now', $tz);
-                $start->modify('-30 days');
-                $start->setTimezone(new \DateTimeZone('UTC'));
-                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
-                break;
-            case 'last90days':
-                $start = new \DateTime('now', $tz);
-                $start->modify('-90 days');
-                $start->setTimezone(new \DateTimeZone('UTC'));
-                $query->andWhere(['>=', $column, $start->format('Y-m-d H:i:s')]);
-                break;
-            case 'all':
-            case 'alltime':
-                // No filter
-                break;
-        }
+        DateRangeHelper::applyToQuery($query, $dateRange, $column);
     }
 
     /**

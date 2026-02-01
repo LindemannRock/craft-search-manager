@@ -112,8 +112,8 @@ class SearchManager extends Plugin
         PluginHelper::bootstrap(
             $this,
             'searchHelper',
-            ['searchManager:viewLogs'],
-            ['searchManager:downloadLogs']
+            ['searchManager:viewSystemLogs'],
+            ['searchManager:downloadSystemLogs']
         );
         PluginHelper::applyPluginNameFromConfig($this);
 
@@ -444,10 +444,15 @@ class SearchManager extends Plugin
                         ],
                         // Logs - grouped
                         'searchManager:viewLogs' => [
-                            'label' => Craft::t('search-manager', 'View system logs'),
+                            'label' => Craft::t('search-manager', 'View logs'),
                             'nested' => [
-                                'searchManager:downloadLogs' => [
-                                    'label' => Craft::t('search-manager', 'Download system logs'),
+                                'searchManager:viewSystemLogs' => [
+                                    'label' => Craft::t('search-manager', 'View system logs'),
+                                    'nested' => [
+                                        'searchManager:downloadSystemLogs' => [
+                                            'label' => Craft::t('search-manager', 'Download system logs'),
+                                        ],
+                                    ],
                                 ],
                             ],
                         ],
@@ -728,7 +733,7 @@ class SearchManager extends Plugin
         $hasQueryRulesAccess = $user->checkPermission('searchManager:viewQueryRules');
         $hasWidgetConfigsAccess = $user->checkPermission('searchManager:viewWidgetConfigs');
         $hasAnalyticsAccess = $settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics');
-        $hasLogsAccess = $user->checkPermission('searchManager:viewLogs');
+        $hasLogsAccess = $user->checkPermission('searchManager:viewSystemLogs');
         $hasSettingsAccess = $user->checkPermission('searchManager:manageSettings');
 
         // If no access at all, hide the plugin from nav
@@ -800,9 +805,9 @@ class SearchManager extends Plugin
         }
 
         // Add logs section if logging library is enabled (always show)
-        if (Craft::$app->getPlugins()->isPluginEnabled('logging-library')) {
+        if (PluginHelper::isPluginEnabled('logging-library')) {
             $item = LoggingLibrary::addLogsNav($item, $this->handle, [
-                'searchManager:viewLogs',
+                'searchManager:viewSystemLogs',
             ]);
         }
 

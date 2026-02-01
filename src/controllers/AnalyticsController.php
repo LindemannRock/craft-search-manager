@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
@@ -45,7 +46,7 @@ class AnalyticsController extends Controller
 
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', 'last7days');
+        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
 
         // Get chart data
         $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
@@ -159,7 +160,7 @@ class AnalyticsController extends Controller
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
         $format = $request->getQueryParam('format', 'csv');
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
@@ -213,7 +214,7 @@ class AnalyticsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-        $dateRange = $request->getParam('dateRange', 'last7days');
+        $dateRange = $request->getParam('dateRange', DateRangeHelper::getDefaultDateRange());
         $type = $request->getParam('type', 'all'); // 'all', 'summary', 'chart', 'query-analysis', 'content-gaps', 'device-stats'
 
         try {
@@ -511,7 +512,7 @@ class AnalyticsController extends Controller
 
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', 'last30days');
+        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
 
         $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
 
@@ -532,7 +533,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $ruleId = (int)$request->getParam('ruleId');
-        $dateRange = $request->getParam('range', 'last7days');
+        $dateRange = $request->getParam('range', DateRangeHelper::getDefaultDateRange());
 
         if (!$ruleId) {
             return $this->asJson([
@@ -587,7 +588,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $promotionId = (int)$request->getParam('promotionId');
-        $dateRange = $request->getParam('range', 'last7days');
+        $dateRange = $request->getParam('range', DateRangeHelper::getDefaultDateRange());
 
         if (!$promotionId) {
             return $this->asJson([
@@ -642,7 +643,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $ruleId = (int)$request->getQueryParam('ruleId');
-        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
         $format = $request->getQueryParam('format', 'csv');
 
         if (!$ruleId) {
@@ -707,7 +708,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $promotionId = (int)$request->getQueryParam('promotionId');
-        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
         $format = $request->getQueryParam('format', 'csv');
 
         if (!$promotionId) {
@@ -772,7 +773,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $tab = $request->getQueryParam('tab', 'trending');
-        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
         $format = $request->getQueryParam('format', 'csv');
@@ -919,7 +920,7 @@ class AnalyticsController extends Controller
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $dateRange = $request->getQueryParam('dateRange', 'last7days');
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
         $format = $request->getQueryParam('format', 'csv');
