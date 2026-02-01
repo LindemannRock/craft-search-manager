@@ -40,8 +40,7 @@
         "lindemannrock/craft-plugin-base": "^5.0",
         "algolia/algoliasearch-client-php": "^4.0",
         "meilisearch/meilisearch-php": "^1.0",
-        "typesense/typesense-php": "^4.0",
-        "matomo/device-detector": "^6.4"
+        "typesense/typesense-php": "^4.0"
     },
     "require-dev": {
         "craftcms/ecs": "dev-main",
