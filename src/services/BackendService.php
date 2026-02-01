@@ -948,7 +948,7 @@ class BackendService extends Component
             // Track key in set for selective deletion
             if ($cache instanceof \yii\redis\Cache) {
                 $redis = $cache->redis;
-                $redis->executeCommand('SADD', ['searchmanager-search-keys', $fullCacheKey]);
+                $redis->executeCommand('SADD', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search'), $fullCacheKey]);
             }
 
             $this->logDebug('Results cached (Redis)', ['cacheKey' => $cacheKey, 'query' => $query]);
@@ -1005,7 +1005,7 @@ class BackendService extends Component
                 $redis = $cache->redis;
 
                 // Get all search cache keys from tracking set
-                $allKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
+                $allKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]) ?: [];
 
                 // Filter keys for this specific index using the index-prefixed key format
                 // Key format: searchmanager:search:{indexName}:{hash}
@@ -1015,7 +1015,7 @@ class BackendService extends Component
                         // Delete individual key for this index only
                         $cache->delete($key);
                         // Remove from tracking set
-                        $redis->executeCommand('SREM', ['searchmanager-search-keys', $key]);
+                        $redis->executeCommand('SREM', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search'), $key]);
                     }
                 }
 
@@ -1054,7 +1054,7 @@ class BackendService extends Component
                 $redis = $cache->redis;
 
                 // Get all search cache keys from tracking set
-                $keys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
+                $keys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]) ?: [];
 
                 // Delete all search cache keys
                 foreach ($keys as $key) {
@@ -1062,7 +1062,7 @@ class BackendService extends Component
                 }
 
                 // Clear the tracking set
-                $redis->executeCommand('DEL', ['searchmanager-search-keys']);
+                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]);
 
                 $this->logInfo('Cleared all search cache (Redis)');
                 return;

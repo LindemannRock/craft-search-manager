@@ -266,9 +266,9 @@ class UtilitiesController extends Controller
                 $redis = $cache->redis;
 
                 // Get all cache keys from tracking sets
-                $searchKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-search-keys']) ?: [];
+                $searchKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]) ?: [];
                 $deviceKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-device-keys']) ?: [];
-                $autocompleteKeys = $redis->executeCommand('SMEMBERS', ['searchmanager-autocomplete-keys']) ?: [];
+                $autocompleteKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]) ?: [];
 
                 // Delete search cache keys
                 foreach ($searchKeys as $key) {
@@ -286,9 +286,9 @@ class UtilitiesController extends Controller
                 }
 
                 // Clear the tracking sets
-                $redis->executeCommand('DEL', ['searchmanager-search-keys']);
+                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]);
                 $redis->executeCommand('DEL', ['searchmanager-device-keys']);
-                $redis->executeCommand('DEL', ['searchmanager-autocomplete-keys']);
+                $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
 
                 $message = Craft::t('search-manager', 'All caches cleared successfully.');
             } else {

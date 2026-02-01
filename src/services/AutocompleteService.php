@@ -605,7 +605,7 @@ class AutocompleteService extends Component
 
                     // Track key in set for selective deletion
                     $redis = $cache->redis;
-                    $redis->executeCommand('SADD', ['searchmanager-autocomplete-keys', $fullCacheKey]);
+                    $redis->executeCommand('SADD', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete'), $fullCacheKey]);
 
                     $this->logDebug('Saved to Redis autocomplete cache', ['key' => $fullCacheKey]);
                 } catch (\Throwable $e) {
@@ -680,14 +680,14 @@ class AutocompleteService extends Component
             $cache = \Craft::$app->cache;
             if ($cache instanceof \yii\redis\Cache) {
                 $redis = $cache->redis;
-                $keys = $redis->executeCommand('SMEMBERS', ['searchmanager-autocomplete-keys']);
+                $keys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
 
                 if (!empty($keys)) {
                     foreach ($keys as $key) {
                         // If indexHandle specified, only delete keys for that index
                         if ($fullIndexHandle === null || str_contains($key, $fullIndexHandle)) {
                             $cache->delete($key);
-                            $redis->executeCommand('SREM', ['searchmanager-autocomplete-keys', $key]);
+                            $redis->executeCommand('SREM', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete'), $key]);
                         }
                     }
                 }
