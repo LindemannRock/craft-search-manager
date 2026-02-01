@@ -881,7 +881,7 @@ class BackendService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
         // Include index name in key path for per-index cache clearing
-        $fullCacheKey = 'searchmanager:search:' . $indexName . ':' . $cacheKey;
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $indexName . ':' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -938,7 +938,7 @@ class BackendService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
         // Include index name in key path for per-index cache clearing
-        $fullCacheKey = 'searchmanager:search:' . $indexName . ':' . $cacheKey;
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $indexName . ':' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -1008,8 +1008,8 @@ class BackendService extends Component
                 $allKeys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search')]) ?: [];
 
                 // Filter keys for this specific index using the index-prefixed key format
-                // Key format: searchmanager:search:{indexName}:{hash}
-                $indexPrefix = 'searchmanager:search:' . $indexName . ':';
+                // Key format: {prefix}{indexName}:{hash}
+                $indexPrefix = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $indexName . ':';
                 foreach ($allKeys as $key) {
                     if (strpos($key, $indexPrefix) === 0) {
                         // Delete individual key for this index only

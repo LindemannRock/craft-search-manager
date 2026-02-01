@@ -529,7 +529,7 @@ class AutocompleteService extends Component
     private function getFromCache(string $cacheKey, ?string $indexHandle = null): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullCacheKey = 'searchmanager:autocomplete:' . $cacheKey;
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -587,7 +587,7 @@ class AutocompleteService extends Component
     private function saveToCache(string $cacheKey, array $data, ?string $indexHandle = null): void
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullCacheKey = 'searchmanager:autocomplete:' . $cacheKey;
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'autocomplete') . $cacheKey;
 
         $this->logDebug('Saving to autocomplete cache', [
             'cacheKey' => $cacheKey,
