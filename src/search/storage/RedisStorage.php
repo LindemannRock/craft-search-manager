@@ -485,10 +485,29 @@ class RedisStorage implements StorageInterface
      * @param string|null $elementType Filter by element type (null = all types)
      * @return array Array of suggestions [{title, elementType, elementId}, ...]
      */
-    public function getElementSuggestions(string $query, int $siteId, int $limit = 10, ?string $elementType = null): array
+    public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
     {
         $searchText = mb_strtolower(trim($query));
-        $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
+
+        // Determine which site keys to search
+        $siteIds = [];
+        if ($siteId !== null) {
+            $siteIds = [$siteId];
+        } else {
+            // Search all sites - find all elemindex keys for this index
+            $pattern = $this->keyPrefix . 'elemindex:*';
+            $keys = $this->redis->keys($pattern);
+            foreach ($keys as $key) {
+                // Extract siteId from key: prefix:elemindex:siteId
+                if (preg_match('/elemindex:(\d+)$/', $key, $matches)) {
+                    $siteIds[] = (int)$matches[1];
+                }
+            }
+        }
+
+        if (empty($siteIds)) {
+            return [];
+        }
 
         // Use ZRANGEBYLEX for prefix matching
         $min = '[' . $searchText;
@@ -496,9 +515,17 @@ class RedisStorage implements StorageInterface
 
         // Get more results to account for type filtering
         $fetchLimit = $elementType ? $limit * 3 : $limit;
-        $matches = $this->redis->zRangeByLex($indexKey, $min, $max, 0, $fetchLimit);
 
-        if (empty($matches)) {
+        $allMatches = [];
+        foreach ($siteIds as $sid) {
+            $indexKey = $this->keyPrefix . 'elemindex:' . $sid;
+            $matches = $this->redis->zRangeByLex($indexKey, $min, $max, 0, $fetchLimit);
+            foreach ($matches as $match) {
+                $allMatches[] = ['siteId' => $sid, 'match' => $match];
+            }
+        }
+
+        if (empty($allMatches)) {
             return [];
         }
 
@@ -506,15 +533,15 @@ class RedisStorage implements StorageInterface
 
         // Use pipeline to batch fetch element data
         $this->redis->multi(\Redis::PIPELINE);
-        $elementIds = [];
+        $elementMeta = [];
 
-        foreach ($matches as $match) {
+        foreach ($allMatches as $item) {
             // Extract elementId from "elementId:searchText"
-            $parts = explode(':', $match, 2);
+            $parts = explode(':', $item['match'], 2);
             $elemId = (int)$parts[0];
-            $elementIds[] = $elemId;
+            $elementMeta[] = ['siteId' => $item['siteId'], 'elementId' => $elemId];
 
-            $key = $this->getElementKey($siteId, $elemId);
+            $key = $this->getElementKey($item['siteId'], $elemId);
             $this->redis->hGetAll($key);
         }
 
@@ -534,7 +561,8 @@ class RedisStorage implements StorageInterface
             $results[] = [
                 'title' => $data['title'] ?? '',
                 'elementType' => $data['elementType'] ?? 'entry',
-                'elementId' => $elementIds[$index],
+                'elementId' => $elementMeta[$index]['elementId'],
+                'siteId' => $elementMeta[$index]['siteId'],
             ];
 
             if (count($results) >= $limit) {

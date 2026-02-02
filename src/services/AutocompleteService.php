@@ -321,7 +321,8 @@ class AutocompleteService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $minLength = $options['minLength'] ?? $settings->autocompleteMinLength ?? 2;
         $limit = $options['limit'] ?? $settings->autocompleteLimit ?? 10;
-        $siteId = $options['siteId'] ?? \Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+        // Match suggest() behavior: null siteId = search all sites
+        $siteId = $options['siteId'] ?? null;
         $elementType = $options['type'] ?? null; // Optional filter by type
 
         // Validate query length

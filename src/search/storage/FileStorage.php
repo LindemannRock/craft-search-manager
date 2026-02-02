@@ -440,7 +440,7 @@ class FileStorage implements StorageInterface
      * @param string|null $elementType Filter by element type (null = all types)
      * @return array Array of suggestions [{title, elementType, elementId}, ...]
      */
-    public function getElementSuggestions(string $query, int $siteId, int $limit = 10, ?string $elementType = null): array
+    public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
     {
         $searchText = mb_strtolower(trim($query));
         $elementsDir = $this->basePath . '/elements';
@@ -449,8 +449,9 @@ class FileStorage implements StorageInterface
             return [];
         }
 
-        // Find all element files for this site
-        $pattern = $elementsDir . '/' . $siteId . '_*.dat';
+        // Find all element files (siteId_elementId.dat pattern)
+        // null siteId = search all sites, otherwise filter by specific site
+        $pattern = $elementsDir . '/' . ($siteId !== null ? $siteId : '*') . '_*.dat';
         $files = glob($pattern);
 
         $results = [];
@@ -476,6 +477,7 @@ class FileStorage implements StorageInterface
                 'title' => $data['title'] ?? '',
                 'elementType' => $data['elementType'] ?? 'entry',
                 'elementId' => $data['elementId'] ?? 0,
+                'siteId' => $data['siteId'] ?? $siteId,
             ];
 
             if (count($results) >= $limit) {

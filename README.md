@@ -1110,6 +1110,8 @@ const response = await fetch('/actions/search-manager/api/autocomplete?q=test&in
 | `q` | (required) | Search query |
 | `index` | `all-sites` | Index handle to search |
 | `limit` | `10` | Maximum suggestions/results |
+| `siteId` | (all sites) | Filter to specific site ID |
+| `language` | (auto) | Language code for processing (auto-detected from site when siteId provided) |
 | `only` | (none) | Return only `suggestions` or `results` (default returns both) |
 | `type` | (none) | Filter results by element type (only affects `results`) |
 
@@ -1193,8 +1195,9 @@ const response = await fetch('/actions/search-manager/api/search?q=kaffee+ODER+t
 | `q` | (required) | Search query |
 | `index` | `all-sites` | Index handle to search |
 | `limit` | `20` | Maximum results (use `0` for unlimited) |
+| `siteId` | (all sites) | Filter to specific site ID |
 | `type` | (none) | Filter by element type (e.g., `product`, `category`, `product,category`) |
-| `language` | (site default) | Language code for localized operators (`en`, `de`, `fr`, `es`, `ar`) |
+| `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `es`, `ar`) |
 | `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`, `android-app`) |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`, `Android 14`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |

@@ -452,19 +452,21 @@ class MySqlStorage implements StorageInterface
      * @param string|null $elementType Filter by element type (null = all types)
      * @return array Array of suggestions [{title, elementType, elementId}, ...]
      */
-    public function getElementSuggestions(string $query, int $siteId, int $limit = 10, ?string $elementType = null): array
+    public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
     {
         $searchText = mb_strtolower(trim($query));
 
         $dbQuery = (new Query())
-            ->select(['title', 'elementType', 'elementId'])
+            ->select(['title', 'elementType', 'elementId', 'siteId'])
             ->from('{{%searchmanager_search_elements}}')
-            ->where([
-                'indexHandle' => $this->indexHandle,
-                'siteId' => $siteId,
-            ])
+            ->where(['indexHandle' => $this->indexHandle])
             ->andWhere(['like', 'searchText', $searchText . '%', false])
             ->limit($limit);
+
+        // Filter by siteId if provided (null = all sites)
+        if ($siteId !== null) {
+            $dbQuery->andWhere(['siteId' => $siteId]);
+        }
 
         if ($elementType !== null) {
             $dbQuery->andWhere(['elementType' => $elementType]);
