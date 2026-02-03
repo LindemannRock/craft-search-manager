@@ -150,9 +150,13 @@
 {% include 'search-manager/_partials/common/index-styles' %}
 
 {% if collisionHandles is defined and collisionHandles|length %}
+	{% set boldHandles = [] %}
+	{% for handle in collisionHandles %}
+		{% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+	{% endfor %}
 	{% set warningMessage %}
 	<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-	{{ 'These backend handles exist in both config/search-manager.php and the database: {handles}.'|t('search-manager', { handles: collisionHandles|join(', ') }) }}
+	{{ 'These backend handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
 	{{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
 	{{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
 	{% endset %}
@@ -257,7 +261,8 @@
 				{% if paginatedBackends|length %}
 					{% for backend in paginatedBackends %}
 						{% set isConfig = backend.isFromConfig() %}
-						<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ backend.source }}">
+						{% set hasCollision = collisionHandles is defined and backend.handle in collisionHandles %}
+						<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ backend.source }}"{% if hasCollision %} style="background-color: #fef3c7;"{% endif %}>
 							<td class="checkbox-cell">
 								{% if isConfig %}
 									<div class="checkbox disabled" title="{{ 'Config backends cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
