@@ -1,5 +1,6 @@
+{% extends 'lindemannrock-base/_layouts/cp-utilities' %}
+
 {% import "_includes/forms" as forms %}
-{% import 'search-manager/_macros/index' as indexMacros %}
 
 {# Permission checks #}
 {% set canViewIndices = currentUser.can('searchManager:viewIndices') %}
@@ -9,282 +10,240 @@
 {% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
 
-<div style="margin-bottom: 32px;">
-    <h2>{{ "{pluginName} Overview"|t('search-manager', {pluginName: searchHelper.fullName}) }}</h2>
-    <p class="light">{{ "Monitor search indices, clear file cache, and manage your search infrastructure."|t('search-manager') }}</p>
-</div>
-
-<div style="margin-bottom: 40px;">
-    <h2>{{ "System Overview"|t('search-manager') }}</h2>
-
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch;">
-        <!-- Indices Card -->
-        <div class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); display: flex; flex-direction: column; height: 100%;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #059669;"></div>
-                <h4 style="margin: 0; color: #374151; font-size: 15px; font-weight: 600;">{{ "Search Indices"|t('search-manager') }}</h4>
-            </div>
-
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 12px;">
-                    {{ indexCount }}
-                </div>
-                <div style="font-size: 14px; color: #4b5563; margin-bottom: 12px;">
-                    {{ "Total indices configured"|t('search-manager') }}
-                </div>
-
-                <div style="margin-top: auto;">
-                    <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                        <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ totalDocuments|number_format }}</div>
-                        <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Total Documents'|t('search-manager') }}</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Backend Distribution Card -->
-        <div class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); display: flex; flex-direction: column; height: 100%;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #0ea5e9;"></div>
-                <h4 style="margin: 0; color: #374151; font-size: 15px; font-weight: 600;">{{ "Backend Distribution"|t('search-manager') }}</h4>
-            </div>
-
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                {% if backendDistribution|length > 0 %}
-                    <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 12px;">{{ backendDistribution|length }}</div>
-                    <div style="font-size: 14px; color: #4b5563; margin-bottom: 12px;">
-                        {{ "Backend types in use"|t('search-manager') }}
-                        {% if defaultBackendName %}
-                            <span style="color: #6b7280;">({{ "Default: {name}"|t('search-manager', {name: defaultBackendName}) }})</span>
-                        {% endif %}
-                    </div>
-                    <div style="margin-top: auto;">
-                        {% set backendLabels = {
-                            'mysql': 'MySQL',
-                            'pgsql': 'PostgreSQL',
-                            'redis': 'Redis',
-                            'file': 'File',
-                            'algolia': 'Algolia',
-                            'meilisearch': 'Meilisearch',
-                            'typesense': 'Typesense'
-                        } %}
-                        <div style="display: grid; grid-template-columns: repeat({{ backendDistribution|length > 3 ? 3 : backendDistribution|length }}, 1fr); gap: 8px;">
-                            {% for backendType, stats in backendDistribution %}
-                                <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                                    <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ stats.count }}</div>
-                                    <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ backendLabels[backendType] ?? backendType|capitalize }}</div>
-                                </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                {% else %}
-                    <div style="font-size: 28px; font-weight: 700; color: #6b7280; line-height: 1; margin-bottom: 12px;">0</div>
-                    <div style="font-size: 14px; color: #6b7280;">{{ "No indices configured"|t('search-manager') }}</div>
-                {% endif %}
-            </div>
-        </div>
-
-        <!-- Cache Status Card -->
-        <div class="pane" style="padding: 24px; margin-block: 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); display: flex; flex-direction: column; height: 100%;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                <div style="width: 12px; height: 12px; border-radius: 50%; background: #22c55e;"></div>
-                <h4 style="margin: 0; color: #374151; font-size: 15px; font-weight: 600;">
-                    {{ "Cache Status"|t('search-manager') }} ({{ storageMethod == 'redis' ? 'Redis' : 'File' }})
-                </h4>
-            </div>
-            <div style="flex: 1; display: flex; flex-direction: column;">
-                {% if storageMethod == 'redis' %}
-                    <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1;">
-                        {{ "Active"|t('search-manager') }}
-                    </div>
-                    <div style="margin-top: auto;">
-                        {% set enabledCacheCount = (settings.enableCache ? 1 : 0) + (settings.enableAutocompleteCache ? 1 : 0) + (settings.cacheDeviceDetection ? 1 : 0) %}
-                        <div style="display: grid; grid-template-columns: repeat({{ enabledCacheCount > 0 ? enabledCacheCount : 1 }}, 1fr); gap: 8px;">
-                            {% if settings.enableCache %}
-                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px;">✓</div>
-                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Search'|t('search-manager') }}</div>
-                            </div>
-                            {% endif %}
-                            {% if settings.enableAutocompleteCache %}
-                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px;">✓</div>
-                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Autocomplete'|t('search-manager') }}</div>
-                            </div>
-                            {% endif %}
-                            {% if settings.cacheDeviceDetection %}
-                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 4px;">✓</div>
-                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Devices'|t('search-manager') }}</div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% else %}
-                    <div style="font-size: 28px; font-weight: 700; color: #0f172a; line-height: 1; margin-bottom: 12px;">{{ (searchCacheFiles + autocompleteCacheFiles + deviceCacheFiles)|number_format }}</div>
-                    <div style="font-size: 14px; color: #4b5563; margin-bottom: 12px;">{{ "Total cached entries"|t('search-manager') }}</div>
-                    <div style="margin-top: auto;">
-                        {% set enabledCacheCount = (settings.enableCache ? 1 : 0) + (settings.enableAutocompleteCache ? 1 : 0) + (settings.cacheDeviceDetection ? 1 : 0) %}
-                        <div style="display: grid; grid-template-columns: repeat({{ enabledCacheCount > 0 ? enabledCacheCount : 1 }}, 1fr); gap: 8px;">
-                            {% if settings.enableCache %}
-                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ searchCacheFiles|number_format }}</div>
-                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Search'|t('search-manager') }}</div>
-                            </div>
-                            {% endif %}
-                            {% if settings.enableAutocompleteCache %}
-                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ autocompleteCacheFiles|number_format }}</div>
-                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Autocomplete'|t('search-manager') }}</div>
-                            </div>
-                            {% endif %}
-                            {% if settings.cacheDeviceDetection %}
-                            <div style="padding: 12px; background: rgba(255,255,255,0.9); border: 1px solid #e5e7eb; border-radius: 8px; text-align: center;">
-                                <div style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 4px;">{{ deviceCacheFiles|number_format }}</div>
-                                <div style="font-size: 11px; color: #4b5563; text-transform: uppercase;">{{ 'Devices'|t('search-manager') }}</div>
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-</div>
-
-{# Determine what sections to show #}
 {% set hasNavigation = canViewIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
 {% set hasIndexManagement = canRebuildIndices %}
 {% set hasCacheManagement = canClearCache and (settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache) %}
 {% set hasAnalyticsManagement = canClearAnalytics and settings.enableAnalytics %}
 {% set hasAnyQuickAction = hasNavigation or hasIndexManagement or hasCacheManagement or hasAnalyticsManagement %}
 
-<!-- Quick Actions -->
-{% if hasAnyQuickAction %}
-<div style="margin-bottom: 40px;">
-    <h2>{{ 'Quick Actions'|t('search-manager') }}</h2>
+{# Backend labels #}
+{% set backendLabels = {
+    'mysql': 'MySQL',
+    'pgsql': 'PostgreSQL',
+    'redis': 'Redis',
+    'file': 'File',
+    'algolia': 'Algolia',
+    'meilisearch': 'Meilisearch',
+    'typesense': 'Typesense'
+} %}
 
-    <div class="pane">
+{% set utilitiesConfig = {
+    plugin: {
+        handle: 'search-manager',
+        name: searchHelper.fullName,
+    },
+    page: {
+        title: 'Overview'|t('search-manager'),
+        description: 'Monitor search indices, clear file cache, and manage your search infrastructure.'|t('search-manager'),
+    },
+} %}
+
+{% block overview %}
+    {# Search Indices Card #}
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        title: 'Search Indices'|t('search-manager'),
+        color: lrPaletteColor('emerald').color,
+        value: indexCount,
+        description: 'Total indices configured'|t('search-manager'),
+        subBoxes: [
+            {value: totalDocuments, label: 'Total Documents'|t('search-manager')},
+        ],
+    } only %}
+
+    {# Backend Distribution Card #}
+    {% if backendDistribution|length > 0 %}
+        {% set backendSubBoxes = [] %}
+        {% for backendType, stats in backendDistribution %}
+            {% set backendSubBoxes = backendSubBoxes|merge([{
+                value: stats.count,
+                label: backendLabels[backendType] ?? backendType|capitalize
+            }]) %}
+        {% endfor %}
+
+        {% set backendDescription = 'Backend types in use'|t('search-manager') %}
+        {% if defaultBackendName %}
+            {% set backendDescription = backendDescription ~ ' (' ~ 'Default: {name}'|t('search-manager', {name: defaultBackendName}) ~ ')' %}
+        {% endif %}
+
+        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+            title: 'Backend Distribution'|t('search-manager'),
+            color: lrPaletteColor('sky').color,
+            value: backendDistribution|length,
+            description: backendDescription,
+            subBoxes: backendSubBoxes,
+        } only %}
+    {% else %}
+        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+            title: 'Backend Distribution'|t('search-manager'),
+            color: lrPaletteColor('sky').color,
+            value: 0,
+            valueColor: lrPaletteColor('gray').color,
+            description: 'No indices configured'|t('search-manager'),
+        } only %}
+    {% endif %}
+
+    {# Cache Status Card #}
+    {% if storageMethod == 'redis' %}
+        {% set cacheSubBoxes = [] %}
+        {% if settings.enableCache %}
+            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: '✓', label: 'Search'|t('search-manager')}]) %}
+        {% endif %}
+        {% if settings.enableAutocompleteCache %}
+            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: '✓', label: 'Autocomplete'|t('search-manager')}]) %}
+        {% endif %}
+        {% if settings.cacheDeviceDetection %}
+            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: '✓', label: 'Devices'|t('search-manager')}]) %}
+        {% endif %}
+
+        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+            title: 'Cache Status'|t('search-manager') ~ ' (Redis)',
+            color: lrPaletteColor('emerald').color,
+            value: 'Active'|t('search-manager'),
+            subBoxes: cacheSubBoxes,
+        } only %}
+    {% else %}
+        {% set cacheSubBoxes = [] %}
+        {% if settings.enableCache %}
+            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: searchCacheFiles, label: 'Search'|t('search-manager')}]) %}
+        {% endif %}
+        {% if settings.enableAutocompleteCache %}
+            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: autocompleteCacheFiles, label: 'Autocomplete'|t('search-manager')}]) %}
+        {% endif %}
+        {% if settings.cacheDeviceDetection %}
+            {% set cacheSubBoxes = cacheSubBoxes|merge([{value: deviceCacheFiles, label: 'Devices'|t('search-manager')}]) %}
+        {% endif %}
+
+        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+            title: 'Cache Status'|t('search-manager') ~ ' (File)',
+            color: lrPaletteColor('emerald').color,
+            value: searchCacheFiles + autocompleteCacheFiles + deviceCacheFiles,
+            description: 'Total cached entries'|t('search-manager'),
+            subBoxes: cacheSubBoxes,
+        } only %}
+    {% endif %}
+{% endblock %}
+
+{% block quickActions %}
+    {% if hasAnyQuickAction %}
+        {# Navigation Section #}
         {% if hasNavigation %}
-        <div style="margin-bottom: 24px;">
-            <h3 style="margin-bottom: 8px;">{{ "Navigation"|t('search-manager') }}</h3>
-            <p class="light" style="margin-bottom: 16px;">{{ "Access main plugin sections"|t('search-manager') }}</p>
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                {% if canViewIndices %}
-                <a href="{{ url('search-manager/indices') }}" class="btn">
-                    {{ "Manage Indices"|t('search-manager') }}
-                </a>
-                {% endif %}
-                {% if settings.enableAnalytics and canViewAnalytics %}
-                    <a href="{{ url('search-manager/analytics') }}" class="btn">
-                        {{ "View Analytics"|t('search-manager') }}
-                    </a>
-                {% endif %}
-                {% if canManageSettings %}
-                <a href="{{ url('search-manager/settings') }}" class="btn">
-                    {{ "View Settings"|t('search-manager') }}
-                </a>
-                {% endif %}
-            </div>
-        </div>
+            {% set navButtons = [] %}
+            {% if canViewIndices %}
+                {% set navButtons = navButtons|merge([{type: 'link', label: 'Manage Indices'|t('search-manager'), url: url('search-manager/indices')}]) %}
+            {% endif %}
+            {% if settings.enableAnalytics and canViewAnalytics %}
+                {% set navButtons = navButtons|merge([{type: 'link', label: 'View Analytics'|t('search-manager'), url: url('search-manager/analytics')}]) %}
+            {% endif %}
+            {% if canManageSettings %}
+                {% set navButtons = navButtons|merge([{type: 'link', label: 'View Settings'|t('search-manager'), url: url('search-manager/settings')}]) %}
+            {% endif %}
+
+            {% include 'lindemannrock-base/_layouts/cp-utilities/_action-section' with {
+                title: 'Navigation'|t('search-manager'),
+                description: 'Access main plugin sections'|t('search-manager'),
+                buttons: navButtons,
+            } only %}
         {% endif %}
 
+        {# Index Management Section - Custom due to form and dropdown #}
         {% if hasIndexManagement %}
-        {% if hasNavigation %}<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">{% endif %}
+            {% if hasNavigation %}<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">{% endif %}
 
-        <div style="margin-bottom: 24px;">
-            <h3 style="margin-bottom: 8px;">{{ "Index Management"|t('search-manager') }}</h3>
-            <p class="light" style="margin-bottom: 16px;">{{ "Rebuild indices or clear storage data."|t('search-manager') }}</p>
+            <div style="margin-bottom: 24px;">
+                <h3 style="margin-bottom: 8px;">{{ "Index Management"|t('search-manager') }}</h3>
+                <p class="light" style="margin-bottom: 16px;">{{ "Rebuild indices or clear storage data."|t('search-manager') }}</p>
 
-            <form method="post" accept-charset="UTF-8" style="display: inline; margin-bottom: 20px;">
-                {{ csrfInput() }}
-                {{ actionInput('search-manager/utilities/rebuild-all-indices') }}
-                {{ redirectInput('utilities/clear-search-cache') }}
-                <button type="submit" class="btn submit">
-                    {{ "Rebuild All Indices"|t('search-manager') }}
-                </button>
-            </form>
-
-            <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL data from a specific storage type. Use this to remove orphaned data when changing backends."|t('search-manager') }}</p>
-
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-                {{ forms.select({
-                    id: 'storage-type-select',
-                    name: 'storageType',
-                    options: [
-                        {label: 'Database (loading...)', value: 'database'},
-                        {label: 'Redis (loading...)', value: 'redis'},
-                        {label: 'File (loading...)', value: 'file'},
-                    ],
-                    value: 'database',
-                }) }}
-
-                <button type="button" class="btn secondary" id="clear-storage-by-type">
-                    {{ "Clear Storage"|t('search-manager') }}
-                </button>
-            </div>
-
-            {% include 'lindemannrock-base/_components/info-box' with {
-                message: 'Clears ALL data from the selected storage type including orphaned data.'|t('search-manager'),
-                type: 'warning',
-                 bg: 'white'
-            } %}
-        </div>
-        {% endif %}
-
-        {% if hasCacheManagement %}
-        {% if hasNavigation or hasIndexManagement %}<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">{% endif %}
-
-        <div>
-            <h3 style="margin-bottom: 8px;">{{ "Cache Management"|t('search-manager') }}</h3>
-            <p class="light" style="margin-bottom: 16px;">{{ "Clear temporary cached data to improve performance and free up storage space."|t('search-manager') }}</p>
-
-            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                {% if settings.enableCache %}
-                    <button type="button" class="btn" id="clear-search-cache">
-                        {{ "Clear Search Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ searchCacheFiles|number_format }}){% endif %}
+                <form method="post" accept-charset="UTF-8" style="display: inline; margin-bottom: 20px;">
+                    {{ csrfInput() }}
+                    {{ actionInput('search-manager/utilities/rebuild-all-indices') }}
+                    {{ redirectInput('utilities/clear-search-cache') }}
+                    <button type="submit" class="btn submit">
+                        {{ "Rebuild All Indices"|t('search-manager') }}
                     </button>
-                {% endif %}
+                </form>
 
-                {% if settings.enableAutocompleteCache %}
-                    <button type="button" class="btn" id="clear-autocomplete-cache">
-                        {{ "Clear Autocomplete Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ autocompleteCacheFiles|number_format }}){% endif %}
-                    </button>
-                {% endif %}
+                <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL data from a specific storage type. Use this to remove orphaned data when changing backends."|t('search-manager') }}</p>
 
-                {% if settings.cacheDeviceDetection %}
-                    <button type="button" class="btn" id="clear-device-cache">
-                        {{ "Clear Device Cache"|t('search-manager') }}{% if storageMethod != 'redis' %} ({{ deviceCacheFiles|number_format }}){% endif %}
-                    </button>
-                {% endif %}
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    {{ forms.select({
+                        id: 'storage-type-select',
+                        name: 'storageType',
+                        options: [
+                            {label: 'Database (loading...)', value: 'database'},
+                            {label: 'Redis (loading...)', value: 'redis'},
+                            {label: 'File (loading...)', value: 'file'},
+                        ],
+                        value: 'database',
+                    }) }}
 
-                {% if settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache %}
-                    <button type="button" class="btn secondary" id="clear-all-caches">
-                        {{ "Clear All Caches"|t('search-manager') }}
-                    </button>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
-
-        {% if hasAnalyticsManagement %}
-            {% if hasNavigation or hasIndexManagement or hasCacheManagement %}<hr style="margin: 24px 0; border: none; border-top: 1px solid #e5e7eb;">{% endif %}
-
-            <div>
-                <h3 style="margin-bottom: 8px;">{{ "Analytics Data Management"|t('search-manager') }}</h3>
-                <p class="light" style="margin-bottom: 16px;">{{ "Permanently delete all analytics tracking data. This action cannot be undone!"|t('search-manager') }}</p>
-
-                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                    <button type="button" class="btn secondary" id="clear-all-analytics">
-                        {{ "Clear All Analytics"|t('search-manager') }} ({{ analyticsCount|number_format }})
+                    <button type="button" class="btn secondary" id="clear-storage-by-type">
+                        {{ "Clear Storage"|t('search-manager') }}
                     </button>
                 </div>
+
+                {% include 'lindemannrock-base/_components/info-box' with {
+                    message: 'Clears ALL data from the selected storage type including orphaned data.'|t('search-manager'),
+                    type: 'warning',
+                    bg: 'white'
+                } %}
             </div>
         {% endif %}
-    </div>
-</div>
-{% endif %}
 
+        {# Cache Management Section #}
+        {% if hasCacheManagement %}
+            {% set cacheButtons = [] %}
+            {% if settings.enableCache %}
+                {% set cacheButtons = cacheButtons|merge([{
+                    id: 'clear-search-cache',
+                    label: 'Clear Search Cache'|t('search-manager'),
+                    count: storageMethod != 'redis' ? searchCacheFiles : null,
+                }]) %}
+            {% endif %}
+            {% if settings.enableAutocompleteCache %}
+                {% set cacheButtons = cacheButtons|merge([{
+                    id: 'clear-autocomplete-cache',
+                    label: 'Clear Autocomplete Cache'|t('search-manager'),
+                    count: storageMethod != 'redis' ? autocompleteCacheFiles : null,
+                }]) %}
+            {% endif %}
+            {% if settings.cacheDeviceDetection %}
+                {% set cacheButtons = cacheButtons|merge([{
+                    id: 'clear-device-cache',
+                    label: 'Clear Device Cache'|t('search-manager'),
+                    count: storageMethod != 'redis' ? deviceCacheFiles : null,
+                }]) %}
+            {% endif %}
+            {% if settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache %}
+                {% set cacheButtons = cacheButtons|merge([{
+                    id: 'clear-all-caches',
+                    label: 'Clear All Caches'|t('search-manager'),
+                    class: 'btn secondary',
+                }]) %}
+            {% endif %}
+
+            {% include 'lindemannrock-base/_layouts/cp-utilities/_action-section' with {
+                title: 'Cache Management'|t('search-manager'),
+                description: 'Clear temporary cached data to improve performance and free up storage space.'|t('search-manager'),
+                showSeparator: hasNavigation or hasIndexManagement,
+                buttons: cacheButtons,
+            } only %}
+        {% endif %}
+
+        {# Analytics Management Section #}
+        {% if hasAnalyticsManagement %}
+            {% include 'lindemannrock-base/_layouts/cp-utilities/_action-section' with {
+                title: 'Analytics Data Management'|t('search-manager'),
+                description: 'Permanently delete all analytics tracking data. This action cannot be undone!'|t('search-manager'),
+                showSeparator: hasNavigation or hasIndexManagement or hasCacheManagement,
+                buttons: [
+                    {id: 'clear-all-analytics', label: 'Clear All Analytics'|t('search-manager'), class: 'btn secondary', count: analyticsCount},
+                ],
+            } only %}
+        {% endif %}
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
 {% js %}
 // Load storage stats and update dropdown options
 function loadStorageStats() {
@@ -373,167 +332,46 @@ $('#clear-storage-by-type').on('click', function() {
     });
 });
 
-// Cache clearing handlers
 {% if settings.cacheDeviceDetection %}
-$('#clear-device-cache').on('click', function() {
-    const $btn = $(this);
-    $btn.addClass('loading').prop('disabled', true);
-
-    $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/clear-device-cache')|raw }}',
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
-        },
-        success: function(response) {
-            if (response.success) {
-                Craft.cp.displayNotice(response.message);
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                Craft.cp.displayError(response.error || '{{ "Failed to clear device cache"|t('search-manager')|e('js') }}');
-            }
-        },
-        error: function() {
-            Craft.cp.displayError('{{ "Failed to clear device cache"|t('search-manager')|e('js') }}');
-        },
-        complete: function() {
-            $btn.removeClass('loading').prop('disabled', false);
-        }
-    });
-});
+{% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
+    id: 'clear-device-cache',
+    action: actionUrl('search-manager/utilities/clear-device-cache'),
+    errorMessage: 'Failed to clear device cache'|t('search-manager'),
+} only %}
 {% endif %}
 
 {% if settings.enableCache %}
-$('#clear-search-cache').on('click', function() {
-    const $btn = $(this);
-    $btn.addClass('loading').prop('disabled', true);
-
-    $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/clear-search-cache')|raw }}',
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
-        },
-        success: function(response) {
-            if (response.success) {
-                Craft.cp.displayNotice(response.message);
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                Craft.cp.displayError(response.error || '{{ "Failed to clear search cache"|t('search-manager')|e('js') }}');
-            }
-        },
-        error: function() {
-            Craft.cp.displayError('{{ "Failed to clear search cache"|t('search-manager')|e('js') }}');
-        },
-        complete: function() {
-            $btn.removeClass('loading').prop('disabled', false);
-        }
-    });
-});
+{% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
+    id: 'clear-search-cache',
+    action: actionUrl('search-manager/utilities/clear-search-cache'),
+    errorMessage: 'Failed to clear search cache'|t('search-manager'),
+} only %}
 {% endif %}
 
 {% if settings.enableAutocompleteCache %}
-$('#clear-autocomplete-cache').on('click', function() {
-    const $btn = $(this);
-    $btn.addClass('loading').prop('disabled', true);
-
-    $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/clear-autocomplete-cache')|raw }}',
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
-        },
-        success: function(response) {
-            if (response.success) {
-                Craft.cp.displayNotice(response.message);
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                Craft.cp.displayError(response.error || '{{ "Failed to clear autocomplete cache"|t('search-manager')|e('js') }}');
-            }
-        },
-        error: function() {
-            Craft.cp.displayError('{{ "Failed to clear autocomplete cache"|t('search-manager')|e('js') }}');
-        },
-        complete: function() {
-            $btn.removeClass('loading').prop('disabled', false);
-        }
-    });
-});
+{% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
+    id: 'clear-autocomplete-cache',
+    action: actionUrl('search-manager/utilities/clear-autocomplete-cache'),
+    errorMessage: 'Failed to clear autocomplete cache'|t('search-manager'),
+} only %}
 {% endif %}
 
-$('#clear-all-caches').on('click', function() {
-    if (!confirm('{{ "Are you sure you want to clear all caches?"|t('search-manager')|e('js') }}')) {
-        return;
-    }
-
-    const $btn = $(this);
-    $btn.addClass('loading').prop('disabled', true);
-
-    $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/clear-all-caches')|raw }}',
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
-        },
-        success: function(response) {
-            if (response.success) {
-                Craft.cp.displayNotice(response.message);
-                setTimeout(() => window.location.reload(), 1500);
-            } else {
-                Craft.cp.displayError(response.error || '{{ "Failed to clear caches"|t('search-manager')|e('js') }}');
-            }
-        },
-        error: function() {
-            Craft.cp.displayError('{{ "Failed to clear caches"|t('search-manager')|e('js') }}');
-        },
-        complete: function() {
-            $btn.removeClass('loading').prop('disabled', false);
-        }
-    });
-});
+{% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
+    id: 'clear-all-caches',
+    action: actionUrl('search-manager/utilities/clear-all-caches'),
+    confirm: 'Are you sure you want to clear all caches?'|t('search-manager'),
+    errorMessage: 'Failed to clear caches'|t('search-manager'),
+} only %}
 
 {% if settings.enableAnalytics %}
-$('#clear-all-analytics').on('click', function() {
-    if (!confirm('{{ "Are you sure you want to permanently delete ALL analytics data? This action cannot be undone!"|t('search-manager')|e('js') }}')) {
-        return;
-    }
-
-    // Second confirmation for extra safety
-    if (!confirm('{{ "This will delete all search tracking data and reset all statistics. Are you absolutely sure?"|t('search-manager')|e('js') }}')) {
-        return;
-    }
-
-    const $btn = $(this);
-    $btn.addClass('loading').prop('disabled', true);
-
-    $.ajax({
-        url: '{{ actionUrl('search-manager/utilities/clear-all-analytics')|raw }}',
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
-        },
-        success: function(response) {
-            if (response.success) {
-                Craft.cp.displayNotice(response.message);
-                setTimeout(() => window.location.reload(), 2000);
-            } else {
-                Craft.cp.displayError(response.error || '{{ "Failed to clear analytics"|t('search-manager')|e('js') }}');
-            }
-        },
-        error: function() {
-            Craft.cp.displayError('{{ "Failed to clear analytics"|t('search-manager')|e('js') }}');
-        },
-        complete: function() {
-            $btn.removeClass('loading').prop('disabled', false);
-        }
-    });
-});
+{% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
+    id: 'clear-all-analytics',
+    action: actionUrl('search-manager/utilities/clear-all-analytics'),
+    confirm: 'Are you sure you want to permanently delete ALL analytics data? This action cannot be undone!'|t('search-manager'),
+    confirmSecond: 'This will delete all search tracking data and reset all statistics. Are you absolutely sure?'|t('search-manager'),
+    errorMessage: 'Failed to clear analytics'|t('search-manager'),
+    reloadDelay: 2000,
+} only %}
 {% endif %}
 {% endjs %}
-
-{% include 'lindemannrock-base/_components/plugin-credit' %}
+{% endblock %}
