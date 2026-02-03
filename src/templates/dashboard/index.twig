@@ -15,12 +15,40 @@
 {% set canCreatePromotions = currentUser.can('searchManager:createPromotions') %}
 {% set canCreateQueryRules = currentUser.can('searchManager:createQueryRules') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
+{% set canViewWidgetConfigs = currentUser.can('searchManager:viewWidgetConfigs') %}
+
+{% block actionButton %}
+    {% set hasAnyQuickAction = canCreateIndices or canCreatePromotions or canCreateQueryRules or canViewWidgetConfigs or canManageSettings or (settings.enableAnalytics and canViewAnalytics) %}
+    {% if hasAnyQuickAction %}
+        <div class="btngroup">
+            <button type="button" class="btn menubtn">{{ "Quick Actions"|t('search-manager') }}</button>
+            <div class="menu">
+                <ul>
+                    {% if canCreateIndices %}
+                        <li><a href="{{ url('search-manager/indices/create') }}">{{ "New Index"|t('search-manager') }}</a></li>
+                    {% endif %}
+                    {% if canCreatePromotions %}
+                        <li><a href="{{ url('search-manager/promotions/create') }}">{{ "New Promotion"|t('search-manager') }}</a></li>
+                    {% endif %}
+                    {% if canCreateQueryRules %}
+                        <li><a href="{{ url('search-manager/query-rules/create') }}">{{ "New Query Rule"|t('search-manager') }}</a></li>
+                    {% endif %}
+                    {% if settings.enableAnalytics and canViewAnalytics %}
+                        <li><a href="{{ url('search-manager/analytics') }}">{{ "View Analytics"|t('search-manager') }}</a></li>
+                    {% endif %}
+                    {% if canViewWidgetConfigs %}
+                        <li><a href="{{ url('search-manager/widgets') }}">{{ "Widgets"|t('search-manager') }}</a></li>
+                    {% endif %}
+                    {% if canManageSettings %}
+                        <li><a href="{{ url('search-manager/settings') }}">{{ "Settings"|t('search-manager') }}</a></li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
 
 {% block content %}
-
-<div class="readable" style="margin-bottom: 24px;">
-    <p>{{ "Advanced multi-backend search management for Craft CMS"|t('search-manager') }}</p>
-</div>
 
 {# Stats Overview Cards #}
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 32px;">
@@ -101,88 +129,61 @@
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 32px;">
 
     {# Top Searches (Last 7 Days) #}
-    <div class="pane" style="margin-block: 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 style="margin: 0;">{{ "Top Searches"|t('search-manager') }}</h3>
-            <span style="font-size: 12px; color: #6b7280;">{{ "Last 7 days"|t('search-manager') }}</span>
+    <div style="display: flex; flex-direction: column;">
+        <h3 style="margin-bottom: 12px;">{{ "Top Searches"|t('search-manager') }} <span style="font-weight: normal;">({{ "Last 7 days"|t('search-manager') }})</span></h3>
+        <div class="pane" style="margin-block: 0; flex: 1; display: flex; flex-direction: column;">
+            {% if topSearches|length %}
+                <table class="data fullwidth" style="margin: 0;">
+                    <tbody>
+                        {% for search in topSearches %}
+                            <tr>
+                                <td style="padding: {{ loop.first ? '0' : '12px' }} 0 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                    <code style="font-family: monospace; font-size: 13px;">{{ search.query }}</code>
+                                </td>
+                                <td style="text-align: right; padding: {{ loop.first ? '0' : '12px' }} 0 12px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280; white-space: nowrap; font-size: 13px;">
+                                    {{ search.count|number_format }} {{ search.count == 1 ? 'search' : 'searches' }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="margin-top: auto; padding-top: 16px;">
+                    <a href="{{ url('search-manager/analytics') }}" class="go">{{ "View all analytics"|t('search-manager') }}</a>
+                </div>
+            {% else %}
+                <p class="light" style="margin: 0;">{{ "No searches recorded yet"|t('search-manager') }}</p>
+            {% endif %}
         </div>
-
-        {% if topSearches|length %}
-            <table class="data fullwidth" style="margin: 0;">
-                <tbody>
-                    {% for search in topSearches %}
-                        <tr>
-                            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                                <code style="font-family: monospace; font-size: 13px;">{{ search.query }}</code>
-                            </td>
-                            <td style="text-align: right; padding: 12px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280; white-space: nowrap; font-size: 13px;">
-                                {{ search.count|number_format }} {{ search.count == 1 ? 'search' : 'searches' }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <div style="margin-top: 16px;">
-                <a href="{{ url('search-manager/analytics') }}" class="go">{{ "View all analytics"|t('search-manager') }}</a>
-            </div>
-        {% else %}
-            <p class="light" style="margin: 0;">{{ "No searches recorded yet"|t('search-manager') }}</p>
-        {% endif %}
     </div>
 
     {# Recent Zero-Result Searches #}
-    <div class="pane" style="margin-block: 0;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h3 style="margin: 0;">{{ "Content Gaps"|t('search-manager') }}</h3>
-            <span style="font-size: 12px; color: #6b7280;">{{ "Zero results"|t('search-manager') }}</span>
+    <div style="display: flex; flex-direction: column;">
+        <h3 style="margin-bottom: 12px;">{{ "Content Gaps"|t('search-manager') }} <span style="font-weight: normal;">({{ "Zero results"|t('search-manager') }})</span></h3>
+        <div class="pane" style="margin-block: 0; flex: 1; display: flex; flex-direction: column;">
+            {% if recentZeroResults|length %}
+                <table class="data fullwidth" style="margin: 0;">
+                    <tbody>
+                        {% for search in recentZeroResults %}
+                            <tr>
+                                <td style="padding: {{ loop.first ? '0' : '12px' }} 0 12px 0; border-bottom: 1px solid #e5e7eb;">
+                                    <code style="font-family: monospace; font-size: 13px;">{{ search.query }}</code>
+                                </td>
+                                <td style="text-align: right; padding: {{ loop.first ? '0' : '12px' }} 0 12px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280; white-space: nowrap; font-size: 13px;">
+                                    {{ search.dateCreated|date('M j') }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div style="margin-top: auto; padding-top: 16px;">
+                    <a href="{{ url('search-manager/analytics') }}#content-gaps" class="go">{{ "View content gaps"|t('search-manager') }}</a>
+                </div>
+            {% else %}
+                <p class="light" style="margin: 0;">{{ "No zero-result searches"|t('search-manager') }}</p>
+            {% endif %}
         </div>
-
-        {% if recentZeroResults|length %}
-            <table class="data fullwidth" style="margin: 0;">
-                <tbody>
-                    {% for search in recentZeroResults %}
-                        <tr>
-                            <td style="padding: 12px 0; border-bottom: 1px solid #e5e7eb;">
-                                <code style="font-family: monospace; font-size: 13px;">{{ search.query }}</code>
-                            </td>
-                            <td style="text-align: right; padding: 12px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280; white-space: nowrap; font-size: 13px;">
-                                {{ search.dateCreated|date('M j') }}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            <div style="margin-top: 16px;">
-                <a href="{{ url('search-manager/analytics') }}#content-gaps" class="go">{{ "View content gaps"|t('search-manager') }}</a>
-            </div>
-        {% else %}
-            <p class="light" style="margin: 0;">{{ "No zero-result searches"|t('search-manager') }}</p>
-        {% endif %}
     </div>
 
-</div>
-{% endif %}
-
-{# Quick Actions #}
-{% set hasAnyQuickAction = canCreateIndices or canCreatePromotions or canCreateQueryRules or canManageSettings %}
-{% if hasAnyQuickAction %}
-<div class="pane">
-    <h2 style="margin-top: 0;">{{ "Quick Actions"|t('search-manager') }}</h2>
-
-    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-        {% if canCreateIndices %}
-            <a href="{{ url('search-manager/indices/create') }}" class="btn submit">{{ "New Index"|t('search-manager') }}</a>
-        {% endif %}
-        {% if canCreatePromotions %}
-            <a href="{{ url('search-manager/promotions/create') }}" class="btn">{{ "New Promotion"|t('search-manager') }}</a>
-        {% endif %}
-        {% if canCreateQueryRules %}
-            <a href="{{ url('search-manager/query-rules/create') }}" class="btn">{{ "New Query Rule"|t('search-manager') }}</a>
-        {% endif %}
-        {% if canManageSettings %}
-            <a href="{{ url('search-manager/settings') }}" class="btn">{{ "Settings"|t('search-manager') }}</a>
-        {% endif %}
-    </div>
 </div>
 {% endif %}
 
