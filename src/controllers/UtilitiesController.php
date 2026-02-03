@@ -60,6 +60,18 @@ class UtilitiesController extends Controller
     {
         $this->requirePostRequest();
 
+        // Check for handle collisions before proceeding
+        $collisions = $this->getHandleCollisions();
+        if (!empty($collisions)) {
+            $handleList = implode(', ', $collisions);
+            Craft::$app->getSession()->setError(
+                Craft::t('search-manager', 'Cannot rebuild indices: Handle collision detected. The following handles exist in both config and database: {handles}. Please resolve these conflicts first.', [
+                    'handles' => $handleList,
+                ])
+            );
+            return $this->redirectToPostedUrl();
+        }
+
         try {
             SearchManager::$plugin->indexing->rebuildAll();
 
