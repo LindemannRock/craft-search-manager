@@ -647,10 +647,11 @@ class SearchIndex extends Model
                 return false;
             }
 
-            // Check if database record exists for this config index
+            // Check if database record exists for this handle (any source)
+            // Config indices should update/take over existing database records
             $row = (new Query())
                 ->from('{{%searchmanager_indices}}')
-                ->where(['handle' => $this->handle, 'source' => 'config'])
+                ->where(['handle' => $this->handle])
                 ->one();
 
             if ($row) {

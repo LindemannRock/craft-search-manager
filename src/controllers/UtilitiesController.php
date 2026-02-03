@@ -396,6 +396,18 @@ class UtilitiesController extends Controller
             ]);
         }
 
+        // Check for handle collisions before proceeding
+        $collisions = $this->getHandleCollisions();
+        if (!empty($collisions)) {
+            $handleList = implode(', ', $collisions);
+            return $this->asJson([
+                'success' => false,
+                'error' => Craft::t('search-manager', 'Cannot clear storage: Handle collision detected. The following handles exist in both config and database: {handles}. Please resolve these conflicts first by removing duplicates from either config or database.', [
+                    'handles' => $handleList,
+                ]),
+            ]);
+        }
+
         try {
             $result = match ($type) {
                 'database' => $this->clearDatabaseStorage(),
@@ -851,5 +863,34 @@ class UtilitiesController extends Controller
         }
 
         return 'mysql';
+    }
+
+    /**
+     * Get list of handles that exist in both config and database
+     *
+     * @return array List of colliding handles
+     */
+    private function getHandleCollisions(): array
+    {
+        // Get handles from config file
+        $configHandles = [];
+        $configIndices = \lindemannrock\searchmanager\helpers\ConfigFileHelper::getIndices();
+        foreach ($configIndices as $handle => $config) {
+            $configHandles[] = $handle;
+        }
+
+        if (empty($configHandles)) {
+            return [];
+        }
+
+        // Get handles from database that are marked as 'database' source
+        $dbHandles = Craft::$app->getDb()
+            ->createCommand()
+            ->setSql('SELECT handle FROM {{%searchmanager_indices}} WHERE source = :source')
+            ->bindValue(':source', 'database')
+            ->queryColumn();
+
+        // Find collisions
+        return array_intersect($configHandles, $dbHandles);
     }
 }
