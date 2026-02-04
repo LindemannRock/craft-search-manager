@@ -1,703 +1,581 @@
-{% extends "_layouts/cp" %}
-{% import "_includes/forms" as forms %}
-{% import 'search-manager/_macros/index' as indexMacros %}
+{#
+ # Backends Index - Using cp-table layout
+ #
+ # This template extends the base plugin's cp-table layout to provide
+ # a consistent interface for viewing search backends with filters, sorting,
+ # and bulk actions.
+ #
+ # @link      https://lindemannrock.com
+ # @copyright Copyright (c) 2026 LindemannRock
+ #}
 
-{% set title = "Backends"|t('search-manager') %}
-{% set fullPageForm = false %}
-{% set selectedSubnavItem = 'backends' %}
+{% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{# Backend types for filter menu #}
-{% set backendTypes = [
-	{ type: 'algolia', label: 'Algolia' },
-	{ type: 'meilisearch', label: 'Meilisearch' },
-	{ type: 'typesense', label: 'Typesense' },
-	{ type: 'mysql', label: 'MySQL' },
-	{ type: 'pgsql', label: 'PostgreSQL' },
-	{ type: 'redis', label: 'Redis' },
-	{ type: 'file', label: 'File' },
-] %}
+{# ============================================================================
+   PERMISSION CHECKS
+   ============================================================================ #}
 
-{# Get plugin settings #}
-{% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
-
-{# Get query parameters #}
-{% set search = craft.app.request.getParam('search', '') %}
-{% set statusFilter = craft.app.request.getParam('status', 'all') %}
-{% set typeFilter = craft.app.request.getParam('type', 'all') %}
-{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'source') %}
-{% set dir = craft.app.request.getParam('dir', 'asc') %}
-{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = settings.itemsPerPage %}
-{% set offset = (page - 1) * limit %}
-
-{# Permission checks #}
 {% set canCreate = currentUser.can('searchManager:createBackends') %}
 {% set canEdit = currentUser.can('searchManager:editBackends') %}
 {% set canDelete = currentUser.can('searchManager:deleteBackends') %}
 
-{# Filter backends #}
+{# ============================================================================
+   GET QUERY PARAMETERS
+   ============================================================================ #}
+
+{% set search = craft.app.request.getParam('search', '') %}
+{% set statusFilter = craft.app.request.getParam('status', 'all') %}
+{% set typeFilter = craft.app.request.getParam('type', 'all') %}
+{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
+{% set sort = craft.app.request.getParam('sort', 'name') %}
+{% set dir = craft.app.request.getParam('dir', 'asc') %}
+{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
+{% set limit = settings.itemsPerPage ?? 50 %}
+{% set offset = (page - 1) * limit %}
+
+{# ============================================================================
+   FILTER BACKENDS
+   ============================================================================ #}
+
 {% set filteredBackends = backends %}
 
 {# Status filter #}
 {% if statusFilter == 'enabled' %}
-	{% set filteredBackends = filteredBackends|filter(b => b.enabled) %}
+    {% set filteredBackends = filteredBackends|filter(b => b.enabled) %}
 {% elseif statusFilter == 'disabled' %}
-	{% set filteredBackends = filteredBackends|filter(b => not b.enabled) %}
+    {% set filteredBackends = filteredBackends|filter(b => not b.enabled) %}
 {% endif %}
 
 {# Type filter #}
 {% if typeFilter != 'all' %}
-	{% set filteredBackends = filteredBackends|filter(b => b.backendType == typeFilter) %}
+    {% set filteredBackends = filteredBackends|filter(b => b.backendType == typeFilter) %}
 {% endif %}
 
 {# Source filter #}
 {% if sourceFilter == 'config' %}
-	{% set filteredBackends = filteredBackends|filter(b => b.source == 'config') %}
+    {% set filteredBackends = filteredBackends|filter(b => b.source == 'config') %}
 {% elseif sourceFilter == 'database' %}
-	{% set filteredBackends = filteredBackends|filter(b => b.source != 'config') %}
+    {% set filteredBackends = filteredBackends|filter(b => b.source != 'config') %}
 {% endif %}
 
 {# Search filter #}
 {% if search %}
-	{% set filteredBackends = filteredBackends|filter(b => search|lower in b.name|lower or search|lower in b.handle|lower) %}
+    {% set filteredBackends = filteredBackends|filter(b => search|lower in b.name|lower or search|lower in b.handle|lower or search|lower in b.backendType|lower) %}
 {% endif %}
 
-{# Sort #}
+{# Sort backends #}
 {% if sort == 'name' %}
-	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.name|lower <=> b.name|lower) : filteredBackends|sort((a, b) => b.name|lower <=> a.name|lower) %}
+    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.name|lower <=> b.name|lower : b.name|lower <=> a.name|lower) %}
 {% elseif sort == 'handle' %}
-	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredBackends|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
+    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.handle|lower <=> b.handle|lower : b.handle|lower <=> a.handle|lower) %}
 {% elseif sort == 'type' %}
-	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.backendType <=> b.backendType) : filteredBackends|sort((a, b) => b.backendType <=> a.backendType) %}
+    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.backendType|lower <=> b.backendType|lower : b.backendType|lower <=> a.backendType|lower) %}
 {% elseif sort == 'source' %}
-	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredBackends|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
+    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? (a.source ?? '') <=> (b.source ?? '') : (b.source ?? '') <=> (a.source ?? '')) %}
 {% elseif sort == 'enabled' %}
-	{% set filteredBackends = dir == 'asc' ? filteredBackends|sort((a, b) => a.enabled <=> b.enabled) : filteredBackends|sort((a, b) => b.enabled <=> a.enabled) %}
+    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.enabled <=> b.enabled : b.enabled <=> a.enabled) %}
 {% endif %}
 
-{# Pagination #}
 {% set totalCount = filteredBackends|length %}
-{% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
 {% set paginatedBackends = filteredBackends|slice(offset, limit) %}
 
-{% set crumbs = [
-    { label: searchHelper.fullName, url: url('search-manager') },
-    { label: 'Backends'|t('search-manager'), url: url('search-manager/backends') }
-] %}
 
-{% block toolbar %}
-	<div id="toolbar" class="flex" style="align-items: flex-end;">
-		<div class="flex-grow">
-			<form method="get" action="{{ url('search-manager/backends') }}">
-				<div class="flex">
-					<div class="btngroup">
-						<button type="button" class="btn menubtn statusmenubtn">
-							<span class="status {{ statusFilter == 'all' ? 'all' : (statusFilter == 'enabled' ? 'green' : 'disabled') }}"></span>
-							{{ statusFilter == 'all' ? 'All'|t('search-manager') : statusFilter|capitalize }}
-						</button>
-						<div class="menu">
-							<ul>
-								{{ indexMacros.statusFilterMenu(statusFilter, sourceFilter, search, { type: typeFilter }) }}
-								{{ indexMacros.backendTypeFilterMenu(typeFilter, statusFilter, sourceFilter, search, backendTypes) }}
-								{{ indexMacros.sourceFilterMenu(sourceFilter, statusFilter, search, { type: typeFilter }) }}
-							</ul>
-						</div>
-					</div>
-					<div class="search-container texticon flex-grow">
-						<span class="texticon-icon search icon" aria-hidden="true"></span>
-						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search backends...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
-						<button type="button" class="clear-btn {{ search ? '' : 'hidden' }}" title="Clear search" role="button" aria-label="Clear search"></button>
-						<input type="hidden" name="status" value="{{ statusFilter }}">
-						<input type="hidden" name="type" value="{{ typeFilter }}">
-						<input type="hidden" name="source" value="{{ sourceFilter }}">
-					</div>
-				</div>
-			</form>
-		</div>
-		{% if canCreate %}
-			<a href="{{ url('search-manager/backends/new') }}" class="btn submit add icon" id="new-backend-btn">
-				<span class="label-full">{{ 'New Backend'|t('search-manager') }}</span>
-				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
-			</a>
-		{% endif %}
-	</div>
+{# ============================================================================
+   TABLE CONFIGURATION
+   ============================================================================ #}
+
+{% set tableConfig = {
+    plugin: {
+        handle: 'search-manager',
+        name: searchHelper.fullName,
+    },
+    page: {
+        title: 'Backends'|t('search-manager'),
+        subnav: 'backends',
+        crumbs: [
+            { label: searchHelper.fullName, url: url('search-manager') },
+            { label: 'Backends'|t('search-manager'), url: url('search-manager/backends') }
+        ],
+    },
+    filters: [
+        {
+            type: 'status',
+            param: 'status',
+            current: statusFilter,
+            label: 'All'|t('search-manager'),
+            groups: [
+                {
+                    param: 'status',
+                    current: statusFilter,
+                    colorSet: 'status',
+                    options: [
+                        {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'enabled', label: 'Enabled'|t('search-manager'), colorKey: 'enabled'},
+                        {value: 'disabled', label: 'Disabled'|t('search-manager'), colorKey: 'disabled'},
+                    ],
+                },
+                {
+                    header: 'Backend Type'|t('search-manager'),
+                    param: 'type',
+                    current: typeFilter,
+                    colorSet: 'backendType',
+                    options: [
+                        {value: 'all', label: 'All Types'|t('search-manager'), status: 'all'},
+                        {value: 'algolia', label: 'Algolia'|t('search-manager'), colorKey: 'algolia'},
+                        {value: 'meilisearch', label: 'Meilisearch'|t('search-manager'), colorKey: 'meilisearch'},
+                        {value: 'typesense', label: 'Typesense'|t('search-manager'), colorKey: 'typesense'},
+                        {value: 'mysql', label: 'MySQL'|t('search-manager'), colorKey: 'mysql'},
+                        {value: 'pgsql', label: 'PostgreSQL'|t('search-manager'), colorKey: 'pgsql'},
+                        {value: 'redis', label: 'Redis'|t('search-manager'), colorKey: 'redis'},
+                        {value: 'file', label: 'File'|t('search-manager'), colorKey: 'file'},
+                    ],
+                },
+                {
+                    header: 'Config Source'|t('search-manager'),
+                    param: 'source',
+                    current: sourceFilter,
+                    colorSet: 'configSource',
+                    options: [
+                        {value: 'all', label: 'All Sources'|t('search-manager'), status: 'all'},
+                        {value: 'config', label: 'Config File'|t('search-manager'), colorKey: 'config'},
+                        {value: 'database', label: 'Database'|t('search-manager'), colorKey: 'database'},
+                    ],
+                },
+            ],
+        },
+    ],
+    search: {
+        placeholder: 'Search backends...'|t('search-manager'),
+        value: search,
+    },
+    sort: {
+        field: sort,
+        direction: dir,
+    },
+    table: {
+        columns: [
+            {key: 'name', label: 'Name'|t('search-manager'), sortable: true},
+            {key: 'handle', label: 'Handle'|t('search-manager'), sortable: true},
+            {key: 'type', label: 'Type'|t('search-manager'), sortable: true},
+            {key: 'source', label: 'Source'|t('search-manager'), sortable: true},
+            {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true},
+            {key: 'default', label: 'Default'|t('search-manager')},
+        ],
+        items: paginatedBackends,
+        emptyMessage: 'No backends found.'|t('search-manager'),
+        hasConfigItems: true,
+    },
+    pagination: {
+        page: page,
+        limit: limit,
+        totalCount: totalCount,
+        itemLabel: {singular: 'backend'|t('search-manager'), plural: 'backends'|t('search-manager')},
+    },
+    checkboxes: canEdit or canDelete,
+    newButton: canCreate ? {
+        url: url('search-manager/backends/new'),
+        label: 'New Backend'|t('search-manager'),
+        permission: 'searchManager:createBackends',
+    } : null,
+} %}
+
+
+{# ============================================================================
+   BEFORE TABLE - Warning messages
+   ============================================================================ #}
+
+{% block beforeTable %}
+    {# Warning if default backend is missing or disabled #}
+    {% if defaultBackendHandle %}
+        {% set defaultBackend = backends|filter(b => b.handle == defaultBackendHandle)|first %}
+        {% if not defaultBackend %}
+            {# Default backend doesn't exist #}
+            {% set warningMessage %}
+            <strong>{{ 'Warning'|t('search-manager') }}:</strong>
+            {{ 'The default backend handle "{handle}" does not exist.'|t('search-manager', {handle: defaultBackendHandle}) }}
+            {% if isDefaultFromConfig %}
+                {{ 'Update your config/search-manager.php to point to a valid backend handle.'|t('search-manager') }}
+            {% else %}
+                {{ 'Please set a different backend as default.'|t('search-manager') }}
+            {% endif %}
+            {% endset %}
+            <div class="lr-info-box-table-wrapper">
+                {% include 'lindemannrock-base/_components/info-box' with {
+                    message: warningMessage,
+                    type: 'warning',
+                    margin: 'none',
+                    stretch: true,
+                } %}
+            </div>
+        {% elseif not defaultBackend.enabled %}
+            {# Default backend exists but is disabled #}
+            {% set warningMessage %}
+            <strong>{{ 'Warning'|t('search-manager') }}:</strong>
+            {{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: defaultBackend.name}) }}
+            {% if not isDefaultFromConfig %}
+                {{ 'Please enable it or set a different backend as default.'|t('search-manager') }}
+            {% else %}
+                {{ 'Update your config/search-manager.php to fix this.'|t('search-manager') }}
+            {% endif %}
+            {% endset %}
+            <div class="lr-info-box-table-wrapper">
+                {% include 'lindemannrock-base/_components/info-box' with {
+                    message: warningMessage,
+                    type: 'warning',
+                    margin: 'none',
+                    stretch: true,
+                } %}
+            </div>
+        {% endif %}
+    {% elseif backends|length > 0 %}
+        {# No default handle set but backends exist #}
+        {% set warningMessage %}
+        <strong>{{ 'Warning'|t('search-manager') }}:</strong>
+        {{ 'No default backend is configured. Please set one of the backends as default.'|t('search-manager') }}
+        {% endset %}
+        <div class="lr-info-box-table-wrapper">
+            {% include 'lindemannrock-base/_components/info-box' with {
+                message: warningMessage,
+                type: 'warning',
+                margin: 'none',
+                stretch: true,
+            } %}
+        </div>
+    {% endif %}
+
+    {# Warning for handle collisions between config and database #}
+    {% if collisionHandles is defined and collisionHandles|length %}
+        {% set boldHandles = [] %}
+        {% for handle in collisionHandles %}
+            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+        {% endfor %}
+        {% set warningMessage %}
+        <strong>{{ 'Warning'|t('search-manager') }}:</strong>
+        {{ 'These backend handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
+        {{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
+        {{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
+        {% endset %}
+        <div class="lr-info-box-table-wrapper">
+            {% include 'lindemannrock-base/_components/info-box' with {
+                message: warningMessage,
+                type: 'warning',
+                margin: 'none',
+                stretch: true,
+            } %}
+        </div>
+    {% endif %}
 {% endblock %}
 
-{% css %}
-@media (max-width: 768px) {
-	#new-backend-btn .label-full {
-		display: none;
-	}
-	#new-backend-btn .label-short {
-		display: inline;
-	}
-	#new-backend-btn:before {
-		margin-inline-end: 0 !important;
-	}
-}
-.info-box-table-wrapper {
-    padding-bottom: 14px;
-}
-@media (min-width: 769px) {
-	.info-box-table-wrapper {
-		padding-bottom: 46px;
-	}
-}
-{% endcss %}
 
-{% block content %}
-{% include 'search-manager/_partials/common/index-styles' %}
+{# ============================================================================
+   BULK ACTIONS (shown when items selected)
+   ============================================================================ #}
 
-{% if collisionHandles is defined and collisionHandles|length %}
-	{% set boldHandles = [] %}
-	{% for handle in collisionHandles %}
-		{% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
-	{% endfor %}
-	{% set warningMessage %}
-	<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-	{{ 'These backend handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
-	{{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
-	{{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
-	{% endset %}
-	<div class="info-box-table-wrapper">
-		{% include 'lindemannrock-base/_components/info-box' with {
-			message: warningMessage,
-			type: 'warning',
-			margin: 'none',
-			stretch: true,
-		} %}
-	</div>
-{% endif %}
+{% block bulkActions %}
+    {% if canEdit %}
+        <div class="btngroup">
+            <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
+                {{ 'Set status'|t('app') }}
+            </button>
+            <div class="menu">
+                <ul>
+                    <li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
+                    <li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+    {% if canDelete %}
+        <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
+            {{ 'Delete'|t('app') }} (<span id="lr-selected-count">0</span>)
+        </button>
+    {% endif %}
+{% endblock %}
 
-{# Warning if default backend is missing or disabled #}
-{% if defaultBackendHandle %}
-	{% set defaultBackend = backends|filter(b => b.handle == defaultBackendHandle)|first %}
-	{% if not defaultBackend %}
-		{# Default backend doesn't exist #}
-		{% set warningMessage %}
-		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-		{{ 'The default backend handle "{handle}" does not exist.'|t('search-manager', {handle: defaultBackendHandle}) }}
-		{% if isDefaultFromConfig %}
-			{{ 'Update your config/search-manager.php to point to a valid backend handle.'|t('search-manager') }}
-		{% else %}
-			{{ 'Please set a different backend as default.'|t('search-manager') }}
-		{% endif %}
-		{% endset %}
-		<div class="info-box-table-wrapper">
-			{% include 'lindemannrock-base/_components/info-box' with {
-				message: warningMessage,
-				type: 'warning',
-				margin: 'none',
-				stretch: true,
-			} %}
-		</div>
-	{% elseif not defaultBackend.enabled %}
-		{# Default backend exists but is disabled #}
-		{% set warningMessage %}
-		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-		{{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: defaultBackend.name}) }}
-		{% if not isDefaultFromConfig %}
-			{{ 'Please enable it or set a different backend as default.'|t('search-manager') }}
-		{% else %}
-			{{ 'Update your config/search-manager.php to fix this.'|t('search-manager') }}
-		{% endif %}
-		{% endset %}
-		<div class="info-box-table-wrapper">
-			{% include 'lindemannrock-base/_components/info-box' with {
-				message: warningMessage,
-				type: 'warning',
-				margin: 'none',
-				stretch: true,
-			} %}
-		</div>
-	{% endif %}
-{% elseif backends|length > 0 %}
-	{# No default handle set but backends exist #}
-	{% set warningMessage %}
-	<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-	{{ 'No default backend is configured. Please set one of the backends as default.'|t('search-manager') }}
-	{% endset %}
-	<div class="info-box-table-wrapper">
-		{% include 'lindemannrock-base/_components/info-box' with {
-			message: warningMessage,
-			type: 'warning',
-			margin: 'none',
-			stretch: true,
-		} %}
-	</div>
-{% endif %}
 
-<div id="elements" class="elements">
-	<div class="tableview tablepane">
-		<table class="data fullwidth">
-			<thead>
-				<tr>
-					<th class="checkbox-cell selectallcontainer">
-						<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
-					</th>
-					<th scope="col" data-attribute="name" class="orderable {{ sort == 'name' ? 'ordered ' ~ dir : '' }}">
-						<button type="button" data-sort="name">{{ "Name"|t('search-manager') }}</button>
-					</th>
-					<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
-						<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
-					</th>
-					<th scope="col" data-attribute="type" class="orderable {{ sort == 'type' ? 'ordered ' ~ dir : '' }}">
-						<button type="button" data-sort="type">{{ "Type"|t('search-manager') }}</button>
-					</th>
-					<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
-						<button type="button" data-sort="source">{{ "Source"|t('search-manager') }}</button>
-					</th>
-					<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
-						<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
-					</th>
-					<th scope="col">{{ "Default"|t('search-manager') }}</th>
-					{% if canEdit or canDelete %}
-						<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>
-					{% endif %}
-				</tr>
-			</thead>
-			<tbody>
-				{% if paginatedBackends|length %}
-					{% for backend in paginatedBackends %}
-						{% set isConfig = backend.isFromConfig() %}
-						{% set hasCollision = collisionHandles is defined and backend.handle in collisionHandles %}
-						<tr data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name|e('html_attr') }}" data-source="{{ backend.source }}"{% if hasCollision %} style="background-color: #fef3c7;"{% endif %}>
-							<td class="checkbox-cell">
-								{% if isConfig %}
-									<div class="checkbox disabled" title="{{ 'Config backends cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
-								{% else %}
-									<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
-								{% endif %}
-							</td>
-							<td>
-								{% if backend.canEdit() %}
-									<a class="label-link" href="{{ url('search-manager/backends/' ~ backend.id) }}">
-										<span>{{ backend.name }}</span>
-									</a>
-								{% else %}
-									<a class="label-link" href="{{ url('search-manager/backends/view/' ~ backend.handle) }}">
-										<span>{{ backend.name }}</span>
-									</a>
-									<span class="config-info-icon" data-config="{{ backend.rawConfigDisplay|e('html_attr') }}"></span>
-								{% endif %}
-							</td>
-							<td>
-								<code>{{ backend.handle }}</code>
-							</td>
-							<td>
-								{{ indexMacros.backendBadge(backend.backendType, backend.getTypeLabel()) }}
-							</td>
-							<td>
-								{{ indexMacros.sourceBadge(backend.source) }}
-							</td>
-							<td>
-								{{ indexMacros.statusBadge(backend.enabled) }}
-							</td>
-							<td>
-								{% if defaultBackendHandle == backend.handle %}
-									<span class="status-label green">
-										<span class="status green"></span>
-										<span class="status-label-text">{{ 'Yes'|t('search-manager') }}</span>
-									</span>
-								{% else %}
-									<span class="light">-</span>
-								{% endif %}
-							</td>
-							{% if canEdit or canDelete %}
-								<td class="thin" style="text-align: right;">
-									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
-									<div class="menu">
-										<ul>
-											{% if backend.canEdit() %}
-												{% if canEdit %}
-													<li>
-														<a href="{{ url('search-manager/backends/' ~ backend.id) }}">
-															{{ 'Edit'|t('search-manager') }}
-														</a>
-													</li>
-												{% endif %}
-											{% else %}
-												<li>
-													<a href="{{ url('search-manager/backends/view/' ~ backend.handle) }}">
-														{{ 'View'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-											<li>
-												<a class="backend-action" data-action="test" data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name }}">
-													{{ 'Test Connection'|t('search-manager') }}
-												</a>
-											</li>
-											{% set isDefault = defaultBackendHandle == backend.handle %}
-											{% if canEdit and not isDefaultFromConfig and not isDefault %}
-												<li><hr class="padded"></li>
-												<li>
-													<a class="backend-action" data-action="set-default" data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name }}">
-														{{ 'Set as Default'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-											{% if canDelete and backend.canEdit() and not isDefault %}
-												<li><hr class="padded"></li>
-												<li>
-													<a class="backend-action error" data-action="delete" data-id="{{ backend.id ?: backend.handle }}" data-name="{{ backend.name }}">
-														{{ 'Delete'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-										</ul>
-									</div>
-								</td>
-							{% endif %}
-						</tr>
-					{% endfor %}
-				{% else %}
-					<tr>
-						<td colspan="{{ (canEdit or canDelete) ? 8 : 7 }}" style="text-align: center; padding: 2em;">
-							{{ 'No backends found.'|t('search-manager') }}
-						</td>
-					</tr>
-				{% endif %}
-			</tbody>
-		</table>
-	</div>
-</div>
+{# ============================================================================
+   ROW ACTIONS (per-row menu)
+   ============================================================================ #}
 
-<div id="footer" class="flex flex-justify">
-	<div class="light">
-		<div class="flex pagination">
-			<nav class="flex" aria-label="backend pagination">
-				<button type="button" class="page-link prev-page {{ page <= 1 ? 'disabled' : '' }}" {{ page <= 1 ? 'disabled' : '' }} title="Previous Page"></button>
-				<button type="button" class="page-link next-page {{ page >= totalPages ? 'disabled' : '' }}" {{ page >= totalPages ? 'disabled' : '' }} title="Next Page"></button>
-			</nav>
-			<div class="page-info" style="margin: 0 12px; color: #596673;">
-				{% set endRange = min(offset + limit, totalCount) %}
-				{% if totalCount == 0 %}
-					{{ 'no backends'|t('search-manager') }}
-				{% else %}
-					{{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'backend' : 'backends' }}
-				{% endif %}
-			</div>
-		</div>
-	</div>
-	{% if canEdit or canDelete %}
-	<div id="actions-container" class="flex" style="display: none;">
-		{% if canEdit %}
-		<div>
-			<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
-				{{ 'Set status'|t('app') }}
-			</button>
-			<div class="menu">
-				<ul>
-					<li><a id="bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-					<li><a id="bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-				</ul>
-			</div>
-		</div>
-		{% endif %}
-		{% if canDelete %}
-		<button type="button" class="btn secondary" id="bulk-delete-btn">
-			<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
-		</button>
-		{% endif %}
-	</div>
-	{% endif %}
-</div>
+{% block rowActions %}
+    {% set isConfig = item.isFromConfig() %}
+    {% set isDefault = defaultBackendHandle == item.handle %}
 
-<script>
-// Initialize menu buttons
-document.querySelectorAll('.menubtn').forEach(btn => {
-	if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-		new Craft.MenuBtn(btn);
-	} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-		new Garnish.MenuBtn(btn);
-	}
-});
+    <td class="thin lr-text-end">
+        <button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('app') }}"></button>
+        <div class="menu">
+            <ul>
+                {% if item.canEdit() %}
+                    {% if canEdit %}
+                        <li>
+                            <a href="{{ url('search-manager/backends/' ~ item.id) }}">
+                                {{ 'Edit'|t('app') }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li>
+                        <a href="{{ url('search-manager/backends/view/' ~ item.handle) }}">
+                            {{ 'View'|t('app') }}
+                        </a>
+                    </li>
+                {% endif %}
+                <li><hr class="padded"></li>
+                <li>
+                    <a class="lr-backend-action" data-action="test" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                        {{ 'Test Connection'|t('search-manager') }}
+                    </a>
+                </li>
+                {% if canEdit and not isDefaultFromConfig and not isDefault %}
+                    <li>
+                        <a class="lr-backend-action" data-action="set-default" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                            {{ 'Set as Default'|t('search-manager') }}
+                        </a>
+                    </li>
+                {% endif %}
+                {% if canDelete and item.canEdit() and not isDefault %}
+                    <li><hr class="padded"></li>
+                    <li>
+                        <a class="lr-backend-action error" data-action="delete" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                            {{ 'Delete'|t('app') }}
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </td>
+{% endblock %}
 
-// Clear search
-const clearBtn = document.querySelector('.clear-btn');
-if (clearBtn) {
-	clearBtn.addEventListener('click', function() {
-		const searchInput = document.querySelector('input[name="search"]');
-		if (searchInput) {
-			searchInput.value = '';
-			searchInput.form.submit();
-		}
-	});
-}
 
-// Search on Enter
-const searchInput = document.querySelector('input[name="search"]');
-if (searchInput) {
-	searchInput.addEventListener('keyup', function(e) {
-		if (e.key === 'Enter') {
-			this.form.submit();
-		}
-	});
-}
+{# ============================================================================
+   CUSTOM TABLE ROW RENDERING
+   ============================================================================ #}
 
-// Pagination
-document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-	window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
-});
+{% block tableRow %}
+    {% set isConfig = item.isFromConfig() %}
 
-document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-	window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
-});
+    {# Name #}
+    <td>
+        {% if item.canEdit() %}
+            <a class="label-link" href="{{ url('search-manager/backends/' ~ item.id) }}">
+                <span>{{ item.name }}</span>
+            </a>
+        {% else %}
+            <a class="label-link" href="{{ url('search-manager/backends/view/' ~ item.handle) }}">
+                <span>{{ item.name }}</span>
+            </a>
+            <span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
+        {% endif %}
+    </td>
 
-// Sort buttons
-document.querySelectorAll('th.orderable button').forEach(button => {
-	button.addEventListener('click', function() {
-		const sortField = this.dataset.sort;
-		const currentSort = '{{ sort }}';
-		const currentDir = '{{ dir }}';
-		let newDir = 'asc';
-		if (sortField === currentSort) {
-			newDir = currentDir === 'asc' ? 'desc' : 'asc';
-		}
-		window.location.href = '?status={{ statusFilter }}&type={{ typeFilter }}&source={{ sourceFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
-	});
-});
+    {# Handle #}
+    <td><code>{{ item.handle }}</code></td>
 
-// Checkbox functionality
-const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
-const checkboxes = document.querySelectorAll('tbody .checkbox:not(.disabled)');
-let selectedIds = new Set();
+    {# Type badge #}
+    <td>
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.getTypeLabel(),
+            value: item.backendType,
+            colorSet: 'backendType',
+        } only %}
+    </td>
 
-function toggleCheckbox(checkbox, checked) {
-	if (checked) {
-		checkbox.classList.add('checked');
-		checkbox.setAttribute('aria-checked', 'true');
-	} else {
-		checkbox.classList.remove('checked');
-		checkbox.setAttribute('aria-checked', 'false');
-	}
-}
+    {# Source badge #}
+    <td>
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.source|capitalize,
+            value: item.source,
+            colorSet: 'configSource',
+        } only %}
+    </td>
 
-function updateBulkButtons() {
-	const hasSelection = selectedIds.size > 0;
-	const actionsContainer = document.getElementById('actions-container');
-	const deleteLabel = document.getElementById('delete-label');
+    {# Status badge #}
+    <td>
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),
+            value: item.enabled ? 'enabled' : 'disabled',
+            colorSet: 'status',
+        } only %}
+    </td>
 
-	if (hasSelection) {
-		actionsContainer.style.display = '';
-		const count = selectedIds.size;
-		deleteLabel.textContent = `{{ 'Delete'|t('search-manager') }} (${count})`;
-	} else {
-		actionsContainer.style.display = 'none';
-	}
-}
+    {# Default indicator #}
+    <td>
+        {% if defaultBackendHandle == item.handle %}
+            {% include 'lindemannrock-base/_components/badge' with {
+                label: 'Yes'|t('search-manager'),
+                value: 'yes',
+                colorSet: 'yesNo',
+            } only %}
+        {% else %}
+            <span class="light">-</span>
+        {% endif %}
+    </td>
+{% endblock %}
 
-// Select all
-if (selectAllCheckbox) {
-	selectAllCheckbox.addEventListener('click', function() {
-		const isChecked = !this.classList.contains('checked');
-		toggleCheckbox(this, isChecked);
 
-		checkboxes.forEach(checkbox => {
-			toggleCheckbox(checkbox, isChecked);
-			const id = checkbox.closest('tr').dataset.id;
-			if (isChecked) {
-				selectedIds.add(id);
-			} else {
-				selectedIds.delete(id);
-			}
-		});
+{# ============================================================================
+   CUSTOM SCRIPTS
+   ============================================================================ #}
 
-		updateBulkButtons();
-	});
-}
+{% block scripts %}
+    <script>
+    (function() {
+        // Highlight rows with handle collisions
+        const collisionHandles = {{ collisionHandles|default([])|json_encode|raw }};
+        if (collisionHandles.length > 0) {
+            document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
+                const handleCell = row.querySelector('td:nth-child(3) code');
+                if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
+                    row.style.backgroundColor = '#fef3c7';
+                }
+            });
+        }
 
-// Individual checkboxes
-checkboxes.forEach(checkbox => {
-	checkbox.addEventListener('click', function() {
-		const isChecked = !this.classList.contains('checked');
-		toggleCheckbox(this, isChecked);
+        // Update selected count when selection changes
+        document.addEventListener('lr:selectionChanged', function(e) {
+            const countSpan = document.getElementById('lr-selected-count');
+            if (countSpan) {
+                countSpan.textContent = e.detail.count;
+            }
+        });
 
-		const id = this.closest('tr').dataset.id;
-		if (isChecked) {
-			selectedIds.add(id);
-		} else {
-			selectedIds.delete(id);
-		}
+        // Bulk enable
+        document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!window.lrTableSelection) return;
 
-		updateBulkButtons();
-	});
-});
+            const ids = window.lrTableSelection.getSelectedIds();
+            if (ids.length === 0) return;
 
-// Initialize bulk actions menu button
-const bulkActionsBtn = document.getElementById('bulk-actions-btn');
-if (bulkActionsBtn) {
-	if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-		new Craft.MenuBtn(bulkActionsBtn);
-	} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-		new Garnish.MenuBtn(bulkActionsBtn);
-	}
-}
+            Craft.sendActionRequest('POST', 'search-manager/backends/bulk-enable', {
+                data: { backendIds: ids }
+            }).then(function(response) {
+                if (response.data.count > 0) {
+                    Craft.cp.displayNotice('{{ "Enabled {count} backends"|t("search-manager")|e("js") }}'.replace('{count}', response.data.count));
+                }
+                if (response.data.errors && response.data.errors.length > 0) {
+                    response.data.errors.forEach(err => Craft.cp.displayError(err));
+                }
+                if (response.data.count > 0) {
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            }).catch(function(error) {
+                Craft.cp.displayError('{{ "Failed to enable backends"|t("search-manager")|e("js") }}');
+            });
+        });
 
-// Bulk enable
-document.getElementById('bulk-enable-action')?.addEventListener('click', function(e) {
-	e.preventDefault();
-	const ids = Array.from(selectedIds);
+        // Bulk disable
+        document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!window.lrTableSelection) return;
 
-	Craft.sendActionRequest('POST', 'search-manager/backends/bulk-enable', {
-		data: { backendIds: ids }
-	}).then(function(response) {
-		if (response.data.success) {
-			Craft.cp.displayNotice(`{{ 'Enabled'|t('search-manager') }} ${response.data.count} {{ 'backends'|t('search-manager') }}`);
-			setTimeout(() => window.location.reload(), 1000);
-		}
-	}).catch(function(error) {
-		Craft.cp.displayError('{{ 'Failed to enable backends'|t('search-manager') }}');
-	});
-});
+            const ids = window.lrTableSelection.getSelectedIds();
+            if (ids.length === 0) return;
 
-// Bulk disable
-document.getElementById('bulk-disable-action')?.addEventListener('click', function(e) {
-	e.preventDefault();
-	const ids = Array.from(selectedIds);
+            Craft.sendActionRequest('POST', 'search-manager/backends/bulk-disable', {
+                data: { backendIds: ids }
+            }).then(function(response) {
+                if (response.data.count > 0) {
+                    Craft.cp.displayNotice('{{ "Disabled {count} backends"|t("search-manager")|e("js") }}'.replace('{count}', response.data.count));
+                }
+                if (response.data.errors && response.data.errors.length > 0) {
+                    response.data.errors.forEach(err => Craft.cp.displayError(err));
+                } else if (response.data.error) {
+                    Craft.cp.displayError(response.data.error);
+                }
+                if (response.data.count > 0) {
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            }).catch(function(error) {
+                Craft.cp.displayError('{{ "Failed to disable backends"|t("search-manager")|e("js") }}');
+            });
+        });
 
-	Craft.sendActionRequest('POST', 'search-manager/backends/bulk-disable', {
-		data: { backendIds: ids }
-	}).then(function(response) {
-		if (response.data.count > 0) {
-			Craft.cp.displayNotice(`{{ 'Disabled'|t('search-manager') }} ${response.data.count} {{ 'backend(s)'|t('search-manager') }}`);
-		}
-		if (response.data.errors && response.data.errors.length > 0) {
-			response.data.errors.forEach(err => Craft.cp.displayError(err));
-		} else if (response.data.error) {
-			Craft.cp.displayError(response.data.error);
-		}
-		// Only auto-reload if count > 0 and no errors
-		if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
-			setTimeout(() => window.location.reload(), 1000);
-		}
-	}).catch(function(error) {
-		Craft.cp.displayError('{{ 'Failed to disable backends'|t('search-manager') }}');
-	});
-});
+        // Bulk delete
+        document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!window.lrTableSelection) return;
 
-// Bulk delete
-document.getElementById('bulk-delete-btn')?.addEventListener('click', function() {
-	const ids = Array.from(selectedIds);
-	if (!confirm(`{{ 'Delete'|t('search-manager') }} ${ids.length} {{ 'backend(s)? This cannot be undone.'|t('search-manager') }}`)) return;
+            const ids = window.lrTableSelection.getSelectedIds();
+            const count = window.lrTableSelection.getCount();
 
-	Craft.sendActionRequest('POST', 'search-manager/backends/bulk-delete', {
-		data: { backendIds: ids }
-	}).then(function(response) {
-		if (response.data.count > 0) {
-			Craft.cp.displayNotice(`{{ 'Deleted'|t('search-manager') }} ${response.data.count} {{ 'backend(s)'|t('search-manager') }}`);
-		}
-		if (response.data.errors && response.data.errors.length > 0) {
-			response.data.errors.forEach(err => Craft.cp.displayError(err));
-		} else if (response.data.error) {
-			Craft.cp.displayError(response.data.error);
-		}
-		// Only auto-reload if count > 0 and no errors
-		if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
-			setTimeout(() => window.location.reload(), 1000);
-		}
-	}).catch(function(error) {
-		Craft.cp.displayError('{{ 'Failed to delete backends'|t('search-manager') }}');
-	});
-});
+            if (count === 0) return;
 
-// Individual backend action menu clicks
-document.querySelectorAll('.backend-action').forEach(link => {
-	link.addEventListener('click', function(e) {
-		e.preventDefault();
+            if (!confirm('{{ "Delete {count} backend(s)? This cannot be undone."|t("search-manager")|e("js") }}'.replace('{count}', count))) {
+                return;
+            }
 
-		const action = this.dataset.action;
-		const backendId = this.dataset.id;
-		const backendName = this.dataset.name;
+            Craft.sendActionRequest('POST', 'search-manager/backends/bulk-delete', {
+                data: { backendIds: ids }
+            }).then(function(response) {
+                if (response.data.count > 0) {
+                    Craft.cp.displayNotice('{{ "Deleted {count} backends"|t("search-manager")|e("js") }}'.replace('{count}', response.data.count));
+                }
+                if (response.data.errors && response.data.errors.length > 0) {
+                    response.data.errors.forEach(err => Craft.cp.displayError(err));
+                } else if (response.data.error) {
+                    Craft.cp.displayError(response.data.error);
+                }
+                if (response.data.count > 0) {
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            }).catch(function(error) {
+                Craft.cp.displayError('{{ "Failed to delete backends"|t("search-manager")|e("js") }}');
+            });
+        });
 
-		if (action === 'test') {
-			Craft.sendActionRequest('POST', 'search-manager/backends/test', {
-				data: { backendId: backendId }
-			}).then(function(response) {
-				if (response.data.success) {
-					Craft.cp.displayNotice('{{ "Connection successful"|t('search-manager') }}: ' + backendName);
-				} else {
-					Craft.cp.displayError('{{ "Connection failed"|t('search-manager') }}: ' + (response.data.error || '{{ "Unknown error"|t('search-manager') }}'));
-				}
-			}).catch(function(error) {
-				Craft.cp.displayError('{{ "Connection test failed"|t('search-manager') }}');
-			});
-		} else if (action === 'set-default') {
-			Craft.sendActionRequest('POST', 'search-manager/backends/set-default', {
-				data: { backendId: backendId }
-			}).then(function(response) {
-				if (response.data.success) {
-					Craft.cp.displayNotice('{{ "Default backend updated"|t('search-manager') }}');
-					setTimeout(() => window.location.reload(), 500);
-				} else {
-					Craft.cp.displayError(response.data.error || '{{ "Failed to update default backend"|t('search-manager') }}');
-				}
-			}).catch(function(error) {
-				Craft.cp.displayError('{{ "Failed to update default backend"|t('search-manager') }}');
-			});
-		} else if (action === 'delete') {
-			if (confirm('{{ "Delete backend"|t('search-manager') }} "' + backendName + '"? {{ "Indices using this backend will fall back to the default."|t('search-manager') }}')) {
-				Craft.sendActionRequest('POST', 'search-manager/backends/delete', {
-					data: { backendId: backendId }
-				}).then(function(response) {
-					if (response.data.success) {
-						Craft.cp.displayNotice('{{ "Backend deleted"|t('search-manager') }}');
-						setTimeout(() => window.location.reload(), 1000);
-					} else if (response.data.error) {
-						Craft.cp.displayError(response.data.error);
-					}
-				}).catch(function(error) {
-					Craft.cp.displayError('{{ "Failed to delete backend"|t('search-manager') }}');
-				});
-			}
-		}
-	});
-});
+        // Individual backend action menu clicks
+        document.querySelectorAll('.lr-backend-action').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
 
-// Config tooltip for config-based backends
-let activeTooltip = null;
+                const action = this.dataset.action;
+                const backendId = this.dataset.id;
+                const backendName = this.dataset.name;
 
-document.querySelectorAll('.config-info-icon').forEach(info => {
-	info.addEventListener('mouseenter', function(e) {
-		const config = this.dataset.config;
-		if (!config) return;
-
-		// Remove any existing tooltip
-		if (activeTooltip) {
-			activeTooltip.remove();
-		}
-
-		// Create tooltip
-		const tooltip = document.createElement('div');
-		tooltip.className = 'config-tooltip';
-		tooltip.textContent = config;
-		document.body.appendChild(tooltip);
-		activeTooltip = tooltip;
-
-		// Position tooltip
-		const rect = this.getBoundingClientRect();
-		const tooltipRect = tooltip.getBoundingClientRect();
-
-		let left = rect.left + window.scrollX;
-		let top = rect.bottom + window.scrollY + 8;
-
-		// Keep within viewport
-		if (left + tooltipRect.width > window.innerWidth - 20) {
-			left = window.innerWidth - tooltipRect.width - 20;
-		}
-
-		tooltip.style.left = left + 'px';
-		tooltip.style.top = top + 'px';
-	});
-
-	info.addEventListener('mouseleave', function() {
-		if (activeTooltip) {
-			activeTooltip.remove();
-			activeTooltip = null;
-		}
-	});
-});
-</script>
+                if (action === 'test') {
+                    Craft.sendActionRequest('POST', 'search-manager/backends/test', {
+                        data: { backendId: backendId }
+                    }).then(function(response) {
+                        if (response.data.success) {
+                            Craft.cp.displayNotice('{{ "Connection successful"|t("search-manager")|e("js") }}: ' + backendName);
+                        } else {
+                            Craft.cp.displayError('{{ "Connection failed"|t("search-manager")|e("js") }}: ' + (response.data.error || '{{ "Unknown error"|t("search-manager")|e("js") }}'));
+                        }
+                    }).catch(function(error) {
+                        Craft.cp.displayError('{{ "Connection test failed"|t("search-manager")|e("js") }}');
+                    });
+                } else if (action === 'set-default') {
+                    Craft.sendActionRequest('POST', 'search-manager/backends/set-default', {
+                        data: { backendId: backendId }
+                    }).then(function(response) {
+                        if (response.data.success) {
+                            Craft.cp.displayNotice('{{ "Default backend updated"|t("search-manager")|e("js") }}');
+                            setTimeout(() => window.location.reload(), 500);
+                        } else {
+                            Craft.cp.displayError(response.data.error || '{{ "Failed to update default backend"|t("search-manager")|e("js") }}');
+                        }
+                    }).catch(function(error) {
+                        Craft.cp.displayError('{{ "Failed to update default backend"|t("search-manager")|e("js") }}');
+                    });
+                } else if (action === 'delete') {
+                    if (confirm('{{ "Delete backend \"{name}\"? This cannot be undone."|t("search-manager")|e("js") }}'.replace('{name}', backendName))) {
+                        Craft.sendActionRequest('POST', 'search-manager/backends/delete', {
+                            data: { backendId: backendId }
+                        }).then(function(response) {
+                            if (response.data.success) {
+                                Craft.cp.displayNotice('{{ "Backend deleted"|t("search-manager")|e("js") }}');
+                                setTimeout(() => window.location.reload(), 1000);
+                            } else if (response.data.error) {
+                                Craft.cp.displayError(response.data.error);
+                            }
+                        }).catch(function(error) {
+                            Craft.cp.displayError('{{ "Failed to delete backend"|t("search-manager")|e("js") }}');
+                        });
+                    }
+                }
+            });
+        });
+    })();
+    </script>
 {% endblock %}

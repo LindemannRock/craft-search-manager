@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\web\Controller;
 use lindemannrock\base\helpers\DateRangeHelper;
+use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
@@ -46,7 +47,7 @@ class AnalyticsController extends Controller
 
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
         // Get chart data
         $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
@@ -160,45 +161,313 @@ class AnalyticsController extends Controller
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getQueryParam('dateRange')
+            ?? $request->getQueryParam('range')
+            ?? DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id);
         $format = $request->getQueryParam('format', 'csv');
+
+        if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
+            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+        }
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
 
         try {
-            $csvData = SearchManager::$plugin->analytics->exportAnalytics(
-                $siteId,
-                $dateRange,
-                $format
-            );
-
-            // Generate filename
             $settings = SearchManager::$plugin->getSettings();
-            $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
-
-            // Get site name for filename
+            $siteName = null;
             $sitePart = 'all';
             if ($siteId) {
                 $site = Craft::$app->getSites()->getSiteById($siteId);
                 if ($site) {
+                    $siteName = $site->name;
                     $sitePart = strtolower(preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $site->name)));
                 }
             }
-
-            // Use "alltime" instead of "all" for clearer filename
             $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
-            $filename = $filenamePart . '-analytics-' . $sitePart . '-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
 
-            return Craft::$app->getResponse()->sendContentAsFile(
-                $csvData,
-                $filename,
-                [
-                    'mimeType' => $format === 'csv' ? 'text/csv' : 'application/json',
-                ]
-            );
+            $exportData = SearchManager::$plugin->analytics->exportAnalytics($siteId, $dateRange);
+            $recentRows = $exportData['rows'] ?? [];
+            $recentHeaders = $exportData['headers'] ?? [];
+            $recentJson = $exportData['jsonData']['data'] ?? [];
+
+            $trendingRows = [];
+            $trendingHeaders = [
+                Craft::t('search-manager', 'Query'),
+                Craft::t('search-manager', 'Searches'),
+                Craft::t('search-manager', 'Previous Period'),
+                Craft::t('search-manager', 'Trend'),
+                Craft::t('search-manager', 'Change %'),
+            ];
+            $trending = SearchManager::$plugin->analytics->getTrendingQueries($siteId, $dateRange, 50);
+            foreach ($trending as $item) {
+                $trendingRows[] = [
+                    'query' => $item['query'],
+                    'searches' => $item['count'],
+                    'previous_period' => $item['previousCount'],
+                    'trend' => $item['trend'],
+                    'change_percent' => $item['changePercent'],
+                ];
+            }
+
+            $ruleRows = [];
+            $ruleHeaders = [
+                Craft::t('search-manager', 'Rule Name'),
+                Craft::t('search-manager', 'Action Type'),
+                Craft::t('search-manager', 'Hits'),
+                Craft::t('search-manager', 'Avg Results'),
+            ];
+            $rulesData = SearchManager::$plugin->analytics->getTopTriggeredRules($siteId, $dateRange);
+            foreach ($rulesData as $item) {
+                $ruleRows[] = [
+                    'rule_name' => $item['ruleName'],
+                    'action_type' => $item['actionType'],
+                    'hits' => $item['hits'],
+                    'avg_results' => $item['avgResults'],
+                ];
+            }
+
+            $promoRows = [];
+            $promoHeaders = [
+                Craft::t('search-manager', 'Element Title'),
+                Craft::t('search-manager', 'Position'),
+                Craft::t('search-manager', 'Impressions'),
+                Craft::t('search-manager', 'Unique Queries'),
+            ];
+            $promosData = SearchManager::$plugin->analytics->getTopPromotions($siteId, $dateRange);
+            foreach ($promosData as $item) {
+                $promoRows[] = [
+                    'element_title' => $item['elementTitle'] ?? 'Element #' . $item['elementId'],
+                    'position' => $item['position'],
+                    'impressions' => $item['impressions'],
+                    'unique_queries' => $item['uniqueQueries'],
+                ];
+            }
+
+            $performanceRows = [];
+            $performanceHeaders = [
+                Craft::t('search-manager', 'Query'),
+                Craft::t('search-manager', 'Type'),
+                Craft::t('search-manager', 'Avg Time (ms)'),
+                Craft::t('search-manager', 'Searches'),
+            ];
+            $fastQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($siteId, $dateRange);
+            $slowQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($siteId, $dateRange);
+            foreach ($fastQueries as $item) {
+                $performanceRows[] = [
+                    'query' => $item['query'],
+                    'type' => 'fast',
+                    'avg_time_ms' => $item['avgTime'],
+                    'searches' => $item['searches'],
+                ];
+            }
+            foreach ($slowQueries as $item) {
+                $performanceRows[] = [
+                    'query' => $item['query'],
+                    'type' => 'slow',
+                    'avg_time_ms' => $item['avgTime'],
+                    'searches' => $item['searches'],
+                ];
+            }
+
+            $trafficRows = [];
+            $trafficHeaders = [
+                Craft::t('search-manager', 'Category'),
+                Craft::t('search-manager', 'Name'),
+                Craft::t('search-manager', 'Count'),
+            ];
+            $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
+            $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
+            $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
+            foreach ($deviceData as $item) {
+                $trafficRows[] = ['category' => 'device', 'name' => $item['deviceType'] ?? '', 'count' => $item['count']];
+            }
+            foreach ($browserData as $item) {
+                $trafficRows[] = ['category' => 'browser', 'name' => $item['browser'] ?? '', 'count' => $item['count']];
+            }
+            foreach ($osData as $item) {
+                $trafficRows[] = ['category' => 'os', 'name' => $item['osName'] ?? '', 'count' => $item['count']];
+            }
+
+            $geoRows = [];
+            $geoHeaders = [
+                Craft::t('search-manager', 'Type'),
+                Craft::t('search-manager', 'Name'),
+                Craft::t('search-manager', 'Count'),
+            ];
+            $countries = SearchManager::$plugin->analytics->getCountryBreakdown($siteId, $dateRange);
+            $cities = SearchManager::$plugin->analytics->getCityBreakdown($siteId, $dateRange);
+            foreach ($countries as $item) {
+                $geoRows[] = ['type' => 'country', 'name' => $item['name'] ?? '', 'count' => $item['count']];
+            }
+            foreach ($cities as $item) {
+                $countryName = $item['country'] ?? '';
+                $geoRows[] = ['type' => 'city', 'name' => ($item['city'] ?? '') . ', ' . $countryName, 'count' => $item['count']];
+            }
+
+            $clusterRows = [];
+            $clusterHeaders = [
+                Craft::t('search-manager', 'Main Term'),
+                Craft::t('search-manager', 'Total Searches'),
+                Craft::t('search-manager', 'Related Queries'),
+                Craft::t('search-manager', 'Last Searched'),
+            ];
+            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $dateRange);
+            foreach ($clusters as $cluster) {
+                $clusterRows[] = [
+                    'main_term' => $cluster['representative'],
+                    'total_searches' => $cluster['count'],
+                    'related_queries' => implode('; ', $cluster['queries']),
+                    'last_searched' => $cluster['lastSearched'],
+                ];
+            }
+
+            $recentGapsRows = [];
+            $recentGapsHeaders = [
+                Craft::t('search-manager', 'Query'),
+                Craft::t('search-manager', 'Site'),
+                Craft::t('search-manager', 'Index'),
+                Craft::t('search-manager', 'Backend'),
+                Craft::t('search-manager', 'Date'),
+            ];
+            $query = (new \craft\db\Query())
+                ->select(['query', 'siteId', 'indexHandle', 'backend', 'dateCreated'])
+                ->from('{{%searchmanager_analytics}}')
+                ->where(['isHit' => 0])
+                ->andWhere(['wasRedirected' => 0])
+                ->andWhere(['or', ['promotionsShown' => null], ['promotionsShown' => 0]])
+                ->orderBy(['dateCreated' => SORT_DESC])
+                ->limit(1000);
+            SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
+            if ($siteId) {
+                $query->andWhere(['siteId' => $siteId]);
+            }
+            $results = $query->all();
+            foreach ($results as $row) {
+                $rowSiteName = '—';
+                if ($row['siteId']) {
+                    $rowSite = Craft::$app->getSites()->getSiteById($row['siteId']);
+                    $rowSiteName = $rowSite ? $rowSite->name : '—';
+                }
+                $recentGapsRows[] = [
+                    'query' => $row['query'],
+                    'site' => $rowSiteName,
+                    'index' => $row['indexHandle'],
+                    'backend' => $row['backend'],
+                    'date' => $row['dateCreated'],
+                ];
+            }
+
+            $totalRows = count($recentRows) + count($trendingRows) + count($ruleRows) + count($promoRows)
+                + count($performanceRows) + count($trafficRows) + count($geoRows) + count($clusterRows) + count($recentGapsRows);
+            if ($totalRows === 0) {
+                Craft::$app->getSession()->setError(
+                    Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+                );
+                return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
+            }
+
+            $extension = match ($format) {
+                'excel' => 'xlsx',
+                'csv' => 'zip',
+                default => $format,
+            };
+            $parts = [$sitePart, $dateRangeLabel];
+            if ($format === 'csv') {
+                $parts[] = 'csv';
+            }
+            $filename = ExportHelper::filename($settings, $parts, $extension);
+
+            if ($format === 'excel') {
+                $sheets = [
+                    [
+                        'title' => Craft::t('search-manager', 'Recent Searches'),
+                        'headers' => $recentHeaders,
+                        'rows' => $recentRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Trending'),
+                        'headers' => $trendingHeaders,
+                        'rows' => $trendingRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Query Rules'),
+                        'headers' => $ruleHeaders,
+                        'rows' => $ruleRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Promotions'),
+                        'headers' => $promoHeaders,
+                        'rows' => $promoRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Performance'),
+                        'headers' => $performanceHeaders,
+                        'rows' => $performanceRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Traffic & Devices'),
+                        'headers' => $trafficHeaders,
+                        'rows' => $trafficRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Geographic'),
+                        'headers' => $geoHeaders,
+                        'rows' => $geoRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Content Gaps: Clusters'),
+                        'headers' => $clusterHeaders,
+                        'rows' => $clusterRows,
+                    ],
+                    [
+                        'title' => Craft::t('search-manager', 'Content Gaps: Recent'),
+                        'headers' => $recentGapsHeaders,
+                        'rows' => $recentGapsRows,
+                    ],
+                ];
+
+                return ExportHelper::toExcelMulti($sheets, $filename);
+            }
+
+            if ($format === 'json') {
+                $payload = [
+                    'exported' => date('c'),
+                    'dateRange' => $dateRange,
+                    'siteId' => $siteId,
+                    'siteName' => $siteName,
+                    'data' => [
+                        'recentSearches' => $recentJson,
+                        'trending' => $trendingRows,
+                        'queryRules' => $ruleRows,
+                        'promotions' => $promoRows,
+                        'performance' => $performanceRows,
+                        'trafficDevices' => $trafficRows,
+                        'geographic' => $geoRows,
+                        'contentGapsClusters' => $clusterRows,
+                        'contentGapsRecent' => $recentGapsRows,
+                    ],
+                ];
+
+                return ExportHelper::toJson($payload, $filename);
+            }
+
+            $suffix = $sitePart . '-' . $dateRangeLabel;
+            $files = [
+                "recent-searches-{$suffix}.csv" => ExportHelper::csvContent($recentRows, $recentHeaders),
+                "trending-{$suffix}.csv" => ExportHelper::csvContent($trendingRows, $trendingHeaders),
+                "query-rules-{$suffix}.csv" => ExportHelper::csvContent($ruleRows, $ruleHeaders),
+                "promotions-{$suffix}.csv" => ExportHelper::csvContent($promoRows, $promoHeaders),
+                "performance-{$suffix}.csv" => ExportHelper::csvContent($performanceRows, $performanceHeaders),
+                "traffic-devices-{$suffix}.csv" => ExportHelper::csvContent($trafficRows, $trafficHeaders),
+                "geographic-{$suffix}.csv" => ExportHelper::csvContent($geoRows, $geoHeaders),
+                "content-gaps-clusters-{$suffix}.csv" => ExportHelper::csvContent($clusterRows, $clusterHeaders),
+                "content-gaps-recent-{$suffix}.csv" => ExportHelper::csvContent($recentGapsRows, $recentGapsHeaders),
+            ];
+
+            return ExportHelper::toZip($files, $filename);
         } catch (\Exception $e) {
             Craft::$app->getSession()->setError($e->getMessage());
-            return $this->redirect('search-manager/analytics?dateRange=' . $dateRange);
+            return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
     }
 
@@ -214,7 +483,7 @@ class AnalyticsController extends Controller
         $request = Craft::$app->getRequest();
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-        $dateRange = $request->getParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
         $type = $request->getParam('type', 'all'); // 'all', 'summary', 'chart', 'query-analysis', 'content-gaps', 'device-stats'
 
         try {
@@ -512,7 +781,7 @@ class AnalyticsController extends Controller
 
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
         $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
 
@@ -533,7 +802,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $ruleId = (int)$request->getParam('ruleId');
-        $dateRange = $request->getParam('range', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getParam('range', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
         if (!$ruleId) {
             return $this->asJson([
@@ -588,7 +857,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $promotionId = (int)$request->getParam('promotionId');
-        $dateRange = $request->getParam('range', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getParam('range', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
         if (!$promotionId) {
             return $this->asJson([
@@ -643,8 +912,14 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $ruleId = (int)$request->getQueryParam('ruleId');
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getQueryParam('dateRange')
+            ?? $request->getQueryParam('range')
+            ?? DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id);
         $format = $request->getQueryParam('format', 'csv');
+
+        if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
+            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+        }
 
         if (!$ruleId) {
             throw new \yii\web\BadRequestHttpException('Rule ID is required');
@@ -665,36 +940,27 @@ class AnalyticsController extends Controller
 
         $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
 
-        // Generate filename
-        $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
-        $ruleName = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $rule->name));
-        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
-        $filename = $filenamePart . '-query-rule-' . $ruleName . '-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
-
-        if ($format === 'json') {
-            $content = json_encode($data, JSON_PRETTY_PRINT);
-            $mimeType = 'application/json';
-        } else {
-            // CSV format
-            $lines = [];
-            if (!empty($data)) {
-                $lines[] = implode(',', array_keys($data[0]));
-                foreach ($data as $row) {
-                    $lines[] = implode(',', array_map(function($val) {
-                        return '"' . str_replace('"', '""', $val ?? '') . '"';
-                    }, $row));
-                }
-            }
-            $content = implode("\n", $lines);
-            $mimeType = 'text/csv';
+        if (empty($data)) {
+            Craft::$app->getSession()->setError(
+                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+            );
+            return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
 
-        return Craft::$app->getResponse()->sendContentAsFile(
-            $content,
-            $filename,
-            ['mimeType' => $mimeType]
-        );
+        // Generate filename
+        $settings = SearchManager::$plugin->getSettings();
+        $ruleName = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $rule->name));
+        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
+
+        $headers = array_keys($data[0]);
+        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $filename = ExportHelper::filename($settings, ['query-rule', $ruleName, $dateRangeLabel], $extension);
+
+        return match ($format) {
+            'json' => ExportHelper::toJson($data, $filename),
+            'excel' => ExportHelper::toExcel($data, $headers, $filename),
+            default => ExportHelper::toCsv($data, $headers, $filename),
+        };
     }
 
     /**
@@ -708,7 +974,7 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $promotionId = (int)$request->getQueryParam('promotionId');
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
         $format = $request->getQueryParam('format', 'csv');
 
         if (!$promotionId) {
@@ -730,36 +996,27 @@ class AnalyticsController extends Controller
 
         $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
 
-        // Generate filename
-        $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
-        $promotionTitle = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $promotion->title));
-        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
-        $filename = $filenamePart . '-promotion-' . $promotionTitle . '-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
-
-        if ($format === 'json') {
-            $content = json_encode($data, JSON_PRETTY_PRINT);
-            $mimeType = 'application/json';
-        } else {
-            // CSV format
-            $lines = [];
-            if (!empty($data)) {
-                $lines[] = implode(',', array_keys($data[0]));
-                foreach ($data as $row) {
-                    $lines[] = implode(',', array_map(function($val) {
-                        return '"' . str_replace('"', '""', $val ?? '') . '"';
-                    }, $row));
-                }
-            }
-            $content = implode("\n", $lines);
-            $mimeType = 'text/csv';
+        if (empty($data)) {
+            Craft::$app->getSession()->setError(
+                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+            );
+            return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
 
-        return Craft::$app->getResponse()->sendContentAsFile(
-            $content,
-            $filename,
-            ['mimeType' => $mimeType]
-        );
+        // Generate filename
+        $settings = SearchManager::$plugin->getSettings();
+        $promotionTitle = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $promotion->title));
+        $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
+
+        $headers = array_keys($data[0]);
+        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $filename = ExportHelper::filename($settings, ['promotion', $promotionTitle, $dateRangeLabel], $extension);
+
+        return match ($format) {
+            'json' => ExportHelper::toJson($data, $filename),
+            'excel' => ExportHelper::toExcel($data, $headers, $filename),
+            default => ExportHelper::toCsv($data, $headers, $filename),
+        };
     }
 
     /**
@@ -773,16 +1030,22 @@ class AnalyticsController extends Controller
 
         $request = Craft::$app->getRequest();
         $tab = $request->getQueryParam('tab', 'trending');
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
         $format = $request->getQueryParam('format', 'csv');
 
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
+        $sitePart = 'all';
+        if ($siteId) {
+            $site = Craft::$app->getSites()->getSiteById($siteId);
+            if ($site) {
+                $sitePart = strtolower(preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $site->name)));
+            }
+        }
         $data = [];
-        $filename = '';
+        $filenameParts = [];
 
         switch ($tab) {
             case 'trending':
@@ -796,7 +1059,7 @@ class AnalyticsController extends Controller
                         'change_percent' => $item['changePercent'],
                     ];
                 }
-                $filename = $filenamePart . '-trending-' . $dateRangeLabel . '-' . date('Y-m-d');
+                $filenameParts = ['trending', $sitePart, $dateRangeLabel];
                 break;
 
             case 'query-rules':
@@ -809,7 +1072,7 @@ class AnalyticsController extends Controller
                         'avg_results' => $item['avgResults'],
                     ];
                 }
-                $filename = $filenamePart . '-query-rules-' . $dateRangeLabel . '-' . date('Y-m-d');
+                $filenameParts = ['query-rules', $sitePart, $dateRangeLabel];
                 break;
 
             case 'promotions':
@@ -822,7 +1085,7 @@ class AnalyticsController extends Controller
                         'unique_queries' => $item['uniqueQueries'],
                     ];
                 }
-                $filename = $filenamePart . '-promotions-' . $dateRangeLabel . '-' . date('Y-m-d');
+                $filenameParts = ['promotions', $sitePart, $dateRangeLabel];
                 break;
 
             case 'performance':
@@ -844,7 +1107,7 @@ class AnalyticsController extends Controller
                         'searches' => $item['searches'],
                     ];
                 }
-                $filename = $filenamePart . '-performance-' . $dateRangeLabel . '-' . date('Y-m-d');
+                $filenameParts = ['performance', $sitePart, $dateRangeLabel];
                 break;
 
             case 'traffic-devices':
@@ -861,7 +1124,7 @@ class AnalyticsController extends Controller
                 foreach ($osData as $item) {
                     $data[] = ['category' => 'os', 'name' => $item['osName'] ?? '', 'count' => $item['count']];
                 }
-                $filename = $filenamePart . '-traffic-devices-' . $dateRangeLabel . '-' . date('Y-m-d');
+                $filenameParts = ['traffic-devices', $sitePart, $dateRangeLabel];
                 break;
 
             case 'geographic':
@@ -875,39 +1138,30 @@ class AnalyticsController extends Controller
                     $countryName = $item['country'] ?? '';
                     $data[] = ['type' => 'city', 'name' => ($item['city'] ?? '') . ', ' . $countryName, 'count' => $item['count']];
                 }
-                $filename = $filenamePart . '-geographic-' . $dateRangeLabel . '-' . date('Y-m-d');
+                $filenameParts = ['geographic', $sitePart, $dateRangeLabel];
                 break;
 
             default:
                 throw new \yii\web\BadRequestHttpException('Invalid tab specified');
         }
 
-        $filename .= '.' . $format;
-
-        if ($format === 'json') {
-            $content = json_encode($data, JSON_PRETTY_PRINT);
-            $mimeType = 'application/json';
-        } else {
-            $lines = [];
-            if (!empty($data)) {
-                $lines[] = implode(',', array_keys($data[0]));
-                foreach ($data as $row) {
-                    $lines[] = implode(',', array_map(function($val) {
-                        return '"' . str_replace('"', '""', $val ?? '') . '"';
-                    }, $row));
-                }
-            } else {
-                $lines[] = 'No data available';
-            }
-            $content = implode("\n", $lines);
-            $mimeType = 'text/csv';
+        if (empty($data)) {
+            Craft::$app->getSession()->setError(
+                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+            );
+            return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
 
-        return Craft::$app->getResponse()->sendContentAsFile(
-            $content,
-            $filename,
-            ['mimeType' => $mimeType]
-        );
+        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $filename = ExportHelper::filename($settings, $filenameParts, $extension);
+
+        $headers = array_keys($data[0]);
+
+        return match ($format) {
+            'json' => ExportHelper::toJson($data, $filename),
+            'excel' => ExportHelper::toExcel($data, $headers, $filename),
+            default => ExportHelper::toCsv($data, $headers, $filename),
+        };
     }
 
     /**
@@ -920,7 +1174,7 @@ class AnalyticsController extends Controller
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange());
+        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
         $format = $request->getQueryParam('format', 'csv');
@@ -928,7 +1182,13 @@ class AnalyticsController extends Controller
 
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();
-        $filenamePart = strtolower(str_replace(' ', '-', $settings->getLowerDisplayName()));
+        $sitePart = 'all';
+        if ($siteId) {
+            $site = Craft::$app->getSites()->getSiteById($siteId);
+            if ($site) {
+                $sitePart = strtolower(preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $site->name)));
+            }
+        }
 
         if ($type === 'clusters') {
             // Get content gaps clusters
@@ -943,8 +1203,6 @@ class AnalyticsController extends Controller
                     'last_searched' => $cluster['lastSearched'],
                 ];
             }
-
-            $filename = $filenamePart . '-content-gaps-clusters-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
         } else {
             // Get recent zero-hit queries
             $query = (new \craft\db\Query())
@@ -980,34 +1238,25 @@ class AnalyticsController extends Controller
                     'date' => $row['dateCreated'],
                 ];
             }
-
-            $filename = $filenamePart . '-content-gaps-recent-' . $dateRangeLabel . '-' . date('Y-m-d') . '.' . $format;
         }
 
-        if ($format === 'json') {
-            $content = json_encode($data, JSON_PRETTY_PRINT);
-            $mimeType = 'application/json';
-        } else {
-            // CSV format
-            $lines = [];
-            if (!empty($data)) {
-                $lines[] = implode(',', array_keys($data[0]));
-                foreach ($data as $row) {
-                    $lines[] = implode(',', array_map(function($val) {
-                        return '"' . str_replace('"', '""', $val ?? '') . '"';
-                    }, $row));
-                }
-            } else {
-                $lines[] = 'No content gaps found';
-            }
-            $content = implode("\n", $lines);
-            $mimeType = 'text/csv';
+        if (empty($data)) {
+            Craft::$app->getSession()->setError(
+                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+            );
+            return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
 
-        return Craft::$app->getResponse()->sendContentAsFile(
-            $content,
-            $filename,
-            ['mimeType' => $mimeType]
-        );
+        $headers = array_keys($data[0]);
+        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $filename = $type === 'clusters'
+            ? ExportHelper::filename($settings, ['content-gaps-clusters', $sitePart, $dateRangeLabel], $extension)
+            : ExportHelper::filename($settings, ['content-gaps-recent', $sitePart, $dateRangeLabel], $extension);
+
+        return match ($format) {
+            'json' => ExportHelper::toJson($data, $filename),
+            'excel' => ExportHelper::toExcel($data, $headers, $filename),
+            default => ExportHelper::toCsv($data, $headers, $filename),
+        };
     }
 }

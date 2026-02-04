@@ -2,30 +2,19 @@
 {% set promotionsExist = craft.app.db.createCommand("SELECT COUNT(*) FROM {{%searchmanager_promotions}}").queryScalar() > 0 %}
 
 {% if not promotionsExist %}
-    <div style="text-align: center; padding: 60px 20px;">
-        <div style="font-size: 48px; margin-bottom: 20px; opacity: 0.3;">
+    <div class="lr-analytics-empty">
+        <div class="lr-empty-icon">
             <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
         </div>
-        <h2 style="margin-bottom: 10px; color: #596673;">{{ "No Promotions Created"|t('search-manager') }}</h2>
-        <p class="light" style="margin-bottom: 20px;">{{ "Create promotions to pin specific results to the top of search results for certain queries."|t('search-manager') }}</p>
+        <h2 class="lr-section-heading lr-heading-tight">{{ "No Promotions Created"|t('search-manager') }}</h2>
+        <p class="light lr-paragraph">{{ "Create promotions to pin specific results to the top of search results for certain queries."|t('search-manager') }}</p>
         <a href="{{ url('search-manager/promotions/new') }}" class="btn submit">{{ "Create Promotion"|t('search-manager') }}</a>
     </div>
 {% else %}
-    <div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
-        <div class="btngroup">
-            <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-            <div class="menu" data-align="right">
-                <ul>
-                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"promotions"}'>{{ "Export CSV"|t('search-manager') }}</a></li>
-                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"promotions"}'>{{ "Export JSON"|t('search-manager') }}</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-    <div class="analytics-charts two-columns">
-        <div class="chart-container">
+    <div class="lr-analytics-charts two-columns">
+        <div class="lr-chart-container">
             <h3>{{ "Top Promoted Elements"|t('search-manager') }}</h3>
-            <div class="table-scroll-container">
+            <div class="lr-table-scroll">
                 <table class="data fullwidth">
                     <thead>
                         <tr>
@@ -42,17 +31,19 @@
             </div>
         </div>
 
-        <div class="chart-container">
+        <div class="lr-chart-container">
             <h3>{{ "Impressions by Position"|t('search-manager') }}</h3>
-            <canvas id="promotions-by-position-chart" style="max-height: 250px;"></canvas>
+            <div class="lr-chart-height-250">
+                <canvas id="promotions-by-position-chart" class="lr-chart-canvas"></canvas>
+            </div>
         </div>
     </div>
 
-    <h2 style="margin: 30px 0 20px;">{{ "Top Queries Triggering Promotions"|t('search-manager') }}</h2>
+    <h2 class="lr-section-heading">{{ "Top Queries Triggering Promotions"|t('search-manager') }}</h2>
 
-    <div class="analytics-charts">
-        <div class="chart-container full-width">
-            <div class="table-scroll-container">
+    <div class="lr-analytics-charts">
+        <div class="lr-chart-container full-width">
+            <div class="lr-table-scroll">
                 <table class="data fullwidth">
                     <thead>
                         <tr>
@@ -69,7 +60,7 @@
         </div>
     </div>
 
-    <p class="light" style="margin-top: 20px; font-size: 12px;">
+    <p class="light lr-footnote">
         {{ "Tip: Promotions in position #1 get the most visibility. Consider which products or content deserve top placement."|t('search-manager') }}
     </p>
 {% endif %}

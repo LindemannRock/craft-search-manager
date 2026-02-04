@@ -1,6 +1,5 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
-{% import "search-manager/_macros/index" as indexMacros %}
 
 {% set title = index.name %}
 {% set fullPageForm = false %}
@@ -138,7 +137,11 @@
 					{% endif %}
 					{% set backendType = index.effectiveBackendType %}
 					{% if backendType %}
-						&nbsp;{{ indexMacros.backendBadge(backendType, configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize)) }}
+						&nbsp;{% include 'lindemannrock-base/_components/badge' with {
+							label: configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize),
+							value: backendType,
+							colorSet: 'backendType',
+						} only %}
 					{% endif %}
 				</dd>
 			</div>
@@ -160,7 +163,7 @@
 				<dt class="heading">{{ 'Last Indexed'|t('search-manager') }}</dt>
 				<dd class="value">
 					{% if index.lastIndexed %}
-						{{ index.lastIndexed|datetime('short') }}
+						{{ index.lastIndexed|lrDatetime('short') }}
 					{% else %}
 						<span class="light">{{ 'Never'|t('search-manager') }}</span>
 					{% endif %}

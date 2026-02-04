@@ -1,13 +1,7 @@
-{% extends "_layouts/cp" %}
-{% import "_includes/forms" as forms %}
+{% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-
-{% set title = "Promotions"|t('search-manager') %}
-{% set fullPageForm = false %}
-{% set selectedSubnavItem = 'promotions' %}
-
-{# Get plugin settings #}
-{% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set settings = plugin.getSettings() %}
 
 {# Get query parameters #}
 {% set search = craft.app.request.getParam('search', '') %}
@@ -19,551 +13,343 @@
 {% set limit = settings.itemsPerPage %}
 {% set offset = (page - 1) * limit %}
 
-{# Permission checks #}
-{% set showActionsColumn = currentUser.can('searchManager:editPromotions') or currentUser.can('searchManager:deletePromotions') %}
-
-{# Match type colors #}
-{% set matchTypeColors = {
-	'exact': '#6366f1',
-	'contains': '#a855f7',
-	'prefix': '#f59e0b',
-} %}
-
-{# Match type RGB for backgrounds #}
-{% set matchTypeRgb = {
-	'exact': '99, 102, 241',
-	'contains': '168, 85, 247',
-	'prefix': '245, 158, 11',
-} %}
-
-{# Match type dark colors for text #}
-{% set matchTypeTextColors = {
-	'exact': '#312e81',
-	'contains': '#581c87',
-	'prefix': '#78350f',
-} %}
-
 {# Filter promotions based on filters #}
 {% set filteredPromotions = promotions %}
 
 {# Status filter #}
 {% if statusFilter == 'enabled' %}
-	{% set filteredPromotions = filteredPromotions|filter(p => p.enabled) %}
+    {% set filteredPromotions = filteredPromotions|filter(p => p.enabled) %}
 {% elseif statusFilter == 'disabled' %}
-	{% set filteredPromotions = filteredPromotions|filter(p => not p.enabled) %}
+    {% set filteredPromotions = filteredPromotions|filter(p => not p.enabled) %}
 {% endif %}
 
 {# Match type filter #}
 {% if matchTypeFilter != 'all' %}
-	{% set filteredPromotions = filteredPromotions|filter(p => p.matchType == matchTypeFilter) %}
+    {% set filteredPromotions = filteredPromotions|filter(p => p.matchType == matchTypeFilter) %}
 {% endif %}
 
 {# Search filter #}
 {% if search %}
-	{% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or (p.indexHandle and search|lower in p.indexHandle|lower) or (p.title and search|lower in p.title|lower)) %}
+    {% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or (p.indexHandle and search|lower in p.indexHandle|lower) or (p.title and search|lower in p.title|lower)) %}
 {% endif %}
 
 {# Sort #}
 {% if sort == 'query' %}
-	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.query|lower <=> b.query|lower) : filteredPromotions|sort((a, b) => b.query|lower <=> a.query|lower) %}
+    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.query|lower <=> b.query|lower) : filteredPromotions|sort((a, b) => b.query|lower <=> a.query|lower) %}
 {% elseif sort == 'matchType' %}
-	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.matchType <=> b.matchType) : filteredPromotions|sort((a, b) => b.matchType <=> a.matchType) %}
+    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.matchType <=> b.matchType) : filteredPromotions|sort((a, b) => b.matchType <=> a.matchType) %}
 {% elseif sort == 'title' %}
-	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.title ?? '')|lower <=> (b.title ?? '')|lower) : filteredPromotions|sort((a, b) => (b.title ?? '')|lower <=> (a.title ?? '')|lower) %}
+    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.title ?? '')|lower <=> (b.title ?? '')|lower) : filteredPromotions|sort((a, b) => (b.title ?? '')|lower <=> (a.title ?? '')|lower) %}
 {% elseif sort == 'position' %}
-	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.position <=> b.position) : filteredPromotions|sort((a, b) => b.position <=> a.position) %}
+    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.position <=> b.position) : filteredPromotions|sort((a, b) => b.position <=> a.position) %}
 {% elseif sort == 'enabled' %}
-	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.enabled <=> b.enabled) : filteredPromotions|sort((a, b) => b.enabled <=> a.enabled) %}
+    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.enabled <=> b.enabled) : filteredPromotions|sort((a, b) => b.enabled <=> a.enabled) %}
 {% elseif sort == 'siteId' %}
-	{% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.siteId ?? 0) <=> (b.siteId ?? 0)) : filteredPromotions|sort((a, b) => (b.siteId ?? 0) <=> (a.siteId ?? 0)) %}
+    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.siteId ?? 0) <=> (b.siteId ?? 0)) : filteredPromotions|sort((a, b) => (b.siteId ?? 0) <=> (a.siteId ?? 0)) %}
 {% endif %}
 
 {# Pagination #}
 {% set totalCount = filteredPromotions|length %}
-{% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
-{% set paginatedPromotions = filteredPromotions|slice(offset, limit) %}
+{% set paginatedItems = filteredPromotions|slice(offset, limit) %}
 
-{% set crumbs = [
-    { label: searchHelper.fullName, url: url('search-manager') },
-    { label: 'Promotions'|t('search-manager'), url: url('search-manager/promotions') }
-] %}
+{# Match type labels #}
+{% set matchTypeLabels = {
+    'exact': 'Exact'|t('search-manager'),
+    'contains': 'Contains'|t('search-manager'),
+    'prefix': 'Starts With'|t('search-manager'),
+} %}
 
-{% block toolbar %}
-	<div id="toolbar" class="flex" style="align-items: flex-end;">
-		<div class="flex-grow">
-			<form method="get" action="{{ url('search-manager/promotions') }}">
-				<div class="flex">
-					<div class="btngroup">
-						<button type="button" class="btn menubtn statusmenubtn">
-							<span class="status {{ statusFilter == 'all' ? 'all' : (statusFilter == 'enabled' ? 'green' : 'disabled') }}"></span>
-							{{ statusFilter == 'all' ? 'All'|t('search-manager') : statusFilter|capitalize }}
-						</button>
-						<div class="menu">
-							<ul>
-								<li>
-									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&matchType={{ matchTypeFilter }}&search={{ search }}">
-										<span class="status all"></span>{{ 'All'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&matchType={{ matchTypeFilter }}&search={{ search }}">
-										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&matchType={{ matchTypeFilter }}&search={{ search }}">
-										<span class="status disabled"></span>{{ 'Disabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Match Type'|t('search-manager') }}</li>
-								<li>
-									<a class="{{ matchTypeFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&matchType=all&search={{ search }}">
-										<span class="status all"></span>{{ 'All Types'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ matchTypeFilter == 'exact' ? 'sel' : '' }}" href="?status={{ statusFilter }}&matchType=exact&search={{ search }}">
-										<span class="status" style="background: {{ matchTypeFilter == 'exact' ? matchTypeColors.exact : '#aab6c1' }};"></span>{{ 'Exact Match'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ matchTypeFilter == 'contains' ? 'sel' : '' }}" href="?status={{ statusFilter }}&matchType=contains&search={{ search }}">
-										<span class="status" style="background: {{ matchTypeFilter == 'contains' ? matchTypeColors.contains : '#aab6c1' }};"></span>{{ 'Contains'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ matchTypeFilter == 'prefix' ? 'sel' : '' }}" href="?status={{ statusFilter }}&matchType=prefix&search={{ search }}">
-										<span class="status" style="background: {{ matchTypeFilter == 'prefix' ? matchTypeColors.prefix : '#aab6c1' }};"></span>{{ 'Starts With'|t('search-manager') }}
-									</a>
-								</li>
-							</ul>
-						</div>
-					</div>
-					<div class="search-container texticon flex-grow">
-						<span class="texticon-icon search icon" aria-hidden="true"></span>
-						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search promotions...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
-						<button type="button" class="clear-btn {{ search ? '' : 'hidden' }}" title="Clear search" role="button" aria-label="Clear search"></button>
-						<input type="hidden" name="status" value="{{ statusFilter }}">
-						<input type="hidden" name="matchType" value="{{ matchTypeFilter }}">
-					</div>
-				</div>
-			</form>
-		</div>
-		{% if currentUser.can('searchManager:createPromotions') %}
-			<a href="{{ url('search-manager/promotions/create') }}" class="btn submit add icon" id="new-promotion-btn">
-				<span class="label-full">{{ 'New Promotion'|t('search-manager') }}</span>
-				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
-			</a>
-		{% endif %}
-	</div>
+{% set tableConfig = {
+    plugin: {
+        handle: 'search-manager',
+        name: searchHelper.fullName,
+    },
+    page: {
+        title: 'Promotions'|t('search-manager'),
+        subnav: 'promotions',
+        crumbs: [
+            { label: searchHelper.fullName, url: url('search-manager') },
+            { label: 'Promotions'|t('search-manager'), url: url('search-manager/promotions') }
+        ],
+    },
+    filters: [
+        {
+            type: 'status',
+            param: 'status',
+            current: statusFilter,
+            label: 'All'|t('search-manager'),
+            groups: [
+                {
+                    param: 'status',
+                    current: statusFilter,
+                    options: [
+                        {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'enabled', label: 'Enabled'|t('search-manager'), status: 'green'},
+                        {value: 'disabled', label: 'Disabled'|t('search-manager'), status: 'disabled'},
+                    ],
+                },
+                {
+                    header: 'Match Type'|t('search-manager'),
+                    param: 'matchType',
+                    current: matchTypeFilter,
+                    colorSet: 'matchType',
+                    options: [
+                        {value: 'all', label: 'All Types'|t('search-manager'), status: 'all'},
+                        {value: 'exact', label: 'Exact Match'|t('search-manager'), colorKey: 'exact'},
+                        {value: 'contains', label: 'Contains'|t('search-manager'), colorKey: 'contains'},
+                        {value: 'prefix', label: 'Starts With'|t('search-manager'), colorKey: 'prefix'},
+                    ],
+                },
+            ],
+        },
+    ],
+    search: {
+        placeholder: 'Search promotions...'|t('search-manager'),
+        value: search,
+    },
+    sort: {
+        field: sort,
+        direction: dir,
+    },
+    table: {
+        columns: [
+            {key: 'title', label: 'Title'|t('search-manager'), sortable: true},
+            {key: 'query', label: 'Query Pattern'|t('search-manager'), sortable: true},
+            {key: 'matchType', label: 'Match'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'element', label: 'Promoted Element'|t('search-manager'), hideable: true},
+            {key: 'position', label: 'Position'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'siteId', label: 'Site'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
+        ],
+        items: paginatedItems,
+        emptyMessage: 'No promotions found.'|t('search-manager'),
+    },
+    pagination: {
+        page: page,
+        limit: limit,
+        totalCount: totalCount,
+        itemLabel: {singular: 'promotion'|t('search-manager'), plural: 'promotions'|t('search-manager')},
+    },
+    checkboxes: currentUser.can('searchManager:editPromotions') or currentUser.can('searchManager:deletePromotions'),
+    newButton: {
+        url: url('search-manager/promotions/create'),
+        label: 'New Promotion'|t('search-manager'),
+        permission: 'searchManager:createPromotions',
+    },
+} %}
+
+{% block tableRow %}
+    {# Title #}
+    <td data-column="title">
+        <a class="label-link" href="{{ url('search-manager/promotions/edit/' ~ item.id) }}">
+            {% if item.title %}
+                {{ item.title }}
+            {% else %}
+                <span class="light">{{ 'Untitled'|t('search-manager') }}</span>
+            {% endif %}
+        </a>
+    </td>
+
+    {# Query Pattern #}
+    <td data-column="query">
+        <code>{{ item.query }}</code>
+    </td>
+
+    {# Match Type #}
+    <td data-column="matchType">
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: matchTypeLabels[item.matchType] ?? item.matchType|capitalize,
+            value: item.matchType,
+            colorSet: 'matchType',
+        } only %}
+    </td>
+
+    {# Promoted Element #}
+    <td data-column="element">
+        {% set element = craft.entries.id(item.elementId).status(null).one() %}
+        {% if element and element.id %}
+            <a href="{{ element.cpEditUrl }}" target="_blank">
+                {{ element.title ?? element.id }}
+            </a>
+            <span class="light">(#{{ element.id }})</span>
+        {% else %}
+            <span class="light">{{ 'ID'|t('search-manager') }}: {{ item.elementId }}</span>
+        {% endif %}
+    </td>
+
+    {# Position #}
+    <td data-column="position">
+        <strong>{{ item.position }}</strong>
+    </td>
+
+    {# Site #}
+    <td data-column="siteId">
+        {% if item.siteId %}
+            {% set site = craft.app.sites.getSiteById(item.siteId) %}
+            {{ site ? site.name : 'Unknown' }}
+        {% else %}
+            <span class="light">{{ 'All Sites'|t('search-manager') }}</span>
+        {% endif %}
+    </td>
+
+    {# Status #}
+    <td data-column="enabled">
+        {% if item.enabled %}
+            {% include 'lindemannrock-base/_components/badge' with {
+                label: 'Enabled'|t('search-manager'),
+                value: 'enabled',
+                colorSet: 'status',
+            } only %}
+        {% else %}
+            {% include 'lindemannrock-base/_components/badge' with {
+                label: 'Disabled'|t('search-manager'),
+                value: 'disabled',
+                colorSet: 'status',
+            } only %}
+        {% endif %}
+    </td>
 {% endblock %}
 
-{% css %}
-@media (max-width: 768px) {
-	#new-promotion-btn .label-full {
-		display: none;
-	}
-	#new-promotion-btn .label-short {
-		display: inline;
-	}
-	#new-promotion-btn:before {
-		margin-inline-end: 0 !important;
-	}
-}
-{% endcss %}
+{% block rowActions %}
+    {% include 'lindemannrock-base/_components/row-actions' with {
+        item: item,
+        actions: {
+            type: 'menu',
+            icon: 'settings',
+            title: 'Actions'|t('app'),
+            items: [
+                {
+                    label: 'Edit'|t('app'),
+                    url: url('search-manager/promotions/edit/' ~ item.id),
+                    permission: 'searchManager:editPromotions',
+                },
+                {
+                    label: 'Delete'|t('app'),
+                    class: 'error',
+                    permission: 'searchManager:deletePromotions',
+                    jsAction: 'delete',
+                },
+            ],
+        },
+    } only %}
+{% endblock %}
 
-{% block content %}
-	<style>
-		.checkbox-cell {
-			width: 40px !important;
-			text-align: center;
-		}
-		/* Keep toolbar on one row even on smaller screens */
-		#toolbar.flex {
-			flex-wrap: nowrap;
-			gap: 8px;
-		}
-		#toolbar .flex-grow {
-			min-width: 0;
-			flex-shrink: 1;
-		}
-		.menu-header {
-			font-size: 11px;
-			text-transform: uppercase;
-			color: #7c97b2;
-			padding: 8px 14px 4px;
-			font-weight: 600;
-			letter-spacing: 0.5px;
-		}
-	</style>
+{% block bulkActions %}
+    {% if currentUser.can('searchManager:editPromotions') %}
+        <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
+            {{ 'Set status'|t('app') }}
+        </button>
+        <div class="menu">
+            <ul>
+                <li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
+                <li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
+            </ul>
+        </div>
+    {% endif %}
 
-	<div id="elements" class="elements">
-		<div class="tableview tablepane">
-			<table class="data fullwidth">
-				<thead>
-					<tr>
-						<th class="checkbox-cell selectallcontainer">
-							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
-						</th>
-						<th scope="col" data-attribute="title" class="orderable {{ sort == 'title' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="title">{{ "Title"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="query" class="orderable {{ sort == 'query' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="query">{{ "Query Pattern"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="matchType" class="orderable {{ sort == 'matchType' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="matchType">{{ "Match"|t('search-manager') }}</button>
-						</th>
-						<th scope="col">{{ "Promoted Element"|t('search-manager') }}</th>
-						<th scope="col" data-attribute="position" class="orderable {{ sort == 'position' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="position">{{ "Position"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="siteId" class="orderable {{ sort == 'siteId' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="siteId">{{ "Site"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
-						</th>
-						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
-					</tr>
-				</thead>
-				<tbody>
-					{% if paginatedPromotions|length %}
-						{% for promotion in paginatedPromotions %}
-							{% set element = craft.entries.id(promotion.elementId).status(null).one() %}
-							<tr data-id="{{ promotion.id }}" data-name="{{ promotion.query }}">
-								<td class="checkbox-cell">
-									<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
-								</td>
-								<td>
-									<a class="label-link" href="{{ url('search-manager/promotions/edit/' ~ promotion.id) }}">
-										{% if promotion.title %}
-											{{ promotion.title }}
-										{% else %}
-											<span class="light">{{ 'Untitled'|t('search-manager') }}</span>
-										{% endif %}
-									</a>
-								</td>
-								<td>
-									<code>{{ promotion.query }}</code>
-								</td>
-								<td>
-									{% if promotion.matchType == 'exact' %}
-										<span class="status-label" style="background: rgba({{ matchTypeRgb.exact }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.exact }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.exact }};">{{ 'Exact'|t('search-manager') }}</span></span>
-									{% elseif promotion.matchType == 'contains' %}
-										<span class="status-label" style="background: rgba({{ matchTypeRgb.contains }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.contains }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.contains }};">{{ 'Contains'|t('search-manager') }}</span></span>
-									{% elseif promotion.matchType == 'prefix' %}
-										<span class="status-label" style="background: rgba({{ matchTypeRgb.prefix }}, 0.12);"><span class="status" style="background: {{ matchTypeColors.prefix }};"></span><span class="status-label-text" style="color: {{ matchTypeTextColors.prefix }};">{{ 'Starts With'|t('search-manager') }}</span></span>
-									{% endif %}
-								</td>
-								<td>
-									{% if element and element.id %}
-										<a href="{{ element.cpEditUrl }}" target="_blank">
-											{{ element.title ?? element.id }}
-										</a>
-										<span class="light">(#{{ element.id }})</span>
-									{% else %}
-										<span class="light">{{ 'ID'|t('search-manager') }}: {{ promotion.elementId }}</span>
-									{% endif %}
-								</td>
-								<td>
-									<strong>{{ promotion.position }}</strong>
-								</td>
-								<td>
-									{% if promotion.siteId %}
-										{% set site = craft.app.sites.getSiteById(promotion.siteId) %}
-										{{ site ? site.name : 'Unknown' }}
-									{% else %}
-										<span class="light">{{ 'All Sites'|t('search-manager') }}</span>
-									{% endif %}
-								</td>
-								<td>
-									{% if promotion.enabled %}
-										<span class="status-label teal"><span class="status teal"></span><span class="status-label-text">{{ 'Enabled'|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="status-label gray"><span class="status disabled"></span><span class="status-label-text">{{ 'Disabled'|t('search-manager') }}</span></span>
-									{% endif %}
-								</td>
-								{% if showActionsColumn %}
-								<td class="thin" style="text-align: right;">
-									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
-									<div class="menu">
-										<ul>
-											{% if currentUser.can('searchManager:editPromotions') %}
-												<li>
-													<a href="{{ url('search-manager/promotions/edit/' ~ promotion.id) }}">
-														{{ 'Edit'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-											{% if currentUser.can('searchManager:deletePromotions') %}
-												<li><hr class="padded"></li>
-												<li>
-													<a class="promotion-action error" data-action="delete" data-id="{{ promotion.id }}" data-name="{{ promotion.query }}">
-														{{ 'Delete'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-										</ul>
-									</div>
-								</td>
-								{% endif %}
-							</tr>
-						{% endfor %}
-					{% else %}
-						<tr>
-							<td colspan="9" style="text-align: center; padding: 2em;">
-								{{ 'No promotions found.'|t('search-manager') }}
-							</td>
-						</tr>
-					{% endif %}
-				</tbody>
-			</table>
-		</div>
-	</div>
+    {% if currentUser.can('searchManager:deletePromotions') %}
+        <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
+            {{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+        </button>
+    {% endif %}
+{% endblock %}
 
-	<div id="footer" class="flex flex-justify">
-		<div class="light">
-			<div class="flex pagination">
-				<nav class="flex" aria-label="promotion pagination">
-					<button type="button" class="page-link prev-page {{ page <= 1 ? 'disabled' : '' }}" {{ page <= 1 ? 'disabled' : '' }} title="Previous Page"></button>
-					<button type="button" class="page-link next-page {{ page >= totalPages ? 'disabled' : '' }}" {{ page >= totalPages ? 'disabled' : '' }} title="Next Page"></button>
-				</nav>
-				<div class="page-info" style="margin: 0 12px; color: #596673;">
-					{% set endRange = min(offset + limit, totalCount) %}
-					{% if totalCount == 0 %}
-						{{ 'no promotions'|t('search-manager') }}
-					{% else %}
-						{{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'promotion' : 'promotions' }}
-					{% endif %}
-				</div>
-			</div>
-		</div>
-		<div id="actions-container" class="flex" style="display: none;">
-			<div>
-				<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
-					{{ 'Set status'|t('app') }}
-				</button>
-				<div class="menu">
-					<ul>
-						<li><a id="bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-						<li><a id="bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-					</ul>
-				</div>
-			</div>
-			<button type="button" class="btn secondary" id="bulk-delete-btn">
-				<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
-			</button>
-		</div>
-	</div>
+{% block scripts %}
+<script>
+(function() {
+    // Initialize bulk status menu
+    const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
+    if (bulkStatusBtn && typeof Craft !== 'undefined' && Craft.MenuBtn) {
+        new Craft.MenuBtn(bulkStatusBtn);
+    }
 
-	<script>
-	// Initialize menu buttons
-	document.querySelectorAll('.menubtn').forEach(btn => {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(btn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(btn);
-		}
-	});
+    // Bulk enable
+    document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        const ids = window.lrTableSelection.getSelectedIds();
+        if (ids.length === 0) return;
 
-	// Clear search
-	const clearBtn = document.querySelector('.clear-btn');
-	if (clearBtn) {
-		clearBtn.addEventListener('click', function() {
-			const searchInput = document.querySelector('input[name="search"]');
-			if (searchInput) {
-				searchInput.value = '';
-				searchInput.form.submit();
-			}
-		});
-	}
+        Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-enable', {
+            data: { promotionIds: ids }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(Craft.t('search-manager', 'Enabled {count} promotions', {count: response.data.count}));
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to enable promotions'));
+        });
+    });
 
-	// Search on Enter
-	const searchInput = document.querySelector('input[name="search"]');
-	if (searchInput) {
-		searchInput.addEventListener('keyup', function(e) {
-			if (e.key === 'Enter') {
-				this.form.submit();
-			}
-		});
-	}
+    // Bulk disable
+    document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        const ids = window.lrTableSelection.getSelectedIds();
+        if (ids.length === 0) return;
 
-	// Pagination
-	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
-	});
+        Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-disable', {
+            data: { promotionIds: ids }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(Craft.t('search-manager', 'Disabled {count} promotions', {count: response.data.count}));
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to disable promotions'));
+        });
+    });
 
-	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
-	});
+    // Bulk delete
+    document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
+        const ids = window.lrTableSelection.getSelectedIds();
+        if (ids.length === 0) return;
 
-	// Sort buttons
-	document.querySelectorAll('th.orderable button').forEach(button => {
-		button.addEventListener('click', function() {
-			const sortField = this.dataset.sort;
-			const currentSort = '{{ sort }}';
-			const currentDir = '{{ dir }}';
-			let newDir = 'asc';
-			if (sortField === currentSort) {
-				newDir = currentDir === 'asc' ? 'desc' : 'asc';
-			}
-			window.location.href = '?status={{ statusFilter }}&matchType={{ matchTypeFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
-		});
-	});
+        if (!confirm(Craft.t('search-manager', 'Delete {count} promotion(s)? This cannot be undone.', {count: ids.length}))) return;
 
-	// Checkbox functionality
-	const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
-	const checkboxes = document.querySelectorAll('tbody .checkbox');
-	let selectedIds = new Set();
+        Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-delete', {
+            data: { promotionIds: ids }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} promotions', {count: response.data.count}));
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete promotions'));
+        });
+    });
 
-	function toggleCheckbox(checkbox, checked) {
-		if (checked) {
-			checkbox.classList.add('checked');
-			checkbox.setAttribute('aria-checked', 'true');
-		} else {
-			checkbox.classList.remove('checked');
-			checkbox.setAttribute('aria-checked', 'false');
-		}
-	}
+    // Individual delete action
+    document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            const row = this.closest('tr');
+            const id = row?.dataset.id;
+            const name = row?.dataset.name || '';
 
-	function updateBulkButtons() {
-		const hasSelection = selectedIds.size > 0;
-		const actionsContainer = document.getElementById('actions-container');
-		const deleteLabel = document.getElementById('delete-label');
+            if (!id) return;
 
-		if (hasSelection) {
-			actionsContainer.style.display = '';
-			const count = selectedIds.size;
-			deleteLabel.textContent = `{{ 'Delete'|t('search-manager') }} (${count})`;
-		} else {
-			actionsContainer.style.display = 'none';
-		}
-	}
+            if (!confirm(Craft.t('search-manager', 'Delete promotion for "{name}"? This cannot be undone.', {name: name}))) return;
 
-	// Select all
-	if (selectAllCheckbox) {
-		selectAllCheckbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
+            Craft.sendActionRequest('POST', 'search-manager/promotions/delete', {
+                data: { promotionId: id }
+            }).then(function(response) {
+                if (response.data.success) {
+                    Craft.cp.displayNotice(Craft.t('search-manager', 'Promotion deleted'));
+                    setTimeout(() => window.location.reload(), 1000);
+                }
+            }).catch(function(error) {
+                Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete promotion'));
+            });
+        });
+    });
 
-			checkboxes.forEach(checkbox => {
-				toggleCheckbox(checkbox, isChecked);
-				const id = checkbox.closest('tr').dataset.id;
-				if (isChecked) {
-					selectedIds.add(id);
-				} else {
-					selectedIds.delete(id);
-				}
-			});
-
-			updateBulkButtons();
-		});
-	}
-
-	// Individual checkboxes
-	checkboxes.forEach(checkbox => {
-		checkbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
-
-			const id = this.closest('tr').dataset.id;
-			if (isChecked) {
-				selectedIds.add(id);
-			} else {
-				selectedIds.delete(id);
-			}
-
-			updateBulkButtons();
-		});
-	});
-
-	// Initialize bulk actions menu button
-	const bulkActionsBtn = document.getElementById('bulk-actions-btn');
-	if (bulkActionsBtn) {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(bulkActionsBtn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(bulkActionsBtn);
-		}
-	}
-
-	// Bulk enable
-	document.getElementById('bulk-enable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = Array.from(selectedIds);
-
-		Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-enable', {
-			data: { promotionIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Enabled ${response.data.count} promotions`);
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to enable promotions');
-		});
-	});
-
-	// Bulk disable
-	document.getElementById('bulk-disable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = Array.from(selectedIds);
-
-		Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-disable', {
-			data: { promotionIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Disabled ${response.data.count} promotions`);
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to disable promotions');
-		});
-	});
-
-	// Bulk delete
-	document.getElementById('bulk-delete-btn')?.addEventListener('click', function() {
-		const ids = Array.from(selectedIds);
-		if (!confirm(`Delete ${ids.length} promotion${ids.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
-
-		Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-delete', {
-			data: { promotionIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Deleted ${response.data.count} promotions`);
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to delete promotions');
-		});
-	});
-
-	// Individual promotion action menu clicks
-	document.querySelectorAll('.promotion-action').forEach(link => {
-		link.addEventListener('click', function(e) {
-			e.preventDefault();
-
-			const action = this.dataset.action;
-			const promotionId = this.dataset.id;
-			const promotionName = this.dataset.name;
-
-			if (action === 'delete') {
-				if (confirm('Delete promotion for "' + promotionName + '"? This cannot be undone.')) {
-					Craft.sendActionRequest('POST', 'search-manager/promotions/delete', {
-						data: { promotionId: promotionId }
-					}).then(function(response) {
-						if (response.data.success) {
-							Craft.cp.displayNotice('Promotion deleted');
-							setTimeout(() => window.location.reload(), 1000);
-						}
-					}).catch(function(error) {
-						Craft.cp.displayError('Failed to delete promotion');
-					});
-				}
-			}
-		});
-	});
-	</script>
+    // Update selected count
+    document.addEventListener('lr:selectionChanged', function(e) {
+        const countSpan = document.getElementById('lr-selected-count');
+        if (countSpan) {
+            countSpan.textContent = e.detail.count;
+        }
+    });
+})();
+</script>
 {% endblock %}

@@ -1,13 +1,7 @@
-{% extends "_layouts/cp" %}
-{% import "_includes/forms" as forms %}
-{% import 'search-manager/_macros/index' as indexMacros %}
+{% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{% set title = "Widgets"|t('search-manager') %}
-{% set fullPageForm = false %}
-{% set selectedSubnavItem = 'widgets' %}
-
-{# Get plugin settings for itemsPerPage #}
-{% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set settings = plugin.getSettings() %}
 
 {# Get query parameters #}
 {% set search = craft.app.request.getParam('search', '') %}
@@ -23,12 +17,9 @@
 {% set canCreate = currentUser.can('searchManager:createWidgetConfigs') %}
 {% set canEdit = currentUser.can('searchManager:editWidgetConfigs') %}
 {% set canDelete = currentUser.can('searchManager:deleteWidgetConfigs') %}
-{% set showActionsColumn = canEdit or canDelete %}
 
-{% set crumbs = [
-    { label: searchHelper.fullName, url: url('search-manager') },
-    { label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') }
-] %}
+{# Check if there are any config-based widgets #}
+{% set hasConfigItems = widgetConfigs|filter(c => c.isFromConfig())|length > 0 %}
 
 {# Filter widget configs based on filters #}
 {% set filteredConfigs = widgetConfigs %}
@@ -67,100 +58,86 @@
 
 {# Pagination #}
 {% set totalCount = filteredConfigs|length %}
-{% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
-{% set paginatedConfigs = filteredConfigs|slice(offset, limit) %}
+{% set paginatedItems = filteredConfigs|slice(offset, limit) %}
 
-{% block toolbar %}
-	<div id="toolbar" class="flex" style="align-items: flex-end;">
-		<div class="flex-grow">
-			<form method="get" action="{{ url('search-manager/widgets') }}">
-				<div class="flex">
-					<div class="btngroup">
-						<button type="button" class="btn menubtn statusmenubtn">
-							<span class="status {{ statusFilter == 'all' ? 'all' : (statusFilter == 'enabled' ? 'green' : 'disabled') }}"></span>
-							{{ statusFilter == 'all' ? 'All'|t('search-manager') : statusFilter|capitalize }}
-						</button>
-						<div class="menu">
-							<ul>
-								<li>
-									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status all"></span>{{ 'All'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&source={{ sourceFilter }}&search={{ search }}">
-										<span class="status disabled"></span>{{ 'Disabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Config Source'|t('search-manager') }}</li>
-								<li>
-									<a class="{{ sourceFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=all&search={{ search }}">
-										<span class="status all"></span>{{ 'All Sources'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=config&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.sourceColor('config', sourceFilter) }};"></span>{{ 'Config File'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=database&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.sourceColor('database', sourceFilter) }};"></span>{{ 'Database'|t('search-manager') }}
-									</a>
-								</li>
-							</ul>
-						</div>
-					</div>
-					<div class="search-container texticon flex-grow">
-						<span class="texticon-icon search icon" aria-hidden="true"></span>
-						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search widget configs...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
-						<button type="button" class="clear-btn {{ search ? '' : 'hidden' }}" title="Clear search" role="button" aria-label="Clear search"></button>
-						<input type="hidden" name="status" value="{{ statusFilter }}">
-						<input type="hidden" name="source" value="{{ sourceFilter }}">
-					</div>
-				</div>
-			</form>
-		</div>
-		{% if canCreate %}
-			<a href="{{ url('search-manager/widgets/new') }}" class="btn submit add icon" id="new-widget-btn">
-				<span class="label-full">{{ 'New Widget Config'|t('search-manager') }}</span>
-				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
-			</a>
-		{% endif %}
-	</div>
-{% endblock %}
+{% set tableConfig = {
+	plugin: {
+		handle: 'search-manager',
+		name: searchHelper.fullName,
+	},
+	page: {
+		title: 'Widgets'|t('search-manager'),
+		subnav: 'widgets',
+		crumbs: [
+			{ label: searchHelper.fullName, url: url('search-manager') },
+			{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') }
+		],
+	},
+	filters: [
+		{
+			type: 'status',
+			param: 'status',
+			current: statusFilter,
+			label: 'All'|t('search-manager'),
+			groups: [
+				{
+					param: 'status',
+					current: statusFilter,
+					options: [
+						{value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+						{value: 'enabled', label: 'Enabled'|t('search-manager'), status: 'green'},
+						{value: 'disabled', label: 'Disabled'|t('search-manager'), status: 'disabled'},
+					],
+				},
+				{
+					header: 'Config Source'|t('search-manager'),
+					param: 'source',
+					current: sourceFilter,
+					colorSet: 'configSource',
+					options: [
+						{value: 'all', label: 'All Sources'|t('search-manager'), status: 'all'},
+						{value: 'config', label: 'Config File'|t('search-manager'), colorKey: 'config'},
+						{value: 'database', label: 'Database'|t('search-manager'), colorKey: 'database'},
+					],
+				},
+			],
+		},
+	],
+	search: {
+		placeholder: 'Search widget configs...'|t('search-manager'),
+		value: search,
+	},
+	sort: {
+		field: sort,
+		direction: dir,
+	},
+	table: {
+		columns: [
+			{key: 'name', label: 'Name'|t('search-manager'), sortable: true},
+			{key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'source', label: 'Source'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'isDefault', label: 'Default'|t('search-manager'), sortable: true, hideable: true},
+		],
+		items: paginatedItems,
+		emptyMessage: 'No widget configurations found.'|t('search-manager'),
+		hasConfigItems: hasConfigItems,
+	},
+	pagination: {
+		page: page,
+		limit: limit,
+		totalCount: totalCount,
+		itemLabel: {singular: 'config'|t('search-manager'), plural: 'configs'|t('search-manager')},
+	},
+	checkboxes: canEdit or canDelete,
+	newButton: {
+		url: url('search-manager/widgets/new'),
+		label: 'New Widget Config'|t('search-manager'),
+		permission: 'searchManager:createWidgetConfigs',
+	},
+} %}
 
-{% css %}
-@media (max-width: 768px) {
-	#new-widget-btn .label-full {
-		display: none;
-	}
-	#new-widget-btn .label-short {
-		display: inline;
-	}
-	#new-widget-btn:before {
-		margin-inline-end: 0 !important;
-	}
-}
-
-.info-box-table-wrapper {
-    padding-bottom: 14px;
-}
-@media (min-width: 769px) {
-	.info-box-table-wrapper {
-		padding-bottom: 46px;
-	}
-}
-{% endcss %}
-
-{% block content %}
-	{% include 'search-manager/_partials/common/index-styles' %}
+{% block beforeTable %}
 
 	{# Warning if default widget is missing or disabled #}
 	{% if defaultWidgetHandle %}
@@ -176,7 +153,7 @@
 				{{ 'Please set a different widget as default.'|t('search-manager') }}
 			{% endif %}
 			{% endset %}
-			<div class="info-box-table-wrapper">
+			<div class="lr-info-box-table-wrapper">
 				{% include 'lindemannrock-base/_components/info-box' with {
 					message: warningMessage,
 					type: 'warning',
@@ -195,7 +172,7 @@
 				{{ 'Update your config/search-manager.php to fix this.'|t('search-manager') }}
 			{% endif %}
 			{% endset %}
-			<div class="info-box-table-wrapper">
+			<div class="lr-info-box-table-wrapper">
 				{% include 'lindemannrock-base/_components/info-box' with {
 					message: warningMessage,
 					type: 'warning',
@@ -210,7 +187,7 @@
 		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
 		{{ 'No default widget is configured. Please set one of the widgets as default.'|t('search-manager') }}
 		{% endset %}
-		<div class="info-box-table-wrapper">
+		<div class="lr-info-box-table-wrapper">
 			{% include 'lindemannrock-base/_components/info-box' with {
 				message: warningMessage,
 				type: 'warning',
@@ -219,457 +196,271 @@
 			} %}
 		</div>
 	{% endif %}
+{% endblock %}
 
-	<div id="elements" class="elements">
-		<div class="tableview tablepane">
-			<table class="data fullwidth">
-				<thead>
-					<tr>
-						<th class="checkbox-cell selectallcontainer">
-							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
-						</th>
-						<th scope="col" data-attribute="name" class="orderable {{ sort == 'name' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="name">{{ "Name"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="source">{{ "Source"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="isDefault" class="orderable {{ sort == 'isDefault' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="isDefault">{{ "Default"|t('search-manager') }}</button>
-						</th>
-						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
-					</tr>
-				</thead>
-				<tbody>
-					{% if paginatedConfigs|length %}
-						{% for config in paginatedConfigs %}
-							{% set isConfig = config.isFromConfig() %}
-							<tr data-id="{{ config.id ?: config.handle }}" data-name="{{ config.name }}" data-source="{{ config.source }}">
-								<td class="checkbox-cell">
-									{% if isConfig %}
-										<div class="checkbox disabled" title="{{ 'Config widgets cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
-									{% else %}
-										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
-									{% endif %}
-								</td>
-								<td>
-									{% if config.canEdit() %}
-										<a class="label-link" href="{{ url('search-manager/widgets/edit/' ~ config.id) }}">
-											<span>{{ config.name }}</span>
-										</a>
-									{% else %}
-										<a class="label-link" href="{{ url('search-manager/widgets/view/' ~ config.handle) }}">
-											<span>{{ config.name }}</span>
-										</a>
-										<span class="config-info-icon" data-config="{{ config.rawConfigDisplay|e('html_attr') }}"></span>
-									{% endif %}
-								</td>
-								<td>
-									<code>{{ config.handle }}</code>
-								</td>
-								<td>
-									{{ indexMacros.sourceBadge(config.source) }}
-								</td>
-								<td>
-									{{ indexMacros.statusBadge(config.enabled) }}
-								</td>
-								<td>
-									{% set isDefault = defaultWidgetHandle == config.handle %}
-									{% if isDefault %}
-										<span class="status-label green"><span class="status green"></span><span class="status-label-text">{{ 'Yes'|t('search-manager') }}</span></span>
-									{% else %}
-										<span class="light">-</span>
-									{% endif %}
-								</td>
-								{% if showActionsColumn %}
-								<td class="thin" style="text-align: right;">
-									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
-									<div class="menu">
-										<ul>
-											{% if config.canEdit() %}
-												{% if canEdit %}
-													<li>
-														<a href="{{ url('search-manager/widgets/edit/' ~ config.id) }}">
-															{{ 'Edit'|t('search-manager') }}
-														</a>
-													</li>
-													{% if not isDefault and not isDefaultFromConfig %}
-														<li><hr class="padded"></li>
-														<li>
-															<a class="widget-action" data-action="set-default" data-id="{{ config.id }}" data-name="{{ config.name }}">
-																{{ 'Set as Default'|t('search-manager') }}
-															</a>
-														</li>
-													{% endif %}
-												{% endif %}
-												{% if canDelete and not isDefault %}
-													<li><hr class="padded"></li>
-													<li>
-														<a class="widget-action error" data-action="delete" data-id="{{ config.id }}" data-name="{{ config.name }}">
-															{{ 'Delete'|t('search-manager') }}
-														</a>
-													</li>
-												{% endif %}
-											{% else %}
-												{# Config file widgets - View only #}
-												<li>
-													<a href="{{ url('search-manager/widgets/view/' ~ config.handle) }}">
-														{{ 'View'|t('search-manager') }}
-													</a>
-												</li>
-												{% if canEdit and not isDefault and not isDefaultFromConfig %}
-													<li><hr class="padded"></li>
-													<li>
-														<a class="widget-action" data-action="set-default" data-id="{{ config.handle }}" data-name="{{ config.name }}">
-															{{ 'Set as Default'|t('search-manager') }}
-														</a>
-													</li>
-												{% endif %}
-											{% endif %}
-										</ul>
-									</div>
-								</td>
-								{% endif %}
-							</tr>
-						{% endfor %}
-					{% else %}
-						<tr>
-							<td colspan="7" style="text-align: center; padding: 2em;">
-								{{ 'No widget configurations found.'|t('search-manager') }}
-							</td>
-						</tr>
-					{% endif %}
-				</tbody>
-			</table>
-		</div>
-	</div>
+{% block tableRow %}
+	{% set isConfig = item.isFromConfig() %}
+	{% set isDefault = defaultWidgetHandle == item.handle %}
 
-	<div id="footer" class="flex flex-justify">
-		<div class="light">
-			<div class="flex pagination">
-				<nav class="flex" aria-label="widget pagination">
-					<button type="button" class="page-link prev-page {{ page <= 1 ? 'disabled' : '' }}" {{ page <= 1 ? 'disabled' : '' }} title="Previous Page"></button>
-					<button type="button" class="page-link next-page {{ page >= totalPages ? 'disabled' : '' }}" {{ page >= totalPages ? 'disabled' : '' }} title="Next Page"></button>
-				</nav>
-				<div class="page-info" style="margin: 0 12px; color: #596673;">
-					{% set endRange = min(offset + limit, totalCount) %}
-					{% if totalCount == 0 %}
-						{{ 'no widget configs'|t('search-manager') }}
-					{% else %}
-						{{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'config' : 'configs' }}
-					{% endif %}
-				</div>
-			</div>
-		</div>
-		{% if canEdit or canDelete %}
-		<div id="actions-container" class="flex" style="display: none;">
-			{% if canEdit %}
-			<div>
-				<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
-					{{ 'Set status'|t('app') }}
-				</button>
-				<div class="menu">
-					<ul>
-						<li><a id="bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-						<li><a id="bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-					</ul>
-				</div>
-			</div>
-			{% endif %}
-			{% if canDelete %}
-			<button type="button" class="btn secondary" id="bulk-delete-btn">
-				<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
-			</button>
-			{% endif %}
-		</div>
+	{# Name #}
+	<td data-column="name">
+		{% if item.canEdit() %}
+			<a class="label-link" href="{{ url('search-manager/widgets/edit/' ~ item.id) }}">
+				<span>{{ item.name }}</span>
+			</a>
+		{% else %}
+			<a class="label-link" href="{{ url('search-manager/widgets/view/' ~ item.handle) }}">
+				<span>{{ item.name }}</span>
+			</a>
+			<span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
 		{% endif %}
-	</div>
+	</td>
 
-	<script>
-	// Initialize menu buttons
-	document.querySelectorAll('.menubtn').forEach(btn => {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(btn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(btn);
-		}
-	});
+	{# Handle #}
+	<td data-column="handle">
+		<code>{{ item.handle }}</code>
+	</td>
 
-	// Clear search
-	const clearBtn = document.querySelector('.clear-btn');
-	if (clearBtn) {
-		clearBtn.addEventListener('click', function() {
-			const searchInput = document.querySelector('input[name="search"]');
-			if (searchInput) {
-				searchInput.value = '';
-				searchInput.form.submit();
-			}
-		});
-	}
+	{# Source #}
+	<td data-column="source">
+		{% include 'lindemannrock-base/_components/badge' with {
+			label: item.source == 'config' ? 'Config'|t('search-manager') : 'Database'|t('search-manager'),
+			value: item.source,
+			colorSet: 'configSource',
+		} only %}
+	</td>
 
-	// Search on Enter
-	const searchInput = document.querySelector('input[name="search"]');
-	if (searchInput) {
-		searchInput.addEventListener('keyup', function(e) {
-			if (e.key === 'Enter') {
-				this.form.submit();
-			}
-		});
-	}
+	{# Status #}
+	<td data-column="enabled">
+		{% include 'lindemannrock-base/_components/badge' with {
+			label: item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),
+			value: item.enabled ? 'enabled' : 'disabled',
+			colorSet: 'status',
+		} only %}
+	</td>
 
-	// Pagination
-	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
-	});
+	{# Default #}
+	<td data-column="isDefault">
+		{% if isDefault %}
+			{% include 'lindemannrock-base/_components/badge' with {
+				label: 'Yes'|t('search-manager'),
+				value: 'yes',
+				colorSet: 'yesNo',
+			} only %}
+		{% else %}
+			<span class="light">-</span>
+		{% endif %}
+	</td>
+{% endblock %}
 
-	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
-	});
+{% block rowActions %}
+	{% set isConfig = item.isFromConfig() %}
+	{% set isDefault = defaultWidgetHandle == item.handle %}
 
-	// Sort buttons
-	document.querySelectorAll('th.orderable button').forEach(button => {
-		button.addEventListener('click', function() {
-			const sortField = this.dataset.sort;
-			const currentSort = '{{ sort }}';
-			const currentDir = '{{ dir }}';
-			let newDir = 'asc';
-			if (sortField === currentSort) {
-				newDir = currentDir === 'asc' ? 'desc' : 'asc';
-			}
-			window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
-		});
-	});
+	{% set actionItems = [] %}
 
-	// Checkbox functionality
-	const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
-	const checkboxes = document.querySelectorAll('tbody .checkbox:not(.disabled)');
-	let selectedIds = new Set();
+	{% if item.canEdit() %}
+		{# Database widgets - can edit #}
+		{% if canEdit %}
+			{% set actionItems = actionItems|merge([{
+				label: 'Edit'|t('app'),
+				url: url('search-manager/widgets/edit/' ~ item.id),
+			}]) %}
+			{% if not isDefault and not isDefaultFromConfig %}
+				{% set actionItems = actionItems|merge([{
+					label: 'Set as Default'|t('search-manager'),
+					jsAction: 'set-default',
+				}]) %}
+			{% endif %}
+		{% endif %}
+		{% if canDelete and not isDefault %}
+			{% set actionItems = actionItems|merge([{
+				label: 'Delete'|t('app'),
+				class: 'error',
+				jsAction: 'delete',
+			}]) %}
+		{% endif %}
+	{% else %}
+		{# Config file widgets - View only #}
+		{% set actionItems = actionItems|merge([{
+			label: 'View'|t('app'),
+			url: url('search-manager/widgets/view/' ~ item.handle),
+		}]) %}
+		{% if canEdit and not isDefault and not isDefaultFromConfig %}
+			{% set actionItems = actionItems|merge([{
+				label: 'Set as Default'|t('search-manager'),
+				jsAction: 'set-default',
+			}]) %}
+		{% endif %}
+	{% endif %}
 
-	function toggleCheckbox(checkbox, checked) {
-		if (checked) {
-			checkbox.classList.add('checked');
-			checkbox.setAttribute('aria-checked', 'true');
-		} else {
-			checkbox.classList.remove('checked');
-			checkbox.setAttribute('aria-checked', 'false');
-		}
-	}
+	{% if actionItems|length > 0 %}
+		{% include 'lindemannrock-base/_components/row-actions' with {
+			item: item,
+			actions: {
+				type: 'menu',
+				icon: 'settings',
+				title: 'Actions'|t('app'),
+				items: actionItems,
+			},
+		} only %}
+	{% endif %}
+{% endblock %}
 
-	function updateBulkButtons() {
-		const hasSelection = selectedIds.size > 0;
-		const actionsContainer = document.getElementById('actions-container');
-		const deleteLabel = document.getElementById('delete-label');
+{% block bulkActions %}
+	{% if canEdit %}
+		<button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
+			{{ 'Set status'|t('app') }}
+		</button>
+		<div class="menu">
+			<ul>
+				<li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
+				<li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
+			</ul>
+		</div>
+	{% endif %}
 
-		if (hasSelection) {
-			actionsContainer.style.display = '';
-			const count = selectedIds.size;
-			deleteLabel.textContent = `{{ 'Delete'|t('search-manager') }} (${count})`;
-		} else {
-			actionsContainer.style.display = 'none';
-		}
-	}
+	{% if canDelete %}
+		<button type="button" class="btn secondary" id="lr-bulk-delete-btn">
+			{{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+		</button>
+	{% endif %}
+{% endblock %}
 
-	// Select all
-	if (selectAllCheckbox) {
-		selectAllCheckbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
-
-			checkboxes.forEach(checkbox => {
-				toggleCheckbox(checkbox, isChecked);
-				const id = checkbox.closest('tr').dataset.id;
-				if (isChecked) {
-					selectedIds.add(id);
-				} else {
-					selectedIds.delete(id);
-				}
-			});
-
-			updateBulkButtons();
-		});
-	}
-
-	// Individual checkboxes
-	checkboxes.forEach(checkbox => {
-		checkbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
-
-			const id = this.closest('tr').dataset.id;
-			if (isChecked) {
-				selectedIds.add(id);
-			} else {
-				selectedIds.delete(id);
-			}
-
-			updateBulkButtons();
-		});
-	});
-
-	// Initialize bulk actions menu button
-	const bulkActionsBtn = document.getElementById('bulk-actions-btn');
-	if (bulkActionsBtn) {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(bulkActionsBtn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(bulkActionsBtn);
-		}
+{% block scripts %}
+<script>
+(function() {
+	// Initialize bulk status menu
+	const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
+	if (bulkStatusBtn && typeof Craft !== 'undefined' && Craft.MenuBtn) {
+		new Craft.MenuBtn(bulkStatusBtn);
 	}
 
 	// Bulk enable
-	document.getElementById('bulk-enable-action')?.addEventListener('click', function(e) {
+	document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
 		e.preventDefault();
-		const ids = Array.from(selectedIds);
+		const ids = window.lrTableSelection.getSelectedIds();
+		if (ids.length === 0) return;
 
 		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-enable', {
 			data: { configIds: ids }
 		}).then(function(response) {
 			if (response.data.success) {
-				Craft.cp.displayNotice(`{{ 'Enabled'|t('search-manager') }} ${response.data.count} {{ 'configs'|t('search-manager') }}`);
-				setTimeout(() => window.location.reload(), 500);
+				Craft.cp.displayNotice(Craft.t('search-manager', 'Enabled {count} configs', {count: response.data.count}));
+				setTimeout(() => window.location.reload(), 1000);
 			}
 		}).catch(function(error) {
-			Craft.cp.displayError('{{ 'Failed to enable configs'|t('search-manager') }}');
+			Craft.cp.displayError(Craft.t('search-manager', 'Failed to enable configs'));
 		});
 	});
 
 	// Bulk disable
-	document.getElementById('bulk-disable-action')?.addEventListener('click', function(e) {
+	document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
 		e.preventDefault();
-		const ids = Array.from(selectedIds);
+		const ids = window.lrTableSelection.getSelectedIds();
+		if (ids.length === 0) return;
 
 		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-disable', {
 			data: { configIds: ids }
 		}).then(function(response) {
 			if (response.data.count > 0) {
-				Craft.cp.displayNotice(`{{ 'Disabled'|t('search-manager') }} ${response.data.count} {{ 'configs'|t('search-manager') }}`);
+				Craft.cp.displayNotice(Craft.t('search-manager', 'Disabled {count} configs', {count: response.data.count}));
 			}
 			if (response.data.errors && response.data.errors.length > 0) {
 				response.data.errors.forEach(err => Craft.cp.displayError(err));
 			} else if (response.data.error) {
 				Craft.cp.displayError(response.data.error);
 			}
-			// Only auto-reload if count > 0 and no errors
 			if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
-				setTimeout(() => window.location.reload(), 500);
+				setTimeout(() => window.location.reload(), 1000);
 			}
 		}).catch(function(error) {
-			Craft.cp.displayError('{{ 'Failed to disable configs'|t('search-manager') }}');
+			Craft.cp.displayError(Craft.t('search-manager', 'Failed to disable configs'));
 		});
 	});
 
 	// Bulk delete
-	document.getElementById('bulk-delete-btn')?.addEventListener('click', function() {
-		const ids = Array.from(selectedIds);
-		if (!confirm(`{{ 'Delete'|t('search-manager') }} ${ids.length} {{ 'config(s)? This cannot be undone.'|t('search-manager') }}`)) return;
+	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
+		const ids = window.lrTableSelection.getSelectedIds();
+		if (ids.length === 0) return;
+
+		if (!confirm(Craft.t('search-manager', 'Delete {count} config(s)? This cannot be undone.', {count: ids.length}))) return;
 
 		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-delete', {
 			data: { configIds: ids }
 		}).then(function(response) {
 			if (response.data.count > 0) {
-				Craft.cp.displayNotice(`{{ 'Deleted'|t('search-manager') }} ${response.data.count} {{ 'config(s)'|t('search-manager') }}`);
+				Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} config(s)', {count: response.data.count}));
 			}
 			if (response.data.errors && response.data.errors.length > 0) {
 				response.data.errors.forEach(err => Craft.cp.displayError(err));
 			} else if (response.data.error) {
 				Craft.cp.displayError(response.data.error);
 			}
-			// Only auto-reload if count > 0 and no errors
 			if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
-				setTimeout(() => window.location.reload(), 500);
+				setTimeout(() => window.location.reload(), 1000);
 			}
 		}).catch(function(error) {
-			Craft.cp.displayError('{{ 'Failed to delete configs'|t('search-manager') }}');
+			Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete configs'));
 		});
 	});
 
-	// Widget action menu clicks
-	document.querySelectorAll('.widget-action').forEach(link => {
-		link.addEventListener('click', function(e) {
+	// Individual delete action
+	document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+		btn.addEventListener('click', function(e) {
 			e.preventDefault();
+			const row = this.closest('tr');
+			const id = row?.dataset.id;
+			const name = row?.dataset.name || '';
 
-			const action = this.dataset.action;
-			const configId = this.dataset.id;
-			const configName = this.dataset.name;
+			if (!id) return;
 
-			if (action === 'delete') {
-				if (confirm('{{ "Delete widget config"|t('search-manager') }} "' + configName + '"? {{ "This cannot be undone."|t('search-manager') }}')) {
-					Craft.sendActionRequest('POST', 'search-manager/widgets/delete', {
-						data: { configId: configId }
-					}).then(function(response) {
-						if (response.data.success) {
-							Craft.cp.displayNotice('{{ "Widget config deleted"|t('search-manager') }}');
-							setTimeout(() => window.location.reload(), 500);
-						} else {
-							Craft.cp.displayError(response.data.error || '{{ "Failed to delete config"|t('search-manager') }}');
-						}
-					}).catch(function(error) {
-						Craft.cp.displayError('{{ "Failed to delete config"|t('search-manager') }}');
-					});
+			if (!confirm(Craft.t('search-manager', 'Delete widget config "{name}"? This cannot be undone.', {name: name}))) return;
+
+			Craft.sendActionRequest('POST', 'search-manager/widgets/delete', {
+				data: { configId: id }
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(Craft.t('search-manager', 'Widget config deleted'));
+					setTimeout(() => window.location.reload(), 1000);
+				} else {
+					Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to delete config'));
 				}
-			} else if (action === 'set-default') {
-				Craft.sendActionRequest('POST', 'search-manager/widgets/set-default', {
-					data: { configId: configId }
-				}).then(function(response) {
-					if (response.data.success) {
-						Craft.cp.displayNotice('{{ "Default config updated"|t('search-manager') }}');
-						setTimeout(() => window.location.reload(), 500);
-					}
-				}).catch(function(error) {
-					Craft.cp.displayError('{{ "Failed to update default config"|t('search-manager') }}');
-				});
-			}
+			}).catch(function(error) {
+				Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete config'));
+			});
 		});
 	});
 
-	// Config tooltip for config-based widgets
-	let activeTooltip = null;
+	// Set as default action
+	document.querySelectorAll('[data-action="set-default"]').forEach(function(btn) {
+		btn.addEventListener('click', function(e) {
+			e.preventDefault();
+			const row = this.closest('tr');
+			const id = row?.dataset.id;
 
-	document.querySelectorAll('.config-info-icon').forEach(info => {
-		info.addEventListener('mouseenter', function(e) {
-			const config = this.dataset.config;
-			if (!config) return;
+			if (!id) return;
 
-			// Remove any existing tooltip
-			if (activeTooltip) {
-				activeTooltip.remove();
-			}
-
-			// Create tooltip
-			const tooltip = document.createElement('div');
-			tooltip.className = 'config-tooltip';
-			tooltip.textContent = config;
-			document.body.appendChild(tooltip);
-			activeTooltip = tooltip;
-
-			// Position tooltip
-			const rect = this.getBoundingClientRect();
-			const tooltipRect = tooltip.getBoundingClientRect();
-
-			let left = rect.left + window.scrollX;
-			let top = rect.bottom + window.scrollY + 8;
-
-			// Keep within viewport
-			if (left + tooltipRect.width > window.innerWidth - 20) {
-				left = window.innerWidth - tooltipRect.width - 20;
-			}
-
-			tooltip.style.left = left + 'px';
-			tooltip.style.top = top + 'px';
-		});
-
-		info.addEventListener('mouseleave', function() {
-			if (activeTooltip) {
-				activeTooltip.remove();
-				activeTooltip = null;
-			}
+			Craft.sendActionRequest('POST', 'search-manager/widgets/set-default', {
+				data: { configId: id }
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(Craft.t('search-manager', 'Default config updated'));
+					setTimeout(() => window.location.reload(), 1000);
+				}
+			}).catch(function(error) {
+				Craft.cp.displayError(Craft.t('search-manager', 'Failed to update default config'));
+			});
 		});
 	});
-	</script>
+
+	// Update selected count
+	document.addEventListener('lr:selectionChanged', function(e) {
+		const countSpan = document.getElementById('lr-selected-count');
+		if (countSpan) {
+			countSpan.textContent = e.detail.count;
+		}
+	});
+})();
+</script>
 {% endblock %}

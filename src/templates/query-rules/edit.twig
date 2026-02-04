@@ -341,7 +341,7 @@
 		{# Redirect fields #}
 		<div id="action-redirect" class="action-fields" style="{{ rule.actionType != 'redirect' ? 'display: none;' : '' }}">
 			{# Determine current redirect type #}
-			{% set redirectType = rule.actionValue.elementId is defined and rule.actionValue.elementId ?
+			{% set redirectType = rule.actionValue.elementId is defined and rule.actionValue.elementId and rule.actionValue.elementType is defined ?
 				(rule.actionValue.elementType ends with 'Entry' ? 'entry' :
 				 rule.actionValue.elementType ends with 'Category' ? 'category' :
 				 rule.actionValue.elementType ends with 'Asset' ? 'asset' : 'url')

@@ -1,97 +1,98 @@
-<div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
-    <div class="btngroup">
-        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-        <div class="menu" data-align="right">
-            <ul>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"trending"}'>{{ "Trending Queries (CSV)"|t('search-manager') }}</a></li>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"trending"}'>{{ "Trending Queries (JSON)"|t('search-manager') }}</a></li>
-            </ul>
-        </div>
-    </div>
+<div class="lr-unified-cards">
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: (totalCount ?? 0)|number,
+        description: 'Total Searches'|t('search-manager'),
+        align: 'center',
+        id: 'total-404s',
+    } only %}
+
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: (handledCount ?? 0)|number,
+        description: 'With Hits'|t('search-manager'),
+        align: 'center',
+        id: 'handled-404s',
+    } only %}
+
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: (unhandledCount ?? 0)|number,
+        description: 'Zero Hits'|t('search-manager'),
+        align: 'center',
+        id: 'unhandled-404s',
+    } only %}
+
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: (totalCount > 0 ? ((handledCount / totalCount * 100)|round) : 0) ~ '%',
+        description: 'Success Rate'|t('search-manager'),
+        align: 'center',
+        id: 'success-rate',
+    } only %}
 </div>
 
-<div class="analytics-stats">
-    <div class="stat-box">
-        <div class="stat-value" id="total-404s">{{ (totalCount ?? 0)|number }}</div>
-        <div class="stat-label">{{ "Total Searches"|t('search-manager') }}</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value" id="handled-404s">{{ (handledCount ?? 0)|number }}</div>
-        <div class="stat-label">{{ "With Hits"|t('search-manager') }}</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value" id="unhandled-404s">{{ (unhandledCount ?? 0)|number }}</div>
-        <div class="stat-label">{{ "Zero Hits"|t('search-manager') }}</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value" id="success-rate">{{ totalCount > 0 ? ((handledCount / totalCount * 100)|round) : 0 }}%</div>
-        <div class="stat-label">{{ "Success Rate"|t('search-manager') }}</div>
-    </div>
-</div>
+<h2 class="lr-section-heading">{{ "Search Trend"|t('search-manager') }}</h2>
 
-<h2 style="margin: 30px 0 20px;">{{ "Search Trend"|t('search-manager') }}</h2>
-
-<div class="analytics-charts">
-    <div class="chart-container full-width">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
         <canvas id="404-trend-chart"></canvas>
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Search Breakdown"|t('search-manager') }}</h2>
+<h2 class="lr-section-heading">{{ "Search Breakdown"|t('search-manager') }}</h2>
 
-<div class="analytics-charts two-columns">
-    <div class="chart-container">
+<div class="lr-analytics-charts two-columns">
+    <div class="lr-chart-container">
         <h3>{{ "Intent Distribution"|t('search-manager') }}</h3>
         <canvas id="intent-chart"></canvas>
     </div>
 
-    <div class="chart-container">
+    <div class="lr-chart-container">
         <h3>{{ "Source Distribution"|t('search-manager') }}</h3>
         <canvas id="source-chart"></canvas>
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Query Analysis"|t('search-manager') }}</h2>
+<h2 class="lr-section-heading">{{ "Query Analysis"|t('search-manager') }}</h2>
 
-<div class="analytics-charts two-columns">
-    <div class="chart-container">
+<div class="lr-analytics-charts two-columns">
+    <div class="lr-chart-container">
         <h3>{{ "Query Length Distribution"|t('search-manager') }}</h3>
         <canvas id="query-length-chart"></canvas>
         <div class="chart-legend" id="query-length-legend"></div>
     </div>
 
-    <div class="chart-container">
+    <div class="lr-chart-container">
         <h3>{{ "Word Cloud"|t('search-manager') }}</h3>
-        <div id="word-cloud-container" style="height: 300px; position: relative; width: 100%;">
+        <div id="word-cloud-container" class="lr-word-cloud">
             {# Word cloud will be rendered here by D3/JS #}
         </div>
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Search Activity"|t('search-manager') }}</h2>
+<h2 class="lr-section-heading">{{ "Search Activity"|t('search-manager') }}</h2>
 
-<div class="analytics-charts">
-    <div class="chart-container full-width">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
         <h3>{{ "Peak Search Hours"|t('search-manager') }}</h3>
-        <p class="light" style="margin: -10px 0 15px; font-size: 12px;">{{ "When users search most (24-hour format)"|t('search-manager') }}</p>
-        <canvas id="peak-hours-chart" style="max-height: 200px;"></canvas>
-        <div id="peak-hour-label" style="text-align: center; margin-top: 10px; font-size: 13px; color: #596673;"></div>
+        <p class="light lr-note">{{ "When users search most (24-hour format)"|t('search-manager') }}</p>
+        <div class="lr-chart-height-200">
+            <canvas id="peak-hours-chart" class="lr-chart-canvas"></canvas>
+        </div>
+        <div id="peak-hour-label" class="lr-peak-label"></div>
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Trending Queries"|t('search-manager') }}</h2>
+<h2 class="lr-section-heading">{{ "Trending Queries"|t('search-manager') }}</h2>
 
-<div class="analytics-charts">
-    <div class="chart-container full-width">
-        <p class="light" style="margin: -10px 0 15px; font-size: 12px;">{{ "Compared to previous period (e.g., last 7 days vs. prior 7 days)"|t('search-manager') }}</p>
-        <div class="table-scroll-container">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
+        <p class="light lr-note">{{ "Compared to previous period (e.g., last 7 days vs. prior 7 days)"|t('search-manager') }}</p>
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
                         <th>{{ 'Query'|t('search-manager') }}</th>
-                        <th style="text-align: right;">{{ 'Searches'|t('search-manager') }}</th>
-                        <th style="text-align: right;">{{ 'Previous'|t('search-manager') }}</th>
-                        <th style="text-align: right;">{{ 'Trend'|t('search-manager') }}</th>
+                        <th class="lr-text-end">{{ 'Searches'|t('search-manager') }}</th>
+                        <th class="lr-text-end">{{ 'Previous'|t('search-manager') }}</th>
+                        <th class="lr-text-end">{{ 'Trend'|t('search-manager') }}</th>
                     </tr>
                 </thead>
                 <tbody id="trending-queries-body">
@@ -102,11 +103,11 @@
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Most Common Queries (Top 15)"|t('search-manager') }}</h2>
+<h2 class="lr-section-heading">{{ "Most Common Queries (Top 15)"|t('search-manager') }}</h2>
 
-<div class="analytics-charts">
-    <div class="chart-container full-width">
-        <div class="table-scroll-container">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
@@ -141,7 +142,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="6" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
+                            <td colspan="6" class="thin light lr-text-center">{{ "No searches recorded yet"|t('search-manager') }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

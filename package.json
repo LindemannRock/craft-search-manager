@@ -11,6 +11,11 @@
     "test:a11y": "cd src/web/assets/searchwidget && npm run test:a11y",
     "test:a11y:ui": "cd src/web/assets/searchwidget && npm run test:a11y:ui",
     "test:a11y:live": "cd src/web/assets/searchwidget && npm run test:a11y:live",
-    "test:a11y:live:ui": "cd src/web/assets/searchwidget && npm run test:a11y:live:ui"
+    "test:a11y:live:ui": "cd src/web/assets/searchwidget && npm run test:a11y:live:ui",
+    "minify": "npm run minify:analytics",
+    "minify:analytics": "terser src/web/assets/analytics/analytics.js -o src/web/assets/analytics/analytics.min.js -c -m"
+  },
+  "devDependencies": {
+    "terser": "^5.31.6"
   }
 }

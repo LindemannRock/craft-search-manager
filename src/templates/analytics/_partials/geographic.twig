@@ -3,23 +3,12 @@
 {% set settings = craft.app.plugins.getPlugin('search-manager').settings %}
 
 {% if settings.enableGeoDetection %}
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="margin: 0;">{{ "Geographic Distribution"|t('search-manager') }}</h2>
-        <div class="btngroup">
-            <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-            <div class="menu" data-align="right">
-                <ul>
-                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"geographic"}'>{{ "Export CSV"|t('search-manager') }}</a></li>
-                    <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"geographic"}'>{{ "Export JSON"|t('search-manager') }}</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
+    <h2 class="lr-section-heading">{{ "Geographic Distribution"|t('search-manager') }}</h2>
 
-    <div class="analytics-charts two-columns">
-        <div class="chart-container">
+    <div class="lr-analytics-charts two-columns">
+        <div class="lr-chart-container">
             <h3>{{ "Top Countries"|t('search-manager') }}</h3>
-            <div class="table-scroll-container">
+            <div class="lr-table-scroll">
                 <table class="data fullwidth" id="countries-table">
                     <thead>
                         <tr>
@@ -30,16 +19,16 @@
                     </thead>
                     <tbody id="countries-body">
                         <tr>
-                            <td colspan="3" class="light" style="text-align: center;">{{ "Loading..."|t('search-manager') }}</td>
+                            <td colspan="3" class="light lr-text-center">{{ "Loading..."|t('search-manager') }}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <div class="chart-container">
+        <div class="lr-chart-container">
             <h3>{{ "Top Cities"|t('search-manager') }}</h3>
-            <div class="table-scroll-container">
+            <div class="lr-table-scroll">
                 <table class="data fullwidth" id="cities-table">
                     <thead>
                         <tr>
@@ -50,7 +39,7 @@
                     </thead>
                     <tbody id="cities-body">
                         <tr>
-                            <td colspan="3" class="light" style="text-align: center;">{{ "Loading..."|t('search-manager') }}</td>
+                            <td colspan="3" class="light lr-text-center">{{ "Loading..."|t('search-manager') }}</td>
                         </tr>
                     </tbody>
                 </table>
@@ -58,7 +47,7 @@
         </div>
     </div>
 {% else %}
-    <div class="pane" style="text-align: center; padding: 60px 20px;">
+    <div class="lr-analytics-empty">
         <p class="light">{{ "Geographic detection is disabled."|t('search-manager') }}</p>
         <p><a href="{{ url('search-manager/settings') }}" class="btn">{{ "Enable in Settings"|t('search-manager') }}</a></p>
     </div>

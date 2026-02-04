@@ -11,7 +11,6 @@
 {% set retainScrollOnSaveShortcut = true %}
 
 {% import "_includes/forms" as forms %}
-{% import "search-manager/_macros/index" as indexMacros %}
 
 {% block actionButton %}
 	<div class="btngroup submit">
@@ -532,7 +531,11 @@ document.addEventListener('DOMContentLoaded', function() {
 					{% endif %}
 					{% set backendType = index.effectiveBackendType %}
 					{% if backendType %}
-						&nbsp;{{ indexMacros.backendBadge(backendType, configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize)) }}
+						&nbsp;{% include 'lindemannrock-base/_components/badge' with {
+							label: configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize),
+							value: backendType,
+							colorSet: 'backendType',
+						} only %}
 					{% endif %}
 				</dd>
 			</div>
@@ -553,7 +556,7 @@ document.addEventListener('DOMContentLoaded', function() {
 				{% if index.lastIndexed %}
 					<div class="data">
 						<dt class="heading">{{ 'Last indexed'|t('search-manager') }}</dt>
-						<dd class="value">{{ index.lastIndexed|datetime('short') }}</dd>
+						<dd class="value">{{ index.lastIndexed|lrDatetime('short') }}</dd>
 					</div>
 				{% endif %}
 			</dl>

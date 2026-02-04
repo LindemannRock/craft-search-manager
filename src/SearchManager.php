@@ -21,6 +21,7 @@ use craft\utilities\ClearCaches;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
 use craft\web\View;
+use lindemannrock\base\helpers\ColorHelper;
 use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
@@ -114,7 +115,34 @@ class SearchManager extends Plugin
             $this,
             'searchHelper',
             ['searchManager:viewSystemLogs'],
-            ['searchManager:downloadSystemLogs']
+            ['searchManager:downloadSystemLogs'],
+            [
+                'colorSets' => [
+                    'backendType' => [
+                        'mysql' => ColorHelper::getPaletteColor('amber'),
+                        'pgsql' => ColorHelper::getPaletteColor('blue'),
+                        'file' => ColorHelper::getPaletteColor('gray'),
+                        'redis' => ColorHelper::getPaletteColor('red'),
+                        'typesense' => ColorHelper::getPaletteColor('violet'),
+                        'algolia' => ColorHelper::getPaletteColor('cyan'),
+                        'meilisearch' => ColorHelper::getPaletteColor('pink'),
+                    ],
+                    'matchType' => [
+                        'exact' => ColorHelper::getPaletteColor('indigo'),
+                        'contains' => ColorHelper::getPaletteColor('purple'),
+                        'prefix' => ColorHelper::getPaletteColor('amber'),
+                        'regex' => ColorHelper::getPaletteColor('pink'),
+                    ],
+                    'actionType' => [
+                        'synonym' => ColorHelper::getPaletteColor('blue'),
+                        'boost_section' => ColorHelper::getPaletteColor('green'),
+                        'boost_category' => ColorHelper::getPaletteColor('teal'),
+                        'boost_element' => ColorHelper::getPaletteColor('lime'),
+                        'filter' => ColorHelper::getPaletteColor('orange'),
+                        'redirect' => ColorHelper::getPaletteColor('red'),
+                    ],
+                ],
+            ]
         );
         PluginHelper::applyPluginNameFromConfig($this);
 
@@ -289,6 +317,8 @@ class SearchManager extends Plugin
                     // Analytics
                     'search-manager/analytics' => 'search-manager/analytics/index',
                     'search-manager/analytics/export' => 'search-manager/analytics/export',
+                    'search-manager/analytics/export-rule-analytics' => 'search-manager/analytics/export-rule-analytics',
+                    'search-manager/analytics/export-promotion-analytics' => 'search-manager/analytics/export-promotion-analytics',
                     'search-manager/settings' => 'search-manager/settings/general',
                     'search-manager/settings/general' => 'search-manager/settings/general',
                     'search-manager/settings/backend' => 'search-manager/settings/backend',

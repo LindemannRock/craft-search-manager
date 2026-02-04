@@ -541,9 +541,11 @@ class AnalyticsService extends Component
      */
     public function getChartData(?int $siteId, string $dateRange = 'last30days'): array
     {
+        $localDateExpr = $this->getLocalDateExpression('dateCreated');
+
         $query = (new Query())
             ->select([
-                'DATE(dateCreated) as date',
+                'date' => $localDateExpr,
                 'COUNT(*) as total',
                 // Count searches with results OR redirected OR showed promotions as successful
                 'SUM(CASE WHEN isHit = 1 OR wasRedirected = 1 OR promotionsShown > 0 THEN 1 ELSE 0 END) as withResults',
@@ -551,7 +553,7 @@ class AnalyticsService extends Component
                 'SUM(CASE WHEN isHit = 0 AND wasRedirected = 0 AND promotionsShown = 0 THEN 1 ELSE 0 END) as zeroResults',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy('DATE(dateCreated)')
+            ->groupBy($localDateExpr)
             ->orderBy(['date' => SORT_ASC]);
 
         $this->applyDateRangeFilter($query, $dateRange);
@@ -560,7 +562,8 @@ class AnalyticsService extends Component
             $query->andWhere(['siteId' => $siteId]);
         }
 
-        return $query->all();
+        $results = $query->all();
+        return $this->normalizeDailyCounts($results, $dateRange, ['total', 'withResults', 'zeroResults'], true);
     }
 
     /**
@@ -829,10 +832,9 @@ class AnalyticsService extends Component
      *
      * @param int|null $siteId Optional site ID to filter by
      * @param string $dateRange Date range to filter
-     * @param string $format Export format ('csv' or 'json')
-     * @return string CSV or JSON content
+     * @return array Export data (rows, headers, jsonData)
      */
-    public function exportAnalytics(?int $siteId, string $dateRange, string $format): string
+    public function exportAnalytics(?int $siteId, string $dateRange): array
     {
         $query = (new Query())
             ->from('{{%searchmanager_analytics}}')
@@ -888,101 +890,103 @@ class AnalyticsService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $geoEnabled = $settings->enableGeoDetection ?? false;
 
-        // Handle JSON format
-        if ($format === 'json') {
-            return $this->_exportAsJson($results, $geoEnabled);
+        $headers = [
+            Craft::t('search-manager', 'Date'),
+            Craft::t('search-manager', 'Time'),
+            Craft::t('search-manager', 'Query'),
+            Craft::t('search-manager', 'Hits'),
+            Craft::t('search-manager', 'Synonyms'),
+            Craft::t('search-manager', 'Rules'),
+            Craft::t('search-manager', 'Promotions'),
+            Craft::t('search-manager', 'Redirected'),
+            Craft::t('search-manager', 'Execution Time (ms)'),
+            Craft::t('search-manager', 'Backend'),
+            Craft::t('search-manager', 'Index'),
+            Craft::t('search-manager', 'Site'),
+            Craft::t('search-manager', 'Intent'),
+            Craft::t('search-manager', 'Source'),
+            Craft::t('search-manager', 'Platform'),
+            Craft::t('search-manager', 'App Version'),
+            Craft::t('search-manager', 'Referrer'),
+            Craft::t('search-manager', 'Device Type'),
+            Craft::t('search-manager', 'Device Brand'),
+            Craft::t('search-manager', 'Device Model'),
+            Craft::t('search-manager', 'OS'),
+            Craft::t('search-manager', 'OS Version'),
+            Craft::t('search-manager', 'Browser'),
+            Craft::t('search-manager', 'Browser Version'),
+        ];
+
+        if ($geoEnabled) {
+            $headers[] = Craft::t('search-manager', 'Country');
+            $headers[] = Craft::t('search-manager', 'City');
+            $headers[] = Craft::t('search-manager', 'Region');
         }
 
-        // CSV headers - conditionally include geo columns
-        if ($geoEnabled) {
-            $csv = "Date,Time,Query,Hits,Synonyms,Rules,Promotions,Redirected,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Country,City,Region,Language,Is Bot,Bot Name,User Agent\n";
-        } else {
-            $csv = "Date,Time,Query,Hits,Synonyms,Rules,Promotions,Redirected,Execution Time (ms),Backend,Index,Site,Intent,Source,Platform,App Version,Referrer,Device Type,Device Brand,Device Model,OS,OS Version,Browser,Browser Version,Language,Is Bot,Bot Name,User Agent\n";
-        }
+        $headers[] = Craft::t('search-manager', 'Language');
+        $headers[] = Craft::t('search-manager', 'Is Bot');
+        $headers[] = Craft::t('search-manager', 'Bot Name');
+        $headers[] = Craft::t('search-manager', 'User Agent');
+
+        $rows = [];
 
         foreach ($results as $row) {
             $date = \craft\helpers\DateTimeHelper::toDateTime($row['dateCreated']);
             $dateStr = $date ? $date->format('Y-m-d') : '';
             $timeStr = $date ? $date->format('H:i:s') : '';
 
-            // Get site name
             $siteName = '';
             if (!empty($row['siteId'])) {
                 $site = Craft::$app->getSites()->getSiteById($row['siteId']);
                 $siteName = $site ? $site->name : '';
             }
 
+            $rowData = [
+                'date' => $dateStr,
+                'time' => $timeStr,
+                'query' => $row['query'],
+                'hits' => $row['resultsCount'],
+                'synonyms' => ($row['synonymsExpanded'] ?? false) ? 1 : 0,
+                'rules' => $row['rulesMatched'] ?? 0,
+                'promotions' => $row['promotionsShown'] ?? 0,
+                'redirected' => ($row['wasRedirected'] ?? false) ? 1 : 0,
+                'execution_time_ms' => $row['executionTime'] ?? 0,
+                'backend' => $row['backend'],
+                'index' => $row['indexHandle'],
+                'site' => $siteName,
+                'intent' => $row['intent'] ?? '',
+                'source' => $row['source'] ?? 'frontend',
+                'platform' => $row['platform'] ?? '',
+                'app_version' => $row['appVersion'] ?? '',
+                'referrer' => $row['referrer'] ?? '',
+                'device_type' => $row['deviceType'] ?? '',
+                'device_brand' => $row['deviceBrand'] ?? '',
+                'device_model' => $row['deviceModel'] ?? '',
+                'os' => $row['osName'] ?? '',
+                'os_version' => $row['osVersion'] ?? '',
+                'browser' => $row['browser'] ?? '',
+                'browser_version' => $row['browserVersion'] ?? '',
+            ];
+
             if ($geoEnabled) {
-                $csv .= sprintf(
-                    '"%s","%s","%s",%d,%d,%d,%d,%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
-                    $dateStr,
-                    $timeStr,
-                    str_replace('"', '""', $row['query']),
-                    $row['resultsCount'],
-                    ($row['synonymsExpanded'] ?? false) ? 1 : 0,
-                    $row['rulesMatched'] ?? 0,
-                    $row['promotionsShown'] ?? 0,
-                    ($row['wasRedirected'] ?? false) ? 1 : 0,
-                    $row['executionTime'] ?? 0,
-                    $row['backend'],
-                    $row['indexHandle'],
-                    $siteName,
-                    $row['intent'] ?? '',
-                    $row['source'] ?? 'frontend',
-                    $row['platform'] ?? '',
-                    $row['appVersion'] ?? '',
-                    str_replace('"', '""', $row['referrer'] ?? ''),
-                    $row['deviceType'] ?? '',
-                    $row['deviceBrand'] ?? '',
-                    $row['deviceModel'] ?? '',
-                    $row['osName'] ?? '',
-                    $row['osVersion'] ?? '',
-                    $row['browser'] ?? '',
-                    $row['browserVersion'] ?? '',
-                    $row['country'] ?? '',
-                    $row['city'] ?? '',
-                    $row['region'] ?? '',
-                    $row['language'] ?? '',
-                    $row['isRobot'] ? 1 : 0,
-                    $row['botName'] ?? '',
-                    str_replace('"', '""', $row['userAgent'] ?? '')
-                );
-            } else {
-                $csv .= sprintf(
-                    '"%s","%s","%s",%d,%d,%d,%d,%d,%.2f,"%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s","%s",%d,"%s","%s"' . "\n",
-                    $dateStr,
-                    $timeStr,
-                    str_replace('"', '""', $row['query']),
-                    $row['resultsCount'],
-                    ($row['synonymsExpanded'] ?? false) ? 1 : 0,
-                    $row['rulesMatched'] ?? 0,
-                    $row['promotionsShown'] ?? 0,
-                    ($row['wasRedirected'] ?? false) ? 1 : 0,
-                    $row['executionTime'] ?? 0,
-                    $row['backend'],
-                    $row['indexHandle'],
-                    $siteName,
-                    $row['intent'] ?? '',
-                    $row['source'] ?? 'frontend',
-                    $row['platform'] ?? '',
-                    $row['appVersion'] ?? '',
-                    str_replace('"', '""', $row['referrer'] ?? ''),
-                    $row['deviceType'] ?? '',
-                    $row['deviceBrand'] ?? '',
-                    $row['deviceModel'] ?? '',
-                    $row['osName'] ?? '',
-                    $row['osVersion'] ?? '',
-                    $row['browser'] ?? '',
-                    $row['browserVersion'] ?? '',
-                    $row['language'] ?? '',
-                    $row['isRobot'] ? 1 : 0,
-                    $row['botName'] ?? '',
-                    str_replace('"', '""', $row['userAgent'] ?? '')
-                );
+                $rowData['country'] = $row['country'] ?? '';
+                $rowData['city'] = $row['city'] ?? '';
+                $rowData['region'] = $row['region'] ?? '';
             }
+
+            $rowData['language'] = $row['language'] ?? '';
+            $rowData['is_bot'] = $row['isRobot'] ? 1 : 0;
+            $rowData['bot_name'] = $row['botName'] ?? '';
+            $rowData['user_agent'] = $row['userAgent'] ?? '';
+
+            $rows[] = $rowData;
         }
 
-        return $csv;
+        return [
+            'rows' => $rows,
+            'headers' => $headers,
+            'jsonData' => $this->_exportAsJson($results, $geoEnabled),
+        ];
     }
 
     /**
@@ -990,9 +994,9 @@ class AnalyticsService extends Component
      *
      * @param array $results Raw query results
      * @param bool $geoEnabled Whether geo detection is enabled
-     * @return string JSON content
+     * @return array JSON export data
      */
-    private function _exportAsJson(array $results, bool $geoEnabled): string
+    private function _exportAsJson(array $results, bool $geoEnabled): array
     {
         $data = [];
 
@@ -1057,11 +1061,11 @@ class AnalyticsService extends Component
             $data[] = $item;
         }
 
-        return json_encode([
+        return [
             'exported' => date('c'),
             'count' => count($data),
             'data' => $data,
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        ];
     }
 
     /**
@@ -1404,7 +1408,6 @@ class AnalyticsService extends Component
             ->select(['intent', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['intent' => null]])
-            ->andWhere(['source' => 'frontend']) // Only frontend searches
             ->groupBy('intent')
             ->orderBy(['count' => SORT_DESC]);
 
@@ -1664,7 +1667,6 @@ class AnalyticsService extends Component
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['country' => null]])
             ->andWhere(['!=', 'country', ''])
-            ->andWhere(['source' => 'frontend'])
             ->groupBy('country')
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
@@ -1702,7 +1704,6 @@ class AnalyticsService extends Component
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['city' => null]])
             ->andWhere(['!=', 'city', ''])
-            ->andWhere(['source' => 'frontend'])
             ->groupBy(['city', 'country'])
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit);
@@ -1735,11 +1736,15 @@ class AnalyticsService extends Component
      */
     public function getPeakUsageHours(?int $siteId, string $dateRange = 'last30days'): array
     {
+        $hourExpr = $this->getLocalHourExpression('dateCreated');
+
         $query = (new Query())
-            ->select(['HOUR(dateCreated) as hour', 'COUNT(*) as count'])
+            ->select([
+                'hour' => $hourExpr,
+                'COUNT(*) as count',
+            ])
             ->from('{{%searchmanager_analytics}}')
-            ->where(['source' => 'frontend'])
-            ->groupBy('HOUR(dateCreated)')
+            ->groupBy($hourExpr)
             ->orderBy(['hour' => SORT_ASC]);
 
         $this->applyDateRangeFilter($query, $dateRange);
@@ -2143,6 +2148,8 @@ class AnalyticsService extends Component
      */
     public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
     {
+        $localDateExpr = $this->getLocalDateExpression('dateCreated');
+
         $query = (new Query())
             ->from('{{%searchmanager_rule_analytics}}')
             ->where(['queryRuleId' => $ruleId]);
@@ -2164,8 +2171,11 @@ class AnalyticsService extends Component
 
         // Get daily triggers
         $dailyTriggers = (clone $query)
-            ->select(['DATE(dateCreated) as date', 'COUNT(*) as count'])
-            ->groupBy('DATE(dateCreated)')
+            ->select([
+                'date' => $localDateExpr,
+                'COUNT(*) as count',
+            ])
+            ->groupBy($localDateExpr)
             ->orderBy(['date' => SORT_ASC])
             ->all();
 
@@ -2188,12 +2198,7 @@ class AnalyticsService extends Component
                     'lastTriggered' => $row['lastTriggered'],
                 ];
             }, $topQueries),
-            'dailyTriggers' => array_map(function($row) {
-                return [
-                    'date' => $row['date'],
-                    'count' => (int)$row['count'],
-                ];
-            }, $dailyTriggers),
+            'dailyTriggers' => $this->normalizeDailyCounts($dailyTriggers, $dateRange, ['count'], true),
             'recentTriggers' => $recentTriggers,
         ];
     }
@@ -2207,6 +2212,8 @@ class AnalyticsService extends Component
      */
     public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
     {
+        $localDateExpr = $this->getLocalDateExpression('dateCreated');
+
         $query = (new Query())
             ->from('{{%searchmanager_promotion_analytics}}')
             ->where(['promotionId' => $promotionId]);
@@ -2228,8 +2235,11 @@ class AnalyticsService extends Component
 
         // Get daily impressions
         $dailyImpressions = (clone $query)
-            ->select(['DATE(dateCreated) as date', 'COUNT(*) as count'])
-            ->groupBy('DATE(dateCreated)')
+            ->select([
+                'date' => $localDateExpr,
+                'COUNT(*) as count',
+            ])
+            ->groupBy($localDateExpr)
             ->orderBy(['date' => SORT_ASC])
             ->all();
 
@@ -2252,13 +2262,115 @@ class AnalyticsService extends Component
                     'lastShown' => $row['lastShown'],
                 ];
             }, $topQueries),
-            'dailyImpressions' => array_map(function($row) {
-                return [
-                    'date' => $row['date'],
-                    'count' => (int)$row['count'],
-                ];
-            }, $dailyImpressions),
+            'dailyImpressions' => $this->normalizeDailyCounts($dailyImpressions, $dateRange, ['count'], true),
             'recentImpressions' => $recentImpressions,
         ];
+    }
+
+    /**
+     * Normalize daily rows into a contiguous local-date range.
+     *
+     * @param array $rows
+     * @param string $dateRange
+     * @param array $fields
+     * @param bool $datesAreLocal
+     * @return array
+     */
+    private function normalizeDailyCounts(array $rows, string $dateRange, array $fields, bool $datesAreLocal = false): array
+    {
+        if (empty($rows)) {
+            return [];
+        }
+
+        $tz = new \DateTimeZone(Craft::$app->getTimeZone());
+        $bounds = DateRangeHelper::getBounds($dateRange);
+        $startLocal = $bounds['start'] ? (clone $bounds['start'])->setTimezone($tz) : null;
+        $endLocal = $bounds['end'] ? (clone $bounds['end'])->setTimezone($tz)->modify('-1 day') : new \DateTime('now', $tz);
+
+        $map = [];
+        foreach ($rows as $row) {
+            if (empty($row['date'])) {
+                continue;
+            }
+
+            if ($datesAreLocal) {
+                $key = $row['date'];
+            } else {
+                $rowDate = new \DateTime($row['date'], new \DateTimeZone('UTC'));
+                $key = $rowDate->setTimezone($tz)->format('Y-m-d');
+            }
+
+            if (!isset($map[$key])) {
+                $map[$key] = array_fill_keys($fields, 0);
+            }
+            foreach ($fields as $field) {
+                $map[$key][$field] += (int)($row[$field] ?? 0);
+            }
+        }
+
+        if ($startLocal === null) {
+            ksort($map);
+            $normalized = [];
+            foreach ($map as $date => $values) {
+                $normalized[] = ['date' => $date] + $values;
+            }
+            return $normalized;
+        }
+
+        $startLocal->setTime(0, 0, 0);
+        $endLocal->setTime(0, 0, 0);
+        $cursor = clone $startLocal;
+        $normalized = [];
+
+        while ($cursor <= $endLocal) {
+            $key = $cursor->format('Y-m-d');
+            $values = $map[$key] ?? array_fill_keys($fields, 0);
+            $normalized[] = ['date' => $key] + $values;
+            $cursor->modify('+1 day');
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Build a local-date SQL expression for the given column.
+     *
+     * @param string $column
+     * @return \yii\db\Expression
+     */
+    private function getLocalDateExpression(string $column): \yii\db\Expression
+    {
+        $offset = $this->getMysqlTimezoneOffset();
+        return new \yii\db\Expression(
+            "DATE(CONVERT_TZ([[{$column}]], '+00:00', :offset))",
+            [':offset' => $offset]
+        );
+    }
+
+    /**
+     * Build a local-hour SQL expression for the given column.
+     *
+     * @param string $column
+     * @return \yii\db\Expression
+     */
+    private function getLocalHourExpression(string $column): \yii\db\Expression
+    {
+        $offset = $this->getMysqlTimezoneOffset();
+        return new \yii\db\Expression(
+            "HOUR(CONVERT_TZ([[{$column}]], '+00:00', :offset))",
+            [':offset' => $offset]
+        );
+    }
+
+    /**
+     * Get the local timezone offset for MySQL CONVERT_TZ.
+     *
+     * @return string
+     */
+    private function getMysqlTimezoneOffset(): string
+    {
+        $timezone = Craft::$app->getTimeZone();
+        $dateTime = new \DateTime('now', new \DateTimeZone($timezone));
+        return $dateTime->format('P');
     }
 }

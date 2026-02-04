@@ -1,197 +1,177 @@
-{% set dateRange = craft.app.request.getQueryParam('range') ?? 'last7days' %}
 {% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set pluginHandle = pluginHandle ?? plugin.id %}
+{% set dateRange = craft.app.request.getQueryParam('range') ?? lrDefaultDateRange(pluginHandle) %}
 
 {# Get analytics data for this rule #}
 {% set analytics = craft.searchManager.getRuleAnalytics(rule.id, dateRange) %}
 
-<div class="analytics-container">
-    {# Date Range Selector #}
-    <div class="analytics-header">
-        <div class="flex">
-            <div class="btngroup">
-                <button type="button" class="btn menubtn">
-                    <span>{{ dateRange == 'today' ? 'Today' : (dateRange == 'yesterday' ? 'Yesterday' : (dateRange == 'last7days' ? 'Last 7 days' : (dateRange == 'last30days' ? 'Last 30 days' : (dateRange == 'last90days' ? 'Last 90 days' : 'All time')))) }}</span>
-                </button>
-                <div class="menu">
-                    <ul>
-                        <li><a href="#" data-range="today" class="date-range-option {{ dateRange == 'today' ? 'sel' : '' }}">{{ "Today"|t('search-manager') }}</a></li>
-                        <li><a href="#" data-range="yesterday" class="date-range-option {{ dateRange == 'yesterday' ? 'sel' : '' }}">{{ "Yesterday"|t('search-manager') }}</a></li>
-                        <li><a href="#" data-range="last7days" class="date-range-option {{ dateRange == 'last7days' ? 'sel' : '' }}">{{ "Last 7 days"|t('search-manager') }}</a></li>
-                        <li><a href="#" data-range="last30days" class="date-range-option {{ dateRange == 'last30days' ? 'sel' : '' }}">{{ "Last 30 days"|t('search-manager') }}</a></li>
-                        <li><a href="#" data-range="last90days" class="date-range-option {{ dateRange == 'last90days' ? 'sel' : '' }}">{{ "Last 90 days"|t('search-manager') }}</a></li>
-                        <li><a href="#" data-range="all" class="date-range-option {{ dateRange == 'all' ? 'sel' : '' }}">{{ "All time"|t('search-manager') }}</a></li>
-                    </ul>
-                </div>
+{% embed 'lindemannrock-base/_partials/analytics-panel' with {
+    config: {
+        pluginHandle: pluginHandle,
+        dateRange: {
+            enabled: true,
+            current: dateRange,
+            param: 'range',
+            hash: 'analytics',
+        },
+        export: {
+            action: 'search-manager/analytics/export-rule-analytics',
+            permission: 'searchManager:exportAnalytics',
+            extraParams: {ruleId: rule.id},
+        },
+    }
+} %}
+    {% block content %}
+        {% if analytics.totalTriggers == 0 %}
+            <div class="lr-analytics-empty">
+                <p>{{ "No analytics data yet"|t('search-manager') }}</p>
+                <p class="light">{{ "Analytics will appear here once this rule starts being triggered by searches."|t('search-manager') }}</p>
             </div>
-            <div class="flex-grow"></div>
-            {% if currentUser.can('searchManager:exportAnalytics') %}
-                <div class="btngroup">
-                    <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-                    <div class="menu" data-align="right">
-                        <ul>
-                            <li><a href="#" class="export-rule-analytics" data-format="csv">{{ "Export as CSV"|t('search-manager') }}</a></li>
-                            <li><a href="#" class="export-rule-analytics" data-format="json">{{ "Export as JSON"|t('search-manager') }}</a></li>
-                        </ul>
+        {% else %}
+            <div class="lr-unified-cards">
+                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                    value: analytics.totalTriggers|number,
+                    description: 'Times Triggered'|t('search-manager'),
+                    align: 'center',
+                } only %}
+
+                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                    value: analytics.uniqueQueries|number,
+                    description: 'Unique Queries'|t('search-manager'),
+                    align: 'center',
+                } only %}
+
+                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                    value: analytics.avgResultsAfter|number(1),
+                    description: 'Avg Results After'|t('search-manager'),
+                    align: 'center',
+                } only %}
+
+                {% if rule.actionType == 'redirect' %}
+                    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                        value: analytics.totalTriggers|number,
+                        description: 'Redirects'|t('search-manager'),
+                        align: 'center',
+                    } only %}
+                {% endif %}
+            </div>
+
+            {% if analytics.topQueries|length %}
+                <h2 class="lr-section-heading">{{ "Top Queries Triggering This Rule"|t('search-manager') }}</h2>
+                <div class="lr-chart-container">
+                    <div class="lr-table-scroll">
+                        <table class="data fullwidth">
+                            <thead>
+                                <tr>
+                                    <th>{{ 'Query'|t('search-manager') }}</th>
+                                    <th>{{ 'Times Triggered'|t('search-manager') }}</th>
+                                    <th>{{ 'Avg Results'|t('search-manager') }}</th>
+                                    <th>{{ 'Last Triggered'|t('search-manager') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in analytics.topQueries %}
+                                    <tr>
+                                        <td><code>{{ item.query }}</code></td>
+                                        <td>{{ item.count|number }}</td>
+                                        <td>{{ item.avgResults|number(1) }}</td>
+                                        <td>{{ item.lastTriggered|date('short') }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             {% endif %}
-        </div>
-    </div>
 
-    <div id="rule-analytics-content" data-rule-id="{{ rule.id }}">
-        {% include "search-manager/query-rules/_partials/analytics-content" with {
-            rule: rule,
-            analytics: analytics,
-            dateRange: dateRange
-        } %}
-    </div>
-</div>
+            {% if analytics.dailyTriggers|length %}
+                <h2 class="lr-section-heading">{{ "Daily Triggers"|t('search-manager') }}</h2>
+                <div class="lr-chart-container">
+                    <div class="lr-chart-height-250">
+                        <canvas id="rule-daily-chart" class="lr-chart-canvas"></canvas>
+                    </div>
+                </div>
 
-{% js %}
-$(document).ready(function() {
-    // Handle export clicks
-    $(document).on('click', '.export-rule-analytics', function(e) {
-        e.preventDefault();
+                <script data-analytics-reinit="true">
+                (function() {
+                    function initRuleDailyChart() {
+                        if (typeof Chart === 'undefined') return;
+                        window.ruleCharts = window.ruleCharts || {};
+                        if (window.ruleCharts.dailyChart) {
+                            window.ruleCharts.dailyChart.destroy();
+                        }
 
-        const format = $(this).data('format');
-        const ruleId = $('#rule-analytics-content').data('rule-id');
-        const currentRange = new URLSearchParams(window.location.search).get('range') || 'last7days';
-
-        // Build export URL
-        const exportUrl = Craft.getActionUrl('search-manager/analytics/export-rule-analytics', {
-            ruleId: ruleId,
-            dateRange: currentRange,
-            format: format
-        });
-
-        // Trigger download
-        window.location.href = exportUrl;
-
-        // Close the menu
-        $(this).closest('.menu').removeClass('active');
-        $(this).closest('.btngroup').find('.menubtn').removeClass('active');
-    });
-
-    // Handle date range selection via AJAX
-    $(document).on('click', '.date-range-option', function(e) {
-        e.preventDefault();
-
-        const $link = $(this);
-        const range = $link.data('range');
-        const ruleId = $('#rule-analytics-content').data('rule-id');
-
-        // Update the button text
-        const rangeLabels = {
-            'today': '{{ "Today"|t('search-manager')|e('js') }}',
-            'yesterday': '{{ "Yesterday"|t('search-manager')|e('js') }}',
-            'last7days': '{{ "Last 7 days"|t('search-manager')|e('js') }}',
-            'last30days': '{{ "Last 30 days"|t('search-manager')|e('js') }}',
-            'last90days': '{{ "Last 90 days"|t('search-manager')|e('js') }}',
-            'all': '{{ "All time"|t('search-manager')|e('js') }}'
-        };
-
-        // Update button text immediately
-        $link.closest('.btngroup').find('.menubtn span').text(rangeLabels[range] || range);
-
-        // Update selected state
-        $link.closest('ul').find('.sel').removeClass('sel');
-        $link.addClass('sel');
-
-        // Close the menu
-        $link.closest('.menu').removeClass('active');
-        $link.closest('.btngroup').find('.menubtn').removeClass('active');
-
-        // Show loading state
-        $('#rule-analytics-content').addClass('loading').css('opacity', '0.5');
-
-        // Make AJAX request
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-rule-analytics'),
-            type: 'GET',
-            dataType: 'json',
-            data: {
-                ruleId: ruleId,
-                range: range
-            },
-            success: function(response) {
-                if (response.success) {
-                    $('#rule-analytics-content').html(response.html);
-
-                    // Update URL without reload
-                    const url = new URL(window.location);
-                    url.searchParams.set('range', range);
-                    window.history.pushState({}, '', url);
-                } else {
-                    Craft.cp.displayError(response.error || '{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
+                        const ctx = document.getElementById('rule-daily-chart');
+                        if (!ctx) return;
+                        const dailyData = {{ analytics.dailyTriggers|json_encode|raw }};
+                        window.ruleCharts.dailyChart = new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: dailyData.map(d => d.date),
+                                datasets: [{
+                                    label: '{{ "Triggers"|t('search-manager') }}',
+                                    data: dailyData.map(d => d.count),
+                                    borderColor: '#0d78f2',
+                                    backgroundColor: 'rgba(13, 120, 242, 0.1)',
+                                    fill: true,
+                                    tension: 0.3
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: { legend: { display: false } },
+                                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                            }
+                        });
+                        ctx.style.width = '100%';
+                        ctx.style.height = '100%';
                 }
-            },
-            error: function() {
-                Craft.cp.displayError('{{ "Failed to load analytics data"|t('search-manager')|e('js') }}');
-            },
-            complete: function() {
-                $('#rule-analytics-content').removeClass('loading').css('opacity', '1');
-            }
-        });
-    });
-});
-{% endjs %}
 
-{% css %}
-.analytics-container {
-    padding: 24px 0;
-}
+                    if (typeof Chart !== 'undefined') {
+                        initRuleDailyChart();
+                    }
+                    document.addEventListener('lr:panelChartsReady', initRuleDailyChart, { once: true });
+                })();
+                </script>
+            {% endif %}
 
-.analytics-header {
-    margin-bottom: 24px;
-}
-
-.analytics-header .flex {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-
-.analytics-header .flex-grow {
-    flex-grow: 1;
-}
-
-.analytics-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 16px;
-    margin-bottom: 30px;
-}
-
-.stat-box {
-    background: #f3f7fc;
-    padding: 20px;
-    border-radius: 4px;
-    text-align: center;
-    border: 1px solid var(--border-hairline);
-}
-
-.stat-value {
-    font-size: 28px;
-    font-weight: 600;
-    color: #0d78f2;
-    margin-bottom: 6px;
-}
-
-.stat-label {
-    font-size: 13px;
-    color: #596673;
-}
-
-.chart-container {
-    background: #fff;
-    border: 1px solid #e3e5e8;
-    border-radius: 4px;
-    padding: 20px;
-    margin-bottom: 20px;
-}
-
-.chart-container h3 {
-    margin: 0 0 16px;
-    font-size: 15px;
-}
-{% endcss %}
+            {% if analytics.recentTriggers|length %}
+                <h2 class="lr-section-heading">{{ "Recent Triggers (Last 20)"|t('search-manager') }}</h2>
+                <div class="lr-chart-container">
+                    <div class="lr-table-scroll">
+                        <table class="data fullwidth">
+                            <thead>
+                                <tr>
+                                    <th>{{ 'Date'|t('search-manager') }}</th>
+                                    <th>{{ 'Time'|t('search-manager') }}</th>
+                                    <th>{{ 'Query'|t('search-manager') }}</th>
+                                    <th>{{ 'Index'|t('search-manager') }}</th>
+                                    <th>{{ 'Site'|t('search-manager') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for trigger in analytics.recentTriggers %}
+                                    <tr>
+                                        <td>{{ trigger.dateCreated|date('short') }}</td>
+                                        <td>{{ trigger.dateCreated|time('short') }}</td>
+                                        <td><code>{{ trigger.query }}</code></td>
+                                        <td>{{ trigger.indexHandle ?? '—' }}</td>
+                                        <td>
+                                            {% if trigger.siteId %}
+                                                {% set site = craft.app.sites.getSiteById(trigger.siteId) %}
+                                                {{ site ? site.name : '—' }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+        {% endif %}
+    {% endblock %}
+{% endembed %}

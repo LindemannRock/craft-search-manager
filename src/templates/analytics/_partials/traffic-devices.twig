@@ -1,30 +1,19 @@
 {# Traffic & Devices Tab - Bot Traffic, Device Types, Browsers, OS, Peak Hours #}
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2 style="margin: 0;">{{ "Traffic Analysis"|t('search-manager') }}</h2>
-    <div class="btngroup">
-        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-        <div class="menu" data-align="right">
-            <ul>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"traffic-devices"}'>{{ "Export CSV"|t('search-manager') }}</a></li>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"traffic-devices"}'>{{ "Export JSON"|t('search-manager') }}</a></li>
-            </ul>
-        </div>
-    </div>
-</div>
+<h2 class="lr-section-heading">{{ "Traffic Analysis"|t('search-manager') }}</h2>
 
-<div class="analytics-charts two-columns">
-    <div class="chart-container">
+<div class="lr-analytics-charts two-columns">
+    <div class="lr-chart-container">
         <h3>{{ "Bot vs Human Traffic"|t('search-manager') }}</h3>
         <canvas id="bot-chart"></canvas>
-        <div style="text-align: center; margin-top: 10px; color: #666;">
+        <div class="lr-muted-center">
             <strong>{{ botStats.botPercentage }}%</strong> of traffic is from bots
         </div>
     </div>
 
-    <div class="chart-container">
+    <div class="lr-chart-container">
         <h3>{{ "Top Bots"|t('search-manager') }}</h3>
-        <div class="table-scroll-container">
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
@@ -42,7 +31,7 @@
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="2" style="text-align: center; color: #999;">
+                            <td colspan="2" class="light lr-text-center">
                                 {{ "No bot data available"|t('search-manager') }}
                             </td>
                         </tr>
@@ -53,27 +42,27 @@
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Device Analytics"|t('search-manager') }}</h2>
+<h2 class="lr-section-heading">{{ "Device Analytics"|t('search-manager') }}</h2>
 
-<div class="analytics-charts two-columns">
-    <div class="chart-container">
+<div class="lr-analytics-charts two-columns">
+    <div class="lr-chart-container">
         <h3>{{ "Device Types"|t('search-manager') }}</h3>
         <canvas id="device-chart"></canvas>
     </div>
 
-    <div class="chart-container">
+    <div class="lr-chart-container">
         <h3>{{ "Browser Usage"|t('search-manager') }}</h3>
         <canvas id="browser-chart"></canvas>
     </div>
 </div>
 
-<div class="analytics-charts two-columns" style="margin-top: 30px;">
-    <div class="chart-container">
+<div class="lr-analytics-charts two-columns">
+    <div class="lr-chart-container">
         <h3>{{ "Operating Systems"|t('search-manager') }}</h3>
         <canvas id="os-chart"></canvas>
     </div>
 
-    <div class="chart-container">
+    <div class="lr-chart-container">
         <h3>{{ "Peak Usage Hours"|t('search-manager') }}</h3>
         <canvas id="hourly-chart"></canvas>
     </div>

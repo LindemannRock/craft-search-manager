@@ -9,22 +9,11 @@
     'file': 'File',
 } %}
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-    <h2 style="margin: 0;">{{ "Recent Searches"|t('search-manager') }}</h2>
-    <div class="btngroup">
-        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-        <div class="menu" data-align="right">
-            <ul>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export" data-format="csv">{{ "Export CSV"|t('search-manager') }}</a></li>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export" data-format="json">{{ "Export JSON"|t('search-manager') }}</a></li>
-            </ul>
-        </div>
-    </div>
-</div>
+<h2 class="lr-section-heading">{{ "Recent Searches"|t('search-manager') }}</h2>
 
-<div class="analytics-charts">
-    <div class="chart-container full-width">
-        <div class="table-scroll-container">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
@@ -67,11 +56,11 @@
                             </td>
                             <td>
                                 {% if search.wasRedirected|default(false) %}
-                                    <span style="color: #9b59b6;" title="{{ 'Redirected'|t('search-manager') }}">—</span>
+                                    <span class="lr-text-purple" title="{{ 'Redirected'|t('search-manager') }}">—</span>
                                 {% elseif search.resultsCount > 0 %}
-                                    <span style="color: #27ae60;">{{ search.resultsCount|number }}</span>
+                                    <span class="lr-text-green">{{ search.resultsCount|number }}</span>
                                 {% else %}
-                                    <span style="color: #e74c3c;">0</span>
+                                    <span class="lr-text-red">0</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -83,14 +72,14 @@
                             </td>
                             <td>
                                 {% if search.rulesMatched|default(0) > 0 %}
-                                    <span style="color: #3498db;">{{ search.rulesMatched }}</span>
+                                    <span class="lr-text-blue">{{ search.rulesMatched }}</span>
                                 {% else %}
                                     <span class="light">—</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if search.promotionsShown|default(0) > 0 %}
-                                    <span style="color: #f39c12;">{{ search.promotionsShown }}</span>
+                                    <span class="lr-text-amber">{{ search.promotionsShown }}</span>
                                 {% else %}
                                     <span class="light">—</span>
                                 {% endif %}
@@ -141,7 +130,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="{{ settings.enableGeoDetection ? 19 : 18 }}" class="thin light">{{ "No searches recorded yet"|t('search-manager') }}</td>
+                            <td colspan="{{ settings.enableGeoDetection ? 19 : 18 }}" class="thin light lr-text-center">{{ "No searches recorded yet"|t('search-manager') }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

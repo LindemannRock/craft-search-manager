@@ -1,49 +1,48 @@
-<div style="display: flex; justify-content: flex-end; margin-bottom: 15px;">
-    <div class="btngroup">
-        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-        <div class="menu" data-align="right">
-            <ul>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="csv" data-params='{"tab":"performance"}'>{{ "Export CSV"|t('search-manager') }}</a></li>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-tab" data-format="json" data-params='{"tab":"performance"}'>{{ "Export JSON"|t('search-manager') }}</a></li>
-            </ul>
-        </div>
-    </div>
+<div class="lr-unified-cards">
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: '—',
+        description: 'Cache Hit Rate'|t('search-manager'),
+        align: 'center',
+        id: 'cache-hit-rate',
+    } only %}
+
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: '—',
+        description: 'Cache Hits'|t('search-manager'),
+        align: 'center',
+        id: 'cache-hits',
+    } only %}
+
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: '—',
+        description: 'Cache Misses'|t('search-manager'),
+        align: 'center',
+        id: 'cache-misses',
+    } only %}
+
+    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        value: '—',
+        description: 'Total Searches'|t('search-manager'),
+        align: 'center',
+        id: 'total-searches-perf',
+    } only %}
 </div>
 
-<div class="analytics-stats">
-    <div class="stat-box">
-        <div class="stat-value" id="cache-hit-rate">—</div>
-        <div class="stat-label">{{ "Cache Hit Rate"|t('search-manager') }}</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value" id="cache-hits">—</div>
-        <div class="stat-label">{{ "Cache Hits"|t('search-manager') }}</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value" id="cache-misses">—</div>
-        <div class="stat-label">{{ "Cache Misses"|t('search-manager') }}</div>
-    </div>
-    <div class="stat-box">
-        <div class="stat-value" id="total-searches-perf">—</div>
-        <div class="stat-label">{{ "Total Searches"|t('search-manager') }}</div>
-    </div>
-</div>
+<h2 class="lr-section-heading">{{ "Response Time Trend"|t('search-manager') }}</h2>
 
-<h2 style="margin: 30px 0 20px;">{{ "Response Time Trend"|t('search-manager') }}</h2>
-
-<div class="analytics-charts">
-    <div class="chart-container full-width">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
         <canvas id="performance-chart"></canvas>
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Query Performance"|t('search-manager') }}</h2>
-<p class="light" style="margin: -10px 0 20px; font-size: 12px;">{{ "Note: With limited data, queries may appear in both tables. Tables will differentiate as more unique searches are tracked (minimum 3 searches per query required)."|t('search-manager') }}</p>
+<h2 class="lr-section-heading">{{ "Query Performance"|t('search-manager') }}</h2>
+<p class="light lr-note-tight">{{ "Note: With limited data, queries may appear in both tables. Tables will differentiate as more unique searches are tracked (minimum 3 searches per query required)."|t('search-manager') }}</p>
 
-<div class="analytics-charts two-columns">
-    <div class="chart-container">
+<div class="lr-analytics-charts two-columns">
+    <div class="lr-chart-container">
         <h3>{{ "Fastest Queries (Top 10)"|t('search-manager') }}</h3>
-        <div class="table-scroll-container">
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
@@ -60,9 +59,9 @@
         </div>
     </div>
 
-    <div class="chart-container">
+    <div class="lr-chart-container">
         <h3>{{ "Slowest Queries (Top 10)"|t('search-manager') }}</h3>
-        <div class="table-scroll-container">
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>

@@ -1,6 +1,10 @@
-{% extends "_layouts/cp" %}
+{% extends 'lindemannrock-base/_layouts/cp-analytics' %}
+
 {% set title = "Analytics"|t('search-manager') %}
 {% set selectedSubnavItem = 'analytics' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set pluginHandle = pluginHandle ?? plugin.id %}
 
 {% set crumbs = [
     {
@@ -18,1209 +22,188 @@
 {% set promotionsExist = craft.app.db.createCommand("SELECT COUNT(*) FROM {{%searchmanager_promotions}}").queryScalar() > 0 %}
 
 {# Define Tabs #}
-{% set tabs = {
-    overview: { label: "Overview"|t('search-manager'), url: '#overview' },
-    searches: { label: "Recent Searches"|t('search-manager'), url: '#searches' },
+{% set tabsConfig = {
+    overview: { label: "Overview"|t('search-manager') },
+    searches: { label: "Recent Searches"|t('search-manager') },
 } %}
 
 {# Only add Query Rules tab if rules exist #}
 {% if queryRulesExist %}
-    {% set tabs = tabs|merge({
-        'query-rules': { label: "Query Rules"|t('search-manager'), url: '#query-rules' }
+    {% set tabsConfig = tabsConfig|merge({
+        'query-rules': { label: "Query Rules"|t('search-manager') }
     }) %}
 {% endif %}
 
 {# Only add Promotions tab if promotions exist #}
 {% if promotionsExist %}
-    {% set tabs = tabs|merge({
-        'promotions': { label: "Promotions"|t('search-manager'), url: '#promotions' }
+    {% set tabsConfig = tabsConfig|merge({
+        'promotions': { label: "Promotions"|t('search-manager') }
     }) %}
 {% endif %}
 
-{% set tabs = tabs|merge({
-    contentGaps: { label: "Content Gaps"|t('search-manager'), url: '#content-gaps' },
-    performance: { label: "Performance"|t('search-manager'), url: '#performance' },
-    'traffic-devices': { label: "Traffic & Devices"|t('search-manager'), url: '#traffic-devices' }
+{% set tabsConfig = tabsConfig|merge({
+    'content-gaps': { label: "Content Gaps"|t('search-manager') },
+    performance: { label: "Performance"|t('search-manager') },
+    'traffic-devices': { label: "Traffic & Devices"|t('search-manager') }
 }) %}
 
 {# Only add Geographic tab if geo detection is enabled #}
 {% if settings.enableGeoDetection %}
-    {% set tabs = tabs|merge({
-        geographic: { label: "Geographic"|t('search-manager'), url: '#geographic' }
+    {% set tabsConfig = tabsConfig|merge({
+        geographic: { label: "Geographic"|t('search-manager') }
     }) %}
 {% endif %}
 
-{% set selectedTab = 'overview' %}
+{% set analyticsConfig = {
+    plugin: {
+        handle: pluginHandle,
+        name: searchHelper.fullName,
+    },
+    page: {
+        title: title,
+        subnav: selectedSubnavItem,
+        crumbs: crumbs,
+    },
+    tabs: tabsConfig,
+    filters: {
+        dateRange: {
+            default: lrDefaultDateRange(pluginHandle),
+            current: dateRange,
+        },
+        sites: {
+            enabled: sites|length > 1,
+            current: siteId,
+            sites: sites,
+        },
+    },
+    charts: {
+        prefix: 'search',
+        dataEndpoint: 'search-manager/analytics/get-data',
+    },
+    export: {
+        permission: 'searchManager:exportAnalytics',
+        action: 'search-manager/analytics/export',
+    },
+} %}
 
-
-{% block toolbar %}
-	<div class="flex">
-		{% if sites|length > 1 %}
-		<div>
-			<div class="btngroup">
-				<button type="button" class="btn menubtn">
-					<span id="siteLabel">{{ siteId ? sites|filter(s => s.id == siteId)|first.name : 'All Sites'|t('search-manager') }}</span>
-				</button>
-				<div class="menu">
-					<ul>
-						<li><a href="#" data-site="" class="site-option {{ not siteId ? 'sel' : '' }}">{{ "All Sites"|t('search-manager') }}</a></li>
-						{% for site in sites %}
-							<li><a href="#" data-site="{{ site.id }}" class="site-option {{ siteId == site.id ? 'sel' : '' }}">{{ site.name }}</a></li>
-						{% endfor %}
-					</ul>
-				</div>
-			</div>
-		</div>
-		{% endif %}
-		<div>
-			<div class="btngroup">
-				<button type="button" class="btn menubtn">
-					<span id="dateRangeLabel">{{ dateRange == 'today' ? 'Today' : (dateRange == 'yesterday' ? 'Yesterday' : (dateRange == 'last7days' ? 'Last 7 days' : (dateRange == 'last30days' ? 'Last 30 days' : (dateRange == 'last90days' ? 'Last 90 days' : 'All time')))) }}</span>
-				</button>
-				<div class="menu">
-					<ul>
-						<li><a href="#" data-range="today" class="main-date-range-option {{ dateRange == 'today' ? 'sel' : '' }}">{{ "Today"|t('search-manager') }}</a></li>
-						<li><a href="#" data-range="yesterday" class="main-date-range-option {{ dateRange == 'yesterday' ? 'sel' : '' }}">{{ "Yesterday"|t('search-manager') }}</a></li>
-						<li><a href="#" data-range="last7days" class="main-date-range-option {{ dateRange == 'last7days' ? 'sel' : '' }}">{{ "Last 7 days"|t('search-manager') }}</a></li>
-						<li><a href="#" data-range="last30days" class="main-date-range-option {{ dateRange == 'last30days' ? 'sel' : '' }}">{{ "Last 30 days"|t('search-manager') }}</a></li>
-						<li><a href="#" data-range="last90days" class="main-date-range-option {{ dateRange == 'last90days' ? 'sel' : '' }}">{{ "Last 90 days"|t('search-manager') }}</a></li>
-						<li><a href="#" data-range="all" class="main-date-range-option {{ dateRange == 'all' ? 'sel' : '' }}">{{ "All time"|t('search-manager') }}</a></li>
-					</ul>
-				</div>
-			</div>
-		</div>
-	</div>
-{% endblock %}
-
-{% block content %}
+{% block tabs %}
     {# Tab Content - IDs must match tab URLs #}
-    <div id="overview" class="tab-content">
+    <div id="overview" class="lr-tab-content">
         {% include 'search-manager/analytics/_partials/overview' %}
     </div>
 
-    <div id="searches" class="tab-content hidden">
+    <div id="searches" class="lr-tab-content hidden">
          {% include 'search-manager/analytics/_partials/searches' %}
     </div>
 
     {% if queryRulesExist %}
-    <div id="query-rules" class="tab-content hidden">
+    <div id="query-rules" class="lr-tab-content hidden">
          {% include 'search-manager/analytics/_partials/query-rules' %}
     </div>
     {% endif %}
 
     {% if promotionsExist %}
-    <div id="promotions" class="tab-content hidden">
+    <div id="promotions" class="lr-tab-content hidden">
          {% include 'search-manager/analytics/_partials/promotions' %}
     </div>
     {% endif %}
 
-    <div id="content-gaps" class="tab-content hidden">
+    <div id="content-gaps" class="lr-tab-content hidden">
          {% include 'search-manager/analytics/_partials/content-gaps' %}
     </div>
 
-    <div id="performance" class="tab-content hidden">
+    <div id="performance" class="lr-tab-content hidden">
          {% include 'search-manager/analytics/_partials/performance' %}
     </div>
 
-    <div id="traffic-devices" class="tab-content hidden">
+    <div id="traffic-devices" class="lr-tab-content hidden">
          {% include 'search-manager/analytics/_partials/traffic-devices' %}
     </div>
 
     {% if settings.enableGeoDetection %}
-    <div id="geographic" class="tab-content hidden">
+    <div id="geographic" class="lr-tab-content hidden">
          {% include 'search-manager/analytics/_partials/geographic' %}
     </div>
     {% endif %}
-
-    {% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
 
-{% css %}
-    /* Tab content padding */
-    .tab-content {
-        padding: 24px;
-    }
+{% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\analytics\\AnalyticsAsset') %}
 
-    .analytics-stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 20px;
-        margin-bottom: 40px;
-    }
+{% block scripts %}
+{% set actionTypeBadges = {
+    'synonym': include('lindemannrock-base/_components/badge', {
+        label: 'Synonyms'|t('search-manager'),
+        colorSet: 'actionType',
+        value: 'synonym',
+    })|trim,
+    'boost_section': include('lindemannrock-base/_components/badge', {
+        label: 'Boost Section'|t('search-manager'),
+        colorSet: 'actionType',
+        value: 'boost_section',
+    })|trim,
+    'boost_category': include('lindemannrock-base/_components/badge', {
+        label: 'Boost Category'|t('search-manager'),
+        colorSet: 'actionType',
+        value: 'boost_category',
+    })|trim,
+    'boost_element': include('lindemannrock-base/_components/badge', {
+        label: 'Boost Element'|t('search-manager'),
+        colorSet: 'actionType',
+        value: 'boost_element',
+    })|trim,
+    'filter': include('lindemannrock-base/_components/badge', {
+        label: 'Filter'|t('search-manager'),
+        colorSet: 'actionType',
+        value: 'filter',
+    })|trim,
+    'redirect': include('lindemannrock-base/_components/badge', {
+        label: 'Redirect'|t('search-manager'),
+        colorSet: 'actionType',
+        value: 'redirect',
+    })|trim,
+} %}
 
-    .stat-box {
-        background: #f3f7fc;
-        padding: 24px;
-        border-radius: 4px;
-        text-align: center;
-        border: 1px solid var(--border-hairline);
-    }
+{% set analyticsStrings = {
+    noTrend: "No trend data available for the selected filters."|t('search-manager'),
+    noBot: "No bot data available for the selected filters."|t('search-manager'),
+    noDevice: "No device data available for the selected filters."|t('search-manager'),
+    noBrowser: "No browser data available for the selected filters."|t('search-manager'),
+    noOs: "No OS data available for the selected filters."|t('search-manager'),
+    noUsage: "No usage data available for the selected filters."|t('search-manager'),
+    noQueryLength: "No query length data available for the selected filters."|t('search-manager'),
+    noWordCloud: "No data available for word cloud."|t('search-manager'),
+    noContentGaps: "No content gaps found!"|t('search-manager'),
+    noPeakHour: "No peak hour data available for the selected filters."|t('search-manager'),
+    searchesLabel: "Searches"|t('search-manager'),
+    peakHourLabel: "Peak hour:"|t('search-manager'),
+    noTrending: "No trending data available"|t('search-manager'),
+    newLabel: "New"|t('search-manager'),
+    notEnoughData: "Not enough data (min 3 searches per query)"|t('search-manager'),
+    noIntent: "No intent data available for the selected filters."|t('search-manager'),
+    noSource: "No source data available for the selected filters."|t('search-manager'),
+    noPerformance: "No performance data available for the selected filters."|t('search-manager'),
+    noDataFilters: "No data available for the selected filters."|t('search-manager'),
+    noDataAvailable: "No data available"|t('search-manager'),
+    noQueryRules: "No query rules have been triggered yet"|t('search-manager'),
+    noRuleQueries: "No queries have triggered rules yet"|t('search-manager'),
+    noPromotionsShown: "No promotions have been shown yet"|t('search-manager'),
+    noPromotionQueries: "No queries have triggered promotions yet"|t('search-manager'),
+} %}
 
-    .stat-value {
-        font-size: 32px;
-        font-weight: 600;
-        color: #0d78f2;
-        margin-bottom: 8px;
-    }
-
-    .stat-label {
-        font-size: 14px;
-        color: #596673;
-    }
-
-    .analytics-charts {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 30px;
-        margin-bottom: 30px;
-    }
-
-    .analytics-charts.two-columns {
-        grid-template-columns: repeat(2, 1fr);
-    }
-
-    @media (max-width: 1024px) {
-        .analytics-charts.two-columns {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .chart-container.full-width {
-        grid-column: 1 / -1;
-    }
-
-    .chart-container h3 {
-        margin: 0 0 20px;
-        font-size: 16px;
-    }
-
-    .chart-container {
-        background: #fff;
-        border: 1px solid #e3e5e8;
-        border-radius: 4px;
-        padding: 24px;
-        min-width: 0;
-        overflow: hidden;
-    }
-
-    .chart-container canvas {
-        max-height: 300px;
-        max-width: 100%;
-    }
-
-    .table-scroll-container {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        margin: 0 -24px;
-        padding: 0 24px;
-    }
-
-    .table-scroll-container table {
-        min-width: 100%;
-        width: 100%;
-    }
-
-    /* Word Cloud Styles */
-    .word-cloud-item {
-        display: inline-block;
-        padding: 5px;
-        color: #0d78f2;
-        transition: all 0.2s ease;
-        cursor: pointer;
-    }
-    .word-cloud-item:hover {
-        color: #d35400;
-        transform: scale(1.1);
-    }
-{% endcss %}
+{% set analyticsConfig = {
+    dateRange: dateRange,
+    siteId: siteId ?? '',
+    csrfName: craft.app.config.general.csrfTokenName,
+    csrfToken: craft.app.request.csrfToken,
+    endpoints: {
+        data: 'search-manager/analytics/get-data',
+    },
+    strings: analyticsStrings,
+    actionTypeBadges: actionTypeBadges,
+} %}
 
 {% js %}
-    // Global Chart Instances
-    window.smCharts = {};
-    window.currentTab = 'overview';
-
-    // Load Chart.js
-    if (typeof Chart === 'undefined') {
-        var script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js';
-        script.onload = function() { initCharts(); };
-        document.head.appendChild(script);
-    } else {
-        initCharts();
-    }
-
-    // Initialize Charts based on initial data
-    function initCharts(data) {
-        // Destroy existing
-        Object.values(window.smCharts).forEach(c => c.destroy());
-        window.smCharts = {};
-
-        const chartColors = ['#0d78f2', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6'];
-        
-        // Data sources (either passed or from server-rendered variables)
-        const chartData = data ? data.chartData : {{ chartData|json_encode|raw }};
-        const botStats = data ? data.botStats : {{ botStats|json_encode|raw }};
-        const deviceBreakdown = data ? data.deviceBreakdown : {{ deviceBreakdown|json_encode|raw }};
-        const browserBreakdown = data ? data.browserBreakdown : {{ browserBreakdown|json_encode|raw }};
-        const osBreakdown = data ? data.osBreakdown : {{ osBreakdown|json_encode|raw }};
-
-        // 1. Overview Tab Charts
-        if (document.getElementById('404-trend-chart') && chartData) {
-            window.smCharts.trend = new Chart(document.getElementById('404-trend-chart'), {
-                type: 'line',
-                data: {
-                    labels: chartData.map(d => d.date),
-                    datasets: [
-                        { label: 'With Hits', data: chartData.map(d => d.withResults), borderColor: '#10B981', tension: 0.1 },
-                        { label: 'Zero Hits', data: chartData.map(d => d.zeroResults), borderColor: '#EF4444', tension: 0.1 }
-                    ]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
-        }
-
-        // 2. Audience Tab Charts (Only init if tab is active or data is ready)
-        if (botStats && botStats.chart) {
-             window.smCharts.bot = new Chart(document.getElementById('bot-chart'), {
-                type: 'doughnut',
-                data: {
-                    labels: botStats.chart.labels,
-                    datasets: [{ data: botStats.chart.values, backgroundColor: ['#27ae60', '#e74c3c'] }]
-                }
-            });
-        }
-
-        if (deviceBreakdown && deviceBreakdown.labels) {
-            window.smCharts.device = new Chart(document.getElementById('device-chart'), {
-                type: 'doughnut',
-                data: {
-                    labels: deviceBreakdown.labels,
-                    datasets: [{ data: deviceBreakdown.values, backgroundColor: chartColors }]
-                }
-            });
-        }
-
-        if (browserBreakdown && browserBreakdown.labels) {
-             window.smCharts.browser = new Chart(document.getElementById('browser-chart'), {
-                type: 'bar',
-                data: {
-                    labels: browserBreakdown.labels,
-                    datasets: [{ label: 'Searches', data: browserBreakdown.values, backgroundColor: '#0d78f2' }]
-                }
-            });
-        }
-        
-        if (osBreakdown && osBreakdown.labels) {
-             window.smCharts.os = new Chart(document.getElementById('os-chart'), {
-                type: 'doughnut',
-                data: {
-                    labels: osBreakdown.labels,
-                    datasets: [{ data: osBreakdown.values, backgroundColor: chartColors }]
-                }
-            });
-        }
-    }
-
-    // Tab Switching - show/hide content and load data
-    function switchTab(tabId) {
-        if (!tabId) tabId = 'overview';
-
-        // Hide all tab content
-        $('.tab-content').addClass('hidden');
-        // Show selected tab content
-        $('#' + tabId).removeClass('hidden');
-
-        window.currentTab = tabId;
-
-        // Lazy Load Data for specific tabs
-        if (tabId === 'overview' || tabId === 'content-gaps' || tabId === 'performance' || tabId === 'traffic-devices' || tabId === 'geographic' || tabId === 'query-rules' || tabId === 'promotions') {
-             loadTabData(tabId);
-        }
-    }
-
-    // Handle hash changes (when Craft switches tabs)
-    window.addEventListener('hashchange', function() {
-        var hash = window.location.hash.substring(1);
-        switchTab(hash);
-    });
-
-    // Handle initial page load and tab clicks
-    $(document).ready(function() {
-        // Handle clicks on tab links
-        $(document).on('click', 'a[href^="#"]', function() {
-            var href = $(this).attr('href');
-            if (href && href.startsWith('#')) {
-                setTimeout(function() {
-                    var hash = window.location.hash.substring(1);
-                    switchTab(hash);
-                }, 10);
-            }
-        });
-
-        // Initialize with current tab
-        var hash = window.location.hash.substring(1) || 'overview';
-        switchTab(hash);
-    });
-
-    // AJAX Data Loading for Tabs
-    function loadTabData(tabName) {
-        const mapping = {
-            'overview': 'query-analysis',
-            'content-gaps': 'content-gaps'
-        };
-
-        // Don't reload if already populated (simple check)
-        if (tabName === 'overview' && $('#word-cloud-container').children().length > 0) return;
-        if (tabName === 'content-gaps' && $('#content-gaps-body tr').length > 1) return;
-        if (tabName === 'performance' && window.performanceLoaded) return;
-        if (tabName === 'traffic-devices' && window.trafficDevicesLoaded) return;
-        if (tabName === 'geographic' && window.geographicLoaded) return;
-        if (tabName === 'query-rules' && window.queryRulesLoaded) return;
-        if (tabName === 'promotions' && window.promotionsLoaded) return;
-
-        const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
-        const siteId = new URLSearchParams(window.location.search).get('siteId') || '';
-
-        if (tabName === 'performance') {
-            // Load performance data (cache stats, chart, top/worst queries)
-            loadPerformanceData(dateRange, siteId);
-            return;
-        }
-
-        if (tabName === 'traffic-devices') {
-            // Load traffic & devices data (device charts, hourly)
-            loadTrafficDevicesData(dateRange, siteId);
-            return;
-        }
-
-        if (tabName === 'geographic') {
-            // Load geographic data (countries, cities)
-            loadGeographicData(dateRange, siteId);
-            return;
-        }
-
-        if (tabName === 'query-rules') {
-            // Load query rules analytics
-            loadQueryRulesData(dateRange, siteId);
-            return;
-        }
-
-        if (tabName === 'promotions') {
-            // Load promotions analytics
-            loadPromotionsData(dateRange, siteId);
-            return;
-        }
-
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                dateRange: dateRange,
-                siteId: siteId,
-                type: mapping[tabName],
-                {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}'
-            },
-            success: function(res) {
-                if(res.success) {
-                    if (tabName === 'overview') {
-                        renderQueryAnalysis(res.data.queryAnalysis);
-                        // Also load breakdown charts
-                        loadBreakdownCharts(dateRange, siteId);
-                        // Load peak hours and trending queries
-                        loadSearchActivityData(dateRange, siteId);
-                    }
-                    if (tabName === 'content-gaps') renderContentGaps(res.data.contentGaps);
-                }
-            },
-            error: function() {
-                console.error('Failed to load tab data');
-            }
-        });
-    }
-
-    function loadTrafficDevicesData(dateRange, siteId) {
-        const csrfToken = '{{ craft.app.request.csrfToken }}';
-        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
-
-        // Load hourly data
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderHourlyChart(res.data);
-                $('#analytics-dashboard').css('opacity', '1');
-                window.trafficDevicesLoaded = true;
-            }
-        });
-    }
-
-    function loadGeographicData(dateRange, siteId) {
-        const csrfToken = '{{ craft.app.request.csrfToken }}';
-        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
-
-        // Load countries
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'countries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderCountries(res.data);
-            }
-        });
-
-        // Load cities
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'cities', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderCities(res.data);
-                window.geographicLoaded = true;
-            }
-        });
-    }
-
-    function renderCountries(data) {
-        const tbody = $('#countries-body');
-        tbody.empty();
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No data available</td></tr>');
-            return;
-        }
-        data.forEach(c => {
-            tbody.append(`<tr><td>${Craft.escapeHtml(c.name)}</td><td>${c.count.toLocaleString()}</td><td>${c.percentage}%</td></tr>`);
-        });
-    }
-
-    function renderCities(data) {
-        const tbody = $('#cities-body');
-        tbody.empty();
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No data available</td></tr>');
-            return;
-        }
-        data.forEach(c => {
-            tbody.append(`<tr><td>${Craft.escapeHtml(c.city)}</td><td>${Craft.escapeHtml(c.countryName)}</td><td>${c.count.toLocaleString()}</td></tr>`);
-        });
-    }
-
-    function renderHourlyChart(data) {
-        if (!data || !data.data) return;
-        const ctx = document.getElementById('hourly-chart');
-        if (!ctx) return;
-
-        if (window.smCharts.hourly) window.smCharts.hourly.destroy();
-
-        window.smCharts.hourly = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: 'Searches',
-                    data: data.data,
-                    backgroundColor: '#0d78f2'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: {
-                        display: true,
-                        text: 'Peak Hour: ' + data.peakHourFormatted
-                    }
-                }
-            }
-        });
-    }
-
-    function renderQueryAnalysis(data) {
-        // Render Length Chart
-        if (data.lengthDistribution) {
-             window.smCharts.length = new Chart(document.getElementById('query-length-chart'), {
-                type: 'pie',
-                data: {
-                    labels: data.lengthDistribution.labels,
-                    datasets: [{ data: data.lengthDistribution.values, backgroundColor: ['#3498db', '#9b59b6', '#34495e'] }]
-                }
-            });
-        }
-
-        // Render Word Cloud
-        const container = $('#word-cloud-container');
-        container.empty();
-        if (data.wordCloud && data.wordCloud.length) {
-            const maxWeight = Math.max(...data.wordCloud.map(w => w.weight));
-            const minSize = 12;
-            const maxSize = 48;
-            
-            data.wordCloud.forEach(w => {
-                const size = minSize + ((w.weight / maxWeight) * (maxSize - minSize));
-                const span = $('<span>')
-                    .text(w.text)
-                    .addClass('word-cloud-item')
-                    .css('fontSize', size + 'px')
-                    .attr('title', w.weight + ' searches');
-                container.append(span).append(' ');
-            });
-        } else {
-            container.html('<p class="light">No data available for word cloud.</p>');
-        }
-    }
-
-    function renderContentGaps(data) {
-        const tbody = $('#content-gaps-body');
-        tbody.empty();
-
-        if (!data.clusters || data.clusters.length === 0) {
-            tbody.html('<tr><td colspan="4" class="thin light">No content gaps found!</td></tr>');
-            return;
-        }
-
-        data.clusters.forEach(c => {
-            let row = `<tr>
-                <td><strong>${Craft.escapeHtml(c.representative)}</strong></td>
-                <td>${c.count.toLocaleString()}</td>
-                <td>${c.queries.slice(0, 3).join(', ')}</td>
-                <td>${c.lastSearched}</td>
-            </tr>`;
-            tbody.append(row);
-        });
-    }
-
-    // Load breakdown charts (Intent, Source)
-    function loadBreakdownCharts(dateRange, siteId) {
-        const csrfToken = '{{ craft.app.request.csrfToken }}';
-        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
-
-        // Load Intent breakdown
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'intent', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderIntentChart(res.data);
-            }
-        });
-
-        // Load Source breakdown
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'source', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderSourceChart(res.data);
-            }
-        });
-    }
-
-    // Load Search Activity data (Peak Hours + Trending Queries)
-    function loadSearchActivityData(dateRange, siteId) {
-        const csrfToken = '{{ craft.app.request.csrfToken }}';
-        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
-
-        // Load Peak Hours
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPeakHoursChart(res.data);
-            }
-        });
-
-        // Load Trending Queries
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'trending', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTrendingQueries(res.data);
-            }
-        });
-    }
-
-    function renderPeakHoursChart(data) {
-        const ctx = document.getElementById('peak-hours-chart');
-        if (!ctx) return;
-
-        if (window.smCharts.peakHours) {
-            window.smCharts.peakHours.destroy();
-        }
-
-        window.smCharts.peakHours = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: '{{ "Searches"|t('search-manager') }}',
-                    data: data.data,
-                    backgroundColor: data.data.map((val, idx) => idx === data.peakHour ? '#e74c3c' : 'rgba(13, 120, 242, 0.7)'),
-                    borderColor: data.data.map((val, idx) => idx === data.peakHour ? '#c0392b' : '#0d78f2'),
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 }
-                    },
-                    x: {
-                        ticks: {
-                            maxRotation: 45,
-                            minRotation: 45
-                        }
-                    }
-                }
-            }
-        });
-
-        // Show peak hour label
-        if (data.peakHourFormatted) {
-            $('#peak-hour-label').html('<strong>{{ "Peak hour:"|t('search-manager') }}</strong> ' + data.peakHourFormatted);
-        }
-    }
-
-    function renderTrendingQueries(data) {
-        const tbody = $('#trending-queries-body');
-        tbody.empty();
-
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="4" class="thin light" style="text-align: center;">{{ "No trending data available"|t('search-manager') }}</td></tr>');
-            return;
-        }
-
-        data.forEach(q => {
-            let trendIcon = '';
-            let trendColor = '';
-            let trendText = '';
-
-            switch(q.trend) {
-                case 'up':
-                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>';
-                    trendColor = '#27ae60';
-                    trendText = '+' + q.changePercent + '%';
-                    break;
-                case 'down':
-                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>';
-                    trendColor = '#e74c3c';
-                    trendText = '-' + q.changePercent + '%';
-                    break;
-                case 'new':
-                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4" fill="currentColor"></circle></svg>';
-                    trendColor = '#3498db';
-                    trendText = '{{ "New"|t('search-manager') }}';
-                    break;
-                default:
-                    trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
-                    trendColor = '#95a5a6';
-                    trendText = '—';
-            }
-
-            tbody.append(`<tr>
-                <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td style="text-align: right;">${q.count.toLocaleString()}</td>
-                <td style="text-align: right; color: #95a5a6;">${q.previousCount > 0 ? q.previousCount.toLocaleString() : '—'}</td>
-                <td style="text-align: right; color: ${trendColor};">
-                    <span style="display: inline-flex; align-items: center; gap: 4px;">
-                        ${trendIcon} ${trendText}
-                    </span>
-                </td>
-            </tr>`);
-        });
-    }
-
-    // Load Performance tab data
-    function loadPerformanceData(dateRange, siteId) {
-        const csrfToken = '{{ craft.app.request.csrfToken }}';
-        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
-
-        // Load Cache stats
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'cache-stats', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderCacheStats(res.data);
-            }
-        });
-
-        // Load Performance chart
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'performance', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPerformanceChart(res.data);
-            }
-        });
-
-        // Load Top queries
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'top-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTopQueries(res.data);
-            }
-        });
-
-        // Load Worst queries
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'worst-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderWorstQueries(res.data);
-            }
-        });
-
-        window.performanceLoaded = true;
-    }
-
-    function renderCacheStats(data) {
-        $('#cache-hit-rate').text(data.hitRate + '%');
-        $('#cache-hits').text(data.cacheHits.toLocaleString());
-        $('#cache-misses').text(data.cacheMisses.toLocaleString());
-        $('#total-searches-perf').text(data.total.toLocaleString());
-    }
-
-    function renderTopQueries(data) {
-        const tbody = $('#top-queries-body');
-        tbody.empty();
-
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="4" class="thin light">Not enough data (min 3 searches per query)</td></tr>');
-            return;
-        }
-
-        data.forEach(q => {
-            tbody.append(`<tr>
-                <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.siteName || '—'}</td>
-                <td><strong>${q.avgTime}ms</strong></td>
-                <td>${q.searches.toLocaleString()}</td>
-            </tr>`);
-        });
-    }
-
-    function renderWorstQueries(data) {
-        const tbody = $('#worst-queries-body');
-        tbody.empty();
-
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="4" class="thin light">Not enough data (min 3 searches per query)</td></tr>');
-            return;
-        }
-
-        data.forEach(q => {
-            tbody.append(`<tr>
-                <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.siteName || '—'}</td>
-                <td><strong style="color: ${q.avgTime > 100 ? '#e74c3c' : 'inherit'}">${q.avgTime}ms</strong></td>
-                <td>${q.searches.toLocaleString()}</td>
-            </tr>`);
-        });
-    }
-
-    function renderIntentChart(data) {
-        if (window.smCharts.intent) {
-            window.smCharts.intent.destroy();
-        }
-        const ctx = document.getElementById('intent-chart');
-        if (!ctx) return;
-
-        if (!data.labels || data.labels.length === 0) {
-            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No intent data available</p>');
-            return;
-        }
-
-        const colors = ['#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e74c3c'];
-        window.smCharts.intent = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
-                datasets: [{
-                    data: data.values,
-                    backgroundColor: colors.slice(0, data.labels.length)
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
-            }
-        });
-    }
-
-    function renderSourceChart(data) {
-        if (window.smCharts.source) {
-            window.smCharts.source.destroy();
-        }
-        const ctx = document.getElementById('source-chart');
-        if (!ctx) return;
-
-        if (!data.labels || data.labels.length === 0) {
-            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No source data available</p>');
-            return;
-        }
-
-        const colors = ['#27ae60', '#3498db', '#e67e22', '#9b59b6', '#1abc9c', '#e74c3c'];
-        window.smCharts.source = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    data: data.values,
-                    backgroundColor: colors.slice(0, data.labels.length)
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { position: 'bottom' }
-                }
-            }
-        });
-    }
-
-    function renderPerformanceChart(data) {
-        if (window.smCharts.performance) {
-            window.smCharts.performance.destroy();
-        }
-        const ctx = document.getElementById('performance-chart');
-        if (!ctx) return;
-
-        if (!data.labels || data.labels.length === 0) {
-            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No performance data available</p>');
-            return;
-        }
-
-        window.smCharts.performance = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: data.labels,
-                datasets: [{
-                    label: 'Avg Response Time (ms)',
-                    data: data.avgTime,
-                    borderColor: '#3498db',
-                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'ms' }
-                    }
-                }
-            }
-        });
-    }
-
-    // Load Query Rules Analytics
-    function loadQueryRulesData(dateRange, siteId) {
-        const csrfToken = '{{ craft.app.request.csrfToken }}';
-        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
-
-        // Load top rules
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-top', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTopRules(res.data);
-            }
-        });
-
-        // Load rules by action type
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-by-type', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderRulesByType(res.data);
-            }
-        });
-
-        // Load top queries triggering rules
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'query-rules-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderRuleQueries(res.data);
-                window.queryRulesLoaded = true;
-            }
-        });
-    }
-
-    function renderTopRules(data) {
-        const tbody = $('#top-rules-body');
-        tbody.empty();
-
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="4" class="light" style="text-align: center;">No query rules have been triggered yet</td></tr>');
-            return;
-        }
-
-        data.forEach(r => {
-            const actionBadge = getActionTypeBadge(r.actionType);
-            tbody.append(`<tr>
-                <td><strong>${Craft.escapeHtml(r.ruleName)}</strong></td>
-                <td>${actionBadge}</td>
-                <td>${r.hits.toLocaleString()}</td>
-                <td>${r.avgResults.toLocaleString()}</td>
-            </tr>`);
-        });
-    }
-
-    function renderRulesByType(data) {
-        if (window.smCharts.rulesByType) {
-            window.smCharts.rulesByType.destroy();
-        }
-        const ctx = document.getElementById('rules-by-type-chart');
-        if (!ctx) return;
-
-        if (!data.labels || data.labels.length === 0) {
-            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No data available</p>');
-            return;
-        }
-
-        const colors = {
-            'synonym': '#3498db',
-            'boost_section': '#2ecc71',
-            'boost_category': '#27ae60',
-            'boost_element': '#1abc9c',
-            'filter': '#f39c12',
-            'redirect': '#e74c3c'
-        };
-
-        window.smCharts.rulesByType = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: data.labels.map(l => l.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())),
-                datasets: [{
-                    data: data.values,
-                    backgroundColor: data.labels.map(l => colors[l] || '#95a5a6')
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { position: 'bottom' } }
-            }
-        });
-    }
-
-    function renderRuleQueries(data) {
-        const tbody = $('#rule-queries-body');
-        tbody.empty();
-
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No queries have triggered rules yet</td></tr>');
-            return;
-        }
-
-        data.forEach(q => {
-            tbody.append(`<tr>
-                <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.rulesTriggered.toLocaleString()}</td>
-                <td>${q.count.toLocaleString()}</td>
-            </tr>`);
-        });
-    }
-
-    function getActionTypeBadge(actionType) {
-        const colors = {
-            'synonym': { bg: '59, 130, 246', dot: '#3b82f6', text: '#1e3a8a', label: 'Synonyms' },
-            'boost_section': { bg: '16, 185, 129', dot: '#10b981', text: '#064e3b', label: 'Boost Section' },
-            'boost_category': { bg: '20, 184, 166', dot: '#14b8a6', text: '#134e4a', label: 'Boost Category' },
-            'boost_element': { bg: '34, 197, 94', dot: '#22c55e', text: '#14532d', label: 'Boost Element' },
-            'filter': { bg: '249, 115, 22', dot: '#f97316', text: '#7c2d12', label: 'Filter' },
-            'redirect': { bg: '239, 68, 68', dot: '#ef4444', text: '#7f1d1d', label: 'Redirect' }
-        };
-        const c = colors[actionType];
-        if (!c) return actionType;
-        return `<span class="status-label" style="background: rgba(${c.bg}, 0.12);"><span class="status" style="background: ${c.dot};"></span><span class="status-label-text" style="color: ${c.text};">${c.label}</span></span>`;
-    }
-
-    // Load Promotions Analytics
-    function loadPromotionsData(dateRange, siteId) {
-        const csrfToken = '{{ craft.app.request.csrfToken }}';
-        const csrfName = '{{ craft.app.config.general.csrfTokenName }}';
-
-        // Load top promotions
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-top', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderTopPromotions(res.data);
-            }
-        });
-
-        // Load promotions by position
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-by-position', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPromotionsByPosition(res.data);
-            }
-        });
-
-        // Load top queries triggering promotions
-        $.ajax({
-            url: Craft.getActionUrl('search-manager/analytics/get-data'),
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'promotions-queries', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderPromotionQueries(res.data);
-                window.promotionsLoaded = true;
-            }
-        });
-    }
-
-    function renderTopPromotions(data) {
-        const tbody = $('#top-promotions-body');
-        tbody.empty();
-
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="4" class="light" style="text-align: center;">No promotions have been shown yet</td></tr>');
-            return;
-        }
-
-        data.forEach(p => {
-            tbody.append(`<tr>
-                <td><strong>${Craft.escapeHtml(p.elementTitle || 'Element #' + p.elementId)}</strong></td>
-                <td>#${p.position}</td>
-                <td>${p.impressions.toLocaleString()}</td>
-                <td>${p.uniqueQueries.toLocaleString()}</td>
-            </tr>`);
-        });
-    }
-
-    function renderPromotionsByPosition(data) {
-        if (window.smCharts.promosByPosition) {
-            window.smCharts.promosByPosition.destroy();
-        }
-        const ctx = document.getElementById('promotions-by-position-chart');
-        if (!ctx) return;
-
-        if (!data.labels || data.labels.length === 0) {
-            $(ctx).parent().html('<p class="light" style="text-align: center; padding: 40px;">No data available</p>');
-            return;
-        }
-
-        window.smCharts.promosByPosition = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.labels.map(l => 'Position #' + l),
-                datasets: [{
-                    label: 'Impressions',
-                    data: data.values,
-                    backgroundColor: '#0d78f2'
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-    }
-
-    function renderPromotionQueries(data) {
-        const tbody = $('#promotion-queries-body');
-        tbody.empty();
-
-        if (!data || data.length === 0) {
-            tbody.html('<tr><td colspan="3" class="light" style="text-align: center;">No queries have triggered promotions yet</td></tr>');
-            return;
-        }
-
-        data.forEach(q => {
-            tbody.append(`<tr>
-                <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.promotionsShown.toLocaleString()}</td>
-                <td>${q.count.toLocaleString()}</td>
-            </tr>`);
-        });
-    }
-
-    // Date Range Handler (Reloads all data)
-    $(document).on('click', '.main-date-range-option', function(e) {
-         e.preventDefault();
-         const range = $(this).data('range');
-         const url = new URL(window.location);
-         url.searchParams.set('dateRange', range);
-         window.location = url;
-    });
-
-    // Site Filter Handler
-    $(document).on('click', '.site-option', function(e) {
-         e.preventDefault();
-         const siteId = $(this).data('site');
-         const url = new URL(window.location);
-         if (siteId) {
-             url.searchParams.set('siteId', siteId);
-         } else {
-             url.searchParams.delete('siteId');
-         }
-         window.location = url;
-    });
-
-    // Export click handler for per-tab export buttons
-    $(document).on('click', '.tab-export', function(e) {
-        e.preventDefault();
-
-        const action = $(this).data('action');
-        const format = $(this).data('format') || 'csv';
-        const extraParams = $(this).data('params') || {};
-        const dateRange = new URLSearchParams(window.location.search).get('dateRange') || 'last7days';
-        const siteId = new URLSearchParams(window.location.search).get('siteId') || '';
-
-        const params = {
-            dateRange: dateRange,
-            siteId: siteId,
-            format: format,
-            ...extraParams
-        };
-
-        const exportUrl = Craft.getActionUrl(action, params);
-        window.location.href = exportUrl;
-    });
-
+window.lrSearchAnalyticsInit({{ analyticsConfig|json_encode|raw }});
 {% endjs %}
+{% endblock %}
+

@@ -9,30 +9,14 @@
     'file': 'File',
 } %}
 
-<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
-    <div>
-        <h2 style="margin: 0 0 10px;">{{ "Content Gaps (Zero-Hit Clusters)"|t('search-manager') }}</h2>
-        <p class="light" style="margin: 0;">
-            {{ "These groups of queries returned no hits. This indicates missing content or topics your users are looking for."|t('search-manager') }}
-        </p>
-    </div>
-    <div class="btngroup">
-        <button type="button" class="btn menubtn" data-icon="download">{{ "Export"|t('search-manager') }}</button>
-        <div class="menu" data-align="right">
-            <ul>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="csv" data-params='{"type":"clusters"}'>{{ "Clusters (CSV)"|t('search-manager') }}</a></li>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="json" data-params='{"type":"clusters"}'>{{ "Clusters (JSON)"|t('search-manager') }}</a></li>
-                <li><hr></li>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="csv" data-params='{"type":"recent"}'>{{ "Recent Zero-Hits (CSV)"|t('search-manager') }}</a></li>
-                <li><a href="#" class="tab-export" data-action="search-manager/analytics/export-content-gaps" data-format="json" data-params='{"type":"recent"}'>{{ "Recent Zero-Hits (JSON)"|t('search-manager') }}</a></li>
-            </ul>
-        </div>
-    </div>
-</div>
+<h2 class="lr-section-heading lr-heading-tight">{{ "Content Gaps (Zero-Hit Clusters)"|t('search-manager') }}</h2>
+<p class="light lr-paragraph">
+    {{ "These groups of queries returned no hits. This indicates missing content or topics your users are looking for."|t('search-manager') }}
+</p>
 
-<div class="analytics-charts">
-    <div class="chart-container full-width">
-        <div class="table-scroll-container">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
@@ -44,18 +28,18 @@
                 </thead>
                 <tbody id="content-gaps-body">
                     {# Populated via JS #}
-                    <tr><td colspan="4" class="thin light">{{ "Loading content gaps..."|t('search-manager') }}</td></tr>
+                    <tr><td colspan="4" class="thin light lr-text-center">{{ "Loading content gaps..."|t('search-manager') }}</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<h2 style="margin: 30px 0 20px;">{{ "Recent Zero-Hit Queries"|t('search-manager') }}</h2>
+<h2 class="lr-section-heading">{{ "Recent Zero-Hit Queries"|t('search-manager') }}</h2>
 
-<div class="analytics-charts">
-    <div class="chart-container full-width">
-        <div class="table-scroll-container">
+<div class="lr-analytics-charts">
+    <div class="lr-chart-container full-width">
+        <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
@@ -86,7 +70,7 @@
                         </tr>
                     {% else %}
                         <tr>
-                            <td colspan="6" class="thin light">{{ "All searches have hits!"|t('search-manager') }}</td>
+                            <td colspan="6" class="thin light lr-text-center">{{ "All searches have hits!"|t('search-manager') }}</td>
                         </tr>
                     {% endfor %}
                 </tbody>

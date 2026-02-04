@@ -1,10 +1,8 @@
-{% extends "_layouts/cp" %}
-{% import "_includes/forms" as forms %}
-{% import 'search-manager/_macros/index' as indexMacros %}
+{% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{% set title = "Indices"|t('search-manager') %}
-{% set fullPageForm = false %}
-{% set selectedSubnavItem = 'indices' %}
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set settings = plugin.getSettings() %}
+{% set globalSettings = craft.searchManager.getSettings() %}
 
 {# Get query parameters #}
 {% set search = craft.app.request.getParam('search', '') %}
@@ -24,740 +22,550 @@
 {% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClear = currentUser.can('searchManager:clearIndices') %}
 {% set canClearCache = currentUser.can('searchManager:clearCache') %}
-{% set showActionsColumn = canEdit or canDelete or canRebuild or canClear %}
-{% set globalSettings = craft.searchManager.getSettings() %}
 
 {# Filter indices based on filters #}
 {% set filteredIndices = indices %}
 
 {# Status filter #}
 {% if statusFilter == 'enabled' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.enabled) %}
+    {% set filteredIndices = filteredIndices|filter(i => i.enabled) %}
 {% elseif statusFilter == 'disabled' %}
-	{% set filteredIndices = filteredIndices|filter(i => not i.enabled) %}
+    {% set filteredIndices = filteredIndices|filter(i => not i.enabled) %}
 {% endif %}
 
 {# Source filter #}
 {% if sourceFilter == 'config' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.source == 'config') %}
+    {% set filteredIndices = filteredIndices|filter(i => i.source == 'config') %}
 {% elseif sourceFilter == 'database' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.source != 'config') %}
+    {% set filteredIndices = filteredIndices|filter(i => i.source != 'config') %}
 {% endif %}
 
-{# Backend filter - filter by the index's effective backend TYPE #}
+{# Backend filter #}
 {% if backendFilter != 'all' %}
-	{% set filteredIndices = filteredIndices|filter(i => i.effectiveBackendType == backendFilter) %}
+    {% set filteredIndices = filteredIndices|filter(i => i.effectiveBackendType == backendFilter) %}
 {% endif %}
 
 {# Search filter #}
 {% if search %}
-	{% set filteredIndices = filteredIndices|filter(i => search|lower in i.name|lower or search|lower in i.handle|lower) %}
+    {% set filteredIndices = filteredIndices|filter(i => search|lower in i.name|lower or search|lower in i.handle|lower) %}
 {% endif %}
 
 {# Sort #}
 {% if sort == 'name' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.name|lower <=> b.name|lower) : filteredIndices|sort((a, b) => b.name|lower <=> a.name|lower) %}
+    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.name|lower <=> b.name|lower) : filteredIndices|sort((a, b) => b.name|lower <=> a.name|lower) %}
 {% elseif sort == 'handle' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredIndices|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
+    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredIndices|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
 {% elseif sort == 'elementType' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.elementType <=> b.elementType) : filteredIndices|sort((a, b) => b.elementType <=> a.elementType) %}
+    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.elementType <=> b.elementType) : filteredIndices|sort((a, b) => b.elementType <=> a.elementType) %}
 {% elseif sort == 'source' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredIndices|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
+    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredIndices|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
 {% elseif sort == 'enabled' %}
-	{% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.enabled <=> b.enabled) : filteredIndices|sort((a, b) => b.enabled <=> a.enabled) %}
+    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.enabled <=> b.enabled) : filteredIndices|sort((a, b) => b.enabled <=> a.enabled) %}
 {% endif %}
 
 {# Pagination #}
 {% set totalCount = filteredIndices|length %}
-{% set totalPages = (totalCount / limit)|round(0, 'ceil') %}
-{% set paginatedIndices = filteredIndices|slice(offset, limit) %}
+{% set paginatedItems = filteredIndices|slice(offset, limit) %}
 
-{% set crumbs = [
-    { label: searchHelper.fullName, url: url('search-manager') },
-    { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') }
+{# Build columns array - Analytics column is conditional #}
+{% set columns = [
+    {key: 'name', label: 'Name'|t('search-manager'), sortable: true},
+    {key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'elementType', label: 'Element Type'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'backend', label: 'Backend'|t('search-manager'), hideable: true},
+    {key: 'type', label: 'Type'|t('search-manager'), hideable: true},
+    {key: 'craft', label: 'Craft'|t('search-manager'), hideable: true},
+    {key: 'indexed', label: 'Indexed'|t('search-manager'), hideable: true},
+    {key: 'lastIndexed', label: 'Last Indexed'|t('search-manager'), hideable: true},
+    {key: 'source', label: 'Source'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
 ] %}
 
-{% block toolbar %}
-	<div id="toolbar" class="flex" style="align-items: flex-end;">
-		<div class="flex-grow">
-			<form method="get" action="{{ url('search-manager/indices') }}">
-				<div class="flex">
-					<div class="btngroup">
-						<button type="button" class="btn menubtn statusmenubtn">
-							<span class="status {{ statusFilter == 'all' ? 'all' : (statusFilter == 'enabled' ? 'green' : 'disabled') }}"></span>
-							{{ statusFilter == 'all' ? 'All'|t('search-manager') : statusFilter|capitalize }}
-						</button>
-						<div class="menu">
-							<ul>
-								<li>
-									<a class="{{ statusFilter == 'all' ? 'sel' : '' }}" href="?status=all&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status all"></span>{{ 'All'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'enabled' ? 'sel' : '' }}" href="?status=enabled&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status green"></span>{{ 'Enabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ statusFilter == 'disabled' ? 'sel' : '' }}" href="?status=disabled&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status disabled"></span>{{ 'Disabled'|t('search-manager') }}
-									</a>
-								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Config Source'|t('search-manager') }}</li>
-								<li>
-									<a class="{{ sourceFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=all&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status all"></span>{{ 'All Sources'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ sourceFilter == 'config' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=config&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.sourceColor('config', sourceFilter) }};"></span>{{ 'Config File'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ sourceFilter == 'database' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source=database&backend={{ backendFilter }}&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.sourceColor('database', sourceFilter) }};"></span>{{ 'Database'|t('search-manager') }}
-									</a>
-								</li>
-								<li><hr class="padded"></li>
-								<li class="menu-header">{{ 'Backend'|t('search-manager') }}</li>
-								<li>
-									<a class="{{ backendFilter == 'all' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=all&search={{ search }}">
-										<span class="status all"></span>{{ 'All Backends'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'mysql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=mysql&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.backendColor('mysql', backendFilter) }};"></span>{{ 'MySQL'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'pgsql' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=pgsql&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.backendColor('pgsql', backendFilter) }};"></span>{{ 'PostgreSQL'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'file' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=file&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.backendColor('file', backendFilter) }};"></span>{{ 'File'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'redis' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=redis&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.backendColor('redis', backendFilter) }};"></span>{{ 'Redis'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'typesense' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=typesense&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.backendColor('typesense', backendFilter) }};"></span>{{ 'Typesense'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'algolia' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=algolia&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.backendColor('algolia', backendFilter) }};"></span>{{ 'Algolia'|t('search-manager') }}
-									</a>
-								</li>
-								<li>
-									<a class="{{ backendFilter == 'meilisearch' ? 'sel' : '' }}" href="?status={{ statusFilter }}&source={{ sourceFilter }}&backend=meilisearch&search={{ search }}">
-										<span class="status" style="background: {{ indexMacros.backendColor('meilisearch', backendFilter) }};"></span>{{ 'Meilisearch'|t('search-manager') }}
-									</a>
-								</li>
-							</ul>
-						</div>
-					</div>
-					<div class="search-container texticon flex-grow">
-						<span class="texticon-icon search icon" aria-hidden="true"></span>
-						<input type="text" class="clearable text fullwidth" name="search" value="{{ search }}" placeholder="{{ 'Search indices...'|t('search-manager') }}" autocomplete="off" dir="ltr" aria-label="Search" {% if search %} autofocus {% endif %}>
-						<button type="button" class="clear-btn {{ search ? '' : 'hidden' }}" title="Clear search" role="button" aria-label="Clear search"></button>
-						<input type="hidden" name="status" value="{{ statusFilter }}">
-						<input type="hidden" name="source" value="{{ sourceFilter }}">
-						<input type="hidden" name="backend" value="{{ backendFilter }}">
-					</div>
-				</div>
-			</form>
-		</div>
-		{% if canCreate %}
-			<a href="{{ url('search-manager/indices/create') }}" class="btn submit add icon" id="new-index-btn">
-				<span class="label-full">{{ 'New Index'|t('search-manager') }}</span>
-				<span class="label-short" style="display: none;">{{ 'New'|t('search-manager') }}</span>
-			</a>
-		{% endif %}
-	</div>
+{% if globalSettings.enableAnalytics %}
+    {% set columns = columns|merge([{key: 'analytics', label: 'Analytics'|t('search-manager'), hideable: true}]) %}
+{% endif %}
+
+{% set tableConfig = {
+    plugin: {
+        handle: 'search-manager',
+        name: searchHelper.fullName,
+    },
+    page: {
+        title: 'Indices'|t('search-manager'),
+        subnav: 'indices',
+        crumbs: [
+            { label: searchHelper.fullName, url: url('search-manager') },
+            { label: 'Indices'|t('search-manager'), url: url('search-manager/indices') }
+        ],
+    },
+    filters: [
+        {
+            type: 'status',
+            param: 'status',
+            current: statusFilter,
+            label: 'All'|t('search-manager'),
+            groups: [
+                {
+                    param: 'status',
+                    current: statusFilter,
+                    options: [
+                        {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'enabled', label: 'Enabled'|t('search-manager'), status: 'green'},
+                        {value: 'disabled', label: 'Disabled'|t('search-manager'), status: 'disabled'},
+                    ],
+                },
+                {
+                    header: 'Config Source'|t('search-manager'),
+                    param: 'source',
+                    current: sourceFilter,
+                    colorSet: 'configSource',
+                    options: [
+                        {value: 'all', label: 'All Sources'|t('search-manager'), status: 'all'},
+                        {value: 'config', label: 'Config File'|t('search-manager'), colorKey: 'config'},
+                        {value: 'database', label: 'Database'|t('search-manager'), colorKey: 'database'},
+                    ],
+                },
+                {
+                    header: 'Backend'|t('search-manager'),
+                    param: 'backend',
+                    current: backendFilter,
+                    colorSet: 'backendType',
+                    options: [
+                        {value: 'all', label: 'All Backends'|t('search-manager'), status: 'all'},
+                        {value: 'mysql', label: 'MySQL'|t('search-manager'), colorKey: 'mysql'},
+                        {value: 'pgsql', label: 'PostgreSQL'|t('search-manager'), colorKey: 'pgsql'},
+                        {value: 'file', label: 'File'|t('search-manager'), colorKey: 'file'},
+                        {value: 'redis', label: 'Redis'|t('search-manager'), colorKey: 'redis'},
+                        {value: 'typesense', label: 'Typesense'|t('search-manager'), colorKey: 'typesense'},
+                        {value: 'algolia', label: 'Algolia'|t('search-manager'), colorKey: 'algolia'},
+                        {value: 'meilisearch', label: 'Meilisearch'|t('search-manager'), colorKey: 'meilisearch'},
+                    ],
+                },
+            ],
+        },
+    ],
+    search: {
+        placeholder: 'Search indices...'|t('search-manager'),
+        value: search,
+    },
+    sort: {
+        field: sort,
+        direction: dir,
+    },
+    table: {
+        columns: columns,
+        items: paginatedItems,
+        emptyMessage: 'No indices found.'|t('search-manager'),
+        hasConfigItems: true,
+    },
+    pagination: {
+        page: page,
+        limit: limit,
+        totalCount: totalCount,
+        itemLabel: {singular: 'index'|t('search-manager'), plural: 'indices'|t('search-manager')},
+    },
+    checkboxes: canEdit or canDelete,
+    newButton: {
+        url: url('search-manager/indices/create'),
+        label: 'New Index'|t('search-manager'),
+        permission: 'searchManager:createIndices',
+    },
+} %}
+
+{% block beforeTable %}
+    {% if collisionHandles is defined and collisionHandles|length %}
+        {% set boldHandles = [] %}
+        {% for handle in collisionHandles %}
+            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+        {% endfor %}
+        {% set warningMessage %}
+        <strong>{{ 'Warning'|t('search-manager') }}:</strong>
+        {{ 'These index handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
+        {{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
+        {{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
+        {% endset %}
+        <div class="lr-info-box-table-wrapper">
+            {% include 'lindemannrock-base/_components/info-box' with {
+                message: warningMessage,
+                type: 'warning',
+                margin: 'none',
+                stretch: true,
+            } %}
+        </div>
+    {% endif %}
 {% endblock %}
 
-{% css %}
-@media (max-width: 768px) {
-	#new-index-btn .label-full {
-		display: none;
-	}
-	#new-index-btn .label-short {
-		display: inline;
-	}
-	#new-index-btn:before {
-		margin-inline-end: 0 !important;
-	}
-}
-.info-box-table-wrapper {
-	padding-bottom: 14px;
-}
-@media (min-width: 769px) {
-	.info-box-table-wrapper {
-		padding-bottom: 46px;
-	}
-}
-{% endcss %}
+{% block tableRow %}
+    {% set isConfig = item.source == 'config' %}
+    {% set hasCollision = collisionHandles is defined and item.handle in collisionHandles %}
+    {% set indexBackendType = item.effectiveBackendType %}
+    {% set configuredBackend = item.configuredBackend %}
 
-{% block content %}
-	{% include 'search-manager/_partials/common/index-styles' %}
+    {# Name #}
+    <td data-column="name">
+        {% if item.canEdit() %}
+            <a class="label-link" href="{{ url('search-manager/indices/edit/' ~ item.id) }}">
+                <span>{{ item.name }}</span>
+            </a>
+        {% else %}
+            <a class="label-link" href="{{ url('search-manager/indices/view/' ~ item.handle) }}">
+                <span>{{ item.name }}</span>
+            </a>
+            <span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
+        {% endif %}
+    </td>
 
-	{% if collisionHandles is defined and collisionHandles|length %}
-		{% set boldHandles = [] %}
-		{% for handle in collisionHandles %}
-			{% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
-		{% endfor %}
-		{% set warningMessage %}
-		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-		{{ 'These index handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
-		{{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
-		{{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
-		{% endset %}
-		<div class="info-box-table-wrapper">
-			{% include 'lindemannrock-base/_components/info-box' with {
-				message: warningMessage,
-				type: 'warning',
-				margin: 'none',
-				stretch: true,
-			} %}
-		</div>
-	{% endif %}
+    {# Handle #}
+    <td data-column="handle">
+        <code>{{ item.handle }}</code>
+    </td>
 
-	<div id="elements" class="elements">
-		<div class="tableview tablepane">
-			<table class="data fullwidth">
-				<thead>
-					<tr>
-						<th class="checkbox-cell selectallcontainer">
-							<div class="checkbox" role="checkbox" tabindex="0" aria-checked="false" aria-label="Select all"></div>
-						</th>
-						<th scope="col" data-attribute="name" class="orderable {{ sort == 'name' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="name">{{ "Name"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="handle" class="orderable {{ sort == 'handle' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="handle">{{ "Handle"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="elementType" class="orderable {{ sort == 'elementType' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="elementType">{{ "Element Type"|t('search-manager') }}</button>
-						</th>
-						<th scope="col">{{ "Backend"|t('search-manager') }}</th>
-						<th scope="col">{{ "Type"|t('search-manager') }}</th>
-						<th scope="col">{{ "Craft"|t('search-manager') }}</th>
-						<th scope="col">{{ "Indexed"|t('search-manager') }}</th>
-						<th scope="col">{{ "Last Indexed"|t('search-manager') }}</th>
-						<th scope="col" data-attribute="source" class="orderable {{ sort == 'source' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="source">{{ "Source"|t('search-manager') }}</button>
-						</th>
-						<th scope="col" data-attribute="enabled" class="orderable {{ sort == 'enabled' ? 'ordered ' ~ dir : '' }}">
-							<button type="button" data-sort="enabled">{{ "Status"|t('search-manager') }}</button>
-						</th>
-						{% if globalSettings.enableAnalytics %}
-							<th scope="col">{{ "Analytics"|t('search-manager') }}</th>
-						{% endif %}
-						{% if showActionsColumn %}<th class="thin" style="width: 60px;">{{ 'Actions'|t('search-manager') }}</th>{% endif %}
-					</tr>
-				</thead>
-				<tbody>
-					{% if paginatedIndices|length %}
-						{% for index in paginatedIndices %}
-							{% set isConfig = index.source == 'config' %}
-							{% set hasCollision = collisionHandles is defined and index.handle in collisionHandles %}
-							<tr data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}" data-source="{{ isConfig ? 'config' : 'database' }}"{% if hasCollision %} style="background-color: #fef3c7;"{% endif %}>
-								<td class="checkbox-cell">
-									{% if isConfig %}
-										<div class="checkbox disabled" title="{{ 'Config indices cannot be modified'|t('search-manager') }}" tabindex="-1" aria-checked="false" aria-disabled="true" role="checkbox" style="opacity: 0.4; cursor: not-allowed; pointer-events: none;"></div>
-									{% else %}
-										<div class="checkbox" title="Select" tabindex="0" aria-checked="false" role="checkbox"></div>
-									{% endif %}
-								</td>
-								<td>
-									{% if index.canEdit() %}
-										<a class="label-link" href="{{ url('search-manager/indices/edit/' ~ index.id) }}">
-											<span>{{ index.name }}</span>
-										</a>
-									{% else %}
-										<a class="label-link" href="{{ url('search-manager/indices/view/' ~ index.handle) }}">
-											<span>{{ index.name }}</span>
-										</a>
-										<span class="config-info-icon" data-config="{{ index.rawConfigDisplay|e('html_attr') }}"></span>
-									{% endif %}
-								</td>
-								<td><code>{{ index.handle }}</code></td>
-								<td>{{ index.elementType|split('\\')|last }}</td>
-								<td>
-									{% set indexBackendType = index.effectiveBackendType %}
-									{% set configuredBackend = index.configuredBackend %}
-									{% if configuredBackend %}
-										{% if configuredBackend.source == 'config' %}
-											<a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
-										{% else %}
-											<a href="{{ url('search-manager/backends/' ~ configuredBackend.id) }}">{{ configuredBackend.name }}</a>
-										{% endif %}
-									{% elseif indexBackendType %}
-										<span class="light">{{ indexBackendType|capitalize }}</span>
-									{% else %}
-										<span class="light">{{ 'Default'|t('search-manager') }}</span>
-									{% endif %}
-								</td>
-								<td>
-									{{ indexMacros.backendBadge(indexBackendType) }}
-								</td>
-								{% set expected = index.expectedCount %}
-								<td>{{ expected }}</td>
-								<td>
-									{% if index.documentCount == expected %}
-										<span style="color: #059669;">{{ index.documentCount }}</span>
-									{% elseif index.documentCount < expected %}
-										<span style="color: #d97706;" title="{{ expected - index.documentCount }} missing">{{ index.documentCount }}</span>
-									{% else %}
-										<span style="color: #dc2626;" title="{{ index.documentCount - expected }} stale">{{ index.documentCount }}</span>
-									{% endif %}
-								</td>
-								<td>
-									{% if index.lastIndexed %}
-										{{ index.lastIndexed|datetime('short') }}
-									{% else %}
-										<span class="light">{{ "Never"|t('search-manager') }}</span>
-									{% endif %}
-								</td>
-								<td>
-									{{ indexMacros.sourceBadge(index.source) }}
-								</td>
-								<td>
-									{{ indexMacros.statusBadge(index.enabled) }}
-								</td>
-								{% if globalSettings.enableAnalytics %}
-									<td>
-										{{ indexMacros.statusBadge(index.enableAnalytics) }}
-									</td>
-								{% endif %}
-								{% if showActionsColumn %}
-								<td class="thin" style="text-align: right;">
-									<button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
-									<div class="menu">
-										<ul>
-											{% if index.canEdit() %}
-												{% if canEdit %}
-													<li>
-														<a href="{{ url('search-manager/indices/edit/' ~ index.id) }}">
-															{{ 'Edit'|t('search-manager') }}
-														</a>
-													</li>
-												{% endif %}
-											{% else %}
-												<li>
-													<a href="{{ url('search-manager/indices/view/' ~ index.handle) }}">
-														{{ 'View'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-											{% if canRebuild %}
-												<li><hr class="padded"></li>
-												<li>
-													<a class="index-action" data-action="rebuild" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Rebuild Index'|t('search-manager') }}
-													</a>
-												</li>
-												{% if indexBackendType in ['algolia', 'meilisearch', 'typesense'] %}
-													<li>
-														<a class="index-action" data-action="sync-count" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-															{{ 'Sync Count from Backend'|t('search-manager') }}
-														</a>
-													</li>
-												{% endif %}
-											{% endif %}
+    {# Element Type #}
+    <td data-column="elementType">
+        {{ item.elementType|split('\\')|last }}
+    </td>
 
-											{% if canClear %}
-												<li>
-													<a class="index-action" data-action="clear" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Clear Index Data'|t('search-manager') }} ({{ index.documentCount|number_format }})
-													</a>
-												</li>
-											{% endif %}
+    {# Backend #}
+    <td data-column="backend">
+        {% if configuredBackend %}
+            {% if configuredBackend.source == 'config' %}
+                <a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
+            {% else %}
+                <a href="{{ url('search-manager/backends/' ~ configuredBackend.id) }}">{{ configuredBackend.name }}</a>
+            {% endif %}
+        {% elseif indexBackendType %}
+            <span class="light">{{ indexBackendType|capitalize }}</span>
+        {% else %}
+            <span class="light">{{ 'Default'|t('search-manager') }}</span>
+        {% endif %}
+    </td>
 
-											{% if canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
-												<li>
-													<a class="index-action" data-action="clear-cache" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Clear Index Cache'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
+    {# Type (backend badge) #}
+    <td data-column="type">
+        {% if indexBackendType %}
+            {% include 'lindemannrock-base/_components/badge' with {
+                label: indexBackendType|upper,
+                value: indexBackendType,
+                colorSet: 'backendType',
+            } only %}
+        {% endif %}
+    </td>
 
-											{% if index.canEdit() and canDelete %}
-												<li><hr class="padded"></li>
-												<li>
-													<a class="index-action error" data-action="delete" data-id="{{ index.id ?: index.handle }}" data-name="{{ index.name }}">
-														{{ 'Delete Index'|t('search-manager') }}
-													</a>
-												</li>
-											{% endif %}
-										</ul>
-									</div>
-								</td>
-								{% endif %}
-							</tr>
-						{% endfor %}
-					{% else %}
-						<tr>
-							<td colspan="{{ 11 + (globalSettings.enableAnalytics ? 1 : 0) + (showActionsColumn ? 1 : 0) }}" style="text-align: center; padding: 2em;">
-								{{ 'No indices found.'|t('search-manager') }}
-							</td>
-						</tr>
-					{% endif %}
-				</tbody>
-			</table>
-		</div>
-	</div>
+    {# Craft (expected count) #}
+    <td data-column="craft">
+        {{ item.expectedCount }}
+    </td>
 
-	<div id="footer" class="flex flex-justify">
-		<div class="light">
-			<div class="flex pagination">
-				<nav class="flex" aria-label="index pagination">
-					<button type="button" class="page-link prev-page {{ page <= 1 ? 'disabled' : '' }}" {{ page <= 1 ? 'disabled' : '' }} title="Previous Page"></button>
-					<button type="button" class="page-link next-page {{ page >= totalPages ? 'disabled' : '' }}" {{ page >= totalPages ? 'disabled' : '' }} title="Next Page"></button>
-				</nav>
-				<div class="page-info" style="margin: 0 12px; color: #596673;">
-					{% set endRange = min(offset + limit, totalCount) %}
-					{% if totalCount == 0 %}
-						{{ 'no indices'|t('search-manager') }}
-					{% else %}
-						{{ offset + 1 }} – {{ endRange }} of {{ totalCount }} {{ totalCount == 1 ? 'index' : 'indices' }}
-					{% endif %}
-				</div>
-			</div>
-		</div>
-		<div id="actions-container" class="flex" style="display: none;">
-			<div>
-				<button type="button" class="btn menubtn secondary" id="bulk-actions-btn" aria-label="Set status">
-					{{ 'Set status'|t('app') }}
-				</button>
-				<div class="menu">
-					<ul>
-						<li><a id="bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-						<li><a id="bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-					</ul>
-				</div>
-			</div>
-			<button type="button" class="btn secondary" id="bulk-delete-btn">
-				<span id="delete-label">{{ 'Delete'|t('search-manager') }}</span>
-			</button>
-		</div>
-	</div>
+    {# Indexed (document count) #}
+    <td data-column="indexed">
+        {% set expected = item.expectedCount %}
+        {% if item.documentCount == expected %}
+            <span class="lr-text-green">{{ item.documentCount }}</span>
+        {% elseif item.documentCount < expected %}
+            <span class="lr-text-amber" title="{{ expected - item.documentCount }} missing">{{ item.documentCount }}</span>
+        {% else %}
+            <span class="lr-text-red" title="{{ item.documentCount - expected }} stale">{{ item.documentCount }}</span>
+        {% endif %}
+    </td>
 
-	<script>
-	// Initialize menu buttons
-	document.querySelectorAll('.menubtn').forEach(btn => {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(btn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(btn);
-		}
-	});
+    {# Last Indexed #}
+    <td data-column="lastIndexed">
+        {% if item.lastIndexed %}
+            {{ item.lastIndexed|lrDatetime('short') }}
+        {% else %}
+            <span class="light">{{ "Never"|t('search-manager') }}</span>
+        {% endif %}
+    </td>
 
-	// Clear search
-	const clearBtn = document.querySelector('.clear-btn');
-	if (clearBtn) {
-		clearBtn.addEventListener('click', function() {
-			const searchInput = document.querySelector('input[name="search"]');
-			if (searchInput) {
-				searchInput.value = '';
-				searchInput.form.submit();
-			}
-		});
-	}
+    {# Source #}
+    <td data-column="source">
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.source == 'config' ? 'Config'|t('search-manager') : 'Database'|t('search-manager'),
+            value: item.source == 'config' ? 'config' : 'database',
+            colorSet: 'configSource',
+        } only %}
+    </td>
 
-	// Search on Enter
-	const searchInput = document.querySelector('input[name="search"]');
-	if (searchInput) {
-		searchInput.addEventListener('keyup', function(e) {
-			if (e.key === 'Enter') {
-				this.form.submit();
-			}
-		});
-	}
+    {# Status #}
+    <td data-column="enabled">
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),
+            value: item.enabled ? 'enabled' : 'disabled',
+            colorSet: 'status',
+        } only %}
+    </td>
 
-	// Pagination
-	document.querySelector('.prev-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page - 1 }}';
-	});
+    {# Analytics (conditional) #}
+    {% if globalSettings.enableAnalytics %}
+        <td data-column="analytics">
+            {% include 'lindemannrock-base/_components/badge' with {
+                label: item.enableAnalytics ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),
+                value: item.enableAnalytics ? 'enabled' : 'disabled',
+                colorSet: 'status',
+            } only %}
+        </td>
+    {% endif %}
+{% endblock %}
 
-	document.querySelector('.next-page:not(.disabled)')?.addEventListener('click', function() {
-		window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort={{ sort }}&dir={{ dir }}&page={{ page + 1 }}';
-	});
+{% block rowActions %}
+    {% set isConfig = item.source == 'config' %}
+    {% set indexBackendType = item.effectiveBackendType %}
 
-	// Sort buttons
-	document.querySelectorAll('th.orderable button').forEach(button => {
-		button.addEventListener('click', function() {
-			const sortField = this.dataset.sort;
-			const currentSort = '{{ sort }}';
-			const currentDir = '{{ dir }}';
-			let newDir = 'asc';
-			if (sortField === currentSort) {
-				newDir = currentDir === 'asc' ? 'desc' : 'asc';
-			}
-			window.location.href = '?status={{ statusFilter }}&source={{ sourceFilter }}&backend={{ backendFilter }}&search={{ search }}&sort=' + sortField + '&dir=' + newDir + '&page=1';
-		});
-	});
+    <td class="thin lr-text-end">
+        <button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
+        <div class="menu">
+            <ul>
+                {% if item.canEdit() %}
+                    {% if canEdit %}
+                        <li>
+                            <a href="{{ url('search-manager/indices/edit/' ~ item.id) }}">
+                                {{ 'Edit'|t('search-manager') }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% else %}
+                    <li>
+                        <a href="{{ url('search-manager/indices/view/' ~ item.handle) }}">
+                            {{ 'View'|t('search-manager') }}
+                        </a>
+                    </li>
+                {% endif %}
 
-	// Checkbox functionality
-	const selectAllCheckbox = document.querySelector('.selectallcontainer .checkbox');
-	const checkboxes = document.querySelectorAll('tbody .checkbox:not(.disabled)');
-	let selectedIds = new Set();
+                {% if canRebuild %}
+                    <li><hr class="padded"></li>
+                    <li>
+                        <a class="index-action" data-action="rebuild" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                            {{ 'Rebuild Index'|t('search-manager') }}
+                        </a>
+                    </li>
+                    {% if indexBackendType in ['algolia', 'meilisearch', 'typesense'] %}
+                        <li>
+                            <a class="index-action" data-action="sync-count" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                                {{ 'Sync Count from Backend'|t('search-manager') }}
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endif %}
 
-	function toggleCheckbox(checkbox, checked) {
-		if (checked) {
-			checkbox.classList.add('checked');
-			checkbox.setAttribute('aria-checked', 'true');
-		} else {
-			checkbox.classList.remove('checked');
-			checkbox.setAttribute('aria-checked', 'false');
-		}
-	}
+                {% if canClear %}
+                    <li>
+                        <a class="index-action" data-action="clear" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                            {{ 'Clear Index Data'|t('search-manager') }} ({{ item.documentCount|number_format }})
+                        </a>
+                    </li>
+                {% endif %}
 
-	function updateBulkButtons() {
-		const hasSelection = selectedIds.size > 0;
-		const actionsContainer = document.getElementById('actions-container');
-		const deleteLabel = document.getElementById('delete-label');
+                {% if canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
+                    <li>
+                        <a class="index-action" data-action="clear-cache" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                            {{ 'Clear Index Cache'|t('search-manager') }}
+                        </a>
+                    </li>
+                {% endif %}
 
-		if (hasSelection) {
-			actionsContainer.style.display = '';
-			const count = selectedIds.size;
-			deleteLabel.textContent = `{{ 'Delete'|t('search-manager') }} (${count})`;
-		} else {
-			actionsContainer.style.display = 'none';
-		}
-	}
+                {% if item.canEdit() and canDelete %}
+                    <li><hr class="padded"></li>
+                    <li>
+                        <a class="index-action error" data-action="delete" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
+                            {{ 'Delete Index'|t('search-manager') }}
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
+        </div>
+    </td>
+{% endblock %}
 
-	// Select all
-	if (selectAllCheckbox) {
-		selectAllCheckbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
+{% block bulkActions %}
+    {% if canEdit %}
+        <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
+            {{ 'Set status'|t('app') }}
+        </button>
+        <div class="menu">
+            <ul>
+                <li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
+                <li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
+            </ul>
+        </div>
+    {% endif %}
 
-			checkboxes.forEach(checkbox => {
-				toggleCheckbox(checkbox, isChecked);
-				const id = checkbox.closest('tr').dataset.id;
-				if (isChecked) {
-					selectedIds.add(id);
-				} else {
-					selectedIds.delete(id);
-				}
-			});
+    {% if canDelete %}
+        <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
+            {{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+        </button>
+    {% endif %}
+{% endblock %}
 
-			updateBulkButtons();
-		});
-	}
+{% block scripts %}
+<script>
+(function() {
+    // Initialize bulk status menu
+    const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
+    if (bulkStatusBtn && typeof Craft !== 'undefined' && Craft.MenuBtn) {
+        new Craft.MenuBtn(bulkStatusBtn);
+    }
 
-	// Individual checkboxes
-	checkboxes.forEach(checkbox => {
-		checkbox.addEventListener('click', function() {
-			const isChecked = !this.classList.contains('checked');
-			toggleCheckbox(this, isChecked);
+    // Initialize row action menu buttons
+    document.querySelectorAll('.menubtn').forEach(btn => {
+        if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
+            new Craft.MenuBtn(btn);
+        }
+    });
 
-			const id = this.closest('tr').dataset.id;
-			if (isChecked) {
-				selectedIds.add(id);
-			} else {
-				selectedIds.delete(id);
-			}
+    // Bulk enable
+    document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        const ids = window.lrTableSelection.getSelectedIds();
+        if (ids.length === 0) return;
 
-			updateBulkButtons();
-		});
-	});
+        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-enable', {
+            data: { indexIds: ids }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(Craft.t('search-manager', 'Enabled {count} indices', {count: response.data.count}));
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to enable indices'));
+        });
+    });
 
-	// Initialize bulk actions menu button
-	const bulkActionsBtn = document.getElementById('bulk-actions-btn');
-	if (bulkActionsBtn) {
-		if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-			new Craft.MenuBtn(bulkActionsBtn);
-		} else if (typeof Garnish !== 'undefined' && Garnish.MenuBtn) {
-			new Garnish.MenuBtn(bulkActionsBtn);
-		}
-	}
+    // Bulk disable
+    document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        const ids = window.lrTableSelection.getSelectedIds();
+        if (ids.length === 0) return;
 
-	// Bulk enable
-	document.getElementById('bulk-enable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = Array.from(selectedIds);
+        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-disable', {
+            data: { indexIds: ids }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(Craft.t('search-manager', 'Disabled {count} indices', {count: response.data.count}));
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to disable indices'));
+        });
+    });
 
-		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-enable', {
-			data: { indexIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Enabled ${response.data.count} indices`);
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to enable indices');
-		});
-	});
+    // Bulk delete
+    document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
+        const ids = window.lrTableSelection.getSelectedIds();
+        if (ids.length === 0) return;
 
-	// Bulk disable
-	document.getElementById('bulk-disable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = Array.from(selectedIds);
+        if (!confirm(Craft.t('search-manager', 'Delete {count} index(es)? This cannot be undone.', {count: ids.length}))) return;
 
-		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-disable', {
-			data: { indexIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Disabled ${response.data.count} indices`);
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to disable indices');
-		});
-	});
+        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-delete', {
+            data: { indexIds: ids }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} indices', {count: response.data.count}));
+                setTimeout(() => window.location.reload(), 1000);
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete indices'));
+        });
+    });
 
-	// Bulk delete
-	document.getElementById('bulk-delete-btn')?.addEventListener('click', function() {
-		const ids = Array.from(selectedIds);
-		if (!confirm(`Delete ${ids.length} ${ids.length > 1 ? 'indices' : 'index'}? This cannot be undone.`)) return;
+    // Individual index action menu clicks
+    document.querySelectorAll('.index-action').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
 
-		Craft.sendActionRequest('POST', 'search-manager/indices/bulk-delete', {
-			data: { indexIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(`Deleted ${response.data.count} indices`);
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to delete indices');
-		});
-	});
+            const action = this.dataset.action;
+            const indexId = this.dataset.id;
+            const indexName = this.dataset.name;
 
-	// Individual index action menu clicks
-	document.querySelectorAll('.index-action').forEach(link => {
-		link.addEventListener('click', function(e) {
-			e.preventDefault();
+            if (action === 'rebuild') {
+                if (confirm(Craft.t('search-manager', 'Rebuild index "{name}"? This will re-index all elements.', {name: indexName}))) {
+                    submitIndexAction('search-manager/indices/rebuild', indexId);
+                }
+            } else if (action === 'clear') {
+                if (confirm(Craft.t('search-manager', 'Clear all data from index "{name}"? This cannot be undone.', {name: indexName}))) {
+                    submitIndexAction('search-manager/indices/clear', indexId);
+                }
+            } else if (action === 'clear-cache') {
+                if (confirm(Craft.t('search-manager', 'Clear cached search results and autocomplete suggestions for "{name}"?', {name: indexName}))) {
+                    submitIndexCacheAction('search-manager/indices/clear-cache', indexId, indexName);
+                }
+            } else if (action === 'delete') {
+                if (confirm(Craft.t('search-manager', 'Delete index "{name}"? This will remove the index and all its data.', {name: indexName}))) {
+                    submitIndexAction('search-manager/indices/delete', indexId);
+                }
+            } else if (action === 'sync-count') {
+                syncCountFromBackend(indexId, indexName);
+            }
+        });
+    });
 
-			const action = this.dataset.action;
-			const indexId = this.dataset.id;
-			const indexName = this.dataset.name;
+    function submitIndexAction(action, indexId) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = Craft.getActionUrl(action);
 
-			if (action === 'rebuild') {
-				if (confirm('Rebuild index "' + indexName + '"? This will re-index all elements.')) {
-					submitIndexAction('search-manager/indices/rebuild', indexId);
-				}
-			} else if (action === 'clear') {
-				if (confirm('Clear all data from index "' + indexName + '"? This cannot be undone.')) {
-					submitIndexAction('search-manager/indices/clear', indexId);
-				}
-			} else if (action === 'clear-cache') {
-				if (confirm('Clear cached search results and autocomplete suggestions for "' + indexName + '"?')) {
-					submitIndexCacheAction('search-manager/indices/clear-cache', indexId, indexName);
-				}
-			} else if (action === 'delete') {
-				if (confirm('Delete index "' + indexName + '"? This will remove the index and all its data.')) {
-					submitIndexAction('search-manager/indices/delete', indexId);
-				}
-			} else if (action === 'sync-count') {
-				syncCountFromBackend(indexId, indexName);
-			}
-		});
-	});
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
+        csrfInput.value = '{{ craft.app.request.csrfToken }}';
+        form.appendChild(csrfInput);
 
-	function submitIndexAction(action, indexId) {
-		const form = document.createElement('form');
-		form.method = 'POST';
-		form.action = Craft.getActionUrl(action);
+        const indexIdInput = document.createElement('input');
+        indexIdInput.type = 'hidden';
+        indexIdInput.name = 'indexId';
+        indexIdInput.value = indexId;
+        form.appendChild(indexIdInput);
 
-		const csrfInput = document.createElement('input');
-		csrfInput.type = 'hidden';
-		csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
-		csrfInput.value = '{{ craft.app.request.csrfToken }}';
-		form.appendChild(csrfInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
 
-		const indexIdInput = document.createElement('input');
-		indexIdInput.type = 'hidden';
-		indexIdInput.name = 'indexId';
-		indexIdInput.value = indexId;
-		form.appendChild(indexIdInput);
+    function submitIndexCacheAction(action, indexId, indexName) {
+        Craft.sendActionRequest('POST', action, {
+            data: { indexId: indexId }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(response.data.message || Craft.t('search-manager', 'Cache cleared for "{name}"', {name: indexName}));
+            } else {
+                Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to clear cache'));
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to clear cache for "{name}"', {name: indexName}));
+        });
+    }
 
-		document.body.appendChild(form);
-		form.submit();
-	}
+    function syncCountFromBackend(indexId, indexName) {
+        Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
+            data: { indexId: indexId }
+        }).then(function(response) {
+            if (response.data.success) {
+                Craft.cp.displayNotice(response.data.message || Craft.t('search-manager', 'Count synced for "{name}"', {name: indexName}));
+                setTimeout(() => window.location.reload(), 1000);
+            } else {
+                Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to sync count'));
+            }
+        }).catch(function(error) {
+            Craft.cp.displayError(Craft.t('search-manager', 'Failed to sync count for "{name}"', {name: indexName}));
+        });
+    }
 
-	function submitIndexCacheAction(action, indexId, indexName) {
-		Craft.sendActionRequest('POST', action, {
-			data: { indexId: indexId }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(response.data.message || 'Cache cleared for "' + indexName + '"');
-			} else {
-				Craft.cp.displayError(response.data.error || 'Failed to clear cache');
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to clear cache for "' + indexName + '"');
-		});
-	}
+    // Update selected count
+    document.addEventListener('lr:selectionChanged', function(e) {
+        const countSpan = document.getElementById('lr-selected-count');
+        if (countSpan) {
+            countSpan.textContent = e.detail.count;
+        }
+    });
 
-	function syncCountFromBackend(indexId, indexName) {
-		Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
-			data: { indexId: indexId }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(response.data.message || 'Count synced for "' + indexName + '"');
-				setTimeout(() => window.location.reload(), 1000);
-			} else {
-				Craft.cp.displayError(response.data.error || 'Failed to sync count');
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError('Failed to sync count for "' + indexName + '"');
-		});
-	}
-
-	// Config tooltip for config-based indices
-	let activeTooltip = null;
-
-	document.querySelectorAll('.config-info-icon').forEach(info => {
-		info.addEventListener('mouseenter', function(e) {
-			const config = this.dataset.config;
-			if (!config) return;
-
-			// Remove any existing tooltip
-			if (activeTooltip) {
-				activeTooltip.remove();
-			}
-
-			// Create tooltip
-			const tooltip = document.createElement('div');
-			tooltip.className = 'config-tooltip';
-			tooltip.textContent = config;
-			document.body.appendChild(tooltip);
-			activeTooltip = tooltip;
-
-			// Position tooltip
-			const rect = this.getBoundingClientRect();
-			const tooltipRect = tooltip.getBoundingClientRect();
-
-			let left = rect.left + window.scrollX;
-			let top = rect.bottom + window.scrollY + 8;
-
-			// Keep within viewport
-			if (left + tooltipRect.width > window.innerWidth - 20) {
-				left = window.innerWidth - tooltipRect.width - 20;
-			}
-
-			tooltip.style.left = left + 'px';
-			tooltip.style.top = top + 'px';
-		});
-
-		info.addEventListener('mouseleave', function() {
-			if (activeTooltip) {
-				activeTooltip.remove();
-				activeTooltip = null;
-			}
-		});
-	});
-	</script>
+    // Highlight rows with handle collisions
+    const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};
+    if (collisionHandles.length > 0) {
+        document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
+            const handleCell = row.querySelector('td[data-column="handle"] code');
+            if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
+                row.style.backgroundColor = '#fef3c7';
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}
