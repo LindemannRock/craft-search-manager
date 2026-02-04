@@ -1,6 +1,6 @@
 {
   "name": "@lindemannrock/search-manager-widget",
-  "version": "5.29.0",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
     "build": "node build.js",
@@ -17,5 +17,15 @@
     "@playwright/test": "^1.40.0",
     "esbuild": "^0.20.0",
     "http-server": "^14.1.1"
-  }
+  },
+  "author": {
+    "name": "Bilal Harry Lindemann",
+    "email": "hello@lindemannrock.com",
+    "url": "https://lindemannrock.com"
+  },
+  "company": {
+    "name": "LindemannRock",
+    "url": "https://lindemannrock.com"
+  },
+  "license": "Proprietary"
 }

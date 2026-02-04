@@ -1,6 +1,7 @@
 {
-  "name": "craft-search-manager",
-  "version": "5.29.0",
+  "name": "@lindemannrock/search-manager",
+  "version": "1.0.0",
+  "private": true,
   "description": "Build tools for Search Manager plugin",
   "scripts": {
     "build": "npm run build:widget",
@@ -17,5 +18,15 @@
   },
   "devDependencies": {
     "terser": "^5.31.6"
-  }
+  },
+  "author": {
+    "name": "Bilal Harry Lindemann",
+    "email": "hello@lindemannrock.com",
+    "url": "https://lindemannrock.com"
+  },
+  "company": {
+    "name": "LindemannRock",
+    "url": "https://lindemannrock.com"
+  },
+  "license": "Proprietary"
 }
