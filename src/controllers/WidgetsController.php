@@ -3,8 +3,10 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\SearchManager;
@@ -39,6 +41,12 @@ class WidgetsController extends Controller
 
         $widgetConfigs = SearchManager::$plugin->widgetConfigs->getAll();
         $settings = SearchManager::$plugin->getSettings();
+        $configHandles = ConfigFileHelper::getHandles('widgets');
+        $databaseHandles = (new Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_widget_configs}}')
+            ->column();
+        $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
         // Auto-assign default if needed (only if not set via config file)
         if (!$this->isDefaultWidgetFromConfig()) {
@@ -77,6 +85,7 @@ class WidgetsController extends Controller
             'widgetConfigs' => $widgetConfigs,
             'defaultWidgetHandle' => $settings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
+            'collisionHandles' => $collisionHandles,
         ]);
     }
 
