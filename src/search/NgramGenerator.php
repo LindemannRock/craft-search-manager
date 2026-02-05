@@ -42,6 +42,7 @@ class NgramGenerator
      * Adds padding with spaces to capture word boundaries, which helps
      * differentiate terms like "the" vs "there" (both start with "the").
      *
+     * @since 5.0.0
      * @param string $term The term to generate n-grams for
      * @param array|null $sizes Override default n-gram sizes for this call
      * @return array Array of unique n-grams
@@ -94,6 +95,7 @@ class NgramGenerator
      * Jaccard similarity = |intersection| / |union|
      * Returns a value between 0.0 (no similarity) and 1.0 (identical)
      *
+     * @since 5.0.0
      * @param array $ngrams1 First set of n-grams
      * @param array $ngrams2 Second set of n-grams
      * @return float Similarity score between 0.0 and 1.0
@@ -115,6 +117,7 @@ class NgramGenerator
      *
      * Convenience method that generates n-grams and calculates similarity
      *
+     * @since 5.0.0
      * @param string $term1 First term
      * @param string $term2 Second term
      * @return float Similarity score between 0.0 and 1.0
@@ -133,6 +136,7 @@ class NgramGenerator
      * Shorter terms need lower thresholds because they have fewer n-grams,
      * making it harder to achieve high similarity scores.
      *
+     * @since 5.0.0
      * @param string $term The search term
      * @param float $baseThreshold Base similarity threshold (default: 0.50)
      * @return float Adjusted threshold
@@ -160,6 +164,7 @@ class NgramGenerator
     /**
      * Get the configured n-gram sizes
      *
+     * @since 5.0.0
      * @return array Array of n-gram sizes
      */
     public function getSizes(): array

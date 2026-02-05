@@ -128,6 +128,7 @@ class SearchEngine
     /**
      * Index a document
      *
+     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @param string $title Document title
@@ -237,6 +238,7 @@ class SearchEngine
      * - term* → Wildcard/prefix search
      * - term^2 → Boost specific terms
      *
+     * @since 5.0.0
      * @param string $query Search query
      * @param int $siteId Site ID
      * @param int $limit Maximum results (0 = no limit)
@@ -269,6 +271,7 @@ class SearchEngine
     /**
      * Search with parsed query (advanced operators)
      *
+     * @since 5.0.0
      * @param ParsedQuery $parsed Parsed query object
      * @param int $siteId Site ID
      * @param int $limit Maximum results (0 = no limit)
@@ -1002,6 +1005,7 @@ class SearchEngine
     /**
      * Delete a document from the index
      *
+     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return bool Success

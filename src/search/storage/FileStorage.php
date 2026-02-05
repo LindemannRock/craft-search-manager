@@ -354,6 +354,7 @@ class FileStorage implements StorageInterface
     /**
      * Store element metadata for autocomplete suggestions
      *
+     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @param string $title Full title for display
@@ -386,6 +387,7 @@ class FileStorage implements StorageInterface
     /**
      * Delete element metadata
      *
+     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return void
@@ -402,6 +404,7 @@ class FileStorage implements StorageInterface
     /**
      * Get element info for a list of element IDs
      *
+     * @since 5.0.0
      * @param int $siteId Site ID
      * @param array $elementIds Array of element IDs
      * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
@@ -434,6 +437,7 @@ class FileStorage implements StorageInterface
     /**
      * Get element suggestions by prefix
      *
+     * @since 5.0.0
      * @param string $query Search query (prefix)
      * @param int $siteId Site ID
      * @param int $limit Maximum results

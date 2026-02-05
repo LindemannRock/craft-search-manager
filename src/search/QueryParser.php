@@ -55,6 +55,7 @@ class QueryParser
     /**
      * Parse a search query string into structured components
      *
+     * @since 5.0.0
      * @param string $query Raw search query
      * @param string|null $language Language code for localized operators (default: 'en')
      * @return ParsedQuery Structured query object
@@ -112,6 +113,7 @@ class QueryParser
     /**
      * Check if a query string has advanced operators
      *
+     * @since 5.0.0
      * @param string $query Raw query string
      * @return bool
      */
