@@ -426,7 +426,7 @@
             document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
                 const handleCell = row.querySelector('td:nth-child(3) code');
                 if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
-                    row.style.backgroundColor = '#fef3c7';
+                    row.classList.add('lr-row--warning');
                 }
             });
         }
