@@ -155,11 +155,11 @@
     table: {
         columns: [
             {key: 'name', label: 'Name'|t('search-manager'), sortable: true},
-            {key: 'handle', label: 'Handle'|t('search-manager'), sortable: true},
-            {key: 'type', label: 'Type'|t('search-manager'), sortable: true},
-            {key: 'source', label: 'Source'|t('search-manager'), sortable: true},
-            {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true},
-            {key: 'default', label: 'Default'|t('search-manager')},
+            {key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'type', label: 'Type'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'source', label: 'Source'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
+            {key: 'default', label: 'Default'|t('search-manager'), hideable: true},
         ],
         items: paginatedBackends,
         emptyMessage: 'No backends found.'|t('search-manager'),
