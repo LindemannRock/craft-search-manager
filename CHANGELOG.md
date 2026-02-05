@@ -1,5 +1,27 @@
 # Changelog
 
+## [5.37.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.36.0...v5.37.0) (2026-02-05)
+
+
+### Features
+
+* **actionButton:** add quick actions menu for indices, promotions, query rules, and settings ([e4b7c37](https://github.com/LindemannRock/craft-search-manager/commit/e4b7c3751d42e9488556c82ce91c5f352590d6d4))
+
+
+### Bug Fixes
+
+* **autocomplete:** results not searching all sites when siteId omitted ([392019c](https://github.com/LindemannRock/craft-search-manager/commit/392019c2fe0b38b75b55a5d85b8dac1c0b1e3d67))
+* **index:** enhance collision handle warnings with bold formatting ([6aed492](https://github.com/LindemannRock/craft-search-manager/commit/6aed492e2f33fc68dde98368f1d88b71ddabd33a))
+* **SearchManager:** [@since](https://github.com/since) version in getCpSections method to 5.37.0 ([572dcee](https://github.com/LindemannRock/craft-search-manager/commit/572dcee6d679e5b391c11d653a31824eaffc9beb))
+* **UtilitiesController:** add handle collision check before clearing caches ([8f79631](https://github.com/LindemannRock/craft-search-manager/commit/8f7963178d54e374ad595654450e094ab2e6bb82))
+* **UtilitiesController:** add handle collision check before rebuilding indices ([712e8c6](https://github.com/LindemannRock/craft-search-manager/commit/712e8c6d5620ba9fe323357261d34499171c8a90))
+
+
+### Miscellaneous Chores
+
+* **dependencies:** Remove matomo/device-detector from composer.json ([c1c70eb](https://github.com/LindemannRock/craft-search-manager/commit/c1c70eb446158799c33e941be405ca63f6a6786e))
+* **package:** update package metadata and versioning ([f7a4dfb](https://github.com/LindemannRock/craft-search-manager/commit/f7a4dfb602247ba6ae742c68ad5cac16ac085f07))
+
 ## [5.36.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.2...v5.36.0) (2026-01-28)
 
 
