@@ -43,8 +43,8 @@
                 <tbody>
                     {% for search in recentSearches %}
                         <tr>
-                            <td>{{ search.dateCreated|date('short') }}</td>
-                            <td>{{ search.dateCreated|time('short') }}</td>
+                            <td>{{ search.dateCreated|lrDate('short') }}</td>
+                            <td>{{ search.dateCreated|lrTime('short') }}</td>
                             <td><code>{{ search.query }}</code></td>
                             <td>
                                 {% if search.siteId %}

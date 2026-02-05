@@ -65,8 +65,8 @@
                             </td>
                             <td>{{ stat.indexHandle }}</td>
                             <td>{{ backendLabels[stat.backend] ?? stat.backend|title }}</td>
-                            <td>{{ stat.dateCreated|date('short') }}</td>
-                            <td>{{ stat.dateCreated|time('short') }}</td>
+                            <td>{{ stat.dateCreated|lrDate('short') }}</td>
+                            <td>{{ stat.dateCreated|lrTime('short') }}</td>
                         </tr>
                     {% else %}
                         <tr>

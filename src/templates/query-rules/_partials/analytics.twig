@@ -75,7 +75,7 @@
                                         <td><code>{{ item.query }}</code></td>
                                         <td>{{ item.count|number }}</td>
                                         <td>{{ item.avgResults|number(1) }}</td>
-                                        <td>{{ item.lastTriggered|date('short') }}</td>
+                                        <td>{{ item.lastTriggered|lrDate('short') }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -153,8 +153,8 @@
                             <tbody>
                                 {% for trigger in analytics.recentTriggers %}
                                     <tr>
-                                        <td>{{ trigger.dateCreated|date('short') }}</td>
-                                        <td>{{ trigger.dateCreated|time('short') }}</td>
+                                        <td>{{ trigger.dateCreated|lrDate('short') }}</td>
+                                        <td>{{ trigger.dateCreated|lrTime('short') }}</td>
                                         <td><code>{{ trigger.query }}</code></td>
                                         <td>{{ trigger.indexHandle ?? '—' }}</td>
                                         <td>

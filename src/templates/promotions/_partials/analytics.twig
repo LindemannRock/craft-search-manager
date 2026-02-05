@@ -67,7 +67,7 @@
                                         <td><code>{{ item.query }}</code></td>
                                         <td>{{ item.count|number }}</td>
                                         <td>{{ item.avgPosition|number(1) }}</td>
-                                        <td>{{ item.lastShown|date('short') }}</td>
+                                        <td>{{ item.lastShown|lrDate('short') }}</td>
                                     </tr>
                                 {% endfor %}
                             </tbody>
@@ -146,8 +146,8 @@
                             <tbody>
                                 {% for impression in analytics.recentImpressions %}
                                     <tr>
-                                        <td>{{ impression.dateCreated|date('short') }}</td>
-                                        <td>{{ impression.dateCreated|time('short') }}</td>
+                                        <td>{{ impression.dateCreated|lrDate('short') }}</td>
+                                        <td>{{ impression.dateCreated|lrTime('short') }}</td>
                                         <td><code>{{ impression.query }}</code></td>
                                         <td>{{ impression.indexHandle ?? '—' }}</td>
                                         <td>

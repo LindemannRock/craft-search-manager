@@ -148,7 +148,7 @@
                                     <code style="font-family: monospace; font-size: 13px;">{{ search.query }}</code>
                                 </td>
                                 <td style="text-align: right; padding: {{ loop.first ? '0' : '12px' }} 0 12px 0; border-bottom: 1px solid #e5e7eb; color: #6b7280; white-space: nowrap; font-size: 13px;">
-                                    {{ search.dateCreated|date('M j') }}
+                                    {{ search.dateCreated|lrShortDate }}
                                 </td>
                             </tr>
                         {% endfor %}
