@@ -11,6 +11,8 @@ use yii\web\Response;
  * API Controller
  *
  * Provides AJAX endpoints for frontend search features
+ *
+ * @since 5.0.0
  */
 class ApiController extends Controller
 {
@@ -42,6 +44,7 @@ class ApiController extends Controller
      * - only=results: [{text: "Product Name", type: "product", id: 123}, ...]
      *
      * @return Response
+     * @since 5.0.0
      */
     public function actionAutocomplete(): Response
     {
@@ -148,6 +151,7 @@ class ApiController extends Controller
      * {hits: [{objectID, id, score, type}, ...], total: N}
      *
      * @return Response
+     * @since 5.0.0
      */
     public function actionSearch(): Response
     {

@@ -9,6 +9,8 @@ use Typesense\Client;
  *
  * Search backend adapter for Typesense
  * Open-source alternative to Algolia/Meilisearch
+ *
+ * @since 5.0.0
  */
 class TypesenseBackend extends BaseBackend
 {

@@ -11,6 +11,8 @@ use lindemannrock\searchmanager\traits\ConfigSourceTrait;
  *
  * Stores configuration for search widget instances.
  * Allows multiple named configurations with different appearance/behavior settings.
+ *
+ * @since 5.30.0
  */
 class WidgetConfig extends Model
 {
@@ -39,6 +41,9 @@ class WidgetConfig extends Model
 
     /**
      * Default settings structure for new widget configs
+     *
+     * @return array
+     * @since 5.30.0
      */
     public static function defaultSettings(): array
     {
@@ -91,6 +96,9 @@ class WidgetConfig extends Model
 
     /**
      * Get settings as array (parses JSON if needed)
+     *
+     * @return array
+     * @since 5.30.0
      */
     public function getSettingsArray(): array
     {
@@ -107,6 +115,7 @@ class WidgetConfig extends Model
      * @param string $key Dot notation key (e.g., 'highlighting.bgLight')
      * @param mixed $default Default value if not found
      * @return mixed
+     * @since 5.30.0
      */
     public function getSetting(string $key, mixed $default = null): mixed
     {
@@ -126,6 +135,10 @@ class WidgetConfig extends Model
 
     /**
      * Set a specific setting with dot notation support
+     *
+     * @param string $key
+     * @param mixed $value
+     * @since 5.30.0
      */
     public function setSetting(string $key, mixed $value): void
     {
@@ -152,7 +165,9 @@ class WidgetConfig extends Model
     // Search
     /**
      * Get selected index handles (empty array = search all)
+     *
      * @return string[]
+     * @since 5.30.0
      */
     public function getIndexHandles(): array
     {
@@ -169,6 +184,7 @@ class WidgetConfig extends Model
 
     /**
      * @deprecated Use getIndexHandles() instead
+     * @since 5.30.0
      */
     public function getIndexHandle(): string
     {
@@ -306,6 +322,9 @@ class WidgetConfig extends Model
     /**
      * Get styles with defaults for CP preview
      * Merges configured styles with defaults so preview renders correctly
+     *
+     * @return array
+     * @since 5.30.0
      */
     public function getStylesForPreview(): array
     {
@@ -321,6 +340,9 @@ class WidgetConfig extends Model
      * Default style values loaded from shared JSON config
      * Single source of truth: src/config/style-defaults.json
      * This is also imported by JavaScript StyleConfig.js
+     *
+     * @return array
+     * @since 5.30.0
      */
     public static function defaultStyleValues(): array
     {
@@ -341,6 +363,11 @@ class WidgetConfig extends Model
 
     /**
      * Get a specific style value
+     *
+     * @param string $key
+     * @param string $default
+     * @return string
+     * @since 5.30.0
      */
     public function getStyle(string $key, string $default = ''): string
     {
@@ -353,6 +380,9 @@ class WidgetConfig extends Model
 
     /**
      * Get raw config display for showing in tooltip (config widgets only)
+     *
+     * @return string
+     * @since 5.30.0
      */
     public function getRawConfigDisplay(): string
     {
@@ -418,6 +448,9 @@ class WidgetConfig extends Model
 
     /**
      * Prepare for database save
+     *
+     * @return array
+     * @since 5.30.0
      */
     public function prepareForDb(): array
     {

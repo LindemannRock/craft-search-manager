@@ -14,6 +14,8 @@ use yii\base\Component;
  *
  * Abstract base class for all search backend adapters
  * Provides common functionality and enforces the BackendInterface contract
+ *
+ * @since 5.0.0
  */
 abstract class BaseBackend extends Component implements BackendInterface
 {
@@ -45,6 +47,7 @@ abstract class BaseBackend extends Component implements BackendInterface
      *
      * @param array $settings
      * @return void
+     * @since 5.28.0
      */
     public function setConfiguredSettings(array $settings): void
     {
@@ -59,6 +62,8 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * Set the backend handle this adapter is associated with
+     *
+     * @since 5.28.0
      */
     public function setBackendHandle(string $handle): void
     {
@@ -199,6 +204,8 @@ abstract class BaseBackend extends Component implements BackendInterface
     /**
      * Browse/iterate through all documents in an index
      * Default: not supported, returns empty array
+     *
+     * @since 5.0.0
      */
     public function browse(string $indexName, string $query = '', array $parameters = []): iterable
     {
@@ -209,6 +216,8 @@ abstract class BaseBackend extends Component implements BackendInterface
     /**
      * Perform multiple search queries in a single request
      * Default: sequential search fallback
+     *
+     * @since 5.0.0
      */
     public function multipleQueries(array $queries = []): array
     {
@@ -228,6 +237,8 @@ abstract class BaseBackend extends Component implements BackendInterface
     /**
      * Parse filters array into backend-specific filter string
      * Default: basic SQL-like syntax
+     *
+     * @since 5.0.0
      */
     public function parseFilters(array $filters = []): string
     {
@@ -256,6 +267,8 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * Check if this backend supports browse functionality
+     *
+     * @since 5.0.0
      */
     public function supportsBrowse(): bool
     {
@@ -264,6 +277,8 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     /**
      * Check if this backend supports multiple queries
+     *
+     * @since 5.0.0
      */
     public function supportsMultipleQueries(): bool
     {
@@ -273,6 +288,8 @@ abstract class BaseBackend extends Component implements BackendInterface
     /**
      * List all indices available in the backend
      * Default: returns indices from database that use this backend
+     *
+     * @since 5.0.0
      */
     public function listIndices(): array
     {

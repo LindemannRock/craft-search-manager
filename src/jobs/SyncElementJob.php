@@ -13,6 +13,8 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * Queue job for syncing a single element's index state for a specific site.
  * Checks if element should be indexed or removed based on current DB state.
+ *
+ * @since 5.0.0
  */
 class SyncElementJob extends BaseJob
 {

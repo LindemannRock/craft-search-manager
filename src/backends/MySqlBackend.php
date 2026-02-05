@@ -10,6 +10,8 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  * MySQL Backend
  *
  * Search backend using BM25 algorithm with MySQL storage
+ *
+ * @since 5.0.0
  */
 class MySqlBackend extends AbstractSearchEngineBackend
 {

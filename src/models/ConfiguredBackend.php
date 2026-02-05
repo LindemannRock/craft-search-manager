@@ -16,6 +16,8 @@ use lindemannrock\searchmanager\traits\ConfigSourceTrait;
  *
  * Represents a configured backend instance (e.g., "Production Algolia", "Mobile Typesense")
  * Stores credentials and settings for a specific backend deployment
+ *
+ * @since 5.28.0
  */
 class ConfiguredBackend extends Model
 {
@@ -257,6 +259,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Validate database backend is compatible with Craft's database driver
+     *
+     * @param string $attribute
+     * @since 5.28.0
      */
     public function validateDatabaseBackend(string $attribute): void
     {
@@ -273,6 +278,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Validate that the default backend cannot be disabled
+     *
+     * @param string $attribute
+     * @since 5.28.0
      */
     public function validateNotDisablingDefault(string $attribute): void
     {
@@ -292,6 +300,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Validate handle is unique
+     *
+     * @param string $attribute
+     * @since 5.28.0
      */
     public function validateUniqueHandle(string $attribute): void
     {
@@ -314,6 +325,10 @@ class ConfiguredBackend extends Model
 
     /**
      * Find backend by ID
+     *
+     * @param int $id
+     * @return self|null
+     * @since 5.28.0
      */
     public static function findById(int $id): ?self
     {
@@ -331,6 +346,10 @@ class ConfiguredBackend extends Model
 
     /**
      * Find backend by handle
+     *
+     * @param string $handle
+     * @return self|null
+     * @since 5.28.0
      */
     public static function findByHandle(string $handle): ?self
     {
@@ -356,6 +375,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Get all configured backends
+     *
+     * @return self[]
+     * @since 5.28.0
      */
     public static function findAll(): array
     {
@@ -391,6 +413,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Get all backends defined in config file
+     *
+     * @return self[]
+     * @since 5.28.0
      */
     public static function findAllFromConfig(): array
     {
@@ -422,6 +447,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Get all enabled configured backends
+     *
+     * @return self[]
+     * @since 5.28.0
      */
     public static function findAllEnabled(): array
     {
@@ -470,6 +498,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Save backend to database
+     *
+     * @return bool
+     * @since 5.28.0
      */
     public function save(): bool
     {
@@ -528,6 +559,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Delete backend from database
+     *
+     * @return bool
+     * @since 5.28.0
      */
     public function delete(): bool
     {
@@ -618,6 +652,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Get the display label for this backend's type
+     *
+     * @return string
+     * @since 5.28.0
      */
     public function getTypeLabel(): string
     {
@@ -626,6 +663,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Get the settings schema for this backend type
+     *
+     * @return array
+     * @since 5.28.0
      */
     public function getSettingsSchema(): array
     {
@@ -634,6 +674,11 @@ class ConfiguredBackend extends Model
 
     /**
      * Get a specific setting value
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     * @since 5.28.0
      */
     public function getSetting(string $key, mixed $default = null): mixed
     {
@@ -642,6 +687,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Check if this backend is properly configured
+     *
+     * @return bool
+     * @since 5.28.0
      */
     public function isConfigured(): bool
     {
@@ -658,6 +706,10 @@ class ConfiguredBackend extends Model
 
     /**
      * Get options array for select dropdowns
+     *
+     * @param bool $includeDefault
+     * @return array
+     * @since 5.28.0
      */
     public static function getSelectOptions(bool $includeDefault = true): array
     {
@@ -690,6 +742,9 @@ class ConfiguredBackend extends Model
 
     /**
      * Get raw config display for showing in tooltip (config backends only)
+     *
+     * @return string
+     * @since 5.28.0
      */
     public function getRawConfigDisplay(): string
     {

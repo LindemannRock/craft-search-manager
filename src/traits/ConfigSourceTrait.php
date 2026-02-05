@@ -9,6 +9,8 @@ namespace lindemannrock\searchmanager\traits;
  * either the config file or the database.
  *
  * Used by: ConfiguredBackend, SearchIndex, WidgetConfig
+ *
+ * @since 5.0.0
  */
 trait ConfigSourceTrait
 {
@@ -19,6 +21,8 @@ trait ConfigSourceTrait
 
     /**
      * Check if this record can be edited (only database records can be edited)
+     *
+     * @since 5.0.0
      */
     public function canEdit(): bool
     {
@@ -27,6 +31,8 @@ trait ConfigSourceTrait
 
     /**
      * Check if this record is from the config file
+     *
+     * @since 5.0.0
      */
     public function isFromConfig(): bool
     {
@@ -35,6 +41,8 @@ trait ConfigSourceTrait
 
     /**
      * Check if this record is from the database
+     *
+     * @since 5.0.0
      */
     public function isFromDatabase(): bool
     {

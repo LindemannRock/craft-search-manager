@@ -14,6 +14,8 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  * IMPORTANT: When using Craft's Redis cache settings (no explicit host configured),
  * search data is stored in a SEPARATE database (Craft database + 1) to prevent
  * data loss when Craft cache is cleared.
+ *
+ * @since 5.0.0
  */
 class RedisBackend extends AbstractSearchEngineBackend
 {

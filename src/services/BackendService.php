@@ -20,6 +20,8 @@ use yii\base\Component;
  * Backend Service
  *
  * Manages search backend adapters and provides a unified interface
+ *
+ * @since 5.0.0
  */
 class BackendService extends Component
 {
@@ -43,6 +45,9 @@ class BackendService extends Component
 
     /**
      * Get the active backend
+     *
+     * @return BackendInterface|null
+     * @since 5.0.0
      */
     public function getActiveBackend(): ?BackendInterface
     {
@@ -118,6 +123,10 @@ class BackendService extends Component
 
     /**
      * Get specific backend by name
+     *
+     * @param string $name
+     * @return BackendInterface|null
+     * @since 5.0.0
      */
     public function getBackend(string $name): ?BackendInterface
     {
@@ -143,6 +152,9 @@ class BackendService extends Component
 
     /**
      * Get all available backends
+     *
+     * @return BackendInterface[]
+     * @since 5.0.0
      */
     public function getAllBackends(): array
     {
@@ -165,6 +177,7 @@ class BackendService extends Component
      *
      * @param string $indexName Index handle
      * @return BackendInterface|null
+     * @since 5.28.0
      */
     public function getBackendForIndex(string $indexName): ?BackendInterface
     {
@@ -203,6 +216,7 @@ class BackendService extends Component
      *
      * @param \lindemannrock\searchmanager\models\ConfiguredBackend $configuredBackend
      * @return BackendInterface|null
+     * @since 5.28.0
      */
     public function createBackendFromConfig(\lindemannrock\searchmanager\models\ConfiguredBackend $configuredBackend): ?BackendInterface
     {
@@ -230,6 +244,7 @@ class BackendService extends Component
      * Uses configured backends from the database
      *
      * @return array Array of [value => label] pairs
+     * @since 5.28.0
      */
     public function getBackendOptions(): array
     {
@@ -240,6 +255,14 @@ class BackendService extends Component
     // PROXY METHODS (delegate to active backend)
     // =========================================================================
 
+    /**
+     * Index a document
+     *
+     * @param string $indexName
+     * @param array $data
+     * @return bool
+     * @since 5.0.0
+     */
     public function index(string $indexName, array $data): bool
     {
         $backend = $this->getBackendForIndex($indexName);
@@ -251,6 +274,14 @@ class BackendService extends Component
         return $backend->index($indexName, $data);
     }
 
+    /**
+     * Batch index multiple documents
+     *
+     * @param string $indexName
+     * @param array $items
+     * @return bool
+     * @since 5.0.0
+     */
     public function batchIndex(string $indexName, array $items): bool
     {
         $backend = $this->getBackendForIndex($indexName);
@@ -262,6 +293,15 @@ class BackendService extends Component
         return $backend->batchIndex($indexName, $items);
     }
 
+    /**
+     * Delete a document from the index
+     *
+     * @param string $indexName
+     * @param int $elementId
+     * @param int|null $siteId
+     * @return bool
+     * @since 5.0.0
+     */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         $backend = $this->getBackendForIndex($indexName);
@@ -273,6 +313,15 @@ class BackendService extends Component
         return $backend->delete($indexName, $elementId, $siteId);
     }
 
+    /**
+     * Check if a document exists in the index
+     *
+     * @param string $indexName
+     * @param int $elementId
+     * @param int|null $siteId
+     * @return bool
+     * @since 5.0.0
+     */
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         $backend = $this->getBackendForIndex($indexName);
@@ -284,6 +333,15 @@ class BackendService extends Component
         return $backend->documentExists($indexName, $elementId, $siteId);
     }
 
+    /**
+     * Search an index
+     *
+     * @param string $indexName
+     * @param string $query
+     * @param array $options
+     * @return array
+     * @since 5.0.0
+     */
     public function search(string $indexName, string $query, array $options = []): array
     {
         $backend = $this->getBackendForIndex($indexName);
@@ -558,6 +616,7 @@ class BackendService extends Component
      * @param array $queries Array of query strings (original + synonyms)
      * @param array $options
      * @return array Merged search results
+     * @since 5.10.0
      */
     private function _searchWithSynonyms(BackendInterface $backend, string $indexName, array $queries, array $options): array
     {
@@ -607,6 +666,13 @@ class BackendService extends Component
         ];
     }
 
+    /**
+     * Clear all documents from an index
+     *
+     * @param string $indexName
+     * @return bool
+     * @since 5.0.0
+     */
     public function clearIndex(string $indexName): bool
     {
         $backend = $this->getBackendForIndex($indexName);
@@ -625,6 +691,7 @@ class BackendService extends Component
      * @param string $query Search query
      * @param array $options Search options
      * @return array Merged search results with index metadata
+     * @since 5.0.0
      */
     public function searchMultiple(array $indexNames, string $query, array $options = []): array
     {
@@ -993,6 +1060,7 @@ class BackendService extends Component
      *
      * @param string $indexName Index handle
      * @return void
+     * @since 5.0.0
      */
     public function clearSearchCache(string $indexName): void
     {
@@ -1042,6 +1110,7 @@ class BackendService extends Component
      * Clear all search cache
      *
      * @return void
+     * @since 5.0.0
      */
     public function clearAllSearchCache(): void
     {

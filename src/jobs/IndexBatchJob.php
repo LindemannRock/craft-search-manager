@@ -11,6 +11,8 @@ use lindemannrock\searchmanager\SearchManager;
  * Index Batch Job
  *
  * Queue job for batch indexing multiple elements
+ *
+ * @since 5.0.0
  */
 class IndexBatchJob extends BaseJob
 {

@@ -73,6 +73,7 @@ class ParsedQuery
     /**
      * Check if query is empty (no searchable content)
      *
+     * @since 5.0.0
      * @return bool
      */
     public function isEmpty(): bool
@@ -86,6 +87,7 @@ class ParsedQuery
     /**
      * Check if query has advanced operators
      *
+     * @since 5.0.0
      * @return bool True if query uses any advanced features
      */
     public function hasAdvancedOperators(): bool
@@ -100,6 +102,7 @@ class ParsedQuery
     /**
      * Get all searchable terms (terms + phrases as terms)
      *
+     * @since 5.0.0
      * @return array Combined array of all searchable content
      */
     public function getAllSearchableTerms(): array
@@ -126,6 +129,7 @@ class ParsedQuery
     /**
      * Get boost factor for a term
      *
+     * @since 5.0.0
      * @param string $term The term to check
      * @return float Boost factor (1.0 if no boost specified)
      */
@@ -137,6 +141,7 @@ class ParsedQuery
     /**
      * Convert to array for debugging/logging
      *
+     * @since 5.0.0
      * @return array
      */
     public function toArray(): array

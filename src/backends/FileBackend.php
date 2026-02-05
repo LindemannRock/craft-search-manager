@@ -10,6 +10,8 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  * File Backend
  *
  * Search backend using BM25 algorithm with file-based storage
+ *
+ * @since 5.0.0
  */
 class FileBackend extends AbstractSearchEngineBackend
 {

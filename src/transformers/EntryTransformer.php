@@ -10,6 +10,8 @@ use craft\elements\Entry;
  *
  * Default transformer for Craft entries
  * Can be extended or overridden in project-specific transformers
+ *
+ * @since 5.0.0
  */
 class EntryTransformer extends BaseTransformer
 {
@@ -31,6 +33,7 @@ class EntryTransformer extends BaseTransformer
      *
      * @param ElementInterface|Entry $element
      * @return array
+     * @since 5.0.0
      */
     public function transform(ElementInterface $element): array
     {

@@ -13,6 +13,8 @@ use yii\base\Component;
  *
  * Abstract base class for all transformers
  * Provides common functionality for converting Craft elements into searchable documents
+ *
+ * @since 5.0.0
  */
 abstract class BaseTransformer extends Component implements TransformerInterface
 {
@@ -34,6 +36,8 @@ abstract class BaseTransformer extends Component implements TransformerInterface
 
     /**
      * Check if this transformer supports the given element
+     *
+     * @since 5.0.0
      */
     public function supports(ElementInterface $element): bool
     {

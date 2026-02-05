@@ -12,6 +12,8 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * Warms the search and autocomplete caches after an index rebuild
  * by pre-running popular queries from analytics.
+ *
+ * @since 5.0.0
  */
 class CacheWarmJob extends BaseJob
 {

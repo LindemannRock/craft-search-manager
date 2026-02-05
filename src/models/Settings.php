@@ -16,6 +16,8 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * - Config file (config/search-manager.php) can override settings (read-only)
  * - Use isOverriddenByConfig() to check if a setting is locked by config file
  * - Use saveToDatabase() to persist changes (respects config overrides)
+ *
+ * @since 5.0.0
  */
 class Settings extends Model
 {

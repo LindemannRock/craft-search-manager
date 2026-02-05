@@ -18,6 +18,8 @@ use lindemannrock\searchmanager\traits\ConfigSourceTrait;
  * Represents a search index configuration
  * Can be defined in config file OR database (hybrid approach)
  * Database-backed model ({{%searchmanager_indices}} table)
+ *
+ * @since 5.0.0
  */
 class SearchIndex extends Model
 {

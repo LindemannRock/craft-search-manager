@@ -11,6 +11,8 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  *
  * Search backend using BM25 algorithm with MySQL-compatible storage
  * (PostgreSQL and MySQL share the same SQL structure for search tables)
+ *
+ * @since 5.0.0
  */
 class PostgreSqlBackend extends AbstractSearchEngineBackend
 {

@@ -9,6 +9,8 @@ use Algolia\AlgoliaSearch\Api\SearchClient;
  *
  * Search backend adapter for Algolia v4 API
  * Drop-in replacement for Scout + Algolia setups
+ *
+ * @since 5.0.0
  */
 class AlgoliaBackend extends BaseBackend
 {

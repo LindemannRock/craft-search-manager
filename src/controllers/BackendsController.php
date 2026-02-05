@@ -16,6 +16,8 @@ use yii\web\Response;
  * Backends Controller
  *
  * Manages configured backend instances
+ *
+ * @since 5.28.0
  */
 class BackendsController extends Controller
 {
@@ -29,6 +31,8 @@ class BackendsController extends Controller
 
     /**
      * List all configured backends
+     *
+     * @since 5.28.0
      */
     public function actionIndex(): Response
     {
@@ -88,6 +92,7 @@ class BackendsController extends Controller
      * View a backend (read-only, works for both config and database backends)
      *
      * @param string|int|null $backendId Backend ID (numeric) or handle (string)
+     * @since 5.28.0
      */
     public function actionView(string|int|null $backendId = null): Response
     {
@@ -126,6 +131,8 @@ class BackendsController extends Controller
 
     /**
      * Edit or create a backend
+     *
+     * @since 5.28.0
      */
     public function actionEdit(?int $backendId = null): Response
     {
@@ -157,6 +164,8 @@ class BackendsController extends Controller
 
     /**
      * Save a backend
+     *
+     * @since 5.28.0
      */
     public function actionSave(): Response
     {
@@ -248,6 +257,8 @@ class BackendsController extends Controller
 
     /**
      * Delete a backend
+     *
+     * @since 5.28.0
      */
     public function actionDelete(): Response
     {
@@ -298,6 +309,8 @@ class BackendsController extends Controller
 
     /**
      * Test backend connection
+     *
+     * @since 5.28.0
      */
     public function actionTest(): Response
     {
@@ -387,6 +400,8 @@ class BackendsController extends Controller
 
     /**
      * Get backend info (capabilities and indices)
+     *
+     * @since 5.28.0
      */
     public function actionInfo(): Response
     {
@@ -456,6 +471,8 @@ class BackendsController extends Controller
 
     /**
      * Bulk enable backends
+     *
+     * @since 5.28.0
      */
     public function actionBulkEnable(): Response
     {
@@ -484,6 +501,8 @@ class BackendsController extends Controller
 
     /**
      * Bulk disable backends
+     *
+     * @since 5.28.0
      */
     public function actionBulkDisable(): Response
     {
@@ -528,6 +547,8 @@ class BackendsController extends Controller
 
     /**
      * Bulk delete backends
+     *
+     * @since 5.28.0
      */
     public function actionBulkDelete(): Response
     {
@@ -571,6 +592,8 @@ class BackendsController extends Controller
 
     /**
      * Set a backend as the default
+     *
+     * @since 5.28.0
      */
     public function actionSetDefault(): Response
     {

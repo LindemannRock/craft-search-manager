@@ -14,6 +14,8 @@ use yii\base\Component;
  * Transformer Service
  *
  * Manages transformers and provides element-to-document transformation
+ *
+ * @since 5.0.0
  */
 class TransformerService extends Component
 {
@@ -50,6 +52,8 @@ class TransformerService extends Component
 
     /**
      * Register a transformer for an element type
+     *
+     * @since 5.0.0
      */
     public function registerTransformer(string $elementType, string $transformerClass): void
     {
@@ -68,6 +72,8 @@ class TransformerService extends Component
      * 1. Index-specific transformer (if specified in index config)
      * 2. Registered transformer for element type
      * 3. AutoTransformer (fallback - uses Craft's searchable fields)
+     *
+     * @since 5.0.0
      */
     public function getTransformer(ElementInterface $element, ?string $transformerClass = null): ?TransformerInterface
     {
@@ -127,6 +133,8 @@ class TransformerService extends Component
 
     /**
      * Transform an element
+     *
+     * @since 5.0.0
      */
     public function transform(ElementInterface $element): ?array
     {

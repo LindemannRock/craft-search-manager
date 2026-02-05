@@ -12,6 +12,8 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * Queue job for asynchronously resolving geographic location from IP address.
  * This prevents the geo-lookup API call from blocking search requests.
+ *
+ * @since 5.0.0
  */
 class GeoLookupJob extends BaseJob
 {

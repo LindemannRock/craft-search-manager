@@ -15,6 +15,8 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  *
  * Stores configuration for each search backend (Algolia, Meilisearch, MySQL, Typesense)
  * Database-backed model ({{%searchmanager_backend_settings}} table)
+ *
+ * @since 5.0.0
  */
 class BackendSettings extends Model
 {
@@ -65,6 +67,10 @@ class BackendSettings extends Model
 
     /**
      * Validate backend-specific configuration
+     *
+     * @param string $attribute
+     * @param array|null $params
+     * @since 5.0.0
      */
     public function validateBackendConfig($attribute, $params): void
     {
@@ -132,6 +138,7 @@ class BackendSettings extends Model
      *
      * @param string $field The config field name (e.g., 'host', 'apiKey')
      * @return bool
+     * @since 5.0.0
      */
     public function isOverriddenByConfig(string $field): bool
     {
@@ -170,6 +177,7 @@ class BackendSettings extends Model
      *
      * @param string $backend Backend name
      * @return self
+     * @since 5.0.0
      */
     public static function loadFromDatabase(string $backend): self
     {
@@ -221,6 +229,10 @@ class BackendSettings extends Model
 
     /**
      * Find backend settings by backend name
+     *
+     * @param string $backend
+     * @return self|null
+     * @since 5.0.0
      */
     public static function findByBackend(string $backend): ?self
     {
@@ -249,6 +261,9 @@ class BackendSettings extends Model
 
     /**
      * Get all backend settings
+     *
+     * @return self[]
+     * @since 5.0.0
      */
     public static function findAll(): array
     {
@@ -277,6 +292,9 @@ class BackendSettings extends Model
 
     /**
      * Save backend settings to database
+     *
+     * @return bool
+     * @since 5.0.0
      */
     public function save(): bool
     {
@@ -346,6 +364,11 @@ class BackendSettings extends Model
 
     /**
      * Get a config value
+     *
+     * @param string $key
+     * @param mixed $default
+     * @return mixed
+     * @since 5.0.0
      */
     public function getConfigValue(string $key, mixed $default = null): mixed
     {
@@ -354,6 +377,10 @@ class BackendSettings extends Model
 
     /**
      * Set a config value
+     *
+     * @param string $key
+     * @param mixed $value
+     * @since 5.0.0
      */
     public function setConfigValue(string $key, $value): void
     {

@@ -16,6 +16,8 @@ use craft\helpers\ElementHelper;
  * - Works with any element type automatically
  *
  * This is the default transformer when no custom transformer is specified
+ *
+ * @since 5.0.0
  */
 class AutoTransformer extends BaseTransformer
 {
@@ -29,6 +31,9 @@ class AutoTransformer extends BaseTransformer
         return ElementInterface::class;
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function supports(ElementInterface $element): bool
     {
         // Auto transformer supports everything
@@ -44,6 +49,7 @@ class AutoTransformer extends BaseTransformer
      *
      * @param ElementInterface $element
      * @return array
+     * @since 5.0.0
      */
     public function transform(ElementInterface $element): array
     {

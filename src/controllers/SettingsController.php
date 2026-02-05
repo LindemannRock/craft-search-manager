@@ -11,6 +11,8 @@ use yii\web\Response;
 
 /**
  * Settings Controller
+ *
+ * @since 5.0.0
  */
 class SettingsController extends Controller
 {
@@ -22,11 +24,17 @@ class SettingsController extends Controller
         $this->setLoggingHandle('search-manager');
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionIndex(): Response
     {
         return $this->actionGeneral();
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionGeneral(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -51,12 +59,17 @@ class SettingsController extends Controller
 
     /**
      * Redirect to general settings (backend settings consolidated)
+     *
+     * @since 5.0.0
      */
     public function actionBackend(): Response
     {
         return $this->redirect('search-manager/settings/general');
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionIndexing(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -67,6 +80,9 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionAnalytics(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -77,6 +93,9 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionSearch(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -87,6 +106,9 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionLanguage(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -97,6 +119,9 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionHighlighting(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -107,6 +132,9 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionCache(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -117,6 +145,9 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionInterface(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -129,6 +160,8 @@ class SettingsController extends Controller
 
     /**
      * Redirect to general settings (widget settings consolidated)
+     *
+     * @since 5.30.0
      */
     public function actionWidget(): Response
     {
@@ -137,6 +170,7 @@ class SettingsController extends Controller
 
     /**
      * @deprecated Use actionSave() instead. Widget settings consolidated into general.
+     * @since 5.30.0
      */
     public function actionSaveWidget(): ?Response
     {
@@ -172,6 +206,9 @@ class SettingsController extends Controller
         return $this->redirect('search-manager/settings/general');
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionTest(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -188,6 +225,9 @@ class SettingsController extends Controller
         ]);
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionTestSearch(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -362,6 +402,9 @@ class SettingsController extends Controller
         }
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionClearTestCache(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -399,6 +442,8 @@ class SettingsController extends Controller
 
     /**
      * Test which promotions match a query
+     *
+     * @since 5.10.0
      */
     public function actionTestPromotions(): Response
     {
@@ -467,6 +512,8 @@ class SettingsController extends Controller
 
     /**
      * Test which query rules match a query
+     *
+     * @since 5.10.0
      */
     public function actionTestQueryRules(): Response
     {
@@ -559,6 +606,9 @@ class SettingsController extends Controller
         }
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionSave(): ?Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -597,6 +647,7 @@ class SettingsController extends Controller
 
     /**
      * @deprecated Use actionSave() instead. Backend settings consolidated into general.
+     * @since 5.28.0
      */
     public function actionSaveBackend(): ?Response
     {
@@ -642,6 +693,9 @@ class SettingsController extends Controller
         return $this->redirect('search-manager/settings/general');
     }
 
+    /**
+     * @since 5.0.0
+     */
     public function actionCleanupAnalytics(): Response
     {
         $this->requirePermission('searchManager:manageSettings');

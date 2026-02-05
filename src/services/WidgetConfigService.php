@@ -17,6 +17,8 @@ use yii\base\Component;
  *
  * Manages widget configurations for the search widget.
  * Supports both database-stored configs and config file definitions.
+ *
+ * @since 5.30.0
  */
 class WidgetConfigService extends Component
 {
@@ -50,6 +52,8 @@ class WidgetConfigService extends Component
 
     /**
      * Get all widget configs defined in config file
+     *
+     * @since 5.30.0
      */
     public function getConfigFileConfigs(): array
     {
@@ -90,6 +94,8 @@ class WidgetConfigService extends Component
 
     /**
      * Get a config from config file by handle
+     *
+     * @since 5.30.0
      */
     public function getConfigFileByHandle(string $handle): ?WidgetConfig
     {
@@ -103,6 +109,8 @@ class WidgetConfigService extends Component
 
     /**
      * Get widget config by ID
+     *
+     * @since 5.30.0
      */
     public function getById(int $id): ?WidgetConfig
     {
@@ -118,6 +126,8 @@ class WidgetConfigService extends Component
     /**
      * Get widget config by handle
      * Checks config file first, then database
+     *
+     * @since 5.30.0
      */
     public function getByHandle(string $handle): ?WidgetConfig
     {
@@ -140,6 +150,8 @@ class WidgetConfigService extends Component
     /**
      * Get the default widget config
      * Uses defaultWidgetHandle from plugin settings to determine the default
+     *
+     * @since 5.30.0
      */
     public function getDefault(): ?WidgetConfig
     {
@@ -186,6 +198,8 @@ class WidgetConfigService extends Component
     /**
      * Get all widget configs (from config file and database)
      * Config file configs take precedence over database configs with same handle
+     *
+     * @since 5.30.0
      */
     public function getAll(bool $enabledOnly = false): array
     {
@@ -230,6 +244,8 @@ class WidgetConfigService extends Component
 
     /**
      * Get config count
+     *
+     * @since 5.30.0
      */
     public function getCount(): int
     {
@@ -240,6 +256,8 @@ class WidgetConfigService extends Component
 
     /**
      * Get config for use in widget - by handle or returns default
+     *
+     * @since 5.30.0
      */
     public function getConfigForWidget(?string $handle = null): WidgetConfig
     {
@@ -272,6 +290,8 @@ class WidgetConfigService extends Component
     /**
      * Save a widget config
      * Config-file configs cannot be saved
+     *
+     * @since 5.30.0
      */
     public function save(WidgetConfig $config): bool
     {
@@ -318,6 +338,8 @@ class WidgetConfigService extends Component
     /**
      * Delete a widget config
      * Config-file configs cannot be deleted
+     *
+     * @since 5.30.0
      */
     public function delete(WidgetConfig $config): bool
     {
@@ -384,6 +406,8 @@ class WidgetConfigService extends Component
 
     /**
      * Delete a widget config by ID
+     *
+     * @since 5.30.0
      */
     public function deleteById(int $id): bool
     {

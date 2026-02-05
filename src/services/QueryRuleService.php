@@ -11,6 +11,8 @@ use yii\base\Component;
  * Query Rule Service
  *
  * Manages query rules for synonyms, boosts, filters, and redirects.
+ *
+ * @since 5.10.0
  */
 class QueryRuleService extends Component
 {
@@ -32,6 +34,8 @@ class QueryRuleService extends Component
 
     /**
      * Get rule by ID
+     *
+     * @since 5.10.0
      */
     public function getById(int $id): ?QueryRule
     {
@@ -40,6 +44,8 @@ class QueryRuleService extends Component
 
     /**
      * Get all rules
+     *
+     * @since 5.10.0
      */
     public function getAll(?string $indexHandle = null): array
     {
@@ -48,6 +54,8 @@ class QueryRuleService extends Component
 
     /**
      * Get query rule count
+     *
+     * @since 5.10.0
      */
     public function getQueryRuleCount(?bool $enabledOnly = null): int
     {
@@ -60,6 +68,8 @@ class QueryRuleService extends Component
 
     /**
      * Get rules for an index
+     *
+     * @since 5.10.0
      */
     public function getByIndex(?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -68,6 +78,8 @@ class QueryRuleService extends Component
 
     /**
      * Save a rule
+     *
+     * @since 5.10.0
      */
     public function save(QueryRule $rule): bool
     {
@@ -76,6 +88,8 @@ class QueryRuleService extends Component
 
     /**
      * Delete a rule
+     *
+     * @since 5.10.0
      */
     public function delete(QueryRule $rule): bool
     {
@@ -84,6 +98,8 @@ class QueryRuleService extends Component
 
     /**
      * Delete rule by ID
+     *
+     * @since 5.10.0
      */
     public function deleteById(int $id): bool
     {
@@ -101,6 +117,8 @@ class QueryRuleService extends Component
     /**
      * Get matching rules for a search query
      * Returns rules grouped by action type
+     *
+     * @since 5.10.0
      */
     public function getMatchingRules(string $query, ?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -110,6 +128,8 @@ class QueryRuleService extends Component
     /**
      * Check if query should redirect
      * Returns redirect URL or null
+     *
+     * @since 5.10.0
      */
     public function getRedirectUrl(string $query, ?string $indexHandle = null, ?int $siteId = null): ?string
     {
@@ -135,6 +155,8 @@ class QueryRuleService extends Component
     /**
      * Expand query with synonyms
      * Returns array of queries to search for
+     *
+     * @since 5.10.0
      */
     public function expandWithSynonyms(string $query, ?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -159,6 +181,8 @@ class QueryRuleService extends Component
     /**
      * Get boost multipliers for a query
      * Returns array of [type => [identifier => multiplier]]
+     *
+     * @since 5.10.0
      */
     public function getBoostMultipliers(string $query, ?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -207,6 +231,8 @@ class QueryRuleService extends Component
     /**
      * Get filters for a query
      * Returns array of [field => value] pairs
+     *
+     * @since 5.10.0
      */
     public function getFilters(string $query, ?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -234,6 +260,7 @@ class QueryRuleService extends Component
      * @param string|null $indexHandle Index handle
      * @param int|null $siteId Site ID
      * @return array Modified results with boosted scores
+     * @since 5.10.0
      */
     public function applyBoosts(array $results, string $query, ?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -348,6 +375,8 @@ class QueryRuleService extends Component
 
     /**
      * Get available indices for dropdown
+     *
+     * @since 5.10.0
      */
     public function getIndexOptions(): array
     {
@@ -370,6 +399,8 @@ class QueryRuleService extends Component
 
     /**
      * Get section options for dropdown
+     *
+     * @since 5.10.0
      */
     public function getSectionOptions(): array
     {
@@ -388,6 +419,8 @@ class QueryRuleService extends Component
 
     /**
      * Get category group options for dropdown
+     *
+     * @since 5.10.0
      */
     public function getCategoryGroupOptions(): array
     {

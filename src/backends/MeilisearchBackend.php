@@ -11,6 +11,8 @@ use Meilisearch\Contracts\SearchQuery;
  *
  * Search backend adapter for Meilisearch
  * Cost-effective, self-hosted alternative to Algolia
+ *
+ * @since 5.0.0
  */
 class MeilisearchBackend extends BaseBackend
 {

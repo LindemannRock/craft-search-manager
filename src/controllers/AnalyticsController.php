@@ -21,7 +21,7 @@ use yii\web\Response;
  *
  * @author    LindemannRock
  * @package   SearchManager
- * @since     1.0.0
+ * @since     5.0.0
  */
 class AnalyticsController extends Controller
 {
@@ -39,6 +39,7 @@ class AnalyticsController extends Controller
     /**
      * Analytics index - Charts and analytics
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionIndex(): Response
@@ -110,6 +111,7 @@ class AnalyticsController extends Controller
     /**
      * Delete an analytic
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionDelete(): Response
@@ -129,6 +131,7 @@ class AnalyticsController extends Controller
     /**
      * Clear all analytics
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionClearAll(): Response
@@ -154,6 +157,7 @@ class AnalyticsController extends Controller
     /**
      * Export analytics data
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionExport(): Response
@@ -474,6 +478,7 @@ class AnalyticsController extends Controller
     /**
      * Get analytics data via AJAX
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionGetData(): Response
@@ -773,6 +778,7 @@ class AnalyticsController extends Controller
     /**
      * Get chart data (AJAX)
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionGetChartData(): Response
@@ -794,6 +800,7 @@ class AnalyticsController extends Controller
     /**
      * Get analytics for a specific query rule (AJAX)
      *
+     * @since 5.10.0
      * @return Response
      */
     public function actionGetRuleAnalytics(): Response
@@ -849,6 +856,7 @@ class AnalyticsController extends Controller
     /**
      * Get analytics for a specific promotion (AJAX)
      *
+     * @since 5.10.0
      * @return Response
      */
     public function actionGetPromotionAnalytics(): Response
@@ -904,6 +912,7 @@ class AnalyticsController extends Controller
     /**
      * Export analytics for a specific query rule
      *
+     * @since 5.10.0
      * @return Response
      */
     public function actionExportRuleAnalytics(): Response
@@ -966,6 +975,7 @@ class AnalyticsController extends Controller
     /**
      * Export analytics for a specific promotion
      *
+     * @since 5.10.0
      * @return Response
      */
     public function actionExportPromotionAnalytics(): Response
@@ -1022,6 +1032,7 @@ class AnalyticsController extends Controller
     /**
      * Export tab-specific data
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionExportTab(): Response
@@ -1167,6 +1178,7 @@ class AnalyticsController extends Controller
     /**
      * Export content gaps data (zero-hit queries)
      *
+     * @since 5.0.0
      * @return Response
      */
     public function actionExportContentGaps(): Response

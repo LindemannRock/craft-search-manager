@@ -13,6 +13,8 @@ use lindemannrock\searchmanager\SearchManager;
  * Rebuild Index Job
  *
  * Queue job for rebuilding an entire search index
+ *
+ * @since 5.0.0
  */
 class RebuildIndexJob extends BaseJob
 {

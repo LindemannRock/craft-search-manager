@@ -13,6 +13,8 @@ use yii\base\Event;
  * - Modify data before indexing
  * - Cancel indexing operations
  * - React to successful indexing
+ *
+ * @since 5.0.0
  */
 class IndexEvent extends Event
 {

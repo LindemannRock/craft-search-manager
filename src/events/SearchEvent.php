@@ -12,6 +12,8 @@ use yii\base\Event;
  * - Modify search queries
  * - Track search analytics
  * - Filter results
+ *
+ * @since 5.0.0
  */
 class SearchEvent extends Event
 {

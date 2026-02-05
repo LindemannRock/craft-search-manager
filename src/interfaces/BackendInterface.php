@@ -7,6 +7,8 @@ namespace lindemannrock\searchmanager\interfaces;
  *
  * All search backend adapters must implement this interface
  * Provides a consistent API regardless of the underlying search engine
+ *
+ * @since 5.0.0
  */
 interface BackendInterface
 {
@@ -16,6 +18,7 @@ interface BackendInterface
      * @param string $indexName The index name
      * @param array $data The document data
      * @return bool Success status
+     * @since 5.0.0
      */
     public function index(string $indexName, array $data): bool;
 
@@ -25,6 +28,7 @@ interface BackendInterface
      * @param string $indexName The index name
      * @param array $items Array of documents to index
      * @return bool Success status
+     * @since 5.0.0
      */
     public function batchIndex(string $indexName, array $items): bool;
 
@@ -35,6 +39,7 @@ interface BackendInterface
      * @param int $elementId The element ID to delete
      * @param int|null $siteId The site ID (optional, uses current site if not provided)
      * @return bool Success status
+     * @since 5.0.0
      */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool;
 
@@ -45,6 +50,7 @@ interface BackendInterface
      * @param string $query The search query
      * @param array $options Search options (filters, pagination, etc.)
      * @return array Search results
+     * @since 5.0.0
      */
     public function search(string $indexName, string $query, array $options = []): array;
 
@@ -53,6 +59,7 @@ interface BackendInterface
      *
      * @param string $indexName The index name
      * @return bool Success status
+     * @since 5.0.0
      */
     public function clearIndex(string $indexName): bool;
 
@@ -63,6 +70,7 @@ interface BackendInterface
      * @param int $elementId The element ID to check
      * @param int|null $siteId The site ID (optional)
      * @return bool True if document exists
+     * @since 5.0.0
      */
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool;
 
@@ -70,6 +78,7 @@ interface BackendInterface
      * Check if the backend is available and configured
      *
      * @return bool Availability status
+     * @since 5.0.0
      */
     public function isAvailable(): bool;
 
@@ -77,6 +86,7 @@ interface BackendInterface
      * Get backend configuration status
      *
      * @return array Status information
+     * @since 5.0.0
      */
     public function getStatus(): array;
 
@@ -84,6 +94,7 @@ interface BackendInterface
      * Get the backend name/identifier
      *
      * @return string Backend name (algolia, meilisearch, mysql, typesense)
+     * @since 5.0.0
      */
     public function getName(): string;
 
@@ -94,6 +105,7 @@ interface BackendInterface
      * @param string $query Optional query to filter results
      * @param array $parameters Additional browse parameters
      * @return iterable Iterator or array of all matching documents
+     * @since 5.0.0
      */
     public function browse(string $indexName, string $query = '', array $parameters = []): iterable;
 
@@ -102,6 +114,7 @@ interface BackendInterface
      *
      * @param array $queries Array of query objects with 'indexName', 'query', and optional 'params'
      * @return array Results from all queries
+     * @since 5.0.0
      */
     public function multipleQueries(array $queries = []): array;
 
@@ -110,6 +123,7 @@ interface BackendInterface
      *
      * @param array $filters Key/value pairs of filters
      * @return string Backend-compatible filter string
+     * @since 5.0.0
      */
     public function parseFilters(array $filters = []): string;
 
@@ -117,6 +131,7 @@ interface BackendInterface
      * Check if this backend supports browse functionality
      *
      * @return bool
+     * @since 5.0.0
      */
     public function supportsBrowse(): bool;
 
@@ -124,6 +139,7 @@ interface BackendInterface
      * Check if this backend supports multiple queries
      *
      * @return bool
+     * @since 5.0.0
      */
     public function supportsMultipleQueries(): bool;
 
@@ -131,6 +147,7 @@ interface BackendInterface
      * List all indices available in the backend
      *
      * @return array Array of index information
+     * @since 5.0.0
      */
     public function listIndices(): array;
 
@@ -140,6 +157,7 @@ interface BackendInterface
      *
      * @param array $settings
      * @return void
+     * @since 5.28.0
      */
     public function setConfiguredSettings(array $settings): void;
 
@@ -148,6 +166,7 @@ interface BackendInterface
      *
      * @param string $handle
      * @return void
+     * @since 5.28.0
      */
     public function setBackendHandle(string $handle): void;
 }

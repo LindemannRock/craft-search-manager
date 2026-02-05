@@ -16,6 +16,8 @@ use lindemannrock\searchmanager\SearchManager;
  * Provides common implementations for index, search, delete, etc.
  *
  * External backends (Algolia, Meilisearch, Typesense) should extend BaseBackend directly.
+ *
+ * @since 5.0.0
  */
 abstract class AbstractSearchEngineBackend extends BaseBackend
 {
@@ -59,6 +61,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      *
      * @param string $indexHandle Raw index handle (e.g., 'all-sites')
      * @return StorageInterface
+     * @since 5.0.0
      */
     public function getStorage(string $indexHandle): StorageInterface
     {

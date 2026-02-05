@@ -9,6 +9,8 @@ use craft\base\ElementInterface;
  *
  * All transformers must implement this interface
  * Transformers convert Craft elements into searchable documents
+ *
+ * @since 5.0.0
  */
 interface TransformerInterface
 {
@@ -17,6 +19,7 @@ interface TransformerInterface
      *
      * @param ElementInterface $element The element to transform
      * @return array The transformed data ready for indexing
+     * @since 5.0.0
      */
     public function transform(ElementInterface $element): array;
 
@@ -25,6 +28,7 @@ interface TransformerInterface
      *
      * @param ElementInterface $element The element to check
      * @return bool Whether this transformer supports the element
+     * @since 5.0.0
      */
     public function supports(ElementInterface $element): bool;
 }

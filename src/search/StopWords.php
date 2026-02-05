@@ -125,6 +125,7 @@ class StopWords
     /**
      * Filter stop words from an array of tokens
      *
+     * @since 5.0.0
      * @param array $tokens Array of tokens to filter
      * @param bool|null $enabled Override enable setting (null = use global setting)
      * @return array Filtered tokens (preserving original keys)
@@ -170,6 +171,7 @@ class StopWords
     /**
      * Check if a token is a stop word
      *
+     * @since 5.0.0
      * @param string $token Token to check
      * @return bool True if the token is a stop word
      */
@@ -181,6 +183,7 @@ class StopWords
     /**
      * Get all loaded stop words
      *
+     * @since 5.0.0
      * @return array Array of stop words
      */
     public function getStopWords(): array
@@ -191,6 +194,7 @@ class StopWords
     /**
      * Get the count of stop words
      *
+     * @since 5.0.0
      * @return int Number of stop words
      */
     public function getCount(): int

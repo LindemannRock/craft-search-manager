@@ -12,6 +12,8 @@ use yii\web\Response;
  * Search Controller
  *
  * Provides endpoints for the frontend search widget
+ *
+ * @since 5.0.0
  */
 class SearchController extends Controller
 {
@@ -75,6 +77,7 @@ class SearchController extends Controller
      * - skipAnalytics: Skip analytics tracking (default: true for widget, prevents keystroke spam)
      *
      * @return Response
+     * @since 5.0.0
      */
     public function actionQuery(): Response
     {
@@ -332,6 +335,7 @@ class SearchController extends Controller
      * - position: The position in results (optional)
      *
      * @return Response
+     * @since 5.0.0
      */
     public function actionTrackClick(): Response
     {
@@ -383,6 +387,7 @@ class SearchController extends Controller
      * - siteId: Site ID (optional)
      *
      * @return Response
+     * @since 5.0.0
      */
     public function actionTrackSearch(): Response
     {

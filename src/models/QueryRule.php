@@ -14,6 +14,8 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  *
  * Represents a query rule for synonyms, boosts, filters, and redirects.
  * Rules modify search behavior when queries match specific patterns.
+ *
+ * @since 5.10.0
  */
 class QueryRule extends Model
 {
@@ -89,6 +91,9 @@ class QueryRule extends Model
 
     /**
      * Validate action value based on action type
+     *
+     * @param string $attribute
+     * @since 5.10.0
      */
     public function validateActionValue(string $attribute): void
     {
@@ -151,6 +156,10 @@ class QueryRule extends Model
 
     /**
      * Find rule by ID
+     *
+     * @param int $id
+     * @return self|null
+     * @since 5.10.0
      */
     public static function findById(int $id): ?self
     {
@@ -164,6 +173,11 @@ class QueryRule extends Model
 
     /**
      * Find all rules for an index (including global rules)
+     *
+     * @param string|null $indexHandle
+     * @param int|null $siteId
+     * @return self[]
+     * @since 5.10.0
      */
     public static function findByIndex(?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -186,6 +200,10 @@ class QueryRule extends Model
 
     /**
      * Find all rules (for CP listing)
+     *
+     * @param string|null $indexHandle
+     * @return self[]
+     * @since 5.10.0
      */
     public static function findAll(?string $indexHandle = null): array
     {
@@ -203,6 +221,12 @@ class QueryRule extends Model
 
     /**
      * Find rules matching a search query
+     *
+     * @param string $searchQuery
+     * @param string|null $indexHandle
+     * @param int|null $siteId
+     * @return self[]
+     * @since 5.10.0
      */
     public static function findMatching(string $searchQuery, ?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -223,6 +247,10 @@ class QueryRule extends Model
     /**
      * Check if this rule matches a search query
      * Supports comma-separated patterns for exact/contains/prefix (not regex)
+     *
+     * @param string $searchQuery
+     * @return bool
+     * @since 5.10.0
      */
     public function matches(string $searchQuery): bool
     {
@@ -283,6 +311,9 @@ class QueryRule extends Model
 
     /**
      * Save rule to database
+     *
+     * @return bool
+     * @since 5.10.0
      */
     public function save(): bool
     {
@@ -343,6 +374,9 @@ class QueryRule extends Model
 
     /**
      * Delete rule from database
+     *
+     * @return bool
+     * @since 5.10.0
      */
     public function delete(): bool
     {
@@ -379,6 +413,9 @@ class QueryRule extends Model
 
     /**
      * Get synonyms for synonym action type
+     *
+     * @return string[]
+     * @since 5.10.0
      */
     public function getSynonyms(): array
     {
@@ -391,6 +428,9 @@ class QueryRule extends Model
 
     /**
      * Get boost multiplier for boost action types
+     *
+     * @return float
+     * @since 5.10.0
      */
     public function getBoostMultiplier(): float
     {
@@ -402,6 +442,8 @@ class QueryRule extends Model
      * Resolves element URLs if an element is linked
      *
      * @param int|null $siteId Optional site ID - if provided, will get element URL for that site
+     * @return string|null
+     * @since 5.10.0
      */
     public function getRedirectUrl(?int $siteId = null): ?string
     {
@@ -432,6 +474,9 @@ class QueryRule extends Model
 
     /**
      * Check if this is a redirect rule
+     *
+     * @return bool
+     * @since 5.10.0
      */
     public function isRedirect(): bool
     {
@@ -440,6 +485,9 @@ class QueryRule extends Model
 
     /**
      * Get human-readable action description
+     *
+     * @return string
+     * @since 5.10.0
      */
     public function getActionDescription(): string
     {
@@ -456,6 +504,9 @@ class QueryRule extends Model
 
     /**
      * Get available action types for dropdown
+     *
+     * @return array<string, string>
+     * @since 5.10.0
      */
     public static function getActionTypes(): array
     {
@@ -471,6 +522,9 @@ class QueryRule extends Model
 
     /**
      * Get available match types for dropdown
+     *
+     * @return array<string, string>
+     * @since 5.10.0
      */
     public static function getMatchTypes(): array
     {

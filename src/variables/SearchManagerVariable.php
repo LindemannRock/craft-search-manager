@@ -9,11 +9,15 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * Provides access to plugin functionality from Twig templates
  * Usage: {{ craft.searchManager.search('query') }}
+ *
+ * @since 5.0.0
  */
 class SearchManagerVariable
 {
     /**
      * Get plugin settings
+     *
+     * @since 5.0.0
      */
     public function getSettings()
     {
@@ -22,6 +26,8 @@ class SearchManagerVariable
 
     /**
      * Get plugin instance
+     *
+     * @since 5.0.0
      */
     public function getPlugin()
     {
@@ -31,6 +37,7 @@ class SearchManagerVariable
     /**
      * Perform a search
      *
+     * @since 5.0.0
      * @param string $indexName
      * @param string $query
      * @param array $options
@@ -44,6 +51,7 @@ class SearchManagerVariable
     /**
      * Search across multiple indices
      *
+     * @since 5.0.0
      * @param array $indexNames Array of index handles to search
      * @param string $query Search query
      * @param array $options Search options
@@ -56,6 +64,8 @@ class SearchManagerVariable
 
     /**
      * Get all configured indices
+     *
+     * @since 5.0.0
      */
     public function getIndices(): array
     {
@@ -65,6 +75,7 @@ class SearchManagerVariable
     /**
      * Highlight search terms in text
      *
+     * @since 5.0.0
      * @param string $text Text to highlight
      * @param string|array $terms Search term(s) or query string
      * @param array $options Highlighting options
@@ -103,6 +114,7 @@ class SearchManagerVariable
     /**
      * Generate snippets with highlighted terms
      *
+     * @since 5.0.0
      * @param string $text Text to generate snippets from
      * @param string|array $terms Search term(s) or query string
      * @param array $options Snippet options
@@ -141,6 +153,7 @@ class SearchManagerVariable
     /**
      * Get autocomplete suggestions for a query
      *
+     * @since 5.0.0
      * @param string $query Partial search query
      * @param string $indexHandle Index to search (default: 'all-sites')
      * @param array $options Suggestion options
@@ -160,6 +173,7 @@ class SearchManagerVariable
     /**
      * Get analytics for a specific query rule
      *
+     * @since 5.10.0
      * @param int $ruleId The query rule ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
@@ -172,6 +186,7 @@ class SearchManagerVariable
     /**
      * Get analytics for a specific promotion
      *
+     * @since 5.10.0
      * @param int $promotionId The promotion ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
@@ -193,6 +208,7 @@ class SearchManagerVariable
      *
      * Usage: {% for item in craft.searchManager.browse({index: 'myIndex', query: '', params: {}}) %}
      *
+     * @since 5.0.0
      * @param array $options Options array with 'index', 'query', and optional 'params'
      * @return iterable Iterator or array of all matching objects
      */
@@ -226,6 +242,7 @@ class SearchManagerVariable
      *
      * Usage: {{ craft.searchManager.multipleQueries([{indexName: 'index1', query: 'test'}, ...]) }}
      *
+     * @since 5.0.0
      * @param array $queries Array of query objects
      * @return array Results from all queries
      */
@@ -251,6 +268,7 @@ class SearchManagerVariable
      *
      * Usage: {{ craft.searchManager.parseFilters({category: ['news', 'blog'], active: true}) }}
      *
+     * @since 5.0.0
      * @param array $filters Key/value pairs of filters
      * @return string Backend-compatible filter string
      */
@@ -269,6 +287,7 @@ class SearchManagerVariable
     /**
      * Check if the active backend supports browse functionality
      *
+     * @since 5.0.0
      * @return bool
      */
     public function supportsBrowse(): bool
@@ -280,6 +299,7 @@ class SearchManagerVariable
     /**
      * Check if the active backend supports native multiple queries
      *
+     * @since 5.0.0
      * @return bool
      */
     public function supportsMultipleQueries(): bool
@@ -296,6 +316,7 @@ class SearchManagerVariable
      *
      * Usage: {% for index in craft.searchManager.listIndices() %}
      *
+     * @since 5.0.0
      * @return array Array of index information
      */
     public function listIndices(): array
@@ -320,6 +341,7 @@ class SearchManagerVariable
      *     {% set indices = algolia.listIndices() %}
      *     {% set results = algolia.search('my-index', 'query') %}
      *
+     * @since 5.28.0
      * @param string $backendHandle Handle of a configured backend
      * @return BackendVariableProxy|null Proxy object or null if backend not found
      */

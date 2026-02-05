@@ -16,6 +16,8 @@ use yii\base\Component;
  * Indexing Service
  *
  * Handles all indexing operations (single, batch, rebuild)
+ *
+ * @since 5.0.0
  */
 class IndexingService extends Component
 {
@@ -41,6 +43,11 @@ class IndexingService extends Component
 
     /**
      * Index a single element
+     *
+     * @param ElementInterface $element
+     * @param bool|null $queue
+     * @return bool
+     * @since 5.0.0
      */
     public function indexElement(ElementInterface $element, ?bool $queue = null): bool
     {
@@ -71,6 +78,10 @@ class IndexingService extends Component
 
     /**
      * Index an element immediately (no queue)
+     *
+     * @param ElementInterface $element
+     * @return bool
+     * @since 5.0.0
      */
     public function indexElementNow(ElementInterface $element): bool
     {
@@ -239,6 +250,10 @@ class IndexingService extends Component
 
     /**
      * Remove an element from all matching indices
+     *
+     * @param ElementInterface $element
+     * @return bool
+     * @since 5.0.0
      */
     public function removeElement(ElementInterface $element): bool
     {
@@ -310,6 +325,10 @@ class IndexingService extends Component
      * Check if an element should be indexed for its specific site
      *
      * Checks: not draft/revision, enabled globally, enabled for site, proper status
+     *
+     * @param ElementInterface $element
+     * @return bool
+     * @since 5.0.0
      */
     public function shouldIndexElementForSite(ElementInterface $element): bool
     {
@@ -356,6 +375,11 @@ class IndexingService extends Component
 
     /**
      * Index multiple elements in batch
+     *
+     * @param ElementInterface[] $elements
+     * @param string $indexHandle
+     * @return bool
+     * @since 5.0.0
      */
     public function batchIndex(array $elements, string $indexHandle): bool
     {
@@ -428,6 +452,10 @@ class IndexingService extends Component
 
     /**
      * Rebuild a specific index
+     *
+     * @param string $indexHandle
+     * @return bool
+     * @since 5.0.0
      */
     public function rebuildIndex(string $indexHandle): bool
     {
@@ -442,6 +470,9 @@ class IndexingService extends Component
 
     /**
      * Rebuild all indices
+     *
+     * @return bool
+     * @since 5.0.0
      */
     public function rebuildAll(): bool
     {

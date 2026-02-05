@@ -11,6 +11,8 @@ use Craft;
  * from the search-manager.php config file.
  *
  * Used by: ConfiguredBackend, SearchIndex, WidgetConfig, WidgetConfigService
+ *
+ * @since 5.0.0
  */
 class ConfigFileHelper
 {
@@ -22,6 +24,7 @@ class ConfigFileHelper
     /**
      * Get the full config from search-manager.php
      *
+     * @since 5.0.0
      * @return array The config array
      */
     public static function getConfig(): array
@@ -36,6 +39,7 @@ class ConfigFileHelper
     /**
      * Get a specific section from the config file
      *
+     * @since 5.0.0
      * @param string $key The config key (e.g., 'backends', 'indices', 'widgets')
      * @return array The config section or empty array if not found
      */
@@ -48,6 +52,7 @@ class ConfigFileHelper
     /**
      * Get backends from config file
      *
+     * @since 5.28.0
      * @return array Array of backend configs keyed by handle
      */
     public static function getConfiguredBackends(): array
@@ -58,6 +63,7 @@ class ConfigFileHelper
     /**
      * Get indices from config file
      *
+     * @since 5.0.0
      * @return array Array of index configs keyed by handle
      */
     public static function getIndices(): array
@@ -68,6 +74,7 @@ class ConfigFileHelper
     /**
      * Get widgets from config file
      *
+     * @since 5.30.0
      * @return array Array of widget configs keyed by handle
      */
     public static function getWidgetConfigs(): array
@@ -78,6 +85,7 @@ class ConfigFileHelper
     /**
      * Check if a handle exists in config
      *
+     * @since 5.0.0
      * @param string $section The config section key
      * @param string $handle The handle to check
      * @return bool True if handle exists in config
@@ -91,6 +99,7 @@ class ConfigFileHelper
     /**
      * Get a single config by handle
      *
+     * @since 5.0.0
      * @param string $section The config section key
      * @param string $handle The handle to get
      * @return array|null The config array or null if not found
@@ -105,6 +114,8 @@ class ConfigFileHelper
      * Clear the config cache
      *
      * Call this if you need to reload the config file (e.g., after file changes)
+     *
+     * @since 5.0.0
      */
     public static function clearCache(): void
     {
@@ -114,6 +125,7 @@ class ConfigFileHelper
     /**
      * Get all handles from a config section
      *
+     * @since 5.0.0
      * @param string $section The config section key
      * @return array Array of handles
      */
@@ -129,6 +141,7 @@ class ConfigFileHelper
      * Config items take precedence over database items with the same handle.
      * Returns array keyed by handle.
      *
+     * @since 5.0.0
      * @param array $configItems Items from config file (keyed by handle)
      * @param array $databaseItems Items from database (array of objects with 'handle' property)
      * @return array Merged items keyed by handle

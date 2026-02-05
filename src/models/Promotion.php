@@ -14,6 +14,8 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  *
  * Represents a pinned/promoted search result that bypasses normal scoring.
  * When a query matches, the promoted element is placed at the specified position.
+ *
+ * @since 5.10.0
  */
 class Promotion extends Model
 {
@@ -66,6 +68,9 @@ class Promotion extends Model
 
     /**
      * Validate that element exists
+     *
+     * @param string $attribute
+     * @since 5.10.0
      */
     public function validateElement(string $attribute): void
     {
@@ -85,6 +90,10 @@ class Promotion extends Model
 
     /**
      * Find promotion by ID
+     *
+     * @param int $id
+     * @return self|null
+     * @since 5.10.0
      */
     public static function findById(int $id): ?self
     {
@@ -98,6 +107,11 @@ class Promotion extends Model
 
     /**
      * Find all promotions for an index (including global promotions)
+     *
+     * @param string|null $indexHandle
+     * @param int|null $siteId
+     * @return self[]
+     * @since 5.10.0
      */
     public static function findByIndex(?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -121,6 +135,10 @@ class Promotion extends Model
 
     /**
      * Find all promotions (for CP listing)
+     *
+     * @param string|null $indexHandle
+     * @return self[]
+     * @since 5.10.0
      */
     public static function findAll(?string $indexHandle = null): array
     {
@@ -139,6 +157,12 @@ class Promotion extends Model
     /**
      * Find promotions matching a search query
      * Only returns promotions where the element is enabled for the given site
+     *
+     * @param string $searchQuery
+     * @param string $indexHandle
+     * @param int|null $siteId
+     * @return self[]
+     * @since 5.10.0
      */
     public static function findMatching(string $searchQuery, string $indexHandle, ?int $siteId = null): array
     {
@@ -186,6 +210,10 @@ class Promotion extends Model
     /**
      * Check if this promotion matches a search query
      * Supports comma-separated patterns (e.g., "bread, خبز" matches either)
+     *
+     * @param string $searchQuery
+     * @return bool
+     * @since 5.10.0
      */
     public function matches(string $searchQuery): bool
     {
@@ -239,6 +267,9 @@ class Promotion extends Model
 
     /**
      * Save promotion to database
+     *
+     * @return bool
+     * @since 5.10.0
      */
     public function save(): bool
     {
@@ -298,6 +329,9 @@ class Promotion extends Model
 
     /**
      * Delete promotion from database
+     *
+     * @return bool
+     * @since 5.10.0
      */
     public function delete(): bool
     {
@@ -330,6 +364,9 @@ class Promotion extends Model
 
     /**
      * Get the promoted element (for CP display)
+     *
+     * @return \craft\base\ElementInterface|null
+     * @since 5.10.0
      */
     public function getElement(): ?\craft\base\ElementInterface
     {

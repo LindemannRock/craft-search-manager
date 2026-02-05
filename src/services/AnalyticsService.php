@@ -25,7 +25,7 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * @author    LindemannRock
  * @package   SearchManager
- * @since     1.0.0
+ * @since     5.0.0
  */
 class AnalyticsService extends Component
 {
@@ -62,6 +62,7 @@ class AnalyticsService extends Component
      *   - matchedRules: Array of matched QueryRule objects (for detailed tracking)
      *   - matchedPromotions: Array of matched Promotion objects (for detailed tracking)
      * @return void
+     * @since 5.0.0
      */
     public function trackSearch(
         string $indexHandle,
@@ -351,6 +352,11 @@ class AnalyticsService extends Component
 
     /**
      * Get query length distribution
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getQueryLengthDistribution(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -394,6 +400,12 @@ class AnalyticsService extends Component
 
     /**
      * Get word cloud data
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.0.0
      */
     public function getWordCloudData(?int $siteId, string $dateRange = 'last30days', int $limit = 50): array
     {
@@ -443,6 +455,12 @@ class AnalyticsService extends Component
     /**
      * Get zero-result clusters (content gaps)
      * Groups similar failed queries together
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.0.0
      */
     public function getZeroResultClusters(?int $siteId, string $dateRange = 'last30days', int $limit = 20): array
     {
@@ -516,6 +534,7 @@ class AnalyticsService extends Component
      * @param string $dateRange Date range filter
      * @param int|null $linkId Optional filter (not used for search, kept for compatibility)
      * @return array Analytics summary data
+     * @since 5.0.0
      */
     public function getAnalyticsSummary(string $dateRange = 'last7days', ?int $linkId = null): array
     {
@@ -538,6 +557,11 @@ class AnalyticsService extends Component
 
     /**
      * Get chart data for visualization
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getChartData(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -568,6 +592,12 @@ class AnalyticsService extends Component
 
     /**
      * Get most common search queries
+     *
+     * @param int|null $siteId
+     * @param int $limit
+     * @param string|null $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getMostCommonSearches(?int $siteId, int $limit = 10, ?string $dateRange = null): array
     {
@@ -603,6 +633,13 @@ class AnalyticsService extends Component
 
     /**
      * Get recent searches
+     *
+     * @param int|null $siteId
+     * @param int $limit
+     * @param bool|null $hasResults
+     * @param string|null $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getRecentSearches(?int $siteId, int $limit = 5, ?bool $hasResults = null, ?string $dateRange = null): array
     {
@@ -687,6 +724,12 @@ class AnalyticsService extends Component
 
     /**
      * Get analytics count
+     *
+     * @param int|null $siteId
+     * @param bool|null $hasResults
+     * @param string|null $dateRange
+     * @return int
+     * @since 5.0.0
      */
     public function getAnalyticsCount(?int $siteId = null, ?bool $hasResults = null, ?string $dateRange = null): int
     {
@@ -715,6 +758,11 @@ class AnalyticsService extends Component
 
     /**
      * Get device breakdown
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getDeviceBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -736,6 +784,11 @@ class AnalyticsService extends Component
 
     /**
      * Get browser breakdown
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getBrowserBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -758,6 +811,11 @@ class AnalyticsService extends Component
 
     /**
      * Get OS breakdown
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getOsBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -779,6 +837,11 @@ class AnalyticsService extends Component
 
     /**
      * Get bot statistics
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getBotStats(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -833,6 +896,7 @@ class AnalyticsService extends Component
      * @param int|null $siteId Optional site ID to filter by
      * @param string $dateRange Date range to filter
      * @return array Export data (rows, headers, jsonData)
+     * @since 5.0.0
      */
     public function exportAnalytics(?int $siteId, string $dateRange): array
     {
@@ -1070,6 +1134,10 @@ class AnalyticsService extends Component
 
     /**
      * Delete an analytic record
+     *
+     * @param int $id
+     * @return bool
+     * @since 5.0.0
      */
     public function deleteAnalytic(int $id): bool
     {
@@ -1086,6 +1154,10 @@ class AnalyticsService extends Component
 
     /**
      * Clear all analytics
+     *
+     * @param int|null $siteId
+     * @return int
+     * @since 5.0.0
      */
     public function clearAnalytics(?int $siteId = null): int
     {
@@ -1101,6 +1173,12 @@ class AnalyticsService extends Component
 
     /**
      * Apply date range filter to query
+     *
+     * @param Query $query
+     * @param string $dateRange
+     * @param string|null $column
+     * @return void
+     * @since 5.0.0
      */
     public function applyDateRangeFilter(Query $query, string $dateRange, ?string $column = null): void
     {
@@ -1112,6 +1190,7 @@ class AnalyticsService extends Component
      * Clean up old analytics based on retention setting
      *
      * @return int Number of records deleted
+     * @since 5.0.0
      */
     public function cleanupOldAnalytics(): int
     {
@@ -1143,6 +1222,7 @@ class AnalyticsService extends Component
      *
      * @param string $ip
      * @return array|null
+     * @since 5.0.0
      */
     public function getLocationFromIp(string $ip): ?array
     {
@@ -1352,6 +1432,7 @@ class AnalyticsService extends Component
      *
      * @param string $query The search query
      * @return string|null The classified intent
+     * @since 5.0.0
      */
     // TODO: Consider expanding intent categories later:
     // - 'local' for "near me", "[city]" queries
@@ -1401,6 +1482,11 @@ class AnalyticsService extends Component
 
     /**
      * Get intent breakdown
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getIntentBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -1439,6 +1525,11 @@ class AnalyticsService extends Component
 
     /**
      * Get source breakdown (frontend, cp, api, custom sources)
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getSourceBreakdown(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -1485,6 +1576,11 @@ class AnalyticsService extends Component
 
     /**
      * Get average execution time over time for performance chart
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getPerformanceData(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -1520,6 +1616,11 @@ class AnalyticsService extends Component
     /**
      * Get cache hit statistics
      * Note: Cache hits are identified by executionTime = 0
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getCacheStats(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -1560,6 +1661,12 @@ class AnalyticsService extends Component
 
     /**
      * Get top performing queries (fastest response time)
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.0.0
      */
     public function getTopPerformingQueries(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -1610,6 +1717,12 @@ class AnalyticsService extends Component
 
     /**
      * Get worst performing queries (slowest response time)
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.0.0
      */
     public function getWorstPerformingQueries(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -1659,6 +1772,12 @@ class AnalyticsService extends Component
 
     /**
      * Get country breakdown
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.0.0
      */
     public function getCountryBreakdown(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -1696,6 +1815,12 @@ class AnalyticsService extends Component
 
     /**
      * Get city breakdown
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.0.0
      */
     public function getCityBreakdown(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -1733,6 +1858,11 @@ class AnalyticsService extends Component
 
     /**
      * Get peak usage hours
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.0.0
      */
     public function getPeakUsageHours(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -1780,6 +1910,7 @@ class AnalyticsService extends Component
      * @param string $dateRange Date range for current period
      * @param int $limit Number of queries to return
      * @return array Queries with trend data (up, down, new, same)
+     * @since 5.0.0
      */
     public function getTrendingQueries(?int $siteId, string $dateRange = 'last7days', int $limit = 10): array
     {
@@ -1903,6 +2034,11 @@ class AnalyticsService extends Component
 
     /**
      * Get average execution time
+     *
+     * @param int|null $siteId
+     * @param int $days
+     * @return float
+     * @since 5.0.0
      */
     public function getAverageExecutionTime(?int $siteId, int $days = 30): float
     {
@@ -1923,6 +2059,11 @@ class AnalyticsService extends Component
 
     /**
      * Get unique queries count
+     *
+     * @param int|null $siteId
+     * @param int $days
+     * @return int
+     * @since 5.0.0
      */
     public function getUniqueQueriesCount(?int $siteId, int $days = 30): int
     {
@@ -1945,6 +2086,12 @@ class AnalyticsService extends Component
 
     /**
      * Get top triggered query rules
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.10.0
      */
     public function getTopTriggeredRules(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -1982,6 +2129,11 @@ class AnalyticsService extends Component
 
     /**
      * Get rules breakdown by action type
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.10.0
      */
     public function getRulesByActionType(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -2007,6 +2159,12 @@ class AnalyticsService extends Component
 
     /**
      * Get top queries that trigger rules
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.10.0
      */
     public function getQueriesTriggeringRules(?int $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
@@ -2044,6 +2202,12 @@ class AnalyticsService extends Component
 
     /**
      * Get top promotions by impressions
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.10.0
      */
     public function getTopPromotions(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -2083,6 +2247,11 @@ class AnalyticsService extends Component
 
     /**
      * Get promotions breakdown by position
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @return array
+     * @since 5.10.0
      */
     public function getPromotionsByPosition(?int $siteId, string $dateRange = 'last30days'): array
     {
@@ -2108,6 +2277,12 @@ class AnalyticsService extends Component
 
     /**
      * Get top queries that trigger promotions
+     *
+     * @param int|null $siteId
+     * @param string $dateRange
+     * @param int $limit
+     * @return array
+     * @since 5.10.0
      */
     public function getQueriesTriggeringPromotions(?int $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
@@ -2145,6 +2320,7 @@ class AnalyticsService extends Component
      * @param int $ruleId The query rule ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
+     * @since 5.10.0
      */
     public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
     {
@@ -2209,6 +2385,7 @@ class AnalyticsService extends Component
      * @param int $promotionId The promotion ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
+     * @since 5.10.0
      */
     public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
     {

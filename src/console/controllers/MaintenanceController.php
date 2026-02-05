@@ -12,6 +12,8 @@ use yii\console\ExitCode;
 
 /**
  * Maintenance commands for search storage
+ *
+ * @since 5.0.0
  */
 class MaintenanceController extends Controller
 {
@@ -55,6 +57,8 @@ class MaintenanceController extends Controller
      * - Troubleshooting storage issues
      *
      * Example: php craft search-manager/maintenance/clear-storage --type=database
+     *
+     * @since 5.0.0
      */
     public function actionClearStorage(): int
     {
@@ -114,6 +118,8 @@ class MaintenanceController extends Controller
 
     /**
      * List available storage types and their current state
+     *
+     * @since 5.0.0
      */
     public function actionStatus(): int
     {

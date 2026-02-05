@@ -16,6 +16,8 @@ use lindemannrock\searchmanager\SearchManager;
 
 /**
  * Clear Search Cache utility
+ *
+ * @since 5.0.0
  */
 class ClearSearchCache extends Utility
 {

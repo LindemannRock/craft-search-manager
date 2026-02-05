@@ -15,6 +15,8 @@ use yii\web\Response;
  * Widgets Controller
  *
  * Manages search widget configurations in the CP
+ *
+ * @since 5.30.0
  */
 class WidgetsController extends Controller
 {
@@ -28,6 +30,8 @@ class WidgetsController extends Controller
 
     /**
      * List all widget configurations
+     *
+     * @since 5.30.0
      */
     public function actionIndex(): Response
     {
@@ -80,6 +84,7 @@ class WidgetsController extends Controller
      * View a widget configuration (read-only, for config widgets)
      *
      * @param string|null $handle Widget handle
+     * @since 5.30.0
      */
     public function actionView(?string $handle = null): Response
     {
@@ -109,6 +114,8 @@ class WidgetsController extends Controller
 
     /**
      * Edit or create a widget configuration
+     *
+     * @since 5.30.0
      */
     public function actionEdit(?int $configId = null): Response
     {
@@ -139,6 +146,8 @@ class WidgetsController extends Controller
 
     /**
      * Save a widget configuration
+     *
+     * @since 5.30.0
      */
     public function actionSave(): ?Response
     {
@@ -244,6 +253,8 @@ class WidgetsController extends Controller
 
     /**
      * Delete a widget configuration
+     *
+     * @since 5.30.0
      */
     public function actionDelete(): Response
     {
@@ -273,6 +284,8 @@ class WidgetsController extends Controller
 
     /**
      * Set a widget configuration as default
+     *
+     * @since 5.30.0
      */
     public function actionSetDefault(): Response
     {
@@ -325,6 +338,8 @@ class WidgetsController extends Controller
 
     /**
      * Bulk enable widget configurations
+     *
+     * @since 5.30.0
      */
     public function actionBulkEnable(): Response
     {
@@ -350,6 +365,8 @@ class WidgetsController extends Controller
 
     /**
      * Bulk disable widget configurations
+     *
+     * @since 5.30.0
      */
     public function actionBulkDisable(): Response
     {
@@ -383,6 +400,8 @@ class WidgetsController extends Controller
 
     /**
      * Bulk delete widget configurations
+     *
+     * @since 5.30.0
      */
     public function actionBulkDelete(): Response
     {

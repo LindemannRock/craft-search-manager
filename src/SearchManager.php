@@ -62,6 +62,7 @@ use yii\base\Event;
  * @property-read WidgetConfigService $widgetConfigs
  * @property-read Settings $settings
  * @method Settings getSettings()
+ * @since 5.0.0
  */
 class SearchManager extends Plugin
 {
@@ -596,6 +597,9 @@ class SearchManager extends Plugin
 
     /**
      * Check if status sync job is running/scheduled
+     *
+     * @return bool
+     * @since 5.0.0
      */
     public function isStatusSyncRunning(): bool
     {
@@ -645,6 +649,9 @@ class SearchManager extends Plugin
 
     /**
      * Check if analytics cleanup job is running/scheduled
+     *
+     * @return bool
+     * @since 5.34.0
      */
     public function isAnalyticsCleanupRunning(): bool
     {
@@ -925,6 +932,7 @@ class SearchManager extends Plugin
      *
      * @param string $handle
      * @return \lindemannrock\searchmanager\models\ConfiguredBackend|null
+     * @since 5.28.0
      */
     public function getConfiguredBackend(string $handle): ?\lindemannrock\searchmanager\models\ConfiguredBackend
     {

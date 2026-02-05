@@ -11,6 +11,8 @@ use lindemannrock\searchmanager\SearchManager;
  * Index Element Job
  *
  * Queue job for indexing a single element
+ *
+ * @since 5.0.0
  */
 class IndexElementJob extends BaseJob
 {
