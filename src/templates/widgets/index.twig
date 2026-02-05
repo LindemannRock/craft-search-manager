@@ -146,7 +146,7 @@
 			{# Default widget doesn't exist #}
 			{% set warningMessage %}
 			<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-			{{ 'The default widget handle "{handle}" does not exist.'|t('search-manager', {handle: defaultWidgetHandle}) }}
+			{{ 'The default widget handle "{handle}" does not exist.'|t('search-manager', {handle: '<strong>' ~ defaultWidgetHandle ~ '</strong>'})|raw }}
 			{% if isDefaultFromConfig %}
 				{{ 'Update your config/search-manager.php to point to a valid widget handle.'|t('search-manager') }}
 			{% else %}
@@ -165,7 +165,7 @@
 			{# Default widget exists but is disabled #}
 			{% set warningMessage %}
 			<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-			{{ 'The default widget "{name}" is disabled. Search widget may not work.'|t('search-manager', {name: defaultWidget.name}) }}
+			{{ 'The default widget "{name}" is disabled. Search widget may not work.'|t('search-manager', {name: '<strong>' ~ defaultWidget.name ~ '</strong>'})|raw }}
 			{% if not isDefaultFromConfig %}
 				{{ 'Please enable it or set a different widget as default.'|t('search-manager') }}
 			{% else %}
@@ -196,6 +196,27 @@
 			} %}
 		</div>
 	{% endif %}
+    {# Warning for handle collisions between config and database #}
+    {% if collisionHandles is defined and collisionHandles|length %}
+        {% set boldHandles = [] %}
+        {% for handle in collisionHandles %}
+            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+        {% endfor %}
+        {% set warningMessage %}
+        <strong>{{ 'Warning'|t('search-manager') }}:</strong>
+        {{ 'These widget handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
+        {{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
+        {{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
+        {% endset %}
+        <div class="lr-info-box-table-wrapper">
+            {% include 'lindemannrock-base/_components/info-box' with {
+                message: warningMessage,
+                type: 'warning',
+                margin: 'none',
+                stretch: true,
+            } %}
+        </div>
+    {% endif %}
 {% endblock %}
 
 {% block tableRow %}
@@ -461,6 +482,17 @@
 			countSpan.textContent = e.detail.count;
 		}
 	});
+
+	// Highlight rows with handle collisions
+	const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};
+	if (collisionHandles.length > 0) {
+		document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
+			const handleCell = row.querySelector('td[data-column=\"handle\"] code');
+			if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
+				row.classList.add('lr-row--warning');
+			}
+		});
+	}
 })();
 </script>
 {% endblock %}

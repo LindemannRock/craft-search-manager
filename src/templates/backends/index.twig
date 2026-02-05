@@ -192,7 +192,7 @@
             {# Default backend doesn't exist #}
             {% set warningMessage %}
             <strong>{{ 'Warning'|t('search-manager') }}:</strong>
-            {{ 'The default backend handle "{handle}" does not exist.'|t('search-manager', {handle: defaultBackendHandle}) }}
+            {{ 'The default backend handle "{handle}" does not exist.'|t('search-manager', {handle: '<strong>' ~ defaultBackendHandle ~ '</strong>'})|raw }}
             {% if isDefaultFromConfig %}
                 {{ 'Update your config/search-manager.php to point to a valid backend handle.'|t('search-manager') }}
             {% else %}
@@ -211,7 +211,7 @@
             {# Default backend exists but is disabled #}
             {% set warningMessage %}
             <strong>{{ 'Warning'|t('search-manager') }}:</strong>
-            {{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: defaultBackend.name}) }}
+            {{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: '<strong>' ~ defaultBackend.name ~ '</strong>'})|raw }}
             {% if not isDefaultFromConfig %}
                 {{ 'Please enable it or set a different backend as default.'|t('search-manager') }}
             {% else %}
