@@ -150,9 +150,6 @@ class SearchManager extends Plugin
         // Register services
         $this->registerServices();
 
-        // Register translations
-        $this->registerTranslations();
-
         // Register template variables
         $this->registerTemplateVariables();
 
@@ -244,20 +241,6 @@ class SearchManager extends Plugin
                 $event->roots['search-manager'] = $this->getBasePath() . '/templates';
             }
         );
-    }
-
-    /**
-     * Register translations
-     */
-    private function registerTranslations(): void
-    {
-        Craft::$app->i18n->translations['search-manager'] = [
-            'class' => \craft\i18n\PhpMessageSource::class,
-            'sourceLanguage' => 'en',
-            'basePath' => $this->getBasePath() . '/translations',
-            'forceTranslation' => true,
-            'allowOverrides' => true,
-        ];
     }
 
     /**
