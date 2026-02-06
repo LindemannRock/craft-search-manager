@@ -12,6 +12,7 @@ use Craft;
 use craft\base\Component;
 use craft\db\Query;
 use craft\helpers\Db;
+use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\base\helpers\GeoHelper;
 use lindemannrock\base\traits\GeoLookupTrait;
@@ -565,7 +566,7 @@ class AnalyticsService extends Component
      */
     public function getChartData(?int $siteId, string $dateRange = 'last30days'): array
     {
-        $localDateExpr = $this->getLocalDateExpression('dateCreated');
+        $localDateExpr = DateFormatHelper::localDateExpression('dateCreated');
 
         $query = (new Query())
             ->select([
@@ -1584,16 +1585,18 @@ class AnalyticsService extends Component
      */
     public function getPerformanceData(?int $siteId, string $dateRange = 'last30days'): array
     {
+        $localDate = DateFormatHelper::localDateExpression('dateCreated');
+
         $query = (new Query())
             ->select([
-                'DATE(dateCreated) as date',
+                'date' => $localDate,
                 'AVG(executionTime) as avgTime',
                 'MIN(executionTime) as minTime',
                 'MAX(executionTime) as maxTime',
                 'COUNT(*) as searches',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy('DATE(dateCreated)')
+            ->groupBy($localDate)
             ->orderBy(['date' => SORT_ASC]);
 
         $this->applyDateRangeFilter($query, $dateRange);
@@ -1866,7 +1869,7 @@ class AnalyticsService extends Component
      */
     public function getPeakUsageHours(?int $siteId, string $dateRange = 'last30days'): array
     {
-        $hourExpr = $this->getLocalHourExpression('dateCreated');
+        $hourExpr = DateFormatHelper::localHourExpression('dateCreated');
 
         $query = (new Query())
             ->select([
@@ -2324,7 +2327,7 @@ class AnalyticsService extends Component
      */
     public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
     {
-        $localDateExpr = $this->getLocalDateExpression('dateCreated');
+        $localDateExpr = DateFormatHelper::localDateExpression('dateCreated');
 
         $query = (new Query())
             ->from('{{%searchmanager_rule_analytics}}')
@@ -2389,7 +2392,7 @@ class AnalyticsService extends Component
      */
     public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
     {
-        $localDateExpr = $this->getLocalDateExpression('dateCreated');
+        $localDateExpr = DateFormatHelper::localDateExpression('dateCreated');
 
         $query = (new Query())
             ->from('{{%searchmanager_promotion_analytics}}')
@@ -2507,47 +2510,5 @@ class AnalyticsService extends Component
         }
 
         return $normalized;
-    }
-
-    /**
-     * Build a local-date SQL expression for the given column.
-     *
-     * @param string $column
-     * @return \yii\db\Expression
-     */
-    private function getLocalDateExpression(string $column): \yii\db\Expression
-    {
-        $offset = $this->getMysqlTimezoneOffset();
-        return new \yii\db\Expression(
-            "DATE(CONVERT_TZ([[{$column}]], '+00:00', :offset))",
-            [':offset' => $offset]
-        );
-    }
-
-    /**
-     * Build a local-hour SQL expression for the given column.
-     *
-     * @param string $column
-     * @return \yii\db\Expression
-     */
-    private function getLocalHourExpression(string $column): \yii\db\Expression
-    {
-        $offset = $this->getMysqlTimezoneOffset();
-        return new \yii\db\Expression(
-            "HOUR(CONVERT_TZ([[{$column}]], '+00:00', :offset))",
-            [':offset' => $offset]
-        );
-    }
-
-    /**
-     * Get the local timezone offset for MySQL CONVERT_TZ.
-     *
-     * @return string
-     */
-    private function getMysqlTimezoneOffset(): string
-    {
-        $timezone = Craft::$app->getTimeZone();
-        $dateTime = new \DateTime('now', new \DateTimeZone($timezone));
-        return $dateTime->format('P');
     }
 }

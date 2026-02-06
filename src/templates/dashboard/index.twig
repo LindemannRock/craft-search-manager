@@ -90,13 +90,10 @@
 
     {# Searches Today Card #}
     {% if settings.enableAnalytics and canViewAnalytics %}
-        {% set change = searchesYesterday > 0 ? ((searchesToday - searchesYesterday) / searchesYesterday * 100)|round : null %}
         {% include 'lindemannrock-base/_components/cards/unified-card' with {
             title: 'Searches Today'|t('search-manager'),
             color: '#0ea5e9',
             value: searchesToday,
-            badge: change is not null ? ((change >= 0 ? '+' : '') ~ change ~ '%') : null,
-            badgeType: change is not null ? (change >= 0 ? 'positive' : 'negative') : 'default',
             description: (searchesYesterday|number_format) ~ ' ' ~ 'yesterday'|t('search-manager'),
             url: url('search-manager/analytics'),
         } only %}
