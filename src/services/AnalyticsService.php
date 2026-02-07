@@ -178,6 +178,7 @@ class AnalyticsService extends Component
             } catch (\Exception $e) {
                 $this->logError('Failed to hash IP address', ['error' => $e->getMessage()]);
                 $ip = null;
+                $ipForGeoLookup = null;
             }
         }
 
@@ -354,12 +355,12 @@ class AnalyticsService extends Component
     /**
      * Get query length distribution
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getQueryLengthDistribution(?int $siteId, string $dateRange = 'last30days'): array
+    public function getQueryLengthDistribution(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count'])
@@ -402,13 +403,13 @@ class AnalyticsService extends Component
     /**
      * Get word cloud data
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.0.0
      */
-    public function getWordCloudData(?int $siteId, string $dateRange = 'last30days', int $limit = 50): array
+    public function getWordCloudData(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 50): array
     {
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count'])
@@ -457,13 +458,13 @@ class AnalyticsService extends Component
      * Get zero-result clusters (content gaps)
      * Groups similar failed queries together
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.0.0
      */
-    public function getZeroResultClusters(?int $siteId, string $dateRange = 'last30days', int $limit = 20): array
+    public function getZeroResultClusters(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 20): array
     {
         // 1. Get all zero-result queries (excluding handled searches: redirected or showed promotions)
         $query = (new Query())
@@ -532,15 +533,19 @@ class AnalyticsService extends Component
     /**
      * Get analytics summary
      *
+     * @param int|array|null $siteId Site ID(s) to filter by
      * @param string $dateRange Date range filter
-     * @param int|null $linkId Optional filter (not used for search, kept for compatibility)
      * @return array Analytics summary data
      * @since 5.0.0
      */
-    public function getAnalyticsSummary(string $dateRange = 'last7days', ?int $linkId = null): array
+    public function getAnalyticsSummary(int|array|null $siteId = null, string $dateRange = 'last7days'): array
     {
         $query = (new Query())->from('{{%searchmanager_analytics}}');
         $this->applyDateRangeFilter($query, $dateRange);
+
+        if ($siteId) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
 
         $totalSearches = (int)$query->count();
         $uniqueVisitors = (int)$query->select('COUNT(DISTINCT ip)')->scalar();
@@ -559,12 +564,12 @@ class AnalyticsService extends Component
     /**
      * Get chart data for visualization
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getChartData(?int $siteId, string $dateRange = 'last30days'): array
+    public function getChartData(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $localDateExpr = DateFormatHelper::localDateExpression('dateCreated');
 
@@ -594,13 +599,13 @@ class AnalyticsService extends Component
     /**
      * Get most common search queries
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param int $limit
      * @param string|null $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getMostCommonSearches(?int $siteId, int $limit = 10, ?string $dateRange = null): array
+    public function getMostCommonSearches(int|array|null $siteId, int $limit = 10, ?string $dateRange = null): array
     {
         $query = (new Query())
             ->select(['query', 'siteId', 'COUNT(*) as count', 'SUM(resultsCount) as totalResults', 'MAX(dateCreated) as lastSearched'])
@@ -635,14 +640,14 @@ class AnalyticsService extends Component
     /**
      * Get recent searches
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param int $limit
      * @param bool|null $hasResults
      * @param string|null $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getRecentSearches(?int $siteId, int $limit = 5, ?bool $hasResults = null, ?string $dateRange = null): array
+    public function getRecentSearches(int|array|null $siteId, int $limit = 5, ?bool $hasResults = null, ?string $dateRange = null): array
     {
         $query = (new Query())
             ->from('{{%searchmanager_analytics}}')
@@ -726,13 +731,13 @@ class AnalyticsService extends Component
     /**
      * Get analytics count
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param bool|null $hasResults
      * @param string|null $dateRange
      * @return int
      * @since 5.0.0
      */
-    public function getAnalyticsCount(?int $siteId = null, ?bool $hasResults = null, ?string $dateRange = null): int
+    public function getAnalyticsCount(int|array|null $siteId = null, ?bool $hasResults = null, ?string $dateRange = null): int
     {
         $query = (new Query())->from('{{%searchmanager_analytics}}');
 
@@ -760,12 +765,12 @@ class AnalyticsService extends Component
     /**
      * Get device breakdown
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getDeviceBreakdown(?int $siteId, string $dateRange = 'last30days'): array
+    public function getDeviceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['deviceType', 'COUNT(*) as count'])
@@ -786,12 +791,12 @@ class AnalyticsService extends Component
     /**
      * Get browser breakdown
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getBrowserBreakdown(?int $siteId, string $dateRange = 'last30days'): array
+    public function getBrowserBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['browser', 'COUNT(*) as count'])
@@ -813,12 +818,12 @@ class AnalyticsService extends Component
     /**
      * Get OS breakdown
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getOsBreakdown(?int $siteId, string $dateRange = 'last30days'): array
+    public function getOsBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['osName', 'COUNT(*) as count'])
@@ -839,12 +844,12 @@ class AnalyticsService extends Component
     /**
      * Get bot statistics
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getBotStats(?int $siteId, string $dateRange = 'last30days'): array
+    public function getBotStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['COUNT(*) as total', 'SUM(CASE WHEN isRobot = 1 THEN 1 ELSE 0 END) as bots'])
@@ -894,12 +899,12 @@ class AnalyticsService extends Component
     /**
      * Export analytics data
      *
-     * @param int|null $siteId Optional site ID to filter by
+     * @param int|array|null $siteId Site ID(s) to filter by
      * @param string $dateRange Date range to filter
      * @return array Export data (rows, headers, jsonData)
      * @since 5.0.0
      */
-    public function exportAnalytics(?int $siteId, string $dateRange): array
+    public function exportAnalytics(int|array|null $siteId, string $dateRange): array
     {
         $query = (new Query())
             ->from('{{%searchmanager_analytics}}')
@@ -1156,11 +1161,11 @@ class AnalyticsService extends Component
     /**
      * Clear all analytics
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @return int
      * @since 5.0.0
      */
-    public function clearAnalytics(?int $siteId = null): int
+    public function clearAnalytics(int|array|null $siteId = null): int
     {
         $condition = [];
         if ($siteId) {
@@ -1484,12 +1489,12 @@ class AnalyticsService extends Component
     /**
      * Get intent breakdown
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getIntentBreakdown(?int $siteId, string $dateRange = 'last30days'): array
+    public function getIntentBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['intent', 'COUNT(*) as count'])
@@ -1527,12 +1532,12 @@ class AnalyticsService extends Component
     /**
      * Get source breakdown (frontend, cp, api, custom sources)
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getSourceBreakdown(?int $siteId, string $dateRange = 'last30days'): array
+    public function getSourceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['source', 'COUNT(*) as count'])
@@ -1578,12 +1583,12 @@ class AnalyticsService extends Component
     /**
      * Get average execution time over time for performance chart
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getPerformanceData(?int $siteId, string $dateRange = 'last30days'): array
+    public function getPerformanceData(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $localDate = DateFormatHelper::localDateExpression('dateCreated');
 
@@ -1620,12 +1625,12 @@ class AnalyticsService extends Component
      * Get cache hit statistics
      * Note: Cache hits are identified by executionTime = 0
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getCacheStats(?int $siteId, string $dateRange = 'last30days'): array
+    public function getCacheStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         // Total searches
         $totalQuery = (new Query())
@@ -1665,13 +1670,13 @@ class AnalyticsService extends Component
     /**
      * Get top performing queries (fastest response time)
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.0.0
      */
-    public function getTopPerformingQueries(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    public function getTopPerformingQueries(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select([
@@ -1721,13 +1726,13 @@ class AnalyticsService extends Component
     /**
      * Get worst performing queries (slowest response time)
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.0.0
      */
-    public function getWorstPerformingQueries(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    public function getWorstPerformingQueries(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select([
@@ -1776,13 +1781,13 @@ class AnalyticsService extends Component
     /**
      * Get country breakdown
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.0.0
      */
-    public function getCountryBreakdown(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    public function getCountryBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select(['country', 'COUNT(*) as count'])
@@ -1819,13 +1824,13 @@ class AnalyticsService extends Component
     /**
      * Get city breakdown
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.0.0
      */
-    public function getCityBreakdown(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    public function getCityBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select(['city', 'country', 'COUNT(*) as count'])
@@ -1862,12 +1867,12 @@ class AnalyticsService extends Component
     /**
      * Get peak usage hours
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.0.0
      */
-    public function getPeakUsageHours(?int $siteId, string $dateRange = 'last30days'): array
+    public function getPeakUsageHours(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $hourExpr = DateFormatHelper::localHourExpression('dateCreated');
 
@@ -1909,13 +1914,13 @@ class AnalyticsService extends Component
     /**
      * Get trending queries - compares current period to previous period
      *
-     * @param int|null $siteId Site ID filter
+     * @param int|array|null $siteId Site ID(s) filter
      * @param string $dateRange Date range for current period
      * @param int $limit Number of queries to return
      * @return array Queries with trend data (up, down, new, same)
      * @since 5.0.0
      */
-    public function getTrendingQueries(?int $siteId, string $dateRange = 'last7days', int $limit = 10): array
+    public function getTrendingQueries(int|array|null $siteId, string $dateRange = 'last7days', int $limit = 10): array
     {
         // Calculate date ranges for current and previous periods
         $tz = new \DateTimeZone(Craft::$app->getTimeZone());
@@ -2038,12 +2043,12 @@ class AnalyticsService extends Component
     /**
      * Get average execution time
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param int $days
      * @return float
      * @since 5.0.0
      */
-    public function getAverageExecutionTime(?int $siteId, int $days = 30): float
+    public function getAverageExecutionTime(int|array|null $siteId, int $days = 30): float
     {
         $query = (new Query())
             ->select(['AVG(executionTime) as avgTime'])
@@ -2063,12 +2068,12 @@ class AnalyticsService extends Component
     /**
      * Get unique queries count
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param int $days
      * @return int
      * @since 5.0.0
      */
-    public function getUniqueQueriesCount(?int $siteId, int $days = 30): int
+    public function getUniqueQueriesCount(int|array|null $siteId, int $days = 30): int
     {
         $query = (new Query())
             ->select(['COUNT(DISTINCT query) as count'])
@@ -2090,13 +2095,13 @@ class AnalyticsService extends Component
     /**
      * Get top triggered query rules
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.10.0
      */
-    public function getTopTriggeredRules(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    public function getTopTriggeredRules(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select([
@@ -2133,12 +2138,12 @@ class AnalyticsService extends Component
     /**
      * Get rules breakdown by action type
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.10.0
      */
-    public function getRulesByActionType(?int $siteId, string $dateRange = 'last30days'): array
+    public function getRulesByActionType(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['actionType', 'COUNT(*) as count'])
@@ -2163,13 +2168,13 @@ class AnalyticsService extends Component
     /**
      * Get top queries that trigger rules
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.10.0
      */
-    public function getQueriesTriggeringRules(?int $siteId, string $dateRange = 'last30days', int $limit = 15): array
+    public function getQueriesTriggeringRules(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
         $query = (new Query())
             ->select([
@@ -2206,13 +2211,13 @@ class AnalyticsService extends Component
     /**
      * Get top promotions by impressions
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.10.0
      */
-    public function getTopPromotions(?int $siteId, string $dateRange = 'last30days', int $limit = 10): array
+    public function getTopPromotions(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
         $query = (new Query())
             ->select([
@@ -2251,12 +2256,12 @@ class AnalyticsService extends Component
     /**
      * Get promotions breakdown by position
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
      * @since 5.10.0
      */
-    public function getPromotionsByPosition(?int $siteId, string $dateRange = 'last30days'): array
+    public function getPromotionsByPosition(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $query = (new Query())
             ->select(['position', 'COUNT(*) as count'])
@@ -2281,13 +2286,13 @@ class AnalyticsService extends Component
     /**
      * Get top queries that trigger promotions
      *
-     * @param int|null $siteId
+     * @param int|array|null $siteId
      * @param string $dateRange
      * @param int $limit
      * @return array
      * @since 5.10.0
      */
-    public function getQueriesTriggeringPromotions(?int $siteId, string $dateRange = 'last30days', int $limit = 15): array
+    public function getQueriesTriggeringPromotions(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
         $query = (new Query())
             ->select([

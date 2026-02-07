@@ -239,12 +239,14 @@
 										{{ forms.autosuggestField({
                                         label: config.label|t('search-manager'),
                                         instructions: fieldInstructions|t('search-manager'),
+                                        tip: config.tip is defined ? config.tip|t('search-manager')|raw : null,
                                         id: 'settings-' ~ type ~ '-' ~ key,
                                         name: 'settings[' ~ key ~ ']',
                                         value: fieldValue,
                                         required: config.required ?? false,
                                         placeholder: fieldPlaceholder,
                                         suggestEnvVars: true,
+                                        errors: backend.getErrors('settings'),
                                     }) }}
 									{% endif %}
 								{% endfor %}

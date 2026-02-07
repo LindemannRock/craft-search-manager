@@ -142,24 +142,9 @@ class BackendSettings extends Model
      */
     public function isOverriddenByConfig(string $field): bool
     {
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-
-        if (!file_exists($configPath)) {
-            return false;
-        }
-
         try {
-            $rawConfig = require $configPath;
-            $env = Craft::$app->getConfig()->env;
-
-            // Merge environment config
-            $mergedConfig = $rawConfig['*'] ?? [];
-            if ($env && isset($rawConfig[$env])) {
-                $mergedConfig = array_merge($mergedConfig, $rawConfig[$env]);
-            }
-
-            // Check backends.{backendName}.{field}
-            $backends = $mergedConfig['backends'] ?? [];
+            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
+            $backends = $config['backends'] ?? [];
             $backendConfig = $backends[$this->backend] ?? [];
 
             return array_key_exists($field, $backendConfig);
@@ -203,25 +188,16 @@ class BackendSettings extends Model
         }
 
         // Apply config file overrides
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-        if (file_exists($configPath)) {
-            try {
-                $rawConfig = require $configPath;
-                $env = Craft::$app->getConfig()->env;
+        try {
+            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
+            $backends = $config['backends'] ?? [];
+            $configOverrides = $backends[$backend] ?? [];
 
-                $mergedConfig = $rawConfig['*'] ?? [];
-                if ($env && isset($rawConfig[$env])) {
-                    $mergedConfig = array_merge($mergedConfig, $rawConfig[$env]);
-                }
-
-                $backends = $mergedConfig['backends'] ?? [];
-                $configOverrides = $backends[$backend] ?? [];
-
-                // Merge config overrides into settings config
+            if (!empty($configOverrides)) {
                 $settings->config = array_merge($settings->config, $configOverrides);
-            } catch (\Throwable $e) {
-                // Ignore config errors, use database settings
             }
+        } catch (\Throwable $e) {
+            // Ignore config errors, use database settings
         }
 
         return $settings;

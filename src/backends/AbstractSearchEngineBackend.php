@@ -211,9 +211,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $this->logInfo("Batch indexed in {$this->getBackendLabel()}", [
                 'index' => $indexName,
                 'count' => $successCount,
+                'total' => count($items),
             ]);
 
-            return true;
+            return $successCount > 0;
         } catch (\Throwable $e) {
             $this->logError("Failed to batch index in {$this->getBackendLabel()}", ['error' => $e->getMessage()]);
             return false;

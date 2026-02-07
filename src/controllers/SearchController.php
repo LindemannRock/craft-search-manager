@@ -218,10 +218,13 @@ class SearchController extends Controller
                 $elementId = (int) $elementId;
 
                 // Try to get the actual element for URL and additional data
-                $element = Craft::$app->elements->getElementById($elementId, null, $siteId);
+                // For public (non-CP) requests, only return live elements to prevent
+                // disabled/expired content from appearing in search results
+                $criteria = Craft::$app->getRequest()->getIsCpRequest() ? [] : ['status' => 'live'];
+                $element = Craft::$app->elements->getElementById($elementId, null, $siteId, $criteria);
 
                 if ($element === null) {
-                    // Element might have been deleted, skip it
+                    // Element might have been deleted or is not live, skip it
                     continue;
                 }
 

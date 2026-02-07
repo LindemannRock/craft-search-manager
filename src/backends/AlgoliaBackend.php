@@ -277,6 +277,7 @@ class AlgoliaBackend extends BaseBackend
 
             // Build OR group for multiple values within same filter
             $orParts = array_map(function($item) use ($group) {
+                $item = str_replace('"', '\\"', (string) $item);
                 return $group . ':"' . $item . '"';
             }, $items);
 

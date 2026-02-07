@@ -137,7 +137,7 @@ class BackendsController extends Controller
     public function actionEdit(?int $backendId = null): Response
     {
         if ($backendId) {
-            $this->requirePermission('searchManager:viewBackends');
+            $this->requirePermission('searchManager:editBackends');
             $backend = ConfiguredBackend::findById($backendId);
             if (!$backend) {
                 throw new NotFoundHttpException('Backend not found');
@@ -652,30 +652,6 @@ class BackendsController extends Controller
      */
     private function isDefaultBackendFromConfig(): bool
     {
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-
-        if (!file_exists($configPath)) {
-            return false;
-        }
-
-        $config = require $configPath;
-
-        // Check in root level
-        if (isset($config['defaultBackendHandle'])) {
-            return true;
-        }
-
-        // Check in '*' (all environments)
-        if (isset($config['*']['defaultBackendHandle'])) {
-            return true;
-        }
-
-        // Check in current environment
-        $env = Craft::$app->getConfig()->env;
-        if ($env && isset($config[$env]['defaultBackendHandle'])) {
-            return true;
-        }
-
-        return false;
+        return SearchManager::$plugin->getSettings()->isOverriddenByConfig('defaultBackendHandle');
     }
 }

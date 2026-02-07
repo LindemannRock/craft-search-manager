@@ -344,7 +344,7 @@ class TypesenseBackend extends BaseBackend
                     if (is_bool($v)) {
                         return $v ? 'true' : 'false';
                     }
-                    return '`' . $v . '`';
+                    return '`' . str_replace('`', '\\`', (string) $v) . '`';
                 }, $value);
                 $filterParts[] = $key . ':=[' . implode(', ', $values) . ']';
             } else {
@@ -352,7 +352,7 @@ class TypesenseBackend extends BaseBackend
                     $value = $value ? 'true' : 'false';
                     $filterParts[] = $key . ':=' . $value;
                 } else {
-                    $filterParts[] = $key . ':=`' . $value . '`';
+                    $filterParts[] = $key . ':=`' . str_replace('`', '\\`', (string) $value) . '`';
                 }
             }
         }

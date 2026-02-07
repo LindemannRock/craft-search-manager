@@ -110,39 +110,30 @@ abstract class BaseBackend extends Component implements BackendInterface
             'backend' => $this->getName(),
         ]);
 
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
-
         // Try config file first
-        if (file_exists($configPath)) {
-            try {
-                $config = require $configPath;
-                $env = Craft::$app->getConfig()->env;
-
-                // Merge environment config
-                $mergedConfig = $config['*'] ?? [];
-                if ($env && isset($config[$env])) {
-                    $mergedConfig = array_merge($mergedConfig, $config[$env]);
-                }
-
-                $backends = $mergedConfig['backends'] ?? [];
-                if (isset($backends[$this->getName()])) {
-                    return $backends[$this->getName()];
-                }
-            } catch (\Throwable $e) {
-                $this->logError('Failed to load backend settings from config', [
-                    'backend' => $this->getName(),
-                    'error' => $e->getMessage(),
-                ]);
+        try {
+            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
+            $backends = $config['backends'] ?? [];
+            if (isset($backends[$this->getName()])) {
+                return $backends[$this->getName()];
             }
+        } catch (\Throwable $e) {
+            $this->logError('Failed to load backend settings from config', [
+                'backend' => $this->getName(),
+                'error' => $e->getMessage(),
+            ]);
         }
 
         // Fallback to database settings
         $backendSettings = \lindemannrock\searchmanager\models\BackendSettings::findByBackend($this->getName());
         $config = $backendSettings ? $backendSettings->config : [];
 
+        $sensitiveKeys = ['apiKey', 'adminApiKey', 'searchApiKey', 'password', 'secret'];
+        $safeConfig = array_diff_key($config, array_flip($sensitiveKeys));
         $this->logDebug('Loaded backend settings', [
             'backend' => $this->getName(),
-            'config' => $config,
+            'config' => $safeConfig,
+            'redactedKeys' => array_values(array_intersect(array_keys($config), $sensitiveKeys)),
         ]);
 
         return $config;
@@ -252,12 +243,12 @@ abstract class BaseBackend extends Component implements BackendInterface
             if (is_array($value)) {
                 // Multiple values = OR condition
                 $orParts = array_map(function($v) use ($key) {
-                    $v = is_bool($v) ? ($v ? 'true' : 'false') : $v;
+                    $v = is_bool($v) ? ($v ? 'true' : 'false') : str_replace('"', '\\"', (string) $v);
                     return $key . ' = "' . $v . '"';
                 }, $value);
                 $filterParts[] = '(' . implode(' OR ', $orParts) . ')';
             } else {
-                $value = is_bool($value) ? ($value ? 'true' : 'false') : $value;
+                $value = is_bool($value) ? ($value ? 'true' : 'false') : str_replace('"', '\\"', (string) $value);
                 $filterParts[] = $key . ' = "' . $value . '"';
             }
         }

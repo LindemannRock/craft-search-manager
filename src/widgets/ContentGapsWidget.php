@@ -46,6 +46,15 @@ class ContentGapsWidget extends Widget
     /**
      * @inheritdoc
      */
+    public static function isSelectable(): bool
+    {
+        return parent::isSelectable() &&
+            Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics');
+    }
+
+    /**
+     * @inheritdoc
+     */
     public static function displayName(): string
     {
         $pluginName = SearchManager::$plugin->getSettings()->getFullName();
@@ -98,7 +107,16 @@ class ContentGapsWidget extends Widget
      */
     public function getBodyHtml(): ?string
     {
-        $contentGaps = SearchManager::$plugin->analytics->getZeroResultClusters(null, $this->dateRange, $this->limit);
+        if (!Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics')) {
+            return '<p class="light">' . Craft::t('search-manager', 'You don\'t have permission to view analytics.') . '</p>';
+        }
+
+        if (!SearchManager::$plugin->getSettings()->enableAnalytics) {
+            return '<p class="light">' . Craft::t('search-manager', 'Analytics are disabled in plugin settings.') . '</p>';
+        }
+
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+        $contentGaps = SearchManager::$plugin->analytics->getZeroResultClusters($editableSiteIds, $this->dateRange, $this->limit);
 
         return Craft::$app->getView()->renderTemplate(
             'search-manager/dashboard-widgets/content-gaps/body',

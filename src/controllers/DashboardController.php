@@ -69,15 +69,16 @@ class DashboardController extends Controller
         $searchesYesterday = 0;
         $topSearches = [];
         $recentZeroResults = [];
-        if ($settings->enableAnalytics) {
-            $searchesToday = SearchManager::$plugin->analytics->getAnalyticsCount(null, null, 'today');
-            $searchesYesterday = SearchManager::$plugin->analytics->getAnalyticsCount(null, null, 'yesterday');
-            $topSearches = SearchManager::$plugin->analytics->getMostCommonSearches(null, 5, 'last7days');
-            $recentZeroResults = SearchManager::$plugin->analytics->getRecentSearches(null, 5, false, 'last7days');
+        if ($settings->enableAnalytics && $user->checkPermission('searchManager:viewAnalytics')) {
+            $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+            $searchesToday = SearchManager::$plugin->analytics->getAnalyticsCount($editableSiteIds, null, 'today');
+            $searchesYesterday = SearchManager::$plugin->analytics->getAnalyticsCount($editableSiteIds, null, 'yesterday');
+            $topSearches = SearchManager::$plugin->analytics->getMostCommonSearches($editableSiteIds, 5, 'last7days');
+            $recentZeroResults = SearchManager::$plugin->analytics->getRecentSearches($editableSiteIds, 5, false, 'last7days');
         }
 
-        // Get all sites for reference
-        $sites = Craft::$app->getSites()->getAllSites();
+        // Get editable sites for reference
+        $sites = Craft::$app->getSites()->getEditableSites();
 
         return $this->renderTemplate('search-manager/dashboard/index', [
             'settings' => $settings,

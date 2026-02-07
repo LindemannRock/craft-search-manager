@@ -419,8 +419,8 @@ class SettingsController extends Controller
                 SearchManager::$plugin->backend->clearSearchCache($indexHandle);
                 $message = Craft::t('search-manager', 'Search cache cleared for index: {handle}', ['handle' => $indexHandle]);
             } else {
-                // Clear all search caches
-                Craft::$app->getCache()->flush();
+                // Clear all search caches (only search-manager's, not all of Craft)
+                SearchManager::$plugin->backend->clearAllSearchCache();
                 $message = Craft::t('search-manager', 'All search caches cleared');
             }
 
@@ -626,7 +626,7 @@ class SettingsController extends Controller
             }
         }
 
-        $settings->setAttributes($postedSettings, false);
+        $settings->setAttributes($postedSettings);
 
         if (!$settings->validate()) {
             $this->logError('Settings validation failed', ['errors' => $settings->getErrors()]);

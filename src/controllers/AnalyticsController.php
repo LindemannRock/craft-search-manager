@@ -1,6 +1,6 @@
 <?php
 /**
- * Redirect Manager plugin for Craft CMS 5.x
+ * Search Manager plugin for Craft CMS 5.x
  *
  * @link      https://lindemannrock.com
  * @copyright Copyright (c) 2025 LindemannRock
@@ -46,30 +46,40 @@ class AnalyticsController extends Controller
     {
         $this->requirePermission('searchManager:viewAnalytics');
 
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
+
+        // Validate siteId against user's editable sites
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to view analytics for this site.');
+        }
+
         $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
+        // Default to editable sites when no specific site selected
+        $effectiveSiteId = $siteId ?? $editableSiteIds;
+
         // Get chart data
-        $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
+        $chartData = SearchManager::$plugin->analytics->getChartData($effectiveSiteId, $dateRange);
 
         // Get most common searches
-        $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($siteId, 15, $dateRange);
+        $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 15, $dateRange);
 
         // Get recent searches
-        $recentSearches = SearchManager::$plugin->analytics->getRecentSearches($siteId, 100, null, $dateRange);
-        $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($siteId, 15, false, $dateRange);
+        $recentSearches = SearchManager::$plugin->analytics->getRecentSearches($effectiveSiteId, 100, null, $dateRange);
+        $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($effectiveSiteId, 15, false, $dateRange);
 
         // Get counts
-        $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, null, $dateRange);
-        $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true, $dateRange);
-        $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false, $dateRange);
+        $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, null, $dateRange);
+        $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
+        $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
 
         // Get device analytics
-        $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
-        $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
-        $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
-        $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $dateRange);
+        $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
+        $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
+        $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
+        $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
 
         // Transform data for charts
         $deviceBreakdown = [
@@ -85,8 +95,8 @@ class AnalyticsController extends Controller
             'values' => array_column($osData, 'count'),
         ];
 
-        // Get all sites for dropdown
-        $sites = Craft::$app->getSites()->getAllSites();
+        // Get editable sites for dropdown
+        $sites = Craft::$app->getSites()->getEditableSites();
         $settings = SearchManager::$plugin->getSettings();
 
         return $this->renderTemplate('search-manager/analytics/index', [
@@ -117,7 +127,7 @@ class AnalyticsController extends Controller
     public function actionDelete(): Response
     {
         $this->requirePostRequest();
-        $this->requirePermission('searchManager:viewAnalytics');
+        $this->requirePermission('searchManager:clearAnalytics');
 
         $analyticId = Craft::$app->getRequest()->getRequiredBodyParam('analyticId');
 
@@ -139,10 +149,17 @@ class AnalyticsController extends Controller
         $this->requirePostRequest();
         $this->requirePermission('searchManager:clearAnalytics');
 
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
         $siteId = Craft::$app->getRequest()->getBodyParam('siteId');
-        $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
+        $siteId = $siteId ? (int)$siteId : null;
 
-        $deleted = SearchManager::$plugin->analytics->clearAnalytics($siteId);
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to clear analytics for this site.');
+        }
+
+        // Scope to editable sites when no specific site selected
+        $effectiveSiteId = $siteId ?? $editableSiteIds;
+        $deleted = SearchManager::$plugin->analytics->clearAnalytics($effectiveSiteId);
 
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', '{count} analytics cleared', ['count' => $deleted])
@@ -176,6 +193,15 @@ class AnalyticsController extends Controller
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
 
+        // Validate siteId against user's editable sites
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to export analytics for this site.');
+        }
+
+        // Scope to editable sites when no specific site selected
+        $effectiveSiteId = $siteId ?? $editableSiteIds;
+
         try {
             $settings = SearchManager::$plugin->getSettings();
             $siteName = null;
@@ -189,7 +215,7 @@ class AnalyticsController extends Controller
             }
             $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
 
-            $exportData = SearchManager::$plugin->analytics->exportAnalytics($siteId, $dateRange);
+            $exportData = SearchManager::$plugin->analytics->exportAnalytics($effectiveSiteId, $dateRange);
             $recentRows = $exportData['rows'] ?? [];
             $recentHeaders = $exportData['headers'] ?? [];
             $recentJson = $exportData['jsonData']['data'] ?? [];
@@ -202,7 +228,7 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Trend'),
                 Craft::t('search-manager', 'Change %'),
             ];
-            $trending = SearchManager::$plugin->analytics->getTrendingQueries($siteId, $dateRange, 50);
+            $trending = SearchManager::$plugin->analytics->getTrendingQueries($effectiveSiteId, $dateRange, 50);
             foreach ($trending as $item) {
                 $trendingRows[] = [
                     'query' => $item['query'],
@@ -220,7 +246,7 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Hits'),
                 Craft::t('search-manager', 'Avg Results'),
             ];
-            $rulesData = SearchManager::$plugin->analytics->getTopTriggeredRules($siteId, $dateRange);
+            $rulesData = SearchManager::$plugin->analytics->getTopTriggeredRules($effectiveSiteId, $dateRange);
             foreach ($rulesData as $item) {
                 $ruleRows[] = [
                     'rule_name' => $item['ruleName'],
@@ -237,7 +263,7 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Impressions'),
                 Craft::t('search-manager', 'Unique Queries'),
             ];
-            $promosData = SearchManager::$plugin->analytics->getTopPromotions($siteId, $dateRange);
+            $promosData = SearchManager::$plugin->analytics->getTopPromotions($effectiveSiteId, $dateRange);
             foreach ($promosData as $item) {
                 $promoRows[] = [
                     'element_title' => $item['elementTitle'] ?? 'Element #' . $item['elementId'],
@@ -254,8 +280,8 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Avg Time (ms)'),
                 Craft::t('search-manager', 'Searches'),
             ];
-            $fastQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($siteId, $dateRange);
-            $slowQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($siteId, $dateRange);
+            $fastQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($effectiveSiteId, $dateRange);
+            $slowQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($effectiveSiteId, $dateRange);
             foreach ($fastQueries as $item) {
                 $performanceRows[] = [
                     'query' => $item['query'],
@@ -279,9 +305,9 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Name'),
                 Craft::t('search-manager', 'Count'),
             ];
-            $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
-            $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
-            $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
+            $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
+            $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
+            $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
             foreach ($deviceData as $item) {
                 $trafficRows[] = ['category' => 'device', 'name' => $item['deviceType'] ?? '', 'count' => $item['count']];
             }
@@ -298,8 +324,8 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Name'),
                 Craft::t('search-manager', 'Count'),
             ];
-            $countries = SearchManager::$plugin->analytics->getCountryBreakdown($siteId, $dateRange);
-            $cities = SearchManager::$plugin->analytics->getCityBreakdown($siteId, $dateRange);
+            $countries = SearchManager::$plugin->analytics->getCountryBreakdown($effectiveSiteId, $dateRange);
+            $cities = SearchManager::$plugin->analytics->getCityBreakdown($effectiveSiteId, $dateRange);
             foreach ($countries as $item) {
                 $geoRows[] = ['type' => 'country', 'name' => $item['name'] ?? '', 'count' => $item['count']];
             }
@@ -315,7 +341,7 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Related Queries'),
                 Craft::t('search-manager', 'Last Searched'),
             ];
-            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $dateRange);
+            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange);
             foreach ($clusters as $cluster) {
                 $clusterRows[] = [
                     'main_term' => $cluster['representative'],
@@ -342,9 +368,7 @@ class AnalyticsController extends Controller
                 ->orderBy(['dateCreated' => SORT_DESC])
                 ->limit(1000);
             SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
-            if ($siteId) {
-                $query->andWhere(['siteId' => $siteId]);
-            }
+            $query->andWhere(['siteId' => $effectiveSiteId]);
             $results = $query->all();
             foreach ($results as $row) {
                 $rowSiteName = '—';
@@ -486,21 +510,31 @@ class AnalyticsController extends Controller
         $this->requirePermission('searchManager:viewAnalytics');
 
         $request = Craft::$app->getRequest();
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
+
+        // Validate siteId against user's editable sites
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to view analytics for this site.');
+        }
+
         $dateRange = $request->getParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
         $type = $request->getParam('type', 'all'); // 'all', 'summary', 'chart', 'query-analysis', 'content-gaps', 'device-stats'
+
+        // Default to editable sites when no specific site selected
+        $effectiveSiteId = $siteId ?? $editableSiteIds;
 
         try {
             $data = [];
 
             // Summary Stats (Header)
             if ($type === 'all' || $type === 'summary') {
-                $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, null, $dateRange);
-                $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, true, $dateRange);
-                $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($siteId, false, $dateRange);
-                $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($siteId, 15, $dateRange);
-                $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($siteId, 15, false, $dateRange);
+                $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, null, $dateRange);
+                $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
+                $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
+                $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 15, $dateRange);
+                $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($effectiveSiteId, 15, false, $dateRange);
 
                 $data['summary'] = [
                     'totalCount' => $totalCount,
@@ -513,30 +547,30 @@ class AnalyticsController extends Controller
 
             // Main Chart
             if ($type === 'all' || $type === 'chart') {
-                $data['chartData'] = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
+                $data['chartData'] = SearchManager::$plugin->analytics->getChartData($effectiveSiteId, $dateRange);
             }
 
             // Query Analysis Tab
             if ($type === 'all' || $type === 'query-analysis') {
                 $data['queryAnalysis'] = [
-                    'lengthDistribution' => SearchManager::$plugin->analytics->getQueryLengthDistribution($siteId, $dateRange),
-                    'wordCloud' => SearchManager::$plugin->analytics->getWordCloudData($siteId, $dateRange),
+                    'lengthDistribution' => SearchManager::$plugin->analytics->getQueryLengthDistribution($effectiveSiteId, $dateRange),
+                    'wordCloud' => SearchManager::$plugin->analytics->getWordCloudData($effectiveSiteId, $dateRange),
                 ];
             }
 
             // Content Gaps Tab
             if ($type === 'all' || $type === 'content-gaps') {
                 $data['contentGaps'] = [
-                    'clusters' => SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $dateRange, 15),
+                    'clusters' => SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange, 15),
                 ];
             }
 
             // Audience/Device Stats
             if ($type === 'all' || $type === 'device-stats' || $type === 'devices') {
-                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
-                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
-                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
-                $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $dateRange);
+                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
+                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
+                $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
+                $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
 
                 $data['deviceStats'] = [
                     'deviceBreakdown' => [
@@ -568,7 +602,7 @@ class AnalyticsController extends Controller
 
             // Browsers only
             if ($type === 'browsers') {
-                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
+                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => [
@@ -580,7 +614,7 @@ class AnalyticsController extends Controller
 
             // OS only
             if ($type === 'os') {
-                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
+                $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => [
@@ -592,7 +626,7 @@ class AnalyticsController extends Controller
 
             // Bots only
             if ($type === 'bots') {
-                $botStats = SearchManager::$plugin->analytics->getBotStats($siteId, $dateRange);
+                $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $botStats,
@@ -601,7 +635,7 @@ class AnalyticsController extends Controller
 
             // Geographic data - countries
             if ($type === 'countries') {
-                $countryData = SearchManager::$plugin->analytics->getCountryBreakdown($siteId, $dateRange);
+                $countryData = SearchManager::$plugin->analytics->getCountryBreakdown($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $countryData,
@@ -610,7 +644,7 @@ class AnalyticsController extends Controller
 
             // Geographic data - cities
             if ($type === 'cities') {
-                $cityData = SearchManager::$plugin->analytics->getCityBreakdown($siteId, $dateRange);
+                $cityData = SearchManager::$plugin->analytics->getCityBreakdown($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $cityData,
@@ -619,7 +653,7 @@ class AnalyticsController extends Controller
 
             // Peak usage hours
             if ($type === 'hourly') {
-                $hourlyData = SearchManager::$plugin->analytics->getPeakUsageHours($siteId, $dateRange);
+                $hourlyData = SearchManager::$plugin->analytics->getPeakUsageHours($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $hourlyData,
@@ -628,7 +662,7 @@ class AnalyticsController extends Controller
 
             // Trending queries
             if ($type === 'trending') {
-                $trendingData = SearchManager::$plugin->analytics->getTrendingQueries($siteId, $dateRange);
+                $trendingData = SearchManager::$plugin->analytics->getTrendingQueries($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $trendingData,
@@ -637,7 +671,7 @@ class AnalyticsController extends Controller
 
             // Intent breakdown
             if ($type === 'intent') {
-                $intentData = SearchManager::$plugin->analytics->getIntentBreakdown($siteId, $dateRange);
+                $intentData = SearchManager::$plugin->analytics->getIntentBreakdown($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $intentData,
@@ -646,7 +680,7 @@ class AnalyticsController extends Controller
 
             // Source breakdown
             if ($type === 'source') {
-                $sourceData = SearchManager::$plugin->analytics->getSourceBreakdown($siteId, $dateRange);
+                $sourceData = SearchManager::$plugin->analytics->getSourceBreakdown($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $sourceData,
@@ -655,7 +689,7 @@ class AnalyticsController extends Controller
 
             // Performance data
             if ($type === 'performance') {
-                $performanceData = SearchManager::$plugin->analytics->getPerformanceData($siteId, $dateRange);
+                $performanceData = SearchManager::$plugin->analytics->getPerformanceData($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $performanceData,
@@ -664,7 +698,7 @@ class AnalyticsController extends Controller
 
             // Cache stats
             if ($type === 'cache-stats') {
-                $cacheStats = SearchManager::$plugin->analytics->getCacheStats($siteId, $dateRange);
+                $cacheStats = SearchManager::$plugin->analytics->getCacheStats($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $cacheStats,
@@ -673,7 +707,7 @@ class AnalyticsController extends Controller
 
             // Top performing queries
             if ($type === 'top-queries') {
-                $topQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($siteId, $dateRange);
+                $topQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $topQueries,
@@ -682,7 +716,7 @@ class AnalyticsController extends Controller
 
             // Worst performing queries
             if ($type === 'worst-queries') {
-                $worstQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($siteId, $dateRange);
+                $worstQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $worstQueries,
@@ -695,7 +729,7 @@ class AnalyticsController extends Controller
 
             // Top triggered rules
             if ($type === 'query-rules-top') {
-                $topRules = SearchManager::$plugin->analytics->getTopTriggeredRules($siteId, $dateRange);
+                $topRules = SearchManager::$plugin->analytics->getTopTriggeredRules($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $topRules,
@@ -704,7 +738,7 @@ class AnalyticsController extends Controller
 
             // Rules by action type
             if ($type === 'query-rules-by-type') {
-                $rulesByType = SearchManager::$plugin->analytics->getRulesByActionType($siteId, $dateRange);
+                $rulesByType = SearchManager::$plugin->analytics->getRulesByActionType($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $rulesByType,
@@ -713,7 +747,7 @@ class AnalyticsController extends Controller
 
             // Top queries triggering rules
             if ($type === 'query-rules-queries') {
-                $ruleQueries = SearchManager::$plugin->analytics->getQueriesTriggeringRules($siteId, $dateRange);
+                $ruleQueries = SearchManager::$plugin->analytics->getQueriesTriggeringRules($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $ruleQueries,
@@ -726,7 +760,7 @@ class AnalyticsController extends Controller
 
             // Top promotions
             if ($type === 'promotions-top') {
-                $topPromos = SearchManager::$plugin->analytics->getTopPromotions($siteId, $dateRange);
+                $topPromos = SearchManager::$plugin->analytics->getTopPromotions($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $topPromos,
@@ -735,7 +769,7 @@ class AnalyticsController extends Controller
 
             // Promotions by position
             if ($type === 'promotions-by-position') {
-                $promosByPosition = SearchManager::$plugin->analytics->getPromotionsByPosition($siteId, $dateRange);
+                $promosByPosition = SearchManager::$plugin->analytics->getPromotionsByPosition($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $promosByPosition,
@@ -744,7 +778,7 @@ class AnalyticsController extends Controller
 
             // Top queries triggering promotions
             if ($type === 'promotions-queries') {
-                $promoQueries = SearchManager::$plugin->analytics->getQueriesTriggeringPromotions($siteId, $dateRange);
+                $promoQueries = SearchManager::$plugin->analytics->getQueriesTriggeringPromotions($effectiveSiteId, $dateRange);
                 return $this->asJson([
                     'success' => true,
                     'data' => $promoQueries,
@@ -770,7 +804,9 @@ class AnalyticsController extends Controller
         } catch (\Exception $e) {
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'An error occurred while loading analytics data.'),
             ]);
         }
     }
@@ -785,11 +821,18 @@ class AnalyticsController extends Controller
     {
         $this->requirePermission('searchManager:viewAnalytics');
 
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
-        $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
+        $siteId = $siteId ? (int)$siteId : null;
+
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to view analytics for this site.');
+        }
+
+        $effectiveSiteId = $siteId ?? $editableSiteIds;
         $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
-        $chartData = SearchManager::$plugin->analytics->getChartData($siteId, $dateRange);
+        $chartData = SearchManager::$plugin->analytics->getChartData($effectiveSiteId, $dateRange);
 
         return $this->asJson([
             'success' => true,
@@ -848,7 +891,9 @@ class AnalyticsController extends Controller
         } catch (\Exception $e) {
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'An error occurred while loading analytics data.'),
             ]);
         }
     }
@@ -904,7 +949,9 @@ class AnalyticsController extends Controller
         } catch (\Exception $e) {
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'An error occurred while loading analytics data.'),
             ]);
         }
     }
@@ -987,6 +1034,10 @@ class AnalyticsController extends Controller
         $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
         $format = $request->getQueryParam('format', 'csv');
 
+        if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
+            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+        }
+
         if (!$promotionId) {
             throw new \yii\web\BadRequestHttpException('Promotion ID is required');
         }
@@ -1046,6 +1097,19 @@ class AnalyticsController extends Controller
         $siteId = $siteId ? (int)$siteId : null;
         $format = $request->getQueryParam('format', 'csv');
 
+        if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
+            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+        }
+
+        // Validate siteId against user's editable sites
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to export analytics for this site.');
+        }
+
+        // Scope to editable sites when no specific site selected
+        $effectiveSiteId = $siteId ?? $editableSiteIds;
+
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();
         $sitePart = 'all';
@@ -1060,7 +1124,7 @@ class AnalyticsController extends Controller
 
         switch ($tab) {
             case 'trending':
-                $trending = SearchManager::$plugin->analytics->getTrendingQueries($siteId, $dateRange, 50);
+                $trending = SearchManager::$plugin->analytics->getTrendingQueries($effectiveSiteId, $dateRange, 50);
                 foreach ($trending as $item) {
                     $data[] = [
                         'query' => $item['query'],
@@ -1074,7 +1138,7 @@ class AnalyticsController extends Controller
                 break;
 
             case 'query-rules':
-                $rulesData = SearchManager::$plugin->analytics->getTopTriggeredRules($siteId, $dateRange);
+                $rulesData = SearchManager::$plugin->analytics->getTopTriggeredRules($effectiveSiteId, $dateRange);
                 foreach ($rulesData as $item) {
                     $data[] = [
                         'rule_name' => $item['ruleName'],
@@ -1087,7 +1151,7 @@ class AnalyticsController extends Controller
                 break;
 
             case 'promotions':
-                $promosData = SearchManager::$plugin->analytics->getTopPromotions($siteId, $dateRange);
+                $promosData = SearchManager::$plugin->analytics->getTopPromotions($effectiveSiteId, $dateRange);
                 foreach ($promosData as $item) {
                     $data[] = [
                         'element_title' => $item['elementTitle'] ?? 'Element #' . $item['elementId'],
@@ -1100,8 +1164,8 @@ class AnalyticsController extends Controller
                 break;
 
             case 'performance':
-                $fastQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($siteId, $dateRange);
-                $slowQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($siteId, $dateRange);
+                $fastQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($effectiveSiteId, $dateRange);
+                $slowQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($effectiveSiteId, $dateRange);
                 foreach ($fastQueries as $item) {
                     $data[] = [
                         'query' => $item['query'],
@@ -1122,9 +1186,9 @@ class AnalyticsController extends Controller
                 break;
 
             case 'traffic-devices':
-                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($siteId, $dateRange);
-                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($siteId, $dateRange);
-                $osData = SearchManager::$plugin->analytics->getOsBreakdown($siteId, $dateRange);
+                $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
+                $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
+                $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
 
                 foreach ($deviceData as $item) {
                     $data[] = ['category' => 'device', 'name' => $item['deviceType'] ?? '', 'count' => $item['count']];
@@ -1139,8 +1203,8 @@ class AnalyticsController extends Controller
                 break;
 
             case 'geographic':
-                $countries = SearchManager::$plugin->analytics->getCountryBreakdown($siteId, $dateRange);
-                $cities = SearchManager::$plugin->analytics->getCityBreakdown($siteId, $dateRange);
+                $countries = SearchManager::$plugin->analytics->getCountryBreakdown($effectiveSiteId, $dateRange);
+                $cities = SearchManager::$plugin->analytics->getCityBreakdown($effectiveSiteId, $dateRange);
 
                 foreach ($countries as $item) {
                     $data[] = ['type' => 'country', 'name' => $item['name'] ?? '', 'count' => $item['count']];
@@ -1192,6 +1256,19 @@ class AnalyticsController extends Controller
         $format = $request->getQueryParam('format', 'csv');
         $type = $request->getQueryParam('type', 'clusters'); // 'clusters' or 'recent'
 
+        if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
+            throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
+        }
+
+        // Validate siteId against user's editable sites
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to export analytics for this site.');
+        }
+
+        // Scope to editable sites when no specific site selected
+        $effectiveSiteId = $siteId ?? $editableSiteIds;
+
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();
         $sitePart = 'all';
@@ -1204,7 +1281,7 @@ class AnalyticsController extends Controller
 
         if ($type === 'clusters') {
             // Get content gaps clusters
-            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($siteId, $dateRange);
+            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange);
             $data = [];
 
             foreach ($clusters as $cluster) {
@@ -1227,10 +1304,7 @@ class AnalyticsController extends Controller
                 ->limit(1000);
 
             SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
-
-            if ($siteId) {
-                $query->andWhere(['siteId' => $siteId]);
-            }
+            $query->andWhere(['siteId' => $effectiveSiteId]);
 
             $results = $query->all();
             $data = [];

@@ -395,12 +395,12 @@ class MeilisearchBackend extends BaseBackend
             if (is_array($value)) {
                 // Multiple values = OR condition
                 $orParts = array_map(function($v) use ($key) {
-                    $v = is_bool($v) ? ($v ? 'true' : 'false') : $v;
+                    $v = is_bool($v) ? ($v ? 'true' : 'false') : str_replace('"', '\\"', (string) $v);
                     return $key . ' = "' . $v . '"';
                 }, $value);
                 $filterParts[] = '(' . implode(' OR ', $orParts) . ')';
             } else {
-                $value = is_bool($value) ? ($value ? 'true' : 'false') : $value;
+                $value = is_bool($value) ? ($value ? 'true' : 'false') : str_replace('"', '\\"', (string) $value);
                 $filterParts[] = $key . ' = "' . $value . '"';
             }
         }

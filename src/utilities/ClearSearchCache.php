@@ -51,36 +51,48 @@ class ClearSearchCache extends Utility
     public static function contentHtml(): string
     {
         $settings = SearchManager::getInstance()->getSettings();
-        $indices = SearchIndex::findAll();
+        $user = Craft::$app->getUser();
+
+        // Get index data only if user can manage indices
+        $indices = [];
         $totalDocuments = 0;
-
-        // Count indices per backend type
         $backendDistribution = [];
-        foreach ($indices as $index) {
-            $totalDocuments += $index->documentCount;
-
-            $backendType = $index->getEffectiveBackendType() ?: 'file';
-            if (!isset($backendDistribution[$backendType])) {
-                $backendDistribution[$backendType] = ['count' => 0, 'documents' => 0];
-            }
-            $backendDistribution[$backendType]['count']++;
-            $backendDistribution[$backendType]['documents'] += $index->documentCount;
-        }
-
-        // Get default backend name
         $defaultBackendName = null;
-        $defaultBackendHandle = $settings->defaultBackendHandle;
-        if ($defaultBackendHandle) {
-            $defaultBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultBackendHandle);
-            if ($defaultBackend) {
-                $defaultBackendName = $defaultBackend->name;
+
+        if ($user->getIdentity() && $user->checkPermission('searchManager:manageIndices')) {
+            $indices = SearchIndex::findAll();
+
+            // Count indices per backend type
+            foreach ($indices as $index) {
+                $totalDocuments += $index->documentCount;
+
+                $backendType = $index->getEffectiveBackendType() ?: 'file';
+                if (!isset($backendDistribution[$backendType])) {
+                    $backendDistribution[$backendType] = ['count' => 0, 'documents' => 0];
+                }
+                $backendDistribution[$backendType]['count']++;
+                $backendDistribution[$backendType]['documents'] += $index->documentCount;
+            }
+
+            // Get default backend name
+            $defaultBackendHandle = $settings->defaultBackendHandle;
+            if ($defaultBackendHandle) {
+                $defaultBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultBackendHandle);
+                if ($defaultBackend) {
+                    $defaultBackendName = $defaultBackend->name;
+                }
             }
         }
 
-        // Get analytics count
-        $analyticsCount = (new \craft\db\Query())
-            ->from('{{%searchmanager_analytics}}')
-            ->count();
+        // Get analytics count only if user can view analytics, scoped to editable sites
+        $analyticsCount = 0;
+        if ($settings->enableAnalytics && $user->getIdentity() && $user->checkPermission('searchManager:viewAnalytics')) {
+            $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+            $analyticsCount = (int) (new \craft\db\Query())
+                ->from('{{%searchmanager_analytics}}')
+                ->where(['siteId' => $editableSiteIds])
+                ->count();
+        }
 
         // Count cache files (only for file storage)
         $deviceCacheFiles = 0;
@@ -118,7 +130,7 @@ class ClearSearchCache extends Utility
             'searchCacheFiles' => $searchCacheFiles,
             'autocompleteCacheFiles' => $autocompleteCacheFiles,
             'storageMethod' => $settings->cacheStorageMethod,
-            'analyticsCount' => (int) $analyticsCount,
+            'analyticsCount' => $analyticsCount,
             'settings' => $settings,
         ]);
     }

@@ -380,7 +380,7 @@ class WidgetConfigService extends Component
 
             if ($first) {
                 $settings->defaultWidgetHandle = $first;
-                Craft::$app->plugins->savePluginSettings($plugin, $settings->toArray());
+                $settings->saveToDatabase();
                 $this->logInfo('Set new default widget after deletion', ['handle' => $first]);
             } else {
                 // No database widgets left, check config file widgets
@@ -388,7 +388,7 @@ class WidgetConfigService extends Component
                 foreach ($configFileConfigs as $configWidget) {
                     if ($configWidget->enabled) {
                         $settings->defaultWidgetHandle = $configWidget->handle;
-                        Craft::$app->plugins->savePluginSettings($plugin, $settings->toArray());
+                        $settings->saveToDatabase();
                         $this->logInfo('Set new default widget after deletion', ['handle' => $configWidget->handle]);
                         break;
                     }

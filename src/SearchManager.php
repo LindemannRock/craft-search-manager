@@ -861,6 +861,16 @@ class SearchManager extends Plugin
     // SETTINGS
     // =========================================================================
 
+    /**
+     * Prevent Craft from overwriting settings with stale project config / plugins table data.
+     * Settings are managed via SettingsPersistenceTrait (custom DB table), not project config.
+     */
+    public function setSettings(array|Model $settings): void
+    {
+        // No-op: settings come from loadFromDatabase() in createSettingsModel(),
+        // not from Craft's plugins table or project config.
+    }
+
     protected function createSettingsModel(): ?Model
     {
         try {

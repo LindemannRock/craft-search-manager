@@ -50,8 +50,8 @@ class Highlighter
     {
         $this->setLoggingHandle('search-manager');
 
-        $this->tag = $config['tag'] ?? 'mark';
-        $this->class = $config['class'] ?? '';
+        $this->tag = preg_replace('/[^a-zA-Z0-9]/', '', $config['tag'] ?? 'mark') ?: 'mark';
+        $this->class = htmlspecialchars($config['class'] ?? '', ENT_QUOTES, 'UTF-8');
         $this->snippetLength = $config['snippetLength'] ?? 200;
         $this->maxSnippets = $config['maxSnippets'] ?? 3;
     }
@@ -71,9 +71,9 @@ class Highlighter
             return $text;
         }
 
-        // Strip HTML if requested
+        // Sanitize HTML to prevent XSS (htmlspecialchars is safer than strip_tags)
         if ($stripTags) {
-            $text = strip_tags($text);
+            $text = htmlspecialchars(strip_tags($text), ENT_QUOTES, 'UTF-8');
         }
 
         // Build opening tag
@@ -111,9 +111,9 @@ class Highlighter
             return [];
         }
 
-        // Strip HTML if requested
+        // Sanitize HTML to prevent XSS (htmlspecialchars is safer than strip_tags)
         if ($stripTags) {
-            $text = strip_tags($text);
+            $text = htmlspecialchars(strip_tags($text), ENT_QUOTES, 'UTF-8');
         }
 
         $snippets = [];

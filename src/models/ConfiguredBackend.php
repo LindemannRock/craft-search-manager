@@ -182,6 +182,7 @@ class ConfiguredBackend extends Model
                 'instructions' => 'Custom storage path (leave empty for @storage/runtime/search-manager/indices/)',
                 'placeholder' => 'Leave empty for default',
                 'required' => false,
+                'tip' => 'Use Craft path aliases: <code>@storage/search-manager/indices</code> (recommended) or <code>@root/search-indices</code>. Paths must be outside webroot for security. Environment variables like <code>$ENV_VAR</code> are supported.',
             ],
         ],
     ];
@@ -254,7 +255,61 @@ class ConfiguredBackend extends Model
             [['enabled'], 'validateNotDisablingDefault'],
             [['sortOrder'], 'integer'],
             [['settings'], 'safe'],
+            [['settings'], 'validateStoragePath'],
         ];
+    }
+
+    /**
+     * Validate storagePath setting against directory traversal and allowed locations
+     *
+     * @param string $attribute
+     */
+    public function validateStoragePath(string $attribute): void
+    {
+        $storagePath = $this->settings['storagePath'] ?? null;
+
+        if ($storagePath === null || $storagePath === '') {
+            return;
+        }
+
+        // Only validate for file backends
+        if ($this->backendType !== 'file') {
+            return;
+        }
+
+        // Check for directory traversal
+        if (str_contains($storagePath, '..')) {
+            $this->addError($attribute, Craft::t('search-manager', 'Storage path cannot contain directory traversal sequences (..).'));
+            return;
+        }
+
+        // Must start with an allowed alias or env variable
+        $allowedPrefixes = ['@root', '@storage', '$'];
+        $isValid = false;
+        foreach ($allowedPrefixes as $prefix) {
+            if (str_starts_with($storagePath, $prefix)) {
+                $isValid = true;
+                break;
+            }
+        }
+
+        if (!$isValid) {
+            $this->addError($attribute, Craft::t('search-manager', 'Storage path must start with @root, @storage, or an environment variable ($). Example: @storage/search-manager/indices'));
+            return;
+        }
+
+        // Resolve and validate the path
+        try {
+            $resolvedPath = Craft::getAlias($storagePath);
+            $webroot = Craft::getAlias('@webroot');
+
+            // Prevent storage in web-accessible directory
+            if (str_starts_with($resolvedPath, $webroot)) {
+                $this->addError($attribute, Craft::t('search-manager', 'Storage path cannot be in a web-accessible directory (@webroot).'));
+            }
+        } catch (\Exception $e) {
+            $this->addError($attribute, Craft::t('search-manager', 'Invalid storage path: {error}', ['error' => $e->getMessage()]));
+        }
     }
 
     /**
@@ -620,7 +675,7 @@ class ConfiguredBackend extends Model
         foreach ($configBackends as $backend) {
             if ($backend->enabled) {
                 $settings->defaultBackendHandle = $backend->handle;
-                Craft::$app->plugins->savePluginSettings($plugin, $settings->toArray());
+                $settings->saveToDatabase();
                 $this->logInfo('Auto-assigned new default backend after deletion', ['handle' => $backend->handle]);
                 return;
             }
@@ -636,12 +691,12 @@ class ConfiguredBackend extends Model
 
         if ($row) {
             $settings->defaultBackendHandle = $row['handle'];
-            Craft::$app->plugins->savePluginSettings($plugin, $settings->toArray());
+            $settings->saveToDatabase();
             $this->logInfo('Auto-assigned new default backend after deletion', ['handle' => $row['handle']]);
         } else {
             // No enabled backends left - clear the default
             $settings->defaultBackendHandle = null;
-            Craft::$app->plugins->savePluginSettings($plugin, $settings->toArray());
+            $settings->saveToDatabase();
             $this->logWarning('No enabled backends available to set as default');
         }
     }

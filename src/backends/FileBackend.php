@@ -27,8 +27,15 @@ class FileBackend extends AbstractSearchEngineBackend
     {
         parent::init();
 
-        // Set base path for file storage
-        $this->_basePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/indices';
+        // Use custom storagePath from backend settings, or default to runtime path
+        $settings = $this->getBackendSettings();
+        $customPath = $settings['storagePath'] ?? null;
+
+        if ($customPath !== null && $customPath !== '') {
+            $this->_basePath = rtrim(\craft\helpers\App::parseEnv($customPath), '/');
+        } else {
+            $this->_basePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/indices';
+        }
 
         // Ensure directory exists
         if (!is_dir($this->_basePath)) {
@@ -41,7 +48,10 @@ class FileBackend extends AbstractSearchEngineBackend
      */
     protected function createStorage(string $fullIndexName): StorageInterface
     {
-        return new FileStorage($fullIndexName);
+        $settings = $this->getBackendSettings();
+        $customPath = $settings['storagePath'] ?? null;
+
+        return new FileStorage($fullIndexName, $customPath);
     }
 
     /**

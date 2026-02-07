@@ -39,6 +39,7 @@ class UtilitiesController extends Controller
         switch ($action->id) {
             case 'rebuild-all-indices':
             case 'clear-storage-by-type':
+            case 'get-storage-stats':
                 $this->requirePermission('searchManager:rebuildIndices');
                 break;
             case 'clear-device-cache':
@@ -779,25 +780,18 @@ class UtilitiesController extends Controller
         }
 
         // Fallback: try to read directly from config file
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
+        try {
+            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
 
-        if (file_exists($configPath)) {
-            $config = require $configPath;
-            $env = Craft::$app->getConfig()->env;
-
-            $mergedConfig = $config['*'] ?? [];
-            if ($env && isset($config[$env])) {
-                $mergedConfig = array_merge($mergedConfig, $config[$env]);
-            }
-
-            // Check backends for any redis backend
-            if (isset($mergedConfig['backends'])) {
-                foreach ($mergedConfig['backends'] as $backendConfig) {
+            if (isset($config['backends'])) {
+                foreach ($config['backends'] as $backendConfig) {
                     if (($backendConfig['backendType'] ?? '') === 'redis' && ($backendConfig['enabled'] ?? false)) {
                         return $backendConfig['settings'] ?? [];
                     }
                 }
             }
+        } catch (\Throwable $e) {
+            // Ignore config errors
         }
 
         return [];

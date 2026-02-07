@@ -408,21 +408,14 @@ class MaintenanceController extends Controller
      */
     private function getRedisConfig($settings): array
     {
-        // Try to get from config file first
-        $configPath = Craft::$app->getPath()->getConfigPath() . '/search-manager.php';
+        try {
+            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
 
-        if (file_exists($configPath)) {
-            $config = require $configPath;
-            $env = Craft::$app->getConfig()->env;
-
-            $mergedConfig = $config['*'] ?? [];
-            if ($env && isset($config[$env])) {
-                $mergedConfig = array_merge($mergedConfig, $config[$env]);
+            if (isset($config['backends']['redis'])) {
+                return $config['backends']['redis'];
             }
-
-            if (isset($mergedConfig['backends']['redis'])) {
-                return $mergedConfig['backends']['redis'];
-            }
+        } catch (\Throwable $e) {
+            // Ignore config errors
         }
 
         return [];

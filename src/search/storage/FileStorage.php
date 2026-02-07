@@ -41,14 +41,25 @@ class FileStorage implements StorageInterface
      *
      * @param string $indexHandle Index handle
      */
-    public function __construct(string $indexHandle)
+    public function __construct(string $indexHandle, ?string $customBasePath = null)
     {
         $this->setLoggingHandle('search-manager');
+
+        // Validate handle against path traversal
+        if (preg_match('/[\/\\\\]|\.\./', $indexHandle)) {
+            throw new \InvalidArgumentException('Invalid index handle: must not contain path separators or traversal characters.');
+        }
+
         $this->indexHandle = $indexHandle;
 
-        // Set base path: @storage/runtime/search-manager/indices/{indexHandle}/
-        $runtimePath = Craft::$app->getPath()->getRuntimePath();
-        $this->basePath = $runtimePath . '/search-manager/indices/' . $indexHandle;
+        // Use custom base path if provided, otherwise default to runtime path
+        if ($customBasePath !== null && $customBasePath !== '') {
+            $resolvedBase = \craft\helpers\App::parseEnv($customBasePath);
+            $this->basePath = rtrim($resolvedBase, '/') . '/' . $indexHandle;
+        } else {
+            $runtimePath = Craft::$app->getPath()->getRuntimePath();
+            $this->basePath = $runtimePath . '/search-manager/indices/' . $indexHandle;
+        }
 
         // Create directory structure
         $this->ensureDirectoryStructure();

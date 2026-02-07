@@ -44,6 +44,15 @@ class TopSearchesWidget extends Widget
     /**
      * @inheritdoc
      */
+    public static function isSelectable(): bool
+    {
+        return parent::isSelectable() &&
+            Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics');
+    }
+
+    /**
+     * @inheritdoc
+     */
     public static function displayName(): string
     {
         $pluginName = SearchManager::$plugin->getSettings()->getFullName();
@@ -96,7 +105,16 @@ class TopSearchesWidget extends Widget
      */
     public function getBodyHtml(): ?string
     {
-        $searches = SearchManager::$plugin->analytics->getMostCommonSearches(null, $this->limit, $this->dateRange);
+        if (!Craft::$app->getUser()->checkPermission('searchManager:viewAnalytics')) {
+            return '<p class="light">' . Craft::t('search-manager', 'You don\'t have permission to view analytics.') . '</p>';
+        }
+
+        if (!SearchManager::$plugin->getSettings()->enableAnalytics) {
+            return '<p class="light">' . Craft::t('search-manager', 'Analytics are disabled in plugin settings.') . '</p>';
+        }
+
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+        $searches = SearchManager::$plugin->analytics->getMostCommonSearches($editableSiteIds, $this->limit, $this->dateRange);
 
         return Craft::$app->getView()->renderTemplate(
             'search-manager/dashboard-widgets/top-searches/body',

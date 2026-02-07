@@ -86,6 +86,7 @@ class QueryRule extends Model
             [['priority', 'siteId'], 'integer'],
             [['enabled'], 'boolean'],
             [['actionValue'], 'validateActionValue'],
+            [['matchValue'], 'validateRegexPattern', 'when' => fn() => $this->matchType === self::MATCH_REGEX],
         ];
     }
 
@@ -147,6 +148,27 @@ class QueryRule extends Model
                     $this->addError($attribute, 'Redirect action requires a URL or an element.');
                 }
                 break;
+        }
+    }
+
+    /**
+     * Validate that the match value is a valid regex pattern
+     *
+     * @param string $attribute
+     * @since 5.10.0
+     */
+    public function validateRegexPattern(string $attribute): void
+    {
+        $pattern = trim($this->matchValue);
+        if ($pattern === '') {
+            return;
+        }
+
+        // Test compile the pattern — use a short subject to avoid side effects
+        if (@preg_match("/$pattern/i", '') === false) {
+            $this->addError($attribute, Craft::t('search-manager', 'Invalid regex pattern: {error}', [
+                'error' => preg_last_error_msg(),
+            ]));
         }
     }
 
@@ -259,7 +281,25 @@ class QueryRule extends Model
         // Regex doesn't support comma-separated (commas could be in pattern)
         if ($this->matchType === self::MATCH_REGEX) {
             $pattern = trim($this->matchValue);
-            return (bool)@preg_match("/$pattern/i", $searchQuery);
+
+            // Guard against ReDoS: temporarily lower backtrack limit
+            $previousLimit = (int) ini_get('pcre.backtrack_limit');
+            ini_set('pcre.backtrack_limit', '10000');
+
+            $result = @preg_match("/$pattern/i", $searchQuery);
+
+            ini_set('pcre.backtrack_limit', (string) $previousLimit);
+
+            if ($result === false) {
+                $this->logWarning('Query rule regex failed', [
+                    'ruleId' => $this->id,
+                    'pattern' => $pattern,
+                    'error' => preg_last_error_msg(),
+                ]);
+                return false;
+            }
+
+            return (bool) $result;
         }
 
         // Split by comma and check each pattern
