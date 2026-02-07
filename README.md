@@ -258,9 +258,10 @@ ddev craft search-manager/security/generate-salt
 ```
 
 **What happens if you skip this:**
-- ❌ Analytics tracking will fail with error: `IP hash salt not configured`
-- ❌ Search will still work, but won't track queries
-- ✅ You can generate the salt later, but no analytics will be collected until you do
+- ⚠️ Analytics will still track searches (query, device, referrer, etc.) but **without IP hash or geo-location data**
+- ⚠️ An error will be logged: `IP hash salt not configured`
+- ✅ Search will still work normally
+- ✅ You can generate the salt later — full IP/geo tracking resumes immediately
 
 **Quick Start:**
 ```bash
