@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.38.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.37.0...v5.38.0) (2026-02-07)
+
+
+### Features
+
+* Enhance storage path validation and analytics permissions ([85a45c4](https://github.com/LindemannRock/craft-search-manager/commit/85a45c406ddd2a43f2b9ece79d0f69801bcc5482))
+
+
+### Bug Fixes
+
+* **AnalyticsService:** replace local date and hour expressions with DateFormatHelper methods ([5907b02](https://github.com/LindemannRock/craft-search-manager/commit/5907b02721d1a348281a89028f9f6ea5fad3ed6a))
+
 ## [5.37.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.36.0...v5.37.0) (2026-02-05)
 
 
