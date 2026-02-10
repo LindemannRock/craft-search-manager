@@ -1,14 +1,10 @@
 # Installation & Setup
 
-You can install Search Manager via the plugin store, or through Composer.
-
-## Craft Plugin Store
-
-To install **Search Manager**, navigate to the _Plugin Store_ section of your Craft control panel, search for `Search Manager`, and click the _Try_ button.
+> **Pre-Release:** Search Manager is in active development and not yet available on the Craft Plugin Store. Install via Composer for now.
 
 ## Composer
 
-You can also add the package to your project using Composer and the command line.
+Add the package to your project using Composer and the command line.
 
 1. Open your terminal and go to your Craft project:
 
