@@ -477,9 +477,7 @@
             const indexName = this.dataset.name;
 
             if (action === 'rebuild') {
-                if (confirm(Craft.t('search-manager', 'Rebuild index "{name}"? This will re-index all elements.', {name: indexName}))) {
-                    submitIndexAction('search-manager/indices/rebuild', indexId);
-                }
+                submitIndexAction('search-manager/indices/rebuild', indexId);
             } else if (action === 'clear') {
                 if (confirm(Craft.t('search-manager', 'Clear all data from index "{name}"? This cannot be undone.', {name: indexName}))) {
                     submitIndexAction('search-manager/indices/clear', indexId);
