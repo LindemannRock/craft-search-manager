@@ -605,6 +605,18 @@ class IndexingService extends Component
                     return false;
                 }
             }
+
+            // Check plugin handle filter for doc pages
+            if ($element instanceof \lindemannrock\plugindocs\elements\PluginDoc && !empty($index->criteria['pluginHandles'])) {
+                $pluginHandle = (new \craft\db\Query())
+                    ->select(['handle'])
+                    ->from('{{%plugindocs_plugins}}')
+                    ->where(['id' => $element->pluginId])
+                    ->scalar();
+                if ($pluginHandle && !in_array($pluginHandle, $index->criteria['pluginHandles'])) {
+                    return false;
+                }
+            }
         }
 
         return true;

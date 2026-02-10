@@ -4,10 +4,11 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use craft\base\ElementInterface;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
-use lindemannrock\searchmanager\transformers\EntryTransformer;
+use lindemannrock\searchmanager\transformers\PluginDocsTransformer;
 use yii\base\Component;
 
 /**
@@ -39,11 +40,15 @@ class TransformerService extends Component
      */
     private function registerDefaultTransformers(): void
     {
-        // AutoTransformer is now the default for all element types (fallback at line 99)
-        // No need to register specific transformers - AutoTransformer handles everything
+        // AutoTransformer is the default fallback for all element types.
+        // Register element-specific transformers here for richer indexing:
 
-        // If you want element-specific defaults, register them here:
-        // $this->registerTransformer(\craft\elements\Entry::class, EntryTransformer::class);
+        if (PluginHelper::isPluginEnabled('plugin-docs')) {
+            $this->registerTransformer(
+                'lindemannrock\plugindocs\elements\PluginDoc',
+                PluginDocsTransformer::class,
+            );
+        }
     }
 
     // =========================================================================

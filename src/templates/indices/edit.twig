@@ -80,14 +80,19 @@
         'craft\\elements\\Category': 'Categories',
         'craft\\elements\\User': 'Users',
     } %}
-    {% if craft.app.plugins.getPlugin('smartlink-manager') %}
+    {% if lrPluginEnabled('smartlink-manager') %}
         {% set elementTypeOptions = elementTypeOptions|merge({
             'lindemannrock\\smartlinkmanager\\elements\\SmartLink': 'SmartLinks'
         }) %}
     {% endif %}
-    {% if craft.app.plugins.getPlugin('shortlink-manager') %}
+    {% if lrPluginEnabled('shortlink-manager') %}
         {% set elementTypeOptions = elementTypeOptions|merge({
             'lindemannrock\\shortlinkmanager\\elements\\ShortLink': 'ShortLinks'
+        }) %}
+    {% endif %}
+    {% if lrPluginEnabled('plugin-docs') %}
+        {% set elementTypeOptions = elementTypeOptions|merge({
+            'lindemannrock\\plugindocs\\elements\\PluginDoc': 'Plugin Docs'
         }) %}
     {% endif %}
 
@@ -119,6 +124,27 @@
             values: index.criteria.sections ?? [],
         }) }}
     </div>
+
+    {% if lrPluginEnabled('plugin-docs') %}
+        <div id="docpage-criteria" {% if index.elementType != 'lindemannrock\\plugindocs\\elements\\PluginDoc' %}style="display:none;"{% endif %}>
+            {% set docPluginOptions = [] %}
+            {% for docPlugin in craft.pluginDocs.getPlugins() %}
+                {% set docPluginOptions = docPluginOptions|merge([{
+                    label: docPlugin.name,
+                    value: docPlugin.handle
+                }]) %}
+            {% endfor %}
+
+            {{ forms.checkboxGroupField({
+                label: "Plugins"|t('search-manager'),
+                instructions: "Which plugin docs to index (leave all unchecked for all plugins)"|t('search-manager'),
+                id: 'docPlugins',
+                name: 'criteria[pluginHandles]',
+                options: docPluginOptions,
+                values: index.criteria.pluginHandles ?? [],
+            }) }}
+        </div>
+    {% endif %}
 
     {% set selectedSiteIds = [] %}
     {% if index.siteId is iterable %}
@@ -175,31 +201,39 @@
 
     {{ forms.textField({
         label: "Transformer Class"|t('search-manager'),
-        instructions: "Custom transformer class (optional - AutoTransformer is used by default)"|t('search-manager'),
+        instructions: "Override the default transformer for this index. Leave blank to auto-detect based on element type."|t('search-manager'),
         id: 'transformerClass',
         name: 'transformerClass',
         value: index.transformerClass,
         required: false,
         class: 'code',
         placeholder: 'lindemannrock\\searchmanager\\transformers\\AutoTransformer',
-        tip: "Leave blank to use AutoTransformer (automatically indexes all fields including Entries, Categories, Tags, Matrix, Table, and custom fields). Only specify a custom class for advanced requirements."|t('search-manager'),
+        tip: "Leave blank for automatic transformer selection. The best transformer is chosen based on the element type: AutoTransformer for Entries, Assets, Categories and Users; PluginDocsTransformer for Plugin Docs. Only specify a custom class for advanced requirements."|t('search-manager'),
         warning: index.transformerClass ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
     }) }}
 
     {# Helpful transformer examples #}
     <div class="field" style="margin-top: -10px;">
         <div class="heading">
-            <label style="font-size: 0.9em; font-weight: normal; color: #596673;">{{ "Available Transformers"|t('search-manager') }}</label>
+            <label style="font-size: 0.9em; font-weight: normal; color: #596673;">{{ "Built-in Transformers"|t('search-manager') }}</label>
         </div>
         <div style="font-size: 0.85em; color: #596673; line-height: 1.6;">
             <div style="margin-bottom: 8px;">
-                <strong style="color: #0d78f2;">Recommended:</strong> Leave blank for <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">AutoTransformer</code> (default)
+                <strong style="color: #0d78f2;">Recommended:</strong> Leave blank for auto-detection (default)
             </div>
             <div style="padding-left: 20px; border-left: 2px solid #e3e5e8; margin-bottom: 12px;">
-                <div style="margin-bottom: 4px;">✓ Automatically handles all field types</div>
-                <div style="margin-bottom: 4px;">✓ Traverses relational fields (Entries, Categories, Tags, Assets)</div>
-                <div style="margin-bottom: 4px;">✓ Indexes Matrix blocks, Table fields, and custom fields</div>
-                <div>✓ No configuration needed</div>
+                <div style="margin-bottom: 6px;">
+                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">AutoTransformer</code>
+                    <span style="color: #8f98a3;"> — Entries, Assets, Categories, Users</span>
+                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">Indexes all custom fields, relational fields, Matrix blocks, and Table fields</div>
+                </div>
+                {% if lrPluginEnabled('plugin-docs') %}
+                <div style="margin-bottom: 6px;">
+                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">PluginDocsTransformer</code>
+                    <span style="color: #8f98a3;"> — Plugin Docs</span>
+                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">Indexes full page content, headings, description, and keywords</div>
+                </div>
+                {% endif %}
             </div>
             <details style="margin-top: 10px;">
                 <summary style="cursor: pointer; color: #0d78f2; font-weight: 500;">Custom transformer examples</summary>
@@ -371,12 +405,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Show/hide criteria based on element type
-    if (elementTypeSelect && entryCriteria) {
+    const docPageCriteria = document.getElementById('docpage-criteria');
+
+    const transformerInput = document.getElementById('transformerClass');
+
+    if (elementTypeSelect) {
         function updateCriteriaVisibility() {
-            if (elementTypeSelect.value === 'craft\\elements\\Entry') {
-                entryCriteria.style.display = 'block';
-            } else {
-                entryCriteria.style.display = 'none';
+            if (entryCriteria) {
+                entryCriteria.style.display = elementTypeSelect.value === 'craft\\elements\\Entry' ? 'block' : 'none';
+            }
+            if (docPageCriteria) {
+                docPageCriteria.style.display = elementTypeSelect.value === 'lindemannrock\\plugindocs\\elements\\PluginDoc' ? 'block' : 'none';
+            }
+
+            // Update transformer placeholder based on element type
+            if (transformerInput) {
+                if (elementTypeSelect.value === 'lindemannrock\\plugindocs\\elements\\PluginDoc') {
+                    transformerInput.placeholder = 'lindemannrock\\searchmanager\\transformers\\PluginDocsTransformer';
+                } else {
+                    transformerInput.placeholder = 'lindemannrock\\searchmanager\\transformers\\AutoTransformer';
+                }
             }
         }
 
