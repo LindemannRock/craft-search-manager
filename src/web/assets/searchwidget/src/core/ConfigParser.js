@@ -91,6 +91,11 @@ export const BASE_DEFAULTS = {
     hideResultsWithoutUrl: false,
     showLoadingIndicator: true,
     debug: false,
+    // Hierarchical result display (Algolia DocSearch-style)
+    resultLayout: 'default', // 'default' | 'grouped' | 'hierarchical'
+    hierarchyGroupBy: '',    // Field to group by (e.g., 'section', 'category')
+    showMatchedHeadings: true, // Show matched headings as child items
+    maxHeadingsPerResult: 3, // Max heading children per result
     styles: {},
     promotions: {
         showBadge: true,
@@ -278,6 +283,12 @@ export function parseConfig(element, widgetType = 'modal') {
         hideResultsWithoutUrl: parseBoolean(element.getAttribute('hide-results-without-url'), defaults.hideResultsWithoutUrl),
         debug: parseBoolean(element.getAttribute('debug'), defaults.debug),
 
+        // Hierarchical result display
+        resultLayout: element.getAttribute('result-layout') || defaults.resultLayout,
+        hierarchyGroupBy: element.getAttribute('hierarchy-group-by') || defaults.hierarchyGroupBy,
+        showMatchedHeadings: parseBoolean(element.getAttribute('show-matched-headings'), defaults.showMatchedHeadings),
+        maxHeadingsPerResult: parseInt(element.getAttribute('max-headings-per-result'), defaults.maxHeadingsPerResult),
+
         // JSON attributes
         styles: parseJson(element.getAttribute('styles'), defaults.styles),
         promotions: parseJson(element.getAttribute('promotions'), defaults.promotions),
@@ -337,6 +348,7 @@ export function getObservedAttributes(widgetType = 'modal') {
         'enable-highlighting', 'highlight-tag',
         'highlight-class', 'hide-results-without-url', 'show-loading-indicator',
         'debug', 'styles', 'promotions',
+        'result-layout', 'hierarchy-group-by', 'show-matched-headings', 'max-headings-per-result',
     ];
 
     // Modal-specific attributes

@@ -247,7 +247,7 @@ class SearchController extends Controller
                     'title' => $hit['title'] ?? $element->title ?? 'Untitled',
                     'url' => $url,
                     'description' => $this->getDescription($hit, $element),
-                    'section' => $this->getSectionName($element),
+                    'section' => $hit['section'] ?? $this->getSectionName($element),
                     'type' => $hit['type'] ?? $element::displayName(),
                     'score' => $hit['score'] ?? null,
                 ];
@@ -275,6 +275,42 @@ class SearchController extends Controller
                 // Add thumbnail if available
                 if (method_exists($element, 'getThumbUrl')) {
                     $result['thumbnail'] = $element->getThumbUrl(80);
+                }
+
+                // Pass through hierarchy data for hierarchical display
+                // Try hit data first, fall back to element properties (for PluginDoc elements)
+                $headings = $hit['_headings'] ?? null;
+                if ($headings === null && $element instanceof \lindemannrock\plugindocs\elements\PluginDoc && !empty($element->headings)) {
+                    $headings = array_map(function($h) {
+                        return [
+                            'text' => $h['text'] ?? '',
+                            'id' => $h['id'] ?? '',
+                            'level' => $h['level'] ?? 2,
+                        ];
+                    }, $element->headings);
+                }
+
+                if (!empty($headings)) {
+                    $result['_headings'] = $headings;
+
+                    // Compute matched headings (headings containing the search query)
+                    $matchedHeadings = [];
+                    foreach ($headings as $heading) {
+                        if (!empty($heading['text']) && stripos($heading['text'], $query) !== false) {
+                            $matchedHeadings[] = $heading;
+                        }
+                    }
+                    if (!empty($matchedHeadings)) {
+                        $result['_matchedHeadings'] = array_values(array_slice($matchedHeadings, 0, 3));
+                    }
+                }
+
+                $category = $hit['category'] ?? null;
+                if ($category === null && $element instanceof \lindemannrock\plugindocs\elements\PluginDoc) {
+                    $category = $element->category;
+                }
+                if (!empty($category)) {
+                    $result['category'] = $category;
                 }
 
                 // Add matched fields info (which fields contained the search query)
@@ -550,6 +586,12 @@ class SearchController extends Controller
         // For entries, get the section name
         if ($element instanceof \craft\elements\Entry) {
             return $element->section->name ?? 'Entries';
+        }
+
+        // For PluginDoc elements, get the plugin name
+        if ($element instanceof \lindemannrock\plugindocs\elements\PluginDoc) {
+            $pluginRecord = \lindemannrock\plugindocs\records\PluginRecord::findOne($element->pluginId);
+            return $pluginRecord->name ?? 'Docs';
         }
 
         // For other elements, use the display name

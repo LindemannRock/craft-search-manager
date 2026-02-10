@@ -167,3 +167,21 @@ export function groupResultsByType(results) {
     });
     return groups;
 }
+
+/**
+ * Group results by a configurable field
+ * @param {Array} results - Array of search results
+ * @param {string} field - Field name to group by (e.g., 'section', 'category')
+ * @returns {Object} - Results grouped by field value
+ */
+export function groupResultsByField(results, field) {
+    const groups = {};
+    results.forEach(result => {
+        const key = result[field] || result.section || result.type || 'Results';
+        if (!groups[key]) {
+            groups[key] = [];
+        }
+        groups[key].push(result);
+    });
+    return groups;
+}

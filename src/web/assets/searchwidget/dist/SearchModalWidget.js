@@ -50,6 +50,15 @@ var SearchModalWidget = (() => {
     hideResultsWithoutUrl: false,
     showLoadingIndicator: true,
     debug: false,
+    // Hierarchical result display (Algolia DocSearch-style)
+    resultLayout: "default",
+    // 'default' | 'grouped' | 'hierarchical'
+    hierarchyGroupBy: "",
+    // Field to group by (e.g., 'section', 'category')
+    showMatchedHeadings: true,
+    // Show matched headings as child items
+    maxHeadingsPerResult: 3,
+    // Max heading children per result
     styles: {},
     promotions: {
       showBadge: true,
@@ -154,6 +163,11 @@ var SearchModalWidget = (() => {
       // Boolean attributes (default false - check for presence)
       hideResultsWithoutUrl: parseBoolean(element.getAttribute("hide-results-without-url"), defaults.hideResultsWithoutUrl),
       debug: parseBoolean(element.getAttribute("debug"), defaults.debug),
+      // Hierarchical result display
+      resultLayout: element.getAttribute("result-layout") || defaults.resultLayout,
+      hierarchyGroupBy: element.getAttribute("hierarchy-group-by") || defaults.hierarchyGroupBy,
+      showMatchedHeadings: parseBoolean(element.getAttribute("show-matched-headings"), defaults.showMatchedHeadings),
+      maxHeadingsPerResult: parseInt(element.getAttribute("max-headings-per-result"), defaults.maxHeadingsPerResult),
       // JSON attributes
       styles: parseJson(element.getAttribute("styles"), defaults.styles),
       promotions: parseJson(element.getAttribute("promotions"), defaults.promotions)
@@ -207,7 +221,11 @@ var SearchModalWidget = (() => {
       "show-loading-indicator",
       "debug",
       "styles",
-      "promotions"
+      "promotions",
+      "result-layout",
+      "hierarchy-group-by",
+      "show-matched-headings",
+      "max-headings-per-result"
     ];
     const modalAttrs = [
       "hotkey",
@@ -483,6 +501,17 @@ var SearchModalWidget = (() => {
         groups[type] = [];
       }
       groups[type].push(result);
+    });
+    return groups;
+  }
+  function groupResultsByField(results, field) {
+    const groups = {};
+    results.forEach((result) => {
+      const key = result[field] || result.section || result.type || "Results";
+      if (!groups[key]) {
+        groups[key] = [];
+      }
+      groups[key].push(result);
     });
     return groups;
   }
@@ -863,9 +892,12 @@ var SearchModalWidget = (() => {
 
   // src/modules/ResultRenderer.js
   function renderResults(results, query, options = {}) {
-    const { groupResults = false, listboxId } = options;
+    const { groupResults = false, resultLayout = "default", listboxId } = options;
     if (!results || results.length === 0) {
       return "";
+    }
+    if (resultLayout === "hierarchical") {
+      return renderHierarchicalResults(results, query, options);
     }
     if (groupResults) {
       const groups = groupResultsByType(results);
@@ -990,6 +1022,113 @@ var SearchModalWidget = (() => {
     }
     const positionClass = `sm-promoted-badge--${badgePosition}`;
     return `<span class="sm-promoted-badge ${positionClass}">${escapeHtml(badgeText)}</span>`;
+  }
+  function documentIcon() {
+    return `<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+    </svg>`;
+  }
+  function hashIcon() {
+    return `<svg class="sm-hierarchy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="4" y1="9" x2="20" y2="9"/>
+        <line x1="4" y1="15" x2="20" y2="15"/>
+        <line x1="10" y1="3" x2="8" y2="21"/>
+        <line x1="16" y1="3" x2="14" y2="21"/>
+    </svg>`;
+  }
+  function renderHierarchicalResults(results, query, options = {}) {
+    const {
+      hierarchyGroupBy = "section",
+      showMatchedHeadings = true,
+      maxHeadingsPerResult = 3,
+      listboxId
+    } = options;
+    const groupField = hierarchyGroupBy || "section";
+    const groups = groupResultsByField(results, groupField);
+    let globalIndex = 0;
+    return Object.entries(groups).map(([groupName, items]) => {
+      const itemsHtml = items.map((result) => {
+        const parentIndex = globalIndex++;
+        let html = renderHierarchyParent(result, parentIndex, query, options);
+        if (showMatchedHeadings) {
+          const headings = result._matchedHeadings || [];
+          const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
+          limitedHeadings.forEach((heading) => {
+            html += renderHeadingChild(result, heading, globalIndex++, query, options);
+          });
+        }
+        return html;
+      }).join("");
+      return `
+            <div class="sm-hierarchy-group" role="group" aria-label="${escapeHtml(groupName)}">
+                <div class="sm-hierarchy-group-header">${escapeHtml(groupName)}</div>
+                ${itemsHtml}
+            </div>
+        `;
+    }).join("");
+  }
+  function renderHierarchyParent(result, index, query, options = {}) {
+    const {
+      listboxId,
+      enableHighlighting = true,
+      highlightTag = "mark",
+      highlightClass = ""
+    } = options;
+    const title = result.title || result.name || "Untitled";
+    const description = result.description || result.excerpt || "";
+    const url = result.url || "#";
+    const optionId = getOptionId(listboxId, index);
+    const highlightOptions = {
+      enabled: enableHighlighting,
+      tag: highlightTag,
+      className: highlightClass
+    };
+    const highlightedTitle = highlightMatches(title, query, highlightOptions);
+    const highlightedDesc = description ? highlightMatches(description, query, highlightOptions) : "";
+    return `
+        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(title)}">
+            ${documentIcon()}
+            <div class="sm-result-content">
+                <span class="sm-result-title">${highlightedTitle}</span>
+                ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+            </div>
+            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </a>
+    `;
+  }
+  function renderHeadingChild(result, heading, index, query, options = {}) {
+    const {
+      listboxId,
+      enableHighlighting = true,
+      highlightTag = "mark",
+      highlightClass = ""
+    } = options;
+    const text = heading.text || "";
+    const anchorId = heading.id || "";
+    const baseUrl = result.url || "#";
+    const url = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
+    const optionId = getOptionId(listboxId, index);
+    const highlightOptions = {
+      enabled: enableHighlighting,
+      tag: highlightTag,
+      className: highlightClass
+    };
+    const highlightedText = highlightMatches(text, query, highlightOptions);
+    return `
+        <a class="sm-result-item sm-hierarchy-child" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(text)}">
+            ${hashIcon()}
+            <span class="sm-result-title">${highlightedText}</span>
+            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </a>
+    `;
   }
   function renderRecentSearches(recentSearches, listboxId) {
     if (!recentSearches || recentSearches.length === 0) {
@@ -1522,7 +1661,12 @@ var SearchModalWidget = (() => {
           highlightClass,
           showLoadingIndicator,
           debug,
-          promotions: this.config.promotions
+          promotions: this.config.promotions,
+          // Hierarchical display options
+          resultLayout: this.config.resultLayout,
+          hierarchyGroupBy: this.config.hierarchyGroupBy,
+          showMatchedHeadings: this.config.showMatchedHeadings,
+          maxHeadingsPerResult: this.config.maxHeadingsPerResult
         }
       );
       container.innerHTML = html;
@@ -2178,6 +2322,65 @@ var SearchModalWidget = (() => {
 }
 
 /* =========================================================================
+   HIERARCHICAL RESULTS (Algolia DocSearch-style)
+   ========================================================================= */
+
+/* Group wrapper */
+.sm-hierarchy-group {
+    margin-bottom: 4px;
+}
+
+.sm-hierarchy-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Group header */
+.sm-hierarchy-group-header {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sm-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Parent result (page-level) */
+.sm-hierarchy-parent {
+    gap: 10px;
+    padding: 10px 12px;
+}
+
+.sm-hierarchy-parent .sm-hierarchy-icon {
+    flex-shrink: 0;
+    color: var(--sm-accent);
+}
+
+/* Child result (heading-level) with connecting line */
+.sm-hierarchy-child {
+    gap: 10px;
+    padding: 8px 12px 8px 36px;
+    margin-left: 18px;
+    border-left: 2px solid var(--sm-border-color);
+    border-radius: 0 var(--sm-result-radius) var(--sm-result-radius) 0;
+    font-size: 13px;
+}
+
+.sm-hierarchy-child:hover,
+.sm-hierarchy-child.sm-selected {
+    border-left-color: var(--sm-accent);
+}
+
+.sm-hierarchy-child .sm-hierarchy-icon {
+    flex-shrink: 0;
+    color: var(--sm-text-muted);
+}
+
+.sm-hierarchy-child .sm-result-title {
+    font-size: 13px;
+    font-weight: 400;
+}
+
+/* =========================================================================
    PROMOTED RESULTS
    ========================================================================= */
 
@@ -2275,6 +2478,20 @@ var SearchModalWidget = (() => {
 
 :host([dir="rtl"]) .sm-result-arrow {
     transform: scaleX(-1);
+}
+
+:host([dir="rtl"]) .sm-hierarchy-child {
+    margin-left: 0;
+    margin-right: 18px;
+    border-left: none;
+    border-right: 2px solid var(--sm-border-color);
+    padding: 8px 36px 8px 12px;
+    border-radius: var(--sm-result-radius) 0 0 var(--sm-result-radius);
+}
+
+:host([dir="rtl"]) .sm-hierarchy-child:hover,
+:host([dir="rtl"]) .sm-hierarchy-child.sm-selected {
+    border-right-color: var(--sm-accent);
 }
 `;
 

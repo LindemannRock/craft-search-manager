@@ -10,7 +10,7 @@
  */
 
 import { highlightMatches, escapeHtml } from './Highlighter.js';
-import { groupResultsByType } from './SearchService.js';
+import { groupResultsByType, groupResultsByField } from './SearchService.js';
 import { getOptionId } from './A11yUtils.js';
 
 /**
@@ -61,10 +61,15 @@ import { getOptionId } from './A11yUtils.js';
  * });
  */
 export function renderResults(results, query, options = {}) {
-    const { groupResults = false, listboxId } = options;
+    const { groupResults = false, resultLayout = 'default', listboxId } = options;
 
     if (!results || results.length === 0) {
         return '';
+    }
+
+    // Hierarchical layout (Algolia DocSearch-style)
+    if (resultLayout === 'hierarchical') {
+        return renderHierarchicalResults(results, query, options);
     }
 
     if (groupResults) {
@@ -282,6 +287,175 @@ export function renderPromotedBadge(result, config = {}) {
     const positionClass = `sm-promoted-badge--${badgePosition}`;
 
     return `<span class="sm-promoted-badge ${positionClass}">${escapeHtml(badgeText)}</span>`;
+}
+
+// =========================================================================
+// HIERARCHICAL RESULT RENDERING
+// =========================================================================
+
+/**
+ * Document icon SVG for parent items in hierarchical layout
+ * @returns {string} SVG markup
+ */
+function documentIcon() {
+    return `<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/>
+        <line x1="16" y1="17" x2="8" y2="17"/>
+        <polyline points="10 9 9 9 8 9"/>
+    </svg>`;
+}
+
+/**
+ * Hash icon SVG for heading children in hierarchical layout
+ * @returns {string} SVG markup
+ */
+function hashIcon() {
+    return `<svg class="sm-hierarchy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <line x1="4" y1="9" x2="20" y2="9"/>
+        <line x1="4" y1="15" x2="20" y2="15"/>
+        <line x1="10" y1="3" x2="8" y2="21"/>
+        <line x1="16" y1="3" x2="14" y2="21"/>
+    </svg>`;
+}
+
+/**
+ * Render results in hierarchical layout (Algolia DocSearch-style)
+ *
+ * Groups results by a configurable field and shows matched headings
+ * as indented child items with connecting lines.
+ *
+ * @param {SearchResult[]} results - Search results array
+ * @param {string} query - The search query (for highlighting)
+ * @param {RenderOptions} options - Rendering options
+ * @returns {string} HTML string
+ */
+function renderHierarchicalResults(results, query, options = {}) {
+    const {
+        hierarchyGroupBy = 'section',
+        showMatchedHeadings = true,
+        maxHeadingsPerResult = 3,
+        listboxId,
+    } = options;
+
+    const groupField = hierarchyGroupBy || 'section';
+    const groups = groupResultsByField(results, groupField);
+    let globalIndex = 0;
+
+    return Object.entries(groups).map(([groupName, items]) => {
+        const itemsHtml = items.map((result) => {
+            // Render parent item
+            const parentIndex = globalIndex++;
+            let html = renderHierarchyParent(result, parentIndex, query, options);
+
+            // Render matched heading children
+            if (showMatchedHeadings) {
+                const headings = result._matchedHeadings || [];
+                const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
+                limitedHeadings.forEach((heading) => {
+                    html += renderHeadingChild(result, heading, globalIndex++, query, options);
+                });
+            }
+
+            return html;
+        }).join('');
+
+        return `
+            <div class="sm-hierarchy-group" role="group" aria-label="${escapeHtml(groupName)}">
+                <div class="sm-hierarchy-group-header">${escapeHtml(groupName)}</div>
+                ${itemsHtml}
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Render a parent item in hierarchical layout (document-level result)
+ *
+ * @param {SearchResult} result - Result object
+ * @param {number} index - Item index for ARIA
+ * @param {string} query - Search query for highlighting
+ * @param {RenderOptions} options - Rendering options
+ * @returns {string} HTML string
+ */
+function renderHierarchyParent(result, index, query, options = {}) {
+    const {
+        listboxId,
+        enableHighlighting = true,
+        highlightTag = 'mark',
+        highlightClass = '',
+    } = options;
+
+    const title = result.title || result.name || 'Untitled';
+    const description = result.description || result.excerpt || '';
+    const url = result.url || '#';
+    const optionId = getOptionId(listboxId, index);
+
+    const highlightOptions = {
+        enabled: enableHighlighting,
+        tag: highlightTag,
+        className: highlightClass,
+    };
+
+    const highlightedTitle = highlightMatches(title, query, highlightOptions);
+    const highlightedDesc = description ? highlightMatches(description, query, highlightOptions) : '';
+
+    return `
+        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(title)}">
+            ${documentIcon()}
+            <div class="sm-result-content">
+                <span class="sm-result-title">${highlightedTitle}</span>
+                ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
+            </div>
+            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </a>
+    `;
+}
+
+/**
+ * Render a heading child item in hierarchical layout
+ *
+ * @param {SearchResult} result - Parent result (for URL base)
+ * @param {Object} heading - Heading object with text, id, level
+ * @param {number} index - Item index for ARIA
+ * @param {string} query - Search query for highlighting
+ * @param {RenderOptions} options - Rendering options
+ * @returns {string} HTML string
+ */
+function renderHeadingChild(result, heading, index, query, options = {}) {
+    const {
+        listboxId,
+        enableHighlighting = true,
+        highlightTag = 'mark',
+        highlightClass = '',
+    } = options;
+
+    const text = heading.text || '';
+    const anchorId = heading.id || '';
+    const baseUrl = result.url || '#';
+    const url = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
+    const optionId = getOptionId(listboxId, index);
+
+    const highlightOptions = {
+        enabled: enableHighlighting,
+        tag: highlightTag,
+        className: highlightClass,
+    };
+
+    const highlightedText = highlightMatches(text, query, highlightOptions);
+
+    return `
+        <a class="sm-result-item sm-hierarchy-child" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(text)}">
+            ${hashIcon()}
+            <span class="sm-result-title">${highlightedText}</span>
+            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
+        </a>
+    `;
 }
 
 /**

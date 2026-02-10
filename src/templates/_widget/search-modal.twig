@@ -91,6 +91,12 @@
 {# Debug mode - shows index handle, score, element ID for each result #}
 {% set debug = debug ?? false %}
 
+{# Hierarchical display - Algolia DocSearch-style grouped results with heading children #}
+{% set resultLayout = resultLayout ?? 'default' %}
+{% set hierarchyGroupBy = hierarchyGroupBy ?? '' %}
+{% set showMatchedHeadings = showMatchedHeadings ?? true %}
+{% set maxHeadingsPerResult = maxHeadingsPerResult ?? 3 %}
+
 {# Get styles - merge config styles with highlighting colors and any inline overrides #}
 {% set configStyles = widgetConfig.getStyles() %}
 {% set highlightStyles = {
@@ -143,4 +149,8 @@
     styles="{{ mergedStyles|json_encode|e('html_attr') }}"
     show-loading-indicator="{{ _self.toBool(showLoadingIndicator, true) }}"
     debug="{{ _self.toBool(debug, false) }}"
+    {% if resultLayout != 'default' %}result-layout="{{ resultLayout }}"{% endif %}
+    {% if hierarchyGroupBy %}hierarchy-group-by="{{ hierarchyGroupBy }}"{% endif %}
+    show-matched-headings="{{ _self.toBool(showMatchedHeadings, true) }}"
+    max-headings-per-result="{{ maxHeadingsPerResult }}"
 ></search-modal>

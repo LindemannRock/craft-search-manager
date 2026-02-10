@@ -266,6 +266,65 @@
 }
 
 /* =========================================================================
+   HIERARCHICAL RESULTS (Algolia DocSearch-style)
+   ========================================================================= */
+
+/* Group wrapper */
+.sm-hierarchy-group {
+    margin-bottom: 4px;
+}
+
+.sm-hierarchy-group:last-child {
+    margin-bottom: 0;
+}
+
+/* Group header */
+.sm-hierarchy-group-header {
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--sm-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Parent result (page-level) */
+.sm-hierarchy-parent {
+    gap: 10px;
+    padding: 10px 12px;
+}
+
+.sm-hierarchy-parent .sm-hierarchy-icon {
+    flex-shrink: 0;
+    color: var(--sm-accent);
+}
+
+/* Child result (heading-level) with connecting line */
+.sm-hierarchy-child {
+    gap: 10px;
+    padding: 8px 12px 8px 36px;
+    margin-left: 18px;
+    border-left: 2px solid var(--sm-border-color);
+    border-radius: 0 var(--sm-result-radius) var(--sm-result-radius) 0;
+    font-size: 13px;
+}
+
+.sm-hierarchy-child:hover,
+.sm-hierarchy-child.sm-selected {
+    border-left-color: var(--sm-accent);
+}
+
+.sm-hierarchy-child .sm-hierarchy-icon {
+    flex-shrink: 0;
+    color: var(--sm-text-muted);
+}
+
+.sm-hierarchy-child .sm-result-title {
+    font-size: 13px;
+    font-weight: 400;
+}
+
+/* =========================================================================
    PROMOTED RESULTS
    ========================================================================= */
 
@@ -363,4 +422,18 @@
 
 :host([dir="rtl"]) .sm-result-arrow {
     transform: scaleX(-1);
+}
+
+:host([dir="rtl"]) .sm-hierarchy-child {
+    margin-left: 0;
+    margin-right: 18px;
+    border-left: none;
+    border-right: 2px solid var(--sm-border-color);
+    padding: 8px 36px 8px 12px;
+    border-radius: var(--sm-result-radius) 0 0 var(--sm-result-radius);
+}
+
+:host([dir="rtl"]) .sm-hierarchy-child:hover,
+:host([dir="rtl"]) .sm-hierarchy-child.sm-selected {
+    border-right-color: var(--sm-accent);
 }

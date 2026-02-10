@@ -76,6 +76,15 @@ class PluginDocsTransformer extends BaseTransformer
                 $data['headings'] = implode(' ', $headingTexts);
                 $searchableContent[] = $data['headings'];
             }
+
+            // Keep raw headings for hierarchical display in frontend
+            $data['_headings'] = array_map(function($h) {
+                return [
+                    'text' => $h['text'] ?? '',
+                    'id' => $h['id'] ?? '',
+                    'level' => $h['level'] ?? 2,
+                ];
+            }, $element->headings);
         }
 
         // Index extracted keywords
