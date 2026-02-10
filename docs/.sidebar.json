@@ -1,0 +1,72 @@
+[
+    {
+        "title": "Get Started",
+        "collapsable": false,
+        "children": [
+            "get-started/requirements",
+            "get-started/installation",
+            "get-started/configuration"
+        ]
+    },
+    {
+        "title": "Feature Tour",
+        "collapsable": false,
+        "children": [
+            "feature-tour/overview",
+            "feature-tour/backends",
+            "feature-tour/backend-mysql",
+            "feature-tour/backend-postgresql",
+            "feature-tour/backend-redis",
+            "feature-tour/backend-file",
+            "feature-tour/backend-algolia",
+            "feature-tour/backend-meilisearch",
+            "feature-tour/backend-typesense",
+            "feature-tour/indices",
+            "feature-tour/search-features",
+            "feature-tour/highlighting",
+            "feature-tour/autocomplete",
+            "feature-tour/query-rules",
+            "feature-tour/promotions",
+            "feature-tour/analytics",
+            "feature-tour/caching",
+            "feature-tour/multi-language",
+            "feature-tour/frontend-widget",
+            "feature-tour/privacy-security"
+        ]
+    },
+    {
+        "title": "Template Guides",
+        "collapsable": false,
+        "children": [
+            "template-guides/basic-search",
+            "template-guides/advanced-operators",
+            "template-guides/autocomplete-suggestions",
+            "template-guides/highlighting-snippets",
+            "template-guides/multi-index-search",
+            "template-guides/filtering-facets",
+            "template-guides/widget-integration",
+            "template-guides/api-endpoints"
+        ]
+    },
+    {
+        "title": "Developers",
+        "collapsable": false,
+        "children": [
+            "developers/permissions",
+            "developers/console-commands",
+            "developers/events",
+            "developers/template-variables",
+            "developers/custom-transformers",
+            "developers/api-reference",
+            "developers/twig-globals",
+            "developers/shared-features"
+        ]
+    },
+    {
+        "title": "Resources",
+        "collapsable": false,
+        "children": [
+            "troubleshooting"
+        ]
+    }
+]

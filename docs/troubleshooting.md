@@ -1,0 +1,118 @@
+# Troubleshooting
+
+Common issues and solutions for Search Manager.
+
+## Search Returns No Results
+
+**Check the basics first:**
+
+1. **Is the index built?** Run `php craft search-manager/index/rebuild` (or `ddev craft search-manager/index/rebuild`).
+
+2. **Is the index enabled?** Check Search Manager > Indices — the index should show as enabled.
+
+3. **Does the index have content?** Go to Search Manager > Indices and check the document count. If it's 0, the criteria filter may be too restrictive.
+
+4. **Are you searching the right index?** Verify the index handle in your template matches the configured handle.
+
+5. **Is the backend available?** Go to Search Manager > Backends and check the status. For external backends, verify the connection.
+
+**Debugging tips:**
+
+- Check plugin logs at Search Manager > Logs (or `storage/logs/search-manager.log`)
+- Enable debug logging: set `logLevel` to `'debug'` in your config
+- If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
+
+## Indexing Is Slow
+
+- **Increase batch size**: Set `batchSize` to a higher value (default: 100). Try 250 or 500.
+- **Use queue-based indexing**: Ensure `queueEnabled` is `true` (default).
+- **Check your transformer**: Complex transformers that query relations or perform heavy computation slow down indexing. Pre-fetch related data where possible.
+- **Rebuild during off-hours**: For large sites, schedule rebuilds during low-traffic periods.
+
+## Connection Refused (Redis)
+
+```text
+[ERROR] Redis connection error | {"host":"127.0.0.1","port":6379,"error":"Connection refused"}
+```
+
+**In Docker/DDEV:** Use the service hostname, not `127.0.0.1`:
+
+```text
+REDIS_HOST=redis
+```
+
+`127.0.0.1` refers to localhost inside the container, not your host machine.
+
+## Redis Data Lost After Cache Clear
+
+If your search index disappears when Craft's cache is cleared:
+
+- Your hosting platform may use `FLUSHALL` (clears all Redis databases) instead of `FLUSHDB` (clears one database)
+- **Fix**: Set an explicit `database` number in your Redis backend config, or switch to MySQL/File backend
+
+See [Redis Backend](feature-tour/backend-redis.md) for database isolation details.
+
+## Algolia/Meilisearch/Typesense Connection Issues
+
+1. **Check API keys**: Verify keys in your `.env` file are correct
+2. **Check host URL**: For Meilisearch, ensure the full URL including protocol: `http://localhost:7700`
+3. **Check firewall**: Ensure your server can reach the external service
+4. **Check logs**: Look for specific error messages in Search Manager > Logs
+
+## Analytics Not Tracking
+
+1. **Is analytics enabled?** Check `enableAnalytics` is `true` in settings.
+2. **Is analytics enabled for the index?** Per-index analytics can be disabled with `disableAnalytics: true`.
+3. **Is the IP hash salt configured?** Without a salt, IP hashing and geo-location won't work (but basic analytics still tracks). Generate one:
+
+```bash
+php craft search-manager/security/generate-salt
+```
+4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
+
+## Geo-Location Shows Wrong Location
+
+**In local development:** Private IPs (127.0.0.1, 192.168.x.x) can't be geolocated. Set defaults:
+
+```php
+// config/search-manager.php
+'defaultCountry' => 'US',
+'defaultCity' => 'New York',
+```
+
+**In production:** Check that your geo provider is returning data. The free tier of ip-api.com has rate limits. Consider a paid tier or different provider.
+
+## Cache Not Working
+
+1. **Is caching enabled?** Check `enableCache` is `true`.
+2. **Is "Popular Queries Only" enabled?** If `cachePopularQueriesOnly` is `true`, queries must be searched `popularQueryThreshold` times before caching kicks in.
+3. **Is "Clear on Save" wiping your cache?** If `clearCacheOnSave` is `true` (default) and content is saved frequently, the cache may be clearing faster than it fills.
+4. **Check storage permissions**: For file-based caching, ensure `@storage/runtime/search-manager/cache/` is writable.
+
+## Widget Not Appearing
+
+1. **Is the widget included?** Check your template has `{% include 'search-manager/_widget/search-modal' %}`.
+2. **Is a widget config set?** If using `config: 'my-config'`, verify the handle exists in the CP or config file.
+3. **Is the widget enabled?** Check the widget config is enabled in Search Manager > Widgets.
+4. **Check browser console**: Look for JavaScript errors that might prevent the web component from loading.
+
+## Typesense: Search Misses Custom Fields
+
+Typesense requires explicit `query_by` to search custom fields. The default searches `title`, `content`, `url`. For additional fields:
+
+```twig
+{% set results = craft.searchManager.search('products', query, {
+    query_by: 'title,content,url,description,category',
+}) %}
+```
+
+## Native Search Replacement Not Working
+
+> **Warning:** `replaceNativeSearch` only works with built-in backends (MySQL, PostgreSQL, Redis, File). It does not work with Algolia, Meilisearch, or Typesense.
+
+## Getting Help
+
+- Check plugin logs: Search Manager > Logs
+- Enable debug logging: `'logLevel' => 'debug'` in config
+- Check Craft's general logs: `storage/logs/web.log`
+- For persistent issues, include your Search Manager version, backend type, and relevant log entries when reporting
