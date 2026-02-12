@@ -71,14 +71,19 @@ export function applyStylesToElement(element, styles, theme = 'light') {
 
     const isDark = theme === 'dark';
 
-    for (const [key, cssVar] of Object.entries(STYLE_MAPPINGS)) {
-        // Only set variables appropriate for the current theme
-        // Dark theme: only set *Dark variables
-        // Light theme: only set non-Dark variables
+    const entries = Object.entries(STYLE_MAPPINGS);
+    const sharedKeys = new Set([...NUMERIC_KEYS, ...VH_KEYS]);
+
+    for (const [key, cssVar] of entries) {
         const isDarkKey = key.endsWith('Dark');
 
-        if (isDark && !isDarkKey) continue;
-        if (!isDark && isDarkKey) continue;
+        if (isDark) {
+            if (!isDarkKey && !sharedKeys.has(key)) {
+                continue;
+            }
+        } else if (isDarkKey) {
+            continue;
+        }
 
         if (styles[key] !== undefined && styles[key] !== null && styles[key] !== '') {
             const value = processStyleValue(key, styles[key]);

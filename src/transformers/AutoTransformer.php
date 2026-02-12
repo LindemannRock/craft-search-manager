@@ -59,8 +59,29 @@ class AutoTransformer extends BaseTransformer
         // Derive element type from section handle (for Entries) or element class
         $data['elementType'] = $this->deriveElementType($element);
 
+        // Set section and type for grouping (hierarchical layout, groupResults)
+        if ($element instanceof \craft\elements\Entry && $element->section) {
+            $data['type'] = 'entry';
+            $data['section'] = $element->section->name ?? $element->section->handle;
+        } elseif ($element instanceof \craft\elements\Category) {
+            $data['type'] = 'category';
+            $data['section'] = $element->group->name ?? 'Categories';
+        } elseif ($element instanceof \craft\elements\Asset) {
+            $data['type'] = 'asset';
+            $data['section'] = $element->volume->name ?? 'Assets';
+        } elseif ($element instanceof \craft\elements\User) {
+            $data['type'] = 'user';
+            $data['section'] = 'Users';
+        } else {
+            $data['type'] = $data['elementType'];
+            $data['section'] = ucfirst($data['elementType']);
+        }
+
         // Collect searchable content
         $searchableContent = [];
+
+        // Collect raw HTML from rich text fields for heading extraction
+        $richTextContent = [];
 
         // Add title
         if ($element->title) {
@@ -91,6 +112,15 @@ class AutoTransformer extends BaseTransformer
                         continue;
                     }
 
+                    // Collect raw HTML from CKEditor/Redactor before stripping
+                    $fieldClass = get_class($field);
+                    if ($fieldClass === 'craft\ckeditor\Field' || $fieldClass === 'craft\redactor\Field') {
+                        $rawHtml = (string) $fieldValue;
+                        if (!empty($rawHtml)) {
+                            $richTextContent[] = $rawHtml;
+                        }
+                    }
+
                     // Process based on field type
                     $content = $this->processFieldByType($field, $fieldValue, $element);
 
@@ -106,6 +136,29 @@ class AutoTransformer extends BaseTransformer
                     // Skip fields that error
                     continue;
                 }
+            }
+        }
+
+        // Extract headings from rich text fields
+        $allRichText = implode("\n", $richTextContent);
+        if (!empty($allRichText)) {
+            $headings = $this->extractHeadings($allRichText);
+            if (!empty($headings)) {
+                $data['_headings'] = $headings;
+                $headingTexts = array_map(fn($h) => $h['text'], $headings);
+                $data['headings'] = implode(' ', $headingTexts);
+                $searchableContent[] = $data['headings'];
+            }
+        }
+
+        // Fall back to markdown heading detection from plain text content
+        if (empty($data['_headings'])) {
+            $contentForMarkdown = implode("\n", array_filter($searchableContent));
+            $headings = $this->extractHeadings($contentForMarkdown);
+            if (!empty($headings)) {
+                $data['_headings'] = $headings;
+                $headingTexts = array_map(fn($h) => $h['text'], $headings);
+                $data['headings'] = implode(' ', $headingTexts);
             }
         }
 

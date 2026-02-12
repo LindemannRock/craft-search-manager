@@ -366,21 +366,23 @@ class MySqlStorage implements StorageInterface
      * @param int $elementId Element ID
      * @param string $title Full title for display
      * @param string $elementType Element type (product, category, etc.)
+     * @param string|null $documentData JSON-encoded transformer output for rich results
      * @return void
      */
-    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType, ?string $documentData = null): void
     {
         // Normalize searchText for prefix matching (lowercase)
         $searchText = mb_strtolower(trim($title));
 
         $sql = "REPLACE INTO {{%searchmanager_search_elements}}
-                (`indexHandle`, `siteId`, `elementId`, `title`, `elementType`, `searchText`) VALUES
+                (`indexHandle`, `siteId`, `elementId`, `title`, `elementType`, `searchText`, `documentData`) VALUES
                 (" . $this->db->quoteValue($this->indexHandle) . ", "
                 . (int)$siteId . ", "
                 . (int)$elementId . ", "
                 . $this->db->quoteValue($title) . ", "
                 . $this->db->quoteValue($elementType) . ", "
-                . $this->db->quoteValue($searchText) . ")";
+                . $this->db->quoteValue($searchText) . ", "
+                . ($documentData !== null ? $this->db->quoteValue($documentData) : 'NULL') . ")";
 
         $this->db->createCommand($sql)->execute();
 
@@ -417,7 +419,7 @@ class MySqlStorage implements StorageInterface
      * @since 5.0.0
      * @param int $siteId Site ID
      * @param array $elementIds Array of element IDs
-     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ..., 'documentData' => ...]
      */
     public function getElementsByIds(int $siteId, array $elementIds): array
     {
@@ -426,7 +428,7 @@ class MySqlStorage implements StorageInterface
         }
 
         $rows = (new Query())
-            ->select(['elementId', 'title', 'elementType'])
+            ->select(['elementId', 'title', 'elementType', 'documentData'])
             ->from('{{%searchmanager_search_elements}}')
             ->where([
                 'indexHandle' => $this->indexHandle,
@@ -440,6 +442,7 @@ class MySqlStorage implements StorageInterface
             $result[(int)$row['elementId']] = [
                 'title' => $row['title'],
                 'elementType' => $row['elementType'],
+                'documentData' => !empty($row['documentData']) ? json_decode($row['documentData'], true) : null,
             ];
         }
 

@@ -56,6 +56,7 @@ class AutocompleteService extends Component
         $limit = $options['limit'] ?? $settings->autocompleteLimit ?? 10;
         $fuzzy = $options['fuzzy'] ?? $settings->autocompleteFuzzy ?? false;
         $language = $options['language'] ?? null;
+        $includeMeta = $options['includeMeta'] ?? false;
 
         // Check if siteId was explicitly provided (for all-sites indices, it won't be)
         $siteIdProvided = isset($options['siteId']) && $options['siteId'] !== null;
@@ -88,8 +89,7 @@ class AutocompleteService extends Component
         $normalizedQuery = $this->normalizeQuery($query);
 
         // Apply index prefix to get full index name (matches how data is stored)
-        $indexPrefix = $settings->indexPrefix ?? '';
-        $fullIndexHandle = $indexPrefix . $indexHandle;
+        $fullIndexHandle = $this->getFullIndexName($indexHandle);
 
         // Check cache first
         $this->logDebug('Autocomplete cache check', [
@@ -106,6 +106,16 @@ class AutocompleteService extends Component
                     'query' => $normalizedQuery,
                     'index' => $fullIndexHandle,
                 ]);
+                if ($includeMeta) {
+                    return [
+                        'suggestions' => $cached,
+                        'meta' => [
+                            'cached' => true,
+                            'cacheEnabled' => $settings->enableAutocompleteCache,
+                            'cacheDriver' => $this->getCacheDriver(),
+                        ],
+                    ];
+                }
                 return $cached;
             }
             $this->logDebug('Autocomplete cache miss', [
@@ -137,6 +147,16 @@ class AutocompleteService extends Component
                 $this->saveToCache($cacheKey, $suggestions, $fullIndexHandle);
             }
 
+            if ($includeMeta) {
+                return [
+                    'suggestions' => $suggestions,
+                    'meta' => [
+                        'cached' => false,
+                        'cacheEnabled' => $settings->enableAutocompleteCache,
+                        'cacheDriver' => $this->getCacheDriver(),
+                    ],
+                ];
+            }
             return $suggestions;
         }
 
@@ -169,6 +189,16 @@ class AutocompleteService extends Component
             'duration_ms' => $duration,
         ]);
 
+        if ($includeMeta) {
+            return [
+                'suggestions' => $suggestions,
+                'meta' => [
+                    'cached' => false,
+                    'cacheEnabled' => $settings->enableAutocompleteCache,
+                    'cacheDriver' => $this->getCacheDriver(),
+                ],
+            ];
+        }
         return $suggestions;
     }
 
@@ -334,7 +364,7 @@ class AutocompleteService extends Component
 
         // Apply index prefix to get full index name (matches how data is stored)
         $indexPrefix = $settings->indexPrefix ?? '';
-        $fullIndexHandle = $indexPrefix . $indexHandle;
+        $fullIndexHandle = $this->getFullIndexName($indexHandle);
 
         $this->logDebug('Generating element suggestions', [
             'query' => $query,
@@ -665,6 +695,56 @@ class AutocompleteService extends Component
     {
         $base = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
         return $indexHandle ? $base . $indexHandle . '/' : $base;
+    }
+
+    /**
+     * Get cache driver label for meta output
+     */
+    private function getCacheDriver(): string
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        if (($settings->cacheStorageMethod ?? 'file') !== 'redis') {
+            return 'file';
+        }
+
+        $cache = Craft::$app->cache;
+        if ($cache instanceof \yii\redis\Cache) {
+            return 'redis';
+        }
+
+        $className = get_class($cache);
+        $classNameLower = strtolower($className);
+
+        if (str_contains($classNameLower, 'memcache')) {
+            return 'memcached';
+        }
+        if (str_contains($classNameLower, 'file')) {
+            return 'file';
+        }
+        if (str_contains($classNameLower, 'apcu') || str_contains($classNameLower, '\\apc')) {
+            return 'apcu';
+        }
+        if (str_contains($classNameLower, 'dummy') || str_contains($classNameLower, 'array')) {
+            return 'none';
+        }
+        if (str_contains($classNameLower, 'db') || str_contains($classNameLower, 'database')) {
+            return 'database';
+        }
+
+        $parts = explode('\\', $className);
+        $driverName = strtolower(str_replace(['Cache', 'cache'], '', end($parts)));
+
+        return $driverName ?: 'unknown';
+    }
+
+    /**
+     * Get full index name with prefix applied
+     */
+    private function getFullIndexName(string $indexName): string
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $indexPrefix = $settings->indexPrefix ?? '';
+        return $indexPrefix . $indexName;
     }
 
     /**

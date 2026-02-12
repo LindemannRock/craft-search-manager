@@ -1,0 +1,101 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set title = widgetStyle.name %}
+{% set fullPageForm = false %}
+{% set selectedSubnavItem = 'widgets' %}
+
+{% set crumbs = [
+	{ label: searchHelper.fullName, url: url('search-manager') },
+	{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+	{ label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
+	{ label: widgetStyle.name }
+] %}
+
+{% block content %}
+	<div class="pane">
+		<h2>{{ 'Configuration'|t('search-manager') }}</h2>
+		<p class="light">{{ 'This style is defined in your config file and cannot be edited here.'|t('search-manager') }}</p>
+		<pre style="background: #f3f7fc; padding: 14px; border-radius: 4px; overflow-x: auto; font-size: 12px;"><code>{{ widgetStyle.getStyles()|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_SLASHES')) }}</code></pre>
+	</div>
+
+	{% include 'lindemannrock-base/_components/plugin-credit' %}
+{% endblock %}
+
+{% block details %}
+	<div class="meta">
+		{{ forms.lightswitchField({
+			label: 'Enabled'|t('search-manager'),
+			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+			id: 'enabled',
+			on: widgetStyle.enabled,
+			disabled: true
+		}) }}
+	</div>
+
+	{# Widget Preview #}
+	{% include "search-manager/widgets/_shared/preview" with {
+		widgetConfig: null,
+		styles: styles,
+	} only %}
+
+	{# Style Info #}
+	<fieldset>
+		<dl class="meta read-only">
+			<div class="data">
+				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
+				<dd class="value">
+					<span class="status {{ widgetStyle.enabled ? 'live' : 'disabled' }}"></span>
+					<span>{{ widgetStyle.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+				</dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Handle'|t('search-manager') }}</dt>
+				<dd class="value"><code>{{ widgetStyle.handle }}</code></dd>
+			</div>
+			<div class="data">
+				{% set typeLabels = {modal: 'Modal', page: 'Search Page', inline: 'Inline Search'} %}
+				<dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
+				<dd class="value">{{ typeLabels[widgetStyle.type] ?? widgetStyle.type|capitalize }}</dd>
+			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
+				<dd class="value">{{ 'Config File'|t('search-manager') }}</dd>
+			</div>
+			{% if usageCount is defined and usageCount > 0 %}
+				<div class="data">
+					<dt class="heading">{{ 'Widgets Using'|t('search-manager') }}</dt>
+					<dd class="value">{{ usageCount }}</dd>
+				</div>
+			{% endif %}
+		</dl>
+	</fieldset>
+{% endblock %}
+
+{% js %}
+// Light/Dark preview toggle
+(function() {
+	const lightPreview = document.querySelector('.widget-preview-light');
+	const darkPreview = document.querySelector('.widget-preview-dark');
+	const toggleButtons = document.querySelectorAll('.widget-preview-toggle button');
+
+	if (!lightPreview || !darkPreview || !toggleButtons.length) return;
+
+	toggleButtons.forEach(function(btn) {
+		btn.addEventListener('click', function() {
+			const mode = this.getAttribute('data-preview-mode');
+
+			// Update button states
+			toggleButtons.forEach(function(b) {
+				const isActive = b.getAttribute('data-preview-mode') === mode;
+				b.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+				b.classList.toggle('secondary', isActive);
+			});
+
+			// Show/hide previews
+			lightPreview.style.display = mode === 'light' ? 'block' : 'none';
+			darkPreview.style.display = mode === 'dark' ? 'block' : 'none';
+		});
+	});
+})();
+{% endjs %}

@@ -10,6 +10,7 @@
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+    { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
     { label: isNew ? 'New Widget Config'|t('search-manager') : widgetConfig.name }
 ] %}
 
@@ -22,10 +23,6 @@
     behavior: {
         label: 'Behavior'|t('search-manager'),
         url: '#behavior',
-    },
-    appearance: {
-        label: 'Appearance'|t('search-manager'),
-        url: '#appearance',
     },
 } %}
 
@@ -68,6 +65,32 @@
 	{% endif %}
 	{{ csrfInput() }}
 
+	{# Error Summary #}
+	{% if widgetConfig.hasErrors() %}
+		{% set errorList = [] %}
+		{% for attribute, errors in widgetConfig.getErrors() %}
+			{% for error in errors %}
+				{% set errorList = errorList|merge([{
+					attribute: attribute,
+					message: error
+				}]) %}
+			{% endfor %}
+		{% endfor %}
+		<div class="error-summary" tabindex="-1">
+			<div>
+				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
+				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
+			</div>
+			<ul class="errors">
+				{% for error in errorList %}
+					<li>
+						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+
 	{# Settings Tab #}
 	<div id="settings">
 		{% include "search-manager/widgets/_partials/settings" with {
@@ -84,12 +107,6 @@
 		} %}
 	</div>
 
-	{# Appearance Tab #}
-	<div id="appearance" class="hidden">
-		{% include "search-manager/widgets/_partials/appearance" with {
-			widgetConfig: widgetConfig
-		} %}
-	</div>
 {% endblock %}
 
 {% block details %}
@@ -149,6 +166,47 @@
 				on: false
 			}) }}
 		{% endif %}
+
+		{{ forms.selectField({
+			label: 'Widget Type'|t('search-manager'),
+			id: 'type',
+			name: 'type',
+			value: widgetConfig.type,
+			options: widgetTypeOptions,
+			errors: widgetConfig.getErrors('type')
+		}) }}
+
+		{# Style Preset #}
+		{% set _defaultStyles = widgetConfig.defaultStyleValues() %}
+		{% set _styleMap = {} %}
+		{% for style in widgetStyles %}
+			{% set _styleMap = _styleMap|merge({ (style.handle): _defaultStyles|merge(style.getStyles()) }) %}
+		{% endfor %}
+		<div id="sidebar-style-data" class="hidden"
+			data-style-map="{{ _styleMap|json_encode|e('html_attr') }}"
+			data-default-styles="{{ _defaultStyles|json_encode|e('html_attr') }}"
+		></div>
+		{% set _styleOptions = [] %}
+		{% for style in widgetStyles %}
+			{% set _styleOptions = _styleOptions|merge([{
+				value: style.handle,
+				label: style.name
+			}]) %}
+		{% endfor %}
+		{{ forms.selectField({
+			label: 'Widget Style'|t('search-manager'),
+			id: 'sidebarStylePreset',
+			name: 'styleHandle',
+			value: widgetConfig.styleHandle ?? '',
+			options: _styleOptions,
+		}) }}
+	</div>
+
+	{# Widget Preview #}
+	<div id="widget-preview-wrapper">
+		{% include "search-manager/widgets/_shared/preview" with {
+			widgetConfig: widgetConfig
+		} %}
 	</div>
 
 	{# Template Usage - only for existing widgets #}
@@ -168,13 +226,6 @@
 			</div>
 		</fieldset>
 	{% endif %}
-
-	{# Widget Preview - only visible on Appearance tab #}
-	<div id="widget-preview-wrapper" style="display: none;">
-		{% include "search-manager/widgets/_partials/preview" with {
-			widgetConfig: widgetConfig
-		} %}
-	</div>
 
 	{# Widget Info - only for existing widgets #}
 	{% if not isNew %}
@@ -205,6 +256,8 @@
 		</fieldset>
 	{% endif %}
 {% endblock %}
+
+{% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\widgetpreview\\WidgetPreviewAsset') %}
 
 {% js %}
 // Set platform-specific keyboard shortcut
@@ -244,360 +297,28 @@ if (saveShortcut) {
 	}
 })();
 
-// Show preview only on Appearance tab
+// Sidebar style preset → update preview
 (function() {
-	const previewWrapper = document.getElementById('widget-preview-wrapper');
-	if (!previewWrapper) return;
+	const sidebarSelect = document.getElementById('sidebarStylePreset');
+	const dataEl = document.getElementById('sidebar-style-data');
+	if (!sidebarSelect || !dataEl) return;
 
-	function updatePreviewVisibility() {
-		const hash = window.location.hash || '#settings';
-		previewWrapper.style.display = hash === '#appearance' ? 'block' : 'none';
+	const styleMap = JSON.parse(dataEl.dataset.styleMap || '{}');
+	const defaultStyles = JSON.parse(dataEl.dataset.defaultStyles || '{}');
+
+	function applySelectedStyle() {
+		const selected = sidebarSelect.value;
+		const values = selected && styleMap[selected] ? styleMap[selected] : defaultStyles;
+		SearchManagerPreview.applyStyles(values);
 	}
 
-	// Check on load
-	updatePreviewVisibility();
+	// Apply initial style on load
+	applySelectedStyle();
 
-	// Listen for hash changes (tab switches)
-	window.addEventListener('hashchange', updatePreviewVisibility);
-
-	// Also listen for Craft's tab clicks
-	document.querySelectorAll('#tabs a').forEach(function(tab) {
-		tab.addEventListener('click', function() {
-			setTimeout(updatePreviewVisibility, 10);
-		});
-	});
+	// Update preview when style changes
+	sidebarSelect.addEventListener('change', applySelectedStyle);
 })();
 
-// Color scheme toggle (Light/Dark mode editing)
-(function() {
-	const toggleContainer = document.getElementById('color-scheme-toggle');
-	if (!toggleContainer) return;
-
-	const toggleButtons = toggleContainer.querySelectorAll('button[data-color-scheme]');
-	const colorSections = document.querySelectorAll('.color-scheme-section');
-	const lightPreview = document.querySelector('.widget-preview-light');
-	const darkPreview = document.querySelector('.widget-preview-dark');
-	const previewToggleButtons = document.querySelectorAll('.widget-preview-toggle .btn');
-
-	function switchColorScheme(scheme) {
-		// Update toggle buttons (active = secondary/darker, inactive = lighter)
-		toggleButtons.forEach(function(btn) {
-			const isActive = btn.getAttribute('data-color-scheme') === scheme;
-			btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-			btn.classList.toggle('secondary', isActive);
-		});
-
-		// Show/hide color sections
-		colorSections.forEach(function(section) {
-			const sectionScheme = section.getAttribute('data-color-scheme');
-			section.classList.toggle('hidden', sectionScheme !== scheme);
-		});
-
-		// Switch preview to match
-		if (lightPreview && darkPreview) {
-			lightPreview.style.display = scheme === 'light' ? 'block' : 'none';
-			darkPreview.style.display = scheme === 'dark' ? 'block' : 'none';
-
-			// Also update preview toggle buttons to stay in sync (active = secondary/darker)
-			previewToggleButtons.forEach(function(btn) {
-				const btnMode = btn.getAttribute('data-preview-mode');
-				const isActive = btnMode === scheme;
-				btn.setAttribute('aria-pressed', isActive ? 'true' : 'false');
-				btn.classList.toggle('secondary', isActive);
-			});
-		}
-	}
-
-	// Handle toggle button clicks
-	toggleButtons.forEach(function(btn) {
-		btn.addEventListener('click', function() {
-			const scheme = this.getAttribute('data-color-scheme');
-			switchColorScheme(scheme);
-		});
-	});
-
-	// Also sync when preview toggle is clicked (keep them in sync)
-	previewToggleButtons.forEach(function(btn) {
-		btn.addEventListener('click', function() {
-			const mode = this.getAttribute('data-preview-mode');
-			switchColorScheme(mode);
-		});
-	});
-})();
-
-// Widget Preview functionality
-(function() {
-	const lightPreview = document.querySelector('.widget-preview-light');
-	const darkPreview = document.querySelector('.widget-preview-dark');
-	if (!lightPreview || !darkPreview) return;
-
-	// Note: Light/Dark mode toggle is handled by the color scheme toggle above
-	// which syncs both the form sections and preview together
-
-	// Preview update configuration
-	// Maps form input names to preview element updates
-	const previewConfig = {
-		// Modal
-		'settings[styles][modalBg]': [
-			{ container: lightPreview, selector: '.preview-modal', prop: 'backgroundColor' }
-		],
-		'settings[styles][modalBgDark]': [
-			{ container: darkPreview, selector: '.preview-modal', prop: 'backgroundColor' }
-		],
-		'settings[styles][modalBorderColor]': [
-			{ container: lightPreview, selector: '.preview-modal', prop: 'borderColor' }
-		],
-		'settings[styles][modalBorderColorDark]': [
-			{ container: darkPreview, selector: '.preview-modal', prop: 'borderColor' }
-		],
-		'settings[styles][modalBorderRadius]': [
-			{ container: lightPreview, selector: '.preview-modal', prop: 'borderRadius', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-modal', prop: 'borderRadius', unit: 'px' }
-		],
-		'settings[styles][modalBorderWidth]': [
-			{ container: lightPreview, selector: '.preview-modal', prop: 'borderWidth', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-modal', prop: 'borderWidth', unit: 'px' }
-		],
-		'settings[styles][modalShadow]': [
-			{ container: lightPreview, selector: '.preview-modal', prop: 'boxShadow' }
-		],
-		'settings[styles][modalShadowDark]': [
-			{ container: darkPreview, selector: '.preview-modal', prop: 'boxShadow' }
-		],
-
-		// Input
-		'settings[styles][inputBg]': [
-			{ container: lightPreview, selector: '.preview-input', prop: 'backgroundColor' }
-		],
-		'settings[styles][inputBgDark]': [
-			{ container: darkPreview, selector: '.preview-input', prop: 'backgroundColor' }
-		],
-		'settings[styles][inputTextColor]': [
-			{ container: lightPreview, selector: '.preview-search-icon', prop: 'stroke' }
-		],
-		'settings[styles][inputTextColorDark]': [
-			{ container: darkPreview, selector: '.preview-search-icon', prop: 'stroke' }
-		],
-		'settings[styles][inputPlaceholderColor]': [
-			{ container: lightPreview, selector: '.preview-placeholder', prop: 'color' }
-		],
-		'settings[styles][inputPlaceholderColorDark]': [
-			{ container: darkPreview, selector: '.preview-placeholder', prop: 'color' }
-		],
-		'settings[styles][inputBorderColor]': [
-			{ container: lightPreview, selector: '.preview-input', prop: 'borderColor' }
-		],
-		'settings[styles][inputBorderColorDark]': [
-			{ container: darkPreview, selector: '.preview-input', prop: 'borderColor' }
-		],
-		'settings[styles][inputFontSize]': [
-			{ container: lightPreview, selector: '.preview-placeholder', prop: 'fontSize', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-placeholder', prop: 'fontSize', unit: 'px' }
-		],
-
-		// Results
-		'settings[styles][resultTextColor]': [
-			{ container: lightPreview, selector: '.preview-result-title', prop: 'color', all: true }
-		],
-		'settings[styles][resultTextColorDark]': [
-			{ container: darkPreview, selector: '.preview-result-title', prop: 'color', all: true }
-		],
-		'settings[styles][resultDescColor]': [
-			{ container: lightPreview, selector: '.preview-result-desc', prop: 'color', all: true }
-		],
-		'settings[styles][resultDescColorDark]': [
-			{ container: darkPreview, selector: '.preview-result-desc', prop: 'color', all: true }
-		],
-		'settings[styles][resultHoverBg]': [
-			{ container: lightPreview, selector: '.preview-result', prop: 'backgroundColor', index: 2 }
-		],
-		'settings[styles][resultHoverBgDark]': [
-			{ container: darkPreview, selector: '.preview-result', prop: 'backgroundColor', index: 2 }
-		],
-		'settings[styles][resultActiveBg]': [
-			{ container: lightPreview, selector: '.preview-result', prop: 'backgroundColor', index: 1 }
-		],
-		'settings[styles][resultActiveBgDark]': [
-			{ container: darkPreview, selector: '.preview-result', prop: 'backgroundColor', index: 1 }
-		],
-		'settings[styles][resultMutedColor]': [
-			{ container: lightPreview, selector: '.preview-result-arrow', prop: 'stroke', all: true }
-		],
-		'settings[styles][resultMutedColorDark]': [
-			{ container: darkPreview, selector: '.preview-result-arrow', prop: 'stroke', all: true }
-		],
-		'settings[styles][resultBorderRadius]': [
-			{ container: lightPreview, selector: '.preview-result', prop: 'borderRadius', unit: 'px', all: true },
-			{ container: darkPreview, selector: '.preview-result', prop: 'borderRadius', unit: 'px', all: true }
-		],
-
-		// Highlighting
-		'settings[highlighting][bgLight]': [
-			{ container: lightPreview, selector: '.preview-result mark', prop: 'backgroundColor' }
-		],
-		'settings[highlighting][colorLight]': [
-			{ container: lightPreview, selector: '.preview-result mark', prop: 'color' }
-		],
-		'settings[highlighting][bgDark]': [
-			{ container: darkPreview, selector: '.preview-result mark', prop: 'backgroundColor' }
-		],
-		'settings[highlighting][colorDark]': [
-			{ container: darkPreview, selector: '.preview-result mark', prop: 'color' }
-		],
-
-		// Trigger
-		'settings[styles][triggerBg]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'backgroundColor' }
-		],
-		'settings[styles][triggerBgDark]': [
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'backgroundColor' }
-		],
-		'settings[styles][triggerTextColor]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'color' }
-		],
-		'settings[styles][triggerTextColorDark]': [
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'color' }
-		],
-		'settings[styles][triggerBorderColor]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'borderColor' }
-		],
-		'settings[styles][triggerBorderColorDark]': [
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'borderColor' }
-		],
-		'settings[styles][triggerBorderRadius]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'borderRadius', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'borderRadius', unit: 'px' }
-		],
-		'settings[styles][triggerBorderWidth]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'borderWidth', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'borderWidth', unit: 'px' }
-		],
-		'settings[styles][triggerPaddingX]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'paddingLeft', unit: 'px' },
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'paddingRight', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'paddingLeft', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'paddingRight', unit: 'px' }
-		],
-		'settings[styles][triggerPaddingY]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'paddingTop', unit: 'px' },
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'paddingBottom', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'paddingTop', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'paddingBottom', unit: 'px' }
-		],
-		'settings[styles][triggerFontSize]': [
-			{ container: lightPreview, selector: '.preview-trigger', prop: 'fontSize', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger', prop: 'fontSize', unit: 'px' }
-		],
-
-		// Keyboard badge
-		'settings[styles][kbdBg]': [
-			{ container: lightPreview, selector: '.preview-kbd', prop: 'backgroundColor' },
-			{ container: lightPreview, selector: '.preview-trigger-kbd', prop: 'backgroundColor' }
-		],
-		'settings[styles][kbdBgDark]': [
-			{ container: darkPreview, selector: '.preview-kbd', prop: 'backgroundColor' },
-			{ container: darkPreview, selector: '.preview-trigger-kbd', prop: 'backgroundColor' }
-		],
-		'settings[styles][kbdTextColor]': [
-			{ container: lightPreview, selector: '.preview-kbd', prop: 'color' },
-			{ container: lightPreview, selector: '.preview-trigger-kbd', prop: 'color' }
-		],
-		'settings[styles][kbdTextColorDark]': [
-			{ container: darkPreview, selector: '.preview-kbd', prop: 'color' },
-			{ container: darkPreview, selector: '.preview-trigger-kbd', prop: 'color' }
-		],
-		'settings[styles][kbdBorderRadius]': [
-			{ container: lightPreview, selector: '.preview-kbd', prop: 'borderRadius', unit: 'px' },
-			{ container: lightPreview, selector: '.preview-trigger-kbd', prop: 'borderRadius', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-kbd', prop: 'borderRadius', unit: 'px' },
-			{ container: darkPreview, selector: '.preview-trigger-kbd', prop: 'borderRadius', unit: 'px' }
-		],
-
-		// Spinner
-		'settings[styles][spinnerColor]': [
-			{ container: lightPreview, selector: '.preview-spinner', prop: 'color' }
-		],
-		'settings[styles][spinnerColorDark]': [
-			{ container: darkPreview, selector: '.preview-spinner', prop: 'color' }
-		]
-	};
-
-	// Check if value is a hex color (6 hex characters without #)
-	function isHexColor(value) {
-		return /^[0-9a-fA-F]{6}$/.test(value);
-	}
-
-	// Apply a value to preview elements
-	function applyToPreview(inputName, value) {
-		const config = previewConfig[inputName];
-		if (!config || !value) return;
-
-		config.forEach(function(rule) {
-			var finalValue = value;
-
-			// Add # prefix for hex colors (Craft strips it in color fields)
-			if (isHexColor(value)) {
-				finalValue = '#' + value;
-			}
-
-			// Add unit suffix if specified (for dimensions like px)
-			if (rule.unit) {
-				finalValue = value + rule.unit;
-			}
-
-			if (rule.index !== undefined) {
-				// Specific element by index
-				const elements = rule.container.querySelectorAll(rule.selector);
-				if (elements[rule.index]) {
-					elements[rule.index].style[rule.prop] = finalValue;
-				}
-			} else if (rule.all) {
-				// All matching elements
-				rule.container.querySelectorAll(rule.selector).forEach(function(el) {
-					el.style[rule.prop] = finalValue;
-				});
-			} else {
-				// First matching element
-				const el = rule.container.querySelector(rule.selector);
-				if (el) {
-					el.style[rule.prop] = finalValue;
-				}
-			}
-		});
-	}
-
-	// Store last known values
-	const lastValues = {};
-
-	// Scan all form inputs and update preview
-	function syncPreview() {
-		document.querySelectorAll('input[name^="settings["]').forEach(function(input) {
-			const name = input.name;
-			const value = input.value;
-
-			if (value && value !== lastValues[name]) {
-				lastValues[name] = value;
-				applyToPreview(name, value);
-			}
-		});
-	}
-
-	// Initial sync
-	syncPreview();
-
-	// Listen for input events on the form
-	document.querySelector('form').addEventListener('input', function(e) {
-		if (e.target.name && e.target.name.startsWith('settings[')) {
-			const name = e.target.name;
-			const value = e.target.value;
-			if (value !== lastValues[name]) {
-				lastValues[name] = value;
-				applyToPreview(name, value);
-			}
-		}
-	});
-
-	// Poll for changes (catches color picker updates)
-	setInterval(syncPreview, 100);
-})();
+// Preview color scheme toggle
+SearchManagerPreview.initColorSchemeToggle();
 {% endjs %}

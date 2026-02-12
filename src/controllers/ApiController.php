@@ -20,6 +20,10 @@ class ApiController extends Controller
      * Maximum query length to prevent resource exhaustion
      */
     private const MAX_QUERY_LENGTH = 256;
+    /**
+     * Maximum number of indices allowed per request
+     */
+    private const MAX_INDICES_COUNT = 5;
 
     /**
      * @inheritdoc
@@ -33,8 +37,9 @@ class ApiController extends Controller
      *
      * Parameters:
      * - q: Search query (required)
-     * - index: Index handle (default: all-sites)
-     * - limit: Max results (default: 10)
+     * - indices: Comma-separated index handles (optional)
+     * - index: Single index handle (legacy)
+     * - hitsPerPage: Max results (default: 10)
      * - only: Return only 'suggestions' or 'results' (optional, default returns both)
      * - type: Filter results by element type (optional, e.g., 'product', 'category')
      *
@@ -59,8 +64,10 @@ class ApiController extends Controller
             ]);
         }
 
-        $indexHandle = Craft::$app->getRequest()->getParam('index', 'all-sites');
-        $limit = (int) Craft::$app->getRequest()->getParam('limit', 10);
+        // Get indices from new 'indices' param or legacy 'index' param
+        $indicesParam = Craft::$app->getRequest()->getParam('indices', '');
+        $indexHandle = Craft::$app->getRequest()->getParam('index', '');
+        $limit = (int) Craft::$app->getRequest()->getParam('hitsPerPage', 10);
         // Clamp limit to prevent expensive queries (max 100, 0 or negative = use default)
         if ($limit <= 0) {
             $limit = 10;
@@ -88,19 +95,44 @@ class ApiController extends Controller
 
         $autocomplete = SearchManager::$plugin->autocomplete;
 
-        // Validate index handle - block disabled indices on public endpoints
-        if ($indexHandle !== 'all-sites') {
-            $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
-            if (!$index || !$index->enabled) {
-                // Return empty results for disabled or unknown indices
-                if ($only === 'suggestions') {
-                    return $this->asJson([]);
-                }
-                if ($only === 'results') {
-                    return $this->asJson([]);
-                }
-                return $this->asJson(['suggestions' => [], 'results' => []]);
+        // Parse indices - comma-separated string to array
+        // Track whether caller explicitly provided indices
+        $indexHandles = [];
+        $indicesProvided = false;
+        if (!empty($indicesParam)) {
+            $indicesProvided = true;
+            $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
+        } elseif (!empty($indexHandle)) {
+            $indicesProvided = true;
+            $indexHandles = [$indexHandle];
+        }
+
+        // Cap indices count to prevent fan-out attacks
+        if (count($indexHandles) > self::MAX_INDICES_COUNT) {
+            $indexHandles = array_slice($indexHandles, 0, self::MAX_INDICES_COUNT);
+        }
+
+        // Validate requested indices - only allow enabled indices on public endpoints
+        if (!empty($indexHandles)) {
+            $enabledIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $enabledHandles = array_map(
+                fn($idx) => $idx->handle,
+                array_filter($enabledIndices, fn($idx) => $idx->enabled)
+            );
+            // Filter to only enabled indices
+            $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
+        }
+
+        // If indices were explicitly provided but none are valid/enabled, return empty
+        // Don't fall back to "all enabled" - that would expose unintended results
+        if ($indicesProvided && empty($indexHandles)) {
+            if ($only === 'suggestions') {
+                return $this->asJson([]);
             }
+            if ($only === 'results') {
+                return $this->asJson([]);
+            }
+            return $this->asJson(['suggestions' => [], 'results' => []]);
         }
 
         // Build options array
@@ -114,19 +146,87 @@ class ApiController extends Controller
 
         // Only suggestions: return plain strings
         if ($only === 'suggestions') {
-            return $this->asJson($autocomplete->suggest($query, $indexHandle, $options));
+            if (count($indexHandles) === 1) {
+                return $this->asJson($autocomplete->suggest($query, $indexHandles[0], $options));
+            }
+            if (count($indexHandles) > 1) {
+                $allSuggestions = [];
+                foreach ($indexHandles as $handle) {
+                    $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
+                }
+                return $this->asJson(array_values(array_unique($allSuggestions)));
+            }
+            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $allIndexHandles = array_map(
+                fn($idx) => $idx->handle,
+                array_filter($allIndices, fn($idx) => $idx->enabled)
+            );
+            $allSuggestions = [];
+            foreach ($allIndexHandles as $handle) {
+                $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
+            }
+            return $this->asJson(array_values(array_unique($allSuggestions)));
         }
 
         // Only results: return element objects with type info
         if ($only === 'results') {
             $options['type'] = $typeFilter;
-            return $this->asJson($autocomplete->suggestElements($query, $indexHandle, $options));
+            if (count($indexHandles) === 1) {
+                return $this->asJson($autocomplete->suggestElements($query, $indexHandles[0], $options));
+            }
+            if (count($indexHandles) > 1) {
+                $allResults = [];
+                foreach ($indexHandles as $handle) {
+                    $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, $options));
+                }
+                return $this->asJson($allResults);
+            }
+            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $allIndexHandles = array_map(
+                fn($idx) => $idx->handle,
+                array_filter($allIndices, fn($idx) => $idx->enabled)
+            );
+            $allResults = [];
+            foreach ($allIndexHandles as $handle) {
+                $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, $options));
+            }
+            return $this->asJson($allResults);
         }
 
         // Default: return both
+        if (count($indexHandles) === 1) {
+            return $this->asJson([
+                'suggestions' => $autocomplete->suggest($query, $indexHandles[0], $options),
+                'results' => $autocomplete->suggestElements($query, $indexHandles[0], array_merge($options, ['type' => $typeFilter])),
+            ]);
+        }
+        if (count($indexHandles) > 1) {
+            $allSuggestions = [];
+            $allResults = [];
+            foreach ($indexHandles as $handle) {
+                $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
+                $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, array_merge($options, ['type' => $typeFilter])));
+            }
+            return $this->asJson([
+                'suggestions' => array_values(array_unique($allSuggestions)),
+                'results' => $allResults,
+            ]);
+        }
+
+        $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+        $allIndexHandles = array_map(
+            fn($idx) => $idx->handle,
+            array_filter($allIndices, fn($idx) => $idx->enabled)
+        );
+        $allSuggestions = [];
+        $allResults = [];
+        foreach ($allIndexHandles as $handle) {
+            $allSuggestions = array_merge($allSuggestions, $autocomplete->suggest($query, $handle, $options));
+            $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, array_merge($options, ['type' => $typeFilter])));
+        }
         return $this->asJson([
-            'suggestions' => $autocomplete->suggest($query, $indexHandle, $options),
-            'results' => $autocomplete->suggestElements($query, $indexHandle, array_merge($options, ['type' => $typeFilter])),
+            'suggestions' => array_values(array_unique($allSuggestions)),
+            'results' => $allResults,
         ]);
     }
 
@@ -137,8 +237,10 @@ class ApiController extends Controller
      *
      * Parameters:
      * - q: Search query (required)
-     * - index: Index handle (default: all-sites)
-     * - limit: Max results (default: 20)
+     * - indices: Comma-separated index handles (optional)
+     * - index: Single index handle (legacy)
+     * - hitsPerPage: Max results (default: 20)
+     * - page: Page number (0-based, default: 0)
      * - type: Filter by element type (optional, e.g., 'product', 'category', 'product,category')
      * - language: Language code for localized operators (optional, e.g., 'de', 'fr', 'es', 'ar')
      *             Supports: AND/OR/NOT in English, UND/ODER/NICHT (German), ET/OU/SAUF (French),
@@ -167,8 +269,10 @@ class ApiController extends Controller
             ]);
         }
 
-        $indexHandle = $request->getParam('index', 'all-sites');
-        $limit = (int) $request->getParam('limit', 20);
+        // Get indices from new 'indices' param or legacy 'index' param
+        $indicesParam = $request->getParam('indices', '');
+        $indexHandle = $request->getParam('index', '');
+        $limit = (int) $request->getParam('hitsPerPage', 20);
         // Normalize limit: negative = default, 0 = no limit, positive = capped at 100
         if ($limit < 0) {
             $limit = 20;
@@ -176,6 +280,11 @@ class ApiController extends Controller
             $limit = min(100, $limit);
         }
         // $limit === 0 means "no limit" (passed through to backend)
+        $page = (int) $request->getParam('page', 0);
+        if ($page < 0) {
+            $page = 0;
+        }
+        $offset = $limit > 0 ? $page * $limit : 0;
         $typeFilter = $request->getParam('type', null);
         $language = $request->getParam('language', null);
 
@@ -191,20 +300,47 @@ class ApiController extends Controller
             ]);
         }
 
-        // Validate index handle - block disabled indices on public endpoints
-        if ($indexHandle !== 'all-sites') {
-            $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
-            if (!$index || !$index->enabled) {
-                // Return empty results for disabled or unknown indices
-                return $this->asJson([
-                    'hits' => [],
-                    'total' => 0,
-                ]);
-            }
+        // Parse indices - comma-separated string to array
+        // Track whether caller explicitly provided indices
+        $indexHandles = [];
+        $indicesProvided = false;
+        if (!empty($indicesParam)) {
+            $indicesProvided = true;
+            $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
+        } elseif (!empty($indexHandle)) {
+            $indicesProvided = true;
+            $indexHandles = [$indexHandle];
+        }
+
+        // Cap indices count to prevent fan-out attacks
+        if (count($indexHandles) > self::MAX_INDICES_COUNT) {
+            $indexHandles = array_slice($indexHandles, 0, self::MAX_INDICES_COUNT);
+        }
+
+        // Validate requested indices - only allow enabled indices on public endpoints
+        if (!empty($indexHandles)) {
+            $enabledIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $enabledHandles = array_map(
+                fn($idx) => $idx->handle,
+                array_filter($enabledIndices, fn($idx) => $idx->enabled)
+            );
+            // Filter to only enabled indices
+            $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
+        }
+
+        // If indices were explicitly provided but none are valid/enabled, return empty
+        // Don't fall back to "all enabled" - that would expose unintended results
+        if ($indicesProvided && empty($indexHandles)) {
+            return $this->asJson([
+                'hits' => [],
+                'total' => 0,
+            ]);
         }
 
         $options = [
             'limit' => $limit,
+            'offset' => $offset,
+            'page' => $page,
             'type' => $typeFilter,
         ];
 
@@ -224,12 +360,39 @@ class ApiController extends Controller
             $options['appVersion'] = $appVersion;
         }
 
-        $results = SearchManager::$plugin->backend->search($indexHandle, $query, $options);
+        // Run search (single, multi, or all enabled indices)
+        if (count($indexHandles) === 1) {
+            $results = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);
+        } elseif (count($indexHandles) > 1) {
+            $results = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
+        } else {
+            // No indices specified - search all enabled indices
+            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $allIndexHandles = array_map(
+                fn($idx) => $idx->handle,
+                array_filter($allIndices, fn($idx) => $idx->enabled)
+            );
+
+            if (empty($allIndexHandles)) {
+                return $this->asJson([
+                    'hits' => [],
+                    'total' => 0,
+                    'error' => 'No search indices configured',
+                ]);
+            }
+
+            $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
+        }
 
         // Strip internal meta from public API response
         // Meta contains rule IDs, names, action values which expose internal logic
         // TODO: Add API key authentication with debug flag to allow meta for trusted clients
         unset($results['meta']);
+
+        $total = (int) ($results['total'] ?? 0);
+        $results['page'] = $page;
+        $results['hitsPerPage'] = $limit;
+        $results['totalPages'] = $limit > 0 ? (int) ceil($total / $limit) : 1;
 
         return $this->asJson($results);
     }

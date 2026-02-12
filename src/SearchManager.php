@@ -60,6 +60,7 @@ use yii\base\Event;
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
  * @property-read WidgetConfigService $widgetConfigs
+ * @property-read \lindemannrock\searchmanager\services\WidgetStyleService $widgetStyles
  * @property-read Settings $settings
  * @method Settings getSettings()
  * @since 5.0.0
@@ -142,6 +143,11 @@ class SearchManager extends Plugin
                         'filter' => ColorHelper::getPaletteColor('orange'),
                         'redirect' => ColorHelper::getPaletteColor('red'),
                     ],
+                    'widgetType' => [
+                        'modal' => ColorHelper::getPaletteColor('violet'),
+                        'page' => ColorHelper::getPaletteColor('sky'),
+                        'inline' => ColorHelper::getPaletteColor('rose'),
+                    ],
                 ],
             ]
         );
@@ -211,6 +217,7 @@ class SearchManager extends Plugin
             'queryRules' => QueryRuleService::class,
             'transformers' => TransformerService::class,
             'widgetConfigs' => WidgetConfigService::class,
+            'widgetStyles' => \lindemannrock\searchmanager\services\WidgetStyleService::class,
         ]);
     }
 
@@ -293,6 +300,11 @@ class SearchManager extends Plugin
                     'search-manager/widgets/new' => 'search-manager/widgets/edit',
                     'search-manager/widgets/view/<handle>' => 'search-manager/widgets/view',
                     'search-manager/widgets/edit/<configId:\d+>' => 'search-manager/widgets/edit',
+                    // Widget Styles
+                    'search-manager/widgets/styles' => 'search-manager/widgets/styles-index',
+                    'search-manager/widgets/styles/view/<handle>' => 'search-manager/widgets/view-style',
+                    'search-manager/widgets/styles/new' => 'search-manager/widgets/edit-style',
+                    'search-manager/widgets/styles/edit/<styleId:\d+>' => 'search-manager/widgets/edit-style',
                     // Backends
                     'search-manager/backends' => 'search-manager/backends/index',
                     'search-manager/backends/new' => 'search-manager/backends/edit',

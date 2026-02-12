@@ -130,31 +130,12 @@
         </ul>
     </div>
 
-    <hr style="margin: 40px 0;">
-
-    <h2>Legacy Widget Comparison</h2>
-    <p>For comparison, here's the original SearchWidget (should behave identically):</p>
-
-    <div class="test-section">
-        <h3 style="font-size: 14px; color: #666;">LEGACY: SearchWidget</h3>
-        <search-widget
-            indices="products,articles"
-            placeholder="Legacy widget..."
-            hotkey="l"
-            show-trigger="true"
-            theme="light"
-        ></search-widget>
-    </div>
-
-    <!-- Load both widgets -->
     <script src="dist/SearchModalWidget.js"></script>
-    <script src="dist/SearchWidget.js"></script>
 
     <script>
-        // Log when widgets are registered
+        // Log when widget is registered
         console.log('Custom elements registered:');
         console.log('  search-modal:', customElements.get('search-modal') ? 'YES' : 'NO');
-        console.log('  search-widget:', customElements.get('search-widget') ? 'YES' : 'NO');
 
         // Add event listeners for debugging
         document.querySelectorAll('search-modal').forEach((widget, i) => {

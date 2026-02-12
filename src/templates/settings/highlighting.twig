@@ -27,6 +27,45 @@
 	</div>
 {% endblock %}
 
+{% js %}
+(function() {
+	const highlightTagSelect = document.getElementById('highlightTag');
+	const highlightClassInput = document.getElementById('highlightClass');
+	const highlightPreview = document.getElementById('highlighting-preview');
+	const highlightHtml = document.getElementById('highlighting-html');
+
+	if (!highlightPreview || !highlightHtml) return;
+
+	function renderHighlightPreview() {
+		const defaultTag = highlightPreview.dataset.defaultTag || 'mark';
+		const defaultClass = highlightPreview.dataset.defaultClass || '';
+		const tag = (highlightTagSelect && highlightTagSelect.value) ? highlightTagSelect.value : defaultTag;
+		const cls = (highlightClassInput && highlightClassInput.value) ? highlightClassInput.value : defaultClass;
+
+		highlightPreview.innerHTML = '';
+		highlightPreview.append('This is a ');
+		const el = document.createElement(tag || 'mark');
+		if (cls) {
+			el.className = cls;
+		}
+		el.textContent = 'highlighted term';
+		highlightPreview.appendChild(el);
+		highlightPreview.append(' in search results.');
+
+		const classAttr = cls ? ` class="${cls}"` : '';
+		highlightHtml.textContent = `<${tag}${classAttr}>term</${tag}>`;
+	}
+
+	if (highlightTagSelect) {
+		highlightTagSelect.addEventListener('change', renderHighlightPreview);
+	}
+	if (highlightClassInput) {
+		highlightClassInput.addEventListener('input', renderHighlightPreview);
+	}
+	renderHighlightPreview();
+})();
+{% endjs %}
+
 {% block content %}
 
     {% include 'lindemannrock-base/_components/ip-salt-error' with {
@@ -108,11 +147,11 @@
                     <p>Preview of how highlighted text will appear:</p>
                 </div>
                 <div class="input">
-                    <div style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
+                    <div id="highlighting-preview" data-default-tag="{{ settings.highlightTag ?? 'mark' }}" data-default-class="{{ settings.highlightClass ?? '' }}" style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
                         This is a <{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}>highlighted term</{{ settings.highlightTag ?? 'mark' }}> in search results.
                     </div>
                     <p class="light" style="margin-top: 10px;">
-                        HTML output: <code>&lt;{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}&gt;term&lt;/{{ settings.highlightTag ?? 'mark' }}&gt;</code>
+                        HTML output: <code id="highlighting-html">&lt;{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}&gt;term&lt;/{{ settings.highlightTag ?? 'mark' }}&gt;</code>
                     </p>
                 </div>
             </div>

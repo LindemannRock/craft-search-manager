@@ -71,7 +71,8 @@ class SearchController extends Controller
      * - q: Search query (required)
      * - indices: Comma-separated index handles (optional, searches all if not specified)
      * - index: Single index handle (legacy, use indices instead)
-     * - limit: Max results (default: 10)
+     * - hitsPerPage: Max results (default: 10)
+     * - page: Page number (0-based, default: 0)
      * - siteId: Site ID to search (optional)
      * - hideResultsWithoutUrl: Hide results that don't have a URL (optional, default: false)
      * - skipAnalytics: Skip analytics tracking (default: true for widget, prevents keystroke spam)
@@ -94,7 +95,7 @@ class SearchController extends Controller
             ]);
         }
 
-        $limit = (int) $request->getParam('limit', 10);
+        $limit = (int) $request->getParam('hitsPerPage', 10);
         // Normalize limit: negative = default, 0 = no limit, positive = capped at 100
         if ($limit < 0) {
             $limit = 10;
@@ -102,6 +103,11 @@ class SearchController extends Controller
             $limit = min(100, $limit);
         }
         // $limit === 0 means "no limit" (passed through to backend)
+        $page = (int) $request->getParam('page', 0);
+        if ($page < 0) {
+            $page = 0;
+        }
+        $offset = $limit > 0 ? $page * $limit : 0;
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int) $siteId : null;
         $hideResultsWithoutUrl = (bool) $request->getParam('hideResultsWithoutUrl', false);
@@ -149,6 +155,8 @@ class SearchController extends Controller
         try {
             $options = [
                 'limit' => $limit,
+                'offset' => $offset,
+                'page' => $page,
                 'skipAnalytics' => $skipAnalytics,
             ];
 
@@ -242,11 +250,22 @@ class SearchController extends Controller
                     continue;
                 }
 
+                $snippetDebug = $includeDebugMeta ? [] : null;
+                $description = $this->getDescription(
+                    $hit,
+                    $element,
+                    $query,
+                    $hit['matchedTerms'] ?? null,
+                    $hit['_index'] ?? ($indexHandles[0] ?? ''),
+                    $snippetDebug
+                );
+
                 $result = [
                     'id' => $elementId,
                     'title' => $hit['title'] ?? $element->title ?? 'Untitled',
                     'url' => $url,
-                    'description' => $this->getDescription($hit, $element),
+                    'description' => $description,
+                    'descriptionSafe' => $description !== null ? \craft\helpers\Html::encode($description) : null,
                     'section' => $hit['section'] ?? $this->getSectionName($element),
                     'type' => $hit['type'] ?? $element::displayName(),
                     'score' => $hit['score'] ?? null,
@@ -278,37 +297,47 @@ class SearchController extends Controller
                 }
 
                 // Pass through hierarchy data for hierarchical display
-                // Try hit data first, fall back to element properties (for PluginDoc elements)
+                // Only expand headings when the match is in the title or a heading
+                // (like Algolia DocSearch — content-only matches show snippets, not headings)
                 $headings = $hit['_headings'] ?? null;
-                if ($headings === null && $element instanceof \lindemannrock\plugindocs\elements\PluginDoc && !empty($element->headings)) {
-                    $headings = array_map(function($h) {
-                        return [
-                            'text' => $h['text'] ?? '',
-                            'id' => $h['id'] ?? '',
-                            'level' => $h['level'] ?? 2,
-                        ];
-                    }, $element->headings);
-                }
 
                 if (!empty($headings)) {
                     $result['_headings'] = $headings;
 
-                    // Compute matched headings (headings containing the search query)
-                    $matchedHeadings = [];
-                    foreach ($headings as $heading) {
-                        if (!empty($heading['text']) && stripos($heading['text'], $query) !== false) {
-                            $matchedHeadings[] = $heading;
+                    $indexHandleForMatch = $hit['_index'] ?? ($indexHandles[0] ?? '');
+                    $titleMatchTerms = $this->resolveTitleMatchTerms(
+                        $hit,
+                        $hit['matchedTerms'] ?? null,
+                        $query,
+                        $indexHandleForMatch,
+                        $element
+                    );
+                    $headingMatchTerms = $this->resolveHeadingMatchTerms(
+                        $hit,
+                        $hit['matchedTerms'] ?? null,
+                        $query,
+                        $indexHandleForMatch,
+                        $element
+                    );
+
+                    $title = (string) $result['title'];
+                    $titleMatches = !empty($title) && $this->textHasAnyTerm($title, $titleMatchTerms);
+
+                    if ($titleMatches) {
+                        // Title matches: show all headings for navigation
+                        $result['_matchedHeadings'] = array_values($headings);
+                    } else {
+                        // Only include headings that actually contain the query
+                        $matchedHeadings = array_filter($headings, function($h) use ($headingMatchTerms) {
+                            return !empty($h['text']) && $this->textHasAnyTerm($h['text'], $headingMatchTerms);
+                        });
+                        if (!empty($matchedHeadings)) {
+                            $result['_matchedHeadings'] = array_values($matchedHeadings);
                         }
-                    }
-                    if (!empty($matchedHeadings)) {
-                        $result['_matchedHeadings'] = array_values(array_slice($matchedHeadings, 0, 3));
                     }
                 }
 
                 $category = $hit['category'] ?? null;
-                if ($category === null && $element instanceof \lindemannrock\plugindocs\elements\PluginDoc) {
-                    $category = $element->category;
-                }
                 if (!empty($category)) {
                     $result['category'] = $category;
                 }
@@ -316,6 +345,14 @@ class SearchController extends Controller
                 // Add matched fields info (which fields contained the search query)
                 if (!empty($hit['matchedIn'])) {
                     $result['matchedIn'] = $hit['matchedIn'];
+                }
+
+                if (!empty($hit['matchedTerms'])) {
+                    $result['matchedTerms'] = $hit['matchedTerms'];
+                }
+
+                if ($includeDebugMeta && !empty($snippetDebug)) {
+                    $result['_snippet'] = $snippetDebug;
                 }
 
                 // Add promoted flag (result was injected via promotion, not found via search)
@@ -332,10 +369,16 @@ class SearchController extends Controller
             }
 
             // Build response with optional debug meta
+            $total = (int) ($searchResults['total'] ?? count($results));
+            $totalPages = $limit > 0 ? (int) ceil($total / $limit) : 1;
+
             $response = [
                 'results' => $results,
-                'total' => $searchResults['total'] ?? count($results),
+                'total' => $total,
                 'query' => $query,
+                'page' => $page,
+                'hitsPerPage' => $limit,
+                'totalPages' => $totalPages,
             ];
 
             // Include debug meta only when devMode is on OR debug param explicitly set
@@ -544,38 +587,522 @@ class SearchController extends Controller
 
     /**
      * Get description from hit or element
+     *
+     * When a query is provided, generates a contextual snippet centered around
+     * the first occurrence of the query in the content (like Algolia DocSearch).
+     * Falls back to the first 150 chars if the query isn't found in the text.
      */
-    private function getDescription(array $hit, mixed $element): ?string
-    {
-        // Check hit data first
+    private function getDescription(
+        array $hit,
+        mixed $element,
+        string $query = '',
+        ?array $matchedTerms = null,
+        string $indexHandle = '',
+        ?array &$debugMeta = null,
+    ): ?string {
+        // Collect candidate text sources in priority order
+        $candidates = [];
+        $snippetCandidates = [];
+        $snippetFrom = 'fallback';
+        $fullContentLen = null;
+
         if (!empty($hit['description'])) {
-            return $this->truncate($hit['description'], 150);
+            $candidates[] = $hit['description'];
+            $snippetCandidates[] = $hit['description'];
         }
-
         if (!empty($hit['excerpt'])) {
-            return $this->truncate($hit['excerpt'], 150);
+            $candidates[] = $hit['excerpt'];
+            $snippetCandidates[] = $hit['excerpt'];
         }
-
         if (!empty($hit['content'])) {
-            return $this->truncate(strip_tags($hit['content']), 150);
+            $candidates[] = $this->htmlToPlainText($hit['content'], false);
+            $snippetCandidates[] = $this->htmlToPlainText($hit['content'], true);
         }
 
-        // Try element fields
+        // Try element fields (short description fields first)
         if ($element !== null) {
-            // Check for common description field names
             $descriptionFields = ['description', 'excerpt', 'summary', 'intro', 'teaser'];
-
             foreach ($descriptionFields as $fieldHandle) {
                 if (isset($element->$fieldHandle) && !empty($element->$fieldHandle)) {
                     $value = $element->$fieldHandle;
-                    if (is_string($value)) {
-                        return $this->truncate(strip_tags($value), 150);
+                    if (is_string($value) || $value instanceof \Stringable) {
+                        $plain = $this->htmlToPlainText((string) $value, false);
+                        $candidates[] = $plain;
+                        $snippetCandidates[] = $plain;
                     }
                 }
             }
         }
 
+        if (empty($candidates)) {
+            return null;
+        }
+
+        $snippetSource = $this->resolveSnippetSource($hit);
+        $snippetTerms = $this->resolveSnippetTerms($hit, $matchedTerms, $query, $indexHandle, $element, $snippetSource);
+        $allowCodeSnippets = $this->shouldAllowCodeSnippets();
+        $snippetMode = $this->getSnippetMode();
+        $snippetLength = $this->getSnippetLength();
+
+        // If we have terms, find a contextual snippet containing the match
+        if (!empty($snippetTerms)) {
+            // If the match is in content, prioritize full-content snippets (avoid pre-truncated excerpts)
+            if ($snippetSource === 'content') {
+                $fullContent = $this->getElementFullContent($element, false);
+                $fullContentLen = $fullContent !== null ? mb_strlen($fullContent) : null;
+                if ($fullContent !== null) {
+                    $snippet = $this->findSnippet($fullContent, $snippetTerms, $snippetLength, $snippetMode);
+                    if ($snippet !== null) {
+                        $snippetFrom = 'content';
+                        $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, $snippetFrom, $fullContentLen);
+                        return $snippet;
+                    }
+                }
+
+                // If allowed, try code snippets when content matched
+                if ($allowCodeSnippets) {
+                    $codeSnippet = $this->findCodeSnippet($element, $snippetTerms, $snippetLength);
+                    if ($codeSnippet !== null) {
+                        $snippetFrom = 'code';
+                        $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, $snippetFrom, $fullContentLen);
+                        return $codeSnippet;
+                    }
+                }
+            } else {
+                // Fall back to short candidates (description, excerpt)
+                foreach ($snippetCandidates as $text) {
+                    $snippet = $this->findSnippet($text, $snippetTerms, $snippetLength, $snippetMode);
+                    if ($snippet !== null) {
+                        $snippetFrom = 'short';
+                        $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, $snippetFrom, $fullContentLen);
+                        return $snippet;
+                    }
+                }
+
+                // If still not found, try full content
+                $fullContent = $this->getElementFullContent($element, false);
+                $fullContentLen = $fullContent !== null ? mb_strlen($fullContent) : null;
+                if ($fullContent !== null) {
+                    $snippet = $this->findSnippet($fullContent, $snippetTerms, $snippetLength, $snippetMode);
+                    if ($snippet !== null) {
+                        $snippetFrom = 'content';
+                        $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, $snippetFrom, $fullContentLen);
+                        return $snippet;
+                    }
+                }
+            }
+        }
+
+        // Fallback: return the first candidate truncated
+        $snippetFrom = 'fallback';
+        $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, $snippetFrom, $fullContentLen);
+        return $this->truncate(trim($candidates[0]), $snippetLength);
+    }
+
+    private function setSnippetDebugMeta(
+        ?array &$debugMeta,
+        string $snippetSource,
+        string $snippetMode,
+        string $snippetFrom,
+        ?int $fullContentLen,
+    ): void {
+        if ($debugMeta === null) {
+            return;
+        }
+
+        $debugMeta['snippetSource'] = $snippetSource;
+        $debugMeta['snippetMode'] = $snippetMode;
+        $debugMeta['snippetFrom'] = $snippetFrom;
+        $debugMeta['fullContentLength'] = $fullContentLen;
+    }
+
+    /**
+     * Find a concise snippet from code blocks when query terms match code
+     *
+     * @return string|null Snippet line from code blocks
+     */
+    private function findCodeSnippet(mixed $element, array $terms, int $maxLength = 150): ?string
+    {
+        if ($element === null) {
+            return null;
+        }
+
+        $htmlBlocks = [];
+
+        if ($element instanceof \lindemannrock\plugindocs\elements\PluginDoc) {
+            if (!empty($element->htmlContent)) {
+                $htmlBlocks[] = $element->htmlContent;
+            }
+        }
+
+        if ($element instanceof \craft\base\Element && $element->getFieldLayout()) {
+            foreach ($element->getFieldLayout()->getCustomFields() as $field) {
+                try {
+                    $value = $element->getFieldValue($field->handle);
+                    if (is_string($value) || $value instanceof \Stringable) {
+                        $stringValue = (string) $value;
+                        if (str_contains($stringValue, '<code') || str_contains($stringValue, '<pre')) {
+                            $htmlBlocks[] = $stringValue;
+                        }
+                    }
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+        }
+
+        if (empty($htmlBlocks)) {
+            return null;
+        }
+
+        foreach ($htmlBlocks as $html) {
+            $codeBlocks = $this->extractCodeBlocks($html);
+            foreach ($codeBlocks as $code) {
+                $snippet = $this->findCodeLineSnippet($code, $terms, $maxLength);
+                if ($snippet !== null) {
+                    return $snippet;
+                }
+            }
+        }
+
         return null;
+    }
+
+    /**
+     * Extract raw code blocks from HTML
+     *
+     * @return string[] Raw code strings
+     */
+    private function extractCodeBlocks(string $html): array
+    {
+        $blocks = [];
+        $patterns = [
+            '/<pre\\b[^>]*>(.*?)<\\/pre>/is',
+            '/<code\\b[^>]*>(.*?)<\\/code>/is',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match_all($pattern, $html, $matches)) {
+                foreach ($matches[1] as $block) {
+                    $text = strip_tags($block);
+                    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $text = str_replace(["\r\n", "\r"], "\n", $text);
+                    $blocks[] = trim($text);
+                }
+            }
+        }
+
+        return array_values(array_filter($blocks));
+    }
+
+    /**
+     * Find a matching line in code and return a compact snippet
+     */
+    private function findCodeLineSnippet(string $code, array $terms, int $maxLength = 150): ?string
+    {
+        $lines = preg_split('/\\n+/', $code) ?: [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+
+            $pos = false;
+            $matchedTerm = null;
+            foreach ($terms as $term) {
+                $pos = mb_stripos($line, $term);
+                if ($pos !== false) {
+                    $matchedTerm = $term;
+                    break;
+                }
+            }
+
+            if ($pos === false) {
+                continue;
+            }
+
+            $lineLength = mb_strlen($line);
+            if ($lineLength <= $maxLength) {
+                return $line;
+            }
+
+            $start = max(0, $pos - (int) ($maxLength / 2));
+            $end = min($lineLength, $start + $maxLength);
+            if ($end === $lineLength) {
+                $start = max(0, $end - $maxLength);
+            }
+
+            $snippet = mb_substr($line, $start, $end - $start);
+            $prefix = $start > 0 ? '...' : '';
+            $suffix = $end < $lineLength ? '...' : '';
+
+            return $prefix . trim($snippet) . $suffix;
+        }
+
+        return null;
+    }
+
+    /**
+     * Get the full text content from an element for contextual snippet generation
+     *
+     * Extracts text from PluginDoc htmlContent or entry rich text fields.
+     */
+    private function getElementFullContent(mixed $element, bool $includeCode = false): ?string
+    {
+        if ($element === null) {
+            return null;
+        }
+
+        // PluginDoc elements have htmlContent
+        if ($element instanceof \lindemannrock\plugindocs\elements\PluginDoc) {
+            $html = $element->htmlContent ?? '';
+            return !empty($html) ? $this->htmlToPlainText($html, $includeCode) : null;
+        }
+
+        // For entries/other elements, concatenate text from all custom fields
+        if ($element instanceof \craft\base\Element && $element->getFieldLayout()) {
+            $texts = [];
+            foreach ($element->getFieldLayout()->getCustomFields() as $field) {
+                try {
+                    $value = $element->getFieldValue($field->handle);
+                    if ((is_string($value) || $value instanceof \Stringable) && !empty((string) $value)) {
+                        $texts[] = $this->htmlToPlainText((string) $value, $includeCode);
+                    }
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+            if (!empty($texts)) {
+                return implode(' ', $texts);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Convert HTML to clean plain text for snippets
+     *
+     * Strips code blocks, scripts, styles, then tags, decodes entities,
+     * and normalizes whitespace.
+     */
+    private function htmlToPlainText(string $html, bool $includeCode = false): string
+    {
+        $html = $this->maybeParseMarkdown($html);
+
+        // Always remove scripts and styles (content and all)
+        $html = (string) preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
+
+        // Optionally remove code blocks
+        if (!$includeCode) {
+            $html = (string) preg_replace('/<(pre|code)\b[^>]*>.*?<\/\1>/is', ' ', $html);
+        }
+
+        // Strip remaining tags
+        $text = strip_tags($html);
+
+        // Decode HTML entities (&lt; &gt; &amp; &quot; etc.)
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Normalize whitespace
+        $text = (string) preg_replace('/\s+/', ' ', $text);
+
+        return trim($text);
+    }
+
+    private function maybeParseMarkdown(string $text): string
+    {
+        if (!$this->shouldParseMarkdownSnippets()) {
+            return $text;
+        }
+
+        // If it already looks like HTML, skip
+        if (preg_match('/<[^>]+>/', $text)) {
+            return $text;
+        }
+
+        if (!$this->looksLikeMarkdown($text)) {
+            return $text;
+        }
+
+        return (string) \yii\helpers\Markdown::process($text, 'gfm-comment');
+    }
+
+    private function looksLikeMarkdown(string $text): bool
+    {
+        if (preg_match('/^#{1,6}\s+/m', $text)) {
+            return true;
+        }
+        if (preg_match('/^```/m', $text)) {
+            return true;
+        }
+        if (preg_match('/\[[^\]]+\]\([^)]+\)/', $text)) {
+            return true;
+        }
+        if (preg_match('/^\s*[-*+]\s+/m', $text)) {
+            return true;
+        }
+        if (preg_match('/^\s*\|.+\|\s*$/m', $text) && preg_match('/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/m', $text)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Find a contextual snippet centered around the query in the text
+     *
+     * @return string|null Snippet with surrounding context, or null if query not found
+     */
+    private function findSnippet(string $text, array $terms, int $maxLength = 150, string $mode = 'balanced'): ?string
+    {
+        $text = trim($text);
+        if (empty($text)) {
+            return null;
+        }
+
+        $pos = false;
+        foreach ($terms as $term) {
+            $pos = mb_stripos($text, $term);
+            if ($pos !== false) {
+                break;
+            }
+        }
+
+        if ($pos === false) {
+            return null;
+        }
+
+        $textLength = mb_strlen($text);
+
+        // If the text fits within maxLength, return it all
+        if ($textLength <= $maxLength) {
+            return $text;
+        }
+
+        // Bias the snippet so the match appears early (avoid trailing-only matches)
+        $mode = strtolower($mode);
+        if ($mode === 'early') {
+            $lead = 10;
+        } elseif ($mode === 'deep') {
+            // Deep: show more context before the match
+            $lead = 90;
+        } else {
+            // Balanced: a bit more context before the match
+            $lead = 40;
+        }
+
+        $start = max(0, $pos - $lead);
+        $end = min($textLength, $start + $maxLength);
+
+        if ($end === $textLength) {
+            $start = max(0, $end - $maxLength);
+        }
+
+        [$start, $end] = $this->adjustSnippetToWordBoundaries($text, $start, $end, $maxLength, $pos, $lead);
+        $snippet = mb_substr($text, $start, $end - $start);
+
+        // Add ellipsis if we're not at the boundaries
+        $prefix = $start > 0 ? '...' : '';
+        $suffix = $end < $textLength ? '...' : '';
+
+        return $prefix . trim($snippet) . $suffix;
+    }
+
+    private function adjustSnippetToWordBoundaries(
+        string $text,
+        int $start,
+        int $end,
+        int $maxLength,
+        int $matchPos,
+        int $lead,
+    ): array {
+        $textLength = mb_strlen($text);
+
+        // Move start to previous whitespace
+        $before = mb_substr($text, 0, $start);
+        $lastSpace = mb_strrpos($before, ' ');
+        if ($lastSpace !== false) {
+            $start = (int) $lastSpace + 1;
+        }
+
+        // Move end to next whitespace
+        $after = mb_substr($text, $end);
+        $nextSpace = mb_strpos($after, ' ');
+        if ($nextSpace !== false) {
+            $end = $end + (int) $nextSpace;
+        }
+
+        // If boundary expansion exceeds maxLength, keep match near the start
+        if (($end - $start) > $maxLength) {
+            $start = max(0, $matchPos - $lead);
+            $end = min($textLength, $start + $maxLength);
+        }
+
+        if ($end === $textLength) {
+            $start = max(0, $end - $maxLength);
+        }
+
+        return [$start, $end];
+    }
+
+    private function shouldAllowCodeSnippets(): bool
+    {
+        // Algolia-style UX: keep code searchable but don't surface code snippets by default
+        $request = Craft::$app->getRequest();
+        $allow = $request->getParam('allowCodeSnippets');
+        if ($allow === null) {
+            return false;
+        }
+
+        if (is_bool($allow)) {
+            return $allow;
+        }
+
+        $parsed = filter_var($allow, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        return $parsed ?? false;
+    }
+
+    private function getSnippetMode(): string
+    {
+        $request = Craft::$app->getRequest();
+        $mode = (string) $request->getParam('snippetMode', 'balanced');
+        $mode = strtolower(trim($mode));
+
+        $allowed = ['early', 'balanced', 'deep'];
+        return in_array($mode, $allowed, true) ? $mode : 'balanced';
+    }
+
+    private function getSnippetLength(): int
+    {
+        $request = Craft::$app->getRequest();
+        $length = (int) $request->getParam('snippetLength', 150);
+
+        if ($length < 50) {
+            return 50;
+        }
+
+        if ($length > 1000) {
+            return 1000;
+        }
+
+        return $length;
+    }
+
+    private function shouldParseMarkdownSnippets(): bool
+    {
+        $request = Craft::$app->getRequest();
+        $value = $request->getParam('parseMarkdownSnippets');
+        if ($value === null) {
+            return false;
+        }
+
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        $parsed = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        return $parsed ?? false;
     }
 
     /**
@@ -586,12 +1113,6 @@ class SearchController extends Controller
         // For entries, get the section name
         if ($element instanceof \craft\elements\Entry) {
             return $element->section->name ?? 'Entries';
-        }
-
-        // For PluginDoc elements, get the plugin name
-        if ($element instanceof \lindemannrock\plugindocs\elements\PluginDoc) {
-            $pluginRecord = \lindemannrock\plugindocs\records\PluginRecord::findOne($element->pluginId);
-            return $pluginRecord->name ?? 'Docs';
         }
 
         // For other elements, use the display name
@@ -610,5 +1131,147 @@ class SearchController extends Controller
         }
 
         return mb_substr($text, 0, $maxLength - 3) . '...';
+    }
+
+    /**
+     * Resolve snippet terms based on matched terms or query tokenization
+     *
+     * @return string[] Terms sorted by length desc
+     */
+    private function resolveSnippetTerms(
+        array $hit,
+        ?array $matchedTerms,
+        string $query,
+        string $indexHandle,
+        mixed $element,
+        string $snippetSource = 'content',
+    ): array {
+        $terms = [];
+        $matchedTerms = $matchedTerms ?? ($hit['matchedTerms'] ?? null);
+        $matchedIn = $hit['matchedIn'] ?? [];
+
+        if (!empty($matchedTerms)) {
+            if ($snippetSource === 'content' && !empty($matchedTerms['content'])) {
+                $terms = $matchedTerms['content'];
+            } elseif ($snippetSource === 'title' && !empty($matchedTerms['title'])) {
+                $terms = $matchedTerms['title'];
+            } else {
+                $terms = array_merge($matchedTerms['content'] ?? [], $matchedTerms['title'] ?? []);
+            }
+        }
+
+        if (empty($terms) && !empty($query)) {
+            $terms = $this->tokenizeQueryTerms($query, $indexHandle, $element);
+        }
+
+        $terms = array_values(array_unique(array_filter($terms, fn($t) => is_string($t) && $t !== '')));
+        usort($terms, fn($a, $b) => mb_strlen($b) - mb_strlen($a));
+
+        return $terms;
+    }
+
+    private function resolveSnippetSource(array $hit): string
+    {
+        if (!empty($hit['matchedIn']) && is_array($hit['matchedIn'])) {
+            if (in_array('content', $hit['matchedIn'], true)) {
+                return 'content';
+            }
+            if (in_array('title', $hit['matchedIn'], true)) {
+                return 'title';
+            }
+        }
+
+        return 'content';
+    }
+
+    private function resolveTitleMatchTerms(
+        array $hit,
+        ?array $matchedTerms,
+        string $query,
+        string $indexHandle,
+        mixed $element,
+    ): array {
+        $matchedTerms = $matchedTerms ?? ($hit['matchedTerms'] ?? null);
+        if (!empty($matchedTerms['title'])) {
+            return array_values(array_unique($matchedTerms['title']));
+        }
+
+        return $this->tokenizeQueryTerms($query, $indexHandle, $element);
+    }
+
+    private function resolveHeadingMatchTerms(
+        array $hit,
+        ?array $matchedTerms,
+        string $query,
+        string $indexHandle,
+        mixed $element,
+    ): array {
+        $matchedTerms = $matchedTerms ?? ($hit['matchedTerms'] ?? null);
+        if (!empty($matchedTerms['content'])) {
+            return array_values(array_unique($matchedTerms['content']));
+        }
+
+        return $this->tokenizeQueryTerms($query, $indexHandle, $element);
+    }
+
+    private function textHasAnyTerm(string $text, array $terms): bool
+    {
+        foreach ($terms as $term) {
+            if ($term === '') {
+                continue;
+            }
+            if (mb_stripos($text, $term) !== false) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Tokenize query using the same rules as the search engine
+     *
+     * @return string[] Tokens
+     */
+    private function tokenizeQueryTerms(string $query, string $indexHandle = '', mixed $element = null): array
+    {
+        $tokenizer = new \lindemannrock\searchmanager\search\Tokenizer();
+        $terms = $tokenizer->tokenize($query);
+
+        $settings = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings();
+        $disableStopWords = false;
+        $language = null;
+
+        if (!empty($indexHandle)) {
+            $searchIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+            if ($searchIndex && !empty($searchIndex->language)) {
+                $language = $searchIndex->language;
+            }
+            if ($searchIndex) {
+                $disableStopWords = (bool) $searchIndex->disableStopWords;
+            }
+        }
+
+        if ($language === null) {
+            $siteId = null;
+            if ($element instanceof \craft\base\Element) {
+                $siteId = $element->siteId ?? null;
+            }
+            if ($siteId) {
+                $site = \Craft::$app->getSites()->getSiteById($siteId);
+                if ($site && !empty($site->language)) {
+                    $language = strtolower(substr($site->language, 0, 2));
+                }
+            }
+        }
+
+        $language = $language ?: 'en';
+
+        if (($settings->enableStopWords ?? true) && !$disableStopWords) {
+            $stopWords = new \lindemannrock\searchmanager\search\StopWords($language);
+            $terms = $stopWords->filter($terms);
+        }
+
+        return array_values(array_unique($terms));
     }
 }

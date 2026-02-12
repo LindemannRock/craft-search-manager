@@ -7,6 +7,7 @@ use craft\helpers\Db;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use yii\web\Response;
 
 /**
@@ -17,6 +18,7 @@ use yii\web\Response;
 class SettingsController extends Controller
 {
     use LoggingTrait;
+    use ElementTypeGuardTrait;
 
     public function init(): void
     {
@@ -264,7 +266,8 @@ class SettingsController extends Controller
             $backendName = $backend ? $backend->getName() : 'unknown';
 
             // Check if result was actually cached from metadata
-            $cached = $results['cached'] ?? false;
+            $cached = $results['meta']['cached'] ?? false;
+            $cacheDriver = $results['meta']['cacheDriver'] ?? null;
 
             // Hydrate element data for display (title, url, type, section)
             $elementType = $index->elementType ?? \craft\elements\Entry::class;
@@ -287,12 +290,16 @@ class SettingsController extends Controller
                     // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
                     // External backends may use composite keys, so we need the original element ID
                     $elementIds = array_map(fn($hit) => $hit['elementId'] ?? $hit['id'], $siteHits);
-                    $elements = $elementType::find()
-                        ->id($elementIds)
-                        ->siteId($siteId)
-                        ->status(null)
-                        ->indexBy('id')
-                        ->all();
+                    if ($this->isElementTypeAvailable($elementType, 'settings-search')) {
+                        $elements = $elementType::find()
+                            ->id($elementIds)
+                            ->siteId($siteId)
+                            ->status(null)
+                            ->indexBy('id')
+                            ->all();
+                    } else {
+                        $elements = [];
+                    }
 
                     foreach ($elements as $id => $element) {
                         $elementsById[$siteId . ':' . $id] = $element;
@@ -388,11 +395,54 @@ class SettingsController extends Controller
                 'backend' => $backendName,
                 'executionTime' => $executionTime,
                 'cacheEnabled' => $settings->enableCache ?? false,
+                'cacheHit' => $cached,
+                'cacheDriver' => $cacheDriver,
                 'wildcard' => $wildcard,
                 'queryUsed' => $query,
                 'originalQuery' => $originalQuery,
                 'highlightingEnabled' => $settings->enableHighlighting,
                 'indexSiteId' => $index->siteId ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            return $this->asJson([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * @since 5.0.0
+     */
+    public function actionTestAutocomplete(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+
+        $query = Craft::$app->getRequest()->getRequiredBodyParam('query');
+        $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
+        $siteId = Craft::$app->getRequest()->getBodyParam('siteId');
+        $siteId = $siteId ? (int)$siteId : null;
+
+        try {
+            $options = [
+                'includeMeta' => true,
+            ];
+            if ($siteId !== null) {
+                $options['siteId'] = $siteId;
+            }
+
+            $result = SearchManager::$plugin->autocomplete->suggest($query, $indexHandle, $options);
+
+            // When includeMeta is true, suggest() returns array with suggestions + meta
+            $suggestions = $result['suggestions'] ?? [];
+            $meta = $result['meta'] ?? [];
+
+            return $this->asJson([
+                'success' => true,
+                'suggestions' => $suggestions,
+                'meta' => $meta,
             ]);
         } catch (\Throwable $e) {
             return $this->asJson([

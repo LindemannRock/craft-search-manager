@@ -64,14 +64,16 @@ class PluginDocsTransformer extends BaseTransformer
             $searchableContent[] = $this->stripHtml($element->htmlContent);
         }
 
-        // Index headings as separate field for boosting
-        if (!empty($element->headings)) {
-            $headingTexts = [];
-            foreach ($element->headings as $heading) {
-                if (!empty($heading['text'])) {
-                    $headingTexts[] = $heading['text'];
-                }
-            }
+        // Extract headings for boosting and hierarchical display
+        // Always use BaseTransformer::extractHeadings() which respects index headingLevels
+        $headings = [];
+        if (!empty($element->htmlContent)) {
+            $headings = $this->extractHeadings($element->htmlContent);
+        }
+
+        if (!empty($headings)) {
+            $headingTexts = array_column($headings, 'text');
+            $headingTexts = array_filter($headingTexts);
             if (!empty($headingTexts)) {
                 $data['headings'] = implode(' ', $headingTexts);
                 $searchableContent[] = $data['headings'];
@@ -79,12 +81,17 @@ class PluginDocsTransformer extends BaseTransformer
 
             // Keep raw headings for hierarchical display in frontend
             $data['_headings'] = array_map(function($h) {
+                $text = $h['text'] ?? '';
+                $id = $h['id'] ?? ($h['anchor'] ?? '');
+                if (empty($id) && !empty($text)) {
+                    $id = $this->generateHeadingId($text);
+                }
                 return [
-                    'text' => $h['text'] ?? '',
-                    'id' => $h['id'] ?? '',
+                    'text' => $text,
+                    'id' => $id,
                     'level' => $h['level'] ?? 2,
                 ];
-            }, $element->headings);
+            }, $headings);
         }
 
         // Index extracted keywords

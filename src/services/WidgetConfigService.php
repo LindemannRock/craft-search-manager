@@ -79,8 +79,10 @@ class WidgetConfigService extends Component
         $widgetConfig = new WidgetConfig();
         $widgetConfig->handle = $handle;
         $widgetConfig->name = $configData['name'] ?? ucfirst($handle);
+        $widgetConfig->type = $configData['type'] ?? 'modal';
         $widgetConfig->enabled = $configData['enabled'] ?? true;
         $widgetConfig->source = 'config';
+        $widgetConfig->styleHandle = $configData['style'] ?? null;
 
         // Merge settings with defaults
         $settings = $configData['settings'] ?? [];
@@ -432,6 +434,8 @@ class WidgetConfigService extends Component
         $config->id = (int) $row['id'];
         $config->handle = $row['handle'];
         $config->name = $row['name'];
+        $config->type = $row['type'] ?? 'modal';
+        $config->styleHandle = $row['styleHandle'] ?? null;
         $config->settings = Json::decodeIfJson($row['settings']) ?: WidgetConfig::defaultSettings();
         $config->enabled = (bool) $row['enabled'];
         $config->dateCreated = $row['dateCreated'] ? new \DateTime($row['dateCreated']) : null;

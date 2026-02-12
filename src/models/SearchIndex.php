@@ -42,6 +42,10 @@ class SearchIndex extends Model
     public array|\Closure $criteria = [];
 
     public ?string $transformerClass = null;
+    /**
+     * @var array<int>|null Heading levels to extract (e.g. [2,3,4])
+     */
+    public ?array $headingLevels = null;
 
     /**
      * @var string|null Language code (en, ar, fr, es, de) - null = auto-detect from site
@@ -102,6 +106,7 @@ class SearchIndex extends Model
             [['siteId'], 'validateSiteId'],
             [['source'], 'in', 'range' => ['config', 'database']],
             [['criteria'], 'safe'],
+            [['headingLevels'], 'safe'],
             [['transformerClass'], 'validateTransformerClass'],
         ];
     }
@@ -201,6 +206,7 @@ class SearchIndex extends Model
             $model->criteria = $configData['criteria'] ?? [];
             $model->transformerClass = $configData['transformer'] ?? null;
             $model->language = $configData['language'] ?? null;
+            $model->headingLevels = $configData['headingLevels'] ?? null;
             $model->backend = $configData['backend'] ?? null;
             $model->enabled = $configData['enabled'] ?? true;
             $model->enableAnalytics = $configData['enableAnalytics'] ?? true;
@@ -313,6 +319,7 @@ class SearchIndex extends Model
                 $model->criteria = $indexConfig['criteria'] ?? [];
                 $model->transformerClass = $indexConfig['transformer'] ?? null;
                 $model->language = $indexConfig['language'] ?? null;
+                $model->headingLevels = $indexConfig['headingLevels'] ?? null;
                 $model->backend = $indexConfig['backend'] ?? null;
                 $model->enabled = $indexConfig['enabled'] ?? true;
                 $model->enableAnalytics = $indexConfig['enableAnalytics'] ?? true;
@@ -399,6 +406,9 @@ class SearchIndex extends Model
         }
         $model->criteria = json_decode($row['criteriaJson'], true) ?? [];
         $model->transformerClass = $row['transformerClass'];
+        $model->headingLevels = !empty($row['headingLevelsJson'])
+            ? json_decode($row['headingLevelsJson'], true)
+            : null;
         $model->language = $row['language'] ?? null;
         $model->backend = $row['backend'] ?? null;
         $model->enabled = (bool)$row['enabled'];
@@ -443,6 +453,7 @@ class SearchIndex extends Model
                 'siteId' => is_array($this->siteId) ? null : $this->siteId,
                 'criteriaJson' => json_encode($this->criteria),
                 'transformerClass' => $this->transformerClass,
+                'headingLevelsJson' => $this->headingLevels ? json_encode($this->headingLevels) : null,
                 'language' => $this->language,
                 'backend' => $this->backend ?: null,
                 'enabled' => (int)$this->enabled,
@@ -564,6 +575,7 @@ class SearchIndex extends Model
             $freshName = $configData['name'] ?? $this->handle;
             $freshTransformer = $configData['transformer'] ?? null;
             $freshLanguage = $configData['language'] ?? null;
+            $freshHeadingLevels = $configData['headingLevels'] ?? null;
             $freshEnabled = $configData['enabled'] ?? true;
             $freshDisableStopWords = $configData['disableStopWords'] ?? false;
 
@@ -591,6 +603,7 @@ class SearchIndex extends Model
                     [
                         'name' => $freshName,
                         'transformerClass' => $freshTransformer ?: '',
+                        'headingLevelsJson' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
                         'disableStopWords' => (int)$freshDisableStopWords,
@@ -603,6 +616,7 @@ class SearchIndex extends Model
             // Update current object with fresh values
             $this->name = $freshName;
             $this->transformerClass = $freshTransformer;
+            $this->headingLevels = $freshHeadingLevels;
             $this->language = $freshLanguage;
             $this->enabled = $freshEnabled;
             $this->disableStopWords = (bool)$freshDisableStopWords;
@@ -637,6 +651,7 @@ class SearchIndex extends Model
             $freshName = $configData['name'] ?? $this->handle;
             $freshTransformer = $configData['transformer'] ?? null;
             $freshLanguage = $configData['language'] ?? null;
+            $freshHeadingLevels = $configData['headingLevels'] ?? null;
             $freshEnabled = $configData['enabled'] ?? true;
             $freshDisableStopWords = $configData['disableStopWords'] ?? false;
 
@@ -665,6 +680,7 @@ class SearchIndex extends Model
                         [
                             'name' => $freshName,
                             'transformerClass' => $freshTransformer ?: '',
+                            'headingLevelsJson' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
                             'language' => $freshLanguage,
                             'enabled' => (int)$freshEnabled,
                             'disableStopWords' => (int)$freshDisableStopWords,
@@ -686,6 +702,7 @@ class SearchIndex extends Model
                         'siteId' => is_array($this->siteId) ? null : $this->siteId,
                         'criteriaJson' => '{}', // Empty - actual criteria is in config
                         'transformerClass' => $freshTransformer ?: '',
+                        'headingLevelsJson' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
                         'disableStopWords' => (int)$freshDisableStopWords,
@@ -703,6 +720,7 @@ class SearchIndex extends Model
             // Update current object with fresh values
             $this->name = $freshName;
             $this->transformerClass = $freshTransformer;
+            $this->headingLevels = $freshHeadingLevels;
             $this->language = $freshLanguage;
             $this->enabled = $freshEnabled;
             $this->disableStopWords = (bool)$freshDisableStopWords;
@@ -800,6 +818,7 @@ class SearchIndex extends Model
             'siteId' => $this->siteId,
             'criteria' => $this->criteria,
             'transformer' => $this->transformerClass,
+            'headingLevels' => $this->headingLevels,
             'language' => $this->language,
             'enabled' => $this->enabled,
         ];
@@ -932,6 +951,12 @@ class SearchIndex extends Model
         if (!empty($configData['transformer'])) {
             $transformer = $configData['transformer'];
             $lines[] = "    'transformer' => '{$transformer}',";
+        }
+
+        // Heading levels
+        if (!empty($configData['headingLevels'])) {
+            $levels = array_map('intval', $configData['headingLevels']);
+            $lines[] = "    'headingLevels' => [" . implode(', ', $levels) . "],";
         }
 
         // Language

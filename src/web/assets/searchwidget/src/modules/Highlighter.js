@@ -14,6 +14,7 @@
  * @property {boolean} enabled - Whether highlighting is enabled
  * @property {string} tag - HTML tag to wrap matches (default: 'mark')
  * @property {string} className - Additional CSS class for highlights (optional)
+ * @property {string[]} [terms] - Explicit terms to highlight (preferred over query)
  */
 
 /**
@@ -83,21 +84,11 @@ export function highlightMatches(text, query, options = {}) {
         enabled = true,
         tag = 'mark',
         className = '',
+        terms = null,
     } = options;
 
-    // Always escape HTML first for security
-    const escaped = escapeHtml(text);
-
-    // Return escaped text if highlighting disabled or no query
-    if (!enabled || !query) {
-        return escaped;
-    }
-
-    // Split query into words, filter empty strings
-    const queryWords = query.toLowerCase().split(/\s+/).filter(w => w.length > 0);
-
-    if (queryWords.length === 0) {
-        return escaped;
+    if (!enabled) {
+        return escapeHtml(text);
     }
 
     // Build CSS class attribute
@@ -107,12 +98,99 @@ export function highlightMatches(text, query, options = {}) {
     }
     const classAttr = ` class="${classes.join(' ')}"`;
 
-    // Highlight each query word using word boundary matching
-    let result = escaped;
-    queryWords.forEach(word => {
-        const regex = new RegExp(`\\b(${escapeRegex(word)})\\b`, 'gi');
-        result = result.replace(regex, `<${tag}${classAttr}>$1</${tag}>`);
+    const termList = buildHighlightTerms(query, terms);
+    if (termList.length === 0) {
+        return escapeHtml(text);
+    }
+
+    return applyHighlightRanges(text, termList, tag, classAttr);
+}
+
+function buildHighlightTerms(query, terms) {
+    if (Array.isArray(terms) && terms.length > 0) {
+        return normalizeTerms(terms);
+    }
+
+    if (!query) {
+        return [];
+    }
+
+    // Split query into words (whitespace + camelCase) for highlighting
+    // e.g. "DateRangeHelper" → ["daterangehelper", "date", "range", "helper"]
+    const rawWords = query.split(/\s+/).filter(w => w.length > 0);
+    const allWords = [];
+    rawWords.forEach(word => {
+        allWords.push(word);
+        // Split camelCase/PascalCase into individual words
+        const camelParts = word.split(/(?<=[a-z])(?=[A-Z])/);
+        if (camelParts.length > 1) {
+            camelParts.forEach(p => { if (p.length >= 3) allWords.push(p); });
+        }
     });
+
+    return normalizeTerms(allWords);
+}
+
+function normalizeTerms(terms) {
+    const seen = new Set();
+    return terms
+        .filter(w => typeof w === 'string' && w.length > 0)
+        .sort((a, b) => b.length - a.length)
+        .filter(w => {
+            const lower = w.toLowerCase();
+            if (seen.has(lower)) return false;
+            seen.add(lower);
+            return true;
+        });
+}
+
+function applyHighlightRanges(text, terms, tag, classAttr) {
+    const lowerText = text.toLowerCase();
+    const ranges = [];
+
+    terms.forEach(term => {
+        const lowerTerm = term.toLowerCase();
+        if (!lowerTerm) return;
+
+        let start = 0;
+        while (start < lowerText.length) {
+            const index = lowerText.indexOf(lowerTerm, start);
+            if (index === -1) break;
+            ranges.push({ start: index, end: index + lowerTerm.length });
+            start = index + lowerTerm.length;
+        }
+    });
+
+    if (ranges.length === 0) {
+        return escapeHtml(text);
+    }
+
+    ranges.sort((a, b) => {
+        if (a.start !== b.start) return a.start - b.start;
+        return (b.end - b.start) - (a.end - a.start);
+    });
+
+    const merged = [];
+    let lastEnd = -1;
+    ranges.forEach(range => {
+        if (range.start >= lastEnd) {
+            merged.push(range);
+            lastEnd = range.end;
+        }
+    });
+
+    let result = '';
+    let cursor = 0;
+    merged.forEach(range => {
+        if (cursor < range.start) {
+            result += escapeHtml(text.slice(cursor, range.start));
+        }
+        result += `<${tag}${classAttr}>${escapeHtml(text.slice(range.start, range.end))}</${tag}>`;
+        cursor = range.end;
+    });
+    if (cursor < text.length) {
+        result += escapeHtml(text.slice(cursor));
+    }
 
     return result;
 }

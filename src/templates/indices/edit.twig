@@ -212,6 +212,25 @@
         warning: index.transformerClass ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
     }) }}
 
+    {% set headingLevelOptions = [
+        { label: 'H1', value: 1 },
+        { label: 'H2', value: 2 },
+        { label: 'H3', value: 3 },
+        { label: 'H4', value: 4 },
+        { label: 'H5', value: 5 },
+        { label: 'H6', value: 6 },
+    ] %}
+    {% set selectedHeadingLevels = index.headingLevels ?? [2, 3, 4] %}
+
+    {{ forms.checkboxGroupField({
+        label: "Heading Levels"|t('search-manager'),
+        instructions: "Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4."|t('search-manager'),
+        id: 'headingLevels',
+        name: 'headingLevels',
+        options: headingLevelOptions,
+        values: selectedHeadingLevels,
+    }) }}
+
     {# Helpful transformer examples #}
     <div class="field" style="margin-top: -10px;">
         <div class="heading">
@@ -507,7 +526,7 @@ document.addEventListener('DOMContentLoaded', function() {
 							<ul>
 								{% if currentUser.can('searchManager:rebuildIndices') %}
 								<li>
-									<a class="formsubmit" data-action="search-manager/indices/rebuild" data-params='{"indexId":{{ index.id }}}' data-confirm="{{ 'This will rebuild the entire index. Continue?'|t('search-manager') }}" data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
+									<a class="formsubmit" data-action="search-manager/indices/rebuild" data-params='{"indexId":{{ index.id }}}' data-redirect="{{ cpUrl('search-manager/indices/edit/' ~ index.id)|hash }}">
 										{{ "Rebuild Index"|t('search-manager') }}
 									</a>
 								</li>

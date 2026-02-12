@@ -101,23 +101,9 @@ class ClearSearchCache extends Utility
 
         // Only count files when using file storage (Redis counts are not displayed)
         if ($settings->cacheStorageMethod === 'file') {
-            $deviceCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
-            if (is_dir($deviceCachePath)) {
-                $files = glob($deviceCachePath . '*.cache');
-                $deviceCacheFiles = count($files ?: []);
-            }
-
-            $searchCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
-            if (is_dir($searchCachePath)) {
-                $files = glob($searchCachePath . '*.cache');
-                $searchCacheFiles = count($files ?: []);
-            }
-
-            $autocompleteCachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
-            if (is_dir($autocompleteCachePath)) {
-                $files = glob($autocompleteCachePath . '*.cache');
-                $autocompleteCacheFiles = count($files ?: []);
-            }
+            $deviceCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'device'));
+            $searchCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'search'));
+            $autocompleteCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete'));
         }
 
         return Craft::$app->getView()->renderTemplate('search-manager/utilities/index', [
@@ -133,5 +119,28 @@ class ClearSearchCache extends Utility
             'analyticsCount' => $analyticsCount,
             'settings' => $settings,
         ]);
+    }
+
+    /**
+     * Count cached files recursively in a directory
+     */
+    private static function countCacheFiles(string $path): int
+    {
+        if (!is_dir($path)) {
+            return 0;
+        }
+
+        $count = 0;
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($path, \FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile() && str_ends_with($file->getFilename(), '.cache')) {
+                $count++;
+            }
+        }
+
+        return $count;
     }
 }

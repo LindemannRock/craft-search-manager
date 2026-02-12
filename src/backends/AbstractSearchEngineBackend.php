@@ -163,8 +163,11 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $success = $engine->indexDocument($siteId, $elementId, $title, $content);
 
             if ($success) {
+                // Build document data JSON for rich search results
+                $documentData = $this->buildDocumentData($indexName, $data);
+
                 // Store element metadata for rich autocomplete suggestions
-                $storage->storeElement($siteId, $elementId, $title, $elementType);
+                $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
 
                 $this->logDebug('Document indexed with SearchEngine', [
                     'index' => $indexName,
@@ -203,7 +206,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
 
                 if ($engine->indexDocument($siteId, $elementId, $title, $content)) {
-                    $storage->storeElement($siteId, $elementId, $title, $elementType);
+                    $documentData = $this->buildDocumentData($indexName, $data);
+                    $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
                     $successCount++;
                 }
             }
@@ -323,6 +327,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $storage = $this->getStorage($indexName);
 
             $limit = $options['limit'] ?? 0;
+            $offset = $options['offset'] ?? 0;
             $typeFilter = $options['type'] ?? null;
 
             // Build search options (pass language for localized operators)
@@ -336,10 +341,13 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $siteIdOption = $rawSiteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
 
             if ($searchAllSites) {
-                $hits = $this->searchAllSites($engine, $storage, $query, $limit, $typeFilter, $searchOptions);
+                $result = $this->searchAllSites($engine, $storage, $indexName, $query, $limit, $offset, $typeFilter, $searchOptions);
             } else {
-                $hits = $this->searchSingleSite($engine, $storage, $query, (int)$siteIdOption, $limit, $typeFilter, $searchOptions);
+                $result = $this->searchSingleSite($engine, $storage, $indexName, $query, (int)$siteIdOption, $limit, $offset, $typeFilter, $searchOptions);
             }
+
+            $hits = $result['hits'] ?? [];
+            $total = $result['total'] ?? count($hits);
 
             $this->logDebug('Search completed with SearchEngine', [
                 'index' => $indexName,
@@ -349,7 +357,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 'all_sites' => $searchAllSites,
             ]);
 
-            return ['hits' => $hits, 'total' => count($hits)];
+            return ['hits' => $hits, 'total' => $total];
         } catch (\Throwable $e) {
             $this->logError("{$this->getBackendLabel()} search failed", ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0];
@@ -363,6 +371,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      * @param StorageInterface $storage
      * @param string $query
      * @param int $limit
+     * @param int $offset
      * @param string|array|null $typeFilter
      * @param array $searchOptions
      * @return array
@@ -370,8 +379,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     protected function searchAllSites(
         SearchEngine $engine,
         StorageInterface $storage,
+        string $indexName,
         string $query,
         int $limit,
+        int $offset,
         $typeFilter,
         array $searchOptions,
     ): array {
@@ -401,27 +412,38 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 continue;
             }
 
-            $hits[] = [
+            $hit = [
                 'objectID' => $elementId,
                 'id' => $elementId,
                 'score' => $data['score'],
                 'type' => $elementType,
                 'siteId' => $data['siteId'],
             ];
+
+            // Merge stored document data into hit (provides section, _headings, category, etc.)
+            if (!empty($info['documentData'])) {
+                $hit = array_merge($info['documentData'], $hit);
+            }
+
+            $hits[] = $hit;
         }
 
         usort($hits, fn($a, $b) => $b['score'] <=> $a['score']);
 
+        $total = count($hits);
+
         if ($limit > 0) {
-            $hits = array_slice($hits, 0, $limit);
+            $hits = array_slice($hits, $offset, $limit);
+        } elseif ($offset > 0) {
+            $hits = array_slice($hits, $offset);
         }
 
         // Add matchedIn field indicating which fields matched the query
         // Use first site's ID as default (helper uses per-hit siteId when available)
         $defaultSiteId = !empty($allSites) ? $allSites[0]->id : 1;
-        $hits = $this->addMatchedFieldsToHits($hits, $query, $defaultSiteId, $storage);
+        $hits = $this->addMatchedFieldsToHits($hits, $query, $indexName, $defaultSiteId, $storage, count($hits));
 
-        return $hits;
+        return ['hits' => $hits, 'total' => $total];
     }
 
     /**
@@ -432,6 +454,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      * @param string $query
      * @param int $siteId
      * @param int $limit
+     * @param int $offset
      * @param string|array|null $typeFilter
      * @param array $searchOptions
      * @return array
@@ -439,13 +462,21 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     protected function searchSingleSite(
         SearchEngine $engine,
         StorageInterface $storage,
+        string $indexName,
         string $query,
         int $siteId,
         int $limit,
+        int $offset,
         $typeFilter,
         array $searchOptions,
     ): array {
-        $results = $engine->search($query, $siteId, $limit, $searchOptions);
+        $results = $engine->search($query, $siteId, 0, $searchOptions);
+        $total = count($results);
+        if ($limit > 0) {
+            $results = array_slice($results, $offset, $limit, true);
+        } elseif ($offset > 0) {
+            $results = array_slice($results, $offset, null, true);
+        }
         $elementIds = array_keys($results);
         $elementInfo = $storage->getElementsByIds($siteId, $elementIds);
 
@@ -458,18 +489,25 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 continue;
             }
 
-            $hits[] = [
+            $hit = [
                 'objectID' => $elementId,
                 'id' => $elementId,
                 'score' => $score,
                 'type' => $elementType,
             ];
+
+            // Merge stored document data into hit (provides section, _headings, category, etc.)
+            if (!empty($info['documentData'])) {
+                $hit = array_merge($info['documentData'], $hit);
+            }
+
+            $hits[] = $hit;
         }
 
         // Add matchedIn field indicating which fields matched the query
-        $hits = $this->addMatchedFieldsToHits($hits, $query, $siteId, $storage);
+        $hits = $this->addMatchedFieldsToHits($hits, $query, $indexName, $siteId, $storage, count($hits));
 
-        return $hits;
+        return ['hits' => $hits, 'total' => $total];
     }
 
     /**
@@ -488,6 +526,33 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     // =========================================================================
     // HELPERS
     // =========================================================================
+
+    /**
+     * Build document data JSON for storage
+     *
+     * Always stores transformer output for rich search results (headings, categories, sections).
+     * Strips heavy text fields (content, body, excerpt) to keep storage lean.
+     *
+     * @param string $indexName Index handle
+     * @param array $data Transformer output data
+     * @return string|null JSON-encoded document data or null
+     */
+    protected function buildDocumentData(string $indexName, array $data): ?string
+    {
+        $storable = $data;
+        unset($storable['content'], $storable['body'], $storable['excerpt']);
+
+        $json = json_encode($storable, JSON_UNESCAPED_UNICODE);
+        if ($json === false) {
+            $this->logWarning('Failed to encode document data', [
+                'index' => $indexName,
+                'error' => json_last_error_msg(),
+            ]);
+            return null;
+        }
+
+        return $json;
+    }
 
     /**
      * Derive element type from index name or data
@@ -545,87 +610,152 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      *
      * @param array $hits Search results
      * @param string $query Original search query
+     * @param string $indexName Index handle
      * @param int $siteId Site ID
      * @param StorageInterface $storage Storage instance
+     * @param int $maxHits Maximum hits to hydrate (0 = all)
      * @return array Hits with matchedIn field added
      */
-    protected function addMatchedFieldsToHits(array $hits, string $query, int $siteId, StorageInterface $storage): array
-    {
+    protected function addMatchedFieldsToHits(
+        array $hits,
+        string $query,
+        string $indexName,
+        int $siteId,
+        StorageInterface $storage,
+        int $maxHits = 0,
+    ): array {
         if (empty($hits) || empty($query)) {
             return $hits;
         }
 
-        // Tokenize and filter query terms (same as SearchEngine does)
+        $settings = SearchManager::$plugin->getSettings();
+        $searchIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexName);
+        $disableStopWords = $searchIndex ? (bool)$searchIndex->disableStopWords : false;
+
         $tokenizer = new Tokenizer();
-        $stopWords = new StopWords('en'); // TODO: Could detect language from site
+        $ngramSizes = array_map('intval', explode(',', $settings->ngramSizes ?? '2,3'));
+        $ngramGenerator = new \lindemannrock\searchmanager\search\NgramGenerator($ngramSizes);
+        $fuzzyMatcher = new \lindemannrock\searchmanager\search\FuzzyMatcher(
+            $ngramGenerator,
+            $settings->similarityThreshold ?? 0.25,
+            $settings->maxFuzzyCandidates ?? 100
+        );
 
-        $queryTerms = $tokenizer->tokenize($query);
-        $queryTerms = $stopWords->filter($queryTerms);
+        $siteCache = [];
+        $elementTermsCache = [];
 
-        if (empty($queryTerms)) {
-            return $hits;
-        }
+        $hitCount = count($hits);
+        $limit = $maxHits > 0 ? min($maxHits, $hitCount) : $hitCount;
 
-        foreach ($hits as &$hit) {
+        for ($i = 0; $i < $limit; $i++) {
+            $hit = &$hits[$i];
             $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
             if ($elementId === null) {
+                unset($hit);
                 continue;
             }
 
             // Use siteId from hit if available (for multi-site searches)
             $hitSiteId = $hit['siteId'] ?? $siteId;
 
+            if (!isset($siteCache[$hitSiteId])) {
+                $language = $this->getSearchLanguageForSite($indexName, $hitSiteId);
+
+                $queryTerms = $tokenizer->tokenize($query);
+                if (($settings->enableStopWords ?? true) && !$disableStopWords) {
+                    $stopWords = new StopWords($language);
+                    $queryTerms = $stopWords->filter($queryTerms);
+                }
+                $queryTerms = array_values(array_unique($queryTerms));
+
+                $actualTermSet = [];
+
+                foreach ($queryTerms as $queryTerm) {
+                    $termDocs = $storage->getTermDocuments($queryTerm, (int)$hitSiteId);
+                    if (!empty($termDocs)) {
+                        $actualTermSet[$queryTerm] = true;
+                        continue;
+                    }
+
+                    $fuzzyTerms = $fuzzyMatcher->findMatches($queryTerm, $storage, (int)$hitSiteId);
+                    if (!empty($fuzzyTerms)) {
+                        foreach ($fuzzyTerms as $term) {
+                            $actualTermSet[$term] = true;
+                        }
+                    }
+                }
+
+                $siteCache[$hitSiteId] = [
+                    'actualTerms' => array_keys($actualTermSet),
+                ];
+            }
+
+            $actualTerms = $siteCache[$hitSiteId]['actualTerms'] ?? [];
+            if (empty($actualTerms)) {
+                continue;
+            }
+
             $matchedIn = [];
 
-            // Get title terms for this element
-            $titleTerms = $storage->getTitleTerms($hitSiteId, (int)$elementId);
+            $cacheKey = $hitSiteId . ':' . (int)$elementId;
+            if (!isset($elementTermsCache[$cacheKey])) {
+                $titleTerms = $storage->getTitleTerms($hitSiteId, (int)$elementId);
+                $docTerms = $storage->getDocumentTerms($hitSiteId, (int)$elementId);
+                $elementTermsCache[$cacheKey] = [
+                    'titleTerms' => $titleTerms,
+                    'docTermKeys' => array_keys($docTerms),
+                ];
+            }
 
-            // Get all document terms
-            $docTerms = $storage->getDocumentTerms($hitSiteId, (int)$elementId);
-            $docTermKeys = array_keys($docTerms);
+            $titleTerms = $elementTermsCache[$cacheKey]['titleTerms'];
+            $docTermKeys = $elementTermsCache[$cacheKey]['docTermKeys'];
 
-            // Check if any query terms match in title
-            $titleMatches = array_intersect($queryTerms, $titleTerms);
+            // Check if any matched terms appear in title or content
+            $titleMatches = array_values(array_intersect($titleTerms, $actualTerms));
             if (!empty($titleMatches)) {
                 $matchedIn[] = 'title';
             }
 
-            // Check if any query terms match in content (terms not in title)
             $contentOnlyTerms = array_diff($docTermKeys, $titleTerms);
-            $contentMatches = array_intersect($queryTerms, $contentOnlyTerms);
+            $contentMatches = array_values(array_intersect($contentOnlyTerms, $actualTerms));
             if (!empty($contentMatches)) {
                 $matchedIn[] = 'content';
             }
 
-            // If we have doc terms but no specific matches found, it might be fuzzy matching
-            // In that case, just indicate both fields as potential matches
-            if (empty($matchedIn) && !empty($docTermKeys)) {
-                // Check for partial/fuzzy matches in title
-                foreach ($queryTerms as $queryTerm) {
-                    foreach ($titleTerms as $titleTerm) {
-                        if (str_contains($titleTerm, $queryTerm) || str_contains($queryTerm, $titleTerm)) {
-                            $matchedIn[] = 'title';
-                            break 2;
-                        }
-                    }
-                }
-
-                // Check for partial/fuzzy matches in content
-                foreach ($queryTerms as $queryTerm) {
-                    foreach ($contentOnlyTerms as $contentTerm) {
-                        if (str_contains($contentTerm, $queryTerm) || str_contains($queryTerm, $contentTerm)) {
-                            $matchedIn[] = 'content';
-                            break 2;
-                        }
-                    }
-                }
-            }
-
             if (!empty($matchedIn)) {
                 $hit['matchedIn'] = array_unique($matchedIn);
+                $hit['matchedTerms'] = [
+                    'title' => $titleMatches,
+                    'content' => $contentMatches,
+                ];
+            } else {
+                // Fallback: keep actual terms so frontend can still highlight
+                $hit['matchedTerms'] = [
+                    'title' => [],
+                    'content' => $actualTerms,
+                ];
             }
+            unset($hit);
         }
 
         return $hits;
+    }
+
+    /**
+     * Resolve search language for a site
+     */
+    protected function getSearchLanguageForSite(string $indexHandle, int $siteId): string
+    {
+        $searchIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+        if ($searchIndex && !empty($searchIndex->language)) {
+            return $searchIndex->language;
+        }
+
+        $site = \Craft::$app->getSites()->getSiteById($siteId);
+        if ($site && !empty($site->language)) {
+            return strtolower(substr($site->language, 0, 2));
+        }
+
+        return 'en';
     }
 }

@@ -129,23 +129,6 @@ export {
 } from './modules/StyleUtils.js';
 
 // =============================================================================
-// LEGACY EXPORT (Backward Compatibility)
-// =============================================================================
-
-/**
- * Legacy SearchWidget export for backward compatibility.
- *
- * The original SearchWidget class is still available and registered
- * as 'search-widget' custom element via SearchWidget.js.
- *
- * For new implementations, prefer using SearchModalWidget which
- * provides the same functionality with improved architecture.
- *
- * @deprecated Use SearchModalWidget instead for new implementations
- */
-export { default as SearchWidget } from './SearchWidget.js';
-
-// =============================================================================
 // AUTO-REGISTRATION
 // =============================================================================
 

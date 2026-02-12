@@ -35,7 +35,7 @@
     line-height: 1.5;
     /* Debug info is always LTR - technical English labels/values */
     direction: ltr;
-    text-align: left;
+    text-align: start;
 }
 
 :host([data-theme="dark"]) .sm-debug-info {
@@ -243,7 +243,7 @@
     padding: 0;
     background: transparent;
     border: none;
-    border-left: 1px solid #e2e8f0;
+    border-inline-start: 1px solid #e2e8f0;
     color: #94a3b8;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
@@ -256,7 +256,7 @@
 }
 
 :host([data-theme="dark"]) .sm-toolbar-toggle {
-    border-left-color: #334155;
+    border-inline-start-color: #334155;
     color: #64748b;
 }
 
@@ -321,15 +321,15 @@
     justify-content: center;
     gap: 2px;
     padding: 8px 14px;
-    border-right: 1px solid #e2e8f0;
+    border-inline-end: 1px solid #e2e8f0;
 }
 
 .sm-toolbar-item:last-child {
-    border-right: none;
+    border-inline-end: none;
 }
 
 :host([data-theme="dark"]) .sm-toolbar-item {
-    border-right-color: #334155;
+    border-inline-end-color: #334155;
 }
 
 /* Label below value - small uppercase */

@@ -8,6 +8,7 @@ use craft\queue\BaseJob;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 
 /**
  * Rebuild Index Job
@@ -19,6 +20,7 @@ use lindemannrock\searchmanager\SearchManager;
 class RebuildIndexJob extends BaseJob
 {
     use LoggingTrait;
+    use ElementTypeGuardTrait;
 
     public ?string $indexHandle = null;
 
@@ -72,6 +74,9 @@ class RebuildIndexJob extends BaseJob
         // Get element type
         /** @var string $elementType */
         $elementType = $index->elementType;
+        if (!$this->isElementTypeAvailable($elementType, 'rebuild-index')) {
+            return;
+        }
 
         // For "All Sites" indices, we need to index each site separately
         $sitesToIndex = $index->getSiteIds();
@@ -203,6 +208,7 @@ class RebuildIndexJob extends BaseJob
             ]);
         }
     }
+
 
     private function rebuildAllIndices($queue): void
     {

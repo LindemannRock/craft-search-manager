@@ -7,6 +7,7 @@
 {% set search = craft.app.request.getParam('search', '') %}
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
 {% set sourceFilter = craft.app.request.getParam('source', 'all') %}
+{% set typeFilter = craft.app.request.getParam('type', 'all') %}
 {% set sort = craft.app.request.getParam('sort', 'source') %}
 {% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
@@ -38,6 +39,11 @@
 	{% set filteredConfigs = filteredConfigs|filter(c => c.source != 'config') %}
 {% endif %}
 
+{# Type filter #}
+{% if typeFilter != 'all' %}
+	{% set filteredConfigs = filteredConfigs|filter(c => c.type == typeFilter) %}
+{% endif %}
+
 {# Search filter #}
 {% if search %}
 	{% set filteredConfigs = filteredConfigs|filter(c => search|lower in c.name|lower or search|lower in c.handle|lower) %}
@@ -50,6 +56,8 @@
 	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredConfigs|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
 {% elseif sort == 'source' %}
 	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredConfigs|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
+{% elseif sort == 'type' %}
+	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.type|lower <=> b.type|lower) : filteredConfigs|sort((a, b) => b.type|lower <=> a.type|lower) %}
 {% elseif sort == 'enabled' %}
 	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.enabled <=> b.enabled) : filteredConfigs|sort((a, b) => b.enabled <=> a.enabled) %}
 {% elseif sort == 'isDefault' %}
@@ -70,8 +78,17 @@
 		subnav: 'widgets',
 		crumbs: [
 			{ label: searchHelper.fullName, url: url('search-manager') },
-			{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') }
+			{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+			{ label: 'Configurations'|t('search-manager') }
 		],
+	},
+	sidebarMenu: {
+		label: 'Widgets'|t('search-manager'),
+		items: {
+			configurations: { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
+			styles: { label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
+		},
+		selected: 'configurations',
 	},
 	filters: [
 		{
@@ -100,6 +117,18 @@
 						{value: 'database', label: 'Database'|t('search-manager'), colorKey: 'database'},
 					],
 				},
+				{
+					header: 'Widget Type'|t('search-manager'),
+					param: 'type',
+					current: typeFilter,
+					colorSet: 'widgetType',
+					options: [
+						{value: 'all', label: 'All Types'|t('search-manager'), status: 'all'},
+						{value: 'modal', label: 'Modal'|t('search-manager'), colorKey: 'modal'},
+						{value: 'page', label: 'Search Page'|t('search-manager'), colorKey: 'page'},
+						{value: 'inline', label: 'Inline Search'|t('search-manager'), colorKey: 'inline'},
+					],
+				},
 			],
 		},
 	],
@@ -115,6 +144,7 @@
 		columns: [
 			{key: 'name', label: 'Name'|t('search-manager'), sortable: true},
 			{key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'type', label: 'Type'|t('search-manager'), sortable: true, hideable: true},
 			{key: 'source', label: 'Source'|t('search-manager'), sortable: true, hideable: true},
 			{key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
 			{key: 'isDefault', label: 'Default'|t('search-manager'), sortable: true, hideable: true},
@@ -242,6 +272,16 @@
 		<code>{{ item.handle }}</code>
 	</td>
 
+	{# Type #}
+	<td data-column="type">
+		{% set typeLabels = {modal: 'Modal', page: 'Search Page', inline: 'Inline Search'} %}
+		{% include 'lindemannrock-base/_components/badge' with {
+			label: typeLabels[item.type] ?? item.type|capitalize,
+			value: item.type,
+			colorSet: 'widgetType',
+		} only %}
+	</td>
+
 	{# Source #}
 	<td data-column="source">
 		{% include 'lindemannrock-base/_components/badge' with {
@@ -295,11 +335,14 @@
 			{% endif %}
 		{% endif %}
 		{% if canDelete and not isDefault %}
-			{% set actionItems = actionItems|merge([{
-				label: 'Delete'|t('app'),
-				class: 'error',
-				jsAction: 'delete',
-			}]) %}
+			{% set actionItems = actionItems|merge([
+				{type: 'divider'},
+				{
+					label: 'Delete'|t('app'),
+					class: 'error',
+					jsAction: 'delete',
+				},
+			]) %}
 		{% endif %}
 	{% else %}
 		{# Config file widgets - View only #}

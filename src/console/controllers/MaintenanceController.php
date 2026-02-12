@@ -23,6 +23,10 @@ class MaintenanceController extends Controller
      * @var string Backend storage type to clear (mysql, redis, file)
      */
     public string $type = '';
+    /**
+     * @var bool Show verbose backend details (like indices list/count)
+     */
+    public bool $verbose = false;
 
     public function init(): void
     {
@@ -39,6 +43,9 @@ class MaintenanceController extends Controller
 
         if ($actionID === 'clear-storage') {
             $options[] = 'type';
+        }
+        if ($actionID === 'status') {
+            $options[] = 'verbose';
         }
 
         return $options;
@@ -126,6 +133,12 @@ class MaintenanceController extends Controller
         $this->stdout("Search Manager - Storage Status\n", Console::FG_CYAN);
         $this->stdout(str_repeat('=', 60) . "\n\n");
 
+        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+        $redisBackends = array_values(array_filter($configuredBackends, fn($b) => $b->backendType === 'redis'));
+        $fileBackends = array_values(array_filter($configuredBackends, fn($b) => $b->backendType === 'file'));
+        $dbBackends = array_values(array_filter($configuredBackends, fn($b) => in_array($b->backendType, ['mysql', 'pgsql'], true)));
+        $externalBackends = array_values(array_filter($configuredBackends, fn($b) => in_array($b->backendType, ['algolia', 'meilisearch', 'typesense'], true)));
+
         // Database Status (MySQL or PostgreSQL)
         $driverLabel = $this->getDatabaseDriverLabel();
         $this->stdout("{$driverLabel} Storage:\n", Console::FG_GREEN);
@@ -133,28 +146,24 @@ class MaintenanceController extends Controller
             $dbStats = $this->getDatabaseStats();
             $this->stdout("  Documents: {$dbStats['documentRows']}\n");
             $this->stdout("  Terms: {$dbStats['termRows']}\n");
-            $this->stdout("  Unique Index Handles: " . implode(', ', $dbStats['indexHandles'] ?: ['(none)']) . "\n");
-        } catch (\Throwable $e) {
-            $this->stdout("  Status: Error - {$e->getMessage()}\n", Console::FG_RED);
-        }
-
-        $this->stdout("\n");
-
-        // Redis Status
-        $this->stdout("Redis Storage:\n", Console::FG_GREEN);
-        try {
-            $settings = SearchManager::$plugin->getSettings();
-            $redisConfig = $this->getRedisConfig($settings);
-
-            if (!class_exists('\Redis')) {
-                $this->stdout("  Status: Redis extension not installed\n", Console::FG_YELLOW);
-            } elseif (empty($redisConfig['host'])) {
-                $this->stdout("  Status: Not configured\n", Console::FG_YELLOW);
+            $indexHandles = $dbStats['indexHandles'] ?: [];
+            if ($this->verbose) {
+                $this->stdout("  Unique Index Handles: " . count($indexHandles) . "\n");
+                foreach ($indexHandles as $handle) {
+                    $this->stdout("    - {$handle}\n");
+                }
             } else {
-                $redisStats = $this->getRedisStats($redisConfig);
-                $this->stdout("  Status: {$redisStats['status']}\n");
-                if ($redisStats['status'] === 'connected') {
-                    $this->stdout("  Search Manager Keys: {$redisStats['keyCount']}\n");
+                $this->stdout("  Unique Index Handles: " . count($indexHandles) . " (use --verbose to list)\n");
+            }
+            if (!empty($dbBackends)) {
+                if ($this->verbose) {
+                    $this->stdout("  Configured Backends: " . count($dbBackends) . "\n");
+                    foreach ($dbBackends as $backend) {
+                        $label = $backend->handle . ($backend->enabled ? '' : ' (disabled)');
+                        $this->stdout("    - {$label}\n");
+                    }
+                } else {
+                    $this->stdout("  Configured Backends: " . count($dbBackends) . " (use --verbose to list)\n");
                 }
             }
         } catch (\Throwable $e) {
@@ -163,15 +172,110 @@ class MaintenanceController extends Controller
 
         $this->stdout("\n");
 
-        // File Storage Status
+        // Redis Status (all configured redis backends)
+        $this->stdout("Redis Storage:\n", Console::FG_GREEN);
+        if (!class_exists('\Redis')) {
+            $this->stdout("  Status: Redis extension not installed\n", Console::FG_YELLOW);
+        } elseif (empty($redisBackends)) {
+            $this->stdout("  Status: Not configured\n", Console::FG_YELLOW);
+        } else {
+            foreach ($redisBackends as $backend) {
+                try {
+                    $resolved = $this->getResolvedRedisConfig($backend);
+                    if (empty($resolved['host'])) {
+                        $this->stdout("  {$backend->handle}: Not configured\n", Console::FG_YELLOW);
+                        continue;
+                    }
+
+                    $redisStats = $this->getRedisStats($resolved);
+                    $label = "{$backend->handle} (" . ($backend->enabled ? 'enabled' : 'disabled') . ")";
+                    $this->stdout("  {$label}:\n");
+                    $this->stdout("    Status: {$redisStats['status']}\n");
+                    $this->stdout("    Host: {$resolved['host']}:{$resolved['port']} / DB {$resolved['database']}\n");
+                    if ($redisStats['status'] === 'connected') {
+                        if ($this->verbose) {
+                            $this->stdout("    Search Manager Keys: {$redisStats['keyCount']}\n");
+                        } else {
+                            $this->stdout("    Search Manager Keys: use --verbose to show\n");
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    $this->stdout("  {$backend->handle}: Error - {$e->getMessage()}\n", Console::FG_RED);
+                }
+            }
+        }
+
+        $this->stdout("\n");
+
+        // File Storage Status (all configured file backends)
         $this->stdout("File Storage:\n", Console::FG_GREEN);
-        try {
-            $fileStats = $this->getFileStats();
-            $this->stdout("  Index Directories: {$fileStats['indexCount']}\n");
-            $this->stdout("  Total Files: {$fileStats['fileCount']}\n");
-            $this->stdout("  Path: {$fileStats['path']}\n");
-        } catch (\Throwable $e) {
-            $this->stdout("  Status: Error - {$e->getMessage()}\n", Console::FG_RED);
+        if (empty($fileBackends)) {
+            $this->stdout("  Status: Not configured\n", Console::FG_YELLOW);
+        } else {
+            foreach ($fileBackends as $backend) {
+                try {
+                    $fileStats = $this->getFileStatsForBackend($backend);
+                    $label = "{$backend->handle} (" . ($backend->enabled ? 'enabled' : 'disabled') . ")";
+                    $this->stdout("  {$label}:\n");
+                    $this->stdout("    Index Directories: {$fileStats['indexCount']}\n");
+                    $this->stdout("    Total Files: {$fileStats['fileCount']}\n");
+                    $this->stdout("    Path: {$fileStats['path']}\n");
+                } catch (\Throwable $e) {
+                    $this->stdout("  {$backend->handle}: Error - {$e->getMessage()}\n", Console::FG_RED);
+                }
+            }
+        }
+
+        if (!empty($externalBackends)) {
+            $this->stdout("\nExternal Backends:\n", Console::FG_GREEN);
+            foreach ($externalBackends as $backend) {
+                $label = "{$backend->handle} ({$backend->backendType})" . ($backend->enabled ? '' : ' (disabled)');
+                $this->stdout("  {$label}:\n");
+
+                $adapter = SearchManager::$plugin->backend->getBackend($backend->backendType);
+                if (!$adapter) {
+                    $this->stdout("    Status: Unknown backend type\n", Console::FG_YELLOW);
+                    continue;
+                }
+
+                // Apply configured settings and handle
+                $adapter->setConfiguredSettings($backend->settings);
+                $adapter->setBackendHandle($backend->handle);
+
+                try {
+                    $available = $adapter->isAvailable();
+                    $this->stdout("    Status: " . ($available ? 'Connected' : 'Failed') . "\n");
+                } catch (\Throwable $e) {
+                    $this->stdout("    Status: Error - {$e->getMessage()}\n", Console::FG_RED);
+                    continue;
+                }
+
+                try {
+                    $this->stdout("    Browse: " . ($adapter->supportsBrowse() ? 'Yes' : 'No') . "\n");
+                    $this->stdout("    Multi-Query: " . ($adapter->supportsMultipleQueries() ? 'Yes' : 'No') . "\n");
+                } catch (\Throwable $e) {
+                    $this->stdout("    Capabilities: Error - {$e->getMessage()}\n", Console::FG_RED);
+                }
+
+                if ($this->verbose) {
+                    try {
+                        $indices = $adapter->listIndices();
+                        $count = count($indices);
+                        $this->stdout("    Indices: {$count}\n");
+                        if (!empty($indices)) {
+                            foreach ($indices as $index) {
+                                $name = $index['name'] ?? $index['uid'] ?? 'Unknown';
+                                $entries = $index['entries'] ?? '—';
+                                $this->stdout("      - {$name} ({$entries})\n");
+                            }
+                        }
+                    } catch (\Throwable $e) {
+                        $this->stdout("    Indices: Error - {$e->getMessage()}\n", Console::FG_RED);
+                    }
+                } else {
+                    $this->stdout("    Indices: use --verbose to list\n");
+                }
+            }
         }
 
         return ExitCode::OK;
@@ -245,49 +349,61 @@ class MaintenanceController extends Controller
             return ['success' => false, 'error' => 'Redis extension is not installed'];
         }
 
-        $settings = SearchManager::$plugin->getSettings();
-        $config = $this->getRedisConfig($settings);
+        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+        $redisBackends = array_values(array_filter($configuredBackends, fn($b) => $b->backendType === 'redis'));
 
-        if (empty($config['host'])) {
+        if (empty($redisBackends)) {
             return ['success' => false, 'error' => 'Redis is not configured'];
         }
 
-        $redis = new \Redis();
+        $pattern = 'sm:idx:*';
+        $deletedKeysTotal = 0;
+        $seenTargets = [];
 
-        try {
+        foreach ($redisBackends as $backend) {
+            $config = $this->getResolvedRedisConfig($backend);
+            if (empty($config['host'])) {
+                continue;
+            }
+
             $host = $this->resolveEnvVar($config['host'], '127.0.0.1');
             $port = (int)$this->resolveEnvVar($config['port'], 6379);
             $password = $this->resolveEnvVar($config['password'], null);
             $database = (int)$this->resolveEnvVar($config['database'], 0);
 
-            $redis->connect($host, $port);
-
-            if ($password) {
-                $redis->auth($password);
+            $targetKey = "{$host}:{$port}:{$database}";
+            if (isset($seenTargets[$targetKey])) {
+                continue;
             }
+            $seenTargets[$targetKey] = true;
 
-            $redis->select($database);
+            $redis = new \Redis();
+            try {
+                $redis->connect($host, $port);
+                if ($password) {
+                    $redis->auth($password);
+                }
+                $redis->select($database);
 
-            // Find all Search Manager keys (pattern: sm:idx:*)
-            $pattern = 'sm:idx:*';
-            $keys = $redis->keys($pattern);
-            $deletedKeys = 0;
+                $keys = $redis->keys($pattern);
+                $deletedKeys = 0;
+                if (!empty($keys)) {
+                    $deletedKeys = count($keys);
+                    $redis->del($keys);
+                }
 
-            if (!empty($keys)) {
-                $deletedKeys = count($keys);
-                $redis->del($keys);
+                $deletedKeysTotal += $deletedKeys;
+                $this->stdout("  {$targetKey} → Deleted {$deletedKeys} Redis keys matching '{$pattern}'\n");
+            } catch (\Throwable $e) {
+                return ['success' => false, 'error' => 'Redis connection failed: ' . $e->getMessage()];
             }
-
-            $this->stdout("  Deleted {$deletedKeys} Redis keys matching '{$pattern}'\n");
-
-            return [
-                'success' => true,
-                'message' => "Redis storage cleared successfully ({$deletedKeys} keys deleted). Rebuild affected indices to re-index your content.",
-                'deletedKeys' => $deletedKeys,
-            ];
-        } catch (\Throwable $e) {
-            return ['success' => false, 'error' => 'Redis connection failed: ' . $e->getMessage()];
         }
+
+        return [
+            'success' => true,
+            'message' => "Redis storage cleared successfully ({$deletedKeysTotal} keys deleted). Rebuild affected indices to re-index your content.",
+            'deletedKeys' => $deletedKeysTotal,
+        ];
     }
 
     /**
@@ -295,29 +411,45 @@ class MaintenanceController extends Controller
      */
     private function clearFileStorage(): array
     {
-        $runtimePath = Craft::$app->getPath()->getRuntimePath();
-        $indicesPath = $runtimePath . '/search-manager/indices';
+        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+        $fileBackends = array_values(array_filter($configuredBackends, fn($b) => $b->backendType === 'file'));
 
-        if (!is_dir($indicesPath)) {
+        if (empty($fileBackends)) {
             return [
                 'success' => true,
-                'message' => 'File storage is already empty (directory does not exist)',
+                'message' => 'File storage is already empty (no file backends configured)',
                 'deletedFiles' => 0,
             ];
         }
 
-        // Count files before deletion
-        $fileCount = $this->countFilesInDirectory($indicesPath);
+        $deletedFilesTotal = 0;
+        $seenPaths = [];
 
-        // Delete the entire indices directory
-        FileHelper::removeDirectory($indicesPath);
+        foreach ($fileBackends as $backend) {
+            $stats = $this->getFileStatsForBackend($backend);
+            $indicesPath = $stats['path'];
 
-        $this->stdout("  Deleted {$fileCount} files from {$indicesPath}\n");
+            if (isset($seenPaths[$indicesPath])) {
+                continue;
+            }
+            $seenPaths[$indicesPath] = true;
+
+            if (!is_dir($indicesPath)) {
+                $this->stdout("  {$indicesPath} (missing)\n");
+                continue;
+            }
+
+            $fileCount = $this->countFilesInDirectory($indicesPath);
+            FileHelper::removeDirectory($indicesPath);
+            $deletedFilesTotal += $fileCount;
+
+            $this->stdout("  Deleted {$fileCount} files from {$indicesPath}\n");
+        }
 
         return [
             'success' => true,
-            'message' => "File storage cleared successfully ({$fileCount} files deleted). Rebuild affected indices to re-index your content.",
-            'deletedFiles' => $fileCount,
+            'message' => "File storage cleared successfully ({$deletedFilesTotal} files deleted). Rebuild affected indices to re-index your content.",
+            'deletedFiles' => $deletedFilesTotal,
         ];
     }
 
@@ -354,10 +486,10 @@ class MaintenanceController extends Controller
     {
         $redis = new \Redis();
 
-        $host = $this->resolveEnvVar($config['host'], '127.0.0.1');
-        $port = (int)$this->resolveEnvVar($config['port'], 6379);
-        $password = $this->resolveEnvVar($config['password'], null);
-        $database = (int)$this->resolveEnvVar($config['database'], 0);
+        $host = $this->resolveEnvVar($config['host'] ?? null, '127.0.0.1');
+        $port = (int)$this->resolveEnvVar($config['port'] ?? null, 6379);
+        $password = $this->resolveEnvVar($config['password'] ?? null, null);
+        $database = (int)$this->resolveEnvVar($config['database'] ?? null, 0);
 
         $redis->connect($host, $port);
 
@@ -377,12 +509,19 @@ class MaintenanceController extends Controller
     }
 
     /**
-     * Get file storage statistics
+     * Get file storage statistics for a backend
      */
-    private function getFileStats(): array
+    private function getFileStatsForBackend(\lindemannrock\searchmanager\models\ConfiguredBackend $backend): array
     {
-        $runtimePath = Craft::$app->getPath()->getRuntimePath();
-        $indicesPath = $runtimePath . '/search-manager/indices';
+        $settings = $backend->settings ?? [];
+        $customPath = $settings['storagePath'] ?? null;
+
+        if ($customPath !== null && $customPath !== '') {
+            $indicesPath = rtrim(\craft\helpers\App::parseEnv($customPath), '/');
+        } else {
+            $runtimePath = Craft::$app->getPath()->getRuntimePath();
+            $indicesPath = $runtimePath . '/search-manager/indices';
+        }
 
         if (!is_dir($indicesPath)) {
             return [
@@ -404,18 +543,36 @@ class MaintenanceController extends Controller
     }
 
     /**
-     * Get Redis configuration from settings
+     * Get resolved Redis configuration for a backend
      */
-    private function getRedisConfig($settings): array
+    private function getResolvedRedisConfig(\lindemannrock\searchmanager\models\ConfiguredBackend $backend): array
     {
-        try {
-            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
+        $settings = $backend->settings ?? [];
 
-            if (isset($config['backends']['redis'])) {
-                return $config['backends']['redis'];
-            }
-        } catch (\Throwable $e) {
-            // Ignore config errors
+        $configuredHost = $this->resolveEnvVar($settings['host'] ?? null, null);
+        if (!empty($configuredHost)) {
+            return [
+                'host' => $configuredHost,
+                'port' => $this->resolveEnvVar($settings['port'] ?? null, 6379),
+                'password' => $this->resolveEnvVar($settings['password'] ?? null, null),
+                'database' => $this->resolveEnvVar($settings['database'] ?? null, 0),
+            ];
+        }
+
+        if (Craft::$app->cache instanceof \yii\redis\Cache) {
+            $redisConnection = Craft::$app->cache->redis;
+            $craftDatabase = (int) ($redisConnection->database ?? 0);
+
+            $searchDatabase = isset($settings['database']) && $settings['database'] !== ''
+                ? (int) $this->resolveEnvVar($settings['database'], 0)
+                : $craftDatabase + 1;
+
+            return [
+                'host' => $redisConnection->hostname ?? 'localhost',
+                'port' => $redisConnection->port ?? 6379,
+                'password' => $redisConnection->password ?? null,
+                'database' => $searchDatabase,
+            ];
         }
 
         return [];

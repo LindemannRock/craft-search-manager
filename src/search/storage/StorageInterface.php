@@ -143,9 +143,10 @@ interface StorageInterface
      * @param int $elementId Element ID
      * @param string $title Full title for display
      * @param string $elementType Element type (product, category, etc.)
+     * @param string|null $documentData JSON-encoded transformer output for rich results
      * @return void
      */
-    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void;
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType, ?string $documentData = null): void;
 
     /**
      * Get element info for a list of element IDs
@@ -153,7 +154,7 @@ interface StorageInterface
      * @since 5.0.0
      * @param int $siteId Site ID
      * @param array $elementIds Array of element IDs
-     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ..., 'documentData' => ...]
      */
     public function getElementsByIds(int $siteId, array $elementIds): array;
 

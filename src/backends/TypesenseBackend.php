@@ -156,6 +156,21 @@ class TypesenseBackend extends BaseBackend
             // Search all common string fields for consistency with other backends
             $searchParams['query_by'] = $searchParams['query_by'] ?? 'title,content,url';
 
+            $limit = $options['limit'] ?? null;
+            $offset = $options['offset'] ?? null;
+            $page = $options['page'] ?? null;
+
+            if ($limit !== null && (int) $limit > 0) {
+                $searchParams['per_page'] = (int) $limit;
+            }
+            if ($page !== null) {
+                $searchParams['page'] = max(1, (int) $page + 1);
+            } elseif ($offset !== null && $limit !== null && (int) $limit > 0) {
+                $searchParams['page'] = max(1, (int) floor(((int) $offset) / (int) $limit) + 1);
+            }
+
+            unset($searchParams['limit'], $searchParams['offset'], $searchParams['page']);
+
             $results = $client->collections[$fullIndexName]->documents->search($searchParams);
 
             // Unwrap documents - Typesense wraps each hit in a 'document' key

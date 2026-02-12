@@ -48,8 +48,14 @@ var SearchModalWidget = (() => {
     highlightTag: "mark",
     highlightClass: "",
     hideResultsWithoutUrl: false,
+    allowCodeSnippets: false,
+    snippetMode: "balanced",
     showLoadingIndicator: true,
     debug: false,
+    resultTitleLines: 1,
+    resultDescLines: 1,
+    snippetLength: 150,
+    parseMarkdownSnippets: false,
     // Hierarchical result display (Algolia DocSearch-style)
     resultLayout: "default",
     // 'default' | 'grouped' | 'hierarchical'
@@ -162,7 +168,14 @@ var SearchModalWidget = (() => {
       showLoadingIndicator: parseBoolean(element.getAttribute("show-loading-indicator"), defaults.showLoadingIndicator),
       // Boolean attributes (default false - check for presence)
       hideResultsWithoutUrl: parseBoolean(element.getAttribute("hide-results-without-url"), defaults.hideResultsWithoutUrl),
+      allowCodeSnippets: parseBoolean(element.getAttribute("allow-code-snippets"), defaults.allowCodeSnippets),
       debug: parseBoolean(element.getAttribute("debug"), defaults.debug),
+      snippetMode: element.getAttribute("snippet-mode") || defaults.snippetMode,
+      snippetLength: parseInt(element.getAttribute("snippet-length"), defaults.snippetLength),
+      parseMarkdownSnippets: parseBoolean(element.getAttribute("parse-markdown-snippets"), defaults.parseMarkdownSnippets),
+      // Result line clamping
+      resultTitleLines: parseInt(element.getAttribute("result-title-lines"), defaults.resultTitleLines),
+      resultDescLines: parseInt(element.getAttribute("result-desc-lines"), defaults.resultDescLines),
       // Hierarchical result display
       resultLayout: element.getAttribute("result-layout") || defaults.resultLayout,
       hierarchyGroupBy: element.getAttribute("hierarchy-group-by") || defaults.hierarchyGroupBy,
@@ -218,6 +231,8 @@ var SearchModalWidget = (() => {
       "highlight-tag",
       "highlight-class",
       "hide-results-without-url",
+      "allow-code-snippets",
+      "snippet-mode",
       "show-loading-indicator",
       "debug",
       "styles",
@@ -225,7 +240,11 @@ var SearchModalWidget = (() => {
       "result-layout",
       "hierarchy-group-by",
       "show-matched-headings",
-      "max-headings-per-result"
+      "max-headings-per-result",
+      "result-title-lines",
+      "result-desc-lines",
+      "snippet-length",
+      "parse-markdown-snippets"
     ];
     const modalAttrs = [
       "hotkey",
@@ -417,10 +436,10 @@ var SearchModalWidget = (() => {
   }
 
   // src/modules/SearchService.js
-  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, debug = false, signal }) {
+  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, allowCodeSnippets = false, snippetMode = "balanced", snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
     const params = new URLSearchParams({
       q: query,
-      limit: maxResults.toString()
+      hitsPerPage: maxResults.toString()
     });
     if (indices.length > 0) {
       params.append("indices", indices.join(","));
@@ -430,6 +449,18 @@ var SearchModalWidget = (() => {
     }
     if (hideResultsWithoutUrl) {
       params.append("hideResultsWithoutUrl", "1");
+    }
+    if (allowCodeSnippets) {
+      params.append("allowCodeSnippets", "1");
+    }
+    if (snippetMode && snippetMode !== "balanced") {
+      params.append("snippetMode", snippetMode);
+    }
+    if (snippetLength && snippetLength !== 150) {
+      params.append("snippetLength", String(snippetLength));
+    }
+    if (parseMarkdownSnippets) {
+      params.append("parseMarkdownSnippets", "1");
     }
     if (debug) {
       params.append("debug", "1");
@@ -573,6 +604,8 @@ var SearchModalWidget = (() => {
     modalShadowDark: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
     modalMaxWidth: "640",
     modalMaxHeight: "80",
+    modalPaddingX: "16",
+    modalPaddingY: "16",
     inputBg: "#ffffff",
     inputBgDark: "#1f2937",
     inputTextColor: "#111827",
@@ -584,16 +617,38 @@ var SearchModalWidget = (() => {
     inputFontSize: "16",
     resultBg: "transparent",
     resultBgDark: "transparent",
+    resultBorderColor: "#e5e7eb",
+    resultBorderColorDark: "#374151",
     resultHoverBg: "#f3f4f6",
     resultHoverBgDark: "#374151",
+    resultHoverBorderColor: "#e5e7eb",
+    resultHoverBorderColorDark: "#374151",
+    resultHoverTextColor: "#111827",
+    resultHoverTextColorDark: "#f9fafb",
+    resultHoverDescColor: "#4b5563",
+    resultHoverDescColorDark: "#d1d5db",
+    resultHoverMutedColor: "#6b7280",
+    resultHoverMutedColorDark: "#d1d5db",
     resultActiveBg: "#e5e7eb",
     resultActiveBgDark: "#4b5563",
+    resultActiveBorderColor: "#e5e7eb",
+    resultActiveBorderColorDark: "#374151",
+    resultActiveTextColor: "#111827",
+    resultActiveTextColorDark: "#f9fafb",
+    resultActiveDescColor: "#4b5563",
+    resultActiveDescColorDark: "#d1d5db",
+    resultActiveMutedColor: "#6b7280",
+    resultActiveMutedColorDark: "#d1d5db",
     resultTextColor: "#111827",
     resultTextColorDark: "#f9fafb",
     resultDescColor: "#4b5563",
     resultDescColorDark: "#d1d5db",
     resultMutedColor: "#6b7280",
     resultMutedColorDark: "#d1d5db",
+    resultGap: "8",
+    resultBorderWidth: "0",
+    resultPaddingX: "12",
+    resultPaddingY: "12",
     resultBorderRadius: "8",
     triggerBg: "#ffffff",
     triggerBgDark: "#374151",
@@ -610,7 +665,16 @@ var SearchModalWidget = (() => {
     kbdBgDark: "#4b5563",
     kbdTextColor: "#4b5563",
     kbdTextColorDark: "#e5e7eb",
-    kbdBorderRadius: "4"
+    kbdBorderRadius: "4",
+    backdropOpacity: "50",
+    backdropBlur: "1",
+    highlightEnabled: "1",
+    highlightTag: "",
+    highlightClass: "",
+    highlightBgLight: "fef08a",
+    highlightColorLight: "854d0e",
+    highlightBgDark: "854d0e",
+    highlightColorDark: "fef08a"
   };
 
   // src/modules/StyleConfig.js
@@ -626,6 +690,8 @@ var SearchModalWidget = (() => {
     modalShadowDark: "--sm-modal-shadow-dark",
     modalMaxWidth: "--sm-modal-width",
     modalMaxHeight: "--sm-modal-max-height",
+    modalPaddingX: "--sm-modal-px",
+    modalPaddingY: "--sm-modal-py",
     // Input
     inputBg: "--sm-input-bg",
     inputBgDark: "--sm-input-bg-dark",
@@ -639,16 +705,38 @@ var SearchModalWidget = (() => {
     // Results
     resultBg: "--sm-result-bg",
     resultBgDark: "--sm-result-bg-dark",
+    resultBorderColor: "--sm-result-border-color",
+    resultBorderColorDark: "--sm-result-border-color-dark",
     resultHoverBg: "--sm-result-hover-bg",
     resultHoverBgDark: "--sm-result-hover-bg-dark",
+    resultHoverBorderColor: "--sm-result-hover-border-color",
+    resultHoverBorderColorDark: "--sm-result-hover-border-color-dark",
+    resultHoverTextColor: "--sm-result-hover-text-color",
+    resultHoverTextColorDark: "--sm-result-hover-text-color-dark",
+    resultHoverDescColor: "--sm-result-hover-desc-color",
+    resultHoverDescColorDark: "--sm-result-hover-desc-color-dark",
+    resultHoverMutedColor: "--sm-result-hover-muted-color",
+    resultHoverMutedColorDark: "--sm-result-hover-muted-color-dark",
     resultActiveBg: "--sm-result-active-bg",
     resultActiveBgDark: "--sm-result-active-bg-dark",
+    resultActiveBorderColor: "--sm-result-active-border-color",
+    resultActiveBorderColorDark: "--sm-result-active-border-color-dark",
+    resultActiveTextColor: "--sm-result-active-text-color",
+    resultActiveTextColorDark: "--sm-result-active-text-color-dark",
+    resultActiveDescColor: "--sm-result-active-desc-color",
+    resultActiveDescColorDark: "--sm-result-active-desc-color-dark",
+    resultActiveMutedColor: "--sm-result-active-muted-color",
+    resultActiveMutedColorDark: "--sm-result-active-muted-color-dark",
     resultTextColor: "--sm-result-text-color",
     resultTextColorDark: "--sm-result-text-color-dark",
     resultDescColor: "--sm-result-desc-color",
     resultDescColorDark: "--sm-result-desc-color-dark",
     resultMutedColor: "--sm-result-muted-color",
     resultMutedColorDark: "--sm-result-muted-color-dark",
+    resultGap: "--sm-result-gap",
+    resultBorderWidth: "--sm-result-border-width",
+    resultPaddingX: "--sm-result-px",
+    resultPaddingY: "--sm-result-py",
     resultBorderRadius: "--sm-result-radius",
     // Trigger
     triggerBg: "--sm-trigger-bg",
@@ -681,7 +769,13 @@ var SearchModalWidget = (() => {
     "modalBorderRadius",
     "modalBorderWidth",
     "modalMaxWidth",
+    "modalPaddingX",
+    "modalPaddingY",
     "inputFontSize",
+    "resultGap",
+    "resultBorderWidth",
+    "resultPaddingX",
+    "resultPaddingY",
     "resultBorderRadius",
     "triggerBorderRadius",
     "triggerBorderWidth",
@@ -710,10 +804,28 @@ var SearchModalWidget = (() => {
     "resultBgDark",
     "resultHoverBg",
     "resultHoverBgDark",
+    "resultBorderColor",
+    "resultBorderColorDark",
+    "resultHoverBorderColor",
+    "resultHoverBorderColorDark",
+    "resultHoverTextColor",
+    "resultHoverTextColorDark",
+    "resultHoverDescColor",
+    "resultHoverDescColorDark",
+    "resultHoverMutedColor",
+    "resultHoverMutedColorDark",
     "resultActiveBg",
     "resultActiveBgDark",
+    "resultActiveBorderColor",
+    "resultActiveBorderColorDark",
     "resultTextColor",
     "resultTextColorDark",
+    "resultActiveTextColor",
+    "resultActiveTextColorDark",
+    "resultActiveDescColor",
+    "resultActiveDescColorDark",
+    "resultActiveMutedColor",
+    "resultActiveMutedColorDark",
     "resultDescColor",
     "resultDescColorDark",
     "resultMutedColor",
@@ -768,12 +880,17 @@ var SearchModalWidget = (() => {
     if (!styles2 || typeof styles2 !== "object")
       return;
     const isDark = theme === "dark";
-    for (const [key, cssVar] of Object.entries(STYLE_MAPPINGS)) {
+    const entries = Object.entries(STYLE_MAPPINGS);
+    const sharedKeys = /* @__PURE__ */ new Set([...NUMERIC_KEYS, ...VH_KEYS]);
+    for (const [key, cssVar] of entries) {
       const isDarkKey = key.endsWith("Dark");
-      if (isDark && !isDarkKey)
+      if (isDark) {
+        if (!isDarkKey && !sharedKeys.has(key)) {
+          continue;
+        }
+      } else if (isDarkKey) {
         continue;
-      if (!isDark && isDarkKey)
-        continue;
+      }
       if (styles2[key] !== void 0 && styles2[key] !== null && styles2[key] !== "") {
         const value = processStyleValue(key, styles2[key]);
         if (value) {
@@ -791,35 +908,102 @@ var SearchModalWidget = (() => {
     div.textContent = text;
     return div.innerHTML;
   }
-  function escapeRegex(string) {
-    if (!string)
-      return "";
-    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
   function highlightMatches(text, query, options = {}) {
     const {
       enabled = true,
       tag = "mark",
-      className = ""
+      className = "",
+      terms = null
     } = options;
-    const escaped = escapeHtml(text);
-    if (!enabled || !query) {
-      return escaped;
-    }
-    const queryWords = query.toLowerCase().split(/\s+/).filter((w) => w.length > 0);
-    if (queryWords.length === 0) {
-      return escaped;
+    if (!enabled) {
+      return escapeHtml(text);
     }
     const classes = ["sm-highlight"];
     if (className) {
       classes.push(className);
     }
     const classAttr = ` class="${classes.join(" ")}"`;
-    let result = escaped;
-    queryWords.forEach((word) => {
-      const regex = new RegExp(`\\b(${escapeRegex(word)})\\b`, "gi");
-      result = result.replace(regex, `<${tag}${classAttr}>$1</${tag}>`);
+    const termList = buildHighlightTerms(query, terms);
+    if (termList.length === 0) {
+      return escapeHtml(text);
+    }
+    return applyHighlightRanges(text, termList, tag, classAttr);
+  }
+  function buildHighlightTerms(query, terms) {
+    if (Array.isArray(terms) && terms.length > 0) {
+      return normalizeTerms(terms);
+    }
+    if (!query) {
+      return [];
+    }
+    const rawWords = query.split(/\s+/).filter((w) => w.length > 0);
+    const allWords = [];
+    rawWords.forEach((word) => {
+      allWords.push(word);
+      const camelParts = word.split(/(?<=[a-z])(?=[A-Z])/);
+      if (camelParts.length > 1) {
+        camelParts.forEach((p) => {
+          if (p.length >= 3)
+            allWords.push(p);
+        });
+      }
     });
+    return normalizeTerms(allWords);
+  }
+  function normalizeTerms(terms) {
+    const seen = /* @__PURE__ */ new Set();
+    return terms.filter((w) => typeof w === "string" && w.length > 0).sort((a, b) => b.length - a.length).filter((w) => {
+      const lower = w.toLowerCase();
+      if (seen.has(lower))
+        return false;
+      seen.add(lower);
+      return true;
+    });
+  }
+  function applyHighlightRanges(text, terms, tag, classAttr) {
+    const lowerText = text.toLowerCase();
+    const ranges = [];
+    terms.forEach((term) => {
+      const lowerTerm = term.toLowerCase();
+      if (!lowerTerm)
+        return;
+      let start = 0;
+      while (start < lowerText.length) {
+        const index = lowerText.indexOf(lowerTerm, start);
+        if (index === -1)
+          break;
+        ranges.push({ start: index, end: index + lowerTerm.length });
+        start = index + lowerTerm.length;
+      }
+    });
+    if (ranges.length === 0) {
+      return escapeHtml(text);
+    }
+    ranges.sort((a, b) => {
+      if (a.start !== b.start)
+        return a.start - b.start;
+      return b.end - b.start - (a.end - a.start);
+    });
+    const merged = [];
+    let lastEnd = -1;
+    ranges.forEach((range) => {
+      if (range.start >= lastEnd) {
+        merged.push(range);
+        lastEnd = range.end;
+      }
+    });
+    let result = "";
+    let cursor = 0;
+    merged.forEach((range) => {
+      if (cursor < range.start) {
+        result += escapeHtml(text.slice(cursor, range.start));
+      }
+      result += `<${tag}${classAttr}>${escapeHtml(text.slice(range.start, range.end))}</${tag}>`;
+      cursor = range.end;
+    });
+    if (cursor < text.length) {
+      result += escapeHtml(text.slice(cursor));
+    }
     return result;
   }
 
@@ -932,8 +1116,14 @@ var SearchModalWidget = (() => {
       tag: highlightTag,
       className: highlightClass
     };
-    const highlightedTitle = highlightMatches(title, query, highlightOptions);
-    const highlightedDesc = description ? highlightMatches(description, query, highlightOptions) : "";
+    const highlightedTitle = highlightMatches(title, query, {
+      ...highlightOptions,
+      terms: getHighlightTerms(result, "title")
+    });
+    const highlightedDesc = description ? highlightMatches(description, query, {
+      ...highlightOptions,
+      terms: getHighlightTerms(result, "description")
+    }) : "";
     const promotedBadge = renderPromotedBadge(result, promotions);
     const promotedClass = isPromoted ? " sm-promoted" : "";
     const typeBadge = type && !groupResults ? `<span class="sm-result-type">${escapeHtml(type)}</span>` : "";
@@ -1007,6 +1197,27 @@ var SearchModalWidget = (() => {
     }
     return `<div class="sm-debug-info">${debugItems.join("")}</div>`;
   }
+  function getHighlightTerms(result, area) {
+    const matchedTerms = result.matchedTerms;
+    if (!matchedTerms) {
+      return null;
+    }
+    if (area === "title") {
+      if (Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
+        return matchedTerms.title;
+      }
+    }
+    if (area === "description") {
+      if (Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
+        return matchedTerms.content;
+      }
+    }
+    const combined = [
+      ...Array.isArray(matchedTerms.title) ? matchedTerms.title : [],
+      ...Array.isArray(matchedTerms.content) ? matchedTerms.content : []
+    ];
+    return combined.length > 0 ? combined : null;
+  }
   function debugItem(label, value, type, backendType = "") {
     const backendAttr = backendType ? ` data-backend="${escapeHtml(backendType)}"` : "";
     return `<span class="sm-debug-item"><span class="sm-debug-label">${escapeHtml(label)}</span><span class="sm-debug-value" data-type="${escapeHtml(type)}"${backendAttr}>${escapeHtml(String(value))}</span></span>`;
@@ -1053,15 +1264,28 @@ var SearchModalWidget = (() => {
     return Object.entries(groups).map(([groupName, items]) => {
       const itemsHtml = items.map((result) => {
         const parentIndex = globalIndex++;
-        let html = renderHierarchyParent(result, parentIndex, query, options);
+        const parentHtml = renderHierarchyParent(result, parentIndex, query, options);
+        let childrenHtml = "";
         if (showMatchedHeadings) {
           const headings = result._matchedHeadings || [];
           const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
-          limitedHeadings.forEach((heading) => {
-            html += renderHeadingChild(result, heading, globalIndex++, query, options);
-          });
+          if (limitedHeadings.length > 0) {
+            const minLevel = Math.min(...limitedHeadings.map((h) => h.level || 2));
+            childrenHtml = limitedHeadings.map((heading, headingIndex) => {
+              const level = heading.level || 2;
+              const depth = level - minLevel;
+              const isLastAtLevel = !limitedHeadings.slice(headingIndex + 1).some((h) => (h.level || 2) === level);
+              return renderHeadingChild(result, heading, globalIndex++, query, options, isLastAtLevel, depth);
+            }).join("");
+          }
         }
-        return html;
+        const hasChildren = Boolean(childrenHtml);
+        return `
+                <div class="sm-hierarchy-block${hasChildren ? " sm-hierarchy-block--has-children" : ""}">
+                    ${hasChildren ? parentHtml.replace('sm-hierarchy-parent"', 'sm-hierarchy-parent sm-hierarchy-parent--has-children"') : parentHtml}
+                    ${hasChildren ? `<div class="sm-hierarchy-children">${childrenHtml}</div>` : ""}
+                </div>
+            `;
       }).join("");
       return `
             <div class="sm-hierarchy-group" role="group" aria-label="${escapeHtml(groupName)}">
@@ -1102,15 +1326,17 @@ var SearchModalWidget = (() => {
         </a>
     `;
   }
-  function renderHeadingChild(result, heading, index, query, options = {}) {
+  function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0) {
     const {
       listboxId,
       enableHighlighting = true,
       highlightTag = "mark",
       highlightClass = ""
     } = options;
-    const text = heading.text || "";
-    const anchorId = heading.id || "";
+    const rawText = heading.text || "";
+    const text = rawText.replace(/^#+\s*/, "");
+    const level = heading.level || 2;
+    const anchorId = heading.id || (text ? slugifyHeading(text) : "");
     const baseUrl = result.url || "#";
     const url = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
     const optionId = getOptionId(listboxId, index);
@@ -1120,15 +1346,26 @@ var SearchModalWidget = (() => {
       className: highlightClass
     };
     const highlightedText = highlightMatches(text, query, highlightOptions);
+    const rowClass = isLast ? " sm-hierarchy-child-row-last" : "";
     return `
-        <a class="sm-result-item sm-hierarchy-child" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(text)}">
-            ${hashIcon()}
-            <span class="sm-result-title">${highlightedText}</span>
-            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-        </a>
+        <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
+            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(text)}">
+                ${hashIcon()}
+                <span class="sm-result-title">${highlightedText}</span>
+                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
     `;
+  }
+  function slugifyHeading(text) {
+    const normalized = text.normalize("NFKD").toLowerCase();
+    try {
+      return normalized.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
+    } catch (err) {
+      return normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    }
   }
   function renderRecentSearches(recentSearches, listboxId) {
     if (!recentSearches || recentSearches.length === 0) {
@@ -1604,6 +1841,10 @@ var SearchModalWidget = (() => {
           siteId: this.config.siteId,
           maxResults: this.config.maxResults,
           hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
+          allowCodeSnippets: this.config.allowCodeSnippets,
+          snippetMode: this.config.snippetMode,
+          snippetLength: this.config.snippetLength,
+          parseMarkdownSnippets: this.config.parseMarkdownSnippets,
           debug: this.config.debug,
           signal: this.abortController.signal
         });
@@ -1945,8 +2186,14 @@ var SearchModalWidget = (() => {
       if (!this.config)
         return;
       const host = this.shadowRoot.host;
-      const { theme, styles: styles2 } = this.config;
+      const { theme, styles: styles2, resultTitleLines, resultDescLines } = this.config;
       applyStylesToElement(host, styles2, theme);
+      if (resultTitleLines) {
+        host.style.setProperty("--sm-result-title-lines", String(resultTitleLines));
+      }
+      if (resultDescLines) {
+        host.style.setProperty("--sm-result-desc-lines", String(resultDescLines));
+      }
     }
     // =========================================================================
     // ACCESSIBILITY
@@ -2076,6 +2323,7 @@ var SearchModalWidget = (() => {
     --sm-text-primary: var(--sm-result-text-color, #111827);
     --sm-text-secondary: var(--sm-result-desc-color, #4b5563);
     --sm-text-muted: var(--sm-result-muted-color, #6b7280);
+    --sm-hierarchy-connector-color: var(--sm-result-muted-color, #6b7280);
 
     /* Input defaults */
     --sm-input-bg: #ffffff;
@@ -2086,13 +2334,18 @@ var SearchModalWidget = (() => {
     /* Borders and backgrounds - map from config variable names */
     --sm-border-color: var(--sm-input-border-color, #e5e7eb);
     --sm-hover-bg: var(--sm-result-hover-bg, #f3f4f6);
+    --sm-hover-border: var(--sm-result-hover-border-color, var(--sm-result-border-color, #e5e7eb));
     --sm-selected-bg: var(--sm-result-active-bg, #e5e7eb);
-    --sm-selected-border: #3b82f6;
+    --sm-selected-border: var(--sm-result-active-border-color, #3b82f6);
     --sm-result-radius: 8px;
 
     /* Highlighting */
     --sm-highlight-bg: #fef08a;
     --sm-highlight-color: #854d0e;
+
+    /* Result line clamping */
+    --sm-result-title-lines: 1;
+    --sm-result-desc-lines: 1;
 
     /* Kbd / keyboard shortcuts - 4.5:1 contrast ratio minimum */
     --sm-kbd-bg: #f3f4f6;
@@ -2121,11 +2374,15 @@ var SearchModalWidget = (() => {
     --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
     --sm-text-secondary: var(--sm-result-desc-color-dark, #d1d5db);
     --sm-text-muted: var(--sm-result-muted-color-dark, #9ca3af);
+    --sm-hierarchy-connector-color: var(--sm-result-muted-color-dark, #9ca3af);
 
     --sm-border-color: var(--sm-input-border-color-dark, #374151);
+    --sm-result-bg: var(--sm-result-bg-dark, transparent);
+    --sm-result-border-color: var(--sm-result-border-color-dark, #374151);
     --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
+    --sm-hover-border: var(--sm-result-hover-border-color-dark, var(--sm-result-border-color-dark, #374151));
     --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
-    --sm-selected-border: #3b82f6;
+    --sm-selected-border: var(--sm-result-active-border-color-dark, #3b82f6);
 
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
     --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
@@ -2200,6 +2457,9 @@ var SearchModalWidget = (() => {
     flex: 1;
     overflow-y: auto;
     padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
 }
 
 /* =========================================================================
@@ -2207,7 +2467,10 @@ var SearchModalWidget = (() => {
    ========================================================================= */
 
 .sm-section {
-    margin-bottom: 8px;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
 }
 
 .sm-section:last-child {
@@ -2218,7 +2481,7 @@ var SearchModalWidget = (() => {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 0;
     font-size: 12px;
     font-weight: 600;
     color: var(--sm-text-muted);
@@ -2251,23 +2514,55 @@ var SearchModalWidget = (() => {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
     border-radius: var(--sm-result-radius);
+    background: var(--sm-result-bg, transparent);
+    border: var(--sm-result-border-width, 1px) solid var(--sm-result-border-color, #e5e7eb);
     color: var(--sm-text-primary);
     text-decoration: none;
     cursor: pointer;
     transition: background 0.1s ease;
+    margin-bottom: 0;
 }
 
 .sm-result-item:hover,
 .sm-result-item.sm-selected {
     background: var(--sm-hover-bg);
+    border-color: var(--sm-hover-border);
 }
 
 .sm-result-item.sm-selected {
     background: var(--sm-selected-bg);
     outline: 2px solid var(--sm-selected-border);
     outline-offset: -2px;
+    border-color: var(--sm-selected-border);
+}
+
+
+.sm-result-item:hover .sm-result-title {
+    color: var(--sm-result-hover-text-color, var(--sm-text-primary));
+}
+
+.sm-result-item:hover .sm-result-desc {
+    color: var(--sm-result-hover-desc-color, var(--sm-text-secondary));
+}
+
+.sm-result-item:hover .sm-result-icon,
+.sm-result-item:hover .sm-result-arrow {
+    color: var(--sm-result-hover-muted-color, var(--sm-text-muted));
+}
+
+.sm-result-item.sm-selected .sm-result-title {
+    color: var(--sm-result-active-text-color, var(--sm-text-primary));
+}
+
+.sm-result-item.sm-selected .sm-result-desc {
+    color: var(--sm-result-active-desc-color, var(--sm-text-secondary));
+}
+
+.sm-result-item.sm-selected .sm-result-icon,
+.sm-result-item.sm-selected .sm-result-arrow {
+    color: var(--sm-result-active-muted-color, var(--sm-text-muted));
 }
 
 .sm-result-icon {
@@ -2287,17 +2582,23 @@ var SearchModalWidget = (() => {
     font-size: 14px;
     font-weight: 500;
     color: var(--sm-text-primary);
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: var(--sm-result-title-lines);
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: normal;
 }
 
 .sm-result-desc {
     font-size: 13px;
     color: var(--sm-text-secondary);
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: var(--sm-result-desc-lines);
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: normal;
 }
 
 .sm-result-type {
@@ -2328,6 +2629,7 @@ var SearchModalWidget = (() => {
 /* Group wrapper */
 .sm-hierarchy-group {
     margin-bottom: 4px;
+    position: relative;
 }
 
 .sm-hierarchy-group:last-child {
@@ -2336,7 +2638,7 @@ var SearchModalWidget = (() => {
 
 /* Group header */
 .sm-hierarchy-group-header {
-    padding: 8px 12px;
+    padding: 8px 0;
     font-size: 12px;
     font-weight: 600;
     color: var(--sm-text-muted);
@@ -2346,8 +2648,9 @@ var SearchModalWidget = (() => {
 
 /* Parent result (page-level) */
 .sm-hierarchy-parent {
+    position: relative;
     gap: 10px;
-    padding: 10px 12px;
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
 }
 
 .sm-hierarchy-parent .sm-hierarchy-icon {
@@ -2355,30 +2658,90 @@ var SearchModalWidget = (() => {
     color: var(--sm-accent);
 }
 
-/* Child result (heading-level) with connecting line */
-.sm-hierarchy-child {
+/* Child result (heading-level) with gutter connector */
+/* --sm-hierarchy-depth: 0-based depth (0=shallowest heading, 1=next, etc.) */
+/* --sm-hierarchy-indent: per-level step (default 40px) */
+/* Depth 0 connector aligns with parent icon center; deeper levels add indent steps */
+.sm-hierarchy-child-row {
+    --_indent: calc(var(--sm-result-px, 12px) - 4px + var(--sm-hierarchy-depth, 0) * var(--sm-hierarchy-indent, 40px));
+    position: relative;
+    display: flex;
+    align-items: center;
     gap: 10px;
-    padding: 8px 12px 8px 36px;
-    margin-left: 18px;
-    border-left: 2px solid var(--sm-border-color);
-    border-radius: 0 var(--sm-result-radius) var(--sm-result-radius) 0;
-    font-size: 13px;
+    padding-inline-start: var(--_indent);
 }
 
-.sm-hierarchy-child:hover,
-.sm-hierarchy-child.sm-selected {
-    border-left-color: var(--sm-accent);
+/* Vertical connector line (continues through non-last children) */
+.sm-hierarchy-child-row::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--sm-result-gap, 0px));
+    bottom: calc(-1 * var(--sm-result-gap, 0px));
+    inset-inline-start: calc(var(--_indent) + 14px);
+    width: 0;
+    border-inline-start: 2px solid var(--sm-hierarchy-connector-color);
+    pointer-events: none;
+}
+
+/* Horizontal branch (reaches from vertical line to content) */
+.sm-hierarchy-child-row::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    inset-inline-start: calc(var(--_indent) + 14px);
+    width: 20px;
+    height: 0;
+    border-top: 2px solid var(--sm-hierarchy-connector-color);
+    pointer-events: none;
+}
+
+/* Last child at its level: vertical stops at center, curves into horizontal */
+.sm-hierarchy-child-row-last::before {
+    bottom: 50%;
+    border-end-start-radius: 6px;
+    border-bottom: 2px solid var(--sm-hierarchy-connector-color);
+    width: 20px;
+}
+
+/* Last child: curve handles the branch, hide separate horizontal */
+.sm-hierarchy-child-row-last::after {
+    display: none;
+}
+
+.sm-hierarchy-child {
+    flex: 1;
+    margin-bottom: 0;
+    font-weight: 400;
+    margin-inline-start: 34px;
+}
+
+.sm-hierarchy-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
+}
+
+.sm-hierarchy-block {
+    position: relative;
+}
+
+.sm-hierarchy-children {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
+}
+
+.sm-hierarchy-parent--has-children {
+    margin-bottom: var(--sm-result-gap, 0px);
 }
 
 .sm-hierarchy-child .sm-hierarchy-icon {
-    flex-shrink: 0;
-    color: var(--sm-text-muted);
+    margin-inline-start: 0;
 }
 
-.sm-hierarchy-child .sm-result-title {
-    font-size: 13px;
-    font-weight: 400;
-}
+
 
 /* =========================================================================
    PROMOTED RESULTS
@@ -2402,17 +2765,17 @@ var SearchModalWidget = (() => {
 
 .sm-promoted-badge--top-right {
     top: 4px;
-    right: 4px;
+    inset-inline-end: 4px;
 }
 
 .sm-promoted-badge--top-left {
     top: 4px;
-    left: 4px;
+    inset-inline-start: 4px;
 }
 
 .sm-promoted-badge--inline {
     position: static;
-    margin-left: 8px;
+    margin-inline-start: 8px;
 }
 
 /* =========================================================================
@@ -2470,6 +2833,9 @@ var SearchModalWidget = (() => {
 
 /* =========================================================================
    RTL SUPPORT (BASE)
+   Logical properties (padding-inline-start, margin-inline-start,
+   inset-inline-start/end) handle most LTR\u2194RTL mirroring automatically.
+   Only rules that have no logical equivalent remain here.
    ========================================================================= */
 
 :host([dir="rtl"]) .sm-result-item {
@@ -2480,23 +2846,13 @@ var SearchModalWidget = (() => {
     transform: scaleX(-1);
 }
 
-:host([dir="rtl"]) .sm-hierarchy-child {
-    margin-left: 0;
-    margin-right: 18px;
-    border-left: none;
-    border-right: 2px solid var(--sm-border-color);
-    padding: 8px 36px 8px 12px;
-    border-radius: var(--sm-result-radius) 0 0 var(--sm-result-radius);
-}
-
-:host([dir="rtl"]) .sm-hierarchy-child:hover,
-:host([dir="rtl"]) .sm-hierarchy-child.sm-selected {
-    border-right-color: var(--sm-accent);
+:host([dir="rtl"]) .sm-hierarchy-child-row {
+    flex-direction: row-reverse;
 }
 `;
 
   // src/styles/modal.css
-  var modal_default = '/**\n * Search Widget Modal Styles\n *\n * Styles specific to the modal widget variant.\n * Includes backdrop, modal container, trigger button,\n * header, footer, and mobile responsive behavior.\n *\n * @module styles/modal\n * @author Search Manager\n * @since 5.x\n */\n\n/* =========================================================================\n   MODAL-SPECIFIC HOST VARIABLES\n   ========================================================================= */\n\n:host {\n    /* Modal container */\n    --sm-modal-bg: #ffffff;\n    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);\n    --sm-modal-border-width: 1px;\n    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);\n    --sm-modal-radius: 12px;\n    --sm-modal-width: 640px;\n    --sm-modal-max-height: 80vh;\n\n    /* Trigger button */\n    --sm-trigger-bg: #ffffff;\n    --sm-trigger-color: var(--sm-trigger-text-color, #374151);\n    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);\n    --sm-trigger-radius: 8px;\n    --sm-trigger-border-width: 1px;\n    --sm-trigger-px: 12px;\n    --sm-trigger-py: 8px;\n    --sm-trigger-font-size: 14px;\n}\n\n/* Dark theme - modal-specific overrides */\n:host([data-theme="dark"]) {\n    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);\n    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);\n\n    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);\n    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);\n    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);\n}\n\n/* =========================================================================\n   TRIGGER BUTTON\n   ========================================================================= */\n\n.sm-trigger {\n    display: inline-flex;\n    align-items: center;\n    gap: 8px;\n    padding: var(--sm-trigger-py) var(--sm-trigger-px);\n    background: var(--sm-trigger-bg);\n    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);\n    border-radius: var(--sm-trigger-radius);\n    color: var(--sm-trigger-color);\n    font-size: var(--sm-trigger-font-size);\n    cursor: pointer;\n    transition: all 0.15s ease;\n}\n\n.sm-trigger:hover {\n    border-color: var(--sm-accent);\n    color: var(--sm-text-primary);\n}\n\n.sm-trigger-text {\n    /* Text shown next to search icon */\n}\n\n.sm-trigger-kbd {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   BACKDROP\n   ========================================================================= */\n\n.sm-backdrop {\n    position: fixed;\n    inset: 0;\n    z-index: 99999;\n    display: flex;\n    align-items: flex-start;\n    justify-content: center;\n    padding-top: 10vh;\n    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));\n    backdrop-filter: var(--sm-backdrop-blur, blur(4px));\n    animation: sm-fade-in 0.15s ease;\n}\n\n.sm-backdrop[hidden] {\n    display: none;\n}\n\n@keyframes sm-fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n/* =========================================================================\n   MODAL CONTAINER\n   ========================================================================= */\n\n.sm-modal {\n    width: var(--sm-modal-width);\n    max-width: calc(100vw - 32px);\n    max-height: var(--sm-modal-max-height);\n    background: var(--sm-modal-bg);\n    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);\n    border-radius: var(--sm-modal-radius);\n    box-shadow: var(--sm-modal-shadow);\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    animation: sm-slide-up 0.2s ease;\n}\n\n@keyframes sm-slide-up {\n    from {\n        opacity: 0;\n        transform: translateY(-10px) scale(0.98);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0) scale(1);\n    }\n}\n\n/* =========================================================================\n   MODAL HEADER\n   ========================================================================= */\n\n.sm-header {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: 16px;\n    border-bottom: 1px solid var(--sm-border-color);\n}\n\n.sm-search-icon {\n    flex-shrink: 0;\n    color: var(--sm-text-muted);\n}\n\n.sm-close {\n    flex-shrink: 0;\n    display: flex;\n    align-items: center;\n    padding: 4px 8px;\n    background: transparent;\n    border: none;\n    cursor: pointer;\n}\n\n.sm-close kbd {\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   MODAL FOOTER\n   ========================================================================= */\n\n.sm-footer {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 16px;\n    padding: 12px 16px;\n    border-top: 1px solid var(--sm-border-color);\n    font-size: 12px;\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-hints {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n}\n\n.sm-footer-hints span {\n    display: flex;\n    align-items: center;\n    gap: 4px;\n}\n\n.sm-footer kbd {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 20px;\n    padding: 2px 4px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 10px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n.sm-footer-brand {\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-brand strong {\n    color: var(--sm-text-secondary);\n}\n\n/* =========================================================================\n   RTL SUPPORT (MODAL-SPECIFIC)\n   ========================================================================= */\n\n:host([dir="rtl"]) .sm-header,\n:host([dir="rtl"]) .sm-footer {\n    direction: rtl;\n}\n\n/* =========================================================================\n   MOBILE RESPONSIVE\n   ========================================================================= */\n\n@media (max-width: 640px) {\n    .sm-backdrop {\n        padding-top: 0;\n        align-items: flex-end;\n    }\n\n    .sm-modal {\n        max-width: 100%;\n        max-height: 90vh;\n        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;\n    }\n\n    .sm-trigger-text,\n    .sm-footer-hints {\n        display: none;\n    }\n}\n';
+  var modal_default = '/**\n * Search Widget Modal Styles\n *\n * Styles specific to the modal widget variant.\n * Includes backdrop, modal container, trigger button,\n * header, footer, and mobile responsive behavior.\n *\n * @module styles/modal\n * @author Search Manager\n * @since 5.x\n */\n\n/* =========================================================================\n   MODAL-SPECIFIC HOST VARIABLES\n   ========================================================================= */\n\n:host {\n    /* Modal container */\n    --sm-modal-bg: #ffffff;\n    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);\n    --sm-modal-border-width: 1px;\n    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);\n    --sm-modal-radius: 12px;\n    --sm-modal-width: 640px;\n    --sm-modal-max-height: 80vh;\n    --sm-modal-px: 16px;\n    --sm-modal-py: 16px;\n\n    /* Trigger button */\n    --sm-trigger-bg: #ffffff;\n    --sm-trigger-color: var(--sm-trigger-text-color, #374151);\n    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);\n    --sm-trigger-radius: 8px;\n    --sm-trigger-border-width: 1px;\n    --sm-trigger-px: 12px;\n    --sm-trigger-py: 8px;\n    --sm-trigger-font-size: 14px;\n}\n\n/* Dark theme - modal-specific overrides */\n:host([data-theme="dark"]) {\n    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);\n    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);\n\n    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);\n    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);\n    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);\n}\n\n/* =========================================================================\n   TRIGGER BUTTON\n   ========================================================================= */\n\n.sm-trigger {\n    display: inline-flex;\n    align-items: center;\n    gap: 8px;\n    padding: var(--sm-trigger-py) var(--sm-trigger-px);\n    background: var(--sm-trigger-bg);\n    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);\n    border-radius: var(--sm-trigger-radius);\n    color: var(--sm-trigger-color);\n    font-size: var(--sm-trigger-font-size);\n    cursor: pointer;\n    transition: all 0.15s ease;\n}\n\n.sm-trigger:hover {\n    border-color: var(--sm-accent);\n    color: var(--sm-text-primary);\n}\n\n.sm-trigger-text {\n    /* Text shown next to search icon */\n}\n\n.sm-trigger-kbd {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   BACKDROP\n   ========================================================================= */\n\n.sm-backdrop {\n    position: fixed;\n    inset: 0;\n    z-index: 99999;\n    display: flex;\n    align-items: flex-start;\n    justify-content: center;\n    padding-top: 10vh;\n    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));\n    backdrop-filter: var(--sm-backdrop-blur, blur(4px));\n    animation: sm-fade-in 0.15s ease;\n}\n\n.sm-backdrop[hidden] {\n    display: none;\n}\n\n@keyframes sm-fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n/* =========================================================================\n   MODAL CONTAINER\n   ========================================================================= */\n\n.sm-modal {\n    width: var(--sm-modal-width);\n    max-width: calc(100vw - 32px);\n    max-height: var(--sm-modal-max-height);\n    background: var(--sm-modal-bg);\n    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);\n    border-radius: var(--sm-modal-radius);\n    box-shadow: var(--sm-modal-shadow);\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    animation: sm-slide-up 0.2s ease;\n}\n\n@keyframes sm-slide-up {\n    from {\n        opacity: 0;\n        transform: translateY(-10px) scale(0.98);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0) scale(1);\n    }\n}\n\n/* =========================================================================\n   MODAL HEADER\n   ========================================================================= */\n\n.sm-header {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n    border-bottom: 1px solid var(--sm-border-color);\n}\n\n.sm-search-icon {\n    flex-shrink: 0;\n    color: var(--sm-text-muted);\n}\n\n.sm-close {\n    flex-shrink: 0;\n    display: flex;\n    align-items: center;\n    padding: 4px 8px;\n    background: transparent;\n    border: none;\n    cursor: pointer;\n}\n\n.sm-close kbd {\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   MODAL RESULTS\n   ========================================================================= */\n\n.sm-results {\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n}\n\n/* =========================================================================\n   MODAL FOOTER\n   ========================================================================= */\n\n.sm-footer {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 16px;\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n    border-top: 1px solid var(--sm-border-color);\n    font-size: 12px;\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-hints {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n}\n\n.sm-footer-hints span {\n    display: flex;\n    align-items: center;\n    gap: 4px;\n}\n\n.sm-footer kbd {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 20px;\n    padding: 2px 4px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 10px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n.sm-footer-brand {\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-brand strong {\n    color: var(--sm-text-secondary);\n}\n\n/* =========================================================================\n   RTL SUPPORT (MODAL-SPECIFIC)\n   ========================================================================= */\n\n:host([dir="rtl"]) .sm-header,\n:host([dir="rtl"]) .sm-footer {\n    direction: rtl;\n}\n\n/* =========================================================================\n   MOBILE RESPONSIVE\n   ========================================================================= */\n\n@media (max-width: 640px) {\n    .sm-backdrop {\n        padding-top: 0;\n        align-items: flex-end;\n    }\n\n    .sm-modal {\n        max-width: 100%;\n        max-height: 90vh;\n        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;\n    }\n\n    .sm-trigger-text,\n    .sm-footer-hints {\n        display: none;\n    }\n}\n';
 
   // src/styles/debug.css
   var debug_default = `/* =========================================================================
@@ -2536,7 +2892,7 @@ var SearchModalWidget = (() => {
     line-height: 1.5;
     /* Debug info is always LTR - technical English labels/values */
     direction: ltr;
-    text-align: left;
+    text-align: start;
 }
 
 :host([data-theme="dark"]) .sm-debug-info {
@@ -2744,7 +3100,7 @@ var SearchModalWidget = (() => {
     padding: 0;
     background: transparent;
     border: none;
-    border-left: 1px solid #e2e8f0;
+    border-inline-start: 1px solid #e2e8f0;
     color: #94a3b8;
     cursor: pointer;
     transition: background 0.15s, color 0.15s;
@@ -2757,7 +3113,7 @@ var SearchModalWidget = (() => {
 }
 
 :host([data-theme="dark"]) .sm-toolbar-toggle {
-    border-left-color: #334155;
+    border-inline-start-color: #334155;
     color: #64748b;
 }
 
@@ -2822,15 +3178,15 @@ var SearchModalWidget = (() => {
     justify-content: center;
     gap: 2px;
     padding: 8px 14px;
-    border-right: 1px solid #e2e8f0;
+    border-inline-end: 1px solid #e2e8f0;
 }
 
 .sm-toolbar-item:last-child {
-    border-right: none;
+    border-inline-end: none;
 }
 
 :host([data-theme="dark"]) .sm-toolbar-item {
-    border-right-color: #334155;
+    border-inline-end-color: #334155;
 }
 
 /* Label below value - small uppercase */

@@ -10,6 +10,7 @@ use lindemannrock\searchmanager\jobs\IndexElementJob;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use yii\base\Component;
 
 /**
@@ -22,6 +23,7 @@ use yii\base\Component;
 class IndexingService extends Component
 {
     use LoggingTrait;
+    use ElementTypeGuardTrait;
 
     // Event constants
     public const EVENT_BEFORE_INDEX = 'beforeIndex';
@@ -154,6 +156,10 @@ class IndexingService extends Component
                     ]);
                     $success = false;
                     continue;
+                }
+
+                if ($index && method_exists($transformer, 'setHeadingLevels')) {
+                    $transformer->setHeadingLevels($index->headingLevels ?? null);
                 }
 
                 // Transform element for this index
@@ -393,6 +399,10 @@ class IndexingService extends Component
             $transformer = SearchManager::$plugin->transformers->getTransformer($element, $transformerClass);
             if (!$transformer) {
                 continue;
+            }
+
+            if ($index && method_exists($transformer, 'setHeadingLevels')) {
+                $transformer->setHeadingLevels($index->headingLevels ?? null);
             }
 
             try {
@@ -636,6 +646,9 @@ class IndexingService extends Component
         try {
             // Create a fresh query for the element type
             $elementType = $index->elementType;
+            if (!$this->isElementTypeAvailable($elementType, 'index-criteria')) {
+                return false;
+            }
             $query = $elementType::find();
 
             // Set site context - MUST match element's site for proper per-site checks
@@ -666,6 +679,7 @@ class IndexingService extends Component
             return false;
         }
     }
+
 
     /**
      * Get all indices (database + config)

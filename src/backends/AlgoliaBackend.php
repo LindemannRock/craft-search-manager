@@ -150,6 +150,21 @@ class AlgoliaBackend extends BaseBackend
             $searchParams = array_diff_key($options, array_flip($internalOptions));
             $searchParams['query'] = $query;
 
+            $limit = $options['limit'] ?? null;
+            $offset = $options['offset'] ?? null;
+            $page = $options['page'] ?? null;
+
+            if ($limit !== null && (int) $limit > 0) {
+                $searchParams['hitsPerPage'] = (int) $limit;
+            }
+            if ($page !== null) {
+                $searchParams['page'] = (int) $page;
+            } elseif ($offset !== null && $limit !== null && (int) $limit > 0) {
+                $searchParams['page'] = (int) floor(((int) $offset) / (int) $limit);
+            }
+
+            unset($searchParams['limit'], $searchParams['offset'], $searchParams['page']);
+
             $results = $client->searchSingleIndex($fullIndexName, $searchParams);
 
             // Extract matched field names from _highlightResult

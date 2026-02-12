@@ -34,10 +34,12 @@ class Install extends Migration
         $this->createQueryRulesTable();
         $this->createRuleAnalyticsTable();
         $this->createPromotionAnalyticsTable();
+        $this->createWidgetStylesTable();
         $this->createWidgetConfigsTable();
 
         // Insert default data
         $this->insertDefaultSettings();
+        $this->insertDefaultWidgetStyle();
         $this->insertDefaultWidgetConfig();
 
         return true;
@@ -47,6 +49,7 @@ class Install extends Migration
     {
         // Drop tables in reverse order (respecting dependencies)
         $this->dropTableIfExists('{{%searchmanager_widget_configs}}');
+        $this->dropTableIfExists('{{%searchmanager_widget_styles}}');
         $this->dropTableIfExists('{{%searchmanager_promotion_analytics}}');
         $this->dropTableIfExists('{{%searchmanager_rule_analytics}}');
         $this->dropTableIfExists('{{%searchmanager_query_rules}}');
@@ -189,6 +192,7 @@ class Install extends Migration
             'siteId' => $this->integer()->null(),
             'criteriaJson' => $this->text()->null(),
             'transformerClass' => $this->string(255)->notNull(),
+            'headingLevelsJson' => $this->text()->null(),
             'language' => $this->string(10)->null(),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'enableAnalytics' => $this->boolean()->notNull()->defaultValue(true),
@@ -576,6 +580,7 @@ class Install extends Migration
                 'title' => $this->string(500)->notNull(),
                 'elementType' => $this->string(50)->notNull()->comment('product, category, etc.'),
                 'searchText' => $this->string(500)->notNull()->comment('Normalized lowercase for prefix matching'),
+                'documentData' => $this->text()->null()->comment('JSON transformer output for rich results'),
             ]);
 
             $this->addPrimaryKey(null, '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementId']);
@@ -724,6 +729,8 @@ class Install extends Migration
             'id' => $this->primaryKey(),
             'handle' => $this->string(64)->notNull(),
             'name' => $this->string(255)->notNull(),
+            'type' => $this->string(32)->notNull()->defaultValue('modal'),
+            'styleHandle' => $this->string(64)->null(),
             'settings' => $this->text()->null()->comment('JSON settings for highlighting, backdrop, behavior'),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'dateCreated' => $this->dateTime()->notNull(),
@@ -734,6 +741,7 @@ class Install extends Migration
         // Create indexes
         $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['handle'], true);
         $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['enabled'], false);
+        $this->createIndex(null, '{{%searchmanager_widget_configs}}', ['styleHandle'], false);
     }
 
     /**
@@ -742,19 +750,6 @@ class Install extends Migration
     private function insertDefaultWidgetConfig(): void
     {
         $defaultSettings = [
-            'highlighting' => [
-                'enabled' => true,
-                'tag' => 'mark',
-                'class' => null,
-                'bgLight' => '#fef08a',
-                'colorLight' => '#854d0e',
-                'bgDark' => '#854d0e',
-                'colorDark' => '#fef08a',
-            ],
-            'backdrop' => [
-                'opacity' => 50,
-                'blur' => true,
-            ],
             'behavior' => [
                 'preventBodyScroll' => true,
                 'debounce' => 200,
@@ -780,6 +775,8 @@ class Install extends Migration
         $this->insert('{{%searchmanager_widget_configs}}', [
             'handle' => 'default',
             'name' => 'Default Widget',
+            'type' => 'modal',
+            'styleHandle' => 'default',
             'settings' => json_encode($defaultSettings),
             'enabled' => 1,
             'dateCreated' => Db::prepareDateForDb(new \DateTime()),
@@ -791,5 +788,48 @@ class Install extends Migration
         $this->update('{{%searchmanager_settings}}', [
             'defaultWidgetHandle' => 'default',
         ], ['id' => 1]);
+    }
+
+    /**
+     * Create widget styles table
+     */
+    private function createWidgetStylesTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_widget_styles}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_widget_styles}}', [
+            'id' => $this->primaryKey(),
+            'handle' => $this->string(64)->notNull(),
+            'name' => $this->string(255)->notNull(),
+            'type' => $this->string(32)->notNull()->defaultValue('modal'),
+            'styles' => $this->text()->null()->comment('JSON styles for widget appearance'),
+            'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        $this->createIndex(null, '{{%searchmanager_widget_styles}}', ['handle'], true);
+        $this->createIndex(null, '{{%searchmanager_widget_styles}}', ['enabled'], false);
+        $this->createIndex(null, '{{%searchmanager_widget_styles}}', ['type'], false);
+    }
+
+    /**
+     * Insert default widget style preset
+     */
+    private function insertDefaultWidgetStyle(): void
+    {
+        $this->insert('{{%searchmanager_widget_styles}}', [
+            'handle' => 'default',
+            'name' => 'Default Style',
+            'type' => 'modal',
+            'styles' => json_encode([]),
+            'enabled' => 1,
+            'dateCreated' => Db::prepareDateForDb(new \DateTime()),
+            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+            'uid' => StringHelper::UUID(),
+        ]);
     }
 }

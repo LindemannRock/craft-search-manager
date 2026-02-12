@@ -128,8 +128,14 @@ export function renderResultItem(result, index, query, options = {}) {
         className: highlightClass,
     };
 
-    const highlightedTitle = highlightMatches(title, query, highlightOptions);
-    const highlightedDesc = description ? highlightMatches(description, query, highlightOptions) : '';
+    const highlightedTitle = highlightMatches(title, query, {
+        ...highlightOptions,
+        terms: getHighlightTerms(result, 'title'),
+    });
+    const highlightedDesc = description ? highlightMatches(description, query, {
+        ...highlightOptions,
+        terms: getHighlightTerms(result, 'description'),
+    }) : '';
 
     // Build promoted badge HTML
     const promotedBadge = renderPromotedBadge(result, promotions);
@@ -245,6 +251,32 @@ function renderDebugInfo(result) {
     return `<div class="sm-debug-info">${debugItems.join('')}</div>`;
 }
 
+function getHighlightTerms(result, area) {
+    const matchedTerms = result.matchedTerms;
+    if (!matchedTerms) {
+        return null;
+    }
+
+    if (area === 'title') {
+        if (Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
+            return matchedTerms.title;
+        }
+    }
+
+    if (area === 'description') {
+        if (Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
+            return matchedTerms.content;
+        }
+    }
+
+    const combined = [
+        ...(Array.isArray(matchedTerms.title) ? matchedTerms.title : []),
+        ...(Array.isArray(matchedTerms.content) ? matchedTerms.content : []),
+    ];
+
+    return combined.length > 0 ? combined : null;
+}
+
 /**
  * Create a debug item with label and value
  *
@@ -347,18 +379,36 @@ function renderHierarchicalResults(results, query, options = {}) {
         const itemsHtml = items.map((result) => {
             // Render parent item
             const parentIndex = globalIndex++;
-            let html = renderHierarchyParent(result, parentIndex, query, options);
+            const parentHtml = renderHierarchyParent(result, parentIndex, query, options);
 
             // Render matched heading children
+            let childrenHtml = '';
             if (showMatchedHeadings) {
                 const headings = result._matchedHeadings || [];
                 const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
-                limitedHeadings.forEach((heading) => {
-                    html += renderHeadingChild(result, heading, globalIndex++, query, options);
-                });
+                if (limitedHeadings.length > 0) {
+                    // Normalize levels: shallowest heading = depth 0
+                    const minLevel = Math.min(...limitedHeadings.map(h => h.level || 2));
+                    // Mark each heading as "last" if no later heading shares its level
+                    childrenHtml = limitedHeadings.map((heading, headingIndex) => {
+                        const level = heading.level || 2;
+                        const depth = level - minLevel;
+                        const isLastAtLevel = !limitedHeadings.slice(headingIndex + 1).some(h => (h.level || 2) === level);
+                        return renderHeadingChild(result, heading, globalIndex++, query, options, isLastAtLevel, depth);
+                    }).join('');
+                }
             }
 
-            return html;
+            const hasChildren = Boolean(childrenHtml);
+
+            return `
+                <div class="sm-hierarchy-block${hasChildren ? ' sm-hierarchy-block--has-children' : ''}">
+                    ${hasChildren
+                        ? parentHtml.replace('sm-hierarchy-parent"', 'sm-hierarchy-parent sm-hierarchy-parent--has-children"')
+                        : parentHtml}
+                    ${hasChildren ? `<div class="sm-hierarchy-children">${childrenHtml}</div>` : ''}
+                </div>
+            `;
         }).join('');
 
         return `
@@ -425,7 +475,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
  * @param {RenderOptions} options - Rendering options
  * @returns {string} HTML string
  */
-function renderHeadingChild(result, heading, index, query, options = {}) {
+function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0) {
     const {
         listboxId,
         enableHighlighting = true,
@@ -433,8 +483,10 @@ function renderHeadingChild(result, heading, index, query, options = {}) {
         highlightClass = '',
     } = options;
 
-    const text = heading.text || '';
-    const anchorId = heading.id || '';
+    const rawText = heading.text || '';
+    const text = rawText.replace(/^#+\s*/, '');
+    const level = heading.level || 2;
+    const anchorId = heading.id || (text ? slugifyHeading(text) : '');
     const baseUrl = result.url || '#';
     const url = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
     const optionId = getOptionId(listboxId, index);
@@ -447,15 +499,32 @@ function renderHeadingChild(result, heading, index, query, options = {}) {
 
     const highlightedText = highlightMatches(text, query, highlightOptions);
 
+    const rowClass = isLast ? ' sm-hierarchy-child-row-last' : '';
+
     return `
-        <a class="sm-result-item sm-hierarchy-child" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(text)}">
-            ${hashIcon()}
-            <span class="sm-result-title">${highlightedText}</span>
-            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
-        </a>
+        <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
+            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(text)}">
+                ${hashIcon()}
+                <span class="sm-result-title">${highlightedText}</span>
+                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </a>
+        </div>
     `;
+}
+
+function slugifyHeading(text) {
+    const normalized = text.normalize('NFKD').toLowerCase();
+    try {
+        return normalized
+            .replace(/[^\p{L}\p{N}]+/gu, '-')
+            .replace(/^-+|-+$/g, '');
+    } catch (err) {
+        return normalized
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    }
 }
 
 /**

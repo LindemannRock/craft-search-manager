@@ -10,6 +10,7 @@
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
     { label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+    { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
     { label: widgetConfig.name }
 ] %}
 
@@ -89,7 +90,7 @@
 	</fieldset>
 
 	{# Widget Preview #}
-	{% include "search-manager/widgets/_partials/preview" with {
+	{% include "search-manager/widgets/_shared/preview" with {
 		widgetConfig: widgetConfig
 	} %}
 

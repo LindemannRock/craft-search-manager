@@ -54,7 +54,7 @@
     {% set indexHandles = widgetConfig.getIndexHandles() %}
 {% endif %}
 
-{% set placeholder = placeholder ?? 'Search...'|t('search-manager') %}
+{% set placeholder = placeholder ?? widgetConfig.getPlaceholder()|t('search-manager') %}
 {% set theme = theme ?? 'light' %}
 {% set siteId = siteId ?? '' %}
 {% set class = class ?? '' %}
@@ -69,20 +69,28 @@
 {% set groupResults = groupResults ?? widgetConfig.isGroupResultsEnabled() %}
 {% set hotkey = hotkey ?? widgetConfig.getHotkey() %}
 {% set hideResultsWithoutUrl = hideResultsWithoutUrl ?? widgetConfig.isHideResultsWithoutUrlEnabled() %}
+{% set allowCodeSnippets = allowCodeSnippets ?? widgetConfig.isAllowCodeSnippetsEnabled() %}
+{% set snippetMode = snippetMode ?? widgetConfig.getSnippetMode() %}
 
 {# Trigger settings #}
 {% set showTrigger = showTrigger ?? widgetConfig.isShowTriggerEnabled() %}
 {% set triggerText = triggerText ?? widgetConfig.getTriggerText()|t('search-manager') %}
 {% set triggerSelector = triggerSelector ?? '' %}
 
-{# Highlighting settings #}
-{% set enableHighlighting = enableHighlighting ?? widgetConfig.isHighlightingEnabled() %}
-{% set highlightTag = highlightTag ?? widgetConfig.getHighlightTag() %}
-{% set highlightClass = highlightClass ?? widgetConfig.getHighlightClass() %}
+{# Resolve styles first (needed for highlighting/backdrop defaults) #}
+{% set resolvedStyles = widgetConfig.getStylesForPreview() %}
+{% if styles is defined and styles is iterable %}
+    {% set resolvedStyles = resolvedStyles|merge(styles) %}
+{% endif %}
 
-{# Backdrop settings #}
-{% set backdropOpacity = backdropOpacity ?? widgetConfig.getBackdropOpacity() %}
-{% set enableBackdropBlur = enableBackdropBlur ?? widgetConfig.isBackdropBlurEnabled() %}
+{# Highlighting settings - from style preset, with inline override support #}
+{% set enableHighlighting = enableHighlighting ?? (resolvedStyles.highlightEnabled ?? '1') %}
+{% set highlightTag = highlightTag ?? (resolvedStyles.highlightTag is defined and resolvedStyles.highlightTag ? resolvedStyles.highlightTag : 'mark') %}
+{% set highlightClass = highlightClass ?? (resolvedStyles.highlightClass ?? '') %}
+
+{# Backdrop settings - from style preset, with inline override support #}
+{% set backdropOpacity = backdropOpacity ?? (resolvedStyles.backdropOpacity ?? 50) %}
+{% set enableBackdropBlur = enableBackdropBlur ?? (resolvedStyles.backdropBlur ?? '1') %}
 {% set preventBodyScroll = preventBodyScroll ?? widgetConfig.isPreventBodyScrollEnabled() %}
 
 {# Loading indicator - shows spinner during search (defaults to true) #}
@@ -92,23 +100,17 @@
 {% set debug = debug ?? false %}
 
 {# Hierarchical display - Algolia DocSearch-style grouped results with heading children #}
-{% set resultLayout = resultLayout ?? 'default' %}
-{% set hierarchyGroupBy = hierarchyGroupBy ?? '' %}
-{% set showMatchedHeadings = showMatchedHeadings ?? true %}
-{% set maxHeadingsPerResult = maxHeadingsPerResult ?? 3 %}
+{% set resultLayout = resultLayout ?? widgetConfig.getResultLayout() %}
+{% set hierarchyGroupBy = hierarchyGroupBy ?? widgetConfig.getHierarchyGroupBy() %}
+{% set showMatchedHeadings = showMatchedHeadings ?? widgetConfig.isShowMatchedHeadingsEnabled() %}
+{% set maxHeadingsPerResult = maxHeadingsPerResult ?? widgetConfig.getMaxHeadingsPerResult() %}
+{% set resultTitleLines = resultTitleLines ?? widgetConfig.getResultTitleLines() %}
+{% set resultDescLines = resultDescLines ?? widgetConfig.getResultDescLines() %}
+{% set snippetLength = snippetLength ?? widgetConfig.getSnippetLength() %}
+{% set parseMarkdownSnippets = parseMarkdownSnippets ?? widgetConfig.isParseMarkdownSnippetsEnabled() %}
 
-{# Get styles - merge config styles with highlighting colors and any inline overrides #}
-{% set configStyles = widgetConfig.getStyles() %}
-{% set highlightStyles = {
-    highlightBgLight: widgetConfig.getHighlightBgLight(),
-    highlightColorLight: widgetConfig.getHighlightColorLight(),
-    highlightBgDark: widgetConfig.getHighlightBgDark(),
-    highlightColorDark: widgetConfig.getHighlightColorDark(),
-} %}
-{% set mergedStyles = configStyles|merge(highlightStyles) %}
-{% if styles is defined and styles is iterable %}
-    {% set mergedStyles = mergedStyles|merge(styles) %}
-{% endif %}
+{# Merged styles already resolved above (resolvedStyles) #}
+{% set mergedStyles = resolvedStyles %}
 
 {# Register the NEW SearchModalWidget JS (minified in production, unminified in devMode) #}
 {% set widgetJs = craft.app.config.general.devMode ? 'SearchModalWidget.js' : 'SearchModalWidget.min.js' %}
@@ -135,14 +137,16 @@
     group-results="{{ _self.toBool(groupResults, widgetConfig.isGroupResultsEnabled()) }}"
     hotkey="{{ hotkey }}"
     hide-results-without-url="{{ _self.toBool(hideResultsWithoutUrl, widgetConfig.isHideResultsWithoutUrlEnabled()) }}"
+    allow-code-snippets="{{ _self.toBool(allowCodeSnippets, widgetConfig.isAllowCodeSnippetsEnabled()) }}"
+    snippet-mode="{{ snippetMode }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}
     dir="{{ dir }}"
-    enable-highlighting="{{ _self.toBool(enableHighlighting, widgetConfig.isHighlightingEnabled()) }}"
+    enable-highlighting="{{ _self.toBool(enableHighlighting, true) }}"
     highlight-tag="{{ highlightTag }}"
     {% if highlightClass %}highlight-class="{{ highlightClass }}"{% endif %}
     backdrop-opacity="{{ backdropOpacity }}"
-    enable-backdrop-blur="{{ _self.toBool(enableBackdropBlur, widgetConfig.isBackdropBlurEnabled()) }}"
+    enable-backdrop-blur="{{ _self.toBool(enableBackdropBlur, true) }}"
     prevent-body-scroll="{{ _self.toBool(preventBodyScroll, widgetConfig.isPreventBodyScrollEnabled()) }}"
     show-trigger="{{ _self.toBool(showTrigger, widgetConfig.isShowTriggerEnabled()) }}"
     {% if triggerSelector %}trigger-selector="{{ triggerSelector }}"{% endif %}
@@ -153,4 +157,8 @@
     {% if hierarchyGroupBy %}hierarchy-group-by="{{ hierarchyGroupBy }}"{% endif %}
     show-matched-headings="{{ _self.toBool(showMatchedHeadings, true) }}"
     max-headings-per-result="{{ maxHeadingsPerResult }}"
+    result-title-lines="{{ resultTitleLines }}"
+    result-desc-lines="{{ resultDescLines }}"
+    snippet-length="{{ snippetLength }}"
+    parse-markdown-snippets="{{ _self.toBool(parseMarkdownSnippets, false) }}"
 ></search-modal>

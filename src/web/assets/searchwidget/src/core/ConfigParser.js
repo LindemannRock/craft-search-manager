@@ -31,6 +31,8 @@
  * @property {string} highlightTag - HTML tag for highlights
  * @property {string} highlightClass - CSS class for highlights
  * @property {boolean} hideResultsWithoutUrl - Hide URL-less results
+ * @property {boolean} allowCodeSnippets - Allow code snippets in descriptions
+ * @property {string} snippetMode - Snippet mode: early | balanced | deep
  * @property {Object} styles - Custom style values
  * @property {Object} promotions - Promotion display config
  */
@@ -89,8 +91,14 @@ export const BASE_DEFAULTS = {
     highlightTag: 'mark',
     highlightClass: '',
     hideResultsWithoutUrl: false,
+    allowCodeSnippets: false,
+    snippetMode: 'balanced',
     showLoadingIndicator: true,
     debug: false,
+    resultTitleLines: 1,
+    resultDescLines: 1,
+    snippetLength: 150,
+    parseMarkdownSnippets: false,
     // Hierarchical result display (Algolia DocSearch-style)
     resultLayout: 'default', // 'default' | 'grouped' | 'hierarchical'
     hierarchyGroupBy: '',    // Field to group by (e.g., 'section', 'category')
@@ -281,7 +289,15 @@ export function parseConfig(element, widgetType = 'modal') {
 
         // Boolean attributes (default false - check for presence)
         hideResultsWithoutUrl: parseBoolean(element.getAttribute('hide-results-without-url'), defaults.hideResultsWithoutUrl),
+        allowCodeSnippets: parseBoolean(element.getAttribute('allow-code-snippets'), defaults.allowCodeSnippets),
         debug: parseBoolean(element.getAttribute('debug'), defaults.debug),
+        snippetMode: element.getAttribute('snippet-mode') || defaults.snippetMode,
+        snippetLength: parseInt(element.getAttribute('snippet-length'), defaults.snippetLength),
+        parseMarkdownSnippets: parseBoolean(element.getAttribute('parse-markdown-snippets'), defaults.parseMarkdownSnippets),
+
+        // Result line clamping
+        resultTitleLines: parseInt(element.getAttribute('result-title-lines'), defaults.resultTitleLines),
+        resultDescLines: parseInt(element.getAttribute('result-desc-lines'), defaults.resultDescLines),
 
         // Hierarchical result display
         resultLayout: element.getAttribute('result-layout') || defaults.resultLayout,
@@ -346,9 +362,10 @@ export function getObservedAttributes(widgetType = 'modal') {
         'max-recent-searches', 'group-results', 'site-id',
         'idle-timeout', 'source',
         'enable-highlighting', 'highlight-tag',
-        'highlight-class', 'hide-results-without-url', 'show-loading-indicator',
+        'highlight-class', 'hide-results-without-url', 'allow-code-snippets', 'snippet-mode', 'show-loading-indicator',
         'debug', 'styles', 'promotions',
         'result-layout', 'hierarchy-group-by', 'show-matched-headings', 'max-headings-per-result',
+        'result-title-lines', 'result-desc-lines', 'snippet-length', 'parse-markdown-snippets',
     ];
 
     // Modal-specific attributes

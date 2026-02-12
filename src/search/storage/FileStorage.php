@@ -370,9 +370,10 @@ class FileStorage implements StorageInterface
      * @param int $elementId Element ID
      * @param string $title Full title for display
      * @param string $elementType Element type (product, category, etc.)
+     * @param string|null $documentData JSON-encoded transformer output for rich results
      * @return void
      */
-    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType, ?string $documentData = null): void
     {
         $elementPath = $this->getElementPath($siteId, $elementId);
 
@@ -385,6 +386,10 @@ class FileStorage implements StorageInterface
             'searchText' => $searchText,
             'elementId' => $elementId,
         ];
+
+        if ($documentData !== null) {
+            $data['documentData'] = json_decode($documentData, true);
+        }
 
         $this->writeFile($elementPath, $data);
 
@@ -418,7 +423,7 @@ class FileStorage implements StorageInterface
      * @since 5.0.0
      * @param int $siteId Site ID
      * @param array $elementIds Array of element IDs
-     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ..., 'documentData' => ...]
      */
     public function getElementsByIds(int $siteId, array $elementIds): array
     {
@@ -437,6 +442,7 @@ class FileStorage implements StorageInterface
                     $result[(int)$elementId] = [
                         'title' => $data['title'] ?? '',
                         'elementType' => $data['elementType'] ?? 'entry',
+                        'documentData' => $data['documentData'] ?? null,
                     ];
                 }
             }

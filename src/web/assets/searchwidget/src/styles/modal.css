@@ -23,6 +23,8 @@
     --sm-modal-radius: 12px;
     --sm-modal-width: 640px;
     --sm-modal-max-height: 80vh;
+    --sm-modal-px: 16px;
+    --sm-modal-py: 16px;
 
     /* Trigger button */
     --sm-trigger-bg: #ffffff;
@@ -147,7 +149,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 16px;
+    padding: var(--sm-modal-py) var(--sm-modal-px);
     border-bottom: 1px solid var(--sm-border-color);
 }
 
@@ -177,6 +179,14 @@
 }
 
 /* =========================================================================
+   MODAL RESULTS
+   ========================================================================= */
+
+.sm-results {
+    padding: var(--sm-modal-py) var(--sm-modal-px);
+}
+
+/* =========================================================================
    MODAL FOOTER
    ========================================================================= */
 
@@ -185,7 +195,7 @@
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    padding: 12px 16px;
+    padding: var(--sm-modal-py) var(--sm-modal-px);
     border-top: 1px solid var(--sm-border-color);
     font-size: 12px;
     color: var(--sm-text-muted);

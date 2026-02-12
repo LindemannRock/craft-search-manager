@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIST_DIR = path.join(__dirname, 'dist');
-const REQUIRED_FILES = ['SearchWidget.js', 'SearchWidget.min.js'];
+const REQUIRED_FILES = ['SearchModalWidget.js', 'SearchModalWidget.min.js'];
 const MIN_FILE_SIZE = 10000; // At least 10KB
 
 let passed = 0;
@@ -23,7 +23,7 @@ function test(name, condition) {
     }
 }
 
-console.log('\n🧪 Running build verification tests...\n');
+console.log('\nRunning build verification tests...\n');
 
 // Test 1: dist directory exists
 test('dist directory exists', fs.existsSync(DIST_DIR));
@@ -44,17 +44,17 @@ for (const file of REQUIRED_FILES) {
 }
 
 // Test 4: Files contain expected content
-const mainFile = path.join(DIST_DIR, 'SearchWidget.js');
+const mainFile = path.join(DIST_DIR, 'SearchModalWidget.js');
 if (fs.existsSync(mainFile)) {
     const content = fs.readFileSync(mainFile, 'utf8');
     test('Contains customElements.define', content.includes('customElements.define'));
-    test('Contains search-widget registration', content.includes('search-widget'));
-    test('Contains SearchWidget class', content.includes('SearchWidget'));
+    test('Contains search-modal registration', content.includes('search-modal'));
+    test('Contains SearchModalWidget class', content.includes('SearchModalWidget'));
 }
 
 // Test 5: Minified file is smaller than regular
-const regularFile = path.join(DIST_DIR, 'SearchWidget.js');
-const minFile = path.join(DIST_DIR, 'SearchWidget.min.js');
+const regularFile = path.join(DIST_DIR, 'SearchModalWidget.js');
+const minFile = path.join(DIST_DIR, 'SearchModalWidget.min.js');
 if (fs.existsSync(regularFile) && fs.existsSync(minFile)) {
     const regularSize = fs.statSync(regularFile).size;
     const minSize = fs.statSync(minFile).size;
@@ -62,6 +62,6 @@ if (fs.existsSync(regularFile) && fs.existsSync(minFile)) {
 }
 
 // Summary
-console.log(`\n📊 Results: ${passed} passed, ${failed} failed\n`);
+console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
 
 process.exit(failed > 0 ? 1 : 0);

@@ -7,6 +7,7 @@ use craft\queue\BaseJob;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 
 /**
  * Sync Element Job
@@ -19,6 +20,7 @@ use lindemannrock\searchmanager\SearchManager;
 class SyncElementJob extends BaseJob
 {
     use LoggingTrait;
+    use ElementTypeGuardTrait;
 
     public int $elementId;
     public string $elementType;
@@ -32,6 +34,11 @@ class SyncElementJob extends BaseJob
 
     public function execute($queue): void
     {
+        if (!$this->isElementTypeAvailable($this->elementType, 'sync-element')) {
+            $this->removeFromIndices();
+            return;
+        }
+
         // Get element fresh from DB for this specific site
         // Use status(null) to include disabled/expired elements
         /** @var \craft\elements\db\ElementQuery $query */

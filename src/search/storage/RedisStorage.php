@@ -389,9 +389,10 @@ class RedisStorage implements StorageInterface
      * @param int $elementId Element ID
      * @param string $title Full title for display
      * @param string $elementType Element type (product, category, etc.)
+     * @param string|null $documentData JSON-encoded transformer output for rich results
      * @return void
      */
-    public function storeElement(int $siteId, int $elementId, string $title, string $elementType): void
+    public function storeElement(int $siteId, int $elementId, string $title, string $elementType, ?string $documentData = null): void
     {
         $key = $this->getElementKey($siteId, $elementId);
 
@@ -403,6 +404,10 @@ class RedisStorage implements StorageInterface
             'elementType' => $elementType,
             'searchText' => $searchText,
         ];
+
+        if ($documentData !== null) {
+            $data['documentData'] = $documentData;
+        }
 
         $this->redis->hMSet($key, $data);
 
@@ -447,7 +452,7 @@ class RedisStorage implements StorageInterface
      * @since 5.0.0
      * @param int $siteId Site ID
      * @param array $elementIds Array of element IDs
-     * @return array Map of elementId => ['title' => ..., 'elementType' => ...]
+     * @return array Map of elementId => ['title' => ..., 'elementType' => ..., 'documentData' => ...]
      */
     public function getElementsByIds(int $siteId, array $elementIds): array
     {
@@ -472,6 +477,7 @@ class RedisStorage implements StorageInterface
                 $result[(int)$elementId] = [
                     'title' => $data['title'] ?? '',
                     'elementType' => $data['elementType'] ?? 'entry',
+                    'documentData' => !empty($data['documentData']) ? json_decode($data['documentData'], true) : null,
                 ];
             }
         }

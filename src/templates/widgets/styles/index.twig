@@ -1,0 +1,385 @@
+{% extends 'lindemannrock-base/_layouts/cp-table' %}
+
+{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
+{% set settings = plugin.getSettings() %}
+
+{# Get query parameters #}
+{% set search = craft.app.request.getParam('search', '') %}
+{% set statusFilter = craft.app.request.getParam('status', 'all') %}
+{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
+{% set typeFilter = craft.app.request.getParam('type', 'all') %}
+{% set sort = craft.app.request.getParam('sort', 'name') %}
+{% set dir = craft.app.request.getParam('dir', 'asc') %}
+{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
+{% set limit = settings.itemsPerPage %}
+{% set offset = (page - 1) * limit %}
+
+{# Permission checks #}
+{% set canCreate = currentUser.can('searchManager:createWidgetConfigs') %}
+{% set canEdit = currentUser.can('searchManager:editWidgetConfigs') %}
+{% set canDelete = currentUser.can('searchManager:deleteWidgetConfigs') %}
+
+{# Check if there are any config-based styles #}
+{% set hasConfigItems = widgetStyles|filter(s => s.isFromConfig())|length > 0 %}
+
+{# Filter styles #}
+{% set filteredStyles = widgetStyles|values %}
+
+{# Status filter #}
+{% if statusFilter == 'enabled' %}
+	{% set filteredStyles = filteredStyles|filter(s => s.enabled) %}
+{% elseif statusFilter == 'disabled' %}
+	{% set filteredStyles = filteredStyles|filter(s => not s.enabled) %}
+{% endif %}
+
+{# Source filter #}
+{% if sourceFilter == 'config' %}
+	{% set filteredStyles = filteredStyles|filter(s => s.source == 'config') %}
+{% elseif sourceFilter == 'database' %}
+	{% set filteredStyles = filteredStyles|filter(s => s.source != 'config') %}
+{% endif %}
+
+{# Type filter #}
+{% if typeFilter != 'all' %}
+	{% set filteredStyles = filteredStyles|filter(s => s.type == typeFilter) %}
+{% endif %}
+
+{# Search filter #}
+{% if search %}
+	{% set filteredStyles = filteredStyles|filter(s => search|lower in s.name|lower or search|lower in s.handle|lower) %}
+{% endif %}
+
+{# Sort #}
+{% if sort == 'name' %}
+	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.name|lower <=> b.name|lower) : filteredStyles|sort((a, b) => b.name|lower <=> a.name|lower) %}
+{% elseif sort == 'handle' %}
+	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredStyles|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
+{% elseif sort == 'source' %}
+	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredStyles|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
+{% elseif sort == 'type' %}
+	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.type|lower <=> b.type|lower) : filteredStyles|sort((a, b) => b.type|lower <=> a.type|lower) %}
+{% elseif sort == 'enabled' %}
+	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.enabled <=> b.enabled) : filteredStyles|sort((a, b) => b.enabled <=> a.enabled) %}
+{% endif %}
+
+{# Pagination #}
+{% set totalCount = filteredStyles|length %}
+{% set paginatedItems = filteredStyles|slice(offset, limit) %}
+
+{% set tableConfig = {
+	plugin: {
+		handle: 'search-manager',
+		name: searchHelper.fullName,
+	},
+	page: {
+		title: 'Widget Styles'|t('search-manager'),
+		subnav: 'widgets',
+		crumbs: [
+			{ label: searchHelper.fullName, url: url('search-manager') },
+			{ label: 'Widgets'|t('search-manager'), url: url('search-manager/widgets') },
+			{ label: 'Styles'|t('search-manager') }
+		],
+	},
+	sidebarMenu: {
+		label: 'Widgets'|t('search-manager'),
+		items: {
+			configurations: { label: 'Configurations'|t('search-manager'), url: url('search-manager/widgets') },
+			styles: { label: 'Styles'|t('search-manager'), url: url('search-manager/widgets/styles') },
+		},
+		selected: 'styles',
+	},
+	filters: [
+		{
+			type: 'status',
+			param: 'status',
+			current: statusFilter,
+			label: 'All'|t('search-manager'),
+			groups: [
+				{
+					param: 'status',
+					current: statusFilter,
+					options: [
+						{value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+						{value: 'enabled', label: 'Enabled'|t('search-manager'), status: 'green'},
+						{value: 'disabled', label: 'Disabled'|t('search-manager'), status: 'disabled'},
+					],
+				},
+				{
+					header: 'Config Source'|t('search-manager'),
+					param: 'source',
+					current: sourceFilter,
+					colorSet: 'configSource',
+					options: [
+						{value: 'all', label: 'All Sources'|t('search-manager'), status: 'all'},
+						{value: 'config', label: 'Config File'|t('search-manager'), colorKey: 'config'},
+						{value: 'database', label: 'Database'|t('search-manager'), colorKey: 'database'},
+					],
+				},
+				{
+					header: 'Widget Type'|t('search-manager'),
+					param: 'type',
+					current: typeFilter,
+					colorSet: 'widgetType',
+					options: [
+						{value: 'all', label: 'All Types'|t('search-manager'), status: 'all'},
+						{value: 'modal', label: 'Modal'|t('search-manager'), colorKey: 'modal'},
+						{value: 'page', label: 'Search Page'|t('search-manager'), colorKey: 'page'},
+						{value: 'inline', label: 'Inline Search'|t('search-manager'), colorKey: 'inline'},
+					],
+				},
+			],
+		},
+	],
+	search: {
+		placeholder: 'Search widget styles...'|t('search-manager'),
+		value: search,
+	},
+	sort: {
+		field: sort,
+		direction: dir,
+	},
+	table: {
+		columns: [
+			{key: 'name', label: 'Name'|t('search-manager'), sortable: true},
+			{key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'type', label: 'Type'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'source', label: 'Source'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
+			{key: 'widgets', label: 'Widgets'|t('search-manager'), hideable: true},
+		],
+		items: paginatedItems,
+		emptyMessage: 'No widget styles found.'|t('search-manager'),
+		hasConfigItems: hasConfigItems,
+	},
+	pagination: {
+		page: page,
+		limit: limit,
+		totalCount: totalCount,
+		itemLabel: {singular: 'style'|t('search-manager'), plural: 'styles'|t('search-manager')},
+	},
+	checkboxes: canDelete,
+	newButton: {
+		url: url('search-manager/widgets/styles/new'),
+		label: 'New Widget Style'|t('search-manager'),
+		permission: 'searchManager:createWidgetConfigs',
+	},
+} %}
+
+{% block beforeTable %}
+	{% if collisionHandles is defined and collisionHandles|length %}
+		{% set boldHandles = [] %}
+		{% for handle in collisionHandles %}
+			{% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+		{% endfor %}
+		{% set warningMessage %}
+		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+		{{ 'These style handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
+		{{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
+		{{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
+		{% endset %}
+		<div class="lr-info-box-table-wrapper">
+			{% include 'lindemannrock-base/_components/info-box' with {
+				message: warningMessage,
+				type: 'warning',
+				margin: 'none',
+				stretch: true,
+			} %}
+		</div>
+	{% endif %}
+{% endblock %}
+
+{% block tableRow %}
+	{# Name #}
+	<td data-column="name">
+		{% if item.canEdit() %}
+			<a class="label-link" href="{{ url('search-manager/widgets/styles/edit/' ~ item.id) }}">
+				<span>{{ item.name }}</span>
+			</a>
+		{% else %}
+			<a class="label-link" href="{{ url('search-manager/widgets/styles/view/' ~ item.handle) }}">
+				<span>{{ item.name }}</span>
+			</a>
+			<span class="lr-config-info-icon" data-config="{{ item.rawConfigDisplay|e('html_attr') }}" data-config-source="config/search-manager.php"></span>
+		{% endif %}
+	</td>
+
+	{# Handle #}
+	<td data-column="handle">
+		<code>{{ item.handle }}</code>
+	</td>
+
+	{# Type #}
+	<td data-column="type">
+		{% set typeLabels = {modal: 'Modal', page: 'Search Page', inline: 'Inline Search'} %}
+		{% include 'lindemannrock-base/_components/badge' with {
+			label: typeLabels[item.type] ?? item.type|capitalize,
+			value: item.type,
+			colorSet: 'widgetType',
+		} only %}
+	</td>
+
+	{# Source #}
+	<td data-column="source">
+		{% include 'lindemannrock-base/_components/badge' with {
+			label: item.source == 'config' ? 'Config'|t('search-manager') : 'Database'|t('search-manager'),
+			value: item.source,
+			colorSet: 'configSource',
+		} only %}
+	</td>
+
+	{# Status #}
+	<td data-column="enabled">
+		{% include 'lindemannrock-base/_components/badge' with {
+			label: item.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager'),
+			value: item.enabled ? 'enabled' : 'disabled',
+			colorSet: 'status',
+		} only %}
+	</td>
+
+	{# Widgets using this style #}
+	<td data-column="widgets">
+		{% set usageCount = styleUsageCounts[item.handle] ?? 0 %}
+		{% if usageCount > 0 %}
+			<span>{{ usageCount }}</span>
+		{% else %}
+			<span class="light">-</span>
+		{% endif %}
+	</td>
+{% endblock %}
+
+{% block rowActions %}
+	{% set actionItems = [] %}
+
+	{% if item.canEdit() %}
+		{% if canEdit %}
+			{% set actionItems = actionItems|merge([{
+				label: 'Edit'|t('app'),
+				url: url('search-manager/widgets/styles/edit/' ~ item.id),
+			}]) %}
+		{% endif %}
+		{% if canDelete %}
+			{% set actionItems = actionItems|merge([
+				{type: 'divider'},
+				{
+					label: 'Delete'|t('app'),
+					class: 'error',
+					jsAction: 'delete',
+				},
+			]) %}
+		{% endif %}
+	{% else %}
+		{% set actionItems = actionItems|merge([{
+			label: 'View'|t('app'),
+			url: url('search-manager/widgets/styles/view/' ~ item.handle),
+		}]) %}
+	{% endif %}
+
+	{% if actionItems|length > 0 %}
+		{% include 'lindemannrock-base/_components/row-actions' with {
+			item: item,
+			actions: {
+				type: 'menu',
+				icon: 'settings',
+				title: 'Actions'|t('app'),
+				items: actionItems,
+			},
+		} only %}
+	{% endif %}
+{% endblock %}
+
+{% block bulkActions %}
+	{% if canDelete %}
+		<button type="button" class="btn secondary" id="lr-bulk-delete-btn">
+			{{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+		</button>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+	// Individual delete action
+	document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
+		btn.addEventListener('click', function(e) {
+			e.preventDefault();
+			const row = this.closest('tr');
+			const id = row?.dataset.id;
+			const name = row?.dataset.name || '';
+
+			if (!id) return;
+
+			if (!confirm(Craft.t('search-manager', 'Delete style "{name}"? Widgets using this style will fall back to inline styles.', {name: name}))) return;
+
+			Craft.sendActionRequest('POST', 'search-manager/widgets/delete-style', {
+				data: { styleId: id }
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(Craft.t('search-manager', 'Style deleted'));
+					setTimeout(() => window.location.reload(), 500);
+				} else {
+					Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to delete style'));
+				}
+			}).catch(function() {
+				Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete style'));
+			});
+		});
+	});
+
+	// Bulk delete
+	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
+		const ids = window.lrTableSelection.getSelectedIds();
+		if (ids.length === 0) return;
+
+		if (!confirm(Craft.t('search-manager', 'Delete {count} style(s)? This cannot be undone.', {count: ids.length}))) return;
+
+		let deleted = 0;
+		let errors = [];
+		let completed = 0;
+
+		ids.forEach(function(id) {
+			Craft.sendActionRequest('POST', 'search-manager/widgets/delete-style', {
+				data: { styleId: id }
+			}).then(function(response) {
+				if (response.data.success) {
+					deleted++;
+				} else {
+					errors.push(response.data.error || 'Failed');
+				}
+			}).catch(function() {
+				errors.push('Request failed');
+			}).finally(function() {
+				completed++;
+				if (completed === ids.length) {
+					if (deleted > 0) {
+						Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} style(s)', {count: deleted}));
+					}
+					errors.forEach(err => Craft.cp.displayError(err));
+					if (deleted > 0) {
+						setTimeout(() => window.location.reload(), 500);
+					}
+				}
+			});
+		});
+	});
+
+	// Update selected count
+	document.addEventListener('lr:selectionChanged', function(e) {
+		const countSpan = document.getElementById('lr-selected-count');
+		if (countSpan) {
+			countSpan.textContent = e.detail.count;
+		}
+	});
+
+	// Highlight rows with handle collisions
+	const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};
+	if (collisionHandles.length > 0) {
+		document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
+			const handleCell = row.querySelector('td[data-column="handle"] code');
+			if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
+				row.classList.add('lr-row--warning');
+			}
+		});
+	}
+})();
+</script>
+{% endblock %}

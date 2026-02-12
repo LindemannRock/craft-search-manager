@@ -654,15 +654,19 @@ class BackendService extends Component
             return ($b['score'] ?? 0) <=> ($a['score'] ?? 0);
         });
 
-        // Apply limit
         $limit = $options['limit'] ?? 50;
-        if ($limit > 0 && count($allHits) > $limit) {
-            $allHits = array_slice($allHits, 0, $limit);
+        $offset = $options['offset'] ?? 0;
+        $total = count($allHits);
+
+        if ($limit > 0) {
+            $allHits = array_slice($allHits, $offset, $limit);
+        } elseif ($offset > 0) {
+            $allHits = array_slice($allHits, $offset);
         }
 
         return [
             'hits' => $allHits,
-            'total' => count($allHits),
+            'total' => $total,
         ];
     }
 
@@ -770,8 +774,19 @@ class BackendService extends Component
             'cached' => true, // Will be set to false if any index isn't cached
         ];
 
+        $limit = (int) ($options['limit'] ?? 0);
+        $offset = (int) ($options['offset'] ?? 0);
+        $perIndexLimit = $limit > 0 ? $limit + $offset : 0;
+
         foreach ($indexNames as $indexName) {
-            $indexResults = $this->search($indexName, $query, $options);
+            $indexOptions = $options;
+            if ($perIndexLimit > 0) {
+                $indexOptions['limit'] = $perIndexLimit;
+                $indexOptions['offset'] = 0;
+                $indexOptions['page'] = 0;
+            }
+
+            $indexResults = $this->search($indexName, $query, $indexOptions);
 
             // Track cache status (if any index is not cached, mark as not cached)
             if (!empty($indexResults['meta']) && !$indexResults['meta']['cached']) {
@@ -824,9 +839,10 @@ class BackendService extends Component
             return ($b['score'] ?? 0) <=> ($a['score'] ?? 0);
         });
 
-        // Apply limit if specified
-        if (!empty($options['limit'])) {
-            $allHits = array_slice($allHits, 0, (int)$options['limit']);
+        if ($limit > 0) {
+            $allHits = array_slice($allHits, $offset, $limit);
+        } elseif ($offset > 0) {
+            $allHits = array_slice($allHits, $offset);
         }
 
         $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
@@ -875,6 +891,11 @@ class BackendService extends Component
      */
     private function _getCacheDriver(): string
     {
+        $settings = SearchManager::$plugin->getSettings();
+        if (($settings->cacheStorageMethod ?? 'file') !== 'redis') {
+            return 'file';
+        }
+
         $cache = \Craft::$app->getCache();
         $className = get_class($cache);
         $classNameLower = strtolower($className);
@@ -936,6 +957,16 @@ class BackendService extends Component
     }
 
     /**
+     * Get full index name with prefix applied
+     */
+    private function getFullIndexName(string $indexName): string
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $indexPrefix = $settings->indexPrefix ?? '';
+        return $indexPrefix . $indexName;
+    }
+
+    /**
      * Get search results from cache
      *
      * @param string $indexName
@@ -946,9 +977,10 @@ class BackendService extends Component
     private function _getFromCache(string $indexName, string $query, array $options): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
-        // Include index name in key path for per-index cache clearing
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $indexName . ':' . $cacheKey;
+        $fullIndexName = $this->getFullIndexName($indexName);
+        $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
+        // Include full index name (with prefix) in key path for per-index cache clearing
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -961,7 +993,7 @@ class BackendService extends Component
         }
 
         // Use file-based cache (default)
-        $cachePath = $this->_getCachePath($indexName);
+        $cachePath = $this->_getCachePath($fullIndexName);
         $cacheFile = $cachePath . $cacheKey . '.cache';
 
         if (!file_exists($cacheFile)) {
@@ -1003,9 +1035,10 @@ class BackendService extends Component
     private function _saveToCache(string $indexName, string $query, array $options, array $results): void
     {
         $settings = SearchManager::$plugin->getSettings();
-        $cacheKey = $this->_generateCacheKey($indexName, $query, $options);
-        // Include index name in key path for per-index cache clearing
-        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $indexName . ':' . $cacheKey;
+        $fullIndexName = $this->getFullIndexName($indexName);
+        $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
+        // Include full index name (with prefix) in key path for per-index cache clearing
+        $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
@@ -1024,7 +1057,7 @@ class BackendService extends Component
 
         // Use file-based cache (default)
         try {
-            $cachePath = $this->_getCachePath($indexName);
+            $cachePath = $this->_getCachePath($fullIndexName);
 
             // Create directory if it doesn't exist
             if (!is_dir($cachePath)) {
@@ -1065,6 +1098,7 @@ class BackendService extends Component
     public function clearSearchCache(string $indexName): void
     {
         $settings = SearchManager::$plugin->getSettings();
+        $fullIndexName = $this->getFullIndexName($indexName);
 
         if ($settings->cacheStorageMethod === 'redis') {
             // Clear Redis cache for specific index
@@ -1077,7 +1111,7 @@ class BackendService extends Component
 
                 // Filter keys for this specific index using the index-prefixed key format
                 // Key format: {prefix}{indexName}:{hash}
-                $indexPrefix = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $indexName . ':';
+                $indexPrefix = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':';
                 foreach ($allKeys as $key) {
                     if (strpos($key, $indexPrefix) === 0) {
                         // Delete individual key for this index only
@@ -1098,7 +1132,7 @@ class BackendService extends Component
         }
 
         // Clear file cache (fallback/default)
-        $cachePath = $this->_getCachePath($indexName);
+        $cachePath = $this->_getCachePath($fullIndexName);
 
         if (is_dir($cachePath)) {
             \craft\helpers\FileHelper::clearDirectory($cachePath);

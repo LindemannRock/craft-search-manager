@@ -369,6 +369,10 @@ class SearchWidgetBase extends HTMLElement {
                 siteId: this.config.siteId,
                 maxResults: this.config.maxResults,
                 hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
+                allowCodeSnippets: this.config.allowCodeSnippets,
+                snippetMode: this.config.snippetMode,
+                snippetLength: this.config.snippetLength,
+                parseMarkdownSnippets: this.config.parseMarkdownSnippets,
                 debug: this.config.debug,
                 signal: this.abortController.signal,
             });
@@ -803,10 +807,17 @@ class SearchWidgetBase extends HTMLElement {
         if (!this.config) return;
 
         const host = this.shadowRoot.host;
-        const { theme, styles } = this.config;
+        const { theme, styles, resultTitleLines, resultDescLines } = this.config;
 
         // Apply styles from config (theme-aware)
         applyStylesToElement(host, styles, theme);
+
+        if (resultTitleLines) {
+            host.style.setProperty('--sm-result-title-lines', String(resultTitleLines));
+        }
+        if (resultDescLines) {
+            host.style.setProperty('--sm-result-desc-lines', String(resultDescLines));
+        }
     }
 
     // =========================================================================

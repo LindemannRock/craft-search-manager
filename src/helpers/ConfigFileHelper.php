@@ -83,6 +83,17 @@ class ConfigFileHelper
     }
 
     /**
+     * Get widget styles from config file
+     *
+     * @since 5.39.0
+     * @return array Array of widget style configs keyed by handle
+     */
+    public static function getWidgetStyles(): array
+    {
+        return self::getConfigSection('widgetStyles');
+    }
+
+    /**
      * Check if a handle exists in config
      *
      * @since 5.0.0

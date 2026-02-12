@@ -1,9 +1,23 @@
-{# Widget Preview Component #}
-{% set styles = widgetConfig.getStylesForPreview() %}
-{% set hlBgLight = widgetConfig.getHighlightBgLight() %}
-{% set hlTextLight = widgetConfig.getHighlightColorLight() %}
-{% set hlBgDark = widgetConfig.getHighlightBgDark() %}
-{% set hlTextDark = widgetConfig.getHighlightColorDark() %}
+{# Widget Preview Component
+   Accepts either:
+   - widgetConfig (WidgetConfig model) — used from widget edit page
+   - styles (array) — used from style edit page (widgetConfig is null)
+#}
+{% if widgetConfig is defined and widgetConfig is not null %}
+	{% set styles = widgetConfig.getStylesForPreview() %}
+	{% set hotkey = widgetConfig.getHotkey() %}
+	{% set triggerText = widgetConfig.getTriggerText() %}
+{% else %}
+	{% set styles = styles ?? {} %}
+	{% set hotkey = 'K' %}
+	{% set triggerText = 'Search' %}
+{% endif %}
+
+{# Highlight colors from styles (with defaults matching style-defaults.json) #}
+{% set hlBgLight = styles.highlightBgLight starts with '#' ? styles.highlightBgLight : '#' ~ (styles.highlightBgLight ?? 'fef08a') %}
+{% set hlTextLight = styles.highlightColorLight starts with '#' ? styles.highlightColorLight : '#' ~ (styles.highlightColorLight ?? '854d0e') %}
+{% set hlBgDark = styles.highlightBgDark starts with '#' ? styles.highlightBgDark : '#' ~ (styles.highlightBgDark ?? '854d0e') %}
+{% set hlTextDark = styles.highlightColorDark starts with '#' ? styles.highlightColorDark : '#' ~ (styles.highlightColorDark ?? 'fef08a') %}
 
 <fieldset>
 	<legend class="h6">{{ 'Preview'|t('search-manager') }}</legend>
@@ -13,9 +27,12 @@
 		<button type="button" class="btn small" data-preview-mode="dark" aria-pressed="false">{{ 'Dark'|t('search-manager') }}</button>
 	</div>
 
-	{# Light Mode Preview #}
-	<div class="widget-preview-container widget-preview-light" data-mode="light">
-		<div class="preview-modal" style="background: {{ styles.modalBg }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColor }}; border-radius: {{ styles.modalBorderRadius }}px;">
+{% set previewConnectorLight = (styles.resultMutedColor is defined and styles.resultMutedColor starts with '#') ? styles.resultMutedColor : '#' ~ styles.resultMutedColor %}
+{% set previewConnectorDark = (styles.resultMutedColorDark is defined and styles.resultMutedColorDark starts with '#') ? styles.resultMutedColorDark : '#' ~ styles.resultMutedColorDark %}
+
+{# Light Mode Preview #}
+	<div class="widget-preview-container widget-preview-light" data-mode="light" style="--preview-connector-color: {{ previewConnectorLight }};">
+		<div class="preview-modal" style="background: {{ styles.modalBg }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColor }}; border-radius: {{ styles.modalBorderRadius }}px; padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
 			<div class="preview-input" style="background: {{ styles.inputBg }}; border-bottom: 1px solid {{ styles.inputBorderColor }};">
 				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColor }}" stroke-width="2" style="opacity: 0.5;">
 					<circle cx="11" cy="11" r="8"></circle>
@@ -26,16 +43,16 @@
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
 					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
 				</svg>
-				<span class="preview-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ widgetConfig.getHotkey()|upper }}</span>
+				<span class="preview-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ hotkey|upper }}</span>
 			</div>
 			<div class="preview-results">
-				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px;">
+				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Sample Result'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Description text'|t('search-manager') }}</span>
 					</div>
 				</div>
-				<div class="preview-result" style="background: {{ styles.resultActiveBg }}; border-radius: {{ styles.resultBorderRadius }}px;">
+				<div class="preview-result" style="background: {{ styles.resultActiveBg }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultActiveBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'With highlight'|t('search-manager') }}</span>
@@ -44,7 +61,7 @@
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
-				<div class="preview-result" style="background: {{ styles.resultHoverBg }}; border-radius: {{ styles.resultBorderRadius }}px;">
+				<div class="preview-result preview-hierarchy-row preview-hierarchy-row-last" style="background: {{ styles.resultHoverBg }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultHoverBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Hovered Item'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Another result'|t('search-manager') }}</span>
@@ -62,15 +79,15 @@
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
-				<span>{{ widgetConfig.getTriggerText() ?: 'Search'|t('search-manager') }}</span>
-				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }};">{{ widgetConfig.getHotkey()|upper }}</span>
+				<span>{{ triggerText ?: 'Search'|t('search-manager') }}</span>
+				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }};">{{ hotkey|upper }}</span>
 			</button>
 		</div>
 	</div>
 
-	{# Dark Mode Preview (hidden by default) #}
-	<div class="widget-preview-container widget-preview-dark" data-mode="dark" style="display: none;">
-		<div class="preview-modal" style="background: {{ styles.modalBgDark }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColorDark }}; border-radius: {{ styles.modalBorderRadius }}px;">
+{# Dark Mode Preview (hidden by default) #}
+	<div class="widget-preview-container widget-preview-dark" data-mode="dark" style="display: none; --preview-connector-color: {{ previewConnectorDark }};">
+		<div class="preview-modal" style="background: {{ styles.modalBgDark }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColorDark }}; border-radius: {{ styles.modalBorderRadius }}px; padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
 			<div class="preview-input" style="background: {{ styles.inputBgDark }}; border-bottom: 1px solid {{ styles.inputBorderColorDark }};">
 				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColorDark }}" stroke-width="2" style="opacity: 0.5;">
 					<circle cx="11" cy="11" r="8"></circle>
@@ -81,16 +98,16 @@
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
 					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
 				</svg>
-				<span class="preview-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ widgetConfig.getHotkey()|upper }}</span>
+				<span class="preview-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }}; border-radius: {{ styles.kbdBorderRadius }}px;">{{ hotkey|upper }}</span>
 			</div>
 			<div class="preview-results">
-				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px;">
+				<div class="preview-result" style="border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Sample Result'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Description text'|t('search-manager') }}</span>
 					</div>
 				</div>
-				<div class="preview-result" style="background: {{ styles.resultActiveBgDark }}; border-radius: {{ styles.resultBorderRadius }}px;">
+				<div class="preview-result" style="background: {{ styles.resultActiveBgDark }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultActiveBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'With highlight'|t('search-manager') }}</span>
@@ -99,7 +116,7 @@
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
-				<div class="preview-result" style="background: {{ styles.resultHoverBgDark }}; border-radius: {{ styles.resultBorderRadius }}px;">
+				<div class="preview-result preview-hierarchy-row preview-hierarchy-row-last" style="background: {{ styles.resultHoverBgDark }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultHoverBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Hovered Item'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Another result'|t('search-manager') }}</span>
@@ -117,8 +134,8 @@
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
-				<span>{{ widgetConfig.getTriggerText() ?: 'Search'|t('search-manager') }}</span>
-				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }};">{{ widgetConfig.getHotkey()|upper }}</span>
+				<span>{{ triggerText ?: 'Search'|t('search-manager') }}</span>
+				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }};">{{ hotkey|upper }}</span>
 			</button>
 		</div>
 	</div>
@@ -179,6 +196,37 @@
 
 .preview-results {
 	padding: 4px;
+}
+
+.preview-hierarchy-row {
+	position: relative;
+	margin-left: 20px;
+}
+
+.preview-hierarchy-row::before {
+	content: '';
+	position: absolute;
+	top: -4px;
+	bottom: -4px;
+	left: -20px;
+	width: 16px;
+	background-color: var(--preview-connector-color, #a1a1aa);
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg width='12' height='200' viewBox='0 0 12 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 1 0 V 200 M 1 100 H 12' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg width='12' height='200' viewBox='0 0 12 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 1 0 V 200 M 1 100 H 12' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: center left;
+	background-size: 12px 200px;
+	-webkit-mask-repeat: no-repeat;
+	-webkit-mask-position: center left;
+	-webkit-mask-size: 12px 200px;
+	mask-repeat: no-repeat;
+	mask-position: center left;
+	mask-size: 12px 200px;
+}
+
+.preview-hierarchy-row-last::before {
+	-webkit-mask-image: url("data:image/svg+xml,%3Csvg width='12' height='200' viewBox='0 0 12 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 1 0 V 89 Q 1 100 12 100' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
+	mask-image: url("data:image/svg+xml,%3Csvg width='12' height='200' viewBox='0 0 12 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M 1 0 V 89 Q 1 100 12 100' stroke='black' stroke-width='2'/%3E%3C/svg%3E");
 }
 
 .preview-result {

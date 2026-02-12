@@ -156,6 +156,13 @@ class IndicesController extends Controller
             $index->siteId = $siteIdParam ?: null;
         }
         $index->transformerClass = $request->getBodyParam('transformerClass');
+        $headingLevelsParam = $request->getBodyParam('headingLevels');
+        if (is_array($headingLevelsParam)) {
+            $levels = array_values(array_unique(array_filter(array_map('intval', $headingLevelsParam), fn($level) => $level >= 1 && $level <= 6)));
+            $index->headingLevels = $levels ?: null;
+        } else {
+            $index->headingLevels = null;
+        }
         $index->language = $request->getBodyParam('language') ?: null;
         $index->backend = $request->getBodyParam('backend') ?: null;
         $index->enabled = (bool)$request->getBodyParam('enabled');

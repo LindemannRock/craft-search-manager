@@ -295,12 +295,23 @@ document.addEventListener('DOMContentLoaded', function() {
 
     async function fetchAutocomplete(query) {
         try {
-            const baseUrl = Craft.getActionUrl('search-manager/api/autocomplete');
-            const separator = baseUrl.includes('?') ? '&' : '?';
             const siteId = getIndexSiteId();
-            const siteParam = siteId ? '&siteId=' + siteId : '';
-            const response = await fetch(baseUrl + separator + 'q=' + encodeURIComponent(query) + '&index=' + testIndexSelect.value + siteParam + '&limit=10&only=suggestions');
-            const suggestions = await response.json();
+            const response = await fetch('{{ actionUrl('search-manager/settings/test-autocomplete') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
+                },
+                body: JSON.stringify({
+                    query: query,
+                    indexHandle: testIndexSelect.value,
+                    siteId: siteId
+                })
+            });
+            const data = await response.json();
+            const suggestions = data && data.suggestions ? data.suggestions : [];
+            const meta = data && data.meta ? data.meta : null;
 
             if (suggestions && suggestions.length > 0) {
                 // Show dropdown
@@ -315,10 +326,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 autocompleteDropdown.style.display = 'block';
 
                 // Update autocomplete section
-                updateAutocompleteSection(suggestions, query);
+                updateAutocompleteSection(suggestions, query, meta);
             } else {
                 autocompleteDropdown.style.display = 'none';
-                updateAutocompleteSection([], query);
+                updateAutocompleteSection([], query, meta);
             }
         } catch (error) {
             autocompleteDropdown.style.display = 'none';
@@ -331,17 +342,30 @@ document.addEventListener('DOMContentLoaded', function() {
         return text.substring(0, index) + '<strong>' + text.substring(index, index + query.length) + '</strong>' + text.substring(index + query.length);
     }
 
-    function updateAutocompleteSection(suggestions, query) {
+    function updateAutocompleteSection(suggestions, query, meta) {
         const container = document.getElementById('autocomplete-results');
         if (suggestions.length > 0) {
+            const cacheLabel = meta && meta.cacheEnabled
+                ? (meta.cached ? 'Hit' : 'Miss')
+                : 'Disabled';
             container.innerHTML = `
-                <p style="margin-bottom: 12px;"><strong>Query:</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>Found:</strong> ${suggestions.length} suggestions</p>
+                <p style="margin-bottom: 12px;">
+                    <strong>Query:</strong> <code>${Craft.escapeHtml(query)}</code> |
+                    <strong>Found:</strong> ${suggestions.length} suggestions |
+                    <strong>Cache:</strong> ${cacheLabel}${meta && meta.cacheDriver ? ' (' + meta.cacheDriver + ')' : ''}
+                </p>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                     ${suggestions.map(s => `<span style="background: #f3f4f6; padding: 6px 12px; border-radius: 16px; font-size: 13px;">${s}</span>`).join('')}
                 </div>
             `;
         } else {
-            container.innerHTML = `<p class="light">No suggestions found for "${Craft.escapeHtml(query)}"</p>`;
+            const cacheLabel = meta && meta.cacheEnabled
+                ? (meta.cached ? 'Hit' : 'Miss')
+                : 'Disabled';
+            container.innerHTML = `
+                <p class="light">No suggestions found for "${Craft.escapeHtml(query)}"</p>
+                <p class="light" style="margin-top: 8px;"><strong>Cache:</strong> ${cacheLabel}${meta && meta.cacheDriver ? ' (' + meta.cacheDriver + ')' : ''}</p>
+            `;
         }
     }
 
@@ -564,7 +588,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 14px;">
         <div><strong>Backend:</strong> ${Craft.escapeHtml(data.backend)}</div>
         <div><strong>Execution:</strong> ${data.executionTime}ms</div>
-        <div><strong>Cache:</strong> ${data.cacheEnabled ? 'Enabled' : 'Disabled'}</div>
+        <div><strong>Cache:</strong> ${data.cacheEnabled ? (data.cacheHit ? 'Hit' : 'Miss') : 'Disabled'}${data.cacheDriver ? ' (' + data.cacheDriver + ')' : ''}</div>
         <div><strong>Query Used:</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
     </div>
 </div>

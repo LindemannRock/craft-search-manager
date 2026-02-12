@@ -19,14 +19,18 @@
  * @param {string} options.siteId - Optional site ID
  * @param {number} options.maxResults - Maximum results to return
  * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
+ * @param {boolean} options.allowCodeSnippets - Allow code snippets in descriptions
+ * @param {string} options.snippetMode - Snippet mode: early | balanced | deep
+ * @param {number} options.snippetLength - Max snippet length
+ * @param {boolean} options.parseMarkdownSnippets - Parse markdown before snippets
  * @param {boolean} options.debug - Request debug metadata (overrides devMode default)
  * @param {AbortSignal} options.signal - AbortController signal
  * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
-export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, debug = false, signal }) {
+export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, allowCodeSnippets = false, snippetMode = 'balanced', snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
     const params = new URLSearchParams({
         q: query,
-        limit: maxResults.toString(),
+        hitsPerPage: maxResults.toString(),
     });
 
     // Pass indices as comma-separated (empty = search all)
@@ -40,6 +44,22 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
 
     if (hideResultsWithoutUrl) {
         params.append('hideResultsWithoutUrl', '1');
+    }
+
+    if (allowCodeSnippets) {
+        params.append('allowCodeSnippets', '1');
+    }
+
+    if (snippetMode && snippetMode !== 'balanced') {
+        params.append('snippetMode', snippetMode);
+    }
+
+    if (snippetLength && snippetLength !== 150) {
+        params.append('snippetLength', String(snippetLength));
+    }
+
+    if (parseMarkdownSnippets) {
+        params.append('parseMarkdownSnippets', '1');
     }
 
     // Request debug metadata explicitly (overrides server devMode default)

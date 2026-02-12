@@ -20,6 +20,7 @@
     --sm-text-primary: var(--sm-result-text-color, #111827);
     --sm-text-secondary: var(--sm-result-desc-color, #4b5563);
     --sm-text-muted: var(--sm-result-muted-color, #6b7280);
+    --sm-hierarchy-connector-color: var(--sm-result-muted-color, #6b7280);
 
     /* Input defaults */
     --sm-input-bg: #ffffff;
@@ -30,13 +31,18 @@
     /* Borders and backgrounds - map from config variable names */
     --sm-border-color: var(--sm-input-border-color, #e5e7eb);
     --sm-hover-bg: var(--sm-result-hover-bg, #f3f4f6);
+    --sm-hover-border: var(--sm-result-hover-border-color, var(--sm-result-border-color, #e5e7eb));
     --sm-selected-bg: var(--sm-result-active-bg, #e5e7eb);
-    --sm-selected-border: #3b82f6;
+    --sm-selected-border: var(--sm-result-active-border-color, #3b82f6);
     --sm-result-radius: 8px;
 
     /* Highlighting */
     --sm-highlight-bg: #fef08a;
     --sm-highlight-color: #854d0e;
+
+    /* Result line clamping */
+    --sm-result-title-lines: 1;
+    --sm-result-desc-lines: 1;
 
     /* Kbd / keyboard shortcuts - 4.5:1 contrast ratio minimum */
     --sm-kbd-bg: #f3f4f6;
@@ -65,11 +71,15 @@
     --sm-text-primary: var(--sm-result-text-color-dark, #f9fafb);
     --sm-text-secondary: var(--sm-result-desc-color-dark, #d1d5db);
     --sm-text-muted: var(--sm-result-muted-color-dark, #9ca3af);
+    --sm-hierarchy-connector-color: var(--sm-result-muted-color-dark, #9ca3af);
 
     --sm-border-color: var(--sm-input-border-color-dark, #374151);
+    --sm-result-bg: var(--sm-result-bg-dark, transparent);
+    --sm-result-border-color: var(--sm-result-border-color-dark, #374151);
     --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
+    --sm-hover-border: var(--sm-result-hover-border-color-dark, var(--sm-result-border-color-dark, #374151));
     --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
-    --sm-selected-border: #3b82f6;
+    --sm-selected-border: var(--sm-result-active-border-color-dark, #3b82f6);
 
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
     --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
@@ -144,6 +154,9 @@
     flex: 1;
     overflow-y: auto;
     padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
 }
 
 /* =========================================================================
@@ -151,7 +164,10 @@
    ========================================================================= */
 
 .sm-section {
-    margin-bottom: 8px;
+    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
 }
 
 .sm-section:last-child {
@@ -162,7 +178,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 12px;
+    padding: 0;
     font-size: 12px;
     font-weight: 600;
     color: var(--sm-text-muted);
@@ -195,23 +211,55 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
     border-radius: var(--sm-result-radius);
+    background: var(--sm-result-bg, transparent);
+    border: var(--sm-result-border-width, 1px) solid var(--sm-result-border-color, #e5e7eb);
     color: var(--sm-text-primary);
     text-decoration: none;
     cursor: pointer;
     transition: background 0.1s ease;
+    margin-bottom: 0;
 }
 
 .sm-result-item:hover,
 .sm-result-item.sm-selected {
     background: var(--sm-hover-bg);
+    border-color: var(--sm-hover-border);
 }
 
 .sm-result-item.sm-selected {
     background: var(--sm-selected-bg);
     outline: 2px solid var(--sm-selected-border);
     outline-offset: -2px;
+    border-color: var(--sm-selected-border);
+}
+
+
+.sm-result-item:hover .sm-result-title {
+    color: var(--sm-result-hover-text-color, var(--sm-text-primary));
+}
+
+.sm-result-item:hover .sm-result-desc {
+    color: var(--sm-result-hover-desc-color, var(--sm-text-secondary));
+}
+
+.sm-result-item:hover .sm-result-icon,
+.sm-result-item:hover .sm-result-arrow {
+    color: var(--sm-result-hover-muted-color, var(--sm-text-muted));
+}
+
+.sm-result-item.sm-selected .sm-result-title {
+    color: var(--sm-result-active-text-color, var(--sm-text-primary));
+}
+
+.sm-result-item.sm-selected .sm-result-desc {
+    color: var(--sm-result-active-desc-color, var(--sm-text-secondary));
+}
+
+.sm-result-item.sm-selected .sm-result-icon,
+.sm-result-item.sm-selected .sm-result-arrow {
+    color: var(--sm-result-active-muted-color, var(--sm-text-muted));
 }
 
 .sm-result-icon {
@@ -231,17 +279,23 @@
     font-size: 14px;
     font-weight: 500;
     color: var(--sm-text-primary);
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: var(--sm-result-title-lines);
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: normal;
 }
 
 .sm-result-desc {
     font-size: 13px;
     color: var(--sm-text-secondary);
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: var(--sm-result-desc-lines);
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+    white-space: normal;
 }
 
 .sm-result-type {
@@ -272,6 +326,7 @@
 /* Group wrapper */
 .sm-hierarchy-group {
     margin-bottom: 4px;
+    position: relative;
 }
 
 .sm-hierarchy-group:last-child {
@@ -280,7 +335,7 @@
 
 /* Group header */
 .sm-hierarchy-group-header {
-    padding: 8px 12px;
+    padding: 8px 0;
     font-size: 12px;
     font-weight: 600;
     color: var(--sm-text-muted);
@@ -290,8 +345,9 @@
 
 /* Parent result (page-level) */
 .sm-hierarchy-parent {
+    position: relative;
     gap: 10px;
-    padding: 10px 12px;
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
 }
 
 .sm-hierarchy-parent .sm-hierarchy-icon {
@@ -299,30 +355,90 @@
     color: var(--sm-accent);
 }
 
-/* Child result (heading-level) with connecting line */
-.sm-hierarchy-child {
+/* Child result (heading-level) with gutter connector */
+/* --sm-hierarchy-depth: 0-based depth (0=shallowest heading, 1=next, etc.) */
+/* --sm-hierarchy-indent: per-level step (default 40px) */
+/* Depth 0 connector aligns with parent icon center; deeper levels add indent steps */
+.sm-hierarchy-child-row {
+    --_indent: calc(var(--sm-result-px, 12px) - 4px + var(--sm-hierarchy-depth, 0) * var(--sm-hierarchy-indent, 40px));
+    position: relative;
+    display: flex;
+    align-items: center;
     gap: 10px;
-    padding: 8px 12px 8px 36px;
-    margin-left: 18px;
-    border-left: 2px solid var(--sm-border-color);
-    border-radius: 0 var(--sm-result-radius) var(--sm-result-radius) 0;
-    font-size: 13px;
+    padding-inline-start: var(--_indent);
 }
 
-.sm-hierarchy-child:hover,
-.sm-hierarchy-child.sm-selected {
-    border-left-color: var(--sm-accent);
+/* Vertical connector line (continues through non-last children) */
+.sm-hierarchy-child-row::before {
+    content: '';
+    position: absolute;
+    top: calc(-1 * var(--sm-result-gap, 0px));
+    bottom: calc(-1 * var(--sm-result-gap, 0px));
+    inset-inline-start: calc(var(--_indent) + 14px);
+    width: 0;
+    border-inline-start: 2px solid var(--sm-hierarchy-connector-color);
+    pointer-events: none;
+}
+
+/* Horizontal branch (reaches from vertical line to content) */
+.sm-hierarchy-child-row::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    inset-inline-start: calc(var(--_indent) + 14px);
+    width: 20px;
+    height: 0;
+    border-top: 2px solid var(--sm-hierarchy-connector-color);
+    pointer-events: none;
+}
+
+/* Last child at its level: vertical stops at center, curves into horizontal */
+.sm-hierarchy-child-row-last::before {
+    bottom: 50%;
+    border-end-start-radius: 6px;
+    border-bottom: 2px solid var(--sm-hierarchy-connector-color);
+    width: 20px;
+}
+
+/* Last child: curve handles the branch, hide separate horizontal */
+.sm-hierarchy-child-row-last::after {
+    display: none;
+}
+
+.sm-hierarchy-child {
+    flex: 1;
+    margin-bottom: 0;
+    font-weight: 400;
+    margin-inline-start: 34px;
+}
+
+.sm-hierarchy-group {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
+}
+
+.sm-hierarchy-block {
+    position: relative;
+}
+
+.sm-hierarchy-children {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
+}
+
+.sm-hierarchy-parent--has-children {
+    margin-bottom: var(--sm-result-gap, 0px);
 }
 
 .sm-hierarchy-child .sm-hierarchy-icon {
-    flex-shrink: 0;
-    color: var(--sm-text-muted);
+    margin-inline-start: 0;
 }
 
-.sm-hierarchy-child .sm-result-title {
-    font-size: 13px;
-    font-weight: 400;
-}
+
 
 /* =========================================================================
    PROMOTED RESULTS
@@ -346,17 +462,17 @@
 
 .sm-promoted-badge--top-right {
     top: 4px;
-    right: 4px;
+    inset-inline-end: 4px;
 }
 
 .sm-promoted-badge--top-left {
     top: 4px;
-    left: 4px;
+    inset-inline-start: 4px;
 }
 
 .sm-promoted-badge--inline {
     position: static;
-    margin-left: 8px;
+    margin-inline-start: 8px;
 }
 
 /* =========================================================================
@@ -414,6 +530,9 @@
 
 /* =========================================================================
    RTL SUPPORT (BASE)
+   Logical properties (padding-inline-start, margin-inline-start,
+   inset-inline-start/end) handle most LTR↔RTL mirroring automatically.
+   Only rules that have no logical equivalent remain here.
    ========================================================================= */
 
 :host([dir="rtl"]) .sm-result-item {
@@ -424,16 +543,6 @@
     transform: scaleX(-1);
 }
 
-:host([dir="rtl"]) .sm-hierarchy-child {
-    margin-left: 0;
-    margin-right: 18px;
-    border-left: none;
-    border-right: 2px solid var(--sm-border-color);
-    padding: 8px 36px 8px 12px;
-    border-radius: var(--sm-result-radius) 0 0 var(--sm-result-radius);
-}
-
-:host([dir="rtl"]) .sm-hierarchy-child:hover,
-:host([dir="rtl"]) .sm-hierarchy-child.sm-selected {
-    border-right-color: var(--sm-accent);
+:host([dir="rtl"]) .sm-hierarchy-child-row {
+    flex-direction: row-reverse;
 }

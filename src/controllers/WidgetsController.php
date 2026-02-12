@@ -9,6 +9,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
+use lindemannrock\searchmanager\models\WidgetStyle;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -126,28 +127,33 @@ class WidgetsController extends Controller
      *
      * @since 5.30.0
      */
-    public function actionEdit(?int $configId = null): Response
+    public function actionEdit(?int $configId = null, ?WidgetConfig $widgetConfig = null): Response
     {
-        if ($configId) {
-            $this->requirePermission('searchManager:editWidgetConfigs');
-            $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
-            if (!$widgetConfig) {
-                throw new NotFoundHttpException('Widget config not found');
+        if (!$widgetConfig) {
+            if ($configId) {
+                $this->requirePermission('searchManager:editWidgetConfigs');
+                $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
+                if (!$widgetConfig) {
+                    throw new NotFoundHttpException('Widget config not found');
+                }
+            } else {
+                $this->requirePermission('searchManager:createWidgetConfigs');
+                $widgetConfig = new WidgetConfig();
+                $widgetConfig->settings = WidgetConfig::defaultSettings();
             }
-        } else {
-            $this->requirePermission('searchManager:createWidgetConfigs');
-            $widgetConfig = new WidgetConfig();
-            $widgetConfig->settings = WidgetConfig::defaultSettings();
         }
 
         // Get indices for multi-select
         $indices = SearchIndex::findAll();
         $settings = SearchManager::$plugin->getSettings();
+        $widgetStyles = SearchManager::$plugin->widgetStyles->getAll('modal');
 
         return $this->renderTemplate('search-manager/widgets/edit', [
             'widgetConfig' => $widgetConfig,
             'isNew' => !$configId,
             'indices' => $indices,
+            'widgetStyles' => $widgetStyles,
+            'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             'defaultWidgetHandle' => $settings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
         ]);
@@ -179,6 +185,7 @@ class WidgetsController extends Controller
         // Set basic attributes
         $widgetConfig->name = $request->getBodyParam('name');
         $widgetConfig->handle = $request->getBodyParam('handle');
+        $widgetConfig->type = (string) $request->getBodyParam('type', 'modal');
         $widgetConfig->enabled = (bool) $request->getBodyParam('enabled');
 
         // Get settings from form
@@ -199,30 +206,44 @@ class WidgetsController extends Controller
         $widgetConfig->settings = $mergedSettings;
 
         $pluginSettings = SearchManager::$plugin->getSettings();
+        $indices = SearchIndex::findAll();
+        $widgetStyles = SearchManager::$plugin->widgetStyles->getAll('modal');
+
+        // Common route params for error returns (template needs all of these)
+        $errorRouteParams = [
+            'widgetConfig' => $widgetConfig,
+            'isNew' => !$configId,
+            'indices' => $indices,
+            'widgetStyles' => $widgetStyles,
+            'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
+            'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
+        ];
+
+        // Set style handle from form
+        $styleHandle = $request->getBodyParam('styleHandle');
+        if ($styleHandle) {
+            $existingStyle = SearchManager::$plugin->widgetStyles->getByHandle($styleHandle);
+            if ($existingStyle === null) {
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected style preset not found.'));
+                Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
+                return null;
+            }
+            $widgetConfig->styleHandle = $styleHandle;
+        } else {
+            $widgetConfig->styleHandle = null;
+        }
 
         // Validate
         if (!$widgetConfig->validate()) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config.'));
-
-            Craft::$app->getUrlManager()->setRouteParams([
-                'widgetConfig' => $widgetConfig,
-                'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
-                'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
-            ]);
-
+            Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
             return null;
         }
 
         // Save widget config
         if (!SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config.'));
-
-            Craft::$app->getUrlManager()->setRouteParams([
-                'widgetConfig' => $widgetConfig,
-                'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
-                'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
-            ]);
-
+            Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
             return null;
         }
 
@@ -441,11 +462,201 @@ class WidgetsController extends Controller
         return $this->asJson(['success' => true, 'count' => $count, 'errors' => $errors]);
     }
 
+    // =========================================================================
+    // Widget Styles
+    // =========================================================================
+
+    /**
+     * List all widget styles
+     *
+     * @since 5.39.0
+     */
+    public function actionStylesIndex(): Response
+    {
+        $this->requirePermission('searchManager:viewWidgetConfigs');
+
+        $widgetStyles = SearchManager::$plugin->widgetStyles->getAll();
+        $styleUsageCounts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
+
+        $configHandles = ConfigFileHelper::getHandles('widgetStyles');
+        $databaseHandles = (new Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_widget_styles}}')
+            ->column();
+        $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
+
+        return $this->renderTemplate('search-manager/widgets/styles/index', [
+            'widgetStyles' => $widgetStyles,
+            'styleUsageCounts' => $styleUsageCounts,
+            'collisionHandles' => $collisionHandles,
+        ]);
+    }
+
+    /**
+     * View a widget style (read-only, for config styles)
+     *
+     * @since 5.39.0
+     */
+    public function actionViewStyle(?string $handle = null): Response
+    {
+        $this->requirePermission('searchManager:viewWidgetConfigs');
+
+        if (!$handle) {
+            throw new NotFoundHttpException('Widget style handle required');
+        }
+
+        $widgetStyle = SearchManager::$plugin->widgetStyles->getByHandle($handle);
+
+        if (!$widgetStyle) {
+            throw new NotFoundHttpException('Widget style not found');
+        }
+
+        $defaultStyles = WidgetConfig::defaultStyleValues();
+        $usageCount = $this->getStyleUsageCount($widgetStyle->handle);
+
+        return $this->renderTemplate('search-manager/widgets/styles/view', [
+            'widgetStyle' => $widgetStyle,
+            'defaultStyles' => $defaultStyles,
+            'styles' => array_merge($defaultStyles, $widgetStyle->getStyles()),
+            'usageCount' => $usageCount,
+        ]);
+    }
+
+    /**
+     * Edit or create a widget style
+     *
+     * @since 5.39.0
+     */
+    public function actionEditStyle(?int $styleId = null, ?WidgetStyle $widgetStyle = null): Response
+    {
+        if (!$widgetStyle) {
+            if ($styleId) {
+                $this->requirePermission('searchManager:editWidgetConfigs');
+                $widgetStyle = SearchManager::$plugin->widgetStyles->getById($styleId);
+                if (!$widgetStyle) {
+                    throw new NotFoundHttpException('Widget style not found');
+                }
+            } else {
+                $this->requirePermission('searchManager:createWidgetConfigs');
+                $widgetStyle = new WidgetStyle();
+            }
+        }
+
+        $defaultStyles = WidgetConfig::defaultStyleValues();
+
+        return $this->renderTemplate('search-manager/widgets/styles/edit', [
+            'widgetStyle' => $widgetStyle,
+            'isNew' => !$styleId,
+            'defaultStyles' => $defaultStyles,
+            'usageCount' => $styleId ? ($this->getStyleUsageCount($widgetStyle->handle)) : null,
+            'widgetTypeOptions' => $this->getWidgetTypeOptions(),
+        ]);
+    }
+
+    /**
+     * Save a widget style
+     *
+     * @since 5.39.0
+     */
+    public function actionSaveStyle(): ?Response
+    {
+        $this->requirePostRequest();
+
+        $request = Craft::$app->getRequest();
+        $styleId = $request->getBodyParam('styleId');
+
+        if ($styleId) {
+            $this->requirePermission('searchManager:editWidgetConfigs');
+            $widgetStyle = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
+            if (!$widgetStyle) {
+                throw new NotFoundHttpException('Widget style not found');
+            }
+        } else {
+            $this->requirePermission('searchManager:createWidgetConfigs');
+            $widgetStyle = new WidgetStyle();
+        }
+
+        $widgetStyle->name = (string) $request->getBodyParam('name');
+        $widgetStyle->handle = (string) $request->getBodyParam('handle');
+        $widgetStyle->enabled = (bool) $request->getBodyParam('enabled');
+        $widgetStyle->type = (string) $request->getBodyParam('type', 'modal');
+        $widgetStyle->styles = $request->getBodyParam('styles', []);
+
+        $defaultStyles = WidgetConfig::defaultStyleValues();
+
+        if (!$widgetStyle->validate()) {
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style.'));
+            Craft::$app->getUrlManager()->setRouteParams([
+                'widgetStyle' => $widgetStyle,
+                'isNew' => !$styleId,
+                'defaultStyles' => $defaultStyles,
+            ]);
+            return null;
+        }
+
+        if (!SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style.'));
+            Craft::$app->getUrlManager()->setRouteParams([
+                'widgetStyle' => $widgetStyle,
+                'isNew' => !$styleId,
+                'defaultStyles' => $defaultStyles,
+            ]);
+            return null;
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget style saved.'));
+
+        return $this->redirectToPostedUrl($widgetStyle);
+    }
+
+    /**
+     * Delete a widget style
+     *
+     * @since 5.39.0
+     */
+    public function actionDeleteStyle(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+        $this->requirePermission('searchManager:deleteWidgetConfigs');
+
+        $styleId = Craft::$app->getRequest()->getRequiredBodyParam('styleId');
+
+        if (!SearchManager::$plugin->widgetStyles->delete((int) $styleId)) {
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete widget style.')]);
+        }
+
+        return $this->asJson(['success' => true]);
+    }
+
+    /**
+     * Get usage count for a specific style handle
+     */
+    private function getStyleUsageCount(string $handle): int
+    {
+        $counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
+        return (int) ($counts[$handle] ?? 0);
+    }
+
     /**
      * Check if defaultWidgetHandle is set via config file
      */
     private function isDefaultWidgetFromConfig(): bool
     {
         return SearchManager::$plugin->getSettings()->isOverriddenByConfig('defaultWidgetHandle');
+    }
+
+    /**
+     * Get widget type options for select fields
+     *
+     * @return array<int, array{value: string, label: string}>
+     */
+    private function getWidgetTypeOptions(): array
+    {
+        $options = [];
+        foreach (WidgetStyle::WIDGET_TYPE_LABELS as $value => $label) {
+            $options[] = ['value' => $value, 'label' => $label];
+        }
+        return $options;
     }
 }
