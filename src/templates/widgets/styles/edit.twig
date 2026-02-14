@@ -14,8 +14,36 @@
 	{ label: isNew ? 'New Widget Style'|t('search-manager') : widgetStyle.name }
 ] %}
 
+{# Set up tabs #}
+{% set tabs = {
+	settings: {
+		label: 'Settings'|t('search-manager'),
+		url: '#settings',
+	},
+	modal: {
+		label: 'Modal'|t('search-manager'),
+		url: '#modal',
+	},
+	input: {
+		label: 'Input'|t('search-manager'),
+		url: '#input',
+	},
+	results: {
+		label: 'Results'|t('search-manager'),
+		url: '#results',
+	},
+	controls: {
+		label: 'Controls'|t('search-manager'),
+		url: '#controls',
+	},
+	highlights: {
+		label: 'Highlights'|t('search-manager'),
+		url: '#highlights',
+	},
+} %}
 
 {% set styles = isNew ? defaultStyles : defaultStyles|merge(widgetStyle.getStyles()) %}
+{% set namePrefix = 'styles' %}
 
 {% block actionButton %}
 	<div class="btngroup submit">
@@ -107,11 +135,49 @@
 			class: 'code',
 			errors: widgetStyle.getErrors('handle')
 		}) }}
+	</div>
 
-		<hr>
-
-		{% include "search-manager/widgets/styles/_partials/appearance" with {
+	{# Modal Tab #}
+	<div id="modal" class="hidden">
+		{% include "search-manager/widgets/styles/_partials/modal" with {
 			styles: styles,
+			namePrefix: namePrefix,
+			widgetStyle: widgetStyle,
+		} %}
+	</div>
+
+	{# Input Tab #}
+	<div id="input" class="hidden">
+		{% include "search-manager/widgets/styles/_partials/input" with {
+			styles: styles,
+			namePrefix: namePrefix,
+			widgetStyle: widgetStyle,
+		} %}
+	</div>
+
+	{# Results Tab #}
+	<div id="results" class="hidden">
+		{% include "search-manager/widgets/styles/_partials/results" with {
+			styles: styles,
+			namePrefix: namePrefix,
+			widgetStyle: widgetStyle,
+		} %}
+	</div>
+
+	{# Controls Tab #}
+	<div id="controls" class="hidden">
+		{% include "search-manager/widgets/styles/_partials/controls" with {
+			styles: styles,
+			namePrefix: namePrefix,
+			widgetStyle: widgetStyle,
+		} %}
+	</div>
+
+	{# Highlights Tab #}
+	<div id="highlights" class="hidden">
+		{% include "search-manager/widgets/styles/_partials/highlights" with {
+			styles: styles,
+			namePrefix: namePrefix,
 			widgetStyle: widgetStyle,
 		} %}
 	</div>
@@ -136,7 +202,7 @@
 		}) }}
 	</div>
 
-	{# Widget Preview - only visible on Appearance tab #}
+	{# Widget Preview #}
 	<div id="widget-preview-wrapper">
 		{% include "search-manager/widgets/_shared/preview" with {
 			widgetConfig: null,

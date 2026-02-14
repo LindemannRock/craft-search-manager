@@ -1,0 +1,216 @@
+{% import "_includes/forms" as forms %}
+
+<div class="color-scheme-toggle btngroup" style="margin-bottom: 14px;">
+	<button type="button" class="btn secondary" data-color-scheme="light" aria-pressed="true">{{ "Light"|t('search-manager') }}</button>
+	<button type="button" class="btn" data-color-scheme="dark" aria-pressed="false">{{ "Dark"|t('search-manager') }}</button>
+</div>
+
+{# ========================================
+   TRIGGER BUTTON
+   ======================================== #}
+<h2>{{ "Trigger Button"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-triggerBg',
+			name: namePrefix ~ '[triggerBg]',
+			value: styles.triggerBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-triggerTextColor',
+			name: namePrefix ~ '[triggerTextColor]',
+			value: styles.triggerTextColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-triggerBorderColor',
+			name: namePrefix ~ '[triggerBorderColor]',
+			value: styles.triggerBorderColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-triggerBgDark',
+			name: namePrefix ~ '[triggerBgDark]',
+			value: styles.triggerBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-triggerTextColorDark',
+			name: namePrefix ~ '[triggerTextColorDark]',
+			value: styles.triggerTextColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-triggerBorderColorDark',
+			name: namePrefix ~ '[triggerBorderColorDark]',
+			value: styles.triggerBorderColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	{{ forms.textField({
+		label: 'Border Radius (px)'|t('search-manager'),
+		id: 'styles-triggerBorderRadius',
+		name: namePrefix ~ '[triggerBorderRadius]',
+		value: styles.triggerBorderRadius,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 8'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.triggerBorderRadius') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Width (px)'|t('search-manager'),
+		id: 'styles-triggerBorderWidth',
+		name: namePrefix ~ '[triggerBorderWidth]',
+		value: styles.triggerBorderWidth,
+		type: 'number',
+		min: 0,
+		max: 5,
+		size: 10,
+		tip: 'Min: 0, Max: 5. Default: 1'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.triggerBorderWidth') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding X (px)'|t('search-manager'),
+		id: 'styles-triggerPaddingX',
+		name: namePrefix ~ '[triggerPaddingX]',
+		value: styles.triggerPaddingX,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 12'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.triggerPaddingX') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding Y (px)'|t('search-manager'),
+		id: 'styles-triggerPaddingY',
+		name: namePrefix ~ '[triggerPaddingY]',
+		value: styles.triggerPaddingY,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 8'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.triggerPaddingY') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Font Size (px)'|t('search-manager'),
+		id: 'styles-triggerFontSize',
+		name: namePrefix ~ '[triggerFontSize]',
+		value: styles.triggerFontSize,
+		type: 'number',
+		min: 10,
+		max: 24,
+		size: 10,
+		tip: 'Min: 10, Max: 24. Default: 14'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.triggerFontSize') : [],
+	}) }}
+</div>
+
+<hr>
+
+{# ========================================
+   KEYBOARD BADGE
+   ======================================== #}
+<h2>{{ "Keyboard Badge"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-kbdBg',
+			name: namePrefix ~ '[kbdBg]',
+			value: styles.kbdBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-kbdTextColor',
+			name: namePrefix ~ '[kbdTextColor]',
+			value: styles.kbdTextColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-kbdBgDark',
+			name: namePrefix ~ '[kbdBgDark]',
+			value: styles.kbdBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-kbdTextColorDark',
+			name: namePrefix ~ '[kbdTextColorDark]',
+			value: styles.kbdTextColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	{{ forms.textField({
+		label: 'Border Radius (px)'|t('search-manager'),
+		id: 'styles-kbdBorderRadius',
+		name: namePrefix ~ '[kbdBorderRadius]',
+		value: styles.kbdBorderRadius,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 4'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.kbdBorderRadius') : [],
+	}) }}
+</div>
+
+<hr>
+
+{# ========================================
+   LOADING SPINNER
+   ======================================== #}
+<h2>{{ "Loading Spinner"|t('search-manager') }}</h2>
+<p class="light">{{ "Color of the loading spinner shown while searching."|t('search-manager') }}</p>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Spinner Color'|t('search-manager'),
+			id: 'styles-spinnerColor',
+			name: namePrefix ~ '[spinnerColor]',
+			value: styles.spinnerColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Spinner Color'|t('search-manager'),
+			id: 'styles-spinnerColorDark',
+			name: namePrefix ~ '[spinnerColorDark]',
+			value: styles.spinnerColorDark,
+		}) }}
+	</div>
+</div>

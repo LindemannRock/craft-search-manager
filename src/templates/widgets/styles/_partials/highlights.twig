@@ -1,0 +1,135 @@
+{% import "_includes/forms" as forms %}
+
+<div class="color-scheme-toggle btngroup" style="margin-bottom: 14px;">
+	<button type="button" class="btn secondary" data-color-scheme="light" aria-pressed="true">{{ "Light"|t('search-manager') }}</button>
+	<button type="button" class="btn" data-color-scheme="dark" aria-pressed="false">{{ "Dark"|t('search-manager') }}</button>
+</div>
+
+{# ========================================
+   SEARCH HIGHLIGHTING
+   ======================================== #}
+<h2>{{ "Search Highlighting"|t('search-manager') }}</h2>
+<p class="light">{{ "Configure how matching search terms are highlighted in results."|t('search-manager') }}</p>
+
+{{ forms.lightswitchField({
+	label: 'Enable Highlighting'|t('search-manager'),
+	instructions: 'Enable search term highlighting in results'|t('search-manager'),
+	id: 'styles-highlightEnabled',
+	name: namePrefix ~ '[highlightEnabled]',
+	on: styles.highlightEnabled != '0',
+	toggle: 'styles-highlighting-options',
+}) }}
+
+<div id="styles-highlighting-options"{% if styles.highlightEnabled == '0' %} class="hidden"{% endif %}>
+
+	{% set highlightTagValue = styles.highlightTag ?? '' %}
+	{{ forms.selectField({
+		label: 'HTML Tag'|t('search-manager'),
+		instructions: 'HTML tag to wrap highlighted terms. Each tag has different semantic meaning and default browser styling.'|t('search-manager'),
+		id: 'styles-highlightTag',
+		name: namePrefix ~ '[highlightTag]',
+		value: highlightTagValue,
+		options: [
+			{value: '', label: 'Use global default'|t('search-manager')},
+			{value: 'mark', label: '<mark> - Highlighted text (yellow background)'},
+			{value: 'em', label: '<em> - Emphasized text (italic)'},
+			{value: 'strong', label: '<strong> - Strong importance (bold)'},
+			{value: 'span', label: '<span> - Generic container (no default style)'},
+			{value: 'b', label: '<b> - Bold text'},
+			{value: 'i', label: '<i> - Italic text'},
+		],
+		tip: 'Default: <mark> (from global highlighting settings)'|t('search-manager'),
+	}) }}
+
+	{{ forms.textField({
+		label: 'CSS Class'|t('search-manager'),
+		instructions: 'Optional CSS class for highlighted terms (leave empty for none)'|t('search-manager'),
+		id: 'styles-highlightClass',
+		name: namePrefix ~ '[highlightClass]',
+		value: styles.highlightClass ?? '',
+		placeholder: 'search-highlight',
+		tip: 'Use for custom styling via CSS'|t('search-manager'),
+	}) }}
+
+	{# Light Mode Colors #}
+	<div class="color-scheme-section" data-color-scheme="light">
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-highlightBgLight',
+				name: namePrefix ~ '[highlightBgLight]',
+				value: styles.highlightBgLight,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-highlightColorLight',
+				name: namePrefix ~ '[highlightColorLight]',
+				value: styles.highlightColorLight,
+			}) }}
+		</div>
+	</div>
+
+	{# Dark Mode Colors #}
+	<div class="color-scheme-section hidden" data-color-scheme="dark">
+		<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+			{{ forms.colorField({
+				label: 'Background'|t('search-manager'),
+				id: 'styles-highlightBgDark',
+				name: namePrefix ~ '[highlightBgDark]',
+				value: styles.highlightBgDark,
+			}) }}
+			{{ forms.colorField({
+				label: 'Text'|t('search-manager'),
+				id: 'styles-highlightColorDark',
+				name: namePrefix ~ '[highlightColorDark]',
+				value: styles.highlightColorDark,
+			}) }}
+		</div>
+	</div>
+
+</div>
+
+<hr>
+
+{# ========================================
+   PROMOTED BADGE
+   ======================================== #}
+<h2>{{ "Promoted Badge"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<h4>{{ "Light Mode"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-promotedBg',
+			name: namePrefix ~ '[promotedBg]',
+			value: styles.promotedBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-promotedColor',
+			name: namePrefix ~ '[promotedColor]',
+			value: styles.promotedColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="dark">
+	<h4>{{ "Dark Mode"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-promotedBgDark',
+			name: namePrefix ~ '[promotedBgDark]',
+			value: styles.promotedBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-promotedColorDark',
+			name: namePrefix ~ '[promotedColorDark]',
+			value: styles.promotedColorDark,
+		}) }}
+	</div>
+</div>

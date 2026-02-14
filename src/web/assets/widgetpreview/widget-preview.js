@@ -300,15 +300,14 @@ window.SearchManagerPreview = (function() {
 		 * Syncs form section visibility with preview mode.
 		 */
 		initColorSchemeToggle: function() {
-			var toggleContainer = document.getElementById('color-scheme-toggle');
-			var toggleButtons = toggleContainer ? toggleContainer.querySelectorAll('button[data-color-scheme]') : [];
+			var toggleButtons = document.querySelectorAll('.color-scheme-toggle button[data-color-scheme]');
 			var colorSections = document.querySelectorAll('.color-scheme-section');
 			var lightPreview = document.querySelector('.widget-preview-light');
 			var darkPreview = document.querySelector('.widget-preview-dark');
 			var previewToggleButtons = document.querySelectorAll('.widget-preview-toggle .btn');
 
 			// Nothing to toggle at all
-			if (!toggleContainer && !previewToggleButtons.length) return;
+			if (!toggleButtons.length && !previewToggleButtons.length) return;
 
 			function switchScheme(scheme) {
 				toggleButtons.forEach(function(btn) {

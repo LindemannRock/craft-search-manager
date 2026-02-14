@@ -1,0 +1,88 @@
+{% import "_includes/forms" as forms %}
+
+<div class="color-scheme-toggle btngroup" style="margin-bottom: 14px;">
+	<button type="button" class="btn secondary" data-color-scheme="light" aria-pressed="true">{{ "Light"|t('search-manager') }}</button>
+	<button type="button" class="btn" data-color-scheme="dark" aria-pressed="false">{{ "Dark"|t('search-manager') }}</button>
+</div>
+
+{# ========================================
+   INPUT FIELD
+   ======================================== #}
+<h2>{{ "Input Field"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-inputBg',
+			name: namePrefix ~ '[inputBg]',
+			value: styles.inputBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-inputTextColor',
+			name: namePrefix ~ '[inputTextColor]',
+			value: styles.inputTextColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Placeholder'|t('search-manager'),
+			id: 'styles-inputPlaceholderColor',
+			name: namePrefix ~ '[inputPlaceholderColor]',
+			value: styles.inputPlaceholderColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-inputBorderColor',
+			name: namePrefix ~ '[inputBorderColor]',
+			value: styles.inputBorderColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-inputBgDark',
+			name: namePrefix ~ '[inputBgDark]',
+			value: styles.inputBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-inputTextColorDark',
+			name: namePrefix ~ '[inputTextColorDark]',
+			value: styles.inputTextColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Placeholder'|t('search-manager'),
+			id: 'styles-inputPlaceholderColorDark',
+			name: namePrefix ~ '[inputPlaceholderColorDark]',
+			value: styles.inputPlaceholderColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-inputBorderColorDark',
+			name: namePrefix ~ '[inputBorderColorDark]',
+			value: styles.inputBorderColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	{{ forms.textField({
+		label: 'Font Size (px)'|t('search-manager'),
+		id: 'styles-inputFontSize',
+		name: namePrefix ~ '[inputFontSize]',
+		value: styles.inputFontSize,
+		type: 'number',
+		min: 12,
+		max: 24,
+		size: 10,
+		tip: 'Min: 12, Max: 24. Default: 16'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.inputFontSize') : [],
+	}) }}
+</div>

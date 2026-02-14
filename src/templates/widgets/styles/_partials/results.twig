@@ -1,0 +1,230 @@
+{% import "_includes/forms" as forms %}
+
+<div class="color-scheme-toggle btngroup" style="margin-bottom: 14px;">
+	<button type="button" class="btn secondary" data-color-scheme="light" aria-pressed="true">{{ "Light"|t('search-manager') }}</button>
+	<button type="button" class="btn" data-color-scheme="dark" aria-pressed="false">{{ "Dark"|t('search-manager') }}</button>
+</div>
+
+{# ========================================
+   SEARCH RESULTS
+   ======================================== #}
+<h2>{{ "Search Results"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div style="display: grid; gap: 16px;">
+		<div>
+			<h4>{{ "Base"|t('search-manager') }}</h4>
+			<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+				{{ forms.colorField({
+					label: 'Background'|t('search-manager'),
+					id: 'styles-resultBg',
+					name: namePrefix ~ '[resultBg]',
+					value: styles.resultBg,
+				}) }}
+				{{ forms.colorField({
+					label: 'Border'|t('search-manager'),
+					id: 'styles-resultBorderColor',
+					name: namePrefix ~ '[resultBorderColor]',
+					value: styles.resultBorderColor,
+				}) }}
+				{{ forms.colorField({
+					label: 'Text'|t('search-manager'),
+					id: 'styles-resultTextColor',
+					name: namePrefix ~ '[resultTextColor]',
+					value: styles.resultTextColor,
+				}) }}
+				{{ forms.colorField({
+					label: 'Description'|t('search-manager'),
+					id: 'styles-resultDescColor',
+					name: namePrefix ~ '[resultDescColor]',
+					value: styles.resultDescColor,
+				}) }}
+				{{ forms.colorField({
+					label: 'Muted (icons, arrows)'|t('search-manager'),
+					id: 'styles-resultMutedColor',
+					name: namePrefix ~ '[resultMutedColor]',
+					value: styles.resultMutedColor,
+				}) }}
+			</div>
+		</div>
+
+		<div>
+			<h4>{{ "Active"|t('search-manager') }}</h4>
+			<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+				{{ forms.colorField({
+					label: 'Background'|t('search-manager'),
+					id: 'styles-resultActiveBg',
+					name: namePrefix ~ '[resultActiveBg]',
+					value: styles.resultActiveBg,
+				}) }}
+				{{ forms.colorField({
+					label: 'Border'|t('search-manager'),
+					id: 'styles-resultActiveBorderColor',
+					name: namePrefix ~ '[resultActiveBorderColor]',
+					value: styles.resultActiveBorderColor,
+				}) }}
+				{{ forms.colorField({
+					label: 'Text'|t('search-manager'),
+					id: 'styles-resultActiveTextColor',
+					name: namePrefix ~ '[resultActiveTextColor]',
+					value: styles.resultActiveTextColor,
+				}) }}
+				{{ forms.colorField({
+					label: 'Description'|t('search-manager'),
+					id: 'styles-resultActiveDescColor',
+					name: namePrefix ~ '[resultActiveDescColor]',
+					value: styles.resultActiveDescColor,
+				}) }}
+				{{ forms.colorField({
+					label: 'Muted'|t('search-manager'),
+					id: 'styles-resultActiveMutedColor',
+					name: namePrefix ~ '[resultActiveMutedColor]',
+					value: styles.resultActiveMutedColor,
+				}) }}
+			</div>
+		</div>
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div style="display: grid; gap: 16px;">
+		<div>
+			<h4>{{ "Base"|t('search-manager') }}</h4>
+			<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+				{{ forms.colorField({
+					label: 'Background'|t('search-manager'),
+					id: 'styles-resultBgDark',
+					name: namePrefix ~ '[resultBgDark]',
+					value: styles.resultBgDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Border'|t('search-manager'),
+					id: 'styles-resultBorderColorDark',
+					name: namePrefix ~ '[resultBorderColorDark]',
+					value: styles.resultBorderColorDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Text'|t('search-manager'),
+					id: 'styles-resultTextColorDark',
+					name: namePrefix ~ '[resultTextColorDark]',
+					value: styles.resultTextColorDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Description'|t('search-manager'),
+					id: 'styles-resultDescColorDark',
+					name: namePrefix ~ '[resultDescColorDark]',
+					value: styles.resultDescColorDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Muted (icons, arrows)'|t('search-manager'),
+					id: 'styles-resultMutedColorDark',
+					name: namePrefix ~ '[resultMutedColorDark]',
+					value: styles.resultMutedColorDark,
+				}) }}
+			</div>
+		</div>
+
+		<div>
+			<h4>{{ "Active"|t('search-manager') }}</h4>
+			<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+				{{ forms.colorField({
+					label: 'Background'|t('search-manager'),
+					id: 'styles-resultActiveBgDark',
+					name: namePrefix ~ '[resultActiveBgDark]',
+					value: styles.resultActiveBgDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Border'|t('search-manager'),
+					id: 'styles-resultActiveBorderColorDark',
+					name: namePrefix ~ '[resultActiveBorderColorDark]',
+					value: styles.resultActiveBorderColorDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Text'|t('search-manager'),
+					id: 'styles-resultActiveTextColorDark',
+					name: namePrefix ~ '[resultActiveTextColorDark]',
+					value: styles.resultActiveTextColorDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Description'|t('search-manager'),
+					id: 'styles-resultActiveDescColorDark',
+					name: namePrefix ~ '[resultActiveDescColorDark]',
+					value: styles.resultActiveDescColorDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Muted'|t('search-manager'),
+					id: 'styles-resultActiveMutedColorDark',
+					name: namePrefix ~ '[resultActiveMutedColorDark]',
+					value: styles.resultActiveMutedColorDark,
+				}) }}
+			</div>
+		</div>
+	</div>
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	{{ forms.textField({
+		label: 'Gap (px)'|t('search-manager'),
+		id: 'styles-resultGap',
+		name: namePrefix ~ '[resultGap]',
+		value: styles.resultGap,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 8. Space between result items.'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.resultGap') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Radius (px)'|t('search-manager'),
+		id: 'styles-resultBorderRadius',
+		name: namePrefix ~ '[resultBorderRadius]',
+		value: styles.resultBorderRadius,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 8'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.resultBorderRadius') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Width (px)'|t('search-manager'),
+		id: 'styles-resultBorderWidth',
+		name: namePrefix ~ '[resultBorderWidth]',
+		value: styles.resultBorderWidth,
+		type: 'number',
+		min: 0,
+		max: 10,
+		size: 10,
+		tip: 'Min: 0, Max: 10. Default: 0. Set to 0 to remove border.'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.resultBorderWidth') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding X (px)'|t('search-manager'),
+		id: 'styles-resultPaddingX',
+		name: namePrefix ~ '[resultPaddingX]',
+		value: styles.resultPaddingX,
+		type: 'number',
+		min: 0,
+		max: 32,
+		size: 10,
+		tip: 'Min: 0, Max: 32. Default: 12'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.resultPaddingX') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding Y (px)'|t('search-manager'),
+		id: 'styles-resultPaddingY',
+		name: namePrefix ~ '[resultPaddingY]',
+		value: styles.resultPaddingY,
+		type: 'number',
+		min: 0,
+		max: 32,
+		size: 10,
+		tip: 'Min: 0, Max: 32. Default: 12'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.resultPaddingY') : [],
+	}) }}
+</div>
