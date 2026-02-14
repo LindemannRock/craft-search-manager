@@ -28,7 +28,7 @@ var SearchModalWidget = (() => {
     indices: [],
     placeholder: "Search...",
     theme: "light",
-    maxResults: 10,
+    maxResults: 20,
     debounce: 200,
     minChars: 2,
     showRecent: true,
@@ -36,7 +36,7 @@ var SearchModalWidget = (() => {
     groupResults: true,
     siteId: "",
     // Internal endpoints (not user-configurable)
-    searchEndpoint: "/actions/search-manager/search/query",
+    searchEndpoint: "/actions/search-manager/api/search",
     trackClickEndpoint: "/actions/search-manager/search/track-click",
     trackSearchEndpoint: "/actions/search-manager/search/track-search",
     // Analytics settings (user-configurable)
@@ -61,8 +61,10 @@ var SearchModalWidget = (() => {
     // 'default' | 'grouped' | 'hierarchical'
     hierarchyGroupBy: "",
     // Field to group by (e.g., 'section', 'category')
-    showMatchedHeadings: true,
-    // Show matched headings as child items
+    hierarchyStyle: "tree",
+    // 'tree' (indented + connectors) | 'flat' (same depth + connectors) | 'none' (same depth, no connectors)
+    hierarchyDisplay: "individual",
+    // 'individual' (each result is its own card) | 'unified' (page + headings share one card)
     maxHeadingsPerResult: 3,
     // Max heading children per result
     styles: {},
@@ -179,7 +181,8 @@ var SearchModalWidget = (() => {
       // Hierarchical result display
       resultLayout: element.getAttribute("result-layout") || defaults.resultLayout,
       hierarchyGroupBy: element.getAttribute("hierarchy-group-by") || defaults.hierarchyGroupBy,
-      showMatchedHeadings: parseBoolean(element.getAttribute("show-matched-headings"), defaults.showMatchedHeadings),
+      hierarchyStyle: element.getAttribute("hierarchy-style") || defaults.hierarchyStyle,
+      hierarchyDisplay: element.getAttribute("hierarchy-display") || defaults.hierarchyDisplay,
       maxHeadingsPerResult: parseInt(element.getAttribute("max-headings-per-result"), defaults.maxHeadingsPerResult),
       // JSON attributes
       styles: parseJson(element.getAttribute("styles"), defaults.styles),
@@ -239,7 +242,8 @@ var SearchModalWidget = (() => {
       "promotions",
       "result-layout",
       "hierarchy-group-by",
-      "show-matched-headings",
+      "hierarchy-style",
+      "hierarchy-display",
       "max-headings-per-result",
       "result-title-lines",
       "result-desc-lines",
@@ -441,6 +445,7 @@ var SearchModalWidget = (() => {
       q: query,
       hitsPerPage: maxResults.toString()
     });
+    params.append("enrich", "1");
     if (indices.length > 0) {
       params.append("indices", indices.join(","));
     }
@@ -497,7 +502,8 @@ var SearchModalWidget = (() => {
       formData.append("index", index);
       fetch(endpoint, {
         method: "POST",
-        body: formData
+        body: formData,
+        headers: { "Accept": "application/json" }
       }).catch(() => {
       });
     } catch (e) {
@@ -518,7 +524,8 @@ var SearchModalWidget = (() => {
       }
       fetch(endpoint, {
         method: "POST",
-        body: formData
+        body: formData,
+        headers: { "Accept": "application/json" }
       }).catch(() => {
       });
     } catch (e) {
@@ -619,16 +626,6 @@ var SearchModalWidget = (() => {
     resultBgDark: "transparent",
     resultBorderColor: "#e5e7eb",
     resultBorderColorDark: "#374151",
-    resultHoverBg: "#f3f4f6",
-    resultHoverBgDark: "#374151",
-    resultHoverBorderColor: "#e5e7eb",
-    resultHoverBorderColorDark: "#374151",
-    resultHoverTextColor: "#111827",
-    resultHoverTextColorDark: "#f9fafb",
-    resultHoverDescColor: "#4b5563",
-    resultHoverDescColorDark: "#d1d5db",
-    resultHoverMutedColor: "#6b7280",
-    resultHoverMutedColorDark: "#d1d5db",
     resultActiveBg: "#e5e7eb",
     resultActiveBgDark: "#4b5563",
     resultActiveBorderColor: "#e5e7eb",
@@ -674,7 +671,11 @@ var SearchModalWidget = (() => {
     highlightBgLight: "fef08a",
     highlightColorLight: "854d0e",
     highlightBgDark: "854d0e",
-    highlightColorDark: "fef08a"
+    highlightColorDark: "fef08a",
+    promotedBg: "#2563eb",
+    promotedBgDark: "#3b82f6",
+    promotedColor: "#ffffff",
+    promotedColorDark: "#ffffff"
   };
 
   // src/modules/StyleConfig.js
@@ -707,16 +708,6 @@ var SearchModalWidget = (() => {
     resultBgDark: "--sm-result-bg-dark",
     resultBorderColor: "--sm-result-border-color",
     resultBorderColorDark: "--sm-result-border-color-dark",
-    resultHoverBg: "--sm-result-hover-bg",
-    resultHoverBgDark: "--sm-result-hover-bg-dark",
-    resultHoverBorderColor: "--sm-result-hover-border-color",
-    resultHoverBorderColorDark: "--sm-result-hover-border-color-dark",
-    resultHoverTextColor: "--sm-result-hover-text-color",
-    resultHoverTextColorDark: "--sm-result-hover-text-color-dark",
-    resultHoverDescColor: "--sm-result-hover-desc-color",
-    resultHoverDescColorDark: "--sm-result-hover-desc-color-dark",
-    resultHoverMutedColor: "--sm-result-hover-muted-color",
-    resultHoverMutedColorDark: "--sm-result-hover-muted-color-dark",
     resultActiveBg: "--sm-result-active-bg",
     resultActiveBgDark: "--sm-result-active-bg-dark",
     resultActiveBorderColor: "--sm-result-active-border-color",
@@ -761,6 +752,11 @@ var SearchModalWidget = (() => {
     highlightColorLight: "--sm-highlight-color",
     highlightBgDark: "--sm-highlight-bg-dark",
     highlightColorDark: "--sm-highlight-color-dark",
+    // Promoted badge
+    promotedBg: "--sm-promoted-bg",
+    promotedBgDark: "--sm-promoted-bg-dark",
+    promotedColor: "--sm-promoted-color",
+    promotedColorDark: "--sm-promoted-color-dark",
     // Spinner
     spinnerColor: "--sm-spinner-color-light",
     spinnerColorDark: "--sm-spinner-color-dark"
@@ -802,18 +798,8 @@ var SearchModalWidget = (() => {
     "inputBorderColorDark",
     "resultBg",
     "resultBgDark",
-    "resultHoverBg",
-    "resultHoverBgDark",
     "resultBorderColor",
     "resultBorderColorDark",
-    "resultHoverBorderColor",
-    "resultHoverBorderColorDark",
-    "resultHoverTextColor",
-    "resultHoverTextColorDark",
-    "resultHoverDescColor",
-    "resultHoverDescColorDark",
-    "resultHoverMutedColor",
-    "resultHoverMutedColorDark",
     "resultActiveBg",
     "resultActiveBgDark",
     "resultActiveBorderColor",
@@ -844,6 +830,10 @@ var SearchModalWidget = (() => {
     "highlightColorLight",
     "highlightBgDark",
     "highlightColorDark",
+    "promotedBg",
+    "promotedBgDark",
+    "promotedColor",
+    "promotedColorDark",
     "spinnerColor",
     "spinnerColorDark"
   ];
@@ -1138,9 +1128,7 @@ var SearchModalWidget = (() => {
                         ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
                     </div>
                     ${typeBadge}
-                    <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
+                    ${arrowSvg()}
                 </div>
                 ${debugInfo}
             </a>
@@ -1154,9 +1142,7 @@ var SearchModalWidget = (() => {
                 ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
             </div>
             ${typeBadge}
-            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
+            ${arrowSvg()}
         </a>
     `;
   }
@@ -1198,24 +1184,22 @@ var SearchModalWidget = (() => {
     return `<div class="sm-debug-info">${debugItems.join("")}</div>`;
   }
   function getHighlightTerms(result, area) {
+    const phrases = Array.isArray(result.matchedPhrases) ? result.matchedPhrases : [];
     const matchedTerms = result.matchedTerms;
-    if (!matchedTerms) {
-      return null;
-    }
-    if (area === "title") {
-      if (Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
-        return matchedTerms.title;
+    let terms = [];
+    if (matchedTerms) {
+      if (area === "title" && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
+        terms = matchedTerms.title;
+      } else if (area === "description" && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
+        terms = matchedTerms.content;
+      } else {
+        terms = [
+          ...Array.isArray(matchedTerms.title) ? matchedTerms.title : [],
+          ...Array.isArray(matchedTerms.content) ? matchedTerms.content : []
+        ];
       }
     }
-    if (area === "description") {
-      if (Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
-        return matchedTerms.content;
-      }
-    }
-    const combined = [
-      ...Array.isArray(matchedTerms.title) ? matchedTerms.title : [],
-      ...Array.isArray(matchedTerms.content) ? matchedTerms.content : []
-    ];
+    const combined = [...phrases, ...terms];
     return combined.length > 0 ? combined : null;
   }
   function debugItem(label, value, type, backendType = "") {
@@ -1234,6 +1218,11 @@ var SearchModalWidget = (() => {
     const positionClass = `sm-promoted-badge--${badgePosition}`;
     return `<span class="sm-promoted-badge ${positionClass}">${escapeHtml(badgeText)}</span>`;
   }
+  function arrowSvg() {
+    return `<svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+    </svg>`;
+  }
   function documentIcon() {
     return `<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -1241,6 +1230,13 @@ var SearchModalWidget = (() => {
         <line x1="16" y1="13" x2="8" y2="13"/>
         <line x1="16" y1="17" x2="8" y2="17"/>
         <polyline points="10 9 9 9 8 9"/>
+    </svg>`;
+  }
+  function contentIcon() {
+    return `<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <line x1="4" y1="7" x2="20" y2="7"/>
+        <line x1="4" y1="12" x2="20" y2="12"/>
+        <line x1="4" y1="17" x2="14" y2="17"/>
     </svg>`;
   }
   function hashIcon() {
@@ -1254,10 +1250,13 @@ var SearchModalWidget = (() => {
   function renderHierarchicalResults(results, query, options = {}) {
     const {
       hierarchyGroupBy = "section",
-      showMatchedHeadings = true,
+      hierarchyStyle = "tree",
+      hierarchyDisplay = "individual",
       maxHeadingsPerResult = 3,
       listboxId
     } = options;
+    const useTree = hierarchyStyle === "tree";
+    const useConnectors = hierarchyStyle !== "none";
     const groupField = hierarchyGroupBy || "section";
     const groups = groupResultsByField(results, groupField);
     let globalIndex = 0;
@@ -1266,24 +1265,32 @@ var SearchModalWidget = (() => {
         const parentIndex = globalIndex++;
         const parentHtml = renderHierarchyParent(result, parentIndex, query, options);
         let childrenHtml = "";
-        if (showMatchedHeadings) {
-          const headings = result._matchedHeadings || [];
-          const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
-          if (limitedHeadings.length > 0) {
-            const minLevel = Math.min(...limitedHeadings.map((h) => h.level || 2));
-            childrenHtml = limitedHeadings.map((heading, headingIndex) => {
-              const level = heading.level || 2;
-              const depth = level - minLevel;
-              const isLastAtLevel = !limitedHeadings.slice(headingIndex + 1).some((h) => (h.level || 2) === level);
-              return renderHeadingChild(result, heading, globalIndex++, query, options, isLastAtLevel, depth);
-            }).join("");
-          }
+        const headings = result._matchedHeadings || [];
+        const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
+        if (limitedHeadings.length > 0) {
+          const minLevel = Math.min(...limitedHeadings.map((h) => h.level || 2));
+          const depths = limitedHeadings.map((h) => useTree ? (h.level || 2) - minLevel : 0);
+          childrenHtml = limitedHeadings.map((heading, headingIndex) => {
+            const depth = depths[headingIndex];
+            const isLastAtLevel = !depths.slice(headingIndex + 1).some((d) => d === depth);
+            const activeGuides = [];
+            if (useTree) {
+              const remainingDepths = depths.slice(headingIndex + 1);
+              for (let dl = 0; dl < depth; dl++) {
+                if (remainingDepths.some((d) => d === dl)) {
+                  activeGuides.push(dl);
+                }
+              }
+            }
+            return renderHeadingChild(result, heading, globalIndex++, query, options, isLastAtLevel, depth, activeGuides);
+          }).join("");
         }
         const hasChildren = Boolean(childrenHtml);
+        const unifiedClass = hierarchyDisplay === "unified" ? " sm-hierarchy-block--unified" : "";
         return `
-                <div class="sm-hierarchy-block${hasChildren ? " sm-hierarchy-block--has-children" : ""}">
-                    ${hasChildren ? parentHtml.replace('sm-hierarchy-parent"', 'sm-hierarchy-parent sm-hierarchy-parent--has-children"') : parentHtml}
-                    ${hasChildren ? `<div class="sm-hierarchy-children">${childrenHtml}</div>` : ""}
+                <div class="sm-hierarchy-block${hasChildren ? " sm-hierarchy-block--has-children" : ""}${unifiedClass}">
+                    ${hasChildren ? parentHtml.replace("sm-result-item sm-hierarchy-parent", "sm-result-item sm-hierarchy-parent sm-hierarchy-parent--has-children") : parentHtml}
+                    ${hasChildren ? `<div class="sm-hierarchy-children${!useConnectors ? " sm-hierarchy-children--no-connectors" : ""}">${childrenHtml}</div>` : ""}
                 </div>
             `;
       }).join("");
@@ -1300,7 +1307,8 @@ var SearchModalWidget = (() => {
       listboxId,
       enableHighlighting = true,
       highlightTag = "mark",
-      highlightClass = ""
+      highlightClass = "",
+      debug = false
     } = options;
     const title = result.title || result.name || "Untitled";
     const description = result.description || result.excerpt || "";
@@ -1311,30 +1319,54 @@ var SearchModalWidget = (() => {
       tag: highlightTag,
       className: highlightClass
     };
-    const highlightedTitle = highlightMatches(title, query, highlightOptions);
-    const highlightedDesc = description ? highlightMatches(description, query, highlightOptions) : "";
+    const highlightedTitle = highlightMatches(title, query, {
+      ...highlightOptions,
+      terms: getHighlightTerms(result, "title")
+    });
+    const highlightedDesc = description ? highlightMatches(description, query, {
+      ...highlightOptions,
+      terms: getHighlightTerms(result, "description")
+    }) : "";
+    const debugInfo = debug ? renderDebugInfo(result) : "";
+    const hasHeadings = result._matchedHeadings && result._matchedHeadings.length > 0;
+    const icon = hasHeadings ? documentIcon() : contentIcon();
+    if (debug) {
+      return `
+            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(title)}">
+                <div class="sm-result-main">
+                    ${icon}
+                    <div class="sm-result-content">
+                        <span class="sm-result-title">${highlightedTitle}</span>
+                        ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                    </div>
+                    ${arrowSvg()}
+                </div>
+                ${debugInfo}
+            </a>
+        `;
+    }
     return `
         <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(title)}">
-            ${documentIcon()}
+            ${icon}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
                 ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
             </div>
-            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
+            ${arrowSvg()}
         </a>
     `;
   }
-  function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0) {
+  function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0, activeGuides = []) {
     const {
       listboxId,
       enableHighlighting = true,
       highlightTag = "mark",
-      highlightClass = ""
+      highlightClass = "",
+      debug = false
     } = options;
     const rawText = heading.text || "";
     const text = rawText.replace(/^#+\s*/, "");
+    const description = heading.description || "";
     const level = heading.level || 2;
     const anchorId = heading.id || (text ? slugifyHeading(text) : "");
     const baseUrl = result.url || "#";
@@ -1345,16 +1377,58 @@ var SearchModalWidget = (() => {
       tag: highlightTag,
       className: highlightClass
     };
-    const highlightedText = highlightMatches(text, query, highlightOptions);
+    const highlightedText = highlightMatches(text, query, {
+      ...highlightOptions,
+      terms: getHighlightTerms(result, "title")
+    });
+    const highlightedDesc = description ? highlightMatches(description, query, {
+      ...highlightOptions,
+      terms: getHighlightTerms(result, "description")
+    }) : "";
     const rowClass = isLast ? " sm-hierarchy-child-row-last" : "";
+    const guidesHtml = activeGuides.map(
+      (dl) => `<div class="sm-hierarchy-guide" style="--sm-guide-depth:${dl}" aria-hidden="true"></div>`
+    ).join("");
+    let debugInfo = "";
+    if (debug) {
+      const childDebugItems = [];
+      childDebugItems.push(debugItem("h", level, "generic"));
+      if (anchorId) {
+        childDebugItems.push(debugItem("anchor", anchorId, "generic"));
+      }
+      if (result.id) {
+        childDebugItems.push(debugItem("parent", result.id, "generic"));
+      }
+      debugInfo = `<div class="sm-debug-info">${childDebugItems.join("")}</div>`;
+    }
+    if (debug) {
+      return `
+            <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
+                ${guidesHtml}
+                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(text)}">
+                    <div class="sm-result-main">
+                        ${hashIcon()}
+                        <div class="sm-result-content">
+                            <span class="sm-result-title">${highlightedText}</span>
+                            ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                        </div>
+                        ${arrowSvg()}
+                    </div>
+                    ${debugInfo}
+                </a>
+            </div>
+        `;
+    }
     return `
         <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
+            ${guidesHtml}
             <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(text)}">
                 ${hashIcon()}
-                <span class="sm-result-title">${highlightedText}</span>
-                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
+                <div class="sm-result-content">
+                    <span class="sm-result-title">${highlightedText}</span>
+                    ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                </div>
+                ${arrowSvg()}
             </a>
         </div>
     `;
@@ -1384,9 +1458,7 @@ var SearchModalWidget = (() => {
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                     <span class="sm-result-title">${escapeHtml(item.title || item.query)}</span>
-                    <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
+                    ${arrowSvg()}
                 </div>
             `).join("")}
         </div>
@@ -1906,7 +1978,8 @@ var SearchModalWidget = (() => {
           // Hierarchical display options
           resultLayout: this.config.resultLayout,
           hierarchyGroupBy: this.config.hierarchyGroupBy,
-          showMatchedHeadings: this.config.showMatchedHeadings,
+          hierarchyStyle: this.config.hierarchyStyle,
+          hierarchyDisplay: this.config.hierarchyDisplay,
           maxHeadingsPerResult: this.config.maxHeadingsPerResult
         }
       );
@@ -2333,11 +2406,18 @@ var SearchModalWidget = (() => {
 
     /* Borders and backgrounds - map from config variable names */
     --sm-border-color: var(--sm-input-border-color, #e5e7eb);
-    --sm-hover-bg: var(--sm-result-hover-bg, #f3f4f6);
-    --sm-hover-border: var(--sm-result-hover-border-color, var(--sm-result-border-color, #e5e7eb));
     --sm-selected-bg: var(--sm-result-active-bg, #e5e7eb);
     --sm-selected-border: var(--sm-result-active-border-color, #3b82f6);
     --sm-result-radius: 8px;
+
+    /* Computed shadow borders \u2014 box-shadow: inset used everywhere for consistent borders.
+       Unified card, default items, and active states all use the same technique. */
+    --_border-shadow: inset 0 0 0 var(--sm-result-border-width, 1px) var(--sm-result-border-color, #e5e7eb);
+    --_active-shadow: inset 0 0 0 var(--sm-result-border-width, 1px) var(--sm-selected-border);
+
+    /* Promoted badge */
+    --sm-promoted-bg: #2563eb;
+    --sm-promoted-color: #ffffff;
 
     /* Highlighting */
     --sm-highlight-bg: #fef08a;
@@ -2379,10 +2459,11 @@ var SearchModalWidget = (() => {
     --sm-border-color: var(--sm-input-border-color-dark, #374151);
     --sm-result-bg: var(--sm-result-bg-dark, transparent);
     --sm-result-border-color: var(--sm-result-border-color-dark, #374151);
-    --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
-    --sm-hover-border: var(--sm-result-hover-border-color-dark, var(--sm-result-border-color-dark, #374151));
     --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
     --sm-selected-border: var(--sm-result-active-border-color-dark, #3b82f6);
+
+    --sm-promoted-bg: var(--sm-promoted-bg-dark, #3b82f6);
+    --sm-promoted-color: var(--sm-promoted-color-dark, #ffffff);
 
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
     --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
@@ -2467,14 +2548,9 @@ var SearchModalWidget = (() => {
    ========================================================================= */
 
 .sm-section {
-    margin-bottom: 0;
     display: flex;
     flex-direction: column;
     gap: var(--sm-result-gap, 0px);
-}
-
-.sm-section:last-child {
-    margin-bottom: 0;
 }
 
 .sm-section-header {
@@ -2502,7 +2578,7 @@ var SearchModalWidget = (() => {
 }
 
 .sm-clear-recent:hover {
-    background: var(--sm-hover-bg);
+    background: var(--sm-selected-bg);
     color: var(--sm-text-secondary);
 }
 
@@ -2517,49 +2593,35 @@ var SearchModalWidget = (() => {
     padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
     border-radius: var(--sm-result-radius);
     background: var(--sm-result-bg, transparent);
-    border: var(--sm-result-border-width, 1px) solid var(--sm-result-border-color, #e5e7eb);
+    border: none;
+    box-shadow: var(--_border-shadow);
     color: var(--sm-text-primary);
     text-decoration: none;
     cursor: pointer;
     transition: background 0.1s ease;
-    margin-bottom: 0;
 }
 
+/* Hover and selected share the same visual \u2014 mouseenter always sets .sm-selected,
+   so separate hover colors would never be visible. Use one set of active colors.
+   box-shadow color changes from --_border-shadow (gray) to --_active-shadow (blue). */
 .sm-result-item:hover,
 .sm-result-item.sm-selected {
-    background: var(--sm-hover-bg);
-    border-color: var(--sm-hover-border);
-}
-
-.sm-result-item.sm-selected {
     background: var(--sm-selected-bg);
-    outline: 2px solid var(--sm-selected-border);
-    outline-offset: -2px;
-    border-color: var(--sm-selected-border);
+    box-shadow: var(--_active-shadow);
 }
 
-
-.sm-result-item:hover .sm-result-title {
-    color: var(--sm-result-hover-text-color, var(--sm-text-primary));
-}
-
-.sm-result-item:hover .sm-result-desc {
-    color: var(--sm-result-hover-desc-color, var(--sm-text-secondary));
-}
-
-.sm-result-item:hover .sm-result-icon,
-.sm-result-item:hover .sm-result-arrow {
-    color: var(--sm-result-hover-muted-color, var(--sm-text-muted));
-}
-
+.sm-result-item:hover .sm-result-title,
 .sm-result-item.sm-selected .sm-result-title {
     color: var(--sm-result-active-text-color, var(--sm-text-primary));
 }
 
+.sm-result-item:hover .sm-result-desc,
 .sm-result-item.sm-selected .sm-result-desc {
     color: var(--sm-result-active-desc-color, var(--sm-text-secondary));
 }
 
+.sm-result-item:hover .sm-result-icon,
+.sm-result-item:hover .sm-result-arrow,
 .sm-result-item.sm-selected .sm-result-icon,
 .sm-result-item.sm-selected .sm-result-arrow {
     color: var(--sm-result-active-muted-color, var(--sm-text-muted));
@@ -2628,12 +2690,10 @@ var SearchModalWidget = (() => {
 
 /* Group wrapper */
 .sm-hierarchy-group {
-    margin-bottom: 4px;
     position: relative;
-}
-
-.sm-hierarchy-group:last-child {
-    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
 }
 
 /* Group header */
@@ -2649,7 +2709,7 @@ var SearchModalWidget = (() => {
 /* Parent result (page-level) */
 .sm-hierarchy-parent {
     position: relative;
-    gap: 10px;
+    gap: 10px; /* Fixed \u2014 icon-to-text gap, independent of --sm-result-gap */
     padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
 }
 
@@ -2667,7 +2727,7 @@ var SearchModalWidget = (() => {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 10px; /* Fixed \u2014 icon-to-text gap, independent of --sm-result-gap */
     padding-inline-start: var(--_indent);
 }
 
@@ -2710,16 +2770,8 @@ var SearchModalWidget = (() => {
 
 .sm-hierarchy-child {
     flex: 1;
-    margin-bottom: 0;
     font-weight: 400;
     margin-inline-start: 34px;
-}
-
-.sm-hierarchy-group {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: var(--sm-result-gap, 0px);
 }
 
 .sm-hierarchy-block {
@@ -2737,10 +2789,139 @@ var SearchModalWidget = (() => {
     margin-bottom: var(--sm-result-gap, 0px);
 }
 
+/* Ancestor depth guide lines - vertical continuation through deeper children */
+.sm-hierarchy-guide {
+    position: absolute;
+    top: calc(-1 * var(--sm-result-gap, 0px));
+    bottom: calc(-1 * var(--sm-result-gap, 0px));
+    inset-inline-start: calc(var(--sm-result-px, 12px) - 4px + var(--sm-guide-depth, 0) * var(--sm-hierarchy-indent, 40px) + 14px);
+    width: 0;
+    border-inline-start: 2px solid var(--sm-hierarchy-connector-color);
+    pointer-events: none;
+}
+
+/* No-connectors mode: hide all connector lines and guides */
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child-row::before,
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child-row::after,
+.sm-hierarchy-children--no-connectors .sm-hierarchy-guide {
+    display: none;
+}
+
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child-row {
+    padding-inline-start: 0;
+}
+
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child {
+    margin-inline-start: 0;
+}
+
 .sm-hierarchy-child .sm-hierarchy-icon {
     margin-inline-start: 0;
 }
 
+/* =========================================================================
+   UNIFIED HIERARCHY DISPLAY (Starlight-style)
+   The outer block IS the card. Inner items are borderless rows with
+   border-top dividers. All children forced flat (depth 0). Hover covers
+   the full child-row (including connector gutter), not the inner item.
+   ========================================================================= */
+
+/* The block IS the card. Same box-shadow border technique as .sm-result-item.
+   Rows extend to the full card edge; the active row outline overlaps the
+   shadow border perfectly with no gap. */
+.sm-hierarchy-block--unified {
+    border-radius: var(--sm-result-radius);
+    background: var(--sm-result-bg, transparent);
+    border: none;
+    box-shadow: var(--_border-shadow);
+    overflow: hidden;
+}
+
+/* Strip card styling from all inner result items \u2014 they are rows now */
+.sm-hierarchy-block--unified .sm-result-item {
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* Suppress result-item active state in unified card \u2014
+   hover/active is handled at parent row / child-row level instead.
+   Text color hover rules (.sm-result-item:hover .sm-result-title etc.)
+   still fire normally since they target child elements. */
+.sm-hierarchy-block--unified .sm-result-item:hover,
+.sm-hierarchy-block--unified .sm-result-item.sm-selected {
+    background: transparent;
+    box-shadow: none;
+}
+
+/* No gap between parent and children */
+.sm-hierarchy-block--unified .sm-hierarchy-parent--has-children {
+    margin-bottom: 0;
+}
+
+/* Children container: no gap, no background \u2014 use border-top dividers instead */
+.sm-hierarchy-block--unified .sm-hierarchy-children {
+    gap: 0;
+    background: transparent;
+}
+
+/* Force all children flat \u2014 override the computed --_indent directly.
+   This beats the inline style="--sm-hierarchy-depth:N" set by JS,
+   because --_indent is re-declared here and no longer reads --sm-hierarchy-depth. */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row {
+    --_indent: calc(var(--sm-result-px, 12px) - 4px);
+    cursor: pointer;
+    border-top: 1px solid var(--sm-result-border-color, #e5e7eb);
+}
+
+/* Hide depth guide lines (not needed in flat unified layout) */
+.sm-hierarchy-block--unified .sm-hierarchy-guide {
+    display: none;
+}
+
+/* Border-radius on first/last rows so outline follows the card's rounding */
+.sm-hierarchy-block--unified .sm-hierarchy-parent {
+    border-radius: var(--sm-result-radius) var(--sm-result-radius) 0 0;
+}
+.sm-hierarchy-block--unified:not(.sm-hierarchy-block--has-children) .sm-hierarchy-parent {
+    border-radius: var(--sm-result-radius);
+}
+.sm-hierarchy-block--unified .sm-hierarchy-child-row-last {
+    border-radius: 0 0 var(--sm-result-radius) var(--sm-result-radius);
+}
+
+/* Full-row active state on child rows (covers connector gutter + content).
+   No card border, so outline-offset: 0 sits flush at the card edge. */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row:hover,
+.sm-hierarchy-block--unified .sm-hierarchy-child-row:has(.sm-selected) {
+    background: var(--sm-selected-bg);
+    outline: var(--sm-result-border-width, 1px) solid var(--sm-selected-border);
+    outline-offset: calc(-1 * var(--sm-result-border-width, 1px));
+}
+
+/* Parent row \u2014 border-bottom acts as divider between parent and children */
+.sm-hierarchy-block--unified .sm-hierarchy-parent--has-children {
+    border-bottom: 1px solid var(--sm-result-border-color, #e5e7eb);
+}
+.sm-hierarchy-block--unified .sm-hierarchy-parent:hover,
+.sm-hierarchy-block--unified .sm-hierarchy-parent.sm-selected {
+    background: var(--sm-selected-bg);
+    outline: var(--sm-result-border-width, 1px) solid var(--sm-selected-border);
+    outline-offset: calc(-1 * var(--sm-result-border-width, 1px));
+}
+
+/* Connectors: no gap to bridge, so top/bottom stay at 0 */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row::before {
+    top: 0;
+    bottom: 0;
+}
+/* Last child: restore bottom: 50% so the curve aligns with the title center.
+   Must re-declare here because the general child-row rule above (0-2-0 specificity)
+   overrides the base .sm-hierarchy-child-row-last::before (0-1-0 specificity). */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row-last::before {
+    top: 0;
+    bottom: 50%;
+}
 
 
 /* =========================================================================
@@ -2754,10 +2935,10 @@ var SearchModalWidget = (() => {
 .sm-promoted-badge {
     position: absolute;
     padding: 2px 6px;
-    background: var(--sm-accent);
-    color: #ffffff;
-    font-size: 10px;
-    font-weight: 600;
+    background: var(--sm-promoted-bg);
+    color: var(--sm-promoted-color);
+    font-size: 11px;
+    font-weight: 700;
     border-radius: var(--sm-kbd-radius);
     text-transform: uppercase;
     letter-spacing: 0.02em;
@@ -2872,8 +3053,23 @@ var SearchModalWidget = (() => {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
     width: 100%;
+}
+
+/* Hierarchy parent debug: match normal parent gap (10px not 12px) */
+.sm-hierarchy-parent.sm-debug-enabled .sm-result-main {
+    gap: 10px;
+}
+
+/* Hierarchy child debug: no padding (child-row handles indent via --_indent) */
+.sm-hierarchy-child.sm-debug-enabled .sm-result-main {
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
+}
+
+/* Hierarchy child debug info bar: indent to match content alignment */
+.sm-hierarchy-child.sm-debug-enabled .sm-debug-info {
+    border-radius: 0 0 var(--sm-result-radius) var(--sm-result-radius);
 }
 
 /* Debug info bar - full width at bottom of result */
@@ -3495,7 +3691,7 @@ var SearchModalWidget = (() => {
                             aria-controls="${this.listboxId}"
                         />
                         <div class="sm-loading" part="loading" hidden>
-                            <svg class="sm-spinner" width="20" height="20" viewBox="0 0 24 24">
+                            <svg class="sm-spinner" width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
                                 <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
                             </svg>

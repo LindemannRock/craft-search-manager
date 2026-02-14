@@ -73,7 +73,7 @@ export const BASE_DEFAULTS = {
     indices: [],
     placeholder: 'Search...',
     theme: 'light',
-    maxResults: 10,
+    maxResults: 20,
     debounce: 200,
     minChars: 2,
     showRecent: true,
@@ -81,7 +81,7 @@ export const BASE_DEFAULTS = {
     groupResults: true,
     siteId: '',
     // Internal endpoints (not user-configurable)
-    searchEndpoint: '/actions/search-manager/search/query',
+    searchEndpoint: '/actions/search-manager/api/search',
     trackClickEndpoint: '/actions/search-manager/search/track-click',
     trackSearchEndpoint: '/actions/search-manager/search/track-search',
     // Analytics settings (user-configurable)
@@ -102,7 +102,8 @@ export const BASE_DEFAULTS = {
     // Hierarchical result display (Algolia DocSearch-style)
     resultLayout: 'default', // 'default' | 'grouped' | 'hierarchical'
     hierarchyGroupBy: '',    // Field to group by (e.g., 'section', 'category')
-    showMatchedHeadings: true, // Show matched headings as child items
+    hierarchyStyle: 'tree',  // 'tree' (indented + connectors) | 'flat' (same depth + connectors) | 'none' (same depth, no connectors)
+    hierarchyDisplay: 'individual', // 'individual' (each result is its own card) | 'unified' (page + headings share one card)
     maxHeadingsPerResult: 3, // Max heading children per result
     styles: {},
     promotions: {
@@ -302,7 +303,8 @@ export function parseConfig(element, widgetType = 'modal') {
         // Hierarchical result display
         resultLayout: element.getAttribute('result-layout') || defaults.resultLayout,
         hierarchyGroupBy: element.getAttribute('hierarchy-group-by') || defaults.hierarchyGroupBy,
-        showMatchedHeadings: parseBoolean(element.getAttribute('show-matched-headings'), defaults.showMatchedHeadings),
+        hierarchyStyle: element.getAttribute('hierarchy-style') || defaults.hierarchyStyle,
+        hierarchyDisplay: element.getAttribute('hierarchy-display') || defaults.hierarchyDisplay,
         maxHeadingsPerResult: parseInt(element.getAttribute('max-headings-per-result'), defaults.maxHeadingsPerResult),
 
         // JSON attributes
@@ -364,7 +366,7 @@ export function getObservedAttributes(widgetType = 'modal') {
         'enable-highlighting', 'highlight-tag',
         'highlight-class', 'hide-results-without-url', 'allow-code-snippets', 'snippet-mode', 'show-loading-indicator',
         'debug', 'styles', 'promotions',
-        'result-layout', 'hierarchy-group-by', 'show-matched-headings', 'max-headings-per-result',
+        'result-layout', 'hierarchy-group-by', 'hierarchy-style', 'hierarchy-display', 'max-headings-per-result',
         'result-title-lines', 'result-desc-lines', 'snippet-length', 'parse-markdown-snippets',
     ];
 

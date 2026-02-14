@@ -12,6 +12,7 @@ use lindemannrock\searchmanager\backends\MySqlBackend;
 use lindemannrock\searchmanager\backends\PostgreSqlBackend;
 use lindemannrock\searchmanager\backends\RedisBackend;
 use lindemannrock\searchmanager\backends\TypesenseBackend;
+use lindemannrock\searchmanager\events\SearchEvent;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
@@ -26,6 +27,29 @@ use yii\base\Component;
 class BackendService extends Component
 {
     use LoggingTrait;
+
+    /**
+     * Fired before a search executes, after query rules are resolved.
+     *
+     * Listeners can modify [[SearchEvent::$query]] or [[SearchEvent::$options]]
+     * to change what gets searched. Set `$event->handled = true` to skip the
+     * search entirely and return [[SearchEvent::$results]] directly.
+     *
+     * @since 5.39.0
+     * @see SearchEvent
+     */
+    public const EVENT_BEFORE_SEARCH = 'beforeSearch';
+
+    /**
+     * Fired after a search completes and promotions are applied.
+     *
+     * Listeners can modify [[SearchEvent::$results]] to filter, enrich,
+     * or reorder hits before they are returned to the caller.
+     *
+     * @since 5.39.0
+     * @see SearchEvent
+     */
+    public const EVENT_AFTER_SEARCH = 'afterSearch';
 
     private ?BackendInterface $_activeBackend = null;
 
@@ -432,6 +456,28 @@ class BackendService extends Component
             ]);
         }
 
+        // =====================================================================
+        // EVENT: Before search — allows query/options modification or short-circuit
+        // =====================================================================
+        if ($this->hasEventHandlers(self::EVENT_BEFORE_SEARCH)) {
+            $beforeEvent = new SearchEvent([
+                'indexName' => $indexName,
+                'query' => $query,
+                'options' => $options,
+                'backend' => $backend->getName(),
+            ]);
+            $this->trigger(self::EVENT_BEFORE_SEARCH, $beforeEvent);
+
+            // Allow listeners to modify query and options
+            $query = $beforeEvent->query;
+            $options = $beforeEvent->options;
+
+            // Allow short-circuit: listener sets handled=true and provides results
+            if ($beforeEvent->handled) {
+                return $beforeEvent->results ?: ['hits' => [], 'total' => 0];
+            }
+        }
+
         // 1. Check cache first (if caching enabled)
         // Note: Cache stores RAW backend results. Promotions are applied fresh each time
         // to ensure disabled/expired promotions are immediately excluded.
@@ -493,6 +539,21 @@ class BackendService extends Component
                         ];
                     }, $matchedPromotions),
                 ];
+
+                // Fire after-search event for cached results too
+                if ($this->hasEventHandlers(self::EVENT_AFTER_SEARCH)) {
+                    $afterEvent = new SearchEvent([
+                        'indexName' => $indexName,
+                        'query' => $query,
+                        'options' => $options,
+                        'results' => $cached,
+                        'executionTime' => 0,
+                        'backend' => $backend->getName(),
+                    ]);
+                    $this->trigger(self::EVENT_AFTER_SEARCH, $afterEvent);
+
+                    $cached = $afterEvent->results;
+                }
 
                 return $cached;
             }
@@ -604,6 +665,23 @@ class BackendService extends Component
                 ];
             }, $matchedPromotions),
         ];
+
+        // =====================================================================
+        // EVENT: After search — allows result filtering, enrichment, reordering
+        // =====================================================================
+        if ($this->hasEventHandlers(self::EVENT_AFTER_SEARCH)) {
+            $afterEvent = new SearchEvent([
+                'indexName' => $indexName,
+                'query' => $query,
+                'options' => $options,
+                'results' => $results,
+                'executionTime' => $executionTime,
+                'backend' => $backend->getName(),
+            ]);
+            $this->trigger(self::EVENT_AFTER_SEARCH, $afterEvent);
+
+            $results = $afterEvent->results;
+        }
 
         return $results;
     }
@@ -892,7 +970,7 @@ class BackendService extends Component
     private function _getCacheDriver(): string
     {
         $settings = SearchManager::$plugin->getSettings();
-        if (($settings->cacheStorageMethod ?? 'file') !== 'redis') {
+        if ($settings->cacheStorageMethod !== 'redis') {
             return 'file';
         }
 
@@ -957,16 +1035,6 @@ class BackendService extends Component
     }
 
     /**
-     * Get full index name with prefix applied
-     */
-    private function getFullIndexName(string $indexName): string
-    {
-        $settings = SearchManager::$plugin->getSettings();
-        $indexPrefix = $settings->indexPrefix ?? '';
-        return $indexPrefix . $indexName;
-    }
-
-    /**
      * Get search results from cache
      *
      * @param string $indexName
@@ -977,7 +1045,7 @@ class BackendService extends Component
     private function _getFromCache(string $indexName, string $query, array $options): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = $this->getFullIndexName($indexName);
+        $fullIndexName = $settings->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
         // Include full index name (with prefix) in key path for per-index cache clearing
         $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
@@ -1035,7 +1103,7 @@ class BackendService extends Component
     private function _saveToCache(string $indexName, string $query, array $options, array $results): void
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = $this->getFullIndexName($indexName);
+        $fullIndexName = $settings->getFullIndexName($indexName);
         $cacheKey = $this->_generateCacheKey($fullIndexName, $query, $options);
         // Include full index name (with prefix) in key path for per-index cache clearing
         $fullCacheKey = PluginHelper::getCacheKeyPrefix(SearchManager::$plugin->id, 'search') . $fullIndexName . ':' . $cacheKey;
@@ -1098,7 +1166,7 @@ class BackendService extends Component
     public function clearSearchCache(string $indexName): void
     {
         $settings = SearchManager::$plugin->getSettings();
-        $fullIndexName = $this->getFullIndexName($indexName);
+        $fullIndexName = $settings->getFullIndexName($indexName);
 
         if ($settings->cacheStorageMethod === 'redis') {
             // Clear Redis cache for specific index

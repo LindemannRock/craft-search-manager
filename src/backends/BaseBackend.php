@@ -82,10 +82,7 @@ abstract class BaseBackend extends Component implements BackendInterface
      */
     protected function getFullIndexName(string $indexName): string
     {
-        $settings = SearchManager::$plugin->getSettings();
-        $prefix = $settings->indexPrefix ?? '';
-
-        return $prefix . $indexName;
+        return SearchManager::$plugin->getSettings()->getFullIndexName($indexName);
     }
 
     /**

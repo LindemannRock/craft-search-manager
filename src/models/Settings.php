@@ -436,4 +436,16 @@ class Settings extends Model
             [['defaultBackendHandle', 'defaultWidgetHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
         ];
     }
+
+    /**
+     * Get the full index name with prefix applied
+     *
+     * @since 5.39.0
+     * @param string $indexName The short index handle
+     * @return string The prefixed index name
+     */
+    public function getFullIndexName(string $indexName): string
+    {
+        return ($this->indexPrefix ?? '') . $indexName;
+    }
 }

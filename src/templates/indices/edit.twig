@@ -42,6 +42,35 @@
 	{% endif %}
 {% endblock %}
 
+{# Display validation errors summary before content #}
+{% if index.hasErrors() %}
+	{% set errorList = [] %}
+	{% for attribute, errors in index.getErrors() %}
+		{% for error in errors %}
+			{% set errorList = errorList|merge([{
+				attribute: attribute,
+				message: error
+			}]) %}
+		{% endfor %}
+	{% endfor %}
+
+	{% set errorSummary %}
+		<div class="error-summary" tabindex="-1">
+			<div>
+				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
+				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
+			</div>
+			<ul class="errors">
+				{% for error in errorList %}
+					<li>
+						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endset %}
+{% endif %}
+
 {% block content %}
 
 <form method="post" accept-charset="UTF-8">
@@ -62,6 +91,7 @@
         value: index.name,
         required: true,
         autofocus: true,
+        errors: index.getErrors('name'),
     }) }}
 
     {{ forms.textField({
@@ -72,6 +102,7 @@
         value: index.handle,
         required: true,
         class: 'code',
+        errors: index.getErrors('handle'),
     }) }}
 
     {% set elementTypeOptions = {
@@ -103,7 +134,8 @@
         name: 'elementType',
         value: index.elementType,
         required: true,
-        options: elementTypeOptions
+        options: elementTypeOptions,
+        errors: index.getErrors('elementType'),
     }) }}
 
     <div id="entry-criteria" {% if index.elementType != 'craft\\elements\\Entry' %}style="display:none;"{% endif %}>
@@ -209,7 +241,8 @@
         class: 'code',
         placeholder: 'lindemannrock\\searchmanager\\transformers\\AutoTransformer',
         tip: "Leave blank for automatic transformer selection. The best transformer is chosen based on the element type: AutoTransformer for Entries, Assets, Categories and Users; PluginDocsTransformer for Plugin Docs. Only specify a custom class for advanced requirements."|t('search-manager'),
-        warning: index.transformerClass ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
+        warning: (index.transformerClass and not index.getErrors('transformerClass')) ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
+        errors: index.getErrors('transformerClass'),
     }) }}
 
     {% set headingLevelOptions = [

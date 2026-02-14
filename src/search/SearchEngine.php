@@ -585,7 +585,7 @@ class SearchEngine
         $docScores = [];
 
         foreach ($phrases as $phrase) {
-            // Tokenize phrase
+            // Tokenize phrase for candidate search
             $phraseTokens = $this->tokenizer->tokenize($phrase);
             $phraseTokens = $this->filterTokens($phraseTokens);
 
@@ -593,22 +593,120 @@ class SearchEngine
                 continue;
             }
 
-            // For simplicity, treat phrase as AND of all terms with extra boost
-            // TODO: Implement true positional phrase matching in future version
-            $phraseScores = $this->searchTerms($phraseTokens, 'AND', $siteId, $totalDocs, $avgDocLength);
+            // Phase 1: AND search to find candidate documents (fast, uses inverted index)
+            $candidateScores = $this->searchTerms($phraseTokens, 'AND', $siteId, $totalDocs, $avgDocLength);
 
-            // Apply phrase boost (configurable via settings)
-            foreach ($phraseScores as $docId => $score) {
-                $phraseScores[$docId] = $score * $this->phraseBoostFactor;
+            if (empty($candidateScores)) {
+                continue;
+            }
+
+            // Phase 2: Verify exact phrase in stored content (precise)
+            $verifiedScores = $this->verifyPhraseInContent($candidateScores, $phrase, $siteId);
+
+            // Apply phrase boost to verified results
+            foreach ($verifiedScores as $docId => $score) {
+                $verifiedScores[$docId] = $score * $this->phraseBoostFactor;
             }
 
             // Merge with existing scores
-            foreach ($phraseScores as $docId => $score) {
+            foreach ($verifiedScores as $docId => $score) {
                 $docScores[$docId] = ($docScores[$docId] ?? 0) + $score;
             }
         }
 
         return $docScores;
+    }
+
+    /**
+     * Verify that an exact phrase exists in stored document content
+     *
+     * Uses documentData from the storage layer to check for the phrase.
+     * Comparison is case-insensitive with normalized whitespace.
+     *
+     * @param array $candidateScores Candidate document scores [docId => score]
+     * @param string $phrase The exact phrase to find
+     * @param int $siteId Site ID
+     * @return array Filtered scores — only docs containing the phrase
+     */
+    private function verifyPhraseInContent(array $candidateScores, string $phrase, int $siteId): array
+    {
+        // Normalize the phrase for comparison
+        $normalizedPhrase = $this->normalizeForPhraseMatch($phrase);
+
+        if (empty($normalizedPhrase)) {
+            return $candidateScores;
+        }
+
+        // Extract element IDs from docId format (siteId:elementId)
+        $elementIds = [];
+        foreach (array_keys($candidateScores) as $docId) {
+            $parts = explode(':', (string) $docId);
+            $elementId = (int) ($parts[1] ?? $parts[0]);
+            $elementIds[$elementId] = (string) $docId;
+        }
+
+        // Batch-fetch documentData for all candidates
+        $elements = $this->storage->getElementsByIds($siteId, array_keys($elementIds));
+
+        $verified = [];
+        foreach ($elementIds as $elementId => $docId) {
+            $elementData = $elements[$elementId] ?? null;
+            if ($elementData === null) {
+                continue;
+            }
+
+            $docData = $elementData['documentData'] ?? [];
+            $title = $elementData['title'] ?? '';
+
+            // Build searchable text from title + content
+            $searchableText = $title;
+            if (!empty($docData['content'])) {
+                $searchableText .= ' ' . $this->stripHtmlForPhrase($docData['content']);
+            }
+            if (!empty($docData['body'])) {
+                $searchableText .= ' ' . $this->stripHtmlForPhrase($docData['body']);
+            }
+            if (!empty($docData['excerpt'])) {
+                $searchableText .= ' ' . $this->stripHtmlForPhrase($docData['excerpt']);
+            }
+
+            $normalizedText = $this->normalizeForPhraseMatch($searchableText);
+
+            if (str_contains($normalizedText, $normalizedPhrase)) {
+                $verified[$docId] = $candidateScores[$docId];
+            }
+        }
+
+        $this->logDebug('Phrase verification', [
+            'phrase' => $phrase,
+            'candidates' => count($candidateScores),
+            'verified' => count($verified),
+        ]);
+
+        return $verified;
+    }
+
+    /**
+     * Normalize text for phrase matching
+     *
+     * Lowercases, collapses whitespace, strips punctuation that isn't
+     * part of the phrase semantics.
+     */
+    private function normalizeForPhraseMatch(string $text): string
+    {
+        $text = mb_strtolower($text);
+        $text = (string) preg_replace('/\s+/', ' ', $text);
+        return trim($text);
+    }
+
+    /**
+     * Strip HTML tags for phrase verification
+     */
+    private function stripHtmlForPhrase(string $html): string
+    {
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return $text;
     }
 
     /**

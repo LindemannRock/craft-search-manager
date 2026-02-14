@@ -3,28 +3,24 @@
         value: (totalCount ?? 0)|number,
         description: 'Total Searches'|t('search-manager'),
         align: 'center',
-        id: 'total-404s',
     } only %}
 
     {% include 'lindemannrock-base/_components/cards/unified-card' with {
         value: (handledCount ?? 0)|number,
         description: 'With Hits'|t('search-manager'),
         align: 'center',
-        id: 'handled-404s',
     } only %}
 
     {% include 'lindemannrock-base/_components/cards/unified-card' with {
         value: (unhandledCount ?? 0)|number,
         description: 'Zero Hits'|t('search-manager'),
         align: 'center',
-        id: 'unhandled-404s',
     } only %}
 
     {% include 'lindemannrock-base/_components/cards/unified-card' with {
         value: (totalCount > 0 ? ((handledCount / totalCount * 100)|round) : 0) ~ '%',
         description: 'Success Rate'|t('search-manager'),
         align: 'center',
-        id: 'success-rate',
     } only %}
 </div>
 

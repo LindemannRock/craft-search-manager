@@ -429,6 +429,18 @@ class ConfiguredBackend extends Model
     }
 
     /**
+     * Find backend by numeric ID or string handle
+     *
+     * @since 5.39.0
+     */
+    public static function findByIdOrHandle(int|string $idOrHandle): ?self
+    {
+        return is_numeric($idOrHandle)
+            ? self::findById((int)$idOrHandle)
+            : self::findByHandle((string)$idOrHandle);
+    }
+
+    /**
      * Get all configured backends
      *
      * @return self[]

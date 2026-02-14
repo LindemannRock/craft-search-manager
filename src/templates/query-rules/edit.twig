@@ -62,6 +62,35 @@
 	{% endif %}
 {% endblock %}
 
+{# Display validation errors summary before content #}
+{% if rule.hasErrors() %}
+	{% set errorList = [] %}
+	{% for attribute, errors in rule.getErrors() %}
+		{% for error in errors %}
+			{% set errorList = errorList|merge([{
+				attribute: attribute,
+				message: error
+			}]) %}
+		{% endfor %}
+	{% endfor %}
+
+	{% set errorSummary %}
+		<div class="error-summary" tabindex="-1">
+			<div>
+				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
+				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
+			</div>
+			<ul class="errors">
+				{% for error in errorList %}
+					<li>
+						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endset %}
+{% endif %}
+
 {% block content %}
 	<input type="hidden" name="action" value="search-manager/query-rules/save">
 	<input type="hidden" name="redirect" value="{{ 'search-manager/query-rules'|hash }}">
@@ -95,7 +124,7 @@
 
 		<hr>
 
-		<div class="field">
+		<div class="field{% if rule.getErrors('matchType') %} has-errors{% endif %}">
 			<div class="heading">
 				<label for="matchType">{{ 'Match Type'|t('search-manager') }}
 					<span class="required" aria-label="Required"></span>
@@ -124,9 +153,16 @@
 					</select>
 				</div>
 			</div>
+			{% if rule.getErrors('matchType') %}
+				<ul class="errors">
+					{% for error in rule.getErrors('matchType') %}
+						<li>{{ error }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
 		</div>
 
-		<div class="field" id="matchValue-field">
+		<div class="field{% if rule.getErrors('matchValue') %} has-errors{% endif %}" id="matchValue-field">
 			<div class="heading">
 				<label for="matchValue">{{ 'Match Pattern'|t('search-manager') }}
 					<span class="required" aria-label="Required"></span>
@@ -182,7 +218,7 @@
 
 		<hr>
 
-		<div class="field">
+		<div class="field{% if rule.getErrors('actionType') %} has-errors{% endif %}">
 			<div class="heading">
 				<label for="actionType">{{ 'Action Type'|t('search-manager') }}
 					<span class="required" aria-label="Required"></span>
@@ -219,11 +255,18 @@
 					</select>
 				</div>
 			</div>
+			{% if rule.getErrors('actionType') %}
+				<ul class="errors">
+					{% for error in rule.getErrors('actionType') %}
+						<li>{{ error }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
 		</div>
 
 		{# Synonym fields #}
 		<div id="action-synonym" class="action-fields" style="{{ rule.actionType != 'synonym' ? 'display: none;' : '' }}">
-			<div class="field">
+			<div class="field{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %} has-errors{% endif %}">
 				<div class="heading">
 					<label for="synonyms">{{ 'Synonyms'|t('search-manager') }}</label>
 					<div class="instructions">
@@ -231,8 +274,15 @@
 					</div>
 				</div>
 				<div class="input ltr">
-					<textarea id="synonyms" name="synonyms" rows="3" class="text fullwidth" placeholder="mobile, cell phone, smartphone, cellular">{{ rule.actionValue.terms is defined ? rule.actionValue.terms|join(', ') : '' }}</textarea>
+					<textarea id="synonyms" name="synonyms" rows="3" class="text fullwidth{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %} error{% endif %}" placeholder="mobile, cell phone, smartphone, cellular">{{ rule.actionValue.terms is defined ? rule.actionValue.terms|join(', ') : '' }}</textarea>
 				</div>
+				{% if rule.actionType == 'synonym' and rule.getErrors('actionValue') %}
+					<ul class="errors">
+						{% for error in rule.getErrors('actionValue') %}
+							<li>{{ error }}</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
 				<p class="notice has-icon" style="margin-top: 10px;">
 					<span class="icon" aria-hidden="true"></span>
 					<span class="visually-hidden">Tip:</span>
@@ -259,6 +309,7 @@
 				name: 'boostSectionHandle',
 				options: sectionOptions,
 				value: rule.actionValue.sectionHandle ?? '',
+				errors: rule.actionType == 'boost_section' ? rule.getErrors('actionValue') : [],
 			}) }}
 
 			{{ forms.selectField({
@@ -282,6 +333,7 @@
 				selectionLabel: 'Select a category'|t('search-manager'),
 				limit: 1,
 				elements: (rule.actionValue.categoryId ?? null) ? [craft.categories.id(rule.actionValue.categoryId).status(null).one()] : [],
+				errors: rule.actionType == 'boost_category' ? rule.getErrors('actionValue') : [],
 			}) }}
 
 			{{ forms.selectField({
@@ -305,6 +357,7 @@
 				selectionLabel: 'Select an element'|t('search-manager'),
 				limit: 1,
 				elements: (rule.actionValue.elementId ?? null) ? [craft.entries.id(rule.actionValue.elementId).status(null).one()] : [],
+				errors: rule.actionType == 'boost_element' ? rule.getErrors('actionValue') : [],
 			}) }}
 
 			{{ forms.selectField({
@@ -326,6 +379,7 @@
 				name: 'filterField',
 				value: rule.actionValue.field ?? '',
 				placeholder: 'productType',
+				errors: rule.actionType == 'filter' ? rule.getErrors('actionValue') : [],
 			}) }}
 
 			{{ forms.textField({
@@ -335,6 +389,7 @@
 				name: 'filterValue',
 				value: rule.actionValue.value ?? '',
 				placeholder: 'accessories',
+				errors: rule.actionType == 'filter' ? rule.getErrors('actionValue') : [],
 			}) }}
 		</div>
 
@@ -363,17 +418,15 @@
 
 			{# Custom URL field #}
 			<div id="redirect-url-field" class="{{ redirectType != 'url' ? 'hidden' : '' }}">
-				<div class="field">
-					<div class="heading">
-						<label for="redirectUrl">{{ 'Redirect URL'|t('search-manager') }}</label>
-						<div class="instructions">
-							<p>{{ 'The URL to redirect to. Can be a path (/page) or full URL (https://...).'|t('search-manager') }}</p>
-						</div>
-					</div>
-					<div class="input ltr">
-						<input type="text" id="redirectUrl" name="redirectUrl" value="{{ redirectType == 'url' ? (rule.actionValue.url ?? '') : '' }}" placeholder="/special-offers" class="text fullwidth">
-					</div>
-				</div>
+				{{ forms.textField({
+					label: 'Redirect URL'|t('search-manager'),
+					instructions: 'The URL to redirect to. Can be a path (/page) or full URL (https://...).'|t('search-manager'),
+					id: 'redirectUrl',
+					name: 'redirectUrl',
+					value: redirectType == 'url' ? (rule.actionValue.url ?? '') : '',
+					placeholder: '/special-offers',
+					errors: redirectType == 'url' ? rule.getErrors('actionValue') : [],
+				}) }}
 			</div>
 
 			{# Get linked element if exists #}
@@ -401,6 +454,7 @@
 					elements: (redirectType == 'entry' and redirectElement) ? [redirectElement] : [],
 					showSiteMenu: true,
 					criteria: { status: ['live', 'pending', 'expired'] },
+					errors: redirectType == 'entry' ? rule.getErrors('actionValue') : [],
 				}) }}
 			</div>
 
@@ -416,6 +470,7 @@
 					limit: 1,
 					elements: (redirectType == 'category' and redirectElement) ? [redirectElement] : [],
 					showSiteMenu: true,
+					errors: redirectType == 'category' ? rule.getErrors('actionValue') : [],
 				}) }}
 			</div>
 
@@ -431,6 +486,7 @@
 					limit: 1,
 					elements: (redirectType == 'asset' and redirectElement) ? [redirectElement] : [],
 					showSiteMenu: true,
+					errors: redirectType == 'asset' ? rule.getErrors('actionValue') : [],
 				}) }}
 			</div>
 

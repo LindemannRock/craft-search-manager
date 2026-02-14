@@ -249,8 +249,9 @@
 function loadStorageStats() {
     $.ajax({
         url: '{{ actionUrl('search-manager/utilities/get-storage-stats')|raw }}',
-        type: 'GET',
+        type: 'POST',
         dataType: 'json',
+        data: { {{ craft.app.config.general.csrfTokenName }}: '{{ craft.app.request.csrfToken }}' },
         success: function(response) {
             if (response.success && response.stats) {
                 var $select = $('#storage-type-select');

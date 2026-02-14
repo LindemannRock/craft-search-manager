@@ -15,8 +15,23 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px;
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
     width: 100%;
+}
+
+/* Hierarchy parent debug: match normal parent gap (10px not 12px) */
+.sm-hierarchy-parent.sm-debug-enabled .sm-result-main {
+    gap: 10px;
+}
+
+/* Hierarchy child debug: no padding (child-row handles indent via --_indent) */
+.sm-hierarchy-child.sm-debug-enabled .sm-result-main {
+    padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
+}
+
+/* Hierarchy child debug info bar: indent to match content alignment */
+.sm-hierarchy-child.sm-debug-enabled .sm-debug-info {
+    border-radius: 0 0 var(--sm-result-radius) var(--sm-result-radius);
 }
 
 /* Debug info bar - full width at bottom of result */

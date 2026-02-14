@@ -651,10 +651,10 @@
     }
 
     function renderCacheStats(data) {
-        $('#cache-hit-rate').text(data.hitRate + '%');
-        $('#cache-hits').text(data.cacheHits.toLocaleString());
-        $('#cache-misses').text(data.cacheMisses.toLocaleString());
-        $('#total-searches-perf').text(data.total.toLocaleString());
+        $('#cache-hit-rate .lr-unified-card-value').text(data.hitRate + '%');
+        $('#cache-hits .lr-unified-card-value').text(data.cacheHits.toLocaleString());
+        $('#cache-misses .lr-unified-card-value').text(data.cacheMisses.toLocaleString());
+        $('#total-searches-perf .lr-unified-card-value').text(data.total.toLocaleString());
     }
 
     function renderTopQueries(data) {

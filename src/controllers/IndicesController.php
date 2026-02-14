@@ -85,7 +85,7 @@ class IndicesController extends Controller
      *
      * @since 5.0.0
      */
-    public function actionEdit(?int $indexId = null): Response
+    public function actionEdit(?int $indexId = null, ?SearchIndex $index = null): Response
     {
         // Require create permission for new, edit permission for existing
         if ($indexId) {
@@ -94,20 +94,22 @@ class IndicesController extends Controller
             $this->requirePermission('searchManager:createIndices');
         }
 
-        if ($indexId) {
-            $index = SearchIndex::findById($indexId);
-            if (!$index) {
-                throw new NotFoundHttpException('Index not found');
-            }
+        if (!$index) {
+            if ($indexId) {
+                $index = SearchIndex::findById($indexId);
+                if (!$index) {
+                    throw new NotFoundHttpException('Index not found');
+                }
 
-            if (!$index->canEdit()) {
-                Craft::$app->getSession()->setError(
-                    Craft::t('search-manager', 'This index is defined in config and cannot be edited.')
-                );
-                return $this->redirect('search-manager/indices');
+                if (!$index->canEdit()) {
+                    Craft::$app->getSession()->setError(
+                        Craft::t('search-manager', 'This index is defined in config and cannot be edited.')
+                    );
+                    return $this->redirect('search-manager/indices');
+                }
+            } else {
+                $index = new SearchIndex();
             }
-        } else {
-            $index = new SearchIndex();
         }
 
         return $this->renderTemplate('search-manager/indices/edit', [
@@ -175,6 +177,11 @@ class IndicesController extends Controller
             Craft::$app->getSession()->setError(
                 Craft::t('search-manager', 'Could not save index.')
             );
+
+            Craft::$app->getUrlManager()->setRouteParams([
+                'index' => $index,
+            ]);
+
             return null;
         }
 
@@ -197,12 +204,7 @@ class IndicesController extends Controller
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
 
-        // Support both numeric IDs (database indices) and string handles (config indices)
-        if (is_numeric($indexId)) {
-            $index = SearchIndex::findById((int)$indexId);
-        } else {
-            $index = SearchIndex::findByHandle($indexId);
-        }
+        $index = SearchIndex::findByIdOrHandle($indexId);
 
         if (!$index) {
             throw new NotFoundHttpException('Index not found');
@@ -240,12 +242,7 @@ class IndicesController extends Controller
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
 
-        // Support both numeric IDs (database indices) and string handles (config indices)
-        if (is_numeric($indexId)) {
-            $index = SearchIndex::findById((int)$indexId);
-        } else {
-            $index = SearchIndex::findByHandle($indexId);
-        }
+        $index = SearchIndex::findByIdOrHandle($indexId);
 
         if (!$index) {
             throw new NotFoundHttpException('Index not found');
@@ -281,12 +278,7 @@ class IndicesController extends Controller
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
 
-        // Support both numeric IDs (database indices) and string handles (config indices)
-        if (is_numeric($indexId)) {
-            $index = SearchIndex::findById((int)$indexId);
-        } else {
-            $index = SearchIndex::findByHandle($indexId);
-        }
+        $index = SearchIndex::findByIdOrHandle($indexId);
 
         if (!$index) {
             return $this->asJson([
@@ -341,12 +333,7 @@ class IndicesController extends Controller
 
         $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
 
-        // Support both numeric IDs (database indices) and string handles (config indices)
-        if (is_numeric($indexId)) {
-            $index = SearchIndex::findById((int)$indexId);
-        } else {
-            $index = SearchIndex::findByHandle($indexId);
-        }
+        $index = SearchIndex::findByIdOrHandle($indexId);
 
         if (!$index) {
             return $this->asJson([
@@ -459,12 +446,7 @@ class IndicesController extends Controller
             'isNumeric' => is_numeric($indexId),
         ]);
 
-        // Support both numeric IDs (database indices) and string handles (config indices)
-        if (is_numeric($indexId)) {
-            $index = SearchIndex::findById((int)$indexId);
-        } else {
-            $index = SearchIndex::findByHandle($indexId);
-        }
+        $index = SearchIndex::findByIdOrHandle($indexId);
 
         if (!$index) {
             $this->logError('Index not found', [
@@ -498,11 +480,7 @@ class IndicesController extends Controller
         $count = 0;
 
         foreach ($indexIds as $id) {
-            if (is_numeric($id)) {
-                $index = SearchIndex::findById((int)$id);
-            } else {
-                $index = SearchIndex::findByHandle($id);
-            }
+            $index = SearchIndex::findByIdOrHandle($id);
 
             if ($index && $index->canEdit()) {
                 $index->enabled = true;
@@ -533,11 +511,7 @@ class IndicesController extends Controller
         $count = 0;
 
         foreach ($indexIds as $id) {
-            if (is_numeric($id)) {
-                $index = SearchIndex::findById((int)$id);
-            } else {
-                $index = SearchIndex::findByHandle($id);
-            }
+            $index = SearchIndex::findByIdOrHandle($id);
 
             if ($index && $index->canEdit()) {
                 $index->enabled = false;
@@ -568,11 +542,7 @@ class IndicesController extends Controller
         $count = 0;
 
         foreach ($indexIds as $id) {
-            if (is_numeric($id)) {
-                $index = SearchIndex::findById((int)$id);
-            } else {
-                $index = SearchIndex::findByHandle($id);
-            }
+            $index = SearchIndex::findByIdOrHandle($id);
 
             if ($index && $index->canEdit() && $index->delete()) {
                 $count++;

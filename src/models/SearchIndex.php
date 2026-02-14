@@ -120,6 +120,12 @@ class SearchIndex extends Model
             return; // Null/empty is allowed
         }
 
+        // Validate format: must look like a PHP fully-qualified class name
+        if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*(\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*$/', $this->$attribute)) {
+            $this->addError($attribute, 'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).');
+            return;
+        }
+
         // Check if class exists
         if (!class_exists($this->$attribute)) {
             $this->addError($attribute, "Transformer class does not exist: {$this->$attribute}");
@@ -254,6 +260,61 @@ class SearchIndex extends Model
         }
 
         return null;
+    }
+
+    /**
+     * Find index by numeric ID or string handle
+     *
+     * @since 5.39.0
+     */
+    public static function findByIdOrHandle(int|string $idOrHandle): ?self
+    {
+        return is_numeric($idOrHandle)
+            ? self::findById((int)$idOrHandle)
+            : self::findByHandle((string)$idOrHandle);
+    }
+
+    /**
+     * Parse and validate requested index handles from request parameters.
+     *
+     * Handles comma-separated 'indices' param and legacy single 'index' param,
+     * caps the count to prevent fan-out attacks, and filters to enabled-only indices.
+     *
+     * @param string $indicesParam Comma-separated index handles (from 'indices' param)
+     * @param string $indexHandle Single index handle (from legacy 'index' param)
+     * @param int $maxCount Maximum number of indices allowed
+     * @return array{0: array<string>, 1: bool} [validatedHandles, wereIndicesProvided]
+     * @since 5.39.0
+     */
+    public static function resolveRequestedIndices(string $indicesParam, string $indexHandle, int $maxCount = 5): array
+    {
+        $indexHandles = [];
+        $indicesProvided = false;
+
+        if (!empty($indicesParam)) {
+            $indicesProvided = true;
+            $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
+        } elseif (!empty($indexHandle)) {
+            $indicesProvided = true;
+            $indexHandles = [$indexHandle];
+        }
+
+        // Cap indices count to prevent fan-out attacks
+        if (count($indexHandles) > $maxCount) {
+            $indexHandles = array_slice($indexHandles, 0, $maxCount);
+        }
+
+        // Validate - only allow enabled indices
+        if (!empty($indexHandles)) {
+            $enabledIndices = self::findAll();
+            $enabledHandles = array_map(
+                fn(self $idx) => $idx->handle,
+                array_filter($enabledIndices, fn(self $idx) => $idx->enabled),
+            );
+            $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
+        }
+
+        return [$indexHandles, $indicesProvided];
     }
 
     /**

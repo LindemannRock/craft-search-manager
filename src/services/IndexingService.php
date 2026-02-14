@@ -142,36 +142,19 @@ class IndexingService extends Component
                     continue;
                 }
 
-                // Get transformer for this index
-                $transformer = SearchManager::$plugin->transformers->getTransformer(
+                // Transform element via TransformerService (fires before/after events)
+                $data = SearchManager::$plugin->transformers->transform(
                     $element,
-                    $index?->transformerClass
+                    $indexHandle,
+                    $index?->transformerClass,
+                    $index?->headingLevels,
                 );
 
-                if (!$transformer) {
-                    $this->logWarning('No transformer found for index', [
-                        'elementId' => $element->id,
-                        'elementType' => get_class($element),
-                        'indexHandle' => $indexHandle,
-                    ]);
-                    $success = false;
-                    continue;
-                }
-
-                if ($index && method_exists($transformer, 'setHeadingLevels')) {
-                    $transformer->setHeadingLevels($index->headingLevels ?? null);
-                }
-
-                // Transform element for this index
-                try {
-                    $data = $transformer->transform($element);
-                } catch (\Throwable $e) {
-                    $this->logError('Failed to transform element for index', [
+                if ($data === null) {
+                    $this->logDebug('Transform returned null for index', [
                         'elementId' => $element->id,
                         'indexHandle' => $indexHandle,
-                        'error' => $e->getMessage(),
                     ]);
-                    $success = false;
                     continue;
                 }
 
@@ -391,44 +374,36 @@ class IndexingService extends Component
     {
         $items = [];
 
-        // Get transformer from index config (same as indexElementNow does)
+        // Get index config for transformer class and heading levels
         $index = SearchIndex::findByHandle($indexHandle);
-        $transformerClass = $index?->transformerClass;
 
         foreach ($elements as $element) {
-            $transformer = SearchManager::$plugin->transformers->getTransformer($element, $transformerClass);
-            if (!$transformer) {
+            // Transform via TransformerService (fires before/after events)
+            $data = SearchManager::$plugin->transformers->transform(
+                $element,
+                $indexHandle,
+                $index?->transformerClass,
+                $index?->headingLevels,
+            );
+
+            if ($data === null) {
                 continue;
             }
 
-            if ($index && method_exists($transformer, 'setHeadingLevels')) {
-                $transformer->setHeadingLevels($index->headingLevels ?? null);
-            }
-
-            try {
-                $data = $transformer->transform($element);
-
-                // Always ensure siteId is set from element (source of truth)
-                // This guarantees backends receive correct siteId for objectID generation
-                if (!isset($data['siteId'])) {
-                    $data['siteId'] = $element->siteId;
-                } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
-                    $this->logWarning('Transformer siteId mismatch in batch; overriding', [
-                        'elementId' => $element->id,
-                        'elementSiteId' => $element->siteId,
-                        'transformerSiteId' => $data['siteId'],
-                    ]);
-                    $data['siteId'] = $element->siteId;
-                }
-
-                $items[] = $data;
-            } catch (\Throwable $e) {
-                $this->logError('Failed to transform element in batch', [
+            // Always ensure siteId is set from element (source of truth)
+            // This guarantees backends receive correct siteId for objectID generation
+            if (!isset($data['siteId'])) {
+                $data['siteId'] = $element->siteId;
+            } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
+                $this->logWarning('Transformer siteId mismatch in batch; overriding', [
                     'elementId' => $element->id,
-                    'error' => $e->getMessage(),
+                    'elementSiteId' => $element->siteId,
+                    'transformerSiteId' => $data['siteId'],
                 ]);
-                continue;
+                $data['siteId'] = $element->siteId;
             }
+
+            $items[] = $data;
         }
 
         if (empty($items)) {
@@ -594,7 +569,7 @@ class IndexingService extends Component
         if (is_array($index->criteria)) {
             // Check sections filter for entries
             if ($element instanceof \craft\elements\Entry && !empty($index->criteria['sections'])) {
-                $sectionHandle = $element->section->handle ?? null;
+                $sectionHandle = $element->getSection()?->handle;
                 if ($sectionHandle && !in_array($sectionHandle, $index->criteria['sections'])) {
                     return false;
                 }
@@ -602,7 +577,7 @@ class IndexingService extends Component
 
             // Check volume filter for assets
             if ($element instanceof \craft\elements\Asset && !empty($index->criteria['volumes'])) {
-                $volumeHandle = $element->volume->handle ?? null;
+                $volumeHandle = $element->getVolume()->handle;
                 if ($volumeHandle && !in_array($volumeHandle, $index->criteria['volumes'])) {
                     return false;
                 }
@@ -610,7 +585,7 @@ class IndexingService extends Component
 
             // Check group filter for categories
             if ($element instanceof \craft\elements\Category && !empty($index->criteria['groups'])) {
-                $groupHandle = $element->group->handle ?? null;
+                $groupHandle = $element->getGroup()->handle;
                 if ($groupHandle && !in_array($groupHandle, $index->criteria['groups'])) {
                     return false;
                 }

@@ -57,7 +57,7 @@ class PromotionsController extends Controller
      *
      * @since 5.10.0
      */
-    public function actionEdit(?int $promotionId = null): Response
+    public function actionEdit(?int $promotionId = null, ?Promotion $promotion = null): Response
     {
         // Require create permission for new, edit permission for existing
         if ($promotionId) {
@@ -66,13 +66,15 @@ class PromotionsController extends Controller
             $this->requirePermission('searchManager:createPromotions');
         }
 
-        if ($promotionId) {
-            $promotion = Promotion::findById($promotionId);
-            if (!$promotion) {
-                throw new NotFoundHttpException('Promotion not found');
+        if (!$promotion) {
+            if ($promotionId) {
+                $promotion = Promotion::findById($promotionId);
+                if (!$promotion) {
+                    throw new NotFoundHttpException('Promotion not found');
+                }
+            } else {
+                $promotion = new Promotion();
             }
-        } else {
-            $promotion = new Promotion();
         }
 
         // Get indices for dropdown
@@ -154,8 +156,10 @@ class PromotionsController extends Controller
         $promotedElement = $request->getBodyParam('promotedElement');
         if (is_array($promotedElement) && !empty($promotedElement)) {
             $promotion->elementId = (int)reset($promotedElement);
-        } else {
+        } elseif ($promotedElement) {
             $promotion->elementId = (int)$promotedElement;
+        } else {
+            $promotion->elementId = null;
         }
 
         $promotion->position = (int)$request->getBodyParam('position', 1);

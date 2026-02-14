@@ -47,17 +47,18 @@ class EntryTransformer extends BaseTransformer
 
         // Add entry-specific fields
         $data['type'] = 'entry';
-        $data['section'] = $element->section->handle ?? null;
-        $data['sectionName'] = $element->section->name ?? null;
-        $data['entryType'] = $element->type->handle ?? null;
+        $data['section'] = $element->getSection()?->handle;
+        $data['sectionName'] = $element->getSection()?->name;
+        $data['entryType'] = $element->getType()->handle;
         $data['slug'] = $element->slug;
         $data['postDate'] = $element->postDate?->getTimestamp();
         $data['expiryDate'] = $element->expiryDate?->getTimestamp();
 
         // Author information
-        if ($element->author) {
-            $data['authorId'] = $element->author->id;
-            $data['authorName'] = $element->author->fullName ?? $element->author->username;
+        $author = $element->getAuthor();
+        if ($author) {
+            $data['authorId'] = $author->id;
+            $data['authorName'] = $author->fullName ?? $author->username;
         }
 
         // Get searchable content from common fields

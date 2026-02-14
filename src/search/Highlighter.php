@@ -50,7 +50,9 @@ class Highlighter
     {
         $this->setLoggingHandle('search-manager');
 
-        $this->tag = preg_replace('/[^a-zA-Z0-9]/', '', $config['tag'] ?? 'mark') ?: 'mark';
+        $allowedTags = ['mark', 'em', 'strong', 'b', 'i', 'span'];
+        $tag = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $config['tag'] ?? 'mark') ?: 'mark');
+        $this->tag = in_array($tag, $allowedTags, true) ? $tag : 'mark';
         $this->class = htmlspecialchars($config['class'] ?? '', ENT_QUOTES, 'UTF-8');
         $this->snippetLength = $config['snippetLength'] ?? 200;
         $this->maxSnippets = $config['maxSnippets'] ?? 3;

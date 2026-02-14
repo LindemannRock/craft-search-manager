@@ -102,7 +102,8 @@
 {# Hierarchical display - Algolia DocSearch-style grouped results with heading children #}
 {% set resultLayout = resultLayout ?? widgetConfig.getResultLayout() %}
 {% set hierarchyGroupBy = hierarchyGroupBy ?? widgetConfig.getHierarchyGroupBy() %}
-{% set showMatchedHeadings = showMatchedHeadings ?? widgetConfig.isShowMatchedHeadingsEnabled() %}
+{% set hierarchyStyle = hierarchyStyle ?? widgetConfig.getHierarchyStyle() %}
+{% set hierarchyDisplay = hierarchyDisplay ?? widgetConfig.getHierarchyDisplay() %}
 {% set maxHeadingsPerResult = maxHeadingsPerResult ?? widgetConfig.getMaxHeadingsPerResult() %}
 {% set resultTitleLines = resultTitleLines ?? widgetConfig.getResultTitleLines() %}
 {% set resultDescLines = resultDescLines ?? widgetConfig.getResultDescLines() %}
@@ -118,16 +119,10 @@
     position: 3
 }) %}
 
-{# Build the endpoint URL #}
-{% set endpoint = actionUrl('search-manager/search/query') %}
-{% set analyticsEndpoint = actionUrl('search-manager/search/track-click') %}
-
 {# Render the widget #}
 <search-modal
     {% if indexHandles|length %}indices="{{ indexHandles|join(',') }}"{% endif %}
     placeholder="{{ placeholder }}"
-    endpoint="{{ endpoint }}"
-    analytics-endpoint="{{ analyticsEndpoint }}"
     theme="{{ theme }}"
     max-results="{{ maxResults }}"
     debounce="{{ debounce }}"
@@ -155,7 +150,8 @@
     debug="{{ _self.toBool(debug, false) }}"
     {% if resultLayout != 'default' %}result-layout="{{ resultLayout }}"{% endif %}
     {% if hierarchyGroupBy %}hierarchy-group-by="{{ hierarchyGroupBy }}"{% endif %}
-    show-matched-headings="{{ _self.toBool(showMatchedHeadings, true) }}"
+    {% if hierarchyStyle != 'tree' %}hierarchy-style="{{ hierarchyStyle }}"{% endif %}
+    {% if hierarchyDisplay != 'individual' %}hierarchy-display="{{ hierarchyDisplay }}"{% endif %}
     max-headings-per-result="{{ maxHeadingsPerResult }}"
     result-title-lines="{{ resultTitleLines }}"
     result-desc-lines="{{ resultDescLines }}"

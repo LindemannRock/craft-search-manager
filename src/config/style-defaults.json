@@ -26,16 +26,6 @@
   "resultBgDark": "transparent",
   "resultBorderColor": "#e5e7eb",
   "resultBorderColorDark": "#374151",
-  "resultHoverBg": "#f3f4f6",
-  "resultHoverBgDark": "#374151",
-  "resultHoverBorderColor": "#e5e7eb",
-  "resultHoverBorderColorDark": "#374151",
-  "resultHoverTextColor": "#111827",
-  "resultHoverTextColorDark": "#f9fafb",
-  "resultHoverDescColor": "#4b5563",
-  "resultHoverDescColorDark": "#d1d5db",
-  "resultHoverMutedColor": "#6b7280",
-  "resultHoverMutedColorDark": "#d1d5db",
   "resultActiveBg": "#e5e7eb",
   "resultActiveBgDark": "#4b5563",
   "resultActiveBorderColor": "#e5e7eb",
@@ -81,5 +71,9 @@
   "highlightBgLight": "fef08a",
   "highlightColorLight": "854d0e",
   "highlightBgDark": "854d0e",
-  "highlightColorDark": "fef08a"
+  "highlightColorDark": "fef08a",
+  "promotedBg": "#2563eb",
+  "promotedBgDark": "#3b82f6",
+  "promotedColor": "#ffffff",
+  "promotedColorDark": "#ffffff"
 }

@@ -480,6 +480,7 @@ class UtilitiesController extends Controller
      */
     public function actionGetStorageStats(): Response
     {
+        $this->requirePostRequest();
         $this->requireAcceptsJson();
 
         try {

@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
 
@@ -64,9 +65,6 @@ class ApiController extends Controller
             ]);
         }
 
-        // Get indices from new 'indices' param or legacy 'index' param
-        $indicesParam = Craft::$app->getRequest()->getParam('indices', '');
-        $indexHandle = Craft::$app->getRequest()->getParam('index', '');
         $limit = (int) Craft::$app->getRequest()->getParam('hitsPerPage', 10);
         // Clamp limit to prevent expensive queries (max 100, 0 or negative = use default)
         if ($limit <= 0) {
@@ -95,33 +93,12 @@ class ApiController extends Controller
 
         $autocomplete = SearchManager::$plugin->autocomplete;
 
-        // Parse indices - comma-separated string to array
-        // Track whether caller explicitly provided indices
-        $indexHandles = [];
-        $indicesProvided = false;
-        if (!empty($indicesParam)) {
-            $indicesProvided = true;
-            $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
-        } elseif (!empty($indexHandle)) {
-            $indicesProvided = true;
-            $indexHandles = [$indexHandle];
-        }
-
-        // Cap indices count to prevent fan-out attacks
-        if (count($indexHandles) > self::MAX_INDICES_COUNT) {
-            $indexHandles = array_slice($indexHandles, 0, self::MAX_INDICES_COUNT);
-        }
-
-        // Validate requested indices - only allow enabled indices on public endpoints
-        if (!empty($indexHandles)) {
-            $enabledIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-            $enabledHandles = array_map(
-                fn($idx) => $idx->handle,
-                array_filter($enabledIndices, fn($idx) => $idx->enabled)
-            );
-            // Filter to only enabled indices
-            $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
-        }
+        // Parse and validate requested indices
+        [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
+            Craft::$app->getRequest()->getParam('indices', ''),
+            Craft::$app->getRequest()->getParam('index', ''),
+            self::MAX_INDICES_COUNT,
+        );
 
         // If indices were explicitly provided but none are valid/enabled, return empty
         // Don't fall back to "all enabled" - that would expose unintended results
@@ -156,7 +133,7 @@ class ApiController extends Controller
                 }
                 return $this->asJson(array_values(array_unique($allSuggestions)));
             }
-            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $allIndices = SearchIndex::findAll();
             $allIndexHandles = array_map(
                 fn($idx) => $idx->handle,
                 array_filter($allIndices, fn($idx) => $idx->enabled)
@@ -181,7 +158,7 @@ class ApiController extends Controller
                 }
                 return $this->asJson($allResults);
             }
-            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $allIndices = SearchIndex::findAll();
             $allIndexHandles = array_map(
                 fn($idx) => $idx->handle,
                 array_filter($allIndices, fn($idx) => $idx->enabled)
@@ -213,7 +190,7 @@ class ApiController extends Controller
             ]);
         }
 
-        $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+        $allIndices = SearchIndex::findAll();
         $allIndexHandles = array_map(
             fn($idx) => $idx->handle,
             array_filter($allIndices, fn($idx) => $idx->enabled)
@@ -239,7 +216,7 @@ class ApiController extends Controller
      * - q: Search query (required)
      * - indices: Comma-separated index handles (optional)
      * - index: Single index handle (legacy)
-     * - hitsPerPage: Max results (default: 20)
+     * - hitsPerPage: Max results per page (default: 20, min: 1, max: 200)
      * - page: Page number (0-based, default: 0)
      * - type: Filter by element type (optional, e.g., 'product', 'category', 'product,category')
      * - language: Language code for localized operators (optional, e.g., 'de', 'fr', 'es', 'ar')
@@ -248,9 +225,23 @@ class ApiController extends Controller
      * - source: Analytics source identifier (optional, e.g., 'ios-app', 'android-app')
      * - platform: Platform info (optional, e.g., 'iOS 17.2', 'Android 14')
      * - appVersion: App version (optional, e.g., '2.1.0')
+     * - enrich: Enable result enrichment (default: 0). When enabled, results include
+     *           snippets, heading expansion, thumbnails, debug meta, and promoted/boosted flags.
+     *           Response uses 'hits' key with enriched result objects.
+     * - skipAnalytics: Skip analytics tracking for this search (default: 0)
      *
-     * Response includes type field for each hit:
-     * {hits: [{objectID, id, score, type}, ...], total: N}
+     * Enrichment parameters (only used when enrich=1):
+     * - snippetMode: Snippet positioning mode: 'early'|'balanced'|'deep' (default: 'balanced')
+     * - snippetLength: Max snippet length in chars (default: 150, min: 50, max: 1000)
+     * - allowCodeSnippets: Include code block snippets (default: 0)
+     * - parseMarkdownSnippets: Parse markdown before generating snippets (default: 0)
+     * - hideResultsWithoutUrl: Exclude results that have no URL (default: 0)
+     * - debug: Include debug metadata in response (default: devMode setting)
+     *
+     * Response format:
+     * - Raw (default): {hits: [{objectID, id, score, type}, ...], total, page, hitsPerPage, totalPages}
+     * - Enriched (enrich=1): {hits: [{id, title, url, description, section, type, score, ...}, ...],
+     *   total, page, hitsPerPage, totalPages, query}
      *
      * @return Response
      * @since 5.0.0
@@ -259,34 +250,36 @@ class ApiController extends Controller
     {
         $request = Craft::$app->getRequest();
         $query = $request->getParam('q', '');
+        $enrich = (bool) $request->getParam('enrich', false);
 
         // Enforce query length cap to prevent resource exhaustion
         if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
             return $this->asJson([
                 'hits' => [],
                 'total' => 0,
-                'error' => 'Query too long',
+                'query' => $query,
+                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
             ]);
         }
 
-        // Get indices from new 'indices' param or legacy 'index' param
-        $indicesParam = $request->getParam('indices', '');
-        $indexHandle = $request->getParam('index', '');
+        // hitsPerPage: min 1, default 20, max 200
         $limit = (int) $request->getParam('hitsPerPage', 20);
-        // Normalize limit: negative = default, 0 = no limit, positive = capped at 100
-        if ($limit < 0) {
+        if ($limit < 1) {
             $limit = 20;
-        } elseif ($limit > 0) {
-            $limit = min(100, $limit);
         }
-        // $limit === 0 means "no limit" (passed through to backend)
+        $limit = min(200, $limit);
         $page = (int) $request->getParam('page', 0);
         if ($page < 0) {
             $page = 0;
         }
-        $offset = $limit > 0 ? $page * $limit : 0;
+        $offset = $page * $limit;
         $typeFilter = $request->getParam('type', null);
+        $siteId = $request->getParam('siteId');
+        $siteId = $siteId ? (int) $siteId : null;
         $language = $request->getParam('language', null);
+
+        // Skip analytics if explicitly requested (e.g., widget passes skipAnalytics=1 to prevent keystroke spam)
+        $skipAnalytics = (bool) $request->getParam('skipAnalytics', false);
 
         // Analytics options (for mobile apps and custom integrations)
         $source = $request->getParam('source', null);
@@ -300,33 +293,12 @@ class ApiController extends Controller
             ]);
         }
 
-        // Parse indices - comma-separated string to array
-        // Track whether caller explicitly provided indices
-        $indexHandles = [];
-        $indicesProvided = false;
-        if (!empty($indicesParam)) {
-            $indicesProvided = true;
-            $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
-        } elseif (!empty($indexHandle)) {
-            $indicesProvided = true;
-            $indexHandles = [$indexHandle];
-        }
-
-        // Cap indices count to prevent fan-out attacks
-        if (count($indexHandles) > self::MAX_INDICES_COUNT) {
-            $indexHandles = array_slice($indexHandles, 0, self::MAX_INDICES_COUNT);
-        }
-
-        // Validate requested indices - only allow enabled indices on public endpoints
-        if (!empty($indexHandles)) {
-            $enabledIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-            $enabledHandles = array_map(
-                fn($idx) => $idx->handle,
-                array_filter($enabledIndices, fn($idx) => $idx->enabled)
-            );
-            // Filter to only enabled indices
-            $indexHandles = array_values(array_intersect($indexHandles, $enabledHandles));
-        }
+        // Parse and validate requested indices
+        [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
+            $request->getParam('indices', ''),
+            $request->getParam('index', ''),
+            self::MAX_INDICES_COUNT,
+        );
 
         // If indices were explicitly provided but none are valid/enabled, return empty
         // Don't fall back to "all enabled" - that would expose unintended results
@@ -342,7 +314,13 @@ class ApiController extends Controller
             'offset' => $offset,
             'page' => $page,
             'type' => $typeFilter,
+            'skipAnalytics' => $skipAnalytics,
         ];
+
+        // Add siteId if provided (scope search to a specific site)
+        if ($siteId !== null) {
+            $options['siteId'] = $siteId;
+        }
 
         // Add language if provided (for localized boolean operators)
         if ($language !== null) {
@@ -367,7 +345,7 @@ class ApiController extends Controller
             $results = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
         } else {
             // No indices specified - search all enabled indices
-            $allIndices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+            $allIndices = SearchIndex::findAll();
             $allIndexHandles = array_map(
                 fn($idx) => $idx->handle,
                 array_filter($allIndices, fn($idx) => $idx->enabled)
@@ -384,15 +362,80 @@ class ApiController extends Controller
             $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
         }
 
-        // Strip internal meta from public API response
-        // Meta contains rule IDs, names, action values which expose internal logic
-        // TODO: Add API key authentication with debug flag to allow meta for trusted clients
+        if ($enrich) {
+            // Enriched mode: resolve elements, generate snippets, expand headings
+            // Debug mode: requires devMode OR searchManager:viewDebug permission
+            $debugParam = $request->getParam('debug');
+            $canViewDebug = Craft::$app->config->general->devMode
+                || Craft::$app->getUser()->checkPermission('searchManager:viewDebug');
+            $includeDebugMeta = $canViewDebug && ($debugParam !== null ? (bool) $debugParam : Craft::$app->config->general->devMode);
+
+            $enrichOptions = [
+                'snippetMode' => (string) $request->getParam('snippetMode', 'balanced'),
+                'snippetLength' => (int) $request->getParam('snippetLength', 150),
+                'allowCodeSnippets' => (bool) $request->getParam('allowCodeSnippets', false),
+                'parseMarkdownSnippets' => (bool) $request->getParam('parseMarkdownSnippets', false),
+                'hideResultsWithoutUrl' => (bool) $request->getParam('hideResultsWithoutUrl', false),
+                'includeDebugMeta' => $includeDebugMeta,
+            ];
+
+            if ($siteId !== null) {
+                $enrichOptions['siteId'] = $siteId;
+            }
+
+            try {
+                $enrichedHits = SearchManager::$plugin->enrichment->enrichResults(
+                    $results['hits'] ?? [],
+                    $query,
+                    $indexHandles,
+                    $enrichOptions,
+                );
+            } catch (\Throwable $e) {
+                Craft::error('Enrichment failed: ' . $e->getMessage(), 'search-manager');
+
+                return $this->asJson([
+                    'hits' => [],
+                    'total' => 0,
+                    'query' => $query,
+                    'error' => Craft::$app->config->general->devMode ? $e->getMessage() : 'Search enrichment failed',
+                ]);
+            }
+
+            $total = (int) ($results['total'] ?? count($enrichedHits));
+            $totalPages = (int) ceil($total / $limit);
+
+            $response = [
+                'hits' => $enrichedHits,
+                'total' => $total,
+                'query' => $query,
+                'page' => $page,
+                'hitsPerPage' => $limit,
+                'totalPages' => $totalPages,
+            ];
+
+            // Include debug meta only when devMode is on OR debug param explicitly set
+            if ($includeDebugMeta && !empty($results['meta'])) {
+                $response['meta'] = $results['meta'];
+                $response['meta']['indices'] = $indexHandles ?: ['all'];
+            }
+
+            return $this->asJson($response);
+        }
+
+        // Raw mode: strip internal meta and content fields
         unset($results['meta']);
+
+        if (!empty($results['hits'])) {
+            foreach ($results['hits'] as &$hit) {
+                unset($hit['content'], $hit['body'], $hit['excerpt']);
+            }
+            unset($hit);
+        }
 
         $total = (int) ($results['total'] ?? 0);
         $results['page'] = $page;
         $results['hitsPerPage'] = $limit;
-        $results['totalPages'] = $limit > 0 ? (int) ceil($total / $limit) : 1;
+        $results['totalPages'] = (int) ceil($total / $limit);
 
         return $this->asJson($results);
     }

@@ -30,7 +30,8 @@ class Promotion extends Model
     public ?string $title = null;
     public string $query = '';
     public string $matchType = 'exact'; // exact, contains, prefix
-    public int $elementId = 0;
+    public ?int $elementId = null;
+    public ?string $elementType = null; // e.g. craft\elements\Entry
     public int $position = 1; // 1 = first position
     public ?int $siteId = null;
     public bool $enabled = true;
@@ -55,10 +56,11 @@ class Promotion extends Model
     public function rules(): array
     {
         return [
-            [['query', 'elementId'], 'required'],
+            [['title', 'query', 'elementId'], 'required'],
             [['indexHandle', 'query'], 'string', 'max' => 500],
             [['title'], 'string', 'max' => 255],
             [['matchType'], 'in', 'range' => ['exact', 'contains', 'prefix']],
+            [['elementType'], 'string', 'max' => 255],
             [['elementId', 'position', 'siteId'], 'integer'],
             [['position'], 'integer', 'min' => 1],
             [['enabled'], 'boolean'],
@@ -81,6 +83,12 @@ class Promotion extends Model
         $element = Craft::$app->getElements()->getElementById($this->elementId, null, $this->siteId);
         if (!$element) {
             $this->addError($attribute, 'Element not found.');
+            return;
+        }
+
+        // Auto-set elementType from the resolved element
+        if (!$this->elementType) {
+            $this->elementType = get_class($element);
         }
     }
 
@@ -185,13 +193,28 @@ class Promotion extends Model
             return [];
         }
 
-        // Batch query: get all live elements in one query
-        $liveElements = \craft\elements\Entry::find()
-            ->id($elementIds)
-            ->siteId($checkSiteId)
-            ->status('live')
-            ->indexBy('id')
-            ->all();
+        // Group by element type for efficient batch queries
+        $byType = [];
+        foreach ($queryMatches as $promotion) {
+            $type = $promotion->elementType ?? \craft\elements\Entry::class;
+            $byType[$type][] = $promotion;
+        }
+
+        // Batch-query each element type for live status
+        $liveElements = [];
+        foreach ($byType as $elementClass => $typePromotions) {
+            if (!is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
+                continue;
+            }
+            $typeIds = array_map(fn($p) => $p->elementId, $typePromotions);
+            $found = $elementClass::find()
+                ->id($typeIds)
+                ->siteId($checkSiteId)
+                ->status('live')
+                ->indexBy('id')
+                ->all();
+            $liveElements += $found;
+        }
 
         // Filter to only promotions with live elements
         $matches = [];
@@ -255,6 +278,7 @@ class Promotion extends Model
         $model->query = $row['query'];
         $model->matchType = $row['matchType'];
         $model->elementId = (int)$row['elementId'];
+        $model->elementType = $row['elementType'] ?? null;
         $model->position = (int)$row['position'];
         $model->siteId = $row['siteId'] ? (int)$row['siteId'] : null;
         $model->enabled = (bool)$row['enabled'];
@@ -287,6 +311,7 @@ class Promotion extends Model
                 'query' => $this->query,
                 'matchType' => $this->matchType,
                 'elementId' => $this->elementId,
+                'elementType' => $this->elementType,
                 'position' => $this->position,
                 'siteId' => $this->siteId,
                 'enabled' => (int)$this->enabled,

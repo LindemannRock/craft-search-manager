@@ -57,7 +57,7 @@ class QueryRulesController extends Controller
      *
      * @since 5.10.0
      */
-    public function actionEdit(?int $ruleId = null): Response
+    public function actionEdit(?int $ruleId = null, ?QueryRule $rule = null): Response
     {
         // Require create permission for new, edit permission for existing
         if ($ruleId) {
@@ -66,13 +66,15 @@ class QueryRulesController extends Controller
             $this->requirePermission('searchManager:createQueryRules');
         }
 
-        if ($ruleId) {
-            $rule = QueryRule::findById($ruleId);
-            if (!$rule) {
-                throw new NotFoundHttpException('Query rule not found');
+        if (!$rule) {
+            if ($ruleId) {
+                $rule = QueryRule::findById($ruleId);
+                if (!$rule) {
+                    throw new NotFoundHttpException('Query rule not found');
+                }
+            } else {
+                $rule = new QueryRule();
             }
-        } else {
-            $rule = new QueryRule();
         }
 
         // Get indices for dropdown

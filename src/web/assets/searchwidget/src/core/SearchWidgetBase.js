@@ -452,7 +452,8 @@ class SearchWidgetBase extends HTMLElement {
                 // Hierarchical display options
                 resultLayout: this.config.resultLayout,
                 hierarchyGroupBy: this.config.hierarchyGroupBy,
-                showMatchedHeadings: this.config.showMatchedHeadings,
+                hierarchyStyle: this.config.hierarchyStyle,
+                hierarchyDisplay: this.config.hierarchyDisplay,
                 maxHeadingsPerResult: this.config.maxHeadingsPerResult,
             }
         );

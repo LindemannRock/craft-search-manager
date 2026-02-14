@@ -102,12 +102,7 @@ class BackendsController extends Controller
             throw new NotFoundHttpException('Backend ID or handle required');
         }
 
-        // Try by ID first, then by handle
-        if (is_numeric($backendId)) {
-            $backend = ConfiguredBackend::findById((int)$backendId);
-        } else {
-            $backend = ConfiguredBackend::findByHandle((string)$backendId);
-        }
+        $backend = ConfiguredBackend::findByIdOrHandle($backendId);
 
         if (!$backend) {
             throw new NotFoundHttpException('Backend not found');
@@ -323,12 +318,7 @@ class BackendsController extends Controller
 
         try {
             if ($backendId) {
-                // Test existing backend - try by ID first, then by handle (for config backends)
-                if (is_numeric($backendId)) {
-                    $configuredBackend = ConfiguredBackend::findById((int)$backendId);
-                } else {
-                    $configuredBackend = ConfiguredBackend::findByHandle($backendId);
-                }
+                $configuredBackend = ConfiguredBackend::findByIdOrHandle($backendId);
 
                 if (!$configuredBackend) {
                     return $this->asJson([
@@ -413,12 +403,7 @@ class BackendsController extends Controller
         $backendId = $request->getBodyParam('backendId');
 
         try {
-            // Find the configured backend
-            if (is_numeric($backendId)) {
-                $configuredBackend = ConfiguredBackend::findById((int)$backendId);
-            } else {
-                $configuredBackend = ConfiguredBackend::findByHandle($backendId);
-            }
+            $configuredBackend = ConfiguredBackend::findByIdOrHandle($backendId);
 
             if (!$configuredBackend) {
                 return $this->asJson([
@@ -611,12 +596,7 @@ class BackendsController extends Controller
 
         $backendId = Craft::$app->getRequest()->getBodyParam('backendId');
 
-        // Find the backend - try by ID first, then by handle (for config backends)
-        if (is_numeric($backendId)) {
-            $backend = ConfiguredBackend::findById((int)$backendId);
-        } else {
-            $backend = ConfiguredBackend::findByHandle((string)$backendId);
-        }
+        $backend = ConfiguredBackend::findByIdOrHandle($backendId);
 
         if (!$backend) {
             return $this->asJson([

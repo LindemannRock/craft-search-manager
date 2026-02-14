@@ -195,6 +195,9 @@ class WidgetsController extends Controller
         $defaults = WidgetConfig::defaultSettings();
         $mergedSettings = array_replace_recursive($defaults, $widgetSettings);
 
+        // Strip unknown keys — only allow keys defined in defaults
+        $mergedSettings = $this->_filterSettingsKeys($mergedSettings, $defaults);
+
         // Handle indexHandles - ensure it's always an array
         if (isset($mergedSettings['search']['indexHandles'])) {
             $indexHandles = $mergedSettings['search']['indexHandles'];
@@ -580,7 +583,14 @@ class WidgetsController extends Controller
         $widgetStyle->handle = (string) $request->getBodyParam('handle');
         $widgetStyle->enabled = (bool) $request->getBodyParam('enabled');
         $widgetStyle->type = (string) $request->getBodyParam('type', 'modal');
-        $widgetStyle->styles = $request->getBodyParam('styles', []);
+        $styles = $request->getBodyParam('styles', []);
+
+        // Strip unknown keys and sanitize values
+        $allowedStyleKeys = array_keys(WidgetConfig::defaultStyleValues());
+        $styles = array_intersect_key($styles, array_flip($allowedStyleKeys));
+        $styles = array_map([$this, '_sanitizeStyleValue'], $styles);
+
+        $widgetStyle->styles = $styles;
 
         $defaultStyles = WidgetConfig::defaultStyleValues();
 
@@ -658,5 +668,43 @@ class WidgetsController extends Controller
             $options[] = ['value' => $value, 'label' => $label];
         }
         return $options;
+    }
+
+    /**
+     * Recursively strip keys from $data that don't exist in $allowed
+     */
+    private function _filterSettingsKeys(array $data, array $allowed): array
+    {
+        $filtered = [];
+        foreach ($allowed as $key => $defaultValue) {
+            if (!array_key_exists($key, $data)) {
+                $filtered[$key] = $defaultValue;
+                continue;
+            }
+
+            if (is_array($defaultValue) && is_array($data[$key])) {
+                $filtered[$key] = $this->_filterSettingsKeys($data[$key], $defaultValue);
+            } else {
+                $filtered[$key] = $data[$key];
+            }
+        }
+        return $filtered;
+    }
+
+    /**
+     * Sanitize a CSS style value — strip dangerous constructs
+     * Allows: hex colors, rgba/rgb/hsl, numbers, px/vh/%, transparent, named colors, box-shadow syntax
+     * Blocks: url(), expression(), javascript:, behavior:, -moz-binding, var() with url
+     */
+    private function _sanitizeStyleValue(mixed $value): string
+    {
+        $value = (string) $value;
+
+        // Strip dangerous CSS functions and protocols
+        $value = (string) preg_replace('/\b(url|expression|behavior)\s*\(/i', '', $value);
+        $value = (string) preg_replace('/javascript\s*:/i', '', $value);
+        $value = (string) preg_replace('/-moz-binding\s*:/i', '', $value);
+
+        return trim($value);
     }
 }

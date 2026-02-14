@@ -67,7 +67,7 @@ class WidgetConfig extends Model
                 'hideResultsWithoutUrl' => false,
                 'resultLayout' => 'default',
                 'hierarchyGroupBy' => '',
-                'showMatchedHeadings' => true,
+                'hierarchyDisplay' => 'individual',
                 'allowCodeSnippets' => false,
                 'snippetMode' => 'balanced',
                 'resultTitleLines' => 1,
@@ -278,13 +278,27 @@ class WidgetConfig extends Model
     }
 
     /**
-     * Show matched heading children under results
+     * Hierarchy display style: 'tree' (indented + connectors), 'flat' (no indentation + connectors), 'none' (no indentation, no connectors)
      *
      * @since 5.39.0
      */
-    public function isShowMatchedHeadingsEnabled(): bool
+    public function getHierarchyStyle(): string
     {
-        return (bool) $this->getSetting('behavior.showMatchedHeadings', true);
+        $style = (string) $this->getSetting('behavior.hierarchyStyle', 'tree');
+        $style = strtolower(trim($style));
+        return in_array($style, ['tree', 'flat', 'none'], true) ? $style : 'tree';
+    }
+
+    /**
+     * Hierarchy display mode: 'individual' (each result as own card) or 'unified' (page + headings in one card)
+     *
+     * @since 5.39.0
+     */
+    public function getHierarchyDisplay(): string
+    {
+        $display = (string) $this->getSetting('behavior.hierarchyDisplay', 'individual');
+        $display = strtolower(trim($display));
+        return in_array($display, ['individual', 'unified'], true) ? $display : 'individual';
     }
 
     /**
@@ -525,6 +539,7 @@ class WidgetConfig extends Model
 
         // Behavior settings — enums
         $this->validateEnumField($s, 'behavior', 'resultLayout', 'Result Layout', ['default', 'hierarchical']);
+        $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', 'Hierarchy Display', ['individual', 'unified']);
         $this->validateEnumField($s, 'behavior', 'snippetMode', 'Snippet Mode', ['early', 'balanced', 'deep']);
 
         // Behavior settings — strings

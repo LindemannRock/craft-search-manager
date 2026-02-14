@@ -580,6 +580,12 @@ return [
          * Define search widget configurations with custom styles and behavior
          * These are marked as source='config' and cannot be edited in CP
          *
+         * Each widget controls WHAT to search and HOW it behaves. Visual appearance
+         * can be set two ways:
+         *   1. styleHandle — reference a reusable style preset from widgetStyles (recommended)
+         *   2. settings.styles — define inline styles directly on the widget (standalone)
+         * If both are set, styleHandle takes priority. If neither is set, defaults apply.
+         *
          * SERVER-ENFORCED LIMITS (security):
          * - Query length: Max 256 characters (widget input enforces this client-side)
          * - Max results: Capped at 100 (behavior.maxResults values above 100 are silently capped)
@@ -589,91 +595,120 @@ return [
          *
          * Available options:
          * - name: Display name for the config
+         * - type: Widget type ('modal', 'page', 'inline') — default: 'modal'
          * - enabled: Whether the config is active
+         * - styleHandle: Handle of a widget style preset (from widgetStyles below or CP)
          * - settings: Widget settings (merged with defaults)
          *   - search.indexHandles: Array of index handles to search (empty = all, max 5)
-         *   - highlighting: Highlight settings (enabled, tag, class, colors)
+         *   - highlighting: Highlight settings (enabled, tag, class)
          *   - backdrop: Modal backdrop (opacity, blur)
-         *   - behavior: Widget behavior (debounce, minChars, maxResults [max 100], showRecent, maxRecentSearches, groupResults, hotkey, hideResultsWithoutUrl, etc.)
+         *   - behavior: Widget behavior settings
+         *     - debounce: Delay before search triggers in ms (default: 200)
+         *     - minChars: Minimum chars before search (default: 2)
+         *     - maxResults: Max results to show, capped at 100 (default: 10)
+         *     - showRecent: Show recent searches (default: true)
+         *     - maxRecentSearches: Max recent searches stored (default: 5)
+         *     - groupResults: Group results by section/type (default: true)
+         *     - hotkey: Keyboard shortcut key, e.g. 'k' for Cmd/Ctrl+K (default: 'k')
+         *     - hideResultsWithoutUrl: Hide results that don't have a URL (default: false)
+         *     - showLoadingIndicator: Show spinner while searching (default: true)
+         *     - preventBodyScroll: Prevent page scroll when modal is open (default: true)
+         *     - resultLayout: 'default' (flat list) or 'hierarchical' (parent/child) (default: 'default')
+         *     - allowCodeSnippets: Show code block snippets in results (default: false)
+         *     - snippetMode: How snippets find the best passage — 'early' (first match),
+         *       'balanced' (best density), 'deep' (exhaustive scan) (default: 'balanced')
+         *     - resultTitleLines: Max lines for result title, 1-5 (default: 1)
+         *     - resultDescLines: Max lines for result description, 1-5 (default: 1)
+         *     - snippetLength: Snippet length in characters, 50-500 (default: 150)
+         *     - parseMarkdownSnippets: Parse markdown in snippets (default: false)
          *   - trigger: Trigger button (showTrigger, triggerText)
-         *   - analytics: Analytics tracking (source [alphanumeric, max 64 chars], idleTimeout)
-         *   - styles: Visual styles (colors, borders, fonts, modalMaxHeight for light/dark modes)
+         *   - analytics: Analytics tracking
+         *     - source: Identifier in analytics reports (alphanumeric, max 64 chars)
+         *     - idleTimeout: Track search after idle in ms, 0 = disabled (default: 1500)
+         *   - styles: Inline visual styles (alternative to styleHandle, see widgetStyles for keys)
          */
         'widgets' => [
-            // Example: Full widget config showing all available options
+            // Example 1: Widget with a style preset (recommended for shared styles)
             // 'main-search' => [
             //     'name' => 'Main Search',
+            //     'type' => 'modal',
             //     'enabled' => true,
+            //     'styleHandle' => 'brand-theme', // References a style from widgetStyles below
             //     'settings' => [
-            //         // Search settings
             //         'search' => [
-            //             'indexHandles' => ['entries-en', 'products'], // Empty array = search all indices
+            //             'indexHandles' => ['entries-en', 'products'],
             //         ],
-            //         // Highlighting settings
             //         'highlighting' => [
             //             'enabled' => true,
-            //             'tag' => 'mark',           // HTML tag for highlights
-            //             'class' => null,           // Optional CSS class
-            //             'bgLight' => '#fef08a',    // Light mode highlight background
-            //             'colorLight' => '#854d0e', // Light mode highlight text
-            //             'bgDark' => '#854d0e',     // Dark mode highlight background
-            //             'colorDark' => '#fef08a',  // Dark mode highlight text
+            //             'tag' => 'mark',
+            //             'class' => null,
             //         ],
-            //         // Backdrop settings
             //         'backdrop' => [
-            //             'opacity' => 50,           // 0-100 (backdrop darkness)
-            //             'blur' => true,            // Blur background when modal open
+            //             'opacity' => 50,
+            //             'blur' => true,
             //         ],
-            //         // Behavior settings
             //         'behavior' => [
             //             'preventBodyScroll' => true,
-            //             'debounce' => 200,         // Delay before search triggers (ms)
-            //             'minChars' => 2,           // Minimum chars before search
-            //             'maxResults' => 10,        // Max results to show
-            //             'showRecent' => true,      // Show recent searches
-            //             'maxRecentSearches' => 5,  // Max recent searches stored
-            //             'groupResults' => true,    // Group by section/type
-            //             'hotkey' => 'k',           // Cmd/Ctrl+K to open
+            //             'debounce' => 200,
+            //             'minChars' => 2,
+            //             'maxResults' => 10,
+            //             'showRecent' => true,
+            //             'maxRecentSearches' => 5,
+            //             'groupResults' => true,
+            //             'hotkey' => 'k',
             //             'hideResultsWithoutUrl' => false,
             //             'showLoadingIndicator' => true,
+            //             'resultLayout' => 'default',
+            //             'allowCodeSnippets' => false,
+            //             'snippetMode' => 'balanced',
+            //             'resultTitleLines' => 1,
+            //             'resultDescLines' => 1,
+            //             'snippetLength' => 150,
+            //             'parseMarkdownSnippets' => false,
             //         ],
-            //         // Trigger button settings
             //         'trigger' => [
-            //             'showTrigger' => true,     // Show search button
-            //             'triggerText' => 'Search', // Button text
+            //             'showTrigger' => true,
+            //             'triggerText' => 'Search',
             //         ],
-            //         // Analytics settings
             //         'analytics' => [
-            //             'source' => 'header-search', // Identifier in analytics
-            //             'idleTimeout' => 1500,       // Track after idle (ms), 0 = disabled
-            //         ],
-            //         // Visual styles (only override what you need)
-            //         'styles' => [
-            //             // Modal - Light mode
-            //             'modalBg' => '#ffffff',
-            //             'modalBorderColor' => '#e5e7eb',
-            //             'modalBorderWidth' => '1',
-            //             'modalBorderRadius' => '12',
-            //             'modalShadow' => '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            //             'modalMaxHeight' => '80',  // vh units
-            //             // Modal - Dark mode
-            //             'modalBgDark' => '#1f2937',
-            //             'modalBorderColorDark' => '#374151',
-            //             // Input
-            //             'inputTextColor' => '#111827',
-            //             'inputTextColorDark' => '#f9fafb',
-            //             'inputPlaceholderColor' => '#9ca3af',
-            //             'inputPlaceholderColorDark' => '#6b7280',
-            //             // Results
-            //             'resultTextColor' => '#111827',
-            //             'resultTextColorDark' => '#f9fafb',
-            //             'resultHoverBg' => '#f3f4f6',
-            //             'resultHoverBgDark' => '#374151',
+            //             'source' => 'header-search',
+            //             'idleTimeout' => 1500,
             //         ],
             //     ],
             // ],
 
-            // Example: Minimal widget (hotkey-only, no trigger button)
+            // Example 2: Widget with inline styles (standalone, no preset needed)
+            // Useful for a one-off widget that doesn't share its look with others.
+            // 'docs-search' => [
+            //     'name' => 'Docs Search',
+            //     'type' => 'modal',
+            //     'enabled' => true,
+            //     'settings' => [
+            //         'search' => [
+            //             'indexHandles' => ['plugin-docs'],
+            //         ],
+            //         'behavior' => [
+            //             'resultLayout' => 'hierarchical',
+            //             'snippetMode' => 'deep',
+            //             'resultDescLines' => 2,
+            //             'snippetLength' => 200,
+            //         ],
+            //         // Inline styles — same keys as widgetStyles.*.styles
+            //         // These apply directly to this widget without a shared preset
+            //         'styles' => [
+            //             'modalBg' => '#ffffff',
+            //             'modalBgDark' => '#0f172a',
+            //             'modalBorderRadius' => '16',
+            //             'inputBg' => '#f8fafc',
+            //             'inputBgDark' => '#1e293b',
+            //             'spinnerColor' => '#6366f1',
+            //             'spinnerColorDark' => '#818cf8',
+            //         ],
+            //     ],
+            // ],
+
+            // Example 3: Minimal widget (hotkey-only, no trigger button)
+            // Only overrides what differs from defaults — everything else inherits.
             // 'minimal' => [
             //     'name' => 'Minimal',
             //     'enabled' => true,
@@ -685,6 +720,104 @@ return [
             //         'trigger' => [
             //             'showTrigger' => false,
             //         ],
+            //     ],
+            // ],
+        ],
+
+        // ========================================
+        // WIDGET STYLES
+        // ========================================
+
+        /**
+         * Widget style presets
+         * Reusable visual themes that can be shared across multiple widgets.
+         * Reference a style by its handle via styleHandle on a widget config.
+         * These are marked as source='config' and cannot be edited in CP.
+         * Styles can also be created in the CP under Widgets > Styles.
+         *
+         * Available options:
+         * - name: Display name for the style
+         * - type: Widget type this style applies to ('modal', 'page', 'inline') — default: 'modal'
+         * - enabled: Whether the style is active (default: true)
+         * - styles: Visual style properties — all values are strings
+         *   Each property has a light mode key and a dark mode key (suffixed with 'Dark').
+         *   Only override what you need — unset properties use built-in defaults.
+         *
+         * Style property groups:
+         *   Modal:        modalBg, modalBorderColor, modalBorderWidth, modalBorderRadius,
+         *                 modalShadow, modalMaxWidth (px), modalMaxHeight (vh),
+         *                 modalPaddingX (px), modalPaddingY (px)
+         *   Input:        inputBg, inputTextColor, inputPlaceholderColor,
+         *                 inputBorderColor, inputFontSize (px)
+         *   Results:      resultBg, resultBorderColor, resultTextColor, resultDescColor,
+         *                 resultMutedColor, resultActiveBg, resultActiveBorderColor,
+         *                 resultActiveTextColor, resultActiveDescColor, resultActiveMutedColor
+         *   Spinner:      spinnerColor
+         *   Highlighting: highlightBgLight, highlightColorLight (+ Dark variants)
+         *   Backdrop:     backdropOpacity (0-100), backdropBlur (px, 0 = disabled)
+         *   Trigger:      triggerBg, triggerTextColor, triggerBorderColor,
+         *                 triggerBorderRadius, triggerFontSize
+         *   Kbd Badge:    kbdBg, kbdBorderColor, kbdTextColor
+         */
+        'widgetStyles' => [
+            // Example: Brand theme style
+            // 'brand-theme' => [
+            //     'name' => 'Brand Theme',
+            //     'type' => 'modal',
+            //     'enabled' => true,
+            //     'styles' => [
+            //         // Modal
+            //         'modalBg' => '#ffffff',
+            //         'modalBgDark' => '#1f2937',
+            //         'modalBorderColor' => '#e5e7eb',
+            //         'modalBorderColorDark' => '#374151',
+            //         'modalBorderWidth' => '1',
+            //         'modalBorderRadius' => '12',
+            //         'modalShadow' => '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            //         'modalMaxWidth' => '700',       // px
+            //         'modalMaxHeight' => '80',       // vh units
+            //         'modalPaddingX' => '20',        // px
+            //         'modalPaddingY' => '20',        // px
+            //         // Input
+            //         'inputBg' => '#f9fafb',
+            //         'inputBgDark' => '#111827',
+            //         'inputTextColor' => '#111827',
+            //         'inputTextColorDark' => '#f9fafb',
+            //         'inputPlaceholderColor' => '#9ca3af',
+            //         'inputPlaceholderColorDark' => '#6b7280',
+            //         'inputBorderColor' => '#e5e7eb',
+            //         'inputBorderColorDark' => '#374151',
+            //         'inputFontSize' => '16',        // px
+            //         // Results
+            //         'resultTextColor' => '#111827',
+            //         'resultTextColorDark' => '#f9fafb',
+            //         'resultDescColor' => '#4b5563',
+            //         'resultDescColorDark' => '#d1d5db',
+            //         // Spinner
+            //         'spinnerColor' => '#3b82f6',
+            //         'spinnerColorDark' => '#60a5fa',
+            //         // Highlighting
+            //         'highlightBgLight' => '#fef08a',
+            //         'highlightColorLight' => '#854d0e',
+            //         'highlightBgDark' => '#854d0e',
+            //         'highlightColorDark' => '#fef08a',
+            //         // Backdrop
+            //         'backdropOpacity' => '50',      // 0-100
+            //         'backdropBlur' => '4',          // px, 0 = disabled
+            //     ],
+            // ],
+
+            // Example: Minimal dark style
+            // 'minimal-dark' => [
+            //     'name' => 'Minimal Dark',
+            //     'type' => 'modal',
+            //     'enabled' => true,
+            //     'styles' => [
+            //         'modalBg' => '#0f172a',
+            //         'modalBorderWidth' => '0',
+            //         'modalBorderRadius' => '16',
+            //         'inputBg' => '#1e293b',
+            //         'inputTextColor' => '#e2e8f0',
             //     ],
             // ],
         ],

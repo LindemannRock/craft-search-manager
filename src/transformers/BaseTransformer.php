@@ -162,9 +162,10 @@ abstract class BaseTransformer extends Component implements TransformerInterface
      *
      * Parses H2, H3, H4 tags from HTML and returns structured heading data.
      * Also detects markdown-style headings (## / ### / ####).
+     * Includes a description snippet from the paragraph text following each heading.
      *
      * @param string $content HTML or markdown content
-     * @return array Array of ['text' => string, 'id' => string, 'level' => int]
+     * @return array Array of ['text' => string, 'id' => string, 'level' => int, 'description' => string]
      */
     protected function extractHeadings(string $content): array
     {
@@ -174,18 +175,20 @@ abstract class BaseTransformer extends Component implements TransformerInterface
 
         // Detect if content is HTML or markdown
         if (preg_match('/<[^>]+>/', $content)) {
-            // HTML: extract <h2>, <h3>, <h4> tags
+            // HTML: extract <h2>, <h3>, <h4> tags with offsets for description extraction
             $pattern = '/<h([1-6])([^>]*)>(.*?)<\/h\1>/is';
-            if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER)) {
-                foreach ($matches as $match) {
-                    $level = (int) $match[1];
+            if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+                foreach ($matches as $i => $match) {
+                    $level = (int) $match[1][0];
                     if (!in_array($level, $allowedLevels, true)) {
                         continue;
                     }
-                    $text = strip_tags($match[3]);
+                    $text = strip_tags($match[3][0]);
+                    // Strip leading # from permalink anchors (e.g. <a>#</a>Heading)
+                    $text = ltrim($text, '#');
                     // Try to extract id attribute from tag attributes
                     $id = '';
-                    if (preg_match('/id="([^"]*)"/', $match[2], $idMatch)) {
+                    if (preg_match('/id="([^"]*)"/', $match[2][0], $idMatch)) {
                         $id = $idMatch[1];
                     }
                     if (empty($id)) {
@@ -193,10 +196,14 @@ abstract class BaseTransformer extends Component implements TransformerInterface
                     }
 
                     if (!empty(trim($text))) {
+                        $afterOffset = $match[0][1] + strlen($match[0][0]);
+                        $nextOffset = isset($matches[$i + 1]) ? $matches[$i + 1][0][1] : null;
+
                         $headings[] = [
                             'text' => trim($text),
                             'id' => $id,
                             'level' => $level,
+                            'description' => $this->extractDescriptionFromHtml($content, $afterOffset, $nextOffset),
                         ];
                     }
                 }
@@ -204,20 +211,24 @@ abstract class BaseTransformer extends Component implements TransformerInterface
         } else {
             // Markdown: extract # through ###### lines, then filter by allowed levels
             $pattern = '/^(#{1,6})\s+(.+)$/m';
-            if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER)) {
-                foreach ($matches as $match) {
-                    $level = strlen($match[1]);
+            if (preg_match_all($pattern, $content, $matches, PREG_SET_ORDER | PREG_OFFSET_CAPTURE)) {
+                foreach ($matches as $i => $match) {
+                    $level = strlen($match[1][0]);
                     if (!in_array($level, $allowedLevels, true)) {
                         continue;
                     }
-                    $text = trim($match[2]);
+                    $text = trim($match[2][0]);
                     $id = $this->generateHeadingId($text);
 
                     if (!empty($text)) {
+                        $afterOffset = $match[0][1] + strlen($match[0][0]);
+                        $nextOffset = isset($matches[$i + 1]) ? $matches[$i + 1][0][1] : null;
+
                         $headings[] = [
                             'text' => $text,
                             'id' => $id,
                             'level' => $level,
+                            'description' => $this->extractDescriptionFromMarkdown($content, $afterOffset, $nextOffset),
                         ];
                     }
                 }
@@ -236,6 +247,78 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     protected function generateHeadingId(string $text): string
     {
         return \craft\helpers\StringHelper::toKebabCase($text);
+    }
+
+    /**
+     * Extract a description snippet from HTML content after a heading
+     *
+     * Looks for the first <p> tag between the heading and the next heading,
+     * strips HTML, and truncates to a readable snippet.
+     */
+    private function extractDescriptionFromHtml(string $content, int $afterOffset, ?int $nextOffset): string
+    {
+        $endOffset = $nextOffset ?? strlen($content);
+        $between = substr($content, $afterOffset, $endOffset - $afterOffset);
+
+        // Try to get first paragraph
+        $description = '';
+        if (preg_match('/<p[^>]*>(.*?)<\/p>/is', $between, $pMatch)) {
+            $description = trim(strip_tags($pMatch[1]));
+        }
+
+        // Fall back to stripping all HTML and taking text
+        if (empty($description)) {
+            $description = trim(strip_tags($between));
+        }
+
+        return $this->cleanDescription($description);
+    }
+
+    /**
+     * Extract a description snippet from markdown content after a heading
+     *
+     * Takes the first non-empty paragraph lines between headings,
+     * strips markdown syntax, and truncates.
+     */
+    private function extractDescriptionFromMarkdown(string $content, int $afterOffset, ?int $nextOffset): string
+    {
+        $endOffset = $nextOffset ?? strlen($content);
+        $between = substr($content, $afterOffset, $endOffset - $afterOffset);
+
+        // Remove code blocks
+        $between = (string) preg_replace('/```[\s\S]*?```/', '', $between);
+
+        // Remove markdown links but keep text
+        $between = (string) preg_replace('/\[([^\]]+)\]\([^)]+\)/', '$1', $between);
+
+        // Remove emphasis markers
+        $between = (string) preg_replace('/[*_]{1,2}([^*_]+)[*_]{1,2}/', '$1', $between);
+
+        // Remove inline code backticks
+        $between = (string) preg_replace('/`([^`]+)`/', '$1', $between);
+
+        // Remove list markers
+        $between = (string) preg_replace('/^\s*[-*+]\s+/m', '', $between);
+        $between = (string) preg_replace('/^\s*\d+\.\s+/m', '', $between);
+
+        // Take first non-empty lines as the description
+        $lines = array_filter(array_map('trim', explode("\n", $between)));
+        $description = implode(' ', array_slice($lines, 0, 2));
+
+        return $this->cleanDescription($description);
+    }
+
+    /**
+     * Clean whitespace from a description string
+     *
+     * No truncation — visual line clamping (resultDescLines) handles display length,
+     * consistent with how parent result descriptions work.
+     */
+    private function cleanDescription(string $description): string
+    {
+        $description = (string) preg_replace('/\s+/', ' ', trim($description));
+
+        return $description;
     }
 
     // =========================================================================

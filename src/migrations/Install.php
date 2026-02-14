@@ -580,7 +580,7 @@ class Install extends Migration
                 'title' => $this->string(500)->notNull(),
                 'elementType' => $this->string(50)->notNull()->comment('product, category, etc.'),
                 'searchText' => $this->string(500)->notNull()->comment('Normalized lowercase for prefix matching'),
-                'documentData' => $this->text()->null()->comment('JSON transformer output for rich results'),
+                'documentData' => $this->mediumText()->null()->comment('JSON transformer output for rich results'),
             ]);
 
             $this->addPrimaryKey(null, '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementId']);
@@ -608,6 +608,7 @@ class Install extends Migration
             'query' => $this->string(500)->notNull()->comment('Query pattern to match'),
             'matchType' => $this->enum('matchType', ['exact', 'contains', 'prefix'])->notNull()->defaultValue('exact'),
             'elementId' => $this->integer()->notNull(),
+            'elementType' => $this->string(255)->null()->comment('Element class, e.g. craft\\elements\\Entry'),
             'position' => $this->integer()->notNull()->defaultValue(1)->comment('1 = first position'),
             'siteId' => $this->integer()->null(),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),

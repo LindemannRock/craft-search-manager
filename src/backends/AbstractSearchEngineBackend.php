@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use Craft;
+use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\StopWords;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
@@ -540,7 +541,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     protected function buildDocumentData(string $indexName, array $data): ?string
     {
         $storable = $data;
-        unset($storable['content'], $storable['body'], $storable['excerpt']);
 
         $json = json_encode($storable, JSON_UNESCAPED_UNICODE);
         if ($json === false) {
@@ -647,6 +647,11 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $hitCount = count($hits);
         $limit = $maxHits > 0 ? min($maxHits, $hitCount) : $hitCount;
 
+        // Detect phrase queries — extract phrases for highlight context
+        $parsedQuery = QueryParser::hasAdvancedOperators($query) ? QueryParser::parse($query) : null;
+        $phrases = $parsedQuery !== null ? $parsedQuery->phrases : [];
+        $isPhraseOnly = !empty($phrases) && empty($parsedQuery->terms) && empty($parsedQuery->wildcards);
+
         for ($i = 0; $i < $limit; $i++) {
             $hit = &$hits[$i];
             $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
@@ -661,7 +666,17 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             if (!isset($siteCache[$hitSiteId])) {
                 $language = $this->getSearchLanguageForSite($indexName, $hitSiteId);
 
-                $queryTerms = $tokenizer->tokenize($query);
+                // For parsed queries with phrases, only tokenize the non-phrase terms
+                // so phrase words don't leak into individual matchedTerms
+                if ($parsedQuery !== null && !empty($phrases)) {
+                    $nonPhraseTerms = array_merge($parsedQuery->terms, $parsedQuery->wildcards);
+                    $queryTerms = [];
+                    foreach ($nonPhraseTerms as $term) {
+                        $queryTerms = array_merge($queryTerms, $tokenizer->tokenize($term));
+                    }
+                } else {
+                    $queryTerms = $tokenizer->tokenize($query);
+                }
                 if (($settings->enableStopWords ?? true) && !$disableStopWords) {
                     $stopWords = new StopWords($language);
                     $queryTerms = $stopWords->filter($queryTerms);
@@ -691,7 +706,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             }
 
             $actualTerms = $siteCache[$hitSiteId]['actualTerms'] ?? [];
-            if (empty($actualTerms)) {
+            if (empty($actualTerms) && empty($phrases)) {
+                unset($hit);
                 continue;
             }
 
@@ -724,9 +740,20 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
             if (!empty($matchedIn)) {
                 $hit['matchedIn'] = array_unique($matchedIn);
-                $hit['matchedTerms'] = [
+                // For phrase-only queries, don't send individual terms — frontend uses matchedPhrases
+                $hit['matchedTerms'] = $isPhraseOnly ? [
+                    'title' => [],
+                    'content' => [],
+                ] : [
                     'title' => $titleMatches,
                     'content' => $contentMatches,
+                ];
+            } elseif ($isPhraseOnly) {
+                // Phrase-only queries have no individual terms but the phrase matched in content
+                $hit['matchedIn'] = ['content'];
+                $hit['matchedTerms'] = [
+                    'title' => [],
+                    'content' => [],
                 ];
             } else {
                 // Fallback: keep actual terms so frontend can still highlight
@@ -734,6 +761,11 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                     'title' => [],
                     'content' => $actualTerms,
                 ];
+            }
+
+            // Add phrases for contiguous phrase highlighting
+            if (!empty($phrases)) {
+                $hit['matchedPhrases'] = $phrases;
             }
             unset($hit);
         }

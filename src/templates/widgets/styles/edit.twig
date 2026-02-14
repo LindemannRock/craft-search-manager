@@ -47,25 +47,19 @@
 	{% endif %}
 {% endblock %}
 
-{% block content %}
-	<input type="hidden" name="action" value="search-manager/widgets/save-style">
-	<input type="hidden" name="redirect" value="{{ 'search-manager/widgets/styles'|hash }}">
-	{% if not isNew %}
-		<input type="hidden" name="styleId" value="{{ widgetStyle.id }}">
-	{% endif %}
-	{{ csrfInput() }}
-
-	{# Error Summary #}
-	{% if widgetStyle.hasErrors() %}
-		{% set errorList = [] %}
-		{% for attribute, errors in widgetStyle.getErrors() %}
-			{% for error in errors %}
-				{% set errorList = errorList|merge([{
-					attribute: attribute,
-					message: error
-				}]) %}
-			{% endfor %}
+{# Display validation errors summary before content #}
+{% if widgetStyle.hasErrors() %}
+	{% set errorList = [] %}
+	{% for attribute, errors in widgetStyle.getErrors() %}
+		{% for error in errors %}
+			{% set errorList = errorList|merge([{
+				attribute: attribute,
+				message: error
+			}]) %}
 		{% endfor %}
+	{% endfor %}
+
+	{% set errorSummary %}
 		<div class="error-summary" tabindex="-1">
 			<div>
 				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
@@ -79,7 +73,16 @@
 				{% endfor %}
 			</ul>
 		</div>
+	{% endset %}
+{% endif %}
+
+{% block content %}
+	<input type="hidden" name="action" value="search-manager/widgets/save-style">
+	<input type="hidden" name="redirect" value="{{ 'search-manager/widgets/styles'|hash }}">
+	{% if not isNew %}
+		<input type="hidden" name="styleId" value="{{ widgetStyle.id }}">
 	{% endif %}
+	{{ csrfInput() }}
 
 	{# Settings Tab #}
 	<div id="settings">

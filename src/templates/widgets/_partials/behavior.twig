@@ -131,12 +131,17 @@
 }) }}
 
 <div id="result-layout-hierarchical"{% if widgetConfig.getResultLayout() != 'hierarchical' %} class="hidden"{% endif %}>
-	{{ forms.lightswitchField({
-		label: 'Show Matched Headings'|t('search-manager'),
-		instructions: 'Display matched heading children under each result'|t('search-manager'),
-		id: 'behavior-showMatchedHeadings',
-		name: 'settings[behavior][showMatchedHeadings]',
-		on: widgetConfig.isShowMatchedHeadingsEnabled(),
+	{{ forms.selectField({
+		label: 'Hierarchy Display'|t('search-manager'),
+		instructions: 'Individual shows each result as its own card. Unified wraps each page and its headings in a single card (Starlight-style).'|t('search-manager'),
+		id: 'behavior-hierarchyDisplay',
+		name: 'settings[behavior][hierarchyDisplay]',
+		value: widgetConfig.getHierarchyDisplay(),
+		options: [
+			{value: 'individual', label: 'Individual'|t('search-manager')},
+			{value: 'unified', label: 'Unified'|t('search-manager')},
+		],
+		errors: widgetConfig.getErrors('settings.behavior.hierarchyDisplay')
 	}) }}
 
 	{{ forms.textField({

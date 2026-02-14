@@ -62,6 +62,35 @@
 	{% endif %}
 {% endblock %}
 
+{# Display validation errors summary before content #}
+{% if promotion.hasErrors() %}
+	{% set errorList = [] %}
+	{% for attribute, errors in promotion.getErrors() %}
+		{% for error in errors %}
+			{% set errorList = errorList|merge([{
+				attribute: attribute,
+				message: error
+			}]) %}
+		{% endfor %}
+	{% endfor %}
+
+	{% set errorSummary %}
+		<div class="error-summary" tabindex="-1">
+			<div>
+				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
+				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
+			</div>
+			<ul class="errors">
+				{% for error in errorList %}
+					<li>
+						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endset %}
+{% endif %}
+
 {% block content %}
 	<input type="hidden" name="action" value="search-manager/promotions/save">
 	<input type="hidden" name="redirect" value="{{ 'search-manager/promotions'|hash }}">
@@ -79,6 +108,7 @@
 			name: 'title',
 			value: promotion.title,
 			placeholder: 'e.g., Holiday Sale Banner'|t('search-manager'),
+			required: true,
 			errors: promotion.getErrors('title'),
 		}) }}
 
@@ -89,17 +119,14 @@
 			name: 'indexHandle',
 			options: indexOptions,
 			value: promotion.indexHandle,
-			required: true,
 			errors: promotion.getErrors('indexHandle'),
 		}) }}
 
 		<hr>
 
-		<div class="field">
+		<div class="field{% if promotion.getErrors('matchType') %} has-errors{% endif %}">
 			<div class="heading">
-				<label for="matchType">{{ 'Match Type'|t('search-manager') }}
-					<span class="required" aria-label="Required"></span>
-				</label>
+				<label for="matchType">{{ 'Match Type'|t('search-manager') }}</label>
 				<div class="instructions">
 					<p id="matchTypeInstructions">
 						{% if promotion.matchType == 'contains' %}
@@ -114,16 +141,23 @@
 			</div>
 			<div class="input">
 				<div class="select">
-					<select id="matchType" name="matchType" required>
+					<select id="matchType" name="matchType">
 						<option value="exact" {% if promotion.matchType == 'exact' %} selected {% endif %}>{{ 'Exact Match'|t('search-manager') }}</option>
 						<option value="contains" {% if promotion.matchType == 'contains' %} selected {% endif %}>{{ 'Contains'|t('search-manager') }}</option>
 						<option value="prefix" {% if promotion.matchType == 'prefix' %} selected {% endif %}>{{ 'Starts With'|t('search-manager') }}</option>
 					</select>
 				</div>
 			</div>
+			{% if promotion.getErrors('matchType') %}
+				<ul class="errors">
+					{% for error in promotion.getErrors('matchType') %}
+						<li>{{ error }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
 		</div>
 
-		<div class="field" id="query-field">
+		<div class="field{% if promotion.getErrors('query') %} has-errors{% endif %}" id="query-field">
 			<div class="heading">
 				<label for="query">{{ 'Query Pattern'|t('search-manager') }}
 					<span class="required" aria-label="Required"></span>

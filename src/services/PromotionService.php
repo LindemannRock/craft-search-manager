@@ -114,22 +114,16 @@ class PromotionService extends Component
     // =========================================================================
 
     /**
-     * Get promoted element IDs for a search query
-     * Returns array of [elementId => position]
+     * Get matching promotions for a search query
+     * Returns full Promotion objects sorted by position
      *
+     * @return Promotion[]
      * @since 5.10.0
      */
     public function getPromotedElements(string $query, string $indexHandle, ?int $siteId = null): array
     {
-        // findMatching already filters by element enabled status for the site
-        $promotions = Promotion::findMatching($query, $indexHandle, $siteId);
-        $promoted = [];
-
-        foreach ($promotions as $promotion) {
-            $promoted[$promotion->elementId] = $promotion->position;
-        }
-
-        return $promoted;
+        // findMatching already filters by element live status and sorts by position
+        return Promotion::findMatching($query, $indexHandle, $siteId);
     }
 
     /**
@@ -145,19 +139,21 @@ class PromotionService extends Component
      */
     public function applyPromotions(array $results, string $query, string $indexHandle, ?int $siteId = null): array
     {
-        $promoted = $this->getPromotedElements($query, $indexHandle, $siteId);
+        $promotions = $this->getPromotedElements($query, $indexHandle, $siteId);
 
-        if (empty($promoted)) {
+        if (empty($promotions)) {
             return $results;
         }
 
         $this->logDebug('Applying promotions', [
             'query' => $query,
-            'promotedCount' => count($promoted),
+            'promotedCount' => count($promotions),
         ]);
 
+        // Collect promoted element IDs for filtering
+        $promotedIds = array_map(fn(Promotion $p) => $p->elementId, $promotions);
+
         // Remove promoted elements from their current positions (if they exist in results)
-        $promotedIds = array_keys($promoted);
         $filteredResults = [];
         foreach ($results as $result) {
             $elementId = is_array($result) ? ($result['objectID'] ?? $result['elementId'] ?? null) : $result;
@@ -166,45 +162,50 @@ class PromotionService extends Component
             }
         }
 
-        // Batch query: get all promoted elements in one query
+        // Batch-fetch promoted elements grouped by type
+        $resultsAreArrays = !empty($results) && is_array($results[0]);
         $elements = [];
-        if (!empty($results) && is_array($results[0])) {
-            $elements = \craft\elements\Entry::find()
-                ->id($promotedIds)
-                ->siteId($siteId)
-                ->status(null)
-                ->indexBy('id')
-                ->all();
-        }
-
-        // Sort promoted elements by position
-        asort($promoted);
-
-        // Insert promoted elements at their positions
-        $finalResults = $filteredResults;
-        foreach ($promoted as $elementId => $position) {
-            // Convert to 0-indexed position
-            $insertPos = max(0, $position - 1);
-
-            // Create result item matching the format of existing results
-            if (!empty($results) && is_array($results[0])) {
-                // Results are arrays - build full promoted item with element data
-                $element = $elements[$elementId] ?? null;
-                $promotedItem = [
-                    'objectID' => $elementId,
-                    'id' => $elementId,
-                    'promoted' => true,
-                    'position' => $position,
-                    'score' => null, // Promoted items bypass scoring
-                    'type' => $element ? $element->section->handle ?? null : null,
-                    'title' => $element ? $element->title : null,
-                ];
-            } else {
-                // Results are just element IDs
-                $promotedItem = $elementId;
+        if ($resultsAreArrays) {
+            $byType = [];
+            foreach ($promotions as $promotion) {
+                $type = $promotion->elementType ?? \craft\elements\Entry::class;
+                $byType[$type][] = $promotion->elementId;
             }
 
-            // Insert at position
+            foreach ($byType as $elementClass => $ids) {
+                if (!is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
+                    continue;
+                }
+                $found = $elementClass::find()
+                    ->id($ids)
+                    ->siteId($siteId)
+                    ->status(null)
+                    ->indexBy('id')
+                    ->all();
+                $elements += $found;
+            }
+        }
+
+        // Insert promoted elements at their positions (already sorted by position from findMatching)
+        $finalResults = $filteredResults;
+        foreach ($promotions as $promotion) {
+            $insertPos = max(0, $promotion->position - 1);
+
+            if ($resultsAreArrays) {
+                $element = $elements[$promotion->elementId] ?? null;
+                $promotedItem = [
+                    'objectID' => $promotion->elementId,
+                    'id' => $promotion->elementId,
+                    'promoted' => true,
+                    'position' => $promotion->position,
+                    'score' => null,
+                    'type' => $this->resolveElementType($element),
+                    'title' => $element?->title,
+                ];
+            } else {
+                $promotedItem = $promotion->elementId;
+            }
+
             array_splice($finalResults, $insertPos, 0, [$promotedItem]);
         }
 
@@ -258,5 +259,34 @@ class PromotionService extends Component
         }
 
         return $options;
+    }
+
+    // =========================================================================
+    // PRIVATE HELPERS
+    // =========================================================================
+
+    /**
+     * Resolve a human-readable type string for a promoted element
+     */
+    private function resolveElementType(?\craft\base\ElementInterface $element): ?string
+    {
+        if (!$element) {
+            return null;
+        }
+
+        if ($element instanceof \craft\elements\Entry) {
+            return $element->getSection()?->handle;
+        }
+
+        if ($element instanceof \craft\elements\Category) {
+            return $element->getGroup()->handle;
+        }
+
+        if ($element instanceof \craft\elements\Asset) {
+            return $element->getVolume()->handle;
+        }
+
+        // Fallback: use the element's display name (e.g., "User")
+        return $element::displayName();
     }
 }

@@ -33,6 +33,7 @@ use lindemannrock\searchmanager\services\AnalyticsService;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\DeviceDetectionService;
+use lindemannrock\searchmanager\services\EnrichmentService;
 use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
@@ -57,6 +58,7 @@ use yii\base\Event;
  * @property-read AnalyticsService $analytics
  * @property-read AutocompleteService $autocomplete
  * @property-read DeviceDetectionService $deviceDetection
+ * @property-read EnrichmentService $enrichment
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
  * @property-read WidgetConfigService $widgetConfigs
@@ -212,6 +214,7 @@ class SearchManager extends Plugin
             'autocomplete' => AutocompleteService::class,
             'backend' => BackendService::class,
             'deviceDetection' => DeviceDetectionService::class,
+            'enrichment' => EnrichmentService::class,
             'indexing' => IndexingService::class,
             'promotions' => PromotionService::class,
             'queryRules' => QueryRuleService::class,

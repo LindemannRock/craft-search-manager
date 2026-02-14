@@ -37,6 +37,26 @@ class AnalyticsController extends Controller
     }
 
     /**
+     * Validate a site ID against the current user's editable sites and resolve
+     * to either the specific site or all editable sites.
+     *
+     * @param int|string|null $rawSiteId Raw site ID from request parameter
+     * @return int|array<int> Validated site ID or array of all editable site IDs
+     * @throws \yii\web\ForbiddenHttpException If site ID is not in the user's editable sites
+     */
+    private function resolveEffectiveSiteId(int|string|null $rawSiteId): int|array
+    {
+        $siteId = $rawSiteId ? (int)$rawSiteId : null;
+        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
+
+        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
+            throw new \yii\web\ForbiddenHttpException('You do not have permission to access analytics for this site.');
+        }
+
+        return $siteId ?? $editableSiteIds;
+    }
+
+    /**
      * Analytics index - Charts and analytics
      *
      * @since 5.0.0
@@ -46,19 +66,11 @@ class AnalyticsController extends Controller
     {
         $this->requirePermission('searchManager:viewAnalytics');
 
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
         $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
-        $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-
-        // Validate siteId against user's editable sites
-        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to view analytics for this site.');
-        }
+        $siteId = $siteId ? (int)$siteId : null;
+        $effectiveSiteId = $this->resolveEffectiveSiteId($siteId);
 
         $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
-
-        // Default to editable sites when no specific site selected
-        $effectiveSiteId = $siteId ?? $editableSiteIds;
 
         // Get chart data
         $chartData = SearchManager::$plugin->analytics->getChartData($effectiveSiteId, $dateRange);
@@ -149,16 +161,7 @@ class AnalyticsController extends Controller
         $this->requirePostRequest();
         $this->requirePermission('searchManager:clearAnalytics');
 
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        $siteId = Craft::$app->getRequest()->getBodyParam('siteId');
-        $siteId = $siteId ? (int)$siteId : null;
-
-        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to clear analytics for this site.');
-        }
-
-        // Scope to editable sites when no specific site selected
-        $effectiveSiteId = $siteId ?? $editableSiteIds;
+        $effectiveSiteId = $this->resolveEffectiveSiteId(Craft::$app->getRequest()->getBodyParam('siteId'));
         $deleted = SearchManager::$plugin->analytics->clearAnalytics($effectiveSiteId);
 
         Craft::$app->getSession()->setNotice(
@@ -192,15 +195,7 @@ class AnalyticsController extends Controller
         }
         $siteId = $request->getQueryParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
-
-        // Validate siteId against user's editable sites
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to export analytics for this site.');
-        }
-
-        // Scope to editable sites when no specific site selected
-        $effectiveSiteId = $siteId ?? $editableSiteIds;
+        $effectiveSiteId = $this->resolveEffectiveSiteId($siteId);
 
         try {
             $settings = SearchManager::$plugin->getSettings();
@@ -510,20 +505,22 @@ class AnalyticsController extends Controller
         $this->requirePermission('searchManager:viewAnalytics');
 
         $request = Craft::$app->getRequest();
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        $siteId = $request->getParam('siteId');
-        $siteId = $siteId ? (int)$siteId : null; // Convert empty string to null
-
-        // Validate siteId against user's editable sites
-        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to view analytics for this site.');
-        }
+        $effectiveSiteId = $this->resolveEffectiveSiteId($request->getParam('siteId'));
 
         $dateRange = $request->getParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
-        $type = $request->getParam('type', 'all'); // 'all', 'summary', 'chart', 'query-analysis', 'content-gaps', 'device-stats'
+        $type = $request->getParam('type', 'all');
 
-        // Default to editable sites when no specific site selected
-        $effectiveSiteId = $siteId ?? $editableSiteIds;
+        $validTypes = [
+            'all', 'summary', 'chart', 'query-analysis', 'content-gaps',
+            'device-stats', 'devices', 'browsers', 'os', 'bots',
+            'countries', 'cities', 'hourly', 'trending', 'intent',
+            'source', 'performance', 'cache-stats', 'top-queries', 'worst-queries',
+            'query-rules-top', 'query-rules-by-type', 'query-rules-queries',
+            'promotions-top', 'promotions-by-position', 'promotions-queries',
+        ];
+        if (!in_array($type, $validTypes, true)) {
+            throw new \yii\web\BadRequestHttpException('Invalid data type.');
+        }
 
         try {
             $data = [];
@@ -821,15 +818,7 @@ class AnalyticsController extends Controller
     {
         $this->requirePermission('searchManager:viewAnalytics');
 
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        $siteId = Craft::$app->getRequest()->getQueryParam('siteId');
-        $siteId = $siteId ? (int)$siteId : null;
-
-        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to view analytics for this site.');
-        }
-
-        $effectiveSiteId = $siteId ?? $editableSiteIds;
+        $effectiveSiteId = $this->resolveEffectiveSiteId(Craft::$app->getRequest()->getQueryParam('siteId'));
         $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
         $chartData = SearchManager::$plugin->analytics->getChartData($effectiveSiteId, $dateRange);
@@ -1101,14 +1090,7 @@ class AnalyticsController extends Controller
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
         }
 
-        // Validate siteId against user's editable sites
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to export analytics for this site.');
-        }
-
-        // Scope to editable sites when no specific site selected
-        $effectiveSiteId = $siteId ?? $editableSiteIds;
+        $effectiveSiteId = $this->resolveEffectiveSiteId($siteId);
 
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();
@@ -1260,14 +1242,7 @@ class AnalyticsController extends Controller
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
         }
 
-        // Validate siteId against user's editable sites
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to export analytics for this site.');
-        }
-
-        // Scope to editable sites when no specific site selected
-        $effectiveSiteId = $siteId ?? $editableSiteIds;
+        $effectiveSiteId = $this->resolveEffectiveSiteId($siteId);
 
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
         $settings = SearchManager::$plugin->getSettings();

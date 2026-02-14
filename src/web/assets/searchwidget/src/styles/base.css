@@ -30,11 +30,18 @@
 
     /* Borders and backgrounds - map from config variable names */
     --sm-border-color: var(--sm-input-border-color, #e5e7eb);
-    --sm-hover-bg: var(--sm-result-hover-bg, #f3f4f6);
-    --sm-hover-border: var(--sm-result-hover-border-color, var(--sm-result-border-color, #e5e7eb));
     --sm-selected-bg: var(--sm-result-active-bg, #e5e7eb);
     --sm-selected-border: var(--sm-result-active-border-color, #3b82f6);
     --sm-result-radius: 8px;
+
+    /* Computed shadow borders — box-shadow: inset used everywhere for consistent borders.
+       Unified card, default items, and active states all use the same technique. */
+    --_border-shadow: inset 0 0 0 var(--sm-result-border-width, 1px) var(--sm-result-border-color, #e5e7eb);
+    --_active-shadow: inset 0 0 0 var(--sm-result-border-width, 1px) var(--sm-selected-border);
+
+    /* Promoted badge */
+    --sm-promoted-bg: #2563eb;
+    --sm-promoted-color: #ffffff;
 
     /* Highlighting */
     --sm-highlight-bg: #fef08a;
@@ -76,10 +83,11 @@
     --sm-border-color: var(--sm-input-border-color-dark, #374151);
     --sm-result-bg: var(--sm-result-bg-dark, transparent);
     --sm-result-border-color: var(--sm-result-border-color-dark, #374151);
-    --sm-hover-bg: var(--sm-result-hover-bg-dark, #374151);
-    --sm-hover-border: var(--sm-result-hover-border-color-dark, var(--sm-result-border-color-dark, #374151));
     --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
     --sm-selected-border: var(--sm-result-active-border-color-dark, #3b82f6);
+
+    --sm-promoted-bg: var(--sm-promoted-bg-dark, #3b82f6);
+    --sm-promoted-color: var(--sm-promoted-color-dark, #ffffff);
 
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);
     --sm-highlight-color: var(--sm-highlight-color-dark, #fef08a);
@@ -164,14 +172,9 @@
    ========================================================================= */
 
 .sm-section {
-    margin-bottom: 0;
     display: flex;
     flex-direction: column;
     gap: var(--sm-result-gap, 0px);
-}
-
-.sm-section:last-child {
-    margin-bottom: 0;
 }
 
 .sm-section-header {
@@ -199,7 +202,7 @@
 }
 
 .sm-clear-recent:hover {
-    background: var(--sm-hover-bg);
+    background: var(--sm-selected-bg);
     color: var(--sm-text-secondary);
 }
 
@@ -214,49 +217,35 @@
     padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
     border-radius: var(--sm-result-radius);
     background: var(--sm-result-bg, transparent);
-    border: var(--sm-result-border-width, 1px) solid var(--sm-result-border-color, #e5e7eb);
+    border: none;
+    box-shadow: var(--_border-shadow);
     color: var(--sm-text-primary);
     text-decoration: none;
     cursor: pointer;
     transition: background 0.1s ease;
-    margin-bottom: 0;
 }
 
+/* Hover and selected share the same visual — mouseenter always sets .sm-selected,
+   so separate hover colors would never be visible. Use one set of active colors.
+   box-shadow color changes from --_border-shadow (gray) to --_active-shadow (blue). */
 .sm-result-item:hover,
 .sm-result-item.sm-selected {
-    background: var(--sm-hover-bg);
-    border-color: var(--sm-hover-border);
-}
-
-.sm-result-item.sm-selected {
     background: var(--sm-selected-bg);
-    outline: 2px solid var(--sm-selected-border);
-    outline-offset: -2px;
-    border-color: var(--sm-selected-border);
+    box-shadow: var(--_active-shadow);
 }
 
-
-.sm-result-item:hover .sm-result-title {
-    color: var(--sm-result-hover-text-color, var(--sm-text-primary));
-}
-
-.sm-result-item:hover .sm-result-desc {
-    color: var(--sm-result-hover-desc-color, var(--sm-text-secondary));
-}
-
-.sm-result-item:hover .sm-result-icon,
-.sm-result-item:hover .sm-result-arrow {
-    color: var(--sm-result-hover-muted-color, var(--sm-text-muted));
-}
-
+.sm-result-item:hover .sm-result-title,
 .sm-result-item.sm-selected .sm-result-title {
     color: var(--sm-result-active-text-color, var(--sm-text-primary));
 }
 
+.sm-result-item:hover .sm-result-desc,
 .sm-result-item.sm-selected .sm-result-desc {
     color: var(--sm-result-active-desc-color, var(--sm-text-secondary));
 }
 
+.sm-result-item:hover .sm-result-icon,
+.sm-result-item:hover .sm-result-arrow,
 .sm-result-item.sm-selected .sm-result-icon,
 .sm-result-item.sm-selected .sm-result-arrow {
     color: var(--sm-result-active-muted-color, var(--sm-text-muted));
@@ -325,12 +314,10 @@
 
 /* Group wrapper */
 .sm-hierarchy-group {
-    margin-bottom: 4px;
     position: relative;
-}
-
-.sm-hierarchy-group:last-child {
-    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sm-result-gap, 0px);
 }
 
 /* Group header */
@@ -346,7 +333,7 @@
 /* Parent result (page-level) */
 .sm-hierarchy-parent {
     position: relative;
-    gap: 10px;
+    gap: 10px; /* Fixed — icon-to-text gap, independent of --sm-result-gap */
     padding: var(--sm-result-py, 12px) var(--sm-result-px, 12px);
 }
 
@@ -364,7 +351,7 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 10px; /* Fixed — icon-to-text gap, independent of --sm-result-gap */
     padding-inline-start: var(--_indent);
 }
 
@@ -407,16 +394,8 @@
 
 .sm-hierarchy-child {
     flex: 1;
-    margin-bottom: 0;
     font-weight: 400;
     margin-inline-start: 34px;
-}
-
-.sm-hierarchy-group {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: var(--sm-result-gap, 0px);
 }
 
 .sm-hierarchy-block {
@@ -434,10 +413,139 @@
     margin-bottom: var(--sm-result-gap, 0px);
 }
 
+/* Ancestor depth guide lines - vertical continuation through deeper children */
+.sm-hierarchy-guide {
+    position: absolute;
+    top: calc(-1 * var(--sm-result-gap, 0px));
+    bottom: calc(-1 * var(--sm-result-gap, 0px));
+    inset-inline-start: calc(var(--sm-result-px, 12px) - 4px + var(--sm-guide-depth, 0) * var(--sm-hierarchy-indent, 40px) + 14px);
+    width: 0;
+    border-inline-start: 2px solid var(--sm-hierarchy-connector-color);
+    pointer-events: none;
+}
+
+/* No-connectors mode: hide all connector lines and guides */
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child-row::before,
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child-row::after,
+.sm-hierarchy-children--no-connectors .sm-hierarchy-guide {
+    display: none;
+}
+
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child-row {
+    padding-inline-start: 0;
+}
+
+.sm-hierarchy-children--no-connectors .sm-hierarchy-child {
+    margin-inline-start: 0;
+}
+
 .sm-hierarchy-child .sm-hierarchy-icon {
     margin-inline-start: 0;
 }
 
+/* =========================================================================
+   UNIFIED HIERARCHY DISPLAY (Starlight-style)
+   The outer block IS the card. Inner items are borderless rows with
+   border-top dividers. All children forced flat (depth 0). Hover covers
+   the full child-row (including connector gutter), not the inner item.
+   ========================================================================= */
+
+/* The block IS the card. Same box-shadow border technique as .sm-result-item.
+   Rows extend to the full card edge; the active row outline overlaps the
+   shadow border perfectly with no gap. */
+.sm-hierarchy-block--unified {
+    border-radius: var(--sm-result-radius);
+    background: var(--sm-result-bg, transparent);
+    border: none;
+    box-shadow: var(--_border-shadow);
+    overflow: hidden;
+}
+
+/* Strip card styling from all inner result items — they are rows now */
+.sm-hierarchy-block--unified .sm-result-item {
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+/* Suppress result-item active state in unified card —
+   hover/active is handled at parent row / child-row level instead.
+   Text color hover rules (.sm-result-item:hover .sm-result-title etc.)
+   still fire normally since they target child elements. */
+.sm-hierarchy-block--unified .sm-result-item:hover,
+.sm-hierarchy-block--unified .sm-result-item.sm-selected {
+    background: transparent;
+    box-shadow: none;
+}
+
+/* No gap between parent and children */
+.sm-hierarchy-block--unified .sm-hierarchy-parent--has-children {
+    margin-bottom: 0;
+}
+
+/* Children container: no gap, no background — use border-top dividers instead */
+.sm-hierarchy-block--unified .sm-hierarchy-children {
+    gap: 0;
+    background: transparent;
+}
+
+/* Force all children flat — override the computed --_indent directly.
+   This beats the inline style="--sm-hierarchy-depth:N" set by JS,
+   because --_indent is re-declared here and no longer reads --sm-hierarchy-depth. */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row {
+    --_indent: calc(var(--sm-result-px, 12px) - 4px);
+    cursor: pointer;
+    border-top: 1px solid var(--sm-result-border-color, #e5e7eb);
+}
+
+/* Hide depth guide lines (not needed in flat unified layout) */
+.sm-hierarchy-block--unified .sm-hierarchy-guide {
+    display: none;
+}
+
+/* Border-radius on first/last rows so outline follows the card's rounding */
+.sm-hierarchy-block--unified .sm-hierarchy-parent {
+    border-radius: var(--sm-result-radius) var(--sm-result-radius) 0 0;
+}
+.sm-hierarchy-block--unified:not(.sm-hierarchy-block--has-children) .sm-hierarchy-parent {
+    border-radius: var(--sm-result-radius);
+}
+.sm-hierarchy-block--unified .sm-hierarchy-child-row-last {
+    border-radius: 0 0 var(--sm-result-radius) var(--sm-result-radius);
+}
+
+/* Full-row active state on child rows (covers connector gutter + content).
+   No card border, so outline-offset: 0 sits flush at the card edge. */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row:hover,
+.sm-hierarchy-block--unified .sm-hierarchy-child-row:has(.sm-selected) {
+    background: var(--sm-selected-bg);
+    outline: var(--sm-result-border-width, 1px) solid var(--sm-selected-border);
+    outline-offset: calc(-1 * var(--sm-result-border-width, 1px));
+}
+
+/* Parent row — border-bottom acts as divider between parent and children */
+.sm-hierarchy-block--unified .sm-hierarchy-parent--has-children {
+    border-bottom: 1px solid var(--sm-result-border-color, #e5e7eb);
+}
+.sm-hierarchy-block--unified .sm-hierarchy-parent:hover,
+.sm-hierarchy-block--unified .sm-hierarchy-parent.sm-selected {
+    background: var(--sm-selected-bg);
+    outline: var(--sm-result-border-width, 1px) solid var(--sm-selected-border);
+    outline-offset: calc(-1 * var(--sm-result-border-width, 1px));
+}
+
+/* Connectors: no gap to bridge, so top/bottom stay at 0 */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row::before {
+    top: 0;
+    bottom: 0;
+}
+/* Last child: restore bottom: 50% so the curve aligns with the title center.
+   Must re-declare here because the general child-row rule above (0-2-0 specificity)
+   overrides the base .sm-hierarchy-child-row-last::before (0-1-0 specificity). */
+.sm-hierarchy-block--unified .sm-hierarchy-child-row-last::before {
+    top: 0;
+    bottom: 50%;
+}
 
 
 /* =========================================================================
@@ -451,10 +559,10 @@
 .sm-promoted-badge {
     position: absolute;
     padding: 2px 6px;
-    background: var(--sm-accent);
-    color: #ffffff;
-    font-size: 10px;
-    font-weight: 600;
+    background: var(--sm-promoted-bg);
+    color: var(--sm-promoted-color);
+    font-size: 11px;
+    font-weight: 700;
     border-radius: var(--sm-kbd-radius);
     text-transform: uppercase;
     letter-spacing: 0.02em;

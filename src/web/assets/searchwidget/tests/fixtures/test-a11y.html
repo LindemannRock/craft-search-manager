@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Widget A11y Test Fixture</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        .widget-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+        }
+        .widget-container h2 {
+            margin-top: 0;
+            font-size: 14px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>A11y Test Fixture</h1>
+
+    <!-- Widget: Light theme (default flat results) -->
+    <div class="widget-container" id="container-light">
+        <h2>Light Theme (Flat Results)</h2>
+        <search-modal
+            id="widget-light"
+            indices="test-index"
+            placeholder="Search..."
+            hotkey="k"
+            show-trigger="true"
+            theme="light"
+        ></search-modal>
+    </div>
+
+    <!-- Widget: Dark theme -->
+    <div class="widget-container" id="container-dark">
+        <h2>Dark Theme</h2>
+        <search-modal
+            id="widget-dark"
+            indices="test-index"
+            placeholder="Search dark..."
+            hotkey="j"
+            show-trigger="true"
+            theme="dark"
+        ></search-modal>
+    </div>
+
+    <!-- Widget: Grouped results -->
+    <div class="widget-container" id="container-grouped">
+        <h2>Grouped Results</h2>
+        <search-modal
+            id="widget-grouped"
+            indices="test-index"
+            placeholder="Search grouped..."
+            show-trigger="true"
+            theme="light"
+            group-results="true"
+        ></search-modal>
+    </div>
+
+    <!-- Widget: Hierarchical results -->
+    <div class="widget-container" id="container-hierarchical">
+        <h2>Hierarchical Results</h2>
+        <search-modal
+            id="widget-hierarchical"
+            indices="test-index"
+            placeholder="Search hierarchical..."
+            show-trigger="true"
+            theme="light"
+            result-layout="hierarchical"
+            show-matched-headings="true"
+        ></search-modal>
+    </div>
+
+    <script src="../../dist/SearchModalWidget.js"></script>
+
+    <script>
+    /**
+     * A11y Test Fixture - Direct DOM injection helpers
+     *
+     * Since the bundled widget encapsulates rendering logic,
+     * we inject pre-built HTML directly into the shadow DOM results
+     * container and update ARIA attributes manually.
+     */
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    /**
+     * Get the listbox ID for a widget (read from the results container)
+     */
+    function getListboxId(widget) {
+        const results = widget.shadowRoot.querySelector('.sm-results');
+        return results?.id || 'sm-listbox';
+    }
+
+    /**
+     * After injecting HTML, update ARIA state on the widget
+     */
+    function updateAriaState(widget, hasResults) {
+        const input = widget.shadowRoot.querySelector('.sm-input');
+        const results = widget.shadowRoot.querySelector('.sm-results');
+        if (!input || !results) return;
+
+        if (hasResults) {
+            results.setAttribute('role', 'listbox');
+            input.setAttribute('aria-expanded', 'true');
+
+            // Auto-select first option
+            const firstOption = results.querySelector('[role="option"]');
+            if (firstOption) {
+                firstOption.setAttribute('aria-selected', 'true');
+                input.setAttribute('aria-activedescendant', firstOption.id);
+            }
+        } else {
+            results.removeAttribute('role');
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+        }
+    }
+
+    /**
+     * Open a widget by ID
+     */
+    window.openWidget = function(widgetId) {
+        const widget = document.getElementById(widgetId);
+        if (widget && widget.open) {
+            widget.open();
+        }
+    };
+
+    /**
+     * Close a widget by ID
+     */
+    window.closeWidget = function(widgetId) {
+        const widget = document.getElementById(widgetId);
+        if (widget && widget.close) {
+            widget.close();
+        }
+    };
+
+    /**
+     * Inject flat results into widget shadow DOM
+     */
+    window.injectResults = function(widgetId, results, query) {
+        const widget = document.getElementById(widgetId);
+        if (!widget || !widget.shadowRoot) return;
+
+        const container = widget.shadowRoot.querySelector('.sm-results');
+        if (!container) return;
+
+        const listboxId = getListboxId(widget);
+        const isGrouped = widget.getAttribute('group-results') === 'true';
+        const isHierarchical = widget.getAttribute('result-layout') === 'hierarchical';
+
+        if (isHierarchical) {
+            container.innerHTML = buildHierarchicalHtml(results, query, listboxId);
+        } else if (isGrouped) {
+            container.innerHTML = buildGroupedHtml(results, query, listboxId);
+        } else {
+            container.innerHTML = buildFlatHtml(results, query, listboxId);
+        }
+
+        updateAriaState(widget, true);
+    };
+
+    /**
+     * Inject recent searches into widget
+     */
+    window.injectRecentSearches = function(widgetId) {
+        const widget = document.getElementById(widgetId);
+        if (!widget || !widget.shadowRoot) return;
+
+        const container = widget.shadowRoot.querySelector('.sm-results');
+        const listboxId = getListboxId(widget);
+        if (!container) return;
+
+        container.innerHTML = buildRecentSearchesHtml(MOCK_RECENT_SEARCHES, listboxId);
+        updateAriaState(widget, true);
+    };
+
+    /**
+     * Inject loading state
+     */
+    window.injectLoadingState = function(widgetId) {
+        const widget = document.getElementById(widgetId);
+        if (!widget || !widget.shadowRoot) return;
+
+        const container = widget.shadowRoot.querySelector('.sm-results');
+        if (!container) return;
+
+        container.innerHTML = `
+            <div class="sm-loading-state" part="loading-state">
+                <svg class="sm-spinner" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
+                </svg>
+                <p>Searching...</p>
+            </div>
+        `;
+        updateAriaState(widget, false);
+    };
+
+    /**
+     * Inject empty state (no results)
+     */
+    window.injectEmptyState = function(widgetId, query) {
+        const widget = document.getElementById(widgetId);
+        if (!widget || !widget.shadowRoot) return;
+
+        const container = widget.shadowRoot.querySelector('.sm-results');
+        if (!container) return;
+
+        const q = query || 'xyznonexistent';
+        container.innerHTML = `
+            <div class="sm-empty" part="empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="m15 9-6 6M9 9l6 6"/>
+                </svg>
+                <p>No results for "<strong>${escapeHtml(q)}</strong>"</p>
+            </div>
+        `;
+        updateAriaState(widget, false);
+    };
+
+    // =========================================================================
+    // HTML BUILDERS
+    // =========================================================================
+
+    function buildFlatHtml(results, query, listboxId) {
+        return results.map((r, i) => {
+            const optionId = listboxId + '-option-' + i;
+            const promotedClass = r.promoted ? ' sm-promoted' : '';
+            const badge = r.promoted
+                ? '<span class="sm-promoted-badge sm-promoted-badge--top-right">Featured</span>'
+                : '';
+            return `
+                <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(r.url || '#')}" data-index="${i}" data-id="${r.id || ''}" data-title="${escapeHtml(r.title)}">
+                    ${badge}
+                    <div class="sm-result-content">
+                        <span class="sm-result-title">${escapeHtml(r.title)}</span>
+                        ${r.description ? '<span class="sm-result-desc">' + escapeHtml(r.description) + '</span>' : ''}
+                    </div>
+                    <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </a>
+            `;
+        }).join('');
+    }
+
+    function buildGroupedHtml(results, query, listboxId) {
+        const groups = {};
+        results.forEach(r => {
+            const key = r.section || r.type || 'Other';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(r);
+        });
+
+        let globalIndex = 0;
+        return Object.entries(groups).map(([type, items]) => `
+            <div class="sm-section" role="group" aria-label="${escapeHtml(type)}">
+                <div class="sm-section-header">${escapeHtml(type)}</div>
+                ${items.map(r => {
+                    const optionId = listboxId + '-option-' + globalIndex;
+                    const promotedClass = r.promoted ? ' sm-promoted' : '';
+                    const badge = r.promoted
+                        ? '<span class="sm-promoted-badge sm-promoted-badge--top-right">Featured</span>'
+                        : '';
+                    const html = `
+                        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(r.url || '#')}" data-index="${globalIndex}" data-id="${r.id || ''}" data-title="${escapeHtml(r.title)}">
+                            ${badge}
+                            <div class="sm-result-content">
+                                <span class="sm-result-title">${escapeHtml(r.title)}</span>
+                                ${r.description ? '<span class="sm-result-desc">' + escapeHtml(r.description) + '</span>' : ''}
+                            </div>
+                            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
+                        </a>
+                    `;
+                    globalIndex++;
+                    return html;
+                }).join('')}
+            </div>
+        `).join('');
+    }
+
+    function buildHierarchicalHtml(results, query, listboxId) {
+        const groups = {};
+        results.forEach(r => {
+            const key = r.section || 'Other';
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(r);
+        });
+
+        let globalIndex = 0;
+        return Object.entries(groups).map(([groupName, items]) => {
+            const itemsHtml = items.map(r => {
+                const parentIndex = globalIndex++;
+                const parentId = listboxId + '-option-' + parentIndex;
+                const headings = r._matchedHeadings || [];
+                const hasChildren = headings.length > 0;
+
+                const parentHtml = `
+                    <a class="sm-result-item sm-hierarchy-parent${hasChildren ? ' sm-hierarchy-parent--has-children' : ''}" id="${parentId}" role="option" aria-selected="false" href="${escapeHtml(r.url || '#')}" data-index="${parentIndex}" data-id="${r.id || ''}" data-title="${escapeHtml(r.title)}">
+                        <svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                        <div class="sm-result-content">
+                            <span class="sm-result-title">${escapeHtml(r.title)}</span>
+                            ${r.description ? '<span class="sm-result-desc">' + escapeHtml(r.description) + '</span>' : ''}
+                        </div>
+                        <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </a>
+                `;
+
+                let childrenHtml = '';
+                if (hasChildren) {
+                    childrenHtml = '<div class="sm-hierarchy-children">' + headings.map((h, hi) => {
+                        const childIndex = globalIndex++;
+                        const childId = listboxId + '-option-' + childIndex;
+                        const anchorUrl = (r.url || '#') + '#' + (h.id || '');
+                        return `
+                            <div class="sm-hierarchy-child-row sm-hierarchy-level-${h.level || 2}">
+                                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${h.level || 2}" id="${childId}" role="option" aria-selected="false" href="${escapeHtml(anchorUrl)}" data-index="${childIndex}" data-id="${r.id || ''}" data-title="${escapeHtml(h.text)}">
+                                    <svg class="sm-hierarchy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <line x1="4" y1="9" x2="20" y2="9"/>
+                                        <line x1="4" y1="15" x2="20" y2="15"/>
+                                        <line x1="10" y1="3" x2="8" y2="21"/>
+                                        <line x1="16" y1="3" x2="14" y2="21"/>
+                                    </svg>
+                                    <span class="sm-result-title">${escapeHtml(h.text)}</span>
+                                    <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                                    </svg>
+                                </a>
+                            </div>
+                        `;
+                    }).join('') + '</div>';
+                }
+
+                return `
+                    <div class="sm-hierarchy-block${hasChildren ? ' sm-hierarchy-block--has-children' : ''}">
+                        ${parentHtml}
+                        ${childrenHtml}
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="sm-hierarchy-group" role="group" aria-label="${escapeHtml(groupName)}">
+                    <div class="sm-hierarchy-group-header">${escapeHtml(groupName)}</div>
+                    ${itemsHtml}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function buildRecentSearchesHtml(recentSearches, listboxId) {
+        return `
+            <div class="sm-section">
+                <div class="sm-section-header">
+                    <span id="${listboxId}-recent-label">Recent searches</span>
+                    <button class="sm-clear-recent" part="clear-recent">Clear</button>
+                </div>
+                ${recentSearches.map((item, i) => `
+                    <div class="sm-result-item sm-recent-item" id="${listboxId}-option-${i}" role="option" aria-selected="false" data-index="${i}" data-url="${item.url || ''}" data-query="${escapeHtml(item.query)}">
+                        <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span class="sm-result-title">${escapeHtml(item.title || item.query)}</span>
+                        <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M5 12h14M12 5l7 7-7 7"/>
+                        </svg>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    // =========================================================================
+    // MOCK DATA
+    // =========================================================================
+
+    const MOCK_FLAT_RESULTS = [
+        { id: 1, title: 'Getting Started Guide', description: 'Learn how to get started with Search Manager', url: '/docs/getting-started', section: 'Documentation', type: 'entry' },
+        { id: 2, title: 'Configuration Reference', description: 'All configuration options explained', url: '/docs/configuration', section: 'Documentation', type: 'entry' },
+        { id: 3, title: 'API Endpoints', description: 'REST API reference for search endpoints', url: '/docs/api', section: 'Developers', type: 'entry' },
+        { id: 4, title: 'Template Variables', description: 'Twig template functions and filters', url: '/docs/template-variables', section: 'Developers', type: 'entry' },
+        { id: 5, title: 'Promoted Result', description: 'This is a featured result', url: '/featured', section: 'Featured', type: 'entry', promoted: true },
+        { id: 6, title: 'Changelog', description: 'Version history and release notes', url: '/docs/changelog', section: 'Documentation', type: 'entry' },
+        { id: 7, title: 'Troubleshooting', description: 'Common issues and solutions', url: '/docs/troubleshooting', section: 'Support', type: 'entry' },
+        { id: 8, title: 'Another Promoted', description: 'Second featured result for testing', url: '/featured-2', section: 'Featured', type: 'entry', promoted: true },
+    ];
+
+    const MOCK_HIERARCHICAL_RESULTS = [
+        // Group: "Getting Started" — 5 parents, mixed children
+        {
+            id: 10, title: 'Installation Guide', description: 'How to install the plugin', url: '/docs/installation', section: 'Getting Started', type: 'entry',
+            _matchedHeadings: [
+                { text: 'Overview', id: 'overview', level: 1 },
+                { text: 'Requirements', id: 'requirements', level: 2 },
+                { text: 'PHP Version', id: 'php-version', level: 3 },
+                { text: 'Database Compatibility', id: 'database-compatibility', level: 3 },
+                { text: 'Minimum MySQL Version', id: 'minimum-mysql-version', level: 4 },
+                { text: 'PostgreSQL Notes', id: 'postgresql-notes', level: 5 },
+                { text: 'Legacy Driver Caveat', id: 'legacy-driver-caveat', level: 6 },
+                { text: 'Composer Install', id: 'composer-install', level: 2 },
+                { text: 'Global vs Local Install', id: 'global-vs-local-install', level: 3 },
+                { text: 'Private Repositories', id: 'private-repositories', level: 4 },
+                { text: 'Manual Install', id: 'manual-install', level: 2 },
+            ],
+        },
+        {
+            id: 11, title: 'Quick Start', description: 'Get up and running in 5 minutes', url: '/docs/quick-start', section: 'Getting Started', type: 'entry',
+            _matchedHeadings: [
+                { text: 'Create Your First Index', id: 'create-your-first-index', level: 2 },
+                { text: 'Add the Widget', id: 'add-the-widget', level: 2 },
+                { text: 'Inline Configuration', id: 'inline-configuration', level: 3 },
+                { text: 'Test Your Setup', id: 'test-your-setup', level: 2 },
+            ],
+        },
+        {
+            // Parent with NO children
+            id: 12, title: 'Licensing', description: 'Plugin editions and pricing', url: '/docs/licensing', section: 'Getting Started', type: 'entry',
+            _matchedHeadings: [],
+        },
+        {
+            id: 13, title: 'Upgrading', description: 'Migration from v4 to v5', url: '/docs/upgrading', section: 'Getting Started', type: 'entry',
+            _matchedHeadings: [
+                { text: 'Breaking Changes', id: 'breaking-changes', level: 2 },
+            ],
+        },
+        {
+            id: 14, title: 'Widget Configuration', description: 'Configure widget appearance and behavior', url: '/docs/widgets', section: 'Getting Started', type: 'entry',
+            _matchedHeadings: [
+                { text: 'Style Presets', id: 'style-presets', level: 2 },
+                { text: 'Custom Colors', id: 'custom-colors', level: 3 },
+                { text: 'CSS Custom Properties', id: 'css-custom-properties', level: 4 },
+                { text: 'Trigger Options', id: 'trigger-options', level: 2 },
+                { text: 'Keyboard Shortcuts', id: 'keyboard-shortcuts', level: 3 },
+            ],
+        },
+        // Group: "Configuration" — 3 parents
+        {
+            id: 20, title: 'Search Backends', description: 'MySQL, Redis, Meilisearch, Typesense', url: '/docs/backends', section: 'Configuration', type: 'entry',
+            _matchedHeadings: [
+                { text: 'MySQL Backend', id: 'mysql-backend', level: 2 },
+                { text: 'Full-Text Search', id: 'full-text-search', level: 3 },
+                { text: 'Boolean Mode', id: 'boolean-mode', level: 4 },
+                { text: 'Redis Backend', id: 'redis-backend', level: 2 },
+                { text: 'Connection Settings', id: 'connection-settings', level: 3 },
+                { text: 'Meilisearch', id: 'meilisearch', level: 2 },
+                { text: 'Typesense', id: 'typesense', level: 2 },
+            ],
+        },
+        {
+            id: 21, title: 'Index Settings', description: 'Configure search index behavior', url: '/docs/index-settings', section: 'Configuration', type: 'entry',
+            _matchedHeadings: [
+                { text: 'Transformers', id: 'transformers', level: 2 },
+                { text: 'Auto Transformer', id: 'auto-transformer', level: 3 },
+                { text: 'Custom Transformers', id: 'custom-transformers', level: 3 },
+                { text: 'Heading Extraction', id: 'heading-extraction', level: 4 },
+                { text: 'Ranking & Weights', id: 'ranking-weights', level: 2 },
+            ],
+        },
+        {
+            // Parent with only a single H4 child (edge case)
+            id: 22, title: 'Environment Config', description: 'Per-environment settings', url: '/docs/env-config', section: 'Configuration', type: 'entry',
+            _matchedHeadings: [
+                { text: 'Docker Compose Override', id: 'docker-compose-override', level: 4 },
+            ],
+        },
+        // Group: "Developers" — 2 parents
+        {
+            id: 30, title: 'Events Reference', description: 'All events fired by the plugin', url: '/docs/events', section: 'Developers', type: 'entry',
+            _matchedHeadings: [
+                { text: 'Before Index', id: 'before-index', level: 2 },
+                { text: 'After Index', id: 'after-index', level: 2 },
+                { text: 'Before Search', id: 'before-search', level: 2 },
+                { text: 'Modify Results', id: 'modify-results', level: 3 },
+                { text: 'Result Scoring', id: 'result-scoring', level: 4 },
+                { text: 'After Search', id: 'after-search', level: 2 },
+            ],
+        },
+        {
+            // Another parent with no children
+            id: 31, title: 'GraphQL API', description: 'Query search results via GraphQL', url: '/docs/graphql', section: 'Developers', type: 'entry',
+            _matchedHeadings: [],
+        },
+    ];
+
+    const MOCK_RECENT_SEARCHES = [
+        { query: 'installation', title: 'installation', url: '/docs/installation' },
+        { query: 'widget config', title: 'widget config', url: '/docs/widgets' },
+        { query: 'api keys', title: 'api keys', url: '/docs/api-keys' },
+        { query: 'meilisearch setup', title: 'meilisearch setup', url: '/docs/backends' },
+        { query: 'custom transformer', title: 'custom transformer', url: '/docs/index-settings' },
+    ];
+
+    window.MOCK_FLAT_RESULTS = MOCK_FLAT_RESULTS;
+    window.MOCK_HIERARCHICAL_RESULTS = MOCK_HIERARCHICAL_RESULTS;
+    window.MOCK_RECENT_SEARCHES = MOCK_RECENT_SEARCHES;
+    </script>
+</body>
+</html>

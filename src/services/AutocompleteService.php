@@ -89,7 +89,7 @@ class AutocompleteService extends Component
         $normalizedQuery = $this->normalizeQuery($query);
 
         // Apply index prefix to get full index name (matches how data is stored)
-        $fullIndexHandle = $this->getFullIndexName($indexHandle);
+        $fullIndexHandle = $settings->getFullIndexName($indexHandle);
 
         // Check cache first
         $this->logDebug('Autocomplete cache check', [
@@ -363,8 +363,7 @@ class AutocompleteService extends Component
         }
 
         // Apply index prefix to get full index name (matches how data is stored)
-        $indexPrefix = $settings->indexPrefix ?? '';
-        $fullIndexHandle = $this->getFullIndexName($indexHandle);
+        $fullIndexHandle = $settings->getFullIndexName($indexHandle);
 
         $this->logDebug('Generating element suggestions', [
             'query' => $query,
@@ -703,7 +702,7 @@ class AutocompleteService extends Component
     private function getCacheDriver(): string
     {
         $settings = SearchManager::$plugin->getSettings();
-        if (($settings->cacheStorageMethod ?? 'file') !== 'redis') {
+        if ($settings->cacheStorageMethod !== 'redis') {
             return 'file';
         }
 
@@ -735,16 +734,6 @@ class AutocompleteService extends Component
         $driverName = strtolower(str_replace(['Cache', 'cache'], '', end($parts)));
 
         return $driverName ?: 'unknown';
-    }
-
-    /**
-     * Get full index name with prefix applied
-     */
-    private function getFullIndexName(string $indexName): string
-    {
-        $settings = SearchManager::$plugin->getSettings();
-        $indexPrefix = $settings->indexPrefix ?? '';
-        return $indexPrefix . $indexName;
     }
 
     /**

@@ -6,6 +6,7 @@ use Craft;
 use craft\base\ElementInterface;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\events\TransformEvent;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 use lindemannrock\searchmanager\transformers\PluginDocsTransformer;
@@ -21,6 +22,30 @@ use yii\base\Component;
 class TransformerService extends Component
 {
     use LoggingTrait;
+
+    /**
+     * Fired before an element is transformed into a search document.
+     *
+     * Listeners can inspect the element and set `$event->handled = true`
+     * to skip transformation entirely (the element won't be indexed).
+     *
+     * @since 5.39.0
+     * @see TransformEvent
+     */
+    public const EVENT_BEFORE_TRANSFORM = 'beforeTransform';
+
+    /**
+     * Fired after an element is transformed into a search document.
+     *
+     * Listeners can modify [[TransformEvent::$data]] to add custom fields,
+     * remove sensitive content, or enrich the document before it's indexed.
+     * Especially useful with AutoTransformer where you don't control the
+     * transform logic.
+     *
+     * @since 5.39.0
+     * @see TransformEvent
+     */
+    public const EVENT_AFTER_TRANSFORM = 'afterTransform';
 
     private array $_transformers = [];
 
@@ -137,20 +162,49 @@ class TransformerService extends Component
     }
 
     /**
-     * Transform an element
+     * Transform an element into a search document
      *
+     * Fires EVENT_BEFORE_TRANSFORM and EVENT_AFTER_TRANSFORM to allow
+     * third-party plugins to modify, enrich, or skip the transformation.
+     *
+     * @param ElementInterface $element The element to transform
+     * @param string $indexName The index handle (for event context)
+     * @param string|null $transformerClass Override transformer class (from index config)
+     * @param array|null $headingLevels Heading levels to extract (from index config)
+     * @return array|null Transformed data, or null if skipped/failed
      * @since 5.0.0
      */
-    public function transform(ElementInterface $element): ?array
+    public function transform(ElementInterface $element, string $indexName = '', ?string $transformerClass = null, ?array $headingLevels = null): ?array
     {
-        $transformer = $this->getTransformer($element);
+        $transformer = $this->getTransformer($element, $transformerClass);
 
         if (!$transformer) {
             return null;
         }
 
+        // Configure heading levels if the transformer supports it
+        if ($headingLevels !== null && method_exists($transformer, 'setHeadingLevels')) {
+            $transformer->setHeadingLevels($headingLevels);
+        }
+
+        $resolvedClass = get_class($transformer);
+
+        // Fire before event — allows skipping transformation
+        if ($this->hasEventHandlers(self::EVENT_BEFORE_TRANSFORM)) {
+            $beforeEvent = new TransformEvent([
+                'element' => $element,
+                'indexName' => $indexName,
+                'transformerClass' => $resolvedClass,
+            ]);
+            $this->trigger(self::EVENT_BEFORE_TRANSFORM, $beforeEvent);
+
+            if ($beforeEvent->handled) {
+                return null;
+            }
+        }
+
         try {
-            return $transformer->transform($element);
+            $data = $transformer->transform($element);
         } catch (\Throwable $e) {
             $this->logError('Failed to transform element', [
                 'elementId' => $element->id,
@@ -159,5 +213,20 @@ class TransformerService extends Component
             ]);
             return null;
         }
+
+        // Fire after event — allows enriching/modifying document data
+        if ($this->hasEventHandlers(self::EVENT_AFTER_TRANSFORM)) {
+            $afterEvent = new TransformEvent([
+                'element' => $element,
+                'indexName' => $indexName,
+                'transformerClass' => $resolvedClass,
+                'document' => $data,
+            ]);
+            $this->trigger(self::EVENT_AFTER_TRANSFORM, $afterEvent);
+
+            $data = $afterEvent->document;
+        }
+
+        return $data;
     }
 }

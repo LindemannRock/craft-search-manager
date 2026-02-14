@@ -293,42 +293,6 @@
 		</div>
 
 		<div>
-			<h4>{{ "Hover"|t('search-manager') }}</h4>
-			<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-				{{ forms.colorField({
-					label: 'Background'|t('search-manager'),
-					id: 'styles-resultHoverBg',
-					name: namePrefix ~ '[resultHoverBg]',
-					value: styles.resultHoverBg,
-				}) }}
-				{{ forms.colorField({
-					label: 'Border'|t('search-manager'),
-					id: 'styles-resultHoverBorderColor',
-					name: namePrefix ~ '[resultHoverBorderColor]',
-					value: styles.resultHoverBorderColor,
-				}) }}
-				{{ forms.colorField({
-					label: 'Text'|t('search-manager'),
-					id: 'styles-resultHoverTextColor',
-					name: namePrefix ~ '[resultHoverTextColor]',
-					value: styles.resultHoverTextColor,
-				}) }}
-				{{ forms.colorField({
-					label: 'Description'|t('search-manager'),
-					id: 'styles-resultHoverDescColor',
-					name: namePrefix ~ '[resultHoverDescColor]',
-					value: styles.resultHoverDescColor,
-				}) }}
-				{{ forms.colorField({
-					label: 'Muted'|t('search-manager'),
-					id: 'styles-resultHoverMutedColor',
-					name: namePrefix ~ '[resultHoverMutedColor]',
-					value: styles.resultHoverMutedColor,
-				}) }}
-			</div>
-		</div>
-
-		<div>
 			<h4>{{ "Active"|t('search-manager') }}</h4>
 			<div class="flex" style="gap: 24px; flex-wrap: wrap;">
 				{{ forms.colorField({
@@ -401,42 +365,6 @@
 					id: 'styles-resultMutedColorDark',
 					name: namePrefix ~ '[resultMutedColorDark]',
 					value: styles.resultMutedColorDark,
-				}) }}
-			</div>
-		</div>
-
-		<div>
-			<h4>{{ "Hover"|t('search-manager') }}</h4>
-			<div class="flex" style="gap: 24px; flex-wrap: wrap;">
-				{{ forms.colorField({
-					label: 'Background'|t('search-manager'),
-					id: 'styles-resultHoverBgDark',
-					name: namePrefix ~ '[resultHoverBgDark]',
-					value: styles.resultHoverBgDark,
-				}) }}
-				{{ forms.colorField({
-					label: 'Border'|t('search-manager'),
-					id: 'styles-resultHoverBorderColorDark',
-					name: namePrefix ~ '[resultHoverBorderColorDark]',
-					value: styles.resultHoverBorderColorDark,
-				}) }}
-				{{ forms.colorField({
-					label: 'Text'|t('search-manager'),
-					id: 'styles-resultHoverTextColorDark',
-					name: namePrefix ~ '[resultHoverTextColorDark]',
-					value: styles.resultHoverTextColorDark,
-				}) }}
-				{{ forms.colorField({
-					label: 'Description'|t('search-manager'),
-					id: 'styles-resultHoverDescColorDark',
-					name: namePrefix ~ '[resultHoverDescColorDark]',
-					value: styles.resultHoverDescColorDark,
-				}) }}
-				{{ forms.colorField({
-					label: 'Muted'|t('search-manager'),
-					id: 'styles-resultHoverMutedColorDark',
-					name: namePrefix ~ '[resultHoverMutedColorDark]',
-					value: styles.resultHoverMutedColorDark,
 				}) }}
 			</div>
 		</div>
@@ -841,3 +769,46 @@
 </div>
 
 </div>{# /styles-highlighting-options #}
+
+{# ========================================
+   PROMOTED BADGE
+   ======================================== #}
+<h2>{{ "Promoted Badge"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<h4>{{ "Light Mode"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-promotedBg',
+			name: namePrefix ~ '[promotedBg]',
+			value: styles.promotedBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-promotedColor',
+			name: namePrefix ~ '[promotedColor]',
+			value: styles.promotedColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="dark">
+	<h4>{{ "Dark Mode"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-promotedBgDark',
+			name: namePrefix ~ '[promotedBgDark]',
+			value: styles.promotedBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-promotedColorDark',
+			name: namePrefix ~ '[promotedColorDark]',
+			value: styles.promotedColorDark,
+		}) }}
+	</div>
+</div>

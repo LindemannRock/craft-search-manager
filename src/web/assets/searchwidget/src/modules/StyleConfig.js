@@ -43,16 +43,6 @@ export const STYLE_MAPPINGS = {
     resultBgDark: '--sm-result-bg-dark',
     resultBorderColor: '--sm-result-border-color',
     resultBorderColorDark: '--sm-result-border-color-dark',
-    resultHoverBg: '--sm-result-hover-bg',
-    resultHoverBgDark: '--sm-result-hover-bg-dark',
-    resultHoverBorderColor: '--sm-result-hover-border-color',
-    resultHoverBorderColorDark: '--sm-result-hover-border-color-dark',
-    resultHoverTextColor: '--sm-result-hover-text-color',
-    resultHoverTextColorDark: '--sm-result-hover-text-color-dark',
-    resultHoverDescColor: '--sm-result-hover-desc-color',
-    resultHoverDescColorDark: '--sm-result-hover-desc-color-dark',
-    resultHoverMutedColor: '--sm-result-hover-muted-color',
-    resultHoverMutedColorDark: '--sm-result-hover-muted-color-dark',
     resultActiveBg: '--sm-result-active-bg',
     resultActiveBgDark: '--sm-result-active-bg-dark',
     resultActiveBorderColor: '--sm-result-active-border-color',
@@ -101,6 +91,12 @@ export const STYLE_MAPPINGS = {
     highlightBgDark: '--sm-highlight-bg-dark',
     highlightColorDark: '--sm-highlight-color-dark',
 
+    // Promoted badge
+    promotedBg: '--sm-promoted-bg',
+    promotedBgDark: '--sm-promoted-bg-dark',
+    promotedColor: '--sm-promoted-color',
+    promotedColorDark: '--sm-promoted-color-dark',
+
     // Spinner
     spinnerColor: '--sm-spinner-color-light',
     spinnerColorDark: '--sm-spinner-color-dark',
@@ -137,10 +133,8 @@ export const COLOR_KEYS = [
     'modalBg', 'modalBgDark', 'modalBorderColor', 'modalBorderColorDark',
     'inputBg', 'inputBgDark', 'inputTextColor', 'inputTextColorDark',
     'inputPlaceholderColor', 'inputPlaceholderColorDark', 'inputBorderColor', 'inputBorderColorDark',
-    'resultBg', 'resultBgDark', 'resultHoverBg', 'resultHoverBgDark',
-    'resultBorderColor', 'resultBorderColorDark', 'resultHoverBorderColor', 'resultHoverBorderColorDark',
-    'resultHoverTextColor', 'resultHoverTextColorDark', 'resultHoverDescColor', 'resultHoverDescColorDark',
-    'resultHoverMutedColor', 'resultHoverMutedColorDark',
+    'resultBg', 'resultBgDark',
+    'resultBorderColor', 'resultBorderColorDark',
     'resultActiveBg', 'resultActiveBgDark', 'resultActiveBorderColor', 'resultActiveBorderColorDark',
     'resultTextColor', 'resultTextColorDark',
     'resultActiveTextColor', 'resultActiveTextColorDark', 'resultActiveDescColor', 'resultActiveDescColorDark',
@@ -150,6 +144,7 @@ export const COLOR_KEYS = [
     'triggerBorderColor', 'triggerBorderColorDark',
     'kbdBg', 'kbdBgDark', 'kbdTextColor', 'kbdTextColorDark',
     'highlightBgLight', 'highlightColorLight', 'highlightBgDark', 'highlightColorDark',
+    'promotedBg', 'promotedBgDark', 'promotedColor', 'promotedColorDark',
     'spinnerColor', 'spinnerColorDark',
 ];
 

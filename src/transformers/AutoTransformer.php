@@ -60,15 +60,15 @@ class AutoTransformer extends BaseTransformer
         $data['elementType'] = $this->deriveElementType($element);
 
         // Set section and type for grouping (hierarchical layout, groupResults)
-        if ($element instanceof \craft\elements\Entry && $element->section) {
+        if ($element instanceof \craft\elements\Entry && $element->getSection() !== null) {
             $data['type'] = 'entry';
-            $data['section'] = $element->section->name ?? $element->section->handle;
+            $data['section'] = $element->getSection()->name ?? $element->getSection()->handle;
         } elseif ($element instanceof \craft\elements\Category) {
             $data['type'] = 'category';
-            $data['section'] = $element->group->name ?? 'Categories';
+            $data['section'] = $element->getGroup()?->name ?? 'Categories';
         } elseif ($element instanceof \craft\elements\Asset) {
             $data['type'] = 'asset';
-            $data['section'] = $element->volume->name ?? 'Assets';
+            $data['section'] = $element->getVolume()?->name ?? 'Assets';
         } elseif ($element instanceof \craft\elements\User) {
             $data['type'] = 'user';
             $data['section'] = 'Users';
@@ -187,8 +187,8 @@ class AutoTransformer extends BaseTransformer
     protected function deriveElementType(ElementInterface $element): string
     {
         // For Entries: use section handle (singularized)
-        if ($element instanceof \craft\elements\Entry && $element->section) {
-            return $this->singularize($element->section->handle);
+        if ($element instanceof \craft\elements\Entry && $element->getSection() !== null) {
+            return $this->singularize($element->getSection()->handle);
         }
 
         // For Categories: return 'category'

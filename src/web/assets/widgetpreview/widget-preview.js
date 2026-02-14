@@ -64,19 +64,7 @@ window.SearchManagerPreview = (function() {
 		resultBorderColor:     [{ mode: 'light', selector: '.preview-result', prop: 'borderColor', all: true }],
 		resultBorderColorDark: [{ mode: 'dark', selector: '.preview-result', prop: 'borderColor', all: true }],
 
-		// --- Results: Hover ---
-		resultHoverBg:              [{ mode: 'light', selector: '.preview-result', prop: 'backgroundColor', index: 2 }],
-		resultHoverBgDark:          [{ mode: 'dark', selector: '.preview-result', prop: 'backgroundColor', index: 2 }],
-		resultHoverTextColor:       [{ mode: 'light', selector: '.preview-result-title', prop: 'color', index: 2 }],
-		resultHoverTextColorDark:   [{ mode: 'dark', selector: '.preview-result-title', prop: 'color', index: 2 }],
-		resultHoverDescColor:       [{ mode: 'light', selector: '.preview-result-desc', prop: 'color', index: 2 }],
-		resultHoverDescColorDark:   [{ mode: 'dark', selector: '.preview-result-desc', prop: 'color', index: 2 }],
-		resultHoverMutedColor:      [{ mode: 'light', selector: '.preview-result-arrow', prop: 'stroke', index: 2 }],
-		resultHoverMutedColorDark:  [{ mode: 'dark', selector: '.preview-result-arrow', prop: 'stroke', index: 2 }],
-		resultHoverBorderColor:     [{ mode: 'light', selector: '.preview-result', prop: 'borderColor', index: 2 }],
-		resultHoverBorderColorDark: [{ mode: 'dark', selector: '.preview-result', prop: 'borderColor', index: 2 }],
-
-		// --- Results: Active ---
+		// --- Results: Active (applies to both hover and keyboard-selected — they share the same visual) ---
 		resultActiveBg:              [{ mode: 'light', selector: '.preview-result', prop: 'backgroundColor', index: 1 }],
 		resultActiveBgDark:          [{ mode: 'dark', selector: '.preview-result', prop: 'backgroundColor', index: 1 }],
 		resultActiveTextColor:       [{ mode: 'light', selector: '.preview-result-title', prop: 'color', index: 1 }],

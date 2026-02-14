@@ -11,9 +11,11 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use craft\base\Component;
 use craft\db\Query;
+use craft\helpers\App;
 use craft\helpers\Db;
 use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\DateRangeHelper;
+use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\base\helpers\GeoHelper;
 use lindemannrock\base\traits\GeoLookupTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -321,14 +323,25 @@ class AnalyticsService extends Component
     {
         $now = Db::prepareDateForDb(new \DateTime());
 
+        // Batch-fetch element titles to avoid N+1 queries
+        $elementIds = array_unique(array_filter(array_map(fn($p) => $p->elementId, $matchedPromotions)));
+        $elementTitles = [];
+        if (!empty($elementIds)) {
+            $rows = (new Query())
+                ->select(['elements.id', 'content.title'])
+                ->from('{{%elements}} elements')
+                ->innerJoin('{{%elements_sites}} content', '[[content.elementId]] = [[elements.id]]')
+                ->where(['elements.id' => $elementIds])
+                ->andWhere(['content.siteId' => $siteId ?? Craft::$app->getSites()->getCurrentSite()->id])
+                ->all();
+            foreach ($rows as $row) {
+                $elementTitles[(int)$row['id']] = $row['title'];
+            }
+        }
+
         foreach ($matchedPromotions as $promo) {
             try {
-                // Get element title for denormalized storage
-                $elementTitle = null;
-                $element = Craft::$app->getElements()->getElementById($promo->elementId);
-                if ($element) {
-                    $elementTitle = $element->title ?? (string)$element;
-                }
+                $elementTitle = $elementTitles[$promo->elementId] ?? null;
 
                 Craft::$app->getDb()->createCommand()
                     ->insert('{{%searchmanager_promotion_analytics}}', [
@@ -362,10 +375,22 @@ class AnalyticsService extends Component
      */
     public function getQueryLengthDistribution(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
+        // Classify word count in SQL using LIKE space patterns (DB-agnostic)
         $query = (new Query())
-            ->select(['query', 'COUNT(*) as count'])
+            ->select([
+                'bucket' => new \yii\db\Expression("CASE
+                    WHEN [[query]] NOT LIKE '% %' THEN '1 word'
+                    WHEN [[query]] NOT LIKE '% % % %' THEN '2-3 words'
+                    ELSE '4+ words'
+                END"),
+                'count' => 'COUNT(*)',
+            ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy('query');
+            ->groupBy([new \yii\db\Expression("CASE
+                    WHEN [[query]] NOT LIKE '% %' THEN '1 word'
+                    WHEN [[query]] NOT LIKE '% % % %' THEN '2-3 words'
+                    ELSE '4+ words'
+                END")]);
 
         $this->applyDateRangeFilter($query, $dateRange);
 
@@ -382,16 +407,7 @@ class AnalyticsService extends Component
         ];
 
         foreach ($results as $row) {
-            $wordCount = str_word_count($row['query']);
-            $count = (int)$row['count'];
-
-            if ($wordCount === 1) {
-                $distribution['1 word'] += $count;
-            } elseif ($wordCount >= 2 && $wordCount <= 3) {
-                $distribution['2-3 words'] += $count;
-            } else {
-                $distribution['4+ words'] += $count;
-            }
+            $distribution[$row['bucket']] = (int)$row['count'];
         }
 
         return [
@@ -411,10 +427,14 @@ class AnalyticsService extends Component
      */
     public function getWordCloudData(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 50): array
     {
+        // Only fetch the top 500 most frequent queries — the long tail contributes
+        // negligible weight and isn't worth loading into memory for tokenization
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy('query');
+            ->groupBy('query')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit(500);
 
         $this->applyDateRangeFilter($query, $dateRange);
 
@@ -424,7 +444,14 @@ class AnalyticsService extends Component
 
         $results = $query->all();
         $words = [];
-        $stopWords = ['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were'];
+
+        // Use the plugin's StopWords class (multilingual, config-overridable)
+        // Derive language from the filtered site, or primary site for "all sites"
+        $site = ($siteId && !is_array($siteId))
+            ? Craft::$app->getSites()->getSiteById($siteId)
+            : Craft::$app->getSites()->getPrimarySite();
+        $language = $site ? substr($site->language, 0, 2) : 'en';
+        $stopWords = new \lindemannrock\searchmanager\search\StopWords($language);
 
         foreach ($results as $row) {
             // Simple tokenization
@@ -432,10 +459,9 @@ class AnalyticsService extends Component
             foreach ($tokens as $token) {
                 $token = trim($token);
                 // Skip empty or stop words
-                if ($token === '' || in_array($token, $stopWords)) {
+                if ($token === '' || $stopWords->isStopWord($token)) {
                     continue;
                 }
-                // Skip numbers/symbols if desired, or keep them
                 $words[$token] = ($words[$token] ?? 0) + (int)$row['count'];
             }
         }
@@ -548,7 +574,7 @@ class AnalyticsService extends Component
         }
 
         $totalSearches = (int)$query->count();
-        $uniqueVisitors = (int)$query->select('COUNT(DISTINCT ip)')->scalar();
+        $uniqueVisitors = (int)(clone $query)->select('COUNT(DISTINCT ip)')->scalar();
         // Zero results excludes handled searches (redirected or showed promotions)
         $zeroResults = (int)(clone $query)->andWhere(['isHit' => 0, 'wasRedirected' => 0, 'promotionsShown' => 0])->count();
         $zeroResultsRate = $totalSearches > 0 ? round(($zeroResults / $totalSearches) * 100, 1) : 0;
@@ -669,49 +695,7 @@ class AnalyticsService extends Component
         }
 
         if ($dateRange !== null) {
-            $tz = new \DateTimeZone(Craft::$app->getTimeZone());
-
-            switch ($dateRange) {
-                case 'today':
-                    $start = new \DateTime('now', $tz);
-                    $start->setTime(0, 0, 0);
-                    $start->setTimezone(new \DateTimeZone('UTC'));
-                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
-                    break;
-                case 'yesterday':
-                    $start = new \DateTime('now', $tz);
-                    $start->modify('-1 day')->setTime(0, 0, 0);
-                    $start->setTimezone(new \DateTimeZone('UTC'));
-
-                    $end = new \DateTime('now', $tz);
-                    $end->setTime(0, 0, 0);
-                    $end->setTimezone(new \DateTimeZone('UTC'));
-
-                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
-                    $query->andWhere(['<', 'dateCreated', $end->format('Y-m-d H:i:s')]);
-                    break;
-                case 'last7days':
-                    $start = new \DateTime('now', $tz);
-                    $start->modify('-7 days');
-                    $start->setTimezone(new \DateTimeZone('UTC'));
-                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
-                    break;
-                case 'last30days':
-                    $start = new \DateTime('now', $tz);
-                    $start->modify('-30 days');
-                    $start->setTimezone(new \DateTimeZone('UTC'));
-                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
-                    break;
-                case 'last90days':
-                    $start = new \DateTime('now', $tz);
-                    $start->modify('-90 days');
-                    $start->setTimezone(new \DateTimeZone('UTC'));
-                    $query->andWhere(['>=', 'dateCreated', $start->format('Y-m-d H:i:s')]);
-                    break;
-                case 'all':
-                    // No date filter
-                    break;
-            }
+            $this->applyDateRangeFilter($query, $dateRange);
         }
 
         $results = $query->all();
@@ -951,10 +935,7 @@ class AnalyticsService extends Component
 
         $results = $query->all();
 
-        // Check if there's any data to export
-        if (empty($results)) {
-            throw new \Exception('No data to export for the selected period.');
-        }
+        ExportHelper::assertNotEmpty($results);
 
         // Check if geo detection is enabled
         $settings = SearchManager::$plugin->getSettings();
@@ -1283,8 +1264,8 @@ class AnalyticsService extends Component
     private function getDefaultLocation(): array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $defaultCountry = $settings->defaultCountry ?: (getenv('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'AE');
-        $defaultCity = $settings->defaultCity ?: (getenv('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai');
+        $defaultCountry = $settings->defaultCountry ?: (App::env('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'AE');
+        $defaultCity = $settings->defaultCity ?: (App::env('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai');
 
         // Predefined locations for common cities worldwide
         $locations = [
@@ -2363,9 +2344,9 @@ class AnalyticsService extends Component
             ->orderBy(['date' => SORT_ASC])
             ->all();
 
-        // Get recent triggers
+        // Get recent triggers (only columns needed for CP display)
         $recentTriggers = (clone $query)
-            ->select(['*'])
+            ->select(['dateCreated', 'query', 'indexHandle', 'siteId'])
             ->orderBy(['dateCreated' => SORT_DESC])
             ->limit(20)
             ->all();
@@ -2428,9 +2409,9 @@ class AnalyticsService extends Component
             ->orderBy(['date' => SORT_ASC])
             ->all();
 
-        // Get recent impressions
+        // Get recent impressions (only columns needed for CP display)
         $recentImpressions = (clone $query)
-            ->select(['*'])
+            ->select(['dateCreated', 'query', 'indexHandle', 'siteId', 'position'])
             ->orderBy(['dateCreated' => SORT_DESC])
             ->limit(20)
             ->all();

@@ -160,9 +160,7 @@ export function renderResultItem(result, index, query, options = {}) {
                         ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
                     </div>
                     ${typeBadge}
-                    <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
+                    ${arrowSvg()}
                 </div>
                 ${debugInfo}
             </a>
@@ -177,9 +175,7 @@ export function renderResultItem(result, index, query, options = {}) {
                 ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
             </div>
             ${typeBadge}
-            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
+            ${arrowSvg()}
         </a>
     `;
 }
@@ -252,28 +248,26 @@ function renderDebugInfo(result) {
 }
 
 function getHighlightTerms(result, area) {
+    const phrases = Array.isArray(result.matchedPhrases) ? result.matchedPhrases : [];
     const matchedTerms = result.matchedTerms;
-    if (!matchedTerms) {
-        return null;
-    }
 
-    if (area === 'title') {
-        if (Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
-            return matchedTerms.title;
+    // Collect individual terms from matchedTerms
+    let terms = [];
+    if (matchedTerms) {
+        if (area === 'title' && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
+            terms = matchedTerms.title;
+        } else if (area === 'description' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
+            terms = matchedTerms.content;
+        } else {
+            terms = [
+                ...(Array.isArray(matchedTerms.title) ? matchedTerms.title : []),
+                ...(Array.isArray(matchedTerms.content) ? matchedTerms.content : []),
+            ];
         }
     }
 
-    if (area === 'description') {
-        if (Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
-            return matchedTerms.content;
-        }
-    }
-
-    const combined = [
-        ...(Array.isArray(matchedTerms.title) ? matchedTerms.title : []),
-        ...(Array.isArray(matchedTerms.content) ? matchedTerms.content : []),
-    ];
-
+    // Combine: full phrases (longest match first via normalizeTerms), then explicit terms
+    const combined = [...phrases, ...terms];
     return combined.length > 0 ? combined : null;
 }
 
@@ -326,6 +320,16 @@ export function renderPromotedBadge(result, config = {}) {
 // =========================================================================
 
 /**
+ * Arrow icon SVG for result items (reused across all layouts)
+ * @returns {string} SVG markup
+ */
+function arrowSvg() {
+    return `<svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+    </svg>`;
+}
+
+/**
  * Document icon SVG for parent items in hierarchical layout
  * @returns {string} SVG markup
  */
@@ -336,6 +340,19 @@ function documentIcon() {
         <line x1="16" y1="13" x2="8" y2="13"/>
         <line x1="16" y1="17" x2="8" y2="17"/>
         <polyline points="10 9 9 9 8 9"/>
+    </svg>`;
+}
+
+/**
+ * Content icon SVG for parent items without matched headings (body text match)
+ * Three horizontal lines representing text content.
+ * @returns {string} SVG markup
+ */
+function contentIcon() {
+    return `<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <line x1="4" y1="7" x2="20" y2="7"/>
+        <line x1="4" y1="12" x2="20" y2="12"/>
+        <line x1="4" y1="17" x2="14" y2="17"/>
     </svg>`;
 }
 
@@ -366,10 +383,14 @@ function hashIcon() {
 function renderHierarchicalResults(results, query, options = {}) {
     const {
         hierarchyGroupBy = 'section',
-        showMatchedHeadings = true,
+        hierarchyStyle = 'tree',
+        hierarchyDisplay = 'individual',
         maxHeadingsPerResult = 3,
         listboxId,
     } = options;
+
+    const useTree = hierarchyStyle === 'tree';
+    const useConnectors = hierarchyStyle !== 'none';
 
     const groupField = hierarchyGroupBy || 'section';
     const groups = groupResultsByField(results, groupField);
@@ -383,30 +404,41 @@ function renderHierarchicalResults(results, query, options = {}) {
 
             // Render matched heading children
             let childrenHtml = '';
-            if (showMatchedHeadings) {
-                const headings = result._matchedHeadings || [];
-                const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
-                if (limitedHeadings.length > 0) {
-                    // Normalize levels: shallowest heading = depth 0
-                    const minLevel = Math.min(...limitedHeadings.map(h => h.level || 2));
-                    // Mark each heading as "last" if no later heading shares its level
-                    childrenHtml = limitedHeadings.map((heading, headingIndex) => {
-                        const level = heading.level || 2;
-                        const depth = level - minLevel;
-                        const isLastAtLevel = !limitedHeadings.slice(headingIndex + 1).some(h => (h.level || 2) === level);
-                        return renderHeadingChild(result, heading, globalIndex++, query, options, isLastAtLevel, depth);
-                    }).join('');
-                }
+            const headings = result._matchedHeadings || [];
+            const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
+            if (limitedHeadings.length > 0) {
+                // Normalize levels: shallowest heading = depth 0
+                const minLevel = Math.min(...limitedHeadings.map(h => h.level || 2));
+                // Pre-compute depths: tree mode uses heading levels, flat/none use depth 0
+                const depths = limitedHeadings.map(h => useTree ? (h.level || 2) - minLevel : 0);
+                childrenHtml = limitedHeadings.map((heading, headingIndex) => {
+                    const depth = depths[headingIndex];
+                    // In flat/none mode all children are at depth 0, so isLast = last child overall
+                    const isLastAtLevel = !depths.slice(headingIndex + 1).some(d => d === depth);
+                    // Compute ancestor guide lines (only needed in tree mode)
+                    const activeGuides = [];
+                    if (useTree) {
+                        const remainingDepths = depths.slice(headingIndex + 1);
+                        for (let dl = 0; dl < depth; dl++) {
+                            if (remainingDepths.some(d => d === dl)) {
+                                activeGuides.push(dl);
+                            }
+                        }
+                    }
+                    return renderHeadingChild(result, heading, globalIndex++, query, options, isLastAtLevel, depth, activeGuides);
+                }).join('');
             }
 
             const hasChildren = Boolean(childrenHtml);
 
+            const unifiedClass = hierarchyDisplay === 'unified' ? ' sm-hierarchy-block--unified' : '';
+
             return `
-                <div class="sm-hierarchy-block${hasChildren ? ' sm-hierarchy-block--has-children' : ''}">
+                <div class="sm-hierarchy-block${hasChildren ? ' sm-hierarchy-block--has-children' : ''}${unifiedClass}">
                     ${hasChildren
-                        ? parentHtml.replace('sm-hierarchy-parent"', 'sm-hierarchy-parent sm-hierarchy-parent--has-children"')
+                        ? parentHtml.replace('sm-result-item sm-hierarchy-parent', 'sm-result-item sm-hierarchy-parent sm-hierarchy-parent--has-children')
                         : parentHtml}
-                    ${hasChildren ? `<div class="sm-hierarchy-children">${childrenHtml}</div>` : ''}
+                    ${hasChildren ? `<div class="sm-hierarchy-children${!useConnectors ? ' sm-hierarchy-children--no-connectors' : ''}">${childrenHtml}</div>` : ''}
                 </div>
             `;
         }).join('');
@@ -435,6 +467,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
         enableHighlighting = true,
         highlightTag = 'mark',
         highlightClass = '',
+        debug = false,
     } = options;
 
     const title = result.title || result.name || 'Untitled';
@@ -448,19 +481,43 @@ function renderHierarchyParent(result, index, query, options = {}) {
         className: highlightClass,
     };
 
-    const highlightedTitle = highlightMatches(title, query, highlightOptions);
-    const highlightedDesc = description ? highlightMatches(description, query, highlightOptions) : '';
+    const highlightedTitle = highlightMatches(title, query, {
+        ...highlightOptions,
+        terms: getHighlightTerms(result, 'title'),
+    });
+    const highlightedDesc = description ? highlightMatches(description, query, {
+        ...highlightOptions,
+        terms: getHighlightTerms(result, 'description'),
+    }) : '';
+
+    const debugInfo = debug ? renderDebugInfo(result) : '';
+    const hasHeadings = result._matchedHeadings && result._matchedHeadings.length > 0;
+    const icon = hasHeadings ? documentIcon() : contentIcon();
+
+    if (debug) {
+        return `
+            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(title)}">
+                <div class="sm-result-main">
+                    ${icon}
+                    <div class="sm-result-content">
+                        <span class="sm-result-title">${highlightedTitle}</span>
+                        ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
+                    </div>
+                    ${arrowSvg()}
+                </div>
+                ${debugInfo}
+            </a>
+        `;
+    }
 
     return `
         <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(title)}">
-            ${documentIcon()}
+            ${icon}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
                 ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
             </div>
-            <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M5 12h14M12 5l7 7-7 7"/>
-            </svg>
+            ${arrowSvg()}
         </a>
     `;
 }
@@ -475,16 +532,18 @@ function renderHierarchyParent(result, index, query, options = {}) {
  * @param {RenderOptions} options - Rendering options
  * @returns {string} HTML string
  */
-function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0) {
+function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0, activeGuides = []) {
     const {
         listboxId,
         enableHighlighting = true,
         highlightTag = 'mark',
         highlightClass = '',
+        debug = false,
     } = options;
 
     const rawText = heading.text || '';
     const text = rawText.replace(/^#+\s*/, '');
+    const description = heading.description || '';
     const level = heading.level || 2;
     const anchorId = heading.id || (text ? slugifyHeading(text) : '');
     const baseUrl = result.url || '#';
@@ -497,18 +556,65 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         className: highlightClass,
     };
 
-    const highlightedText = highlightMatches(text, query, highlightOptions);
+    const highlightedText = highlightMatches(text, query, {
+        ...highlightOptions,
+        terms: getHighlightTerms(result, 'title'),
+    });
+    const highlightedDesc = description ? highlightMatches(description, query, {
+        ...highlightOptions,
+        terms: getHighlightTerms(result, 'description'),
+    }) : '';
 
     const rowClass = isLast ? ' sm-hierarchy-child-row-last' : '';
 
+    // Guide elements for ancestor depth vertical continuation lines
+    const guidesHtml = activeGuides.map(dl =>
+        `<div class="sm-hierarchy-guide" style="--sm-guide-depth:${dl}" aria-hidden="true"></div>`
+    ).join('');
+
+    // Build debug info for heading child
+    let debugInfo = '';
+    if (debug) {
+        const childDebugItems = [];
+        childDebugItems.push(debugItem('h', level, 'generic'));
+        if (anchorId) {
+            childDebugItems.push(debugItem('anchor', anchorId, 'generic'));
+        }
+        if (result.id) {
+            childDebugItems.push(debugItem('parent', result.id, 'generic'));
+        }
+        debugInfo = `<div class="sm-debug-info">${childDebugItems.join('')}</div>`;
+    }
+
+    if (debug) {
+        return `
+            <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
+                ${guidesHtml}
+                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(text)}">
+                    <div class="sm-result-main">
+                        ${hashIcon()}
+                        <div class="sm-result-content">
+                            <span class="sm-result-title">${highlightedText}</span>
+                            ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
+                        </div>
+                        ${arrowSvg()}
+                    </div>
+                    ${debugInfo}
+                </a>
+            </div>
+        `;
+    }
+
     return `
         <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
+            ${guidesHtml}
             <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(text)}">
                 ${hashIcon()}
-                <span class="sm-result-title">${highlightedText}</span>
-                <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
+                <div class="sm-result-content">
+                    <span class="sm-result-title">${highlightedText}</span>
+                    ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ''}
+                </div>
+                ${arrowSvg()}
             </a>
         </div>
     `;
@@ -557,9 +663,7 @@ export function renderRecentSearches(recentSearches, listboxId) {
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
                     <span class="sm-result-title">${escapeHtml(item.title || item.query)}</span>
-                    <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                    </svg>
+                    ${arrowSvg()}
                 </div>
             `).join('')}
         </div>

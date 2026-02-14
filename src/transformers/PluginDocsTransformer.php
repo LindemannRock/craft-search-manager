@@ -90,6 +90,7 @@ class PluginDocsTransformer extends BaseTransformer
                     'text' => $text,
                     'id' => $id,
                     'level' => $h['level'] ?? 2,
+                    'description' => $h['description'] ?? '',
                 ];
             }, $headings);
         }

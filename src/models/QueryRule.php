@@ -147,6 +147,21 @@ class QueryRule extends Model
                 if (!$hasUrl && !$hasElement) {
                     $this->addError($attribute, 'Redirect action requires a URL or an element.');
                 }
+                // Validate URL protocol when URL-based redirect
+                if ($hasUrl) {
+                    $url = trim($value['url']);
+                    $allowedPrefixes = ['https://', 'http://', '/'];
+                    $isSafe = false;
+                    foreach ($allowedPrefixes as $prefix) {
+                        if (str_starts_with($url, $prefix)) {
+                            $isSafe = true;
+                            break;
+                        }
+                    }
+                    if (!$isSafe) {
+                        $this->addError($attribute, 'Redirect URL must start with https://, http://, or / (relative path).');
+                    }
+                }
                 break;
         }
     }
