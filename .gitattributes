@@ -1,0 +1,15 @@
+# Exclude dev/build files from Packagist distribution
+ecs.php                                             export-ignore
+phpstan.neon                                        export-ignore
+
+# Widget: only dist/ is needed — exclude source, tests, and build tooling
+src/web/assets/searchwidget/src/                    export-ignore
+src/web/assets/searchwidget/tests/                  export-ignore
+src/web/assets/searchwidget/build.js                export-ignore
+src/web/assets/searchwidget/package.json            export-ignore
+src/web/assets/searchwidget/package-lock.json       export-ignore
+src/web/assets/searchwidget/test-modal.html         export-ignore
+src/web/assets/searchwidget/test.js                 export-ignore
+
+# Docs are available on the website
+docs/                                               export-ignore
