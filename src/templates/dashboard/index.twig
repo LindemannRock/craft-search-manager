@@ -7,18 +7,18 @@
 ] %}
 
 {# Permission checks #}
-{% set canViewIndices = currentUser.can('searchManager:viewIndices') %}
-{% set canViewPromotions = currentUser.can('searchManager:viewPromotions') %}
-{% set canViewQueryRules = currentUser.can('searchManager:viewQueryRules') %}
+{% set canManageIndices = currentUser.can('searchManager:manageIndices') %}
+{% set canManagePromotions = currentUser.can('searchManager:managePromotions') %}
+{% set canManageQueryRules = currentUser.can('searchManager:manageQueryRules') %}
 {% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
 {% set canCreateIndices = currentUser.can('searchManager:createIndices') %}
 {% set canCreatePromotions = currentUser.can('searchManager:createPromotions') %}
 {% set canCreateQueryRules = currentUser.can('searchManager:createQueryRules') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
-{% set canViewWidgetConfigs = currentUser.can('searchManager:viewWidgetConfigs') %}
+{% set canManageWidgetConfigs = currentUser.can('searchManager:manageWidgetConfigs') %}
 
 {% block actionButton %}
-    {% set hasAnyQuickAction = canCreateIndices or canCreatePromotions or canCreateQueryRules or canViewWidgetConfigs or canManageSettings or (settings.enableAnalytics and canViewAnalytics) %}
+    {% set hasAnyQuickAction = canCreateIndices or canCreatePromotions or canCreateQueryRules or canManageWidgetConfigs or canManageSettings or (settings.enableAnalytics and canViewAnalytics) %}
     {% if hasAnyQuickAction %}
         <div class="btngroup">
             <button type="button" class="btn menubtn">{{ "Quick Actions"|t('search-manager') }}</button>
@@ -36,7 +36,7 @@
                     {% if settings.enableAnalytics and canViewAnalytics %}
                         <li><a href="{{ url('search-manager/analytics') }}">{{ "View Analytics"|t('search-manager') }}</a></li>
                     {% endif %}
-                    {% if canViewWidgetConfigs %}
+                    {% if canManageWidgetConfigs %}
                         <li><a href="{{ url('search-manager/widgets') }}">{{ "Widgets"|t('search-manager') }}</a></li>
                     {% endif %}
                     {% if canManageSettings %}
@@ -53,7 +53,7 @@
 {# Stats Overview Cards #}
 <div class="lr-unified-cards" style="margin-bottom: 32px;">
     {# Indices Card #}
-    {% if canViewIndices %}
+    {% if canManageIndices %}
         {% include 'lindemannrock-base/_components/cards/unified-card' with {
             title: 'Search Indices'|t('search-manager'),
             color: '#059669',
@@ -65,7 +65,7 @@
     {% endif %}
 
     {# Promotions Card #}
-    {% if canViewPromotions %}
+    {% if canManagePromotions %}
         {% include 'lindemannrock-base/_components/cards/unified-card' with {
             title: 'Promotions'|t('search-manager'),
             color: '#f59e0b',
@@ -77,7 +77,7 @@
     {% endif %}
 
     {# Query Rules Card #}
-    {% if canViewQueryRules %}
+    {% if canManageQueryRules %}
         {% include 'lindemannrock-base/_components/cards/unified-card' with {
             title: 'Query Rules'|t('search-manager'),
             color: '#8b5cf6',

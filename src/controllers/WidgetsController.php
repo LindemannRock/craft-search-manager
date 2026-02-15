@@ -38,7 +38,7 @@ class WidgetsController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:viewWidgetConfigs');
+        $this->requirePermission('searchManager:manageWidgetConfigs');
 
         $widgetConfigs = SearchManager::$plugin->widgetConfigs->getAll();
         $settings = SearchManager::$plugin->getSettings();
@@ -98,7 +98,7 @@ class WidgetsController extends Controller
      */
     public function actionView(?string $handle = null): Response
     {
-        $this->requirePermission('searchManager:viewWidgetConfigs');
+        $this->requirePermission('searchManager:manageWidgetConfigs');
 
         if (!$handle) {
             throw new NotFoundHttpException('Widget handle required');
@@ -476,7 +476,7 @@ class WidgetsController extends Controller
      */
     public function actionStylesIndex(): Response
     {
-        $this->requirePermission('searchManager:viewWidgetConfigs');
+        $this->requirePermission('searchManager:manageWidgetStyles');
 
         $widgetStyles = SearchManager::$plugin->widgetStyles->getAll();
         $styleUsageCounts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
@@ -502,7 +502,7 @@ class WidgetsController extends Controller
      */
     public function actionViewStyle(?string $handle = null): Response
     {
-        $this->requirePermission('searchManager:viewWidgetConfigs');
+        $this->requirePermission('searchManager:manageWidgetStyles');
 
         if (!$handle) {
             throw new NotFoundHttpException('Widget style handle required');
@@ -534,13 +534,13 @@ class WidgetsController extends Controller
     {
         if (!$widgetStyle) {
             if ($styleId) {
-                $this->requirePermission('searchManager:editWidgetConfigs');
+                $this->requirePermission('searchManager:editWidgetStyles');
                 $widgetStyle = SearchManager::$plugin->widgetStyles->getById($styleId);
                 if (!$widgetStyle) {
                     throw new NotFoundHttpException('Widget style not found');
                 }
             } else {
-                $this->requirePermission('searchManager:createWidgetConfigs');
+                $this->requirePermission('searchManager:createWidgetStyles');
                 $widgetStyle = new WidgetStyle();
             }
         }
@@ -569,13 +569,13 @@ class WidgetsController extends Controller
         $styleId = $request->getBodyParam('styleId');
 
         if ($styleId) {
-            $this->requirePermission('searchManager:editWidgetConfigs');
+            $this->requirePermission('searchManager:editWidgetStyles');
             $widgetStyle = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
             if (!$widgetStyle) {
                 throw new NotFoundHttpException('Widget style not found');
             }
         } else {
-            $this->requirePermission('searchManager:createWidgetConfigs');
+            $this->requirePermission('searchManager:createWidgetStyles');
             $widgetStyle = new WidgetStyle();
         }
 
@@ -628,7 +628,7 @@ class WidgetsController extends Controller
     {
         $this->requirePostRequest();
         $this->requireAcceptsJson();
-        $this->requirePermission('searchManager:deleteWidgetConfigs');
+        $this->requirePermission('searchManager:deleteWidgetStyles');
 
         $styleId = Craft::$app->getRequest()->getRequiredBodyParam('styleId');
 

@@ -35,7 +35,7 @@ class PromotionsController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:viewPromotions');
+        $this->requirePermission('searchManager:managePromotions');
 
         $promotions = Promotion::findAll();
         $indices = SearchIndex::findAll();

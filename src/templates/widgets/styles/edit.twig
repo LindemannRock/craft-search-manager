@@ -60,7 +60,7 @@
 			</ul>
 		</div>
 	</div>
-	{% if not isNew and currentUser.can('searchManager:deleteWidgetConfigs') and widgetStyle.canEdit() %}
+	{% if not isNew and currentUser.can('searchManager:deleteWidgetStyles') and widgetStyle.canEdit() %}
 		<button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('app') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('app') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
 		<div id="action-menu" class="menu menu--disclosure">
 			<ul>

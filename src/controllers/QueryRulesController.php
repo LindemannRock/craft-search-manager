@@ -35,7 +35,7 @@ class QueryRulesController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:viewQueryRules');
+        $this->requirePermission('searchManager:manageQueryRules');
 
         $rules = QueryRule::findAll();
         $indices = SearchIndex::findAll();

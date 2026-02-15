@@ -15,9 +15,9 @@
 {% set offset = (page - 1) * limit %}
 
 {# Permission checks #}
-{% set canCreate = currentUser.can('searchManager:createWidgetConfigs') %}
-{% set canEdit = currentUser.can('searchManager:editWidgetConfigs') %}
-{% set canDelete = currentUser.can('searchManager:deleteWidgetConfigs') %}
+{% set canCreate = currentUser.can('searchManager:createWidgetStyles') %}
+{% set canEdit = currentUser.can('searchManager:editWidgetStyles') %}
+{% set canDelete = currentUser.can('searchManager:deleteWidgetStyles') %}
 
 {# Check if there are any config-based styles #}
 {% set hasConfigItems = widgetStyles|filter(s => s.isFromConfig())|length > 0 %}
@@ -161,7 +161,7 @@
 	newButton: {
 		url: url('search-manager/widgets/styles/new'),
 		label: 'New Widget Style'|t('search-manager'),
-		permission: 'searchManager:createWidgetConfigs',
+		permission: 'searchManager:createWidgetStyles',
 	},
 } %}
 

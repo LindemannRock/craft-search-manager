@@ -36,7 +36,7 @@ class BackendsController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:viewBackends');
+        $this->requirePermission('searchManager:manageBackends');
 
         $backends = ConfiguredBackend::findAll();
         $settings = SearchManager::$plugin->getSettings();
@@ -96,7 +96,7 @@ class BackendsController extends Controller
      */
     public function actionView(string|int|null $backendId = null): Response
     {
-        $this->requirePermission('searchManager:viewBackends');
+        $this->requirePermission('searchManager:manageBackends');
 
         if (!$backendId) {
             throw new NotFoundHttpException('Backend ID or handle required');
@@ -309,7 +309,7 @@ class BackendsController extends Controller
      */
     public function actionTest(): Response
     {
-        $this->requirePermission('searchManager:viewBackends');
+        $this->requirePermission('searchManager:manageBackends');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
@@ -395,7 +395,7 @@ class BackendsController extends Controller
      */
     public function actionInfo(): Response
     {
-        $this->requirePermission('searchManager:viewBackends');
+        $this->requirePermission('searchManager:manageBackends');
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 

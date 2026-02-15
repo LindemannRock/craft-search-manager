@@ -360,9 +360,6 @@ class SearchManager extends Plugin
                         'searchManager:manageBackends' => [
                             'label' => Craft::t('search-manager', 'Manage backends'),
                             'nested' => [
-                                'searchManager:viewBackends' => [
-                                    'label' => Craft::t('search-manager', 'View backends'),
-                                ],
                                 'searchManager:createBackends' => [
                                     'label' => Craft::t('search-manager', 'Create backends'),
                                 ],
@@ -378,9 +375,6 @@ class SearchManager extends Plugin
                         'searchManager:manageIndices' => [
                             'label' => Craft::t('search-manager', 'Manage indices'),
                             'nested' => [
-                                'searchManager:viewIndices' => [
-                                    'label' => Craft::t('search-manager', 'View indices'),
-                                ],
                                 'searchManager:createIndices' => [
                                     'label' => Craft::t('search-manager', 'Create indices'),
                                 ],
@@ -402,9 +396,6 @@ class SearchManager extends Plugin
                         'searchManager:managePromotions' => [
                             'label' => Craft::t('search-manager', 'Manage promotions'),
                             'nested' => [
-                                'searchManager:viewPromotions' => [
-                                    'label' => Craft::t('search-manager', 'View promotions'),
-                                ],
                                 'searchManager:createPromotions' => [
                                     'label' => Craft::t('search-manager', 'Create promotions'),
                                 ],
@@ -420,9 +411,6 @@ class SearchManager extends Plugin
                         'searchManager:manageQueryRules' => [
                             'label' => Craft::t('search-manager', 'Manage query rules'),
                             'nested' => [
-                                'searchManager:viewQueryRules' => [
-                                    'label' => Craft::t('search-manager', 'View query rules'),
-                                ],
                                 'searchManager:createQueryRules' => [
                                     'label' => Craft::t('search-manager', 'Create query rules'),
                                 ],
@@ -438,9 +426,6 @@ class SearchManager extends Plugin
                         'searchManager:manageWidgetConfigs' => [
                             'label' => Craft::t('search-manager', 'Manage widget configs'),
                             'nested' => [
-                                'searchManager:viewWidgetConfigs' => [
-                                    'label' => Craft::t('search-manager', 'View widget configs'),
-                                ],
                                 'searchManager:createWidgetConfigs' => [
                                     'label' => Craft::t('search-manager', 'Create widget configs'),
                                 ],
@@ -449,6 +434,21 @@ class SearchManager extends Plugin
                                 ],
                                 'searchManager:deleteWidgetConfigs' => [
                                     'label' => Craft::t('search-manager', 'Delete widget configs'),
+                                ],
+                            ],
+                        ],
+                        // Widget Styles - grouped
+                        'searchManager:manageWidgetStyles' => [
+                            'label' => Craft::t('search-manager', 'Manage widget styles'),
+                            'nested' => [
+                                'searchManager:createWidgetStyles' => [
+                                    'label' => Craft::t('search-manager', 'Create widget styles'),
+                                ],
+                                'searchManager:editWidgetStyles' => [
+                                    'label' => Craft::t('search-manager', 'Edit widget styles'),
+                                ],
+                                'searchManager:deleteWidgetStyles' => [
+                                    'label' => Craft::t('search-manager', 'Delete widget styles'),
                                 ],
                             ],
                         ],
@@ -801,7 +801,7 @@ class SearchManager extends Plugin
                 'key' => 'dashboard',
                 'label' => Craft::t('search-manager', 'Dashboard'),
                 'url' => 'search-manager',
-                'permissionsAll' => ['searchManager:viewIndices'],
+                'permissionsAll' => ['searchManager:manageIndices'],
                 'when' => $hasBackends,
             ];
         }
@@ -810,14 +810,14 @@ class SearchManager extends Plugin
             'key' => 'backends',
             'label' => Craft::t('search-manager', 'Backends'),
             'url' => 'search-manager/backends',
-            'permissionsAll' => ['searchManager:viewBackends'],
+            'permissionsAll' => ['searchManager:manageBackends'],
         ];
 
         $sections[] = [
             'key' => 'indices',
             'label' => Craft::t('search-manager', 'Indices'),
             'url' => 'search-manager/indices',
-            'permissionsAll' => ['searchManager:viewIndices'],
+            'permissionsAll' => ['searchManager:manageIndices'],
             'when' => $hasBackends,
         ];
 
@@ -825,7 +825,7 @@ class SearchManager extends Plugin
             'key' => 'promotions',
             'label' => Craft::t('search-manager', 'Promotions'),
             'url' => 'search-manager/promotions',
-            'permissionsAll' => ['searchManager:viewPromotions'],
+            'permissionsAll' => ['searchManager:managePromotions'],
             'when' => $hasBackends,
         ];
 
@@ -833,7 +833,7 @@ class SearchManager extends Plugin
             'key' => 'query-rules',
             'label' => Craft::t('search-manager', 'Query Rules'),
             'url' => 'search-manager/query-rules',
-            'permissionsAll' => ['searchManager:viewQueryRules'],
+            'permissionsAll' => ['searchManager:manageQueryRules'],
             'when' => $hasBackends,
         ];
 
@@ -841,7 +841,7 @@ class SearchManager extends Plugin
             'key' => 'widgets',
             'label' => Craft::t('search-manager', 'Widgets'),
             'url' => 'search-manager/widgets',
-            'permissionsAll' => ['searchManager:viewWidgetConfigs'],
+            'permissionsAny' => ['searchManager:manageWidgetConfigs', 'searchManager:manageWidgetStyles'],
         ];
 
         $sections[] = [

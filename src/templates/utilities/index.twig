@@ -3,14 +3,14 @@
 {% import "_includes/forms" as forms %}
 
 {# Permission checks #}
-{% set canViewIndices = currentUser.can('searchManager:viewIndices') %}
+{% set canManageIndices = currentUser.can('searchManager:manageIndices') %}
 {% set canRebuildIndices = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClearCache = currentUser.can('searchManager:clearCache') %}
 {% set canClearAnalytics = currentUser.can('searchManager:clearAnalytics') %}
 {% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
 
-{% set hasNavigation = canViewIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
+{% set hasNavigation = canManageIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
 {% set hasIndexManagement = canRebuildIndices %}
 {% set hasCacheManagement = canClearCache and (settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache) %}
 {% set hasAnalyticsManagement = canClearAnalytics and settings.enableAnalytics %}
@@ -128,7 +128,7 @@
         {# Navigation Section #}
         {% if hasNavigation %}
             {% set navButtons = [] %}
-            {% if canViewIndices %}
+            {% if canManageIndices %}
                 {% set navButtons = navButtons|merge([{type: 'link', label: 'Manage Indices'|t('search-manager'), url: url('search-manager/indices')}]) %}
             {% endif %}
             {% if settings.enableAnalytics and canViewAnalytics %}

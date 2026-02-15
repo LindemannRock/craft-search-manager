@@ -34,7 +34,7 @@ class IndicesController extends Controller
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:viewIndices');
+        $this->requirePermission('searchManager:manageIndices');
 
         $indices = SearchIndex::findAll();
         $configHandles = ConfigFileHelper::getHandles('indices');
@@ -58,7 +58,7 @@ class IndicesController extends Controller
      */
     public function actionView(?string $handle = null): Response
     {
-        $this->requirePermission('searchManager:viewIndices');
+        $this->requirePermission('searchManager:manageIndices');
 
         if (!$handle) {
             throw new NotFoundHttpException('Index handle required');

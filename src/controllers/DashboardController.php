@@ -33,8 +33,8 @@ class DashboardController extends Controller
         $user = Craft::$app->getUser();
         $settings = SearchManager::$plugin->getSettings();
 
-        // If user doesn't have viewIndices permission, redirect to first accessible section
-        if (!$user->checkPermission('searchManager:viewIndices')) {
+        // If user doesn't have manageIndices permission, redirect to first accessible section
+        if (!$user->checkPermission('searchManager:manageIndices')) {
             $sections = SearchManager::$plugin->getCpSections($settings, false, true);
             $route = CpNavHelper::firstAccessibleRoute($user, $settings, $sections);
             if ($route) {
@@ -42,7 +42,7 @@ class DashboardController extends Controller
             }
 
             // No access at all - require permission (will show 403)
-            $this->requirePermission('searchManager:viewIndices');
+            $this->requirePermission('searchManager:manageIndices');
         }
         $indices = SearchIndex::findAll();
 
