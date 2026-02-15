@@ -1269,7 +1269,7 @@ class BackendService extends Component
 
             return (int)(new \craft\db\Query())
                 ->from('{{%searchmanager_analytics}}')
-                ->where(['LOWER(query)' => $normalizedQuery])
+                ->where(['query' => $normalizedQuery])
                 ->count();
         } catch (\Throwable $e) {
             $this->logError('Failed to get query search count', [

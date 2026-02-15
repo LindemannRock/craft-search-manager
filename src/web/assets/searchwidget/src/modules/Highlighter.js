@@ -50,6 +50,69 @@ export function escapeRegex(string) {
 }
 
 /**
+ * Parse a search query string into highlight-ready terms
+ *
+ * Extracts meaningful terms from a query that may contain quoted phrases,
+ * boolean operators (AND/OR/NOT in multiple languages), field prefixes,
+ * wildcards, and boost markers. This mirrors the backend QueryParser logic
+ * for use when explicit matched terms are not available.
+ *
+ * @param {string} query - The search query to parse
+ * @returns {string[]} Array of terms suitable for highlighting
+ *
+ * @example
+ * parseQueryTerms('"craft cms" OR templates NOT draft')
+ * // Returns: ['craft cms', 'templates']
+ *
+ * @example
+ * parseQueryTerms('title:blog test^2 search*')
+ * // Returns: ['blog', 'test', 'search']
+ */
+export function parseQueryTerms(query) {
+    if (!query) return [];
+    const terms = [];
+
+    // 1. Extract quoted phrases: "craft cms" → single term
+    const phraseRegex = /"([^"]+)"/g;
+    let match;
+    while ((match = phraseRegex.exec(query)) !== null) {
+        if (match[1].trim()) terms.push(match[1].trim());
+    }
+
+    // 2. Remove quoted phrases from remaining text
+    const remaining = query.replace(/"[^"]*"/g, '');
+
+    // 3. Split on whitespace, clean each token
+    const operators = new Set([
+        'and', 'or', 'not',           // English
+        'und', 'oder', 'nicht',        // German
+        'et', 'ou', 'sauf',           // French
+        'y', 'o', 'no',              // Spanish
+    ]);
+
+    remaining.split(/\s+/).filter(w => w.length > 0).forEach(word => {
+        word = word.replace(/^[a-zA-Z]+:/, ''); // field prefix (title:, content:)
+        word = word.replace(/\*/g, '');          // wildcards
+        word = word.replace(/\^\d+(\.\d+)?/, ''); // boost markers (^2, ^1.5)
+        word = word.replace(/"/g, '');           // stray quotes
+        if (!word || operators.has(word.toLowerCase())) return;
+        terms.push(word);
+    });
+
+    // 4. Apply camelCase splitting (existing feature)
+    const withCamel = [];
+    terms.forEach(word => {
+        withCamel.push(word);
+        const parts = word.split(/(?<=[a-z])(?=[A-Z])/);
+        if (parts.length > 1) {
+            parts.forEach(p => { if (p.length >= 3) withCamel.push(p); });
+        }
+    });
+
+    return withCamel;
+}
+
+/**
  * Highlight matching text in a string
  *
  * Wraps words from the query that appear in the text with the specified
@@ -115,20 +178,7 @@ function buildHighlightTerms(query, terms) {
         return [];
     }
 
-    // Split query into words (whitespace + camelCase) for highlighting
-    // e.g. "DateRangeHelper" → ["daterangehelper", "date", "range", "helper"]
-    const rawWords = query.split(/\s+/).filter(w => w.length > 0);
-    const allWords = [];
-    rawWords.forEach(word => {
-        allWords.push(word);
-        // Split camelCase/PascalCase into individual words
-        const camelParts = word.split(/(?<=[a-z])(?=[A-Z])/);
-        if (camelParts.length > 1) {
-            camelParts.forEach(p => { if (p.length >= 3) allWords.push(p); });
-        }
-    });
-
-    return normalizeTerms(allWords);
+    return normalizeTerms(parseQueryTerms(query));
 }
 
 function normalizeTerms(terms) {

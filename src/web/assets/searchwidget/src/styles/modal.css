@@ -128,6 +128,7 @@
     flex-direction: column;
     overflow: hidden;
     animation: sm-slide-up 0.2s ease;
+    text-align: start;
 }
 
 @keyframes sm-slide-up {

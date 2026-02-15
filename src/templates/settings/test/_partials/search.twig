@@ -1,5 +1,6 @@
 {# Search Testing Tab #}
 {% import "_includes/forms" as forms %}
+{% do craft.searchManager.registerHighlighter() %}
 
 {# Get available indices and build siteId mapping #}
 {% set allIndices = craft.searchManager.getIndices() %}
@@ -83,6 +84,55 @@
                 <input type="checkbox" id="showHighlighting" name="showHighlighting" checked>
                 <span>{{ "Show Highlighting"|t('search-manager') }}</span>
             </label>
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #e0f2fe; border-radius: 4px; border: 1px solid #bae6fd;">
+                <input type="checkbox" id="enableEnrich" name="enableEnrich" checked>
+                <span>{{ "Enrich Results"|t('search-manager') }}</span>
+            </label>
+        </div>
+    </div>
+
+    {# Enrichment Options Panel — visible when "Enrich Results" is checked #}
+    <style>#enrichOptions .select { width: 100%; } #enrichOptions .select select { width: 100%; }</style>
+    <div id="enrichOptions" class="field" style="margin-top: 16px; display: none;">
+        <div style="padding: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
+            <h4 style="margin: 0 0 12px; font-size: 14px; color: #0369a1;">{{ "Enrichment Options"|t('search-manager') }}</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    {{ forms.selectField({
+                        label: 'Snippet Mode'|t('search-manager'),
+                        id: 'snippetMode',
+                        name: 'snippetMode',
+                        options: [
+                            {value: 'early', label: 'Early — first occurrence'|t('search-manager')},
+                            {value: 'balanced', label: 'Balanced — best match'|t('search-manager')},
+                            {value: 'deep', label: 'Deep — exhaustive search'|t('search-manager')},
+                        ],
+                        value: 'balanced',
+                    }) }}
+                </div>
+                <div>
+                    <label for="snippetLength" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">{{ "Snippet Length (50–1000 chars)"|t('search-manager') }}</label>
+                    <input type="number" id="snippetLength" class="text fullwidth" value="200" min="50" max="1000" step="50" style="padding: 6px 8px;">
+                </div>
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+                    <input type="checkbox" id="allowCodeSnippets">
+                    {{ "Allow Code Snippets"|t('search-manager') }}
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+                    <input type="checkbox" id="parseMarkdownSnippets">
+                    {{ "Parse Markdown"|t('search-manager') }}
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+                    <input type="checkbox" id="hideResultsWithoutUrl">
+                    {{ "Hide Without URL"|t('search-manager') }}
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+                    <input type="checkbox" id="includeDebugMeta" checked>
+                    {{ "Debug Metadata"|t('search-manager') }}
+                </label>
+            </div>
         </div>
     </div>
 
@@ -166,11 +216,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const showPromotions = document.getElementById('showPromotions');
     const showQueryRules = document.getElementById('showQueryRules');
     const showHighlighting = document.getElementById('showHighlighting');
+    const enableEnrich = document.getElementById('enableEnrich');
+    const enrichOptionsPanel = document.getElementById('enrichOptions');
 
     // Settings
     const autocompleteMinLength = {{ settings.autocompleteMinLength ?? 2 }};
     const indexSiteIds = {{ indexSiteIds|json_encode|raw }};
     let autocompleteTimer;
+    let lastSearchData = null;
+    let lastSearchQuery = null;
 
     // Get siteId for current selected index
     function getIndexSiteId() {
@@ -187,6 +241,20 @@ document.addEventListener('DOMContentLoaded', function() {
     showAutocomplete.addEventListener('change', updateSectionVisibility);
     showPromotions.addEventListener('change', updateSectionVisibility);
     showQueryRules.addEventListener('change', updateSectionVisibility);
+
+    // Show/hide enrichment options panel based on "Enrich Results" checkbox
+    function updateEnrichPanel() {
+        enrichOptionsPanel.style.display = enableEnrich.checked ? 'block' : 'none';
+    }
+    enableEnrich.addEventListener('change', updateEnrichPanel);
+    updateEnrichPanel();
+
+    // Re-render results instantly when highlighting is toggled (no re-fetch needed)
+    showHighlighting.addEventListener('change', function() {
+        if (lastSearchData && lastSearchQuery) {
+            displaySearchResults(lastSearchData, lastSearchQuery);
+        }
+    });
 
     // Quick test buttons
     document.querySelectorAll('.quick-test').forEach(btn => {
@@ -273,8 +341,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Autocomplete as user types
+    // Autocomplete as user types + clear validation error
     testQueryInput.addEventListener('input', function() {
+        this.style.boxShadow = '';
         const query = this.value.trim();
 
         if (!showAutocomplete.checked || query.length < autocompleteMinLength) {
@@ -337,9 +406,48 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function highlightMatch(text, query) {
+        if (typeof SearchManagerHighlighter !== 'undefined') {
+            return SearchManagerHighlighter.highlight(text, query, { tag: 'strong' });
+        }
         const index = text.toLowerCase().indexOf(query.toLowerCase());
         if (index === -1) return text;
         return text.substring(0, index) + '<strong>' + text.substring(index, index + query.length) + '</strong>' + text.substring(index + query.length);
+    }
+
+    // Highlight text using SearchManagerHighlighter (for search results)
+    // terms: optional array of explicit terms (phrases + words) for precise highlighting
+    function smHighlight(text, query, terms) {
+        if (!text) return '';
+        if (!showHighlighting.checked) return Craft.escapeHtml(text);
+        if (typeof SearchManagerHighlighter !== 'undefined') {
+            return SearchManagerHighlighter.highlight(text, query, {
+                tag: 'mark',
+                className: '',
+                terms: terms && terms.length > 0 ? terms : null,
+            });
+        }
+        return Craft.escapeHtml(text);
+    }
+
+    // Build highlight terms from hit data (phrases first for longest-match priority)
+    function getHitTerms(hit, area) {
+        const phrases = Array.isArray(hit.matchedPhrases) ? hit.matchedPhrases : [];
+        const matchedTerms = hit.matchedTerms;
+        let terms = [];
+        if (matchedTerms) {
+            if (area === 'title' && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
+                terms = matchedTerms.title;
+            } else if (area === 'description' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
+                terms = matchedTerms.content;
+            } else {
+                terms = [
+                    ...(Array.isArray(matchedTerms.title) ? matchedTerms.title : []),
+                    ...(Array.isArray(matchedTerms.content) ? matchedTerms.content : []),
+                ];
+            }
+        }
+        const combined = [...phrases, ...terms];
+        return combined.length > 0 ? combined : null;
     }
 
     function updateAutocompleteSection(suggestions, query, meta) {
@@ -376,12 +484,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const enableWildcard = document.getElementById('enableWildcard').checked;
 
         if (!query) {
-            testResults.style.display = 'block';
-            resultsTitle.innerHTML = 'Validation Error';
-            resultsTitle.style.color = '#dc2626';
-            resultsContent.innerHTML = '<p style="color: #dc2626;">Please enter a search query</p>';
+            testQueryInput.style.boxShadow = 'inset 0 0 0 1px #dc2626';
+            testQueryInput.focus();
+            testResults.style.display = 'none';
             return;
         }
+
+        // Clear error state on valid search
+        testQueryInput.style.boxShadow = '';
 
         testButton.disabled = true;
         testButton.textContent = '{{ "Searching..."|t('search-manager') }}';
@@ -397,12 +507,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     'Accept': 'application/json',
                     'X-CSRF-Token': '{{ craft.app.request.csrfToken }}',
                 },
-                body: JSON.stringify({
+                body: JSON.stringify(Object.assign({
                     query: query,
                     indexHandle: indexHandle,
                     wildcard: enableWildcard,
-                    includeHighlighting: showHighlighting.checked
-                })
+                    enrich: enableEnrich.checked,
+                }, enableEnrich.checked ? {
+                    snippetMode: document.getElementById('snippetMode').value,
+                    snippetLength: parseInt(document.getElementById('snippetLength').value, 10) || 200,
+                    allowCodeSnippets: document.getElementById('allowCodeSnippets').checked,
+                    parseMarkdownSnippets: document.getElementById('parseMarkdownSnippets').checked,
+                    hideResultsWithoutUrl: document.getElementById('hideResultsWithoutUrl').checked,
+                    includeDebugMeta: document.getElementById('includeDebugMeta').checked,
+                } : {}))
             }).then(r => r.json()),
 
             // Promotions test
@@ -577,6 +694,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function displaySearchResults(data, query) {
+        lastSearchData = data;
+        lastSearchQuery = query;
         testResults.style.display = 'block';
 
         if (data.success) {
@@ -590,6 +709,7 @@ document.addEventListener('DOMContentLoaded', function() {
         <div><strong>Execution:</strong> ${data.executionTime}ms</div>
         <div><strong>Cache:</strong> ${data.cacheEnabled ? (data.cacheHit ? 'Hit' : 'Miss') : 'Disabled'}${data.cacheDriver ? ' (' + data.cacheDriver + ')' : ''}</div>
         <div><strong>Query Used:</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
+        <div><strong>Mode:</strong> ${data.enriched ? '<span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px;">Enriched</span>' : '<span style="background: #f3f4f6; color: #6b7280; padding: 2px 6px; border-radius: 3px;">Raw</span>'}</div>
     </div>
 </div>
 `;
@@ -597,34 +717,64 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.total > 0) {
                 html += '<div style="display: grid; gap: 12px;">';
                 data.hits.forEach((hit, index) => {
-                    const title = showHighlighting.checked && hit.titleHighlighted ? hit.titleHighlighted : (hit.title || 'Untitled');
-                    const excerpt = showHighlighting.checked && hit.excerptHighlighted ? hit.excerptHighlighted : (hit.excerpt || hit.content || '');
+                    const rawTitle = hit.title || 'Untitled';
+                    const rawDescription = hit.description || '';
+                    const rawExcerpt = hit.excerpt || hit.content || '';
+                    const titleTerms = getHitTerms(hit, 'title');
+                    const descTerms = getHitTerms(hit, 'description');
+                    const title = smHighlight(rawTitle, query, titleTerms);
+                    const rawDisplayText = rawDescription || rawExcerpt;
+                    const displayText = rawDisplayText ? smHighlight(rawDisplayText.substring(0, 400), query, descTerms) : '';
                     const url = hit.url || '';
                     const isPromoted = hit.promoted === true;
                     const isBoosted = hit.boosted === true;
                     const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.join(', ') : null;
                     const indexHandle = hit._index || null;
+                    const objectId = hit.objectID || hit.id;
+                    const thumbnail = hit.thumbnail || null;
+                    const matchedHeadings = hit._matchedHeadings || [];
+                    const matchedTerms = hit.matchedTerms || [];
+                    const matchedPhrases = hit.matchedPhrases || [];
 
                     html += `
 <div style="padding: 16px; border: 1px solid ${isPromoted ? '#fbbf24' : (isBoosted ? '#34d399' : '#e5e7eb')}; border-radius: 4px; background: ${isPromoted ? '#fffbeb' : (isBoosted ? '#ecfdf5' : '#fff')};">
-    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-        <div style="flex: 1;">
-            ${isPromoted ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">PROMOTED</span>' : ''}
-            ${isBoosted ? '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">BOOSTED</span>' : ''}
-            <strong style="color: #111827; font-size: 15px;">${title}</strong>
-            ${url ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><a href="${url}" target="_blank" style="color: #0d78f2;">${url}</a></div>` : ''}
-        </div>
-        <div style="display: flex; gap: 8px; margin-left: 12px;">
-            <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
-                Score: ${hit.score ? hit.score.toFixed(2) : 'N/A'}
-            </span>
+    <div style="display: flex; gap: 12px; align-items: start;">
+        ${thumbnail ? `<img src="${thumbnail}" style="width: 48px; height: 48px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #e5e7eb;" alt="">` : ''}
+        <div style="flex: 1; min-width: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                <div style="flex: 1;">
+                    ${isPromoted ? '<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">PROMOTED</span>' : ''}
+                    ${isBoosted ? '<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px;">BOOSTED</span>' : ''}
+                    <strong style="color: #111827; font-size: 15px;">${title}</strong>
+                    ${url ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><a href="${url}" target="_blank" style="color: #0d78f2;">${url}</a></div>` : ''}
+                </div>
+                <div style="display: flex; gap: 8px; margin-left: 12px;">
+                    <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                        Score: ${hit.score ? hit.score.toFixed(2) : 'N/A'}
+                    </span>
+                </div>
+            </div>
+            <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
+                ID: #${objectId} • Type: ${hit.type || 'Entry'}${hit.section ? ' • Section: ' + hit.section : ''}${indexHandle ? ' • Index: <code>' + indexHandle + '</code>' : ''} • <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Site: ${hit.siteName || 'Unknown'} (${hit.language || '??'})</span>
+            </div>
+            ${matchedIn ? `<div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;"><strong>Matched in:</strong> <code>${matchedIn}</code></div>` : ''}
+            ${displayText ? `<div style="color: #4b5563; line-height: 1.6; font-size: 14px;">${displayText}${rawDisplayText.length > 400 ? '...' : ''}</div>` : ''}
+            ${matchedHeadings.length > 0 ? `<div style="margin-top: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 4px; border-left: 3px solid #6366f1;">
+                <div style="font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">Matched Headings</div>
+                ${matchedHeadings.map(h => `<div style="font-size: 13px; color: #374151; padding: 2px 0;"><span style="color: #a5b4fc; font-size: 10px; font-weight: 600; margin-right: 6px;">${Craft.escapeHtml(h.tag || 'h2')}</span>${Craft.escapeHtml(h.text)}</div>`).join('')}
+            </div>` : ''}
+            ${matchedTerms.length > 0 || matchedPhrases.length > 0 ? `<div style="font-size: 12px; color: #6b7280; margin-top: 6px;">
+                ${matchedTerms.length > 0 ? `<strong>Terms:</strong> ${matchedTerms.map(t => '<code style="background: #fef3c7; padding: 1px 4px; border-radius: 2px;">' + Craft.escapeHtml(t) + '</code>').join(' ')}` : ''}
+                ${matchedPhrases.length > 0 ? `${matchedTerms.length > 0 ? ' • ' : ''}<strong>Phrases:</strong> ${matchedPhrases.map(p => '<code style="background: #dbeafe; padding: 1px 4px; border-radius: 2px;">' + Craft.escapeHtml(p) + '</code>').join(' ')}` : ''}
+            </div>` : ''}
+            ${hit._snippet ? `<div style="margin-top: 8px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 12px; color: #64748b; display: flex; gap: 16px; flex-wrap: wrap;">
+                <span><span style="color: #94a3b8;">Matched in</span> <strong>${Craft.escapeHtml(hit._snippet.snippetSource || '—')}</strong></span>
+                <span><span style="color: #94a3b8;">Mode</span> <strong>${Craft.escapeHtml(hit._snippet.snippetMode || '—')}</strong></span>
+                <span><span style="color: #94a3b8;">Snippet from</span> <strong>${Craft.escapeHtml(hit._snippet.snippetFrom || '—')}</strong></span>
+                ${hit._snippet.fullContentLength ? '<span><span style="color: #94a3b8;">Content</span> <strong>' + hit._snippet.fullContentLength.toLocaleString() + ' chars</strong></span>' : ''}
+            </div>` : ''}
         </div>
     </div>
-    <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
-        ID: #${hit.objectID} • Type: ${hit.type || 'Entry'}${hit.section ? ' • Section: ' + hit.section : ''}${indexHandle ? ' • Index: <code>' + indexHandle + '</code>' : ''} • <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px; font-size: 11px;">Site: ${hit.siteName || 'Unknown'} (${hit.language || '??'})</span>
-    </div>
-    ${matchedIn ? `<div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;"><strong>Matched in:</strong> <code>${matchedIn}</code></div>` : ''}
-    ${excerpt ? `<div style="color: #4b5563; line-height: 1.6; font-size: 14px;">${excerpt.substring(0, 300)}${excerpt.length > 300 ? '...' : ''}</div>` : ''}
 </div>
 `;
                 });

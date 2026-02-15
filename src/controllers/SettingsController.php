@@ -239,6 +239,7 @@ class SettingsController extends Controller
         $query = Craft::$app->getRequest()->getRequiredBodyParam('query');
         $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
         $wildcard = Craft::$app->getRequest()->getBodyParam('wildcard', false);
+        $enrich = (bool) Craft::$app->getRequest()->getBodyParam('enrich', false);
 
         try {
             // Get the index
@@ -269,122 +270,109 @@ class SettingsController extends Controller
             $cached = $results['meta']['cached'] ?? false;
             $cacheDriver = $results['meta']['cacheDriver'] ?? null;
 
-            // Hydrate element data for display (title, url, type, section)
-            $elementType = $index->elementType ?? \craft\elements\Entry::class;
-            $indexSiteIds = $index->getSiteIds();
-            $indexSiteId = $indexSiteIds ? $indexSiteIds[0] : null;
+            // Get settings for highlighting and cache info
+            $settings = SearchManager::$plugin->getSettings();
 
-            if (!empty($results['hits'])) {
-                // Group hits by siteId so we can batch-load elements per site
-                $hitsBySite = [];
-                foreach ($results['hits'] as $key => $hit) {
-                    // Use the siteId from the hit (returned by backend's all-sites search)
-                    // Fall back to index site or current site
-                    $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
-                    $hitsBySite[$hitSiteId][$key] = $hit;
+            if ($enrich) {
+                $request = Craft::$app->getRequest();
+
+                // Use EnrichmentService for smart snippets, headings, thumbnails
+                $enrichedResults = SearchManager::$plugin->enrichment->enrichResults(
+                    $results['hits'],
+                    $originalQuery,
+                    [$indexHandle],
+                    [
+                        'snippetMode' => $request->getBodyParam('snippetMode', 'balanced'),
+                        'snippetLength' => (int) $request->getBodyParam('snippetLength', 200),
+                        'allowCodeSnippets' => (bool) $request->getBodyParam('allowCodeSnippets', false),
+                        'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
+                        'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
+                        'includeDebugMeta' => (bool) $request->getBodyParam('includeDebugMeta', true),
+                    ]
+                );
+
+                // Normalize fields for display (highlighting done client-side via SearchManagerHighlighter)
+                $enhancedHits = [];
+                foreach ($enrichedResults as $hit) {
+                    $hit['objectID'] = $hit['id'];
+
+                    if (isset($hit['siteId'])) {
+                        $site = Craft::$app->getSites()->getSiteById($hit['siteId']);
+                        if ($site) {
+                            $hit['siteName'] = $site->name;
+                            $hit['language'] = strtoupper(substr($site->language ?? '', 0, 2));
+                        }
+                    }
+
+                    $enhancedHits[] = $hit;
                 }
+            } else {
+                // Manual hydration — load elements for raw backend hit display
+                $elementType = $index->elementType ?? \craft\elements\Entry::class;
+                $indexSiteIds = $index->getSiteIds();
+                $indexSiteId = $indexSiteIds ? $indexSiteIds[0] : null;
 
-                // Load elements per site to get correct site-specific data
-                $elementsById = [];
-                foreach ($hitsBySite as $siteId => $siteHits) {
-                    // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
-                    // External backends may use composite keys, so we need the original element ID
-                    $elementIds = array_map(fn($hit) => $hit['elementId'] ?? $hit['id'], $siteHits);
-                    if ($this->isElementTypeAvailable($elementType, 'settings-search')) {
-                        $elements = $elementType::find()
+                if (!empty($results['hits'])) {
+                    // Group hits by siteId so we can batch-load elements per site
+                    $hitsBySite = [];
+                    foreach ($results['hits'] as $key => $hit) {
+                        // Use the siteId from the hit (returned by backend's all-sites search)
+                        // Fall back to index site or current site
+                        $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+                        $hitsBySite[$hitSiteId][$key] = $hit;
+                    }
+
+                    // Load elements per site to get correct site-specific data
+                    $elementsById = [];
+                    foreach ($hitsBySite as $siteId => $siteHits) {
+                        // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
+                        // External backends may use composite keys, so we need the original element ID
+                        $elementIds = array_map(fn($hit) => $hit['elementId'] ?? $hit['id'], $siteHits);
+                        if ($this->isElementTypeAvailable($elementType, 'settings-search')) {
+                            $elements = $elementType::find()
                             ->id($elementIds)
                             ->siteId($siteId)
                             ->status(null)
                             ->indexBy('id')
                             ->all();
-                    } else {
-                        $elements = [];
-                    }
+                        } else {
+                            $elements = [];
+                        }
 
-                    foreach ($elements as $id => $element) {
-                        $elementsById[$siteId . ':' . $id] = $element;
-                    }
-                }
-
-                // Enhance hits with element data including site info
-                foreach ($results['hits'] as &$hit) {
-                    $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
-                    // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
-                    $actualElementId = $hit['elementId'] ?? $hit['id'];
-                    $elementKey = $hitSiteId . ':' . $actualElementId;
-                    $element = $elementsById[$elementKey] ?? null;
-
-                    if ($element) {
-                        $hit['title'] = $element->title ?? 'Untitled';
-                        $hit['url'] = $element->url ?? '';
-                        $hit['type'] = (new \ReflectionClass($element))->getShortName();
-
-                        // Use site info from the element (which was loaded for the correct site)
-                        $site = $element->getSite();
-                        $hit['siteId'] = $site->id;
-                        $hit['siteName'] = $site->name;
-                        $hit['siteHandle'] = $site->handle;
-                        $hit['language'] = strtoupper(substr($site->language, 0, 2));
-
-                        if (method_exists($element, 'getSection') && $element->getSection()) {
-                            $hit['section'] = $element->getSection()->name;
+                        foreach ($elements as $id => $element) {
+                            $elementsById[$siteId . ':' . $id] = $element;
                         }
                     }
-                }
-                unset($hit);
-            }
 
-            // Get highlighting settings
-            $settings = SearchManager::$plugin->getSettings();
+                    // Enhance hits with element data including site info
+                    foreach ($results['hits'] as &$hit) {
+                        $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
+                        // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
+                        $actualElementId = $hit['elementId'] ?? $hit['id'];
+                        $elementKey = $hitSiteId . ':' . $actualElementId;
+                        $element = $elementsById[$elementKey] ?? null;
 
-            // Enhance results with highlighted content
-            $enhancedHits = [];
-            if ($settings->enableHighlighting) {
-                $highlighter = new \lindemannrock\searchmanager\search\Highlighter([
-                    'tag' => $settings->highlightTag ?? 'mark',
-                    'class' => $settings->highlightClass ?? '',
-                ]);
+                        if ($element) {
+                            $hit['title'] = $element->title ?? 'Untitled';
+                            $hit['url'] = $element->url ?? '';
+                            $hit['type'] = (new \ReflectionClass($element))->getShortName();
 
-                // Tokenize query into search terms
-                $searchTerms = preg_split('/\s+/', trim($originalQuery), -1, PREG_SPLIT_NO_EMPTY);
-                // Remove operators
-                $searchTerms = array_filter($searchTerms, fn($t) => !in_array(strtoupper($t), ['AND', 'OR', 'NOT']));
-                // Remove quotes and wildcards for highlighting
-                $searchTerms = array_map(fn($t) => trim($t, '"*'), $searchTerms);
+                            // Use site info from the element (which was loaded for the correct site)
+                            $site = $element->getSite();
+                            $hit['siteId'] = $site->id;
+                            $hit['siteName'] = $site->name;
+                            $hit['siteHandle'] = $site->handle;
+                            $hit['language'] = strtoupper(substr($site->language, 0, 2));
 
-                foreach ($results['hits'] ?? [] as $hit) {
-                    $enhancedHit = $hit;
-
-                    // Add highlighted title if available
-                    if (isset($hit['title'])) {
-                        $enhancedHit['titleHighlighted'] = $highlighter->highlight(
-                            $hit['title'],
-                            $searchTerms,
-                            false // Don't strip tags from title
-                        );
+                            if (method_exists($element, 'getSection') && $element->getSection()) {
+                                $hit['section'] = $element->getSection()->name;
+                            }
+                        }
                     }
-
-                    // Add highlighted excerpt if available
-                    if (isset($hit['excerpt'])) {
-                        $enhancedHit['excerptHighlighted'] = $highlighter->highlight(
-                            $hit['excerpt'],
-                            $searchTerms,
-                            true
-                        );
-                    } elseif (isset($hit['content'])) {
-                        // Generate excerpt from content if no excerpt exists
-                        $excerptText = strip_tags($hit['content']);
-                        $excerptText = mb_substr($excerptText, 0, 200);
-                        $enhancedHit['excerptHighlighted'] = $highlighter->highlight(
-                            $excerptText,
-                            $searchTerms,
-                            false // Already stripped
-                        );
-                    }
-
-                    $enhancedHits[] = $enhancedHit;
+                    unset($hit);
                 }
-            } else {
+
+                // Highlighting is done client-side via SearchManagerHighlighter
                 $enhancedHits = $results['hits'] ?? [];
             }
 
@@ -400,7 +388,7 @@ class SettingsController extends Controller
                 'wildcard' => $wildcard,
                 'queryUsed' => $query,
                 'originalQuery' => $originalQuery,
-                'highlightingEnabled' => $settings->enableHighlighting,
+                'enriched' => $enrich,
                 'indexSiteId' => $index->siteId ?? null,
             ]);
         } catch (\Throwable $e) {

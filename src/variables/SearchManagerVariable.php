@@ -2,7 +2,9 @@
 
 namespace lindemannrock\searchmanager\variables;
 
+use Craft;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
 
 /**
  * Search Manager Template Variable
@@ -32,6 +34,23 @@ class SearchManagerVariable
     public function getPlugin()
     {
         return SearchManager::$plugin;
+    }
+
+    /**
+     * Register the standalone SearchManagerHighlighter JS asset
+     *
+     * Loads the client-side highlighter utility. After calling this,
+     * `window.SearchManagerHighlighter` is available in JavaScript with:
+     * - `highlight(text, query, options)` — highlight matched terms
+     * - `escapeHtml(text)` — escape HTML special characters
+     * - `escapeRegex(string)` — escape regex special characters
+     * - `create(options)` — create a reusable highlighter function
+     *
+     * @since 5.40.0
+     */
+    public function registerHighlighter(): void
+    {
+        Craft::$app->getView()->registerAssetBundle(SearchHighlighterAsset::class);
     }
 
     /**
