@@ -69,7 +69,7 @@
 {% set groupResults = groupResults ?? widgetConfig.isGroupResultsEnabled() %}
 {% set hotkey = hotkey ?? widgetConfig.getHotkey() %}
 {% set hideResultsWithoutUrl = hideResultsWithoutUrl ?? widgetConfig.isHideResultsWithoutUrlEnabled() %}
-{% set allowCodeSnippets = allowCodeSnippets ?? widgetConfig.isAllowCodeSnippetsEnabled() %}
+{% set showCodeSnippets = showCodeSnippets ?? widgetConfig.isShowCodeSnippetsEnabled() %}
 {% set snippetMode = snippetMode ?? widgetConfig.getSnippetMode() %}
 
 {# Trigger settings #}
@@ -132,7 +132,7 @@
     group-results="{{ _self.toBool(groupResults, widgetConfig.isGroupResultsEnabled()) }}"
     hotkey="{{ hotkey }}"
     hide-results-without-url="{{ _self.toBool(hideResultsWithoutUrl, widgetConfig.isHideResultsWithoutUrlEnabled()) }}"
-    allow-code-snippets="{{ _self.toBool(allowCodeSnippets, widgetConfig.isAllowCodeSnippetsEnabled()) }}"
+    show-code-snippets="{{ _self.toBool(showCodeSnippets, widgetConfig.isShowCodeSnippetsEnabled()) }}"
     snippet-mode="{{ snippetMode }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}

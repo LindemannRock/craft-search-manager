@@ -369,7 +369,7 @@ class SearchWidgetBase extends HTMLElement {
                 siteId: this.config.siteId,
                 maxResults: this.config.maxResults,
                 hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
-                allowCodeSnippets: this.config.allowCodeSnippets,
+                showCodeSnippets: this.config.showCodeSnippets,
                 snippetMode: this.config.snippetMode,
                 snippetLength: this.config.snippetLength,
                 parseMarkdownSnippets: this.config.parseMarkdownSnippets,

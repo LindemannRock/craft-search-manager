@@ -48,7 +48,7 @@ var SearchModalWidget = (() => {
     highlightTag: "mark",
     highlightClass: "",
     hideResultsWithoutUrl: false,
-    allowCodeSnippets: false,
+    showCodeSnippets: false,
     snippetMode: "balanced",
     showLoadingIndicator: true,
     debug: false,
@@ -170,7 +170,7 @@ var SearchModalWidget = (() => {
       showLoadingIndicator: parseBoolean(element.getAttribute("show-loading-indicator"), defaults.showLoadingIndicator),
       // Boolean attributes (default false - check for presence)
       hideResultsWithoutUrl: parseBoolean(element.getAttribute("hide-results-without-url"), defaults.hideResultsWithoutUrl),
-      allowCodeSnippets: parseBoolean(element.getAttribute("allow-code-snippets"), defaults.allowCodeSnippets),
+      showCodeSnippets: parseBoolean(element.getAttribute("show-code-snippets"), defaults.showCodeSnippets),
       debug: parseBoolean(element.getAttribute("debug"), defaults.debug),
       snippetMode: element.getAttribute("snippet-mode") || defaults.snippetMode,
       snippetLength: parseInt(element.getAttribute("snippet-length"), defaults.snippetLength),
@@ -234,7 +234,7 @@ var SearchModalWidget = (() => {
       "highlight-tag",
       "highlight-class",
       "hide-results-without-url",
-      "allow-code-snippets",
+      "show-code-snippets",
       "snippet-mode",
       "show-loading-indicator",
       "debug",
@@ -440,7 +440,7 @@ var SearchModalWidget = (() => {
   }
 
   // src/modules/SearchService.js
-  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, allowCodeSnippets = false, snippetMode = "balanced", snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
+  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = "balanced", snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
     const params = new URLSearchParams({
       q: query,
       hitsPerPage: maxResults.toString()
@@ -455,8 +455,8 @@ var SearchModalWidget = (() => {
     if (hideResultsWithoutUrl) {
       params.append("hideResultsWithoutUrl", "1");
     }
-    if (allowCodeSnippets) {
-      params.append("allowCodeSnippets", "1");
+    if (showCodeSnippets) {
+      params.append("showCodeSnippets", "1");
     }
     if (snippetMode && snippetMode !== "balanced") {
       params.append("snippetMode", snippetMode);
@@ -1952,7 +1952,7 @@ var SearchModalWidget = (() => {
           siteId: this.config.siteId,
           maxResults: this.config.maxResults,
           hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
-          allowCodeSnippets: this.config.allowCodeSnippets,
+          showCodeSnippets: this.config.showCodeSnippets,
           snippetMode: this.config.snippetMode,
           snippetLength: this.config.snippetLength,
           parseMarkdownSnippets: this.config.parseMarkdownSnippets,

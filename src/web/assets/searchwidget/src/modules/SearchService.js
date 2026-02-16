@@ -19,7 +19,7 @@
  * @param {string} options.siteId - Optional site ID
  * @param {number} options.maxResults - Maximum results to return
  * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
- * @param {boolean} options.allowCodeSnippets - Allow code snippets in descriptions
+ * @param {boolean} options.showCodeSnippets - Allow code snippets in descriptions
  * @param {string} options.snippetMode - Snippet mode: early | balanced | deep
  * @param {number} options.snippetLength - Max snippet length
  * @param {boolean} options.parseMarkdownSnippets - Parse markdown before snippets
@@ -27,7 +27,7 @@
  * @param {AbortSignal} options.signal - AbortController signal
  * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
-export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, allowCodeSnippets = false, snippetMode = 'balanced', snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
+export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = 'balanced', snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
     const params = new URLSearchParams({
         q: query,
         hitsPerPage: maxResults.toString(),
@@ -49,8 +49,8 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
         params.append('hideResultsWithoutUrl', '1');
     }
 
-    if (allowCodeSnippets) {
-        params.append('allowCodeSnippets', '1');
+    if (showCodeSnippets) {
+        params.append('showCodeSnippets', '1');
     }
 
     if (snippetMode && snippetMode !== 'balanced') {

@@ -71,8 +71,9 @@ class AnalyticsService extends Component
         string $backend,
         ?int $siteId = null,
         array $analyticsOptions = [],
+        ?string $sessionId = null,
     ): void {
-        $this->_tracking->trackSearch($indexHandle, $query, $resultsCount, $executionTime, $backend, $siteId, $analyticsOptions);
+        $this->_tracking->trackSearch($indexHandle, $query, $resultsCount, $executionTime, $backend, $siteId, $analyticsOptions, $sessionId);
     }
 
     /**

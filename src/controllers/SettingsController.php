@@ -284,7 +284,7 @@ class SettingsController extends Controller
                     [
                         'snippetMode' => $request->getBodyParam('snippetMode', 'balanced'),
                         'snippetLength' => (int) $request->getBodyParam('snippetLength', 200),
-                        'allowCodeSnippets' => (bool) $request->getBodyParam('allowCodeSnippets', false),
+                        'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', false),
                         'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
                         'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
                         'includeDebugMeta' => (bool) $request->getBodyParam('includeDebugMeta', true),

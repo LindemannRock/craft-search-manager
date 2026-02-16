@@ -32,12 +32,6 @@ class RebuildIndexJob extends BaseJob
 
     public function execute($queue): void
     {
-        // Increase memory limit for rebuild jobs (handles large relational data)
-        $currentLimit = ini_get('memory_limit');
-        if ($currentLimit !== '-1') {
-            ini_set('memory_limit', '1G');
-        }
-
         if ($this->indexHandle) {
             $this->rebuildSingleIndex($queue, $this->indexHandle);
         } else {

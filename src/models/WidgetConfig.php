@@ -68,7 +68,7 @@ class WidgetConfig extends Model
                 'resultLayout' => 'default',
                 'hierarchyGroupBy' => '',
                 'hierarchyDisplay' => 'individual',
-                'allowCodeSnippets' => false,
+                'showCodeSnippets' => false,
                 'snippetMode' => 'balanced',
                 'resultTitleLines' => 1,
                 'resultDescLines' => 1,
@@ -306,9 +306,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function isAllowCodeSnippetsEnabled(): bool
+    public function isShowCodeSnippetsEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.allowCodeSnippets', false);
+        return (bool) $this->getSetting('behavior.showCodeSnippets', false);
     }
 
     /**

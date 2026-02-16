@@ -233,7 +233,7 @@ class ApiController extends Controller
      * Enrichment parameters (only used when enrich=1):
      * - snippetMode: Snippet positioning mode: 'early'|'balanced'|'deep' (default: 'balanced')
      * - snippetLength: Max snippet length in chars (default: 150, min: 50, max: 1000)
-     * - allowCodeSnippets: Include code block snippets (default: 0)
+     * - showCodeSnippets: Include code block snippets (default: 0)
      * - parseMarkdownSnippets: Parse markdown before generating snippets (default: 0)
      * - hideResultsWithoutUrl: Exclude results that have no URL (default: 0)
      * - debug: Include debug metadata in response (default: devMode setting)
@@ -373,7 +373,7 @@ class ApiController extends Controller
             $enrichOptions = [
                 'snippetMode' => (string) $request->getParam('snippetMode', 'balanced'),
                 'snippetLength' => (int) $request->getParam('snippetLength', 150),
-                'allowCodeSnippets' => (bool) $request->getParam('allowCodeSnippets', false),
+                'showCodeSnippets' => (bool) $request->getParam('showCodeSnippets', false),
                 'parseMarkdownSnippets' => (bool) $request->getParam('parseMarkdownSnippets', false),
                 'hideResultsWithoutUrl' => (bool) $request->getParam('hideResultsWithoutUrl', false),
                 'includeDebugMeta' => $includeDebugMeta,

@@ -52,6 +52,7 @@ class AnalyticsTrackingService
      *   - wasRedirected: Whether a redirect rule matched
      *   - matchedRules: Array of matched QueryRule objects (for detailed tracking)
      *   - matchedPromotions: Array of matched Promotion objects (for detailed tracking)
+     * @param string|null $sessionId Optional session ID to group multi-index rows
      * @since 5.0.0
      */
     public function trackSearch(
@@ -62,6 +63,7 @@ class AnalyticsTrackingService
         string $backend,
         ?int $siteId = null,
         array $analyticsOptions = [],
+        ?string $sessionId = null,
     ): void {
         $settings = SearchManager::$plugin->getSettings();
 
@@ -226,6 +228,7 @@ class AnalyticsTrackingService
                     'latitude' => null,
                     'longitude' => null,
                     'language' => null, // Could be extracted from Accept-Language header if needed
+                    'sessionId' => $sessionId,
                     'dateCreated' => Db::prepareDateForDb(new \DateTime()),
                     'uid' => \craft\helpers\StringHelper::UUID(),
                 ])

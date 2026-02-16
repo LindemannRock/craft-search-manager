@@ -393,6 +393,9 @@ class BackendService extends Component
         // Check if analytics should be skipped (used by cache warming, internal operations)
         $skipAnalytics = $options['skipAnalytics'] ?? false;
 
+        // Session ID for grouping multi-index analytics rows (passed by searchMultiple)
+        $sessionId = $options['sessionId'] ?? null;
+
         // Extract analytics options from search options (API callers can pass these)
         $analyticsOptions = [
             'source' => $options['source'] ?? null,
@@ -432,7 +435,8 @@ class BackendService extends Component
                         'wasRedirected' => true,
                         'matchedRules' => $matchedRules,
                         'matchedPromotions' => [],
-                    ])
+                    ]),
+                    $sessionId,
                 );
             }
 
@@ -510,7 +514,8 @@ class BackendService extends Component
                             'wasRedirected' => false,
                             'matchedRules' => $matchedRules,
                             'matchedPromotions' => $matchedPromotions,
-                        ])
+                        ]),
+                        $sessionId,
                     );
                 }
 
@@ -636,11 +641,16 @@ class BackendService extends Component
                     'wasRedirected' => false,
                     'matchedRules' => $matchedRules,
                     'matchedPromotions' => $matchedPromotions,
-                ])
+                ]),
+                $sessionId,
             );
         }
 
         // 5. Add metadata about rules and promotions applied
+        // Note: This meta is internal — consumers must gate exposure:
+        // - ApiController: only includes when devMode or explicit debug param
+        // - Raw API mode: strips meta entirely
+        // - Widget endpoint: does not return meta
         $results['meta'] = [
             'cached' => false,
             'took' => round($executionTime, 2),
@@ -816,6 +826,9 @@ class BackendService extends Component
             }
         }
 
+        // Generate session ID for multi-index analytics tracking
+        $sessionId = \craft\helpers\StringHelper::UUID();
+
         if ($redirectUrl) {
             $this->logDebug('Multi-index search redirect matched', [
                 'query' => $query,
@@ -823,23 +836,26 @@ class BackendService extends Component
                 'indices' => $indexNames,
             ]);
 
-            // Track analytics for redirect
-            SearchManager::$plugin->analytics->trackSearch(
-                implode(',', $indexNames),
-                $query,
-                0,
-                0,
-                $backend->getName(),
-                $siteId,
-                [
-                    'synonymsExpanded' => false,
-                    'rulesMatched' => 1,
-                    'promotionsShown' => 0,
-                    'wasRedirected' => true,
-                    'matchedRules' => [],
-                    'matchedPromotions' => [],
-                ]
-            );
+            // Track analytics per index with shared session ID
+            foreach ($indexNames as $indexName) {
+                SearchManager::$plugin->analytics->trackSearch(
+                    $indexName,
+                    $query,
+                    0,
+                    0,
+                    $backend->getName(),
+                    $siteId,
+                    [
+                        'synonymsExpanded' => false,
+                        'rulesMatched' => 1,
+                        'promotionsShown' => 0,
+                        'wasRedirected' => true,
+                        'matchedRules' => [],
+                        'matchedPromotions' => [],
+                    ],
+                    $sessionId,
+                );
+            }
 
             return [
                 'hits' => [],
@@ -869,6 +885,7 @@ class BackendService extends Component
 
         foreach ($indexNames as $indexName) {
             $indexOptions = $options;
+            $indexOptions['sessionId'] = $sessionId;
             if ($perIndexLimit > 0) {
                 $indexOptions['limit'] = $perIndexLimit;
                 $indexOptions['offset'] = 0;
@@ -1031,7 +1048,7 @@ class BackendService extends Component
 
         // Remove analytics-only options that don't affect results
         $cacheOptions = $options;
-        foreach (['source', 'platform', 'appVersion', 'skipAnalytics'] as $key) {
+        foreach (['source', 'platform', 'appVersion', 'skipAnalytics', 'sessionId'] as $key) {
             unset($cacheOptions[$key]);
         }
 

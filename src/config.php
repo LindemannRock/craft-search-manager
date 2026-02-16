@@ -614,7 +614,7 @@ return [
          *     - showLoadingIndicator: Show spinner while searching (default: true)
          *     - preventBodyScroll: Prevent page scroll when modal is open (default: true)
          *     - resultLayout: 'default' (flat list) or 'hierarchical' (parent/child) (default: 'default')
-         *     - allowCodeSnippets: Show code block snippets in results (default: false)
+         *     - showCodeSnippets: Show code block snippets in results (default: false)
          *     - snippetMode: How snippets find the best passage — 'early' (first match),
          *       'balanced' (best density), 'deep' (exhaustive scan) (default: 'balanced')
          *     - resultTitleLines: Max lines for result title, 1-5 (default: 1)
@@ -659,7 +659,7 @@ return [
             //             'hideResultsWithoutUrl' => false,
             //             'showLoadingIndicator' => true,
             //             'resultLayout' => 'default',
-            //             'allowCodeSnippets' => false,
+            //             'showCodeSnippets' => false,
             //             'snippetMode' => 'balanced',
             //             'resultTitleLines' => 1,
             //             'resultDescLines' => 1,

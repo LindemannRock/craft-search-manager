@@ -454,6 +454,8 @@ class Install extends Migration
             'region' => $this->string(100)->null(),
             'latitude' => $this->decimal(10, 8)->null(),
             'longitude' => $this->decimal(11, 8)->null(),
+            // Session tracking (links multi-index rows; future: full session tracking)
+            'sessionId' => $this->string(36)->null()->comment('Groups rows from same search action'),
             'dateCreated' => $this->dateTime()->notNull(),
             'uid' => $this->uid(),
         ]);
@@ -474,6 +476,7 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['dateCreated'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['synonymsExpanded'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['wasRedirected'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['sessionId'], false);
     }
 
     /**

@@ -9,6 +9,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\TransformEvent;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
+use lindemannrock\searchmanager\transformers\BaseTransformer;
 use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 use yii\base\Component;
 
@@ -205,6 +206,13 @@ class TransformerService extends Component
 
         try {
             $data = $transformer->transform($element);
+
+            // Finalize _contentClean (prose-only content for showCodeSnippets support).
+            // BaseTransformer accumulates code-free text during stripHtml() calls —
+            // this builds _contentClean automatically for all transformers.
+            if ($transformer instanceof BaseTransformer) {
+                $data = $transformer->finalizeContentClean($data);
+            }
         } catch (\Throwable $e) {
             $this->logError('Failed to transform element', [
                 'elementId' => $element->id,

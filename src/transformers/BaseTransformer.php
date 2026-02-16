@@ -24,6 +24,17 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     protected array $headingLevels = [2, 3, 4];
 
     /**
+     * @var string[] Accumulated prose-only text from stripHtml() calls (code blocks removed).
+     */
+    private array $codeFreeParts = [];
+
+    /**
+     * @var string[] Accumulated full text from stripHtml() calls (code blocks included).
+     * Used to compare against codeFreeParts to detect whether code was actually present.
+     */
+    private array $fullParts = [];
+
+    /**
      * Set which heading levels to extract
      *
      * @param array<int>|null $levels
@@ -132,7 +143,81 @@ abstract class BaseTransformer extends Component implements TransformerInterface
         // Remove extra whitespace
         $text = preg_replace('/\s+/', ' ', $text);
 
+        $result = trim($text);
+
+        // Only accumulate when <pre> blocks are present — that's the only tag
+        // where stripHtmlWithoutCode() produces different output (removes code content).
+        // finalizeContentClean() compares the two and stores _contentClean if they differ.
+        if (stripos($html, '<pre') !== false) {
+            $this->codeFreeParts[] = $this->stripHtmlWithoutCode($html);
+            $this->fullParts[] = $result;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Strip HTML tags and clean text, removing code blocks entirely
+     *
+     * Unlike stripHtml() which keeps text content from code blocks,
+     * this removes <pre> blocks and their contents before stripping tags,
+     * producing prose-only text for snippets when showCodeSnippets is false.
+     *
+     * @param string|null $html Raw HTML content
+     * @return string Plain text without code block content
+     */
+    protected function stripHtmlWithoutCode(?string $html): string
+    {
+        if (!$html) {
+            return '';
+        }
+
+        // Remove <pre> blocks and their contents (code blocks, syntax highlighting)
+        $text = (string) preg_replace('/<pre[^>]*>.*?<\/pre>/is', ' ', $html);
+
+        // Strip remaining tags
+        $text = strip_tags($text);
+
+        // Decode HTML entities
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // Remove extra whitespace
+        $text = (string) preg_replace('/\s+/', ' ', $text);
+
         return trim($text);
+    }
+
+    /**
+     * Finalize _contentClean on transformer output
+     *
+     * Called automatically by TransformerService after transform().
+     * Builds _contentClean from prose-only text accumulated during stripHtml() calls.
+     * Only sets _contentClean when it meaningfully differs from content
+     * (i.e. the source HTML actually contained code blocks).
+     *
+     * @param array $data Transformer output
+     * @return array Data with _contentClean added if applicable
+     */
+    public function finalizeContentClean(array $data): array
+    {
+        if (!empty($this->codeFreeParts)) {
+            $cleanContent = implode(' ', $this->codeFreeParts);
+            $cleanContent = trim((string) preg_replace('/\s+/', ' ', $cleanContent));
+
+            $fullContent = implode(' ', $this->fullParts);
+            $fullContent = trim((string) preg_replace('/\s+/', ' ', $fullContent));
+
+            // Only store when it differs from full content (page has code blocks)
+            if (!empty($cleanContent) && $cleanContent !== $fullContent) {
+                $data['_contentClean'] = $cleanContent;
+            }
+        }
+
+        // Reset for next element
+        $this->codeFreeParts = [];
+        $this->fullParts = [];
+
+        return $data;
     }
 
     /**
@@ -144,7 +229,11 @@ abstract class BaseTransformer extends Component implements TransformerInterface
      */
     protected function getExcerpt(string $content, int $length = 200): string
     {
-        $content = $this->stripHtml($content);
+        // Strip any residual HTML without accumulating for _contentClean.
+        // All callers pass already-stripped text, but this is defensive.
+        $content = strip_tags($content);
+        $content = html_entity_decode($content, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $content = trim((string) preg_replace('/\s+/', ' ', $content));
 
         if (mb_strlen($content) <= $length) {
             return $content;

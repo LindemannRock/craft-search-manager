@@ -32,7 +32,7 @@ class EnrichmentService extends Component
      * @param array $options Enrichment options:
      *   - snippetMode: 'early'|'balanced'|'deep' (default: 'balanced')
      *   - snippetLength: int (default: 150, min: 50, max: 1000)
-     *   - allowCodeSnippets: bool (default: false)
+     *   - showCodeSnippets: bool (default: false)
      *   - parseMarkdownSnippets: bool (default: false)
      *   - hideResultsWithoutUrl: bool (default: false)
      *   - includeDebugMeta: bool (default: false)
@@ -44,7 +44,7 @@ class EnrichmentService extends Component
     {
         $snippetMode = $this->resolveSnippetMode($options['snippetMode'] ?? 'balanced');
         $snippetLength = $this->resolveSnippetLength($options['snippetLength'] ?? 150);
-        $allowCodeSnippets = (bool) ($options['allowCodeSnippets'] ?? false);
+        $showCodeSnippets = (bool) ($options['showCodeSnippets'] ?? false);
         $parseMarkdownSnippets = (bool) ($options['parseMarkdownSnippets'] ?? false);
         $hideResultsWithoutUrl = (bool) ($options['hideResultsWithoutUrl'] ?? false);
         $includeDebugMeta = (bool) ($options['includeDebugMeta'] ?? false);
@@ -94,7 +94,7 @@ class EnrichmentService extends Component
                 $hit['_index'] ?? ($indexHandles[0] ?? ''),
                 $snippetMode,
                 $snippetLength,
-                $allowCodeSnippets,
+                $showCodeSnippets,
                 $parseMarkdownSnippets,
                 $snippetDebug,
             );
@@ -228,7 +228,7 @@ class EnrichmentService extends Component
         string $indexHandle,
         string $snippetMode,
         int $snippetLength,
-        bool $allowCodeSnippets,
+        bool $showCodeSnippets,
         bool $parseMarkdownSnippets,
         ?array &$debugMeta = null,
     ): ?string {
@@ -246,9 +246,13 @@ class EnrichmentService extends Component
             $candidates[] = $hit['excerpt'];
             $snippetCandidates[] = $hit['excerpt'];
         }
-        if (!empty($hit['content'])) {
-            $candidates[] = $this->htmlToPlainText($hit['content'], false, $parseMarkdownSnippets);
-            $snippetCandidates[] = $this->htmlToPlainText($hit['content'], true, $parseMarkdownSnippets);
+        // Resolve which content field to use for snippets:
+        // prose-only _contentClean when code snippets are disabled, full content otherwise
+        $snippetContentField = (!$showCodeSnippets && !empty($hit['_contentClean'])) ? '_contentClean' : 'content';
+
+        if (!empty($hit[$snippetContentField])) {
+            $candidates[] = $this->htmlToPlainText($hit[$snippetContentField], false, $parseMarkdownSnippets);
+            $snippetCandidates[] = $this->htmlToPlainText($hit[$snippetContentField], false, $parseMarkdownSnippets);
         }
 
         // Try element fields (short description fields first)
@@ -278,7 +282,7 @@ class EnrichmentService extends Component
             // If the match is in content, prioritize full-content snippets (avoid pre-truncated excerpts)
             if ($snippetSource === 'content') {
                 // Use stored content from documentData (Algolia-like: self-contained, no extra queries)
-                $fullContent = !empty($hit['content']) ? $this->htmlToPlainText($hit['content'], false, $parseMarkdownSnippets) : null;
+                $fullContent = !empty($hit[$snippetContentField]) ? $this->htmlToPlainText($hit[$snippetContentField], false, $parseMarkdownSnippets) : null;
                 $fullContentLen = $fullContent !== null ? mb_strlen($fullContent) : null;
                 if ($fullContent !== null) {
                     $snippet = $this->findSnippet($fullContent, $snippetTerms, $snippetLength, $snippetMode);
@@ -290,7 +294,7 @@ class EnrichmentService extends Component
                 }
 
                 // If allowed, try code snippets when content matched
-                if ($allowCodeSnippets) {
+                if ($showCodeSnippets) {
                     $codeSnippet = $this->findCodeSnippet($element, $snippetTerms, $snippetLength);
                     if ($codeSnippet !== null) {
                         $snippetFrom = 'code';
@@ -310,7 +314,7 @@ class EnrichmentService extends Component
                 }
 
                 // If still not found, try full content from documentData
-                $fullContent = !empty($hit['content']) ? $this->htmlToPlainText($hit['content'], false, $parseMarkdownSnippets) : null;
+                $fullContent = !empty($hit[$snippetContentField]) ? $this->htmlToPlainText($hit[$snippetContentField], false, $parseMarkdownSnippets) : null;
                 $fullContentLen = $fullContent !== null ? mb_strlen($fullContent) : null;
                 if ($fullContent !== null) {
                     $snippet = $this->findSnippet($fullContent, $snippetTerms, $snippetLength, $snippetMode);

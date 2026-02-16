@@ -117,8 +117,8 @@
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
-                    <input type="checkbox" id="allowCodeSnippets">
-                    {{ "Allow Code Snippets"|t('search-manager') }}
+                    <input type="checkbox" id="showCodeSnippets">
+                    {{ "Show Code Snippets"|t('search-manager') }}
                 </label>
                 <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
                     <input type="checkbox" id="parseMarkdownSnippets">
@@ -515,7 +515,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, enableEnrich.checked ? {
                     snippetMode: document.getElementById('snippetMode').value,
                     snippetLength: parseInt(document.getElementById('snippetLength').value, 10) || 200,
-                    allowCodeSnippets: document.getElementById('allowCodeSnippets').checked,
+                    showCodeSnippets: document.getElementById('showCodeSnippets').checked,
                     parseMarkdownSnippets: document.getElementById('parseMarkdownSnippets').checked,
                     hideResultsWithoutUrl: document.getElementById('hideResultsWithoutUrl').checked,
                     includeDebugMeta: document.getElementById('includeDebugMeta').checked,

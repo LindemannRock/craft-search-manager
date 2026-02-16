@@ -193,8 +193,8 @@ class SearchController extends Controller
             return $this->asJson(['success' => true, 'tracked' => false]);
         }
 
-        // Use 'all' only if no indices were specified (not if they were invalid)
-        $indexHandle = !empty($indexHandles) ? implode(',', $indexHandles) : 'all';
+        // Resolve handles to track — 'all' if none specified
+        $handlesToTrack = !empty($indexHandles) ? $indexHandles : ['all'];
 
         // Get first index's backend for logging (or default)
         $backend = 'unknown';
@@ -208,23 +208,27 @@ class SearchController extends Controller
         }
 
         try {
-            // Track with source and trigger info
-            SearchManager::$plugin->analytics->trackSearch(
-                $indexHandle,
-                $query,
-                $resultsCount,
-                null, // No execution time for explicit tracking
-                $backend,
-                $siteId,
-                [
-                    'source' => $source,
-                    'trigger' => $trigger, // Will be stored once we add the column
-                ]
-            );
+            // Track per index with shared session ID for accurate per-index aggregation
+            $sessionId = count($handlesToTrack) > 1 ? \craft\helpers\StringHelper::UUID() : null;
+            foreach ($handlesToTrack as $handle) {
+                SearchManager::$plugin->analytics->trackSearch(
+                    $handle,
+                    $query,
+                    $resultsCount,
+                    null, // No execution time for explicit tracking
+                    $backend,
+                    $siteId,
+                    [
+                        'source' => $source,
+                        'trigger' => $trigger,
+                    ],
+                    $sessionId,
+                );
+            }
 
             $this->logDebug('Explicit search tracking', [
                 'query' => $query,
-                'indices' => $indexHandle,
+                'indices' => implode(',', $handlesToTrack),
                 'trigger' => $trigger,
                 'source' => $source,
                 'resultsCount' => $resultsCount,

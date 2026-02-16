@@ -201,11 +201,11 @@
 <h2>{{ "Snippets"|t('search-manager') }}</h2>
 
 {{ forms.lightswitchField({
-	label: 'Allow Code Snippets'|t('search-manager'),
-	instructions: 'Allow code blocks in result descriptions'|t('search-manager'),
-	id: 'behavior-allowCodeSnippets',
-	name: 'settings[behavior][allowCodeSnippets]',
-	on: widgetConfig.isAllowCodeSnippetsEnabled(),
+	label: 'Show Code Snippets'|t('search-manager'),
+	instructions: 'Show code blocks in result descriptions'|t('search-manager'),
+	id: 'behavior-showCodeSnippets',
+	name: 'settings[behavior][showCodeSnippets]',
+	on: widgetConfig.isShowCodeSnippetsEnabled(),
 }) }}
 
 {{ forms.selectField({
