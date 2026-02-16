@@ -9,7 +9,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\TransformEvent;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
-use lindemannrock\searchmanager\transformers\PluginDocsTransformer;
+use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 use yii\base\Component;
 
 /**
@@ -68,10 +68,10 @@ class TransformerService extends Component
         // AutoTransformer is the default fallback for all element types.
         // Register element-specific transformers here for richer indexing:
 
-        if (PluginHelper::isPluginEnabled('plugin-docs')) {
+        if (PluginHelper::isPluginEnabled('docs-manager')) {
             $this->registerTransformer(
-                'lindemannrock\plugindocs\elements\PluginDoc',
-                PluginDocsTransformer::class,
+                'lindemannrock\docsmanager\elements\SourceDoc',
+                DocsManagerTransformer::class,
             );
         }
     }

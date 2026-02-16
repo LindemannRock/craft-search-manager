@@ -685,7 +685,7 @@ return [
             //     'enabled' => true,
             //     'settings' => [
             //         'search' => [
-            //             'indexHandles' => ['plugin-docs'],
+            //             'indexHandles' => ['docs-manager'],
             //         ],
             //         'behavior' => [
             //             'resultLayout' => 'hierarchical',

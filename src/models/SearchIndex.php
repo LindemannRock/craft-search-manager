@@ -1114,9 +1114,9 @@ class SearchIndex extends Model
                             /** @var \craft\elements\db\CategoryQuery $query */
                             $query->group($this->criteria['groups']);
                         }
-                        if ($elementType === 'lindemannrock\\plugindocs\\elements\\PluginDoc' && !empty($this->criteria['pluginHandles'])) {
-                            /** @var \lindemannrock\plugindocs\elements\db\PluginDocQuery $query */
-                            $query->pluginHandle($this->criteria['pluginHandles']);
+                        if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles'])) {
+                            /** @var \lindemannrock\docsmanager\elements\db\SourceDocQuery $query */
+                            $query->sourceHandle($this->criteria['sourceHandles']);
                         }
                     }
                 }

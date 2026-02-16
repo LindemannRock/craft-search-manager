@@ -40,7 +40,7 @@ trait ElementTypeGuardTrait
     protected function getPluginHandleForElementType(string $elementType): ?string
     {
         return match ($elementType) {
-            'lindemannrock\\plugindocs\\elements\\PluginDoc' => 'plugin-docs',
+            'lindemannrock\\docsmanager\\elements\\SourceDoc' => 'docs-manager',
             'lindemannrock\\smartlinkmanager\\elements\\SmartLink' => 'smartlink-manager',
             'lindemannrock\\shortlinkmanager\\elements\\ShortLink' => 'shortlink-manager',
             default => null,

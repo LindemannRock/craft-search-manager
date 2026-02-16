@@ -182,18 +182,19 @@ class AnalyticsController extends Controller
      */
     public function actionExport(): Response
     {
+        $this->requirePostRequest();
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $dateRange = $request->getQueryParam('dateRange')
-            ?? $request->getQueryParam('range')
+        $dateRange = $request->getBodyParam('dateRange')
+            ?? $request->getBodyParam('range')
             ?? DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id);
-        $format = $request->getQueryParam('format', 'csv');
+        $format = $request->getBodyParam('format', 'csv');
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
         }
-        $siteId = $request->getQueryParam('siteId');
+        $siteId = $request->getBodyParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
         $effectiveSiteId = $this->resolveEffectiveSiteId($siteId);
 
@@ -489,7 +490,14 @@ class AnalyticsController extends Controller
 
             return ExportHelper::toZip($files, $filename);
         } catch (\Exception $e) {
-            Craft::$app->getSession()->setError($e->getMessage());
+            $this->logError('Analytics export failed', ['error' => $e->getMessage()]);
+
+            Craft::$app->getSession()->setError(
+                Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Export failed. Check logs for details.')
+            );
+
             return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
     }
@@ -953,14 +961,15 @@ class AnalyticsController extends Controller
      */
     public function actionExportRuleAnalytics(): Response
     {
+        $this->requirePostRequest();
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $ruleId = (int)$request->getQueryParam('ruleId');
-        $dateRange = $request->getQueryParam('dateRange')
-            ?? $request->getQueryParam('range')
+        $ruleId = (int)$request->getBodyParam('ruleId');
+        $dateRange = $request->getBodyParam('dateRange')
+            ?? $request->getBodyParam('range')
             ?? DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id);
-        $format = $request->getQueryParam('format', 'csv');
+        $format = $request->getBodyParam('format', 'csv');
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
@@ -1016,12 +1025,15 @@ class AnalyticsController extends Controller
      */
     public function actionExportPromotionAnalytics(): Response
     {
+        $this->requirePostRequest();
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $promotionId = (int)$request->getQueryParam('promotionId');
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
-        $format = $request->getQueryParam('format', 'csv');
+        $promotionId = (int)$request->getBodyParam('promotionId');
+        $dateRange = $request->getBodyParam('dateRange')
+            ?? $request->getBodyParam('range')
+            ?? DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id);
+        $format = $request->getBodyParam('format', 'csv');
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
@@ -1077,14 +1089,20 @@ class AnalyticsController extends Controller
      */
     public function actionExportTab(): Response
     {
+        $this->requirePostRequest();
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $tab = $request->getQueryParam('tab', 'trending');
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
-        $siteId = $request->getQueryParam('siteId');
+        $tab = $request->getBodyParam('tab', 'trending');
+        $dateRange = $request->getBodyParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
+        $siteId = $request->getBodyParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
-        $format = $request->getQueryParam('format', 'csv');
+        $format = $request->getBodyParam('format', 'csv');
+
+        $validTabs = ['trending', 'query-rules', 'promotions', 'performance', 'traffic-devices', 'geographic'];
+        if (!in_array($tab, $validTabs, true)) {
+            throw new \yii\web\BadRequestHttpException('Invalid tab specified.');
+        }
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
@@ -1229,14 +1247,15 @@ class AnalyticsController extends Controller
      */
     public function actionExportContentGaps(): Response
     {
+        $this->requirePostRequest();
         $this->requirePermission('searchManager:exportAnalytics');
 
         $request = Craft::$app->getRequest();
-        $dateRange = $request->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
-        $siteId = $request->getQueryParam('siteId');
+        $dateRange = $request->getBodyParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
+        $siteId = $request->getBodyParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
-        $format = $request->getQueryParam('format', 'csv');
-        $type = $request->getQueryParam('type', 'clusters'); // 'clusters' or 'recent'
+        $format = $request->getBodyParam('format', 'csv');
+        $type = $request->getBodyParam('type', 'clusters'); // 'clusters' or 'recent'
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");

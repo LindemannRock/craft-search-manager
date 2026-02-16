@@ -392,9 +392,13 @@ class SettingsController extends Controller
                 'indexSiteId' => $index->siteId ?? null,
             ]);
         } catch (\Throwable $e) {
+            $this->logError('Test search failed', ['error' => $e->getMessage()]);
+
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Search test failed. Check logs for details.'),
             ]);
         }
     }
@@ -433,9 +437,13 @@ class SettingsController extends Controller
                 'meta' => $meta,
             ]);
         } catch (\Throwable $e) {
+            $this->logError('Test autocomplete failed', ['error' => $e->getMessage()]);
+
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Autocomplete test failed. Check logs for details.'),
             ]);
         }
     }
@@ -473,7 +481,9 @@ class SettingsController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear cache: {error}', ['error' => $e->getMessage()]),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Failed to clear cache. Check logs for details.'),
             ]);
         }
     }
@@ -541,9 +551,13 @@ class SettingsController extends Controller
                 'promotions' => $promotions,
             ]);
         } catch (\Throwable $e) {
+            $this->logError('Test promotions failed', ['error' => $e->getMessage()]);
+
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Promotions test failed. Check logs for details.'),
             ]);
         }
     }
@@ -637,9 +651,13 @@ class SettingsController extends Controller
                 'synonyms' => array_unique($synonyms),
             ]);
         } catch (\Throwable $e) {
+            $this->logError('Test query rules failed', ['error' => $e->getMessage()]);
+
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Query rules test failed. Check logs for details.'),
             ]);
         }
     }
@@ -769,7 +787,9 @@ class SettingsController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to cleanup analytics: {error}', ['error' => $e->getMessage()]),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Failed to cleanup analytics. Check logs for details.'),
             ]);
         }
     }

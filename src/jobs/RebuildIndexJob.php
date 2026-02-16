@@ -121,8 +121,8 @@ class RebuildIndexJob extends BaseJob
                     if ($elementType === \craft\elements\Category::class && !empty($index->criteria['groups'])) {
                         $siteQuery->group($index->criteria['groups']);
                     }
-                    if ($elementType === 'lindemannrock\\plugindocs\\elements\\PluginDoc' && !empty($index->criteria['pluginHandles'])) {
-                        $siteQuery->pluginHandle($index->criteria['pluginHandles']);
+                    if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($index->criteria['sourceHandles'])) {
+                        $siteQuery->sourceHandle($index->criteria['sourceHandles']);
                     }
                 }
             }

@@ -103,7 +103,11 @@ class QueryRule extends Model
         switch ($this->actionType) {
             case self::ACTION_SYNONYM:
                 if (empty($value['terms']) || !is_array($value['terms'])) {
-                    $this->addError($attribute, 'Synonym action requires a "terms" array.');
+                    $this->addError($attribute, Craft::t('search-manager', 'Synonym action requires at least one term.'));
+                } elseif (count($value['terms']) > 10) {
+                    $this->addError($attribute, Craft::t('search-manager', 'A synonym rule can have a maximum of 10 terms. You have {count}.', [
+                        'count' => count($value['terms']),
+                    ]));
                 }
                 break;
 
@@ -179,8 +183,14 @@ class QueryRule extends Model
             return;
         }
 
-        // Test compile the pattern — use a short subject to avoid side effects
-        if (@preg_match("/$pattern/i", '') === false) {
+        if (mb_strlen($pattern) > 500) {
+            $this->addError($attribute, Craft::t('search-manager', 'Regex pattern must be 500 characters or less.'));
+            return;
+        }
+
+        // Escape delimiter character and test compile — use a short subject to avoid side effects
+        $escaped = str_replace('~', '\\~', $pattern);
+        if (@preg_match("~$escaped~i", '') === false) {
             $this->addError($attribute, Craft::t('search-manager', 'Invalid regex pattern: {error}', [
                 'error' => preg_last_error_msg(),
             ]));
@@ -297,11 +307,23 @@ class QueryRule extends Model
         if ($this->matchType === self::MATCH_REGEX) {
             $pattern = trim($this->matchValue);
 
+            // Reject excessively long patterns
+            if (mb_strlen($pattern) > 500) {
+                $this->logWarning('Query rule regex too long', [
+                    'ruleId' => $this->id,
+                    'length' => mb_strlen($pattern),
+                ]);
+                return false;
+            }
+
+            // Escape delimiter character in pattern to prevent breakout
+            $pattern = str_replace('~', '\\~', $pattern);
+
             // Guard against ReDoS: temporarily lower backtrack limit
             $previousLimit = (int) ini_get('pcre.backtrack_limit');
             ini_set('pcre.backtrack_limit', '10000');
 
-            $result = @preg_match("/$pattern/i", $searchQuery);
+            $result = @preg_match("~$pattern~i", $searchQuery);
 
             ini_set('pcre.backtrack_limit', (string) $previousLimit);
 

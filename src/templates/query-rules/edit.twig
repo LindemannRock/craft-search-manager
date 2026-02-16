@@ -23,7 +23,7 @@
 } %}
 
 {# Add analytics tab if rule exists and analytics are enabled #}
-{% if not isNew and plugin.settings.enableAnalytics %}
+{% if not isNew and plugin.settings.enableAnalytics and currentUser.can('searchManager:viewAnalytics') %}
     {% set tabs = tabs|merge({
         analytics: {
             label: 'Analytics'|t('search-manager'),
@@ -286,7 +286,7 @@
 				<p class="notice has-icon" style="margin-top: 10px;">
 					<span class="icon" aria-hidden="true"></span>
 					<span class="visually-hidden">Tip:</span>
-					<span>Example: For query "phone", add synonyms "mobile, cell phone, smartphone" to show results containing any of these terms.</span>
+					<span>Example: For query "phone", add synonyms "mobile, cell phone, smartphone" to show results containing any of these terms. Maximum 10 synonyms per rule.</span>
 				</p>
 			</div>
 		</div>
@@ -527,7 +527,7 @@
 	</div>
 
 	{# Analytics Tab #}
-	{% if not isNew and plugin.settings.enableAnalytics %}
+	{% if not isNew and plugin.settings.enableAnalytics and currentUser.can('searchManager:viewAnalytics') %}
 		<div id="analytics" class="hidden">
 			{% include "search-manager/query-rules/_partials/analytics" with {
 				rule: rule,

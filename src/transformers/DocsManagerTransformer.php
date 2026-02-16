@@ -3,33 +3,33 @@
 namespace lindemannrock\searchmanager\transformers;
 
 use craft\base\ElementInterface;
-use lindemannrock\plugindocs\elements\PluginDoc;
-use lindemannrock\plugindocs\records\PluginRecord;
+use lindemannrock\docsmanager\elements\SourceDoc;
+use lindemannrock\docsmanager\records\SourceRecord;
 
 /**
- * Plugin Doc Page Transformer
+ * Docs Manager Transformer
  *
- * Transforms PluginDoc elements into searchable documents,
+ * Transforms SourceDoc elements into searchable documents,
  * including the full HTML content, headings, and keywords.
  *
  * @since 5.39.0
  */
-class PluginDocsTransformer extends BaseTransformer
+class DocsManagerTransformer extends BaseTransformer
 {
     /**
-     * @var array<int, string> Cached plugin names by ID (avoids repeated queries during batch indexing)
+     * @var array<int, string> Cached source names by ID (avoids repeated queries during batch indexing)
      */
-    private static array $_pluginNames = [];
+    private static array $_sourceNames = [];
 
     protected function getElementType(): string
     {
-        return PluginDoc::class;
+        return SourceDoc::class;
     }
 
     /**
-     * Transform a plugin doc page into a searchable document
+     * Transform a source doc page into a searchable document
      *
-     * @param ElementInterface|PluginDoc $element
+     * @param ElementInterface|SourceDoc $element
      * @return array
      * @since 5.39.0
      */
@@ -37,16 +37,16 @@ class PluginDocsTransformer extends BaseTransformer
     {
         $data = $this->getCommonData($element);
 
-        if (!($element instanceof PluginDoc)) {
+        if (!($element instanceof SourceDoc)) {
             return $data;
         }
 
-        $data['type'] = 'pluginDoc';
-        $data['section'] = $this->getPluginName($element->pluginId);
+        $data['type'] = 'sourceDoc';
+        $data['section'] = $this->getSourceName($element->sourceId);
         $data['slug'] = $element->slug;
         $data['category'] = $element->category;
         $data['description'] = $element->description ?? '';
-        $data['pluginId'] = $element->pluginId;
+        $data['sourceId'] = $element->sourceId;
 
         // Collect searchable content
         $searchableContent = [];
@@ -108,18 +108,18 @@ class PluginDocsTransformer extends BaseTransformer
     }
 
     /**
-     * Get plugin display name with static caching
+     * Get source display name with static caching
      */
-    private function getPluginName(?int $pluginId): string
+    private function getSourceName(?int $sourceId): string
     {
-        if (!$pluginId) {
+        if (!$sourceId) {
             return 'Docs';
         }
 
-        if (!isset(self::$_pluginNames[$pluginId])) {
-            self::$_pluginNames[$pluginId] = PluginRecord::findOne($pluginId)?->name ?? 'Docs';
+        if (!isset(self::$_sourceNames[$sourceId])) {
+            self::$_sourceNames[$sourceId] = SourceRecord::findOne($sourceId)?->name ?? 'Docs';
         }
 
-        return self::$_pluginNames[$pluginId];
+        return self::$_sourceNames[$sourceId];
     }
 }

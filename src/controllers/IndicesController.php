@@ -171,7 +171,12 @@ class IndicesController extends Controller
         $index->enableAnalytics = (bool)$request->getBodyParam('enableAnalytics', true);
         $index->disableStopWords = (bool)$request->getBodyParam('disableStopWords', false);
         $index->skipEntriesWithoutUrl = (bool)$request->getBodyParam('skipEntriesWithoutUrl', false);
-        $index->criteria = $request->getBodyParam('criteria', []);
+        $criteria = $request->getBodyParam('criteria', []);
+        $validCriteriaKeys = ['sections', 'volumes', 'groups', 'sourceHandles'];
+        $index->criteria = array_intersect_key(
+            is_array($criteria) ? $criteria : [],
+            array_flip($validCriteriaKeys),
+        );
 
         if (!$index->validate() || !$index->save()) {
             Craft::$app->getSession()->setError(

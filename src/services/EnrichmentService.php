@@ -359,7 +359,7 @@ class EnrichmentService extends Component
 
         $htmlBlocks = [];
 
-        if ($element instanceof \lindemannrock\plugindocs\elements\PluginDoc) {
+        if ($element instanceof \lindemannrock\docsmanager\elements\SourceDoc) {
             if (!empty($element->htmlContent)) {
                 $htmlBlocks[] = $element->htmlContent;
             }

@@ -192,7 +192,7 @@
             {# Default backend doesn't exist #}
             {% set warningMessage %}
             <strong>{{ 'Warning'|t('search-manager') }}:</strong>
-            {{ 'The default backend handle "{handle}" does not exist.'|t('search-manager', {handle: '<strong>' ~ defaultBackendHandle ~ '</strong>'})|raw }}
+            {{ 'The default backend handle "{handle}" does not exist.'|t('search-manager', {handle: '<strong>' ~ defaultBackendHandle|e ~ '</strong>'})|raw }}
             {% if isDefaultFromConfig %}
                 {{ 'Update your config/search-manager.php to point to a valid backend handle.'|t('search-manager') }}
             {% else %}
@@ -211,7 +211,7 @@
             {# Default backend exists but is disabled #}
             {% set warningMessage %}
             <strong>{{ 'Warning'|t('search-manager') }}:</strong>
-            {{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: '<strong>' ~ defaultBackend.name ~ '</strong>'})|raw }}
+            {{ 'The default backend "{name}" is disabled. Search functionality may not work.'|t('search-manager', {name: '<strong>' ~ defaultBackend.name|e ~ '</strong>'})|raw }}
             {% if not isDefaultFromConfig %}
                 {{ 'Please enable it or set a different backend as default.'|t('search-manager') }}
             {% else %}
@@ -247,7 +247,7 @@
     {% if collisionHandles is defined and collisionHandles|length %}
         {% set boldHandles = [] %}
         {% for handle in collisionHandles %}
-            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle|e ~ '</strong>']) %}
         {% endfor %}
         {% set warningMessage %}
         <strong>{{ 'Warning'|t('search-manager') }}:</strong>

@@ -698,6 +698,17 @@ class BackendService extends Component
      */
     private function _searchWithSynonyms(BackendInterface $backend, string $indexName, array $queries, array $options): array
     {
+        // Safety cap — prevent excessive backend calls from too many synonym expansions
+        $maxQueries = 10;
+        if (count($queries) > $maxQueries) {
+            $this->logWarning('Synonym expansion exceeded limit, capping at {max} queries (had {count}). Consider reducing synonyms per rule.', [
+                'max' => $maxQueries,
+                'count' => count($queries),
+                'dropped' => array_slice($queries, $maxQueries),
+            ]);
+            $queries = array_slice($queries, 0, $maxQueries);
+        }
+
         $allHits = [];
         $seenElementIds = [];
         $total = 0;

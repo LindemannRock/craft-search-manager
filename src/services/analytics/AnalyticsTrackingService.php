@@ -105,9 +105,13 @@ class AnalyticsTrackingService
             // Use filtered handles so disabled indices aren't represented
             $indexHandle = implode(',', $analyticsEnabledHandles);
         } else {
-            // Single index handle - require both enabled and enableAnalytics
+            // Single index handle - require valid index with both enabled and enableAnalytics
             $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
-            if ($index && (!$index->enabled || !$index->enableAnalytics)) {
+            if (!$index) {
+                $this->logDebug('Analytics skipped — index not found', ['indexHandle' => $indexHandle]);
+                return;
+            }
+            if (!$index->enabled || !$index->enableAnalytics) {
                 $this->logDebug('Analytics disabled for index', ['indexHandle' => $indexHandle, 'enabled' => $index->enabled, 'enableAnalytics' => $index->enableAnalytics]);
                 return;
             }

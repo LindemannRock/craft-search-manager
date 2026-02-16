@@ -176,7 +176,7 @@
 			{# Default widget doesn't exist #}
 			{% set warningMessage %}
 			<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-			{{ 'The default widget handle "{handle}" does not exist.'|t('search-manager', {handle: '<strong>' ~ defaultWidgetHandle ~ '</strong>'})|raw }}
+			{{ 'The default widget handle "{handle}" does not exist.'|t('search-manager', {handle: '<strong>' ~ defaultWidgetHandle|e ~ '</strong>'})|raw }}
 			{% if isDefaultFromConfig %}
 				{{ 'Update your config/search-manager.php to point to a valid widget handle.'|t('search-manager') }}
 			{% else %}
@@ -195,7 +195,7 @@
 			{# Default widget exists but is disabled #}
 			{% set warningMessage %}
 			<strong>{{ 'Warning'|t('search-manager') }}:</strong>
-			{{ 'The default widget "{name}" is disabled. Search widget may not work.'|t('search-manager', {name: '<strong>' ~ defaultWidget.name ~ '</strong>'})|raw }}
+			{{ 'The default widget "{name}" is disabled. Search widget may not work.'|t('search-manager', {name: '<strong>' ~ defaultWidget.name|e ~ '</strong>'})|raw }}
 			{% if not isDefaultFromConfig %}
 				{{ 'Please enable it or set a different widget as default.'|t('search-manager') }}
 			{% else %}
@@ -230,7 +230,7 @@
     {% if collisionHandles is defined and collisionHandles|length %}
         {% set boldHandles = [] %}
         {% for handle in collisionHandles %}
-            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle|e ~ '</strong>']) %}
         {% endfor %}
         {% set warningMessage %}
         <strong>{{ 'Warning'|t('search-manager') }}:</strong>

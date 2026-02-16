@@ -23,7 +23,7 @@
 } %}
 
 {# Add analytics tab if promotion exists and analytics are enabled #}
-{% if not isNew and plugin.settings.enableAnalytics %}
+{% if not isNew and plugin.settings.enableAnalytics and currentUser.can('searchManager:viewAnalytics') %}
     {% set tabs = tabs|merge({
         analytics: {
             label: 'Analytics'|t('search-manager'),
@@ -243,7 +243,7 @@
 	</div>{# /fields #}
 
 	{# Analytics Tab Content - only for existing promotions #}
-	{% if not isNew and plugin.settings.enableAnalytics %}
+	{% if not isNew and plugin.settings.enableAnalytics and currentUser.can('searchManager:viewAnalytics') %}
 		<div id="analytics" class="hidden">
 			{% include "search-manager/promotions/_partials/analytics" with {
 				promotion: promotion

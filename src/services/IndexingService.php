@@ -591,14 +591,14 @@ class IndexingService extends Component
                 }
             }
 
-            // Check plugin handle filter for doc pages
-            if ($element instanceof \lindemannrock\plugindocs\elements\PluginDoc && !empty($index->criteria['pluginHandles'])) {
+            // Check source handle filter for doc pages
+            if ($element instanceof \lindemannrock\docsmanager\elements\SourceDoc && !empty($index->criteria['sourceHandles'])) {
                 $pluginHandle = (new \craft\db\Query())
                     ->select(['handle'])
-                    ->from('{{%plugindocs_plugins}}')
-                    ->where(['id' => $element->pluginId])
+                    ->from('{{%docsmanager_sources}}')
+                    ->where(['id' => $element->sourceId])
                     ->scalar();
-                if ($pluginHandle && !in_array($pluginHandle, $index->criteria['pluginHandles'])) {
+                if ($pluginHandle && !in_array($pluginHandle, $index->criteria['sourceHandles'])) {
                     return false;
                 }
             }

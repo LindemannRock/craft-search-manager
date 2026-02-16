@@ -52,7 +52,7 @@ use yii\base\Event;
 class SearchEvent extends Event
 {
     /**
-     * The search index handle (e.g., 'blog', 'products', 'plugin-docs')
+     * The search index handle (e.g., 'blog', 'products', 'docs-manager')
      *
      * Available in both BEFORE and AFTER events.
      */

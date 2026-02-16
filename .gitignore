@@ -33,16 +33,10 @@ yarn-error.log*
 /tmp/
 /temp/
 
-# Development files
-TODO.md
-ANALYTICS-ROADMAP.md
-MIGRATION-LANGUAGE-SUPPORT.sql
-MIGRATION-NEW-SETTINGS.sql
-FREEMIUM_PLAN.md
-README.md.backup
+# Internal
+/.internal/
 
 # Plugin releases
 *.zip
 /releases/
 /backups/
-PLAN.md

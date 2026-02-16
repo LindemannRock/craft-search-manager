@@ -381,9 +381,15 @@ class BackendsController extends Controller
                 'error' => 'Backend is not available. Check your settings.',
             ]);
         } catch (\Throwable $e) {
+            $this->logError('Backend connection test failed', [
+                'error' => $e->getMessage(),
+            ]);
+
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Connection test failed. Check logs for details.'),
             ]);
         }
     }
@@ -447,9 +453,15 @@ class BackendsController extends Controller
                 'indices' => $indices,
             ]);
         } catch (\Throwable $e) {
+            $this->logError('Failed to get backend info', [
+                'error' => $e->getMessage(),
+            ]);
+
             return $this->asJson([
                 'success' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Failed to load backend info. Check logs for details.'),
             ]);
         }
     }

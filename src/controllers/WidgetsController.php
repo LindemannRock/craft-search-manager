@@ -585,10 +585,10 @@ class WidgetsController extends Controller
         $widgetStyle->type = (string) $request->getBodyParam('type', 'modal');
         $styles = $request->getBodyParam('styles', []);
 
-        // Strip unknown keys and sanitize values
-        $allowedStyleKeys = array_keys(WidgetConfig::defaultStyleValues());
-        $styles = array_intersect_key($styles, array_flip($allowedStyleKeys));
-        $styles = array_map([$this, '_sanitizeStyleValue'], $styles);
+        // Strip unknown keys and validate values against strict type allowlists
+        $defaults = WidgetConfig::defaultStyleValues();
+        $styles = array_intersect_key($styles, $defaults);
+        $styles = $this->_validateStyleValues($styles, $defaults);
 
         $widgetStyle->styles = $styles;
 
@@ -692,19 +692,114 @@ class WidgetsController extends Controller
     }
 
     /**
-     * Sanitize a CSS style value — strip dangerous constructs
-     * Allows: hex colors, rgba/rgb/hsl, numbers, px/vh/%, transparent, named colors, box-shadow syntax
-     * Blocks: url(), expression(), javascript:, behavior:, -moz-binding, var() with url
+     * Validate style values against strict type-based allowlists.
+     *
+     * Instead of blocklisting dangerous patterns (bypassable via Unicode escapes,
+     * backslash tricks, etc.), each property is validated against its expected type.
+     * Invalid values are replaced with the default from style-defaults.json.
+     *
+     * @param array<string, mixed> $styles Submitted style values
+     * @param array<string, string> $defaults Default style values
+     * @return array<string, string> Validated style values
      */
-    private function _sanitizeStyleValue(mixed $value): string
+    private function _validateStyleValues(array $styles, array $defaults): array
     {
-        $value = (string) $value;
+        $validated = [];
 
-        // Strip dangerous CSS functions and protocols
-        $value = (string) preg_replace('/\b(url|expression|behavior)\s*\(/i', '', $value);
-        $value = (string) preg_replace('/javascript\s*:/i', '', $value);
-        $value = (string) preg_replace('/-moz-binding\s*:/i', '', $value);
+        foreach ($styles as $key => $value) {
+            $value = trim((string) $value);
+            $type = $this->_getStyleValueType($key);
 
-        return trim($value);
+            $valid = match ($type) {
+                'color' => $this->_isValidCssColor($value),
+                'number' => preg_match('/^\d+(\.\d+)?$/', $value) === 1,
+                'shadow' => $this->_isValidCssShadow($value),
+                'boolean' => $value === '0' || $value === '1',
+                'tag' => preg_match('/^[a-z]{1,20}$/', $value) === 1,
+                'class' => preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,50}$/', $value) === 1,
+                default => false,
+            };
+
+            $validated[$key] = $valid ? $value : ($defaults[$key] ?? '');
+        }
+
+        return $validated;
+    }
+
+    /**
+     * Determine the expected value type for a style property.
+     */
+    private function _getStyleValueType(string $key): string
+    {
+        // Exact matches first
+        return match ($key) {
+            'highlightEnabled' => 'boolean',
+            'highlightTag' => 'tag',
+            'highlightClass' => 'class',
+            'modalShadow', 'modalShadowDark' => 'shadow',
+            default => $this->_inferStyleValueType($key),
+        };
+    }
+
+    /**
+     * Infer style value type from the property name suffix.
+     */
+    private function _inferStyleValueType(string $key): string
+    {
+        // Color properties: *Color, *ColorDark, *Bg, *BgDark, *BgLight
+        if (preg_match('/(Color|Bg)(Dark|Light)?$/', $key)) {
+            return 'color';
+        }
+
+        // Numeric properties: everything else (radius, width, padding, font size, gap, opacity, blur, max dimensions)
+        return 'number';
+    }
+
+    /**
+     * Validate a CSS color value (hex, rgb/rgba, hsl/hsla, transparent).
+     */
+    private function _isValidCssColor(string $value): bool
+    {
+        // transparent
+        if ($value === 'transparent') {
+            return true;
+        }
+
+        // Hex: #fff, #ffffff, #ffffffff
+        if (preg_match('/^#[0-9a-fA-F]{3,8}$/', $value)) {
+            return true;
+        }
+
+        // rgb()/rgba(): only digits, commas, dots, spaces, percent inside parens
+        if (preg_match('/^rgba?\(\s*[\d\s,.%\/]+\s*\)$/', $value)) {
+            return true;
+        }
+
+        // hsl()/hsla(): digits, commas, dots, spaces, percent, deg inside parens
+        if (preg_match('/^hsla?\(\s*[\d\s,.%\/deg]+\s*\)$/', $value)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Validate a CSS box-shadow value.
+     * Allows: offsets, blur, spread (numbers with px/em), rgba/hex colors, commas for multiple shadows.
+     */
+    private function _isValidCssShadow(string $value): bool
+    {
+        if ($value === 'none' || $value === '') {
+            return true;
+        }
+
+        // Must not contain backslashes, semicolons, or curly braces
+        if (preg_match('/[\\\\;{}]/', $value)) {
+            return false;
+        }
+
+        // Only allow: digits, hex chars, letters (for px/em/inset/rgba/none), spaces,
+        // commas, dots, hyphens, parens, hash, forward slash, percent
+        return preg_match('/^[0-9a-zA-Z\s,.\-()#\/%]+$/', $value) === 1;
     }
 }

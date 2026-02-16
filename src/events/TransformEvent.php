@@ -69,7 +69,7 @@ class TransformEvent extends Event
     public string $indexName = '';
 
     /**
-     * The transformer class being used (e.g., AutoTransformer, PluginDocsTransformer)
+     * The transformer class being used (e.g., AutoTransformer, DocsManagerTransformer)
      *
      * Available in both BEFORE and AFTER events.
      */

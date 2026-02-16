@@ -113,17 +113,17 @@
     } %}
     {% if lrPluginEnabled('smartlink-manager') %}
         {% set elementTypeOptions = elementTypeOptions|merge({
-            'lindemannrock\\smartlinkmanager\\elements\\SmartLink': 'SmartLinks'
+            'lindemannrock\\smartlinkmanager\\elements\\SmartLink': lrPluginName('smartlink-manager', 'SmartLink Manager')
         }) %}
     {% endif %}
     {% if lrPluginEnabled('shortlink-manager') %}
         {% set elementTypeOptions = elementTypeOptions|merge({
-            'lindemannrock\\shortlinkmanager\\elements\\ShortLink': 'ShortLinks'
+            'lindemannrock\\shortlinkmanager\\elements\\ShortLink': lrPluginName('shortlink-manager', 'ShortLink Manager')
         }) %}
     {% endif %}
-    {% if lrPluginEnabled('plugin-docs') %}
+    {% if lrPluginEnabled('docs-manager') %}
         {% set elementTypeOptions = elementTypeOptions|merge({
-            'lindemannrock\\plugindocs\\elements\\PluginDoc': 'Plugin Docs'
+            'lindemannrock\\docsmanager\\elements\\SourceDoc': lrPluginName('docs-manager', 'Docs Manager')
         }) %}
     {% endif %}
 
@@ -157,24 +157,119 @@
         }) }}
     </div>
 
-    {% if lrPluginEnabled('plugin-docs') %}
-        <div id="docpage-criteria" {% if index.elementType != 'lindemannrock\\plugindocs\\elements\\PluginDoc' %}style="display:none;"{% endif %}>
-            {% set docPluginOptions = [] %}
-            {% for docPlugin in craft.pluginDocs.getPlugins() %}
-                {% set docPluginOptions = docPluginOptions|merge([{
-                    label: docPlugin.name,
-                    value: docPlugin.handle
-                }]) %}
-            {% endfor %}
+    <div id="asset-criteria" {% if index.elementType != 'craft\\elements\\Asset' %}style="display:none;"{% endif %}>
+        {% set volumeOptions = [] %}
+        {% for volume in craft.app.volumes.getAllVolumes() %}
+            {% set volumeOptions = volumeOptions|merge([{
+                label: volume.name,
+                value: volume.handle
+            }]) %}
+        {% endfor %}
 
-            {{ forms.checkboxGroupField({
-                label: "Plugins"|t('search-manager'),
-                instructions: "Which plugin docs to index (leave all unchecked for all plugins)"|t('search-manager'),
-                id: 'docPlugins',
-                name: 'criteria[pluginHandles]',
-                options: docPluginOptions,
-                values: index.criteria.pluginHandles ?? [],
-            }) }}
+        {{ forms.checkboxGroupField({
+            label: "Volumes"|t('search-manager'),
+            instructions: "Which volumes to index (leave all unchecked for all volumes)"|t('search-manager'),
+            id: 'volumes',
+            name: 'criteria[volumes]',
+            options: volumeOptions,
+            values: index.criteria.volumes ?? [],
+        }) }}
+    </div>
+
+    <div id="category-criteria" {% if index.elementType != 'craft\\elements\\Category' %}style="display:none;"{% endif %}>
+        {% set groupOptions = [] %}
+        {% for group in craft.app.categories.getAllGroups() %}
+            {% set groupOptions = groupOptions|merge([{
+                label: group.name,
+                value: group.handle
+            }]) %}
+        {% endfor %}
+
+        {{ forms.checkboxGroupField({
+            label: "Category Groups"|t('search-manager'),
+            instructions: "Which category groups to index (leave all unchecked for all groups)"|t('search-manager'),
+            id: 'groups',
+            name: 'criteria[groups]',
+            options: groupOptions,
+            values: index.criteria.groups ?? [],
+        }) }}
+    </div>
+
+    {% if lrPluginEnabled('docs-manager') %}
+        <div id="docpage-criteria" {% if index.elementType != 'lindemannrock\\docsmanager\\elements\\SourceDoc' %}style="display:none;"{% endif %}>
+            {% set pluginSources = craft.docsManager.getPlugins() %}
+            {% set themeSources = craft.docsManager.getThemes() %}
+            {% set hasPlugins = pluginSources|length > 0 %}
+            {% set hasThemes = themeSources|length > 0 %}
+            {% set hasBoth = hasPlugins and hasThemes %}
+
+            {% if hasBoth %}
+                {{ forms.selectField({
+                    label: "Source Kind"|t('search-manager'),
+                    instructions: "Filter which sources are shown below"|t('search-manager'),
+                    id: 'docSourceKind',
+                    name: 'docSourceKind',
+                    value: 'all',
+                    options: [
+                        { label: 'All Sources'|t('search-manager'), value: 'all' },
+                        { label: 'Plugins'|t('search-manager'), value: 'plugin' },
+                        { label: 'Themes'|t('search-manager'), value: 'theme' },
+                    ],
+                }) }}
+            {% endif %}
+
+            {% set selectedHandles = index.criteria.sourceHandles ?? [] %}
+
+            {% if hasBoth %}
+                <div class="field" id="docSources-field">
+                    <div class="heading">
+                        <label>{{ "Sources"|t('search-manager') }}</label>
+                    </div>
+                    <div class="instructions">
+                        <p>{{ "Which doc sources to index (leave all unchecked for all sources)"|t('search-manager') }}</p>
+                    </div>
+                    <div id="docSources">
+                        <div class="doc-source-group" data-kind="plugin">
+                            <div style="font-weight: 600; margin: 8px 0 4px; color: #596673; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px;">{{ "Plugins"|t('search-manager') }}</div>
+                            {% for docSource in pluginSources %}
+                                {{ forms.checkbox({
+                                    label: docSource.name,
+                                    name: 'criteria[sourceHandles][]',
+                                    value: docSource.handle,
+                                    checked: docSource.handle in selectedHandles,
+                                }) }}
+                            {% endfor %}
+                        </div>
+                        <div class="doc-source-group" data-kind="theme">
+                            <div style="font-weight: 600; margin: 12px 0 4px; color: #596673; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px;">{{ "Themes"|t('search-manager') }}</div>
+                            {% for docSource in themeSources %}
+                                {{ forms.checkbox({
+                                    label: docSource.name,
+                                    name: 'criteria[sourceHandles][]',
+                                    value: docSource.handle,
+                                    checked: docSource.handle in selectedHandles,
+                                }) }}
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                {% set docSourceOptions = [] %}
+                {% for docSource in pluginSources|merge(themeSources) %}
+                    {% set docSourceOptions = docSourceOptions|merge([{
+                        label: docSource.name,
+                        value: docSource.handle,
+                    }]) %}
+                {% endfor %}
+                {{ forms.checkboxGroupField({
+                    label: "Sources"|t('search-manager'),
+                    instructions: "Which doc sources to index (leave all unchecked for all sources)"|t('search-manager'),
+                    id: 'docSources',
+                    name: 'criteria[sourceHandles]',
+                    options: docSourceOptions,
+                    values: selectedHandles,
+                }) }}
+            {% endif %}
         </div>
     {% endif %}
 
@@ -240,7 +335,7 @@
         required: false,
         class: 'code',
         placeholder: 'lindemannrock\\searchmanager\\transformers\\AutoTransformer',
-        tip: "Leave blank for automatic transformer selection. The best transformer is chosen based on the element type: AutoTransformer for Entries, Assets, Categories and Users; PluginDocsTransformer for Plugin Docs. Only specify a custom class for advanced requirements."|t('search-manager'),
+        tip: "Leave blank for automatic transformer selection. The best transformer is chosen based on the element type: AutoTransformer for Entries, Assets, Categories and Users; DocsManagerTransformer for Doc Pages. Only specify a custom class for advanced requirements."|t('search-manager'),
         warning: (index.transformerClass and not index.getErrors('transformerClass')) ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
         errors: index.getErrors('transformerClass'),
     }) }}
@@ -279,10 +374,10 @@
                     <span style="color: #8f98a3;"> — Entries, Assets, Categories, Users</span>
                     <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">Indexes all custom fields, relational fields, Matrix blocks, and Table fields</div>
                 </div>
-                {% if lrPluginEnabled('plugin-docs') %}
+                {% if lrPluginEnabled('docs-manager') %}
                 <div style="margin-bottom: 6px;">
-                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">PluginDocsTransformer</code>
-                    <span style="color: #8f98a3;"> — Plugin Docs</span>
+                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">DocsManagerTransformer</code>
+                    <span style="color: #8f98a3;"> — Doc Pages</span>
                     <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">Indexes full page content, headings, description, and keywords</div>
                 </div>
                 {% endif %}
@@ -337,6 +432,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const handleInput = document.getElementById('handle');
     const elementTypeSelect = document.getElementById('elementType');
     const entryCriteria = document.getElementById('entry-criteria');
+    const assetCriteria = document.getElementById('asset-criteria');
+    const categoryCriteria = document.getElementById('category-criteria');
     const siteInputs = document.querySelectorAll('input[name="siteId[]"], input[name="siteId"]');
     const languageSelect = document.getElementById('language');
     const languagePreview = document.getElementById('language-preview');
@@ -466,14 +563,20 @@ document.addEventListener('DOMContentLoaded', function() {
             if (entryCriteria) {
                 entryCriteria.style.display = elementTypeSelect.value === 'craft\\elements\\Entry' ? 'block' : 'none';
             }
+            if (assetCriteria) {
+                assetCriteria.style.display = elementTypeSelect.value === 'craft\\elements\\Asset' ? 'block' : 'none';
+            }
+            if (categoryCriteria) {
+                categoryCriteria.style.display = elementTypeSelect.value === 'craft\\elements\\Category' ? 'block' : 'none';
+            }
             if (docPageCriteria) {
-                docPageCriteria.style.display = elementTypeSelect.value === 'lindemannrock\\plugindocs\\elements\\PluginDoc' ? 'block' : 'none';
+                docPageCriteria.style.display = elementTypeSelect.value === 'lindemannrock\\docsmanager\\elements\\SourceDoc' ? 'block' : 'none';
             }
 
             // Update transformer placeholder based on element type
             if (transformerInput) {
-                if (elementTypeSelect.value === 'lindemannrock\\plugindocs\\elements\\PluginDoc') {
-                    transformerInput.placeholder = 'lindemannrock\\searchmanager\\transformers\\PluginDocsTransformer';
+                if (elementTypeSelect.value === 'lindemannrock\\docsmanager\\elements\\SourceDoc') {
+                    transformerInput.placeholder = 'lindemannrock\\searchmanager\\transformers\\DocsManagerTransformer';
                 } else {
                     transformerInput.placeholder = 'lindemannrock\\searchmanager\\transformers\\AutoTransformer';
                 }
@@ -485,6 +588,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Initial state
         updateCriteriaVisibility();
+    }
+
+    // Doc source kind filter
+    const docSourceKindSelect = document.getElementById('docSourceKind');
+    if (docSourceKindSelect) {
+        docSourceKindSelect.addEventListener('change', function() {
+            const kind = this.value;
+            document.querySelectorAll('.doc-source-group').forEach(function(group) {
+                group.style.display = (kind === 'all' || group.dataset.kind === kind) ? '' : 'none';
+            });
+        });
     }
 
     // Language preview updates (only if stop words enabled)
