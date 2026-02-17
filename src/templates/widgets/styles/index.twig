@@ -169,7 +169,7 @@
 	{% if collisionHandles is defined and collisionHandles|length %}
 		{% set boldHandles = [] %}
 		{% for handle in collisionHandles %}
-			{% set boldHandles = boldHandles|merge(['<strong>' ~ handle ~ '</strong>']) %}
+			{% set boldHandles = boldHandles|merge(['<strong>' ~ handle|e ~ '</strong>']) %}
 		{% endfor %}
 		{% set warningMessage %}
 		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
