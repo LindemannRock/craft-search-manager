@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -72,57 +73,21 @@ class AnalyticsController extends Controller
 
         $dateRange = Craft::$app->getRequest()->getQueryParam('dateRange', DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id));
 
-        // Get chart data
-        $chartData = SearchManager::$plugin->analytics->getChartData($effectiveSiteId, $dateRange);
-
-        // Get most common searches
+        // Overview tab data only — all other tabs lazy-load via AJAX
         $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 15, $dateRange);
-
-        // Get recent searches
-        $recentSearches = SearchManager::$plugin->analytics->getRecentSearches($effectiveSiteId, 100, null, $dateRange);
-        $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($effectiveSiteId, 15, false, $dateRange);
-
-        // Get counts
         $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, null, $dateRange);
         $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
         $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
-
-        // Get device analytics
-        $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
-        $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
-        $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
-        $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
-
-        // Transform data for charts
-        $deviceBreakdown = [
-            'labels' => array_column($deviceData, 'deviceType'),
-            'values' => array_column($deviceData, 'count'),
-        ];
-        $browserBreakdown = [
-            'labels' => array_column($browserData, 'browser'),
-            'values' => array_column($browserData, 'count'),
-        ];
-        $osBreakdown = [
-            'labels' => array_column($osData, 'osName'),
-            'values' => array_column($osData, 'count'),
-        ];
 
         // Get editable sites for dropdown
         $sites = Craft::$app->getSites()->getEditableSites();
         $settings = SearchManager::$plugin->getSettings();
 
         return $this->renderTemplate('search-manager/analytics/index', [
-            'chartData' => $chartData,
             'mostCommon' => $mostCommon,
-            'recentSearches' => $recentSearches,
-            'recentUnhandled' => $recentUnhandled,
             'totalCount' => $totalCount,
             'handledCount' => $handledCount,
             'unhandledCount' => $unhandledCount,
-            'deviceBreakdown' => $deviceBreakdown,
-            'browserBreakdown' => $browserBreakdown,
-            'osBreakdown' => $osBreakdown,
-            'botStats' => $botStats,
             'dateRange' => $dateRange,
             'siteId' => $siteId,
             'sites' => $sites,
@@ -525,6 +490,7 @@ class AnalyticsController extends Controller
             'source', 'performance', 'cache-stats', 'top-queries', 'worst-queries',
             'query-rules-top', 'query-rules-by-type', 'query-rules-queries',
             'promotions-top', 'promotions-by-position', 'promotions-queries',
+            'recent-searches', 'recent-unhandled', 'bot-stats',
         ];
         if (!in_array($type, $validTypes, true)) {
             throw new \yii\web\BadRequestHttpException('Invalid data type.');
@@ -788,6 +754,63 @@ class AnalyticsController extends Controller
                     'success' => true,
                     'data' => $promoQueries,
                 ]);
+            }
+
+            // Recent searches (lazy-loaded by Searches tab)
+            if ($type === 'recent-searches') {
+                $recentSearches = SearchManager::$plugin->analytics->getRecentSearches(
+                    $effectiveSiteId,
+                    100,
+                    null,
+                    $dateRange,
+                );
+                $siteNames = [];
+                foreach ($recentSearches as &$row) {
+                    if ($row['dateCreated'] instanceof \DateTime) {
+                        $row['date'] = DateFormatHelper::formatDate($row['dateCreated'], 'short', true, false);
+                        $row['time'] = DateFormatHelper::formatTime($row['dateCreated'], 'short', null, false);
+                    }
+                    if (!empty($row['siteId']) && !isset($siteNames[$row['siteId']])) {
+                        $site = Craft::$app->getSites()->getSiteById((int)$row['siteId']);
+                        $siteNames[$row['siteId']] = $site?->name ?? '—';
+                    }
+                    $row['siteName'] = $siteNames[$row['siteId'] ?? 0] ?? '—';
+                }
+                unset($row);
+
+                return $this->asJson(['success' => true, 'data' => $recentSearches]);
+            }
+
+            // Recent unhandled searches (lazy-loaded by Content Gaps tab)
+            if ($type === 'recent-unhandled') {
+                $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches(
+                    $effectiveSiteId,
+                    15,
+                    false,
+                    $dateRange,
+                );
+                $siteNames = [];
+                foreach ($recentUnhandled as &$row) {
+                    if ($row['dateCreated'] instanceof \DateTime) {
+                        $row['date'] = DateFormatHelper::formatDate($row['dateCreated'], 'short', true, false);
+                        $row['time'] = DateFormatHelper::formatTime($row['dateCreated'], 'short', null, false);
+                    }
+                    if (!empty($row['siteId']) && !isset($siteNames[$row['siteId']])) {
+                        $site = Craft::$app->getSites()->getSiteById((int)$row['siteId']);
+                        $siteNames[$row['siteId']] = $site?->name ?? '—';
+                    }
+                    $row['siteName'] = $siteNames[$row['siteId'] ?? 0] ?? '—';
+                }
+                unset($row);
+
+                return $this->asJson(['success' => true, 'data' => $recentUnhandled]);
+            }
+
+            // Bot stats (lazy-loaded by Traffic & Devices tab)
+            if ($type === 'bot-stats') {
+                $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
+
+                return $this->asJson(['success' => true, 'data' => $botStats]);
             }
 
             // Flatten structure for backward compatibility if 'all' is requested

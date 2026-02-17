@@ -79,6 +79,12 @@ class AnalyticsQueryInsightsService
     public function getRecentSearches(int|array|null $siteId, int $limit = 5, ?bool $hasResults = null, ?string $dateRange = null): array
     {
         $query = (new Query())
+            ->select([
+                'dateCreated', 'query', 'siteId', 'resultsCount', 'indexHandle', 'backend',
+                'intent', 'source', 'platform', 'appVersion', 'deviceType', 'browser', 'osName',
+                'city', 'country', 'wasRedirected', 'synonymsExpanded', 'rulesMatched', 'promotionsShown',
+                'isHit',
+            ])
             ->from('{{%searchmanager_analytics}}')
             ->orderBy(['dateCreated' => SORT_DESC])
             ->limit($limit);
