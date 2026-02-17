@@ -1,14 +1,3 @@
-{# Backend type labels for proper display #}
-{% set backendLabels = {
-    'algolia': 'Algolia',
-    'meilisearch': 'Meilisearch',
-    'typesense': 'Typesense',
-    'mysql': 'MySQL',
-    'pgsql': 'PostgreSQL',
-    'redis': 'Redis',
-    'file': 'File',
-} %}
-
 <h2 class="lr-section-heading">{{ "Recent Searches"|t('search-manager') }}</h2>
 
 <div class="lr-analytics-charts">
@@ -40,99 +29,8 @@
                         {% endif %}
                     </tr>
                 </thead>
-                <tbody>
-                    {% for search in recentSearches %}
-                        <tr>
-                            <td>{{ search.dateCreated|lrDate('short') }}</td>
-                            <td>{{ search.dateCreated|lrTime('short') }}</td>
-                            <td><code>{{ search.query }}</code></td>
-                            <td>
-                                {% if search.siteId %}
-                                    {% set site = craft.app.sites.getSiteById(search.siteId) %}
-                                    {{ site ? site.name : '—' }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if search.wasRedirected|default(false) %}
-                                    <span class="lr-text-purple" title="{{ 'Redirected'|t('search-manager') }}">—</span>
-                                {% elseif search.resultsCount > 0 %}
-                                    <span class="lr-text-green">{{ search.resultsCount|number }}</span>
-                                {% else %}
-                                    <span class="lr-text-red">0</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if search.synonymsExpanded|default(false) %}
-                                    <span class="status green" title="{{ 'Synonyms used'|t('search-manager') }}"></span>
-                                {% else %}
-                                    <span class="light">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if search.rulesMatched|default(0) > 0 %}
-                                    <span class="lr-text-blue">{{ search.rulesMatched }}</span>
-                                {% else %}
-                                    <span class="light">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if search.promotionsShown|default(0) > 0 %}
-                                    <span class="lr-text-amber">{{ search.promotionsShown }}</span>
-                                {% else %}
-                                    <span class="light">—</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if search.wasRedirected|default(false) %}
-                                    <span class="status red" title="{{ 'Redirected to another page'|t('search-manager') }}"></span>
-                                {% else %}
-                                    <span class="light">—</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ search.indexHandle }}</td>
-                            <td>{{ backendLabels[search.backend] ?? search.backend|title }}</td>
-                            <td>
-                                {% if search.intent %}
-                                    {{ search.intent|title }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if search.source == 'cp' %}
-                                    CP
-                                {% elseif search.source == 'frontend' %}
-                                    Frontend
-                                {% elseif search.source == 'api' %}
-                                    API
-                                {% else %}
-                                    {{ search.source|title }}
-                                {% endif %}
-                            </td>
-                            <td>{{ search.platform ?? '—' }}</td>
-                            <td>{{ search.appVersion ?? '—' }}</td>
-                            <td>{{ search.deviceType ? search.deviceType|title : '—' }}</td>
-                            <td>{{ search.browser ?? '—' }}</td>
-                            <td>{{ search.osName ?? '—' }}</td>
-                            {% if settings.enableGeoDetection %}
-                                <td>
-                                    {% if search.city and search.country %}
-                                        {{ search.city }}, {{ search.country }}
-                                    {% elseif search.country %}
-                                        {{ search.country }}
-                                    {% else %}
-                                        —
-                                    {% endif %}
-                                </td>
-                            {% endif %}
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="{{ settings.enableGeoDetection ? 19 : 18 }}" class="thin light lr-text-center">{{ "No searches recorded yet"|t('search-manager') }}</td>
-                        </tr>
-                    {% endfor %}
+                <tbody id="recent-searches-body">
+                    <tr><td colspan="{{ settings.enableGeoDetection ? 19 : 18 }}" class="thin light lr-text-center">{{ "Loading..."|t('search-manager') }}</td></tr>
                 </tbody>
             </table>
         </div>

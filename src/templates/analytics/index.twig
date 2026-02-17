@@ -188,6 +188,10 @@
     noRuleQueries: "No queries have triggered rules yet"|t('search-manager'),
     noPromotionsShown: "No promotions have been shown yet"|t('search-manager'),
     noPromotionQueries: "No queries have triggered promotions yet"|t('search-manager'),
+    noSearches: "No searches recorded yet"|t('search-manager'),
+    noUnhandled: "All searches have hits!"|t('search-manager'),
+    noBotData: "No bot data available"|t('search-manager'),
+    loading: "Loading..."|t('search-manager'),
 } %}
 
 {% set analyticsConfig = {
@@ -200,6 +204,16 @@
     },
     strings: analyticsStrings,
     actionTypeBadges: actionTypeBadges,
+    enableGeoDetection: settings.enableGeoDetection ?? false,
+    backendLabels: {
+        algolia: 'Algolia',
+        meilisearch: 'Meilisearch',
+        typesense: 'Typesense',
+        mysql: 'MySQL',
+        pgsql: 'PostgreSQL',
+        redis: 'Redis',
+        file: 'File',
+    },
 } %}
 
 {% js %}

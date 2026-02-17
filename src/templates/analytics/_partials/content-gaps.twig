@@ -1,14 +1,3 @@
-{# Backend type labels for proper display #}
-{% set backendLabels = {
-    'algolia': 'Algolia',
-    'meilisearch': 'Meilisearch',
-    'typesense': 'Typesense',
-    'mysql': 'MySQL',
-    'pgsql': 'PostgreSQL',
-    'redis': 'Redis',
-    'file': 'File',
-} %}
-
 <h2 class="lr-section-heading lr-heading-tight">{{ "Content Gaps (Zero-Hit Clusters)"|t('search-manager') }}</h2>
 <p class="light lr-paragraph">
     {{ "These groups of queries returned no hits. This indicates missing content or topics your users are looking for."|t('search-manager') }}
@@ -51,28 +40,8 @@
                         <th>{{ 'Time'|t('search-manager') }}</th>
                     </tr>
                 </thead>
-                <tbody>
-                    {% for stat in recentUnhandled %}
-                        <tr>
-                            <td><code>{{ stat.query }}</code></td>
-                            <td>
-                                {% if stat.siteId %}
-                                    {% set site = craft.app.sites.getSiteById(stat.siteId) %}
-                                    {{ site ? site.name : '—' }}
-                                {% else %}
-                                    —
-                                {% endif %}
-                            </td>
-                            <td>{{ stat.indexHandle }}</td>
-                            <td>{{ backendLabels[stat.backend] ?? stat.backend|title }}</td>
-                            <td>{{ stat.dateCreated|lrDate('short') }}</td>
-                            <td>{{ stat.dateCreated|lrTime('short') }}</td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <td colspan="6" class="thin light lr-text-center">{{ "All searches have hits!"|t('search-manager') }}</td>
-                        </tr>
-                    {% endfor %}
+                <tbody id="recent-unhandled-body">
+                    <tr><td colspan="6" class="thin light lr-text-center">{{ "Loading..."|t('search-manager') }}</td></tr>
                 </tbody>
             </table>
         </div>
