@@ -310,70 +310,71 @@
 {% block rowActions %}
     {% set isConfig = item.source == 'config' %}
     {% set indexBackendType = item.effectiveBackendType %}
+    {% set itemId = item.id ?: item.handle %}
 
-    <td class="thin lr-text-end">
-        <button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('search-manager') }}"></button>
-        <div class="menu">
-            <ul>
-                {% if item.canEdit() %}
-                    {% if canEdit %}
-                        <li>
-                            <a href="{{ url('search-manager/indices/edit/' ~ item.id) }}">
-                                {{ 'Edit'|t('search-manager') }}
-                            </a>
-                        </li>
-                    {% endif %}
-                {% else %}
-                    <li>
-                        <a href="{{ url('search-manager/indices/view/' ~ item.handle) }}">
-                            {{ 'View'|t('search-manager') }}
-                        </a>
-                    </li>
-                {% endif %}
+    {% set actionItems = [] %}
 
-                {% if canRebuild %}
-                    <li><hr class="padded"></li>
-                    <li>
-                        <a class="index-action" data-action="rebuild" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                            {{ 'Rebuild Index'|t('search-manager') }}
-                        </a>
-                    </li>
-                    {% if indexBackendType in ['algolia', 'meilisearch', 'typesense'] %}
-                        <li>
-                            <a class="index-action" data-action="sync-count" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                                {{ 'Sync Count from Backend'|t('search-manager') }}
-                            </a>
-                        </li>
-                    {% endif %}
-                {% endif %}
+    {% if item.canEdit() %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Edit'|t('search-manager'),
+            url: url('search-manager/indices/edit/' ~ item.id),
+            permission: 'searchManager:editIndices',
+        }]) %}
+    {% else %}
+        {% set actionItems = actionItems|merge([{
+            label: 'View'|t('app'),
+            url: url('search-manager/indices/view/' ~ item.handle),
+        }]) %}
+    {% endif %}
 
-                {% if canClear %}
-                    <li>
-                        <a class="index-action" data-action="clear" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                            {{ 'Clear Index Data'|t('search-manager') }} ({{ item.documentCount|number_format }})
-                        </a>
-                    </li>
-                {% endif %}
+    {% set actionItems = actionItems|merge([
+        {type: 'divider'},
+        {
+            label: 'Rebuild Index'|t('search-manager'),
+            jsAction: 'rebuild',
+            data: {name: item.name},
+            permission: 'searchManager:rebuildIndices',
+        },
+        {
+            label: 'Sync Count from Backend'|t('search-manager'),
+            jsAction: 'sync-count',
+            data: {name: item.name},
+            showIf: indexBackendType in ['algolia', 'meilisearch', 'typesense'],
+            permission: 'searchManager:rebuildIndices',
+        },
+        {
+            label: 'Clear Index Data'|t('search-manager') ~ ' (' ~ item.documentCount|number_format ~ ')',
+            jsAction: 'clear',
+            data: {name: item.name},
+            permission: 'searchManager:clearIndices',
+        },
+        {
+            label: 'Clear Index Cache'|t('search-manager'),
+            jsAction: 'clear-cache',
+            data: {name: item.name},
+            showIf: globalSettings.enableCache or globalSettings.enableAutocompleteCache,
+            permission: 'searchManager:clearCache',
+        },
+        {type: 'divider'},
+        {
+            label: 'Delete Index'|t('search-manager'),
+            class: 'error',
+            jsAction: 'delete',
+            data: {name: item.name},
+            showIf: item.canEdit(),
+            permission: 'searchManager:deleteIndices',
+        },
+    ]) %}
 
-                {% if canClearCache and (globalSettings.enableCache or globalSettings.enableAutocompleteCache) %}
-                    <li>
-                        <a class="index-action" data-action="clear-cache" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                            {{ 'Clear Index Cache'|t('search-manager') }}
-                        </a>
-                    </li>
-                {% endif %}
-
-                {% if item.canEdit() and canDelete %}
-                    <li><hr class="padded"></li>
-                    <li>
-                        <a class="index-action error" data-action="delete" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                            {{ 'Delete Index'|t('search-manager') }}
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </div>
-    </td>
+    {% include 'lindemannrock-base/_components/row-actions' with {
+        item: {id: itemId},
+        actions: {
+            type: 'menu',
+            icon: 'settings',
+            title: 'Actions'|t('search-manager'),
+            items: actionItems,
+        },
+    } only %}
 {% endblock %}
 
 {% block bulkActions %}
@@ -468,7 +469,7 @@
     });
 
     // Individual index action menu clicks
-    document.querySelectorAll('.index-action').forEach(link => {
+    document.querySelectorAll('[data-action]').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
 

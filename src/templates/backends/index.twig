@@ -300,50 +300,62 @@
 {% block rowActions %}
     {% set isConfig = item.isFromConfig() %}
     {% set isDefault = defaultBackendHandle == item.handle %}
+    {% set itemId = item.id ?: item.handle %}
 
-    <td class="thin lr-text-end">
-        <button type="button" class="btn menubtn" data-icon="settings" title="{{ 'Actions'|t('app') }}"></button>
-        <div class="menu">
-            <ul>
-                {% if item.canEdit() %}
-                    {% if canEdit %}
-                        <li>
-                            <a href="{{ url('search-manager/backends/' ~ item.id) }}">
-                                {{ 'Edit'|t('app') }}
-                            </a>
-                        </li>
-                    {% endif %}
-                {% else %}
-                    <li>
-                        <a href="{{ url('search-manager/backends/view/' ~ item.handle) }}">
-                            {{ 'View'|t('app') }}
-                        </a>
-                    </li>
-                {% endif %}
-                <li><hr class="padded"></li>
-                <li>
-                    <a class="lr-backend-action" data-action="test" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                        {{ 'Test Connection'|t('search-manager') }}
-                    </a>
-                </li>
-                {% if canEdit and not isDefaultFromConfig and not isDefault %}
-                    <li>
-                        <a class="lr-backend-action" data-action="set-default" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                            {{ 'Set as Default'|t('search-manager') }}
-                        </a>
-                    </li>
-                {% endif %}
-                {% if canDelete and item.canEdit() and not isDefault %}
-                    <li><hr class="padded"></li>
-                    <li>
-                        <a class="lr-backend-action error" data-action="delete" data-id="{{ item.id ?: item.handle }}" data-name="{{ item.name }}">
-                            {{ 'Delete'|t('app') }}
-                        </a>
-                    </li>
-                {% endif %}
-            </ul>
-        </div>
-    </td>
+    {% set actionItems = [] %}
+
+    {% if item.canEdit() %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Edit'|t('app'),
+            url: url('search-manager/backends/' ~ item.id),
+            permission: 'searchManager:editBackends',
+        }]) %}
+    {% else %}
+        {% set actionItems = actionItems|merge([{
+            label: 'View'|t('app'),
+            url: url('search-manager/backends/view/' ~ item.handle),
+        }]) %}
+    {% endif %}
+
+    {% set actionItems = actionItems|merge([
+        {type: 'divider'},
+        {
+            label: 'Test Connection'|t('search-manager'),
+            jsAction: 'test',
+            data: {name: item.name},
+        },
+    ]) %}
+
+    {% set actionItems = actionItems|merge([{
+        label: 'Set as Default'|t('search-manager'),
+        jsAction: 'set-default',
+        data: {name: item.name},
+        hideIf: isDefaultFromConfig or isDefault,
+        permission: 'searchManager:editBackends',
+    }]) %}
+
+    {% set actionItems = actionItems|merge([
+        {type: 'divider'},
+        {
+            label: 'Delete'|t('app'),
+            class: 'error',
+            jsAction: 'delete',
+            data: {name: item.name},
+            hideIf: isDefault,
+            showIf: item.canEdit(),
+            permission: 'searchManager:deleteBackends',
+        },
+    ]) %}
+
+    {% include 'lindemannrock-base/_components/row-actions' with {
+        item: {id: itemId},
+        actions: {
+            type: 'menu',
+            icon: 'settings',
+            title: 'Actions'|t('app'),
+            items: actionItems,
+        },
+    } only %}
 {% endblock %}
 
 
@@ -525,7 +537,7 @@
         });
 
         // Individual backend action menu clicks
-        document.querySelectorAll('.lr-backend-action').forEach(link => {
+        document.querySelectorAll('[data-action]').forEach(link => {
             link.addEventListener('click', function(e) {
                 e.preventDefault();
 
