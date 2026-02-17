@@ -79,7 +79,6 @@
 
         const csrfToken = config.csrfToken || '';
         const csrfName = config.csrfName || '';
-        const chartColors = ['#0d78f2', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6'];
 
         $.ajax({
             url: dataEndpoint,
@@ -110,18 +109,143 @@
             }
         });
 
+    }
+
+    function handleAnalyticsInit(config) {
+        const resolved = config || (window.lrAnalyticsConfig || {});
+        currentDateRange = resolved.dateRange || currentDateRange;
+        currentSiteId = resolved.siteId || '';
+
+        window.recentSearchesLoaded = false;
+        window.contentGapsRecentLoaded = false;
+        window.performanceLoaded = false;
+        window.trafficDevicesLoaded = false;
+        window.geographicLoaded = false;
+        window.queryRulesLoaded = false;
+        window.promotionsLoaded = false;
+
+        loadInitialCharts();
+        const activeTab = getActiveTabId();
+        loadTabData(activeTab);
+    }
+
+    document.addEventListener('lr:analyticsInit', function(e) {
+        const config = e.detail && e.detail.config ? e.detail.config : null;
+        handleAnalyticsInit(config);
+    });
+
+    document.addEventListener('lr:tabChanged', function(e) {
+        const tabId = e.detail && e.detail.tabId ? e.detail.tabId : getActiveTabId();
+        loadTabData(tabId);
+    });
+
+    // AJAX Data Loading for Tabs
+    function loadTabData(tabName) {
+        const mapping = {
+            'overview': 'query-analysis',
+            'content-gaps': 'content-gaps'
+        };
+
+        if (tabName === 'overview' && $('#word-cloud-container').children().length > 0) return;
+        if (tabName === 'searches' && window.recentSearchesLoaded) return;
+        if (tabName === 'content-gaps' && $('#content-gaps-body tr').length > 1 && window.contentGapsRecentLoaded) return;
+        if (tabName === 'performance' && window.performanceLoaded) return;
+        if (tabName === 'traffic-devices' && window.trafficDevicesLoaded) return;
+        if (tabName === 'geographic' && window.geographicLoaded) return;
+        if (tabName === 'query-rules' && window.queryRulesLoaded) return;
+        if (tabName === 'promotions' && window.promotionsLoaded) return;
+
+        if (tabName === 'searches') {
+            loadRecentSearchesData(currentDateRange, currentSiteId);
+            return;
+        }
+
+        if (tabName === 'performance') {
+            loadPerformanceData(currentDateRange, currentSiteId);
+            return;
+        }
+
+        if (tabName === 'traffic-devices') {
+            loadTrafficDevicesData(currentDateRange, currentSiteId);
+            return;
+        }
+
+        if (tabName === 'geographic') {
+            loadGeographicData(currentDateRange, currentSiteId);
+            return;
+        }
+
+        if (tabName === 'query-rules') {
+            loadQueryRulesData(currentDateRange, currentSiteId);
+            return;
+        }
+
+        if (tabName === 'promotions') {
+            loadPromotionsData(currentDateRange, currentSiteId);
+            return;
+        }
+
         $.ajax({
             url: dataEndpoint,
             type: 'POST',
             dataType: 'json',
-            data: { dateRange: currentDateRange, siteId: currentSiteId, type: 'device-stats', [csrfName]: csrfToken },
+            data: {
+                dateRange: currentDateRange,
+                siteId: currentSiteId,
+                type: mapping[tabName],
+                [csrfName]: csrfToken
+            },
+            success: function(res) {
+                if (res.success) {
+                    if (tabName === 'overview') {
+                        renderQueryAnalysis(res.data.queryAnalysis);
+                        loadBreakdownCharts(currentDateRange, currentSiteId);
+                        loadSearchActivityData(currentDateRange, currentSiteId);
+                    }
+                    if (tabName === 'content-gaps') {
+                        renderContentGaps(res.data.contentGaps);
+                        loadRecentUnhandledData(currentDateRange, currentSiteId);
+                    }
+                }
+            },
+            error: function() {
+                console.error('Failed to load tab data');
+            }
+        });
+    }
+
+    function hasNonZeroValues(values) {
+        if (!Array.isArray(values) || values.length === 0) return false;
+        return values.some(value => Number(value) > 0);
+    }
+
+    function loadTrafficDevicesData(dateRange, siteId) {
+        const csrfToken = config.csrfToken || '';
+        const csrfName = config.csrfName || '';
+        const chartColors = ['#0d78f2', '#27ae60', '#e74c3c', '#f39c12', '#9b59b6'];
+
+        $.ajax({
+            url: dataEndpoint,
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderHourlyChart(res.data);
+            }
+        });
+
+        $.ajax({
+            url: dataEndpoint,
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'device-stats', [csrfName]: csrfToken },
             success: function(res) {
                 const stats = res && res.success ? res.data.deviceStats : null;
-                const botStats = stats ? stats.botStats : null;
                 const deviceBreakdown = stats ? stats.deviceBreakdown : null;
                 const browserBreakdown = stats ? stats.browserBreakdown : null;
                 const osBreakdown = stats ? stats.osBreakdown : null;
 
+                const botStats = stats ? stats.botStats : null;
                 const botCtx = document.getElementById('bot-chart');
                 const hasBot = botStats && botStats.chart && Array.isArray(botStats.chart.values) &&
                     botStats.chart.values.some(v => Number(v) > 0);
@@ -187,117 +311,14 @@
                 }
             }
         });
-    }
-
-    function handleAnalyticsInit(config) {
-        const resolved = config || (window.lrAnalyticsConfig || {});
-        currentDateRange = resolved.dateRange || currentDateRange;
-        currentSiteId = resolved.siteId || '';
-
-        window.performanceLoaded = false;
-        window.trafficDevicesLoaded = false;
-        window.geographicLoaded = false;
-        window.queryRulesLoaded = false;
-        window.promotionsLoaded = false;
-
-        loadInitialCharts();
-        const activeTab = getActiveTabId();
-        loadTabData(activeTab);
-    }
-
-    document.addEventListener('lr:analyticsInit', function(e) {
-        const config = e.detail && e.detail.config ? e.detail.config : null;
-        handleAnalyticsInit(config);
-    });
-
-    document.addEventListener('lr:tabChanged', function(e) {
-        const tabId = e.detail && e.detail.tabId ? e.detail.tabId : getActiveTabId();
-        loadTabData(tabId);
-    });
-
-    // AJAX Data Loading for Tabs
-    function loadTabData(tabName) {
-        const mapping = {
-            'overview': 'query-analysis',
-            'content-gaps': 'content-gaps'
-        };
-
-        if (tabName === 'overview' && $('#word-cloud-container').children().length > 0) return;
-        if (tabName === 'content-gaps' && $('#content-gaps-body tr').length > 1) return;
-        if (tabName === 'performance' && window.performanceLoaded) return;
-        if (tabName === 'traffic-devices' && window.trafficDevicesLoaded) return;
-        if (tabName === 'geographic' && window.geographicLoaded) return;
-        if (tabName === 'query-rules' && window.queryRulesLoaded) return;
-        if (tabName === 'promotions' && window.promotionsLoaded) return;
-
-        if (tabName === 'performance') {
-            loadPerformanceData(currentDateRange, currentSiteId);
-            return;
-        }
-
-        if (tabName === 'traffic-devices') {
-            loadTrafficDevicesData(currentDateRange, currentSiteId);
-            return;
-        }
-
-        if (tabName === 'geographic') {
-            loadGeographicData(currentDateRange, currentSiteId);
-            return;
-        }
-
-        if (tabName === 'query-rules') {
-            loadQueryRulesData(currentDateRange, currentSiteId);
-            return;
-        }
-
-        if (tabName === 'promotions') {
-            loadPromotionsData(currentDateRange, currentSiteId);
-            return;
-        }
 
         $.ajax({
             url: dataEndpoint,
             type: 'POST',
             dataType: 'json',
-            data: {
-                dateRange: currentDateRange,
-                siteId: currentSiteId,
-                type: mapping[tabName],
-                [csrfName]: csrfToken
-            },
+            data: { dateRange: dateRange, siteId: siteId, type: 'bot-stats', [csrfName]: csrfToken },
             success: function(res) {
-                if (res.success) {
-                    if (tabName === 'overview') {
-                        renderQueryAnalysis(res.data.queryAnalysis);
-                        loadBreakdownCharts(currentDateRange, currentSiteId);
-                        loadSearchActivityData(currentDateRange, currentSiteId);
-                    }
-                    if (tabName === 'content-gaps') renderContentGaps(res.data.contentGaps);
-                }
-            },
-            error: function() {
-                console.error('Failed to load tab data');
-            }
-        });
-    }
-
-    function hasNonZeroValues(values) {
-        if (!Array.isArray(values) || values.length === 0) return false;
-        return values.some(value => Number(value) > 0);
-    }
-
-    function loadTrafficDevicesData(dateRange, siteId) {
-        const csrfToken = config.csrfToken || '';
-        const csrfName = config.csrfName || '';
-
-        $.ajax({
-            url: dataEndpoint,
-            type: 'POST',
-            dataType: 'json',
-            data: { dateRange: dateRange, siteId: siteId, type: 'hourly', [csrfName]: csrfToken },
-            success: function(res) {
-                if (res.success) renderHourlyChart(res.data);
-                $('#analytics-dashboard').css('opacity', '1');
+                if (res.success) renderBotStats(res.data);
                 window.trafficDevicesLoaded = true;
             }
         });
@@ -448,6 +469,146 @@
             </tr>`;
             tbody.append(row);
         });
+    }
+
+    function loadRecentSearchesData(dateRange, siteId) {
+        const csrfToken = config.csrfToken || '';
+        const csrfName = config.csrfName || '';
+
+        $.ajax({
+            url: dataEndpoint,
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'recent-searches', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderRecentSearches(res.data);
+                window.recentSearchesLoaded = true;
+            }
+        });
+    }
+
+    function loadRecentUnhandledData(dateRange, siteId) {
+        const csrfToken = config.csrfToken || '';
+        const csrfName = config.csrfName || '';
+
+        $.ajax({
+            url: dataEndpoint,
+            type: 'POST',
+            dataType: 'json',
+            data: { dateRange: dateRange, siteId: siteId, type: 'recent-unhandled', [csrfName]: csrfToken },
+            success: function(res) {
+                if (res.success) renderRecentUnhandled(res.data);
+                window.contentGapsRecentLoaded = true;
+            }
+        });
+    }
+
+    function renderRecentSearches(data) {
+        var tbody = $('#recent-searches-body');
+        var enableGeo = config.enableGeoDetection || false;
+        var labels = config.backendLabels || {};
+        var cols = enableGeo ? 19 : 18;
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="' + cols + '" class="thin light lr-text-center">' + strings.noSearches + '</td></tr>');
+            return;
+        }
+
+        data.forEach(function(s) {
+            var hits;
+            if (s.wasRedirected) {
+                hits = '<span class="lr-text-purple" title="Redirected">\u2014</span>';
+            } else if (s.resultsCount > 0) {
+                hits = '<span class="lr-text-green">' + Number(s.resultsCount).toLocaleString() + '</span>';
+            } else {
+                hits = '<span class="lr-text-red">0</span>';
+            }
+
+            var synonyms = s.synonymsExpanded ? '<span class="status green" title="Synonyms used"></span>' : '<span class="light">\u2014</span>';
+            var rules = s.rulesMatched > 0 ? '<span class="lr-text-blue">' + s.rulesMatched + '</span>' : '<span class="light">\u2014</span>';
+            var promos = s.promotionsShown > 0 ? '<span class="lr-text-amber">' + s.promotionsShown + '</span>' : '<span class="light">\u2014</span>';
+            var redirected = s.wasRedirected ? '<span class="status red" title="Redirected to another page"></span>' : '<span class="light">\u2014</span>';
+            var intent = s.intent ? Craft.escapeHtml(s.intent.charAt(0).toUpperCase() + s.intent.slice(1)) : '\u2014';
+            var source = {cp: 'CP', frontend: 'Frontend', api: 'API'}[s.source] || Craft.escapeHtml((s.source || '').charAt(0).toUpperCase() + (s.source || '').slice(1));
+
+            var row = '<tr>' +
+                '<td>' + Craft.escapeHtml(s.date || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(s.time || '\u2014') + '</td>' +
+                '<td><code>' + Craft.escapeHtml(s.query) + '</code></td>' +
+                '<td>' + Craft.escapeHtml(s.siteName || '\u2014') + '</td>' +
+                '<td>' + hits + '</td>' +
+                '<td>' + synonyms + '</td>' +
+                '<td>' + rules + '</td>' +
+                '<td>' + promos + '</td>' +
+                '<td>' + redirected + '</td>' +
+                '<td>' + Craft.escapeHtml(s.indexHandle || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(labels[s.backend] || (s.backend ? s.backend.charAt(0).toUpperCase() + s.backend.slice(1) : '\u2014')) + '</td>' +
+                '<td>' + intent + '</td>' +
+                '<td>' + source + '</td>' +
+                '<td>' + Craft.escapeHtml(s.platform || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(s.appVersion || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(s.deviceType ? s.deviceType.charAt(0).toUpperCase() + s.deviceType.slice(1) : '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(s.browser || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(s.osName || '\u2014') + '</td>';
+
+            if (enableGeo) {
+                var loc = '\u2014';
+                if (s.city && s.country) loc = Craft.escapeHtml(s.city + ', ' + s.country);
+                else if (s.country) loc = Craft.escapeHtml(s.country);
+                row += '<td>' + loc + '</td>';
+            }
+
+            row += '</tr>';
+            tbody.append(row);
+        });
+    }
+
+    function renderRecentUnhandled(data) {
+        var tbody = $('#recent-unhandled-body');
+        var labels = config.backendLabels || {};
+        tbody.empty();
+
+        if (!data || data.length === 0) {
+            tbody.html('<tr><td colspan="6" class="thin light lr-text-center">' + strings.noUnhandled + '</td></tr>');
+            return;
+        }
+
+        data.forEach(function(s) {
+            tbody.append('<tr>' +
+                '<td><code>' + Craft.escapeHtml(s.query) + '</code></td>' +
+                '<td>' + Craft.escapeHtml(s.siteName || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(s.indexHandle || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(labels[s.backend] || (s.backend ? s.backend.charAt(0).toUpperCase() + s.backend.slice(1) : '\u2014')) + '</td>' +
+                '<td>' + Craft.escapeHtml(s.date || '\u2014') + '</td>' +
+                '<td>' + Craft.escapeHtml(s.time || '\u2014') + '</td>' +
+            '</tr>');
+        });
+    }
+
+    function renderBotStats(data) {
+        var label = $('#bot-percentage-label');
+        var tbody = $('#top-bots-body');
+
+        if (!data) {
+            label.text(strings.noBotData);
+            tbody.html('<tr><td colspan="2" class="light lr-text-center">' + strings.noBotData + '</td></tr>');
+            return;
+        }
+
+        label.html('<strong>' + (data.botPercentage || 0) + '%</strong> of traffic is from bots');
+
+        tbody.empty();
+        if (data.topBots && data.topBots.length > 0) {
+            data.topBots.forEach(function(bot) {
+                tbody.append('<tr>' +
+                    '<td>' + Craft.escapeHtml(bot.botName) + '</td>' +
+                    '<td>' + Number(bot.count).toLocaleString() + '</td>' +
+                '</tr>');
+            });
+        } else {
+            tbody.html('<tr><td colspan="2" class="light lr-text-center">' + strings.noBotData + '</td></tr>');
+        }
     }
 
     function loadBreakdownCharts(dateRange, siteId) {
@@ -670,7 +831,7 @@
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
-                <td><strong>${q.avgTime}ms</strong></td>
+                <td><strong>${Number(q.avgTime).toLocaleString()}ms</strong></td>
                 <td>${q.searches.toLocaleString()}</td>
             </tr>`);
         });
@@ -689,7 +850,7 @@
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
-                <td><strong class="${q.avgTime > 100 ? 'lr-text-red' : ''}">${q.avgTime}ms</strong></td>
+                <td><strong class="${q.avgTime > 100 ? 'lr-text-red' : ''}">${Number(q.avgTime).toLocaleString()}ms</strong></td>
                 <td>${q.searches.toLocaleString()}</td>
             </tr>`);
         });
