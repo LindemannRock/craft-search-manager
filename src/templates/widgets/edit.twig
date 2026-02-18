@@ -16,13 +16,29 @@
 
 {# Set up tabs #}
 {% set tabs = {
-    settings: {
-        label: 'Settings'|t('search-manager'),
-        url: '#settings',
+    general: {
+        label: 'General'|t('search-manager'),
+        url: '#general',
     },
     behavior: {
         label: 'Behavior'|t('search-manager'),
         url: '#behavior',
+    },
+    results: {
+        label: 'Results'|t('search-manager'),
+        url: '#results',
+    },
+    snippets: {
+        label: 'Snippets'|t('search-manager'),
+        url: '#snippets',
+    },
+    highlights: {
+        label: 'Highlights'|t('search-manager'),
+        url: '#highlights',
+    },
+    analytics: {
+        label: 'Analytics'|t('search-manager'),
+        url: '#analytics',
     },
 } %}
 
@@ -94,19 +110,47 @@
 	{% endif %}
 	{{ csrfInput() }}
 
-	{# Settings Tab #}
-	<div id="settings">
+	{# General Tab #}
+	<div id="general">
 		{% include "search-manager/widgets/_partials/settings" with {
 			widgetConfig: widgetConfig,
 			indices: indices,
-			isNew: isNew
+			isNew: isNew,
 		} %}
 	</div>
 
 	{# Behavior Tab #}
 	<div id="behavior" class="hidden">
 		{% include "search-manager/widgets/_partials/behavior" with {
-			widgetConfig: widgetConfig
+			widgetConfig: widgetConfig,
+		} %}
+	</div>
+
+	{# Results Tab #}
+	<div id="results" class="hidden">
+		{% include "search-manager/widgets/_partials/results" with {
+			widgetConfig: widgetConfig,
+		} %}
+	</div>
+
+	{# Snippets Tab #}
+	<div id="snippets" class="hidden">
+		{% include "search-manager/widgets/_partials/snippets" with {
+			widgetConfig: widgetConfig,
+		} %}
+	</div>
+
+	{# Highlights Tab #}
+	<div id="highlights" class="hidden">
+		{% include "search-manager/widgets/_partials/highlights" with {
+			widgetConfig: widgetConfig,
+		} %}
+	</div>
+
+	{# Analytics Tab #}
+	<div id="analytics" class="hidden">
+		{% include "search-manager/widgets/_partials/analytics" with {
+			widgetConfig: widgetConfig,
 		} %}
 	</div>
 

@@ -378,6 +378,36 @@ class WidgetConfig extends Model
         return (bool) $this->getSetting('behavior.highlightDestinationPage', true);
     }
 
+    /**
+     * Append search query to destination URLs for page highlighting.
+     *
+     * @since 5.39.0
+     */
+    public function isPersistQueryInUrlEnabled(): bool
+    {
+        return (bool) $this->getSetting('behavior.persistQueryInUrl', true);
+    }
+
+    /**
+     * URL parameter name for the persisted search query.
+     *
+     * @since 5.39.0
+     */
+    public function getQueryParamName(): string
+    {
+        return $this->getSetting('behavior.queryParamName', 'smq');
+    }
+
+    /**
+     * CSS selector for destination page content areas to highlight.
+     *
+     * @since 5.39.0
+     */
+    public function getDestinationHighlightSelector(): string
+    {
+        return $this->getSetting('behavior.destinationHighlightSelector', 'main, article, [data-search-content]');
+    }
+
     // Trigger
     public function isShowTriggerEnabled(): bool
     {

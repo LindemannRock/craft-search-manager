@@ -1,0 +1,46 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.lightswitchField({
+	label: 'Show Code Snippets'|t('search-manager'),
+	instructions: 'Show code blocks in result descriptions'|t('search-manager'),
+	id: 'behavior-showCodeSnippets',
+	name: 'settings[behavior][showCodeSnippets]',
+	on: widgetConfig.isShowCodeSnippetsEnabled(),
+}) }}
+
+{{ forms.selectField({
+	label: 'Snippet Mode'|t('search-manager'),
+	instructions: 'How result description snippets are generated. "Early" shows the beginning, "balanced" centers on the match, "deep" shows the most relevant section.'|t('search-manager'),
+	tip: 'Default: balanced. Use "early" for blog posts, "deep" for documentation.'|t('search-manager'),
+	id: 'behavior-snippetMode',
+	name: 'settings[behavior][snippetMode]',
+	value: widgetConfig.getSnippetMode(),
+	options: [
+		{value: 'early', label: 'Early'|t('search-manager')},
+		{value: 'balanced', label: 'Balanced'|t('search-manager')},
+		{value: 'deep', label: 'Deep'|t('search-manager')},
+	],
+	errors: widgetConfig.getErrors('settings.behavior.snippetMode')
+}) }}
+
+{{ forms.textField({
+	label: 'Snippet Length'|t('search-manager'),
+	instructions: 'Maximum character length for result description snippets'|t('search-manager'),
+	tip: 'Min: 50, Max: 500 characters. Default: 150. Longer snippets show more context but use more space.'|t('search-manager'),
+	id: 'behavior-snippetLength',
+	name: 'settings[behavior][snippetLength]',
+	value: widgetConfig.getSnippetLength(),
+	type: 'number',
+	min: 50,
+	max: 500,
+	errors: widgetConfig.getErrors('settings.behavior.snippetLength')
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Parse Markdown Snippets'|t('search-manager'),
+	instructions: 'Parse markdown formatting before building description snippets'|t('search-manager'),
+	tip: 'Enable when indexing markdown content (e.g., documentation pages) for cleaner snippet text.'|t('search-manager'),
+	id: 'behavior-parseMarkdownSnippets',
+	name: 'settings[behavior][parseMarkdownSnippets]',
+	on: widgetConfig.isParseMarkdownSnippetsEnabled(),
+}) }}

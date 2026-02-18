@@ -1,0 +1,25 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+	label: 'Source Identifier'|t('search-manager'),
+	instructions: 'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.'|t('search-manager'),
+	tip: 'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.'|t('search-manager'),
+	id: 'analytics-source',
+	name: 'settings[analytics][source]',
+	value: widgetConfig.getAnalyticsSource(),
+	placeholder: 'frontend-widget',
+	errors: widgetConfig.getErrors('settings.analytics.source')
+}) }}
+
+{{ forms.textField({
+	label: 'Idle Timeout'|t('search-manager'),
+	instructions: 'Track search after user stops typing for this duration (milliseconds). Set to 0 to disable idle tracking.'|t('search-manager'),
+	tip: 'Min: 0 (disabled), Max: 10000 (10 seconds). Default: 1500 (1.5 seconds)'|t('search-manager'),
+	id: 'analytics-idleTimeout',
+	name: 'settings[analytics][idleTimeout]',
+	value: widgetConfig.getIdleTimeout(),
+	type: 'number',
+	min: 0,
+	max: 10000,
+	errors: widgetConfig.getErrors('settings.analytics.idleTimeout')
+}) }}

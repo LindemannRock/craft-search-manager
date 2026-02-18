@@ -1,6 +1,5 @@
 {% import "_includes/forms" as forms %}
 
-{# Basic Settings #}
 {{ forms.textField({
 	first: true,
 	label: "Name"|t('search-manager'),
@@ -25,8 +24,6 @@
 
 <hr>
 
-<h2>{{ "Search Settings"|t('search-manager') }}</h2>
-
 {% set selectedIndexHandles = widgetConfig.getIndexHandles() %}
 {% set indexOptions = [] %}
 {% for index in indices %}
@@ -43,15 +40,4 @@
 	name: 'settings[search][indexHandles]',
 	values: selectedIndexHandles,
 	options: indexOptions,
-}) }}
-
-{{ forms.textField({
-	label: 'Placeholder'|t('search-manager'),
-	instructions: 'Placeholder text shown in the search input'|t('search-manager'),
-	tip: 'Max: 255 characters. Default: "Search...". Supports translation via Craft\'s static translations.'|t('search-manager'),
-	id: 'search-placeholder',
-	name: 'settings[search][placeholder]',
-	value: widgetConfig.getPlaceholder(),
-	placeholder: 'Search...',
-	errors: widgetConfig.getErrors('settings.search.placeholder')
 }) }}

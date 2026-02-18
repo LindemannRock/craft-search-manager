@@ -71,10 +71,10 @@
 {% set hideResultsWithoutUrl = hideResultsWithoutUrl ?? widgetConfig.isHideResultsWithoutUrlEnabled() %}
 {% set showCodeSnippets = showCodeSnippets ?? widgetConfig.isShowCodeSnippetsEnabled() %}
 {% set snippetMode = snippetMode ?? widgetConfig.getSnippetMode() %}
-{% set persistQueryInUrl = persistQueryInUrl ?? true %}
-{% set queryParamName = queryParamName ?? 'smq' %}
 {% set highlightDestinationPage = highlightDestinationPage ?? widgetConfig.isHighlightDestinationPageEnabled() %}
-{% set destinationHighlightSelector = destinationHighlightSelector ?? 'main, article, [data-search-content]' %}
+{% set persistQueryInUrl = persistQueryInUrl ?? widgetConfig.isPersistQueryInUrlEnabled() %}
+{% set queryParamName = queryParamName ?? widgetConfig.getQueryParamName() %}
+{% set destinationHighlightSelector = destinationHighlightSelector ?? widgetConfig.getDestinationHighlightSelector() %}
 
 {# Trigger settings #}
 {% set showTrigger = showTrigger ?? widgetConfig.isShowTriggerEnabled() %}

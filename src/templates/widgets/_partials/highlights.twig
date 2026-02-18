@@ -1,0 +1,43 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.lightswitchField({
+	label: 'Destination Page Highlighting'|t('search-manager'),
+	instructions: 'Highlight matching search terms on the destination page after navigating from a search result.'|t('search-manager'),
+	id: 'behavior-highlightDestinationPage',
+	name: 'settings[behavior][highlightDestinationPage]',
+	on: widgetConfig.isHighlightDestinationPageEnabled(),
+	toggle: 'destination-highlight-options',
+}) }}
+
+<div id="destination-highlight-options"{% if not widgetConfig.isHighlightDestinationPageEnabled() %} class="hidden"{% endif %}>
+	{{ forms.lightswitchField({
+		label: 'Persist Query in URL'|t('search-manager'),
+		instructions: 'Append the search query to the destination URL so the page knows what to highlight.'|t('search-manager'),
+		id: 'behavior-persistQueryInUrl',
+		name: 'settings[behavior][persistQueryInUrl]',
+		on: widgetConfig.isPersistQueryInUrlEnabled(),
+	}) }}
+
+	{{ forms.textField({
+		label: 'Query Parameter Name'|t('search-manager'),
+		instructions: 'URL parameter name for the search query (e.g., ?smq=redis).'|t('search-manager'),
+		tip: 'Default: smq. Change to avoid conflicts with other query parameters.'|t('search-manager'),
+		id: 'behavior-queryParamName',
+		name: 'settings[behavior][queryParamName]',
+		value: widgetConfig.getQueryParamName(),
+		placeholder: 'smq',
+		size: 20,
+		errors: widgetConfig.getErrors('settings.behavior.queryParamName')
+	}) }}
+
+	{{ forms.textField({
+		label: 'Content Selector'|t('search-manager'),
+		instructions: 'CSS selector for page content areas to scan for highlighting.'|t('search-manager'),
+		tip: 'Comma-separated CSS selectors. Default: main, article, [data-search-content]'|t('search-manager'),
+		id: 'behavior-destinationHighlightSelector',
+		name: 'settings[behavior][destinationHighlightSelector]',
+		value: widgetConfig.getDestinationHighlightSelector(),
+		placeholder: 'main, article, [data-search-content]',
+		errors: widgetConfig.getErrors('settings.behavior.destinationHighlightSelector')
+	}) }}
+</div>

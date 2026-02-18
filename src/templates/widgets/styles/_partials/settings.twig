@@ -1,0 +1,23 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+	label: 'Name'|t('search-manager'),
+	instructions: 'What this style is called in the Control Panel.'|t('search-manager'),
+	id: 'name',
+	name: 'name',
+	value: widgetStyle.name,
+	required: true,
+	first: true,
+	errors: widgetStyle.getErrors('name')
+}) }}
+
+{{ forms.textField({
+	label: 'Handle'|t('search-manager'),
+	instructions: 'How you reference this style in templates and config.'|t('search-manager'),
+	id: 'handle',
+	name: 'handle',
+	value: widgetStyle.handle,
+	required: true,
+	class: 'code',
+	errors: widgetStyle.getErrors('handle')
+}) }}

@@ -1,14 +1,17 @@
 {% import "_includes/forms" as forms %}
 
-{# Behavior Settings #}
-<h2>{{ "Behavior Settings"|t('search-manager') }}</h2>
+{# Search Input #}
+<h2>{{ "Search Input"|t('search-manager') }}</h2>
 
-{{ forms.lightswitchField({
-	label: 'Prevent Body Scroll'|t('search-manager'),
-	instructions: 'Prevent the page from scrolling when the search modal is open'|t('search-manager'),
-	id: 'behavior-preventBodyScroll',
-	name: 'settings[behavior][preventBodyScroll]',
-	on: widgetConfig.isPreventBodyScrollEnabled(),
+{{ forms.textField({
+	label: 'Placeholder'|t('search-manager'),
+	instructions: 'Placeholder text shown in the search input'|t('search-manager'),
+	tip: 'Max: 255 characters. Default: "Search...". Supports translation via Craft\'s static translations.'|t('search-manager'),
+	id: 'search-placeholder',
+	name: 'settings[search][placeholder]',
+	value: widgetConfig.getPlaceholder(),
+	placeholder: 'Search...',
+	errors: widgetConfig.getErrors('settings.search.placeholder')
 }) }}
 
 {{ forms.textField({
@@ -37,18 +40,43 @@
 	errors: widgetConfig.getErrors('settings.behavior.minChars')
 }) }}
 
+<hr>
+
+{# Modal #}
+<h2>{{ "Modal"|t('search-manager') }}</h2>
+
 {{ forms.textField({
-	label: 'Maximum Results'|t('search-manager'),
-	instructions: 'Maximum number of results to display'|t('search-manager'),
-	tip: 'Min: 1, Max: 100. Default: 10'|t('search-manager'),
-	id: 'behavior-maxResults',
-	name: 'settings[behavior][maxResults]',
-	value: widgetConfig.getMaxResults(),
-	type: 'number',
-	min: 1,
-	max: 100,
-	errors: widgetConfig.getErrors('settings.behavior.maxResults')
+	label: 'Hotkey'|t('search-manager'),
+	instructions: 'Keyboard shortcut key (used with Cmd/Ctrl, e.g., "k" for Cmd+K)'|t('search-manager'),
+	tip: 'Single character. Default: k (Cmd+K / Ctrl+K)'|t('search-manager'),
+	id: 'behavior-hotkey',
+	name: 'settings[behavior][hotkey]',
+	value: widgetConfig.getHotkey(),
+	size: 1,
+	maxlength: 1,
+	errors: widgetConfig.getErrors('settings.behavior.hotkey')
 }) }}
+
+{{ forms.lightswitchField({
+	label: 'Prevent Body Scroll'|t('search-manager'),
+	instructions: 'Prevent the page from scrolling when the search modal is open'|t('search-manager'),
+	id: 'behavior-preventBodyScroll',
+	name: 'settings[behavior][preventBodyScroll]',
+	on: widgetConfig.isPreventBodyScrollEnabled(),
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Show Loading Indicator'|t('search-manager'),
+	instructions: 'Display a spinner while search results are loading'|t('search-manager'),
+	id: 'behavior-showLoadingIndicator',
+	name: 'settings[behavior][showLoadingIndicator]',
+	on: widgetConfig.isShowLoadingIndicatorEnabled(),
+}) }}
+
+<hr>
+
+{# Recent Searches #}
+<h2>{{ "Recent Searches"|t('search-manager') }}</h2>
 
 {{ forms.lightswitchField({
 	label: 'Show Recent Searches'|t('search-manager'),
@@ -74,189 +102,10 @@
 	}) }}
 </div>
 
-{{ forms.lightswitchField({
-	label: 'Group Results'|t('search-manager'),
-	instructions: 'Group search results by type/section'|t('search-manager'),
-	id: 'behavior-groupResults',
-	name: 'settings[behavior][groupResults]',
-	on: widgetConfig.isGroupResultsEnabled(),
-}) }}
-
-{{ forms.textField({
-	label: 'Hotkey'|t('search-manager'),
-	instructions: 'Keyboard shortcut key (used with Cmd/Ctrl, e.g., "k" for Cmd+K)'|t('search-manager'),
-	tip: 'Single character. Default: k (Cmd+K / Ctrl+K)'|t('search-manager'),
-	id: 'behavior-hotkey',
-	name: 'settings[behavior][hotkey]',
-	value: widgetConfig.getHotkey(),
-	size: 1,
-	maxlength: 1,
-	errors: widgetConfig.getErrors('settings.behavior.hotkey')
-}) }}
-
-{{ forms.lightswitchField({
-	label: 'Hide Results Without URL'|t('search-manager'),
-	instructions: 'Hide search results that do not have a URL (e.g., entries without landing pages)'|t('search-manager'),
-	id: 'behavior-hideResultsWithoutUrl',
-	name: 'settings[behavior][hideResultsWithoutUrl]',
-	on: widgetConfig.isHideResultsWithoutUrlEnabled(),
-}) }}
-
-{{ forms.lightswitchField({
-	label: 'Show Loading Indicator'|t('search-manager'),
-	instructions: 'Display a spinner while search results are loading'|t('search-manager'),
-	id: 'behavior-showLoadingIndicator',
-	name: 'settings[behavior][showLoadingIndicator]',
-	on: widgetConfig.isShowLoadingIndicatorEnabled(),
-}) }}
-
-{{ forms.lightswitchField({
-	label: 'Destination Page Highlighting'|t('search-manager'),
-	instructions: 'Highlight matching search terms on the destination page after navigating from a search result.'|t('search-manager'),
-	id: 'behavior-highlightDestinationPage',
-	name: 'settings[behavior][highlightDestinationPage]',
-	on: widgetConfig.isHighlightDestinationPageEnabled(),
-}) }}
-
 <hr>
 
-{# Result Display Settings #}
-<h2>{{ "Result Display"|t('search-manager') }}</h2>
-
-{{ forms.selectField({
-	label: 'Result Layout'|t('search-manager'),
-	instructions: 'How results are displayed. Hierarchical groups results with heading children (Algolia DocSearch style).'|t('search-manager'),
-	id: 'behavior-resultLayout',
-	name: 'settings[behavior][resultLayout]',
-	value: widgetConfig.getResultLayout(),
-	options: [
-		{value: 'default', label: 'Default'|t('search-manager')},
-		{value: 'hierarchical', label: 'Hierarchical'|t('search-manager')},
-	],
-	toggle: true,
-	targetPrefix: 'result-layout-',
-	errors: widgetConfig.getErrors('settings.behavior.resultLayout')
-}) }}
-
-<div id="result-layout-hierarchical"{% if widgetConfig.getResultLayout() != 'hierarchical' %} class="hidden"{% endif %}>
-	{{ forms.selectField({
-		label: 'Hierarchy Display'|t('search-manager'),
-		instructions: 'Individual shows each result as its own card. Unified wraps each page and its headings in a single card (Starlight-style).'|t('search-manager'),
-		id: 'behavior-hierarchyDisplay',
-		name: 'settings[behavior][hierarchyDisplay]',
-		value: widgetConfig.getHierarchyDisplay(),
-		options: [
-			{value: 'individual', label: 'Individual'|t('search-manager')},
-			{value: 'unified', label: 'Unified'|t('search-manager')},
-		],
-		errors: widgetConfig.getErrors('settings.behavior.hierarchyDisplay')
-	}) }}
-
-	{{ forms.textField({
-		label: 'Max Headings per Result'|t('search-manager'),
-		instructions: 'Maximum number of heading children to display per result'|t('search-manager'),
-		tip: 'Min: 1, Max: 50. Default: 3. Set higher to show more heading anchors per document.'|t('search-manager'),
-		id: 'behavior-maxHeadingsPerResult',
-		name: 'settings[behavior][maxHeadingsPerResult]',
-		value: widgetConfig.getMaxHeadingsPerResult(),
-		type: 'number',
-		min: 1,
-		max: 50,
-		errors: widgetConfig.getErrors('settings.behavior.maxHeadingsPerResult')
-	}) }}
-
-	{{ forms.textField({
-		label: 'Group By Field'|t('search-manager'),
-		instructions: 'Document field to group hierarchical results by (e.g., "section", "category"). Leave empty for default "section".'|t('search-manager'),
-		tip: 'Max: 64 characters. Must match a field name in your indexed documents.'|t('search-manager'),
-		id: 'behavior-hierarchyGroupBy',
-		name: 'settings[behavior][hierarchyGroupBy]',
-		value: widgetConfig.getHierarchyGroupBy(),
-		placeholder: 'section',
-		errors: widgetConfig.getErrors('settings.behavior.hierarchyGroupBy')
-	}) }}
-</div>
-
-{{ forms.textField({
-	label: 'Result Title Lines'|t('search-manager'),
-	instructions: 'Maximum lines for result titles before truncating'|t('search-manager'),
-	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.'|t('search-manager'),
-	id: 'behavior-resultTitleLines',
-	name: 'settings[behavior][resultTitleLines]',
-	value: widgetConfig.getResultTitleLines(),
-	type: 'number',
-	min: 1,
-	max: 5,
-	errors: widgetConfig.getErrors('settings.behavior.resultTitleLines')
-}) }}
-
-{{ forms.textField({
-	label: 'Result Description Lines'|t('search-manager'),
-	instructions: 'Maximum lines for result descriptions before truncating'|t('search-manager'),
-	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.'|t('search-manager'),
-	id: 'behavior-resultDescLines',
-	name: 'settings[behavior][resultDescLines]',
-	value: widgetConfig.getResultDescLines(),
-	type: 'number',
-	min: 1,
-	max: 5,
-	errors: widgetConfig.getErrors('settings.behavior.resultDescLines')
-}) }}
-
-<hr>
-
-{# Snippet Settings #}
-<h2>{{ "Snippets"|t('search-manager') }}</h2>
-
-{{ forms.lightswitchField({
-	label: 'Show Code Snippets'|t('search-manager'),
-	instructions: 'Show code blocks in result descriptions'|t('search-manager'),
-	id: 'behavior-showCodeSnippets',
-	name: 'settings[behavior][showCodeSnippets]',
-	on: widgetConfig.isShowCodeSnippetsEnabled(),
-}) }}
-
-{{ forms.selectField({
-	label: 'Snippet Mode'|t('search-manager'),
-	instructions: 'How result description snippets are generated. "Early" shows the beginning, "balanced" centers on the match, "deep" shows the most relevant section.'|t('search-manager'),
-	tip: 'Default: balanced. Use "early" for blog posts, "deep" for documentation.'|t('search-manager'),
-	id: 'behavior-snippetMode',
-	name: 'settings[behavior][snippetMode]',
-	value: widgetConfig.getSnippetMode(),
-	options: [
-		{value: 'early', label: 'Early'|t('search-manager')},
-		{value: 'balanced', label: 'Balanced'|t('search-manager')},
-		{value: 'deep', label: 'Deep'|t('search-manager')},
-	],
-	errors: widgetConfig.getErrors('settings.behavior.snippetMode')
-}) }}
-
-{{ forms.textField({
-	label: 'Snippet Length'|t('search-manager'),
-	instructions: 'Maximum character length for result description snippets'|t('search-manager'),
-	tip: 'Min: 50, Max: 500 characters. Default: 150. Longer snippets show more context but use more space.'|t('search-manager'),
-	id: 'behavior-snippetLength',
-	name: 'settings[behavior][snippetLength]',
-	value: widgetConfig.getSnippetLength(),
-	type: 'number',
-	min: 50,
-	max: 500,
-	errors: widgetConfig.getErrors('settings.behavior.snippetLength')
-}) }}
-
-{{ forms.lightswitchField({
-	label: 'Parse Markdown Snippets'|t('search-manager'),
-	instructions: 'Parse markdown formatting before building description snippets'|t('search-manager'),
-	tip: 'Enable when indexing markdown content (e.g., documentation pages) for cleaner snippet text.'|t('search-manager'),
-	id: 'behavior-parseMarkdownSnippets',
-	name: 'settings[behavior][parseMarkdownSnippets]',
-	on: widgetConfig.isParseMarkdownSnippetsEnabled(),
-}) }}
-
-<hr>
-
-{# Trigger Button Settings #}
-<h2>{{ "Trigger Button Settings"|t('search-manager') }}</h2>
+{# Trigger Button #}
+<h2>{{ "Trigger Button"|t('search-manager') }}</h2>
 
 {{ forms.lightswitchField({
 	label: 'Show Trigger Button'|t('search-manager'),
@@ -278,32 +127,3 @@
 		errors: widgetConfig.getErrors('settings.trigger.triggerText')
 	}) }}
 </div>
-
-<hr>
-
-{# Analytics Settings #}
-<h2>{{ "Analytics Settings"|t('search-manager') }}</h2>
-
-{{ forms.textField({
-	label: 'Source Identifier'|t('search-manager'),
-	instructions: 'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.'|t('search-manager'),
-	tip: 'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.'|t('search-manager'),
-	id: 'analytics-source',
-	name: 'settings[analytics][source]',
-	value: widgetConfig.getAnalyticsSource(),
-	placeholder: 'frontend-widget',
-	errors: widgetConfig.getErrors('settings.analytics.source')
-}) }}
-
-{{ forms.textField({
-	label: 'Idle Timeout'|t('search-manager'),
-	instructions: 'Track search after user stops typing for this duration (milliseconds). Set to 0 to disable idle tracking.'|t('search-manager'),
-	tip: 'Min: 0 (disabled), Max: 10000 (10 seconds). Default: 1500 (1.5 seconds)'|t('search-manager'),
-	id: 'analytics-idleTimeout',
-	name: 'settings[analytics][idleTimeout]',
-	value: widgetConfig.getIdleTimeout(),
-	type: 'number',
-	min: 0,
-	max: 10000,
-	errors: widgetConfig.getErrors('settings.analytics.idleTimeout')
-}) }}

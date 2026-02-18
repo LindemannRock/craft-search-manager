@@ -1,0 +1,122 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+	label: 'Maximum Results'|t('search-manager'),
+	instructions: 'Maximum number of results to display'|t('search-manager'),
+	tip: 'Min: 1, Max: 100. Default: 10'|t('search-manager'),
+	id: 'behavior-maxResults',
+	name: 'settings[behavior][maxResults]',
+	value: widgetConfig.getMaxResults(),
+	type: 'number',
+	min: 1,
+	max: 100,
+	errors: widgetConfig.getErrors('settings.behavior.maxResults')
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Hide Results Without URL'|t('search-manager'),
+	instructions: 'Hide search results that do not have a URL (e.g., entries without landing pages)'|t('search-manager'),
+	id: 'behavior-hideResultsWithoutUrl',
+	name: 'settings[behavior][hideResultsWithoutUrl]',
+	on: widgetConfig.isHideResultsWithoutUrlEnabled(),
+}) }}
+
+<hr>
+
+{# Result Layout #}
+<h2>{{ "Result Layout"|t('search-manager') }}</h2>
+
+{{ forms.selectField({
+	label: 'Result Layout'|t('search-manager'),
+	instructions: 'How results are displayed. Hierarchical groups results with heading children (Algolia DocSearch style).'|t('search-manager'),
+	id: 'behavior-resultLayout',
+	name: 'settings[behavior][resultLayout]',
+	value: widgetConfig.getResultLayout(),
+	options: [
+		{value: 'default', label: 'Default'|t('search-manager')},
+		{value: 'hierarchical', label: 'Hierarchical'|t('search-manager')},
+	],
+	toggle: true,
+	targetPrefix: 'result-layout-',
+	errors: widgetConfig.getErrors('settings.behavior.resultLayout')
+}) }}
+
+<div id="result-layout-default"{% if widgetConfig.getResultLayout() != 'default' %} class="hidden"{% endif %}>
+	{{ forms.lightswitchField({
+		label: 'Group Results'|t('search-manager'),
+		instructions: 'Group search results by type/section'|t('search-manager'),
+		id: 'behavior-groupResults',
+		name: 'settings[behavior][groupResults]',
+		on: widgetConfig.isGroupResultsEnabled(),
+	}) }}
+</div>
+
+<div id="result-layout-hierarchical"{% if widgetConfig.getResultLayout() != 'hierarchical' %} class="hidden"{% endif %}>
+	{{ forms.selectField({
+		label: 'Hierarchy Display'|t('search-manager'),
+		instructions: 'Individual shows each result as its own card. Unified wraps each page and its headings in a single card (Starlight-style).'|t('search-manager'),
+		id: 'behavior-hierarchyDisplay',
+		name: 'settings[behavior][hierarchyDisplay]',
+		value: widgetConfig.getHierarchyDisplay(),
+		options: [
+			{value: 'individual', label: 'Individual'|t('search-manager')},
+			{value: 'unified', label: 'Unified'|t('search-manager')},
+		],
+		errors: widgetConfig.getErrors('settings.behavior.hierarchyDisplay')
+	}) }}
+
+	{{ forms.textField({
+		label: 'Max Headings per Result'|t('search-manager'),
+		instructions: 'Maximum number of heading children to display per result'|t('search-manager'),
+		tip: 'Min: 1, Max: 50. Default: 3. Set higher to show more heading anchors per document.'|t('search-manager'),
+		id: 'behavior-maxHeadingsPerResult',
+		name: 'settings[behavior][maxHeadingsPerResult]',
+		value: widgetConfig.getMaxHeadingsPerResult(),
+		type: 'number',
+		min: 1,
+		max: 50,
+		errors: widgetConfig.getErrors('settings.behavior.maxHeadingsPerResult')
+	}) }}
+
+	{{ forms.textField({
+		label: 'Group By Field'|t('search-manager'),
+		instructions: 'Document field to group hierarchical results by (e.g., "section", "category"). Leave empty for default "section".'|t('search-manager'),
+		tip: 'Max: 64 characters. Must match a field name in your indexed documents.'|t('search-manager'),
+		id: 'behavior-hierarchyGroupBy',
+		name: 'settings[behavior][hierarchyGroupBy]',
+		value: widgetConfig.getHierarchyGroupBy(),
+		placeholder: 'section',
+		errors: widgetConfig.getErrors('settings.behavior.hierarchyGroupBy')
+	}) }}
+</div>
+
+<hr>
+
+{# Line Clamping #}
+<h2>{{ "Line Clamping"|t('search-manager') }}</h2>
+
+{{ forms.textField({
+	label: 'Result Title Lines'|t('search-manager'),
+	instructions: 'Maximum lines for result titles before truncating'|t('search-manager'),
+	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.'|t('search-manager'),
+	id: 'behavior-resultTitleLines',
+	name: 'settings[behavior][resultTitleLines]',
+	value: widgetConfig.getResultTitleLines(),
+	type: 'number',
+	min: 1,
+	max: 5,
+	errors: widgetConfig.getErrors('settings.behavior.resultTitleLines')
+}) }}
+
+{{ forms.textField({
+	label: 'Result Description Lines'|t('search-manager'),
+	instructions: 'Maximum lines for result descriptions before truncating'|t('search-manager'),
+	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.'|t('search-manager'),
+	id: 'behavior-resultDescLines',
+	name: 'settings[behavior][resultDescLines]',
+	value: widgetConfig.getResultDescLines(),
+	type: 'number',
+	min: 1,
+	max: 5,
+	errors: widgetConfig.getErrors('settings.behavior.resultDescLines')
+}) }}
