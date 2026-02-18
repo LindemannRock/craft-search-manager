@@ -20,7 +20,7 @@
  * @abstract
  * @extends HTMLElement
  * @author Search Manager
- * @since 5.x
+ * @since 5.32.0
  */
 
 import { parseConfig } from './ConfigParser.js';
@@ -28,6 +28,8 @@ import { createStateManager, DEFAULT_STATE } from './StateManager.js';
 import { performSearch, trackClick, trackSearch } from '../modules/SearchService.js';
 import { loadRecentSearches, saveRecentSearch, clearRecentSearches } from '../modules/RecentSearches.js';
 import { applyStylesToElement } from '../modules/StyleUtils.js';
+import { parseQueryTerms, escapeRegex } from '../modules/Highlighter.js';
+import { appendQueryParam } from '../modules/UrlUtils.js';
 import {
     renderResults,
     renderRecentSearches,
@@ -49,6 +51,9 @@ import {
     getRecentSearchesAnnouncement,
     updateComboboxAria,
 } from '../modules/A11yUtils.js';
+
+const PAGE_HIGHLIGHT_STYLE_ID = 'sm-page-highlight-style';
+const PAGE_HIGHLIGHT_FLAG = '__smPageHighlightApplied';
 
 /**
  * Abstract base class for search widgets
@@ -218,6 +223,8 @@ class SearchWidgetBase extends HTMLElement {
             },
             { listboxId: this.listboxId }
         );
+
+        this.applyDestinationPageHighlight();
     }
 
     /**
@@ -448,6 +455,8 @@ class SearchWidgetBase extends HTMLElement {
                 highlightClass,
                 showLoadingIndicator,
                 debug,
+                persistQueryInUrl: this.config.enableHighlighting && this.config.persistQueryInUrl,
+                queryParamName: this.config.queryParamName,
                 promotions: this.config.promotions,
                 // Hierarchical display options
                 resultLayout: this.config.resultLayout,
@@ -623,6 +632,11 @@ class SearchWidgetBase extends HTMLElement {
         const id = item.dataset.id;
         const query = item.dataset.query || this.state.get('query');
         const isRecentItem = item.classList.contains('sm-recent-item');
+        const destinationUrl = appendQueryParam(
+            url,
+            query,
+            (this.config.enableHighlighting && this.config.persistQueryInUrl) ? this.config.queryParamName : ''
+        );
 
         // Save to recent searches (for regular results, not re-clicking recent items)
         if (!isRecentItem && query) {
@@ -654,7 +668,7 @@ class SearchWidgetBase extends HTMLElement {
         this.dispatchWidgetEvent('result-click', {
             id,
             title,
-            url,
+            url: destinationUrl,
             query,
             isRecent: isRecentItem,
         });
@@ -665,10 +679,10 @@ class SearchWidgetBase extends HTMLElement {
             // For recent items (<div> elements), navigate explicitly
             if (isRecentItem) {
                 e.preventDefault();
-                window.location.href = url;
+                window.location.href = destinationUrl;
             }
             // Let subclass know a result was selected (for closing modal, etc.)
-            this.onResultSelected(url, title, id);
+            this.onResultSelected(destinationUrl, title, id);
         } else if (query) {
             // No URL - populate search and trigger new search
             e.preventDefault();
@@ -693,6 +707,171 @@ class SearchWidgetBase extends HTMLElement {
      */
     onResultSelected(url, title, id) {
         // Default: do nothing. Modal will override to close.
+    }
+
+    /**
+     * Apply destination-page highlights once per page load when a query
+     * parameter is present (for example, ?smq=redis).
+     */
+    applyDestinationPageHighlight() {
+        if (!this.config.enableHighlighting || !this.config.highlightDestinationPage || typeof window === 'undefined' || typeof document === 'undefined') {
+            return;
+        }
+
+        if (window[PAGE_HIGHLIGHT_FLAG]) {
+            return;
+        }
+
+        const queryParamName = this.config.queryParamName || 'smq';
+        const query = new URLSearchParams(window.location.search).get(queryParamName);
+
+        if (!query || !query.trim()) {
+            return;
+        }
+
+        window[PAGE_HIGHLIGHT_FLAG] = true;
+
+        const run = () => {
+            this.ensurePageHighlightStyles();
+            this.highlightDestinationNodes(query.trim());
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', run, { once: true });
+        } else {
+            window.requestAnimationFrame(run);
+        }
+    }
+
+    /**
+     * Inject global styles for page-level highlights.
+     */
+    ensurePageHighlightStyles() {
+        if (document.getElementById(PAGE_HIGHLIGHT_STYLE_ID)) {
+            return;
+        }
+
+        const style = document.createElement('style');
+        style.id = PAGE_HIGHLIGHT_STYLE_ID;
+        style.textContent = `
+            .sm-page-highlight {
+                background: var(--sm-highlight-bg, #fef08a);
+                color: var(--sm-highlight-color, #854d0e);
+                border-radius: 0.15em;
+                padding: 0 0.08em;
+            }
+        `;
+
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Highlight matching text in configured destination content areas.
+     *
+     * @param {string} query - Search query to highlight
+     */
+    highlightDestinationNodes(query) {
+        const selector = this.config.destinationHighlightSelector || 'main, article, [data-search-content]';
+        const scopes = Array.from(document.querySelectorAll(selector));
+        if (scopes.length === 0) {
+            return;
+        }
+
+        const terms = [...new Set(parseQueryTerms(query).map(t => t.trim()).filter(t => t.length >= 2))];
+        if (terms.length === 0) {
+            return;
+        }
+
+        const pattern = terms
+            .map(term => escapeRegex(term))
+            .filter(Boolean)
+            .sort((a, b) => b.length - a.length)
+            .join('|');
+
+        if (!pattern) {
+            return;
+        }
+
+        const regex = new RegExp(`(${pattern})`, 'gi');
+        scopes.forEach((scope) => {
+            this.highlightTextNodesInScope(scope, regex);
+        });
+    }
+
+    /**
+     * Wrap matching text nodes with <mark class="sm-page-highlight">.
+     *
+     * @param {Element} scope - Root element to process
+     * @param {RegExp} regex - Global, case-insensitive regex
+     */
+    highlightTextNodesInScope(scope, regex) {
+        const walker = document.createTreeWalker(
+            scope,
+            NodeFilter.SHOW_TEXT,
+            {
+                acceptNode: (node) => {
+                    const text = node.nodeValue;
+                    if (!text || !text.trim()) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+
+                    const parent = node.parentElement;
+                    if (!parent) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+
+                    if (parent.closest('script, style, noscript, textarea, code, pre, mark, .sm-highlight, .sm-page-highlight, search-modal')) {
+                        return NodeFilter.FILTER_REJECT;
+                    }
+
+                    return NodeFilter.FILTER_ACCEPT;
+                },
+            }
+        );
+
+        const textNodes = [];
+        while (walker.nextNode()) {
+            textNodes.push(walker.currentNode);
+        }
+
+        textNodes.forEach((node) => {
+            const text = node.nodeValue || '';
+            regex.lastIndex = 0;
+            if (!regex.test(text)) {
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            let cursor = 0;
+
+            regex.lastIndex = 0;
+            const matches = text.matchAll(regex);
+            for (const match of matches) {
+                const matchText = match[0];
+                const matchIndex = match.index ?? -1;
+
+                if (matchIndex < 0) {
+                    continue;
+                }
+
+                if (matchIndex > cursor) {
+                    fragment.appendChild(document.createTextNode(text.slice(cursor, matchIndex)));
+                }
+
+                const mark = document.createElement('mark');
+                mark.className = 'sm-highlight sm-page-highlight';
+                mark.textContent = matchText;
+                fragment.appendChild(mark);
+
+                cursor = matchIndex + matchText.length;
+            }
+
+            if (cursor < text.length) {
+                fragment.appendChild(document.createTextNode(text.slice(cursor)));
+            }
+
+            node.parentNode?.replaceChild(fragment, node);
+        });
     }
 
     // =========================================================================

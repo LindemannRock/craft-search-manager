@@ -6,7 +6,7 @@
  *
  * @module KeyboardNavigator
  * @author Search Manager
- * @since 5.x
+ * @since 5.32.0
  */
 
 import {

@@ -6,7 +6,7 @@
  *
  * @module ConfigParser
  * @author Search Manager
- * @since 5.x
+ * @since 5.32.0
  */
 
 /**
@@ -99,6 +99,10 @@ export const BASE_DEFAULTS = {
     resultDescLines: 1,
     snippetLength: 150,
     parseMarkdownSnippets: false,
+    persistQueryInUrl: true,
+    queryParamName: 'smq',
+    highlightDestinationPage: true,
+    destinationHighlightSelector: 'main, article, [data-search-content]',
     // Hierarchical result display (Algolia DocSearch-style)
     resultLayout: 'default', // 'default' | 'grouped' | 'hierarchical'
     hierarchyGroupBy: '',    // Field to group by (e.g., 'section', 'category')
@@ -295,10 +299,14 @@ export function parseConfig(element, widgetType = 'modal') {
         snippetMode: element.getAttribute('snippet-mode') || defaults.snippetMode,
         snippetLength: parseInt(element.getAttribute('snippet-length'), defaults.snippetLength),
         parseMarkdownSnippets: parseBoolean(element.getAttribute('parse-markdown-snippets'), defaults.parseMarkdownSnippets),
+        persistQueryInUrl: parseBoolean(element.getAttribute('persist-query-in-url'), defaults.persistQueryInUrl),
+        highlightDestinationPage: parseBoolean(element.getAttribute('highlight-destination-page'), defaults.highlightDestinationPage),
 
         // Result line clamping
         resultTitleLines: parseInt(element.getAttribute('result-title-lines'), defaults.resultTitleLines),
         resultDescLines: parseInt(element.getAttribute('result-desc-lines'), defaults.resultDescLines),
+        queryParamName: element.getAttribute('query-param-name') || defaults.queryParamName,
+        destinationHighlightSelector: element.getAttribute('destination-highlight-selector') || defaults.destinationHighlightSelector,
 
         // Hierarchical result display
         resultLayout: element.getAttribute('result-layout') || defaults.resultLayout,
@@ -368,6 +376,7 @@ export function getObservedAttributes(widgetType = 'modal') {
         'debug', 'styles', 'promotions',
         'result-layout', 'hierarchy-group-by', 'hierarchy-style', 'hierarchy-display', 'max-headings-per-result',
         'result-title-lines', 'result-desc-lines', 'snippet-length', 'parse-markdown-snippets',
+        'persist-query-in-url', 'query-param-name', 'highlight-destination-page', 'destination-highlight-selector',
     ];
 
     // Modal-specific attributes

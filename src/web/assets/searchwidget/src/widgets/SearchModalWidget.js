@@ -12,7 +12,7 @@
  *
  * @extends SearchWidgetBase
  * @author Search Manager
- * @since 5.x
+ * @since 5.32.0
  *
  * @example
  * <search-modal

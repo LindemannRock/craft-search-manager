@@ -56,6 +56,10 @@ var SearchModalWidget = (() => {
     resultDescLines: 1,
     snippetLength: 150,
     parseMarkdownSnippets: false,
+    persistQueryInUrl: true,
+    queryParamName: "smq",
+    highlightDestinationPage: true,
+    destinationHighlightSelector: "main, article, [data-search-content]",
     // Hierarchical result display (Algolia DocSearch-style)
     resultLayout: "default",
     // 'default' | 'grouped' | 'hierarchical'
@@ -175,9 +179,13 @@ var SearchModalWidget = (() => {
       snippetMode: element.getAttribute("snippet-mode") || defaults.snippetMode,
       snippetLength: parseInt(element.getAttribute("snippet-length"), defaults.snippetLength),
       parseMarkdownSnippets: parseBoolean(element.getAttribute("parse-markdown-snippets"), defaults.parseMarkdownSnippets),
+      persistQueryInUrl: parseBoolean(element.getAttribute("persist-query-in-url"), defaults.persistQueryInUrl),
+      highlightDestinationPage: parseBoolean(element.getAttribute("highlight-destination-page"), defaults.highlightDestinationPage),
       // Result line clamping
       resultTitleLines: parseInt(element.getAttribute("result-title-lines"), defaults.resultTitleLines),
       resultDescLines: parseInt(element.getAttribute("result-desc-lines"), defaults.resultDescLines),
+      queryParamName: element.getAttribute("query-param-name") || defaults.queryParamName,
+      destinationHighlightSelector: element.getAttribute("destination-highlight-selector") || defaults.destinationHighlightSelector,
       // Hierarchical result display
       resultLayout: element.getAttribute("result-layout") || defaults.resultLayout,
       hierarchyGroupBy: element.getAttribute("hierarchy-group-by") || defaults.hierarchyGroupBy,
@@ -248,7 +256,11 @@ var SearchModalWidget = (() => {
       "result-title-lines",
       "result-desc-lines",
       "snippet-length",
-      "parse-markdown-snippets"
+      "parse-markdown-snippets",
+      "persist-query-in-url",
+      "query-param-name",
+      "highlight-destination-page",
+      "destination-highlight-selector"
     ];
     const modalAttrs = [
       "hotkey",
@@ -898,6 +910,11 @@ var SearchModalWidget = (() => {
     div.textContent = text;
     return div.innerHTML;
   }
+  function escapeRegex(string) {
+    if (!string)
+      return "";
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
   function parseQueryTerms(query) {
     if (!query)
       return [];
@@ -1036,6 +1053,30 @@ var SearchModalWidget = (() => {
     return result;
   }
 
+  // src/modules/UrlUtils.js
+  function appendQueryParam(url, query, paramName = "smq") {
+    if (!url || url === "#") {
+      return url;
+    }
+    const trimmedQuery = (query || "").trim();
+    if (!trimmedQuery) {
+      return url;
+    }
+    if (!paramName) {
+      return url;
+    }
+    if (/^(mailto:|tel:|javascript:)/i.test(url)) {
+      return url;
+    }
+    const [beforeHash, hashFragment] = url.split("#", 2);
+    const [path, rawSearch] = beforeHash.split("?", 2);
+    const params = new URLSearchParams(rawSearch || "");
+    params.set(paramName, trimmedQuery);
+    const queryString = params.toString();
+    const hash = hashFragment ? `#${hashFragment}` : "";
+    return `${path}${queryString ? `?${queryString}` : ""}${hash}`;
+  }
+
   // src/modules/A11yUtils.js
   var idCounter = 0;
   function generateId(prefix = "sm") {
@@ -1132,11 +1173,14 @@ var SearchModalWidget = (() => {
       highlightClass = "",
       groupResults = false,
       promotions = {},
-      debug = false
+      debug = false,
+      persistQueryInUrl = false,
+      queryParamName = "smq"
     } = options;
     const title = result.title || result.name || "Untitled";
     const description = result.description || result.excerpt || result.snippet || "";
-    const url = result.url || result.href || "#";
+    const rawUrl = result.url || result.href || "#";
+    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : "");
     const type = result.section || result.type || "";
     const optionId = getOptionId(listboxId, index);
     const isPromoted = result.promoted === true;
@@ -1347,11 +1391,14 @@ var SearchModalWidget = (() => {
       enableHighlighting = true,
       highlightTag = "mark",
       highlightClass = "",
-      debug = false
+      debug = false,
+      persistQueryInUrl = false,
+      queryParamName = "smq"
     } = options;
     const title = result.title || result.name || "Untitled";
     const description = result.description || result.excerpt || "";
-    const url = result.url || "#";
+    const rawUrl = result.url || "#";
+    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : "");
     const optionId = getOptionId(listboxId, index);
     const highlightOptions = {
       enabled: enableHighlighting,
@@ -1401,7 +1448,9 @@ var SearchModalWidget = (() => {
       enableHighlighting = true,
       highlightTag = "mark",
       highlightClass = "",
-      debug = false
+      debug = false,
+      persistQueryInUrl = false,
+      queryParamName = "smq"
     } = options;
     const rawText = heading.text || "";
     const text = rawText.replace(/^#+\s*/, "");
@@ -1409,7 +1458,8 @@ var SearchModalWidget = (() => {
     const level = heading.level || 2;
     const anchorId = heading.id || (text ? slugifyHeading(text) : "");
     const baseUrl = result.url || "#";
-    const url = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
+    const rawUrl = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
+    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : "");
     const optionId = getOptionId(listboxId, index);
     const highlightOptions = {
       enabled: enableHighlighting,
@@ -1712,6 +1762,8 @@ var SearchModalWidget = (() => {
   }
 
   // src/core/SearchWidgetBase.js
+  var PAGE_HIGHLIGHT_STYLE_ID = "sm-page-highlight-style";
+  var PAGE_HIGHLIGHT_FLAG = "__smPageHighlightApplied";
   var SearchWidgetBase = class extends HTMLElement {
     /**
      * Initialize the base widget
@@ -1839,6 +1891,7 @@ var SearchModalWidget = (() => {
         },
         { listboxId: this.listboxId }
       );
+      this.applyDestinationPageHighlight();
     }
     /**
      * Called when element is removed from the DOM
@@ -2013,6 +2066,8 @@ var SearchModalWidget = (() => {
           highlightClass,
           showLoadingIndicator,
           debug,
+          persistQueryInUrl: this.config.enableHighlighting && this.config.persistQueryInUrl,
+          queryParamName: this.config.queryParamName,
           promotions: this.config.promotions,
           // Hierarchical display options
           resultLayout: this.config.resultLayout,
@@ -2155,6 +2210,11 @@ var SearchModalWidget = (() => {
       const id = item.dataset.id;
       const query = item.dataset.query || this.state.get("query");
       const isRecentItem = item.classList.contains("sm-recent-item");
+      const destinationUrl = appendQueryParam(
+        url,
+        query,
+        this.config.enableHighlighting && this.config.persistQueryInUrl ? this.config.queryParamName : ""
+      );
       if (!isRecentItem && query) {
         const updatedRecent = saveRecentSearch(
           this.config.index,
@@ -2178,16 +2238,16 @@ var SearchModalWidget = (() => {
       this.dispatchWidgetEvent("result-click", {
         id,
         title,
-        url,
+        url: destinationUrl,
         query,
         isRecent: isRecentItem
       });
       if (url && url !== "#") {
         if (isRecentItem) {
           e.preventDefault();
-          window.location.href = url;
+          window.location.href = destinationUrl;
         }
-        this.onResultSelected(url, title, id);
+        this.onResultSelected(destinationUrl, title, id);
       } else if (query) {
         e.preventDefault();
         const input = this.getInputElement();
@@ -2209,6 +2269,138 @@ var SearchModalWidget = (() => {
      * @param {string|number} id - Result ID
      */
     onResultSelected(url, title, id) {
+    }
+    /**
+     * Apply destination-page highlights once per page load when a query
+     * parameter is present (for example, ?smq=redis).
+     */
+    applyDestinationPageHighlight() {
+      if (!this.config.enableHighlighting || !this.config.highlightDestinationPage || typeof window === "undefined" || typeof document === "undefined") {
+        return;
+      }
+      if (window[PAGE_HIGHLIGHT_FLAG]) {
+        return;
+      }
+      const queryParamName = this.config.queryParamName || "smq";
+      const query = new URLSearchParams(window.location.search).get(queryParamName);
+      if (!query || !query.trim()) {
+        return;
+      }
+      window[PAGE_HIGHLIGHT_FLAG] = true;
+      const run = () => {
+        this.ensurePageHighlightStyles();
+        this.highlightDestinationNodes(query.trim());
+      };
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", run, { once: true });
+      } else {
+        window.requestAnimationFrame(run);
+      }
+    }
+    /**
+     * Inject global styles for page-level highlights.
+     */
+    ensurePageHighlightStyles() {
+      if (document.getElementById(PAGE_HIGHLIGHT_STYLE_ID)) {
+        return;
+      }
+      const style = document.createElement("style");
+      style.id = PAGE_HIGHLIGHT_STYLE_ID;
+      style.textContent = `
+            .sm-page-highlight {
+                background: var(--sm-highlight-bg, #fef08a);
+                color: var(--sm-highlight-color, #854d0e);
+                border-radius: 0.15em;
+                padding: 0 0.08em;
+            }
+        `;
+      document.head.appendChild(style);
+    }
+    /**
+     * Highlight matching text in configured destination content areas.
+     *
+     * @param {string} query - Search query to highlight
+     */
+    highlightDestinationNodes(query) {
+      const selector = this.config.destinationHighlightSelector || "main, article, [data-search-content]";
+      const scopes = Array.from(document.querySelectorAll(selector));
+      if (scopes.length === 0) {
+        return;
+      }
+      const terms = [...new Set(parseQueryTerms(query).map((t) => t.trim()).filter((t) => t.length >= 2))];
+      if (terms.length === 0) {
+        return;
+      }
+      const pattern = terms.map((term) => escapeRegex(term)).filter(Boolean).sort((a, b) => b.length - a.length).join("|");
+      if (!pattern) {
+        return;
+      }
+      const regex = new RegExp(`(${pattern})`, "gi");
+      scopes.forEach((scope) => {
+        this.highlightTextNodesInScope(scope, regex);
+      });
+    }
+    /**
+     * Wrap matching text nodes with <mark class="sm-page-highlight">.
+     *
+     * @param {Element} scope - Root element to process
+     * @param {RegExp} regex - Global, case-insensitive regex
+     */
+    highlightTextNodesInScope(scope, regex) {
+      const walker = document.createTreeWalker(
+        scope,
+        NodeFilter.SHOW_TEXT,
+        {
+          acceptNode: (node) => {
+            const text = node.nodeValue;
+            if (!text || !text.trim()) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            const parent = node.parentElement;
+            if (!parent) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            if (parent.closest("script, style, noscript, textarea, code, pre, mark, .sm-highlight, .sm-page-highlight, search-modal")) {
+              return NodeFilter.FILTER_REJECT;
+            }
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        }
+      );
+      const textNodes = [];
+      while (walker.nextNode()) {
+        textNodes.push(walker.currentNode);
+      }
+      textNodes.forEach((node) => {
+        const text = node.nodeValue || "";
+        regex.lastIndex = 0;
+        if (!regex.test(text)) {
+          return;
+        }
+        const fragment = document.createDocumentFragment();
+        let cursor = 0;
+        regex.lastIndex = 0;
+        const matches = text.matchAll(regex);
+        for (const match of matches) {
+          const matchText = match[0];
+          const matchIndex = match.index ?? -1;
+          if (matchIndex < 0) {
+            continue;
+          }
+          if (matchIndex > cursor) {
+            fragment.appendChild(document.createTextNode(text.slice(cursor, matchIndex)));
+          }
+          const mark = document.createElement("mark");
+          mark.className = "sm-highlight sm-page-highlight";
+          mark.textContent = matchText;
+          fragment.appendChild(mark);
+          cursor = matchIndex + matchText.length;
+        }
+        if (cursor < text.length) {
+          fragment.appendChild(document.createTextNode(text.slice(cursor)));
+        }
+        node.parentNode?.replaceChild(fragment, node);
+      });
     }
     // =========================================================================
     // LOADING STATE
@@ -2422,7 +2614,7 @@ var SearchModalWidget = (() => {
  *
  * @module styles/base
  * @author Search Manager
- * @since 5.x
+ * @since 5.32.0
  */
 
 /* =========================================================================
@@ -3072,7 +3264,7 @@ var SearchModalWidget = (() => {
 `;
 
   // src/styles/modal.css
-  var modal_default = '/**\n * Search Widget Modal Styles\n *\n * Styles specific to the modal widget variant.\n * Includes backdrop, modal container, trigger button,\n * header, footer, and mobile responsive behavior.\n *\n * @module styles/modal\n * @author Search Manager\n * @since 5.x\n */\n\n/* =========================================================================\n   MODAL-SPECIFIC HOST VARIABLES\n   ========================================================================= */\n\n:host {\n    /* Modal container */\n    --sm-modal-bg: #ffffff;\n    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);\n    --sm-modal-border-width: 1px;\n    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);\n    --sm-modal-radius: 12px;\n    --sm-modal-width: 640px;\n    --sm-modal-max-height: 80vh;\n    --sm-modal-px: 16px;\n    --sm-modal-py: 16px;\n\n    /* Trigger button */\n    --sm-trigger-bg: #ffffff;\n    --sm-trigger-color: var(--sm-trigger-text-color, #374151);\n    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);\n    --sm-trigger-radius: 8px;\n    --sm-trigger-border-width: 1px;\n    --sm-trigger-px: 12px;\n    --sm-trigger-py: 8px;\n    --sm-trigger-font-size: 14px;\n}\n\n/* Dark theme - modal-specific overrides */\n:host([data-theme="dark"]) {\n    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);\n    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);\n\n    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);\n    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);\n    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);\n}\n\n/* =========================================================================\n   TRIGGER BUTTON\n   ========================================================================= */\n\n.sm-trigger {\n    display: inline-flex;\n    align-items: center;\n    gap: 8px;\n    padding: var(--sm-trigger-py) var(--sm-trigger-px);\n    background: var(--sm-trigger-bg);\n    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);\n    border-radius: var(--sm-trigger-radius);\n    color: var(--sm-trigger-color);\n    font-size: var(--sm-trigger-font-size);\n    cursor: pointer;\n    transition: all 0.15s ease;\n}\n\n.sm-trigger:hover {\n    border-color: var(--sm-accent);\n    color: var(--sm-text-primary);\n}\n\n.sm-trigger-text {\n    /* Text shown next to search icon */\n}\n\n.sm-trigger-kbd {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   BACKDROP\n   ========================================================================= */\n\n.sm-backdrop {\n    position: fixed;\n    inset: 0;\n    z-index: 99999;\n    display: flex;\n    align-items: flex-start;\n    justify-content: center;\n    padding-top: 10vh;\n    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));\n    backdrop-filter: var(--sm-backdrop-blur, blur(4px));\n    animation: sm-fade-in 0.15s ease;\n}\n\n.sm-backdrop[hidden] {\n    display: none;\n}\n\n@keyframes sm-fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n/* =========================================================================\n   MODAL CONTAINER\n   ========================================================================= */\n\n.sm-modal {\n    width: var(--sm-modal-width);\n    max-width: calc(100vw - 32px);\n    max-height: var(--sm-modal-max-height);\n    background: var(--sm-modal-bg);\n    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);\n    border-radius: var(--sm-modal-radius);\n    box-shadow: var(--sm-modal-shadow);\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    animation: sm-slide-up 0.2s ease;\n    text-align: start;\n}\n\n@keyframes sm-slide-up {\n    from {\n        opacity: 0;\n        transform: translateY(-10px) scale(0.98);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0) scale(1);\n    }\n}\n\n/* =========================================================================\n   MODAL HEADER\n   ========================================================================= */\n\n.sm-header {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n    border-bottom: 1px solid var(--sm-border-color);\n}\n\n.sm-search-icon {\n    flex-shrink: 0;\n    color: var(--sm-text-muted);\n}\n\n.sm-close {\n    flex-shrink: 0;\n    display: flex;\n    align-items: center;\n    padding: 4px 8px;\n    background: transparent;\n    border: none;\n    cursor: pointer;\n}\n\n.sm-close kbd {\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   MODAL RESULTS\n   ========================================================================= */\n\n.sm-results {\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n}\n\n/* =========================================================================\n   MODAL FOOTER\n   ========================================================================= */\n\n.sm-footer {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 16px;\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n    border-top: 1px solid var(--sm-border-color);\n    font-size: 12px;\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-hints {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n}\n\n.sm-footer-hints span {\n    display: flex;\n    align-items: center;\n    gap: 4px;\n}\n\n.sm-footer kbd {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 20px;\n    padding: 2px 4px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 10px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n.sm-footer-brand {\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-brand strong {\n    color: var(--sm-text-secondary);\n}\n\n/* =========================================================================\n   RTL SUPPORT (MODAL-SPECIFIC)\n   ========================================================================= */\n\n:host([dir="rtl"]) .sm-header,\n:host([dir="rtl"]) .sm-footer {\n    direction: rtl;\n}\n\n/* =========================================================================\n   MOBILE RESPONSIVE\n   ========================================================================= */\n\n@media (max-width: 640px) {\n    .sm-backdrop {\n        padding-top: 0;\n        align-items: flex-end;\n    }\n\n    .sm-modal {\n        max-width: 100%;\n        max-height: 90vh;\n        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;\n    }\n\n    .sm-trigger-text,\n    .sm-footer-hints {\n        display: none;\n    }\n}\n';
+  var modal_default = '/**\n * Search Widget Modal Styles\n *\n * Styles specific to the modal widget variant.\n * Includes backdrop, modal container, trigger button,\n * header, footer, and mobile responsive behavior.\n *\n * @module styles/modal\n * @author Search Manager\n * @since 5.32.0\n */\n\n/* =========================================================================\n   MODAL-SPECIFIC HOST VARIABLES\n   ========================================================================= */\n\n:host {\n    /* Modal container */\n    --sm-modal-bg: #ffffff;\n    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);\n    --sm-modal-border-width: 1px;\n    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);\n    --sm-modal-radius: 12px;\n    --sm-modal-width: 640px;\n    --sm-modal-max-height: 80vh;\n    --sm-modal-px: 16px;\n    --sm-modal-py: 16px;\n\n    /* Trigger button */\n    --sm-trigger-bg: #ffffff;\n    --sm-trigger-color: var(--sm-trigger-text-color, #374151);\n    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);\n    --sm-trigger-radius: 8px;\n    --sm-trigger-border-width: 1px;\n    --sm-trigger-px: 12px;\n    --sm-trigger-py: 8px;\n    --sm-trigger-font-size: 14px;\n}\n\n/* Dark theme - modal-specific overrides */\n:host([data-theme="dark"]) {\n    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);\n    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);\n\n    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);\n    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);\n    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);\n}\n\n/* =========================================================================\n   TRIGGER BUTTON\n   ========================================================================= */\n\n.sm-trigger {\n    display: inline-flex;\n    align-items: center;\n    gap: 8px;\n    padding: var(--sm-trigger-py) var(--sm-trigger-px);\n    background: var(--sm-trigger-bg);\n    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);\n    border-radius: var(--sm-trigger-radius);\n    color: var(--sm-trigger-color);\n    font-size: var(--sm-trigger-font-size);\n    cursor: pointer;\n    transition: all 0.15s ease;\n}\n\n.sm-trigger:hover {\n    border-color: var(--sm-accent);\n    color: var(--sm-text-primary);\n}\n\n.sm-trigger-text {\n    /* Text shown next to search icon */\n}\n\n.sm-trigger-kbd {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   BACKDROP\n   ========================================================================= */\n\n.sm-backdrop {\n    position: fixed;\n    inset: 0;\n    z-index: 99999;\n    display: flex;\n    align-items: flex-start;\n    justify-content: center;\n    padding-top: 10vh;\n    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));\n    backdrop-filter: var(--sm-backdrop-blur, blur(4px));\n    animation: sm-fade-in 0.15s ease;\n}\n\n.sm-backdrop[hidden] {\n    display: none;\n}\n\n@keyframes sm-fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n/* =========================================================================\n   MODAL CONTAINER\n   ========================================================================= */\n\n.sm-modal {\n    width: var(--sm-modal-width);\n    max-width: calc(100vw - 32px);\n    max-height: var(--sm-modal-max-height);\n    background: var(--sm-modal-bg);\n    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);\n    border-radius: var(--sm-modal-radius);\n    box-shadow: var(--sm-modal-shadow);\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    animation: sm-slide-up 0.2s ease;\n    text-align: start;\n}\n\n@keyframes sm-slide-up {\n    from {\n        opacity: 0;\n        transform: translateY(-10px) scale(0.98);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0) scale(1);\n    }\n}\n\n/* =========================================================================\n   MODAL HEADER\n   ========================================================================= */\n\n.sm-header {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n    border-bottom: 1px solid var(--sm-border-color);\n}\n\n.sm-search-icon {\n    flex-shrink: 0;\n    color: var(--sm-text-muted);\n}\n\n.sm-close {\n    flex-shrink: 0;\n    display: flex;\n    align-items: center;\n    padding: 4px 8px;\n    background: transparent;\n    border: none;\n    cursor: pointer;\n}\n\n.sm-close kbd {\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   MODAL RESULTS\n   ========================================================================= */\n\n.sm-results {\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n}\n\n/* =========================================================================\n   MODAL FOOTER\n   ========================================================================= */\n\n.sm-footer {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 16px;\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n    border-top: 1px solid var(--sm-border-color);\n    font-size: 12px;\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-hints {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n}\n\n.sm-footer-hints span {\n    display: flex;\n    align-items: center;\n    gap: 4px;\n}\n\n.sm-footer kbd {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 20px;\n    padding: 2px 4px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 10px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n.sm-footer-brand {\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-brand strong {\n    color: var(--sm-text-secondary);\n}\n\n/* =========================================================================\n   RTL SUPPORT (MODAL-SPECIFIC)\n   ========================================================================= */\n\n:host([dir="rtl"]) .sm-header,\n:host([dir="rtl"]) .sm-footer {\n    direction: rtl;\n}\n\n/* =========================================================================\n   MOBILE RESPONSIVE\n   ========================================================================= */\n\n@media (max-width: 640px) {\n    .sm-backdrop {\n        padding-top: 0;\n        align-items: flex-end;\n    }\n\n    .sm-modal {\n        max-width: 100%;\n        max-height: 90vh;\n        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;\n    }\n\n    .sm-trigger-text,\n    .sm-footer-hints {\n        display: none;\n    }\n}\n';
 
   // src/styles/debug.css
   var debug_default = `/* =========================================================================

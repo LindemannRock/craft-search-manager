@@ -6,12 +6,13 @@
  *
  * @module ResultRenderer
  * @author Search Manager
- * @since 5.x
+ * @since 5.32.0
  */
 
 import { highlightMatches, escapeHtml } from './Highlighter.js';
 import { groupResultsByType, groupResultsByField } from './SearchService.js';
 import { getOptionId } from './A11yUtils.js';
+import { appendQueryParam } from './UrlUtils.js';
 
 /**
  * @typedef {Object} RenderOptions
@@ -112,11 +113,14 @@ export function renderResultItem(result, index, query, options = {}) {
         groupResults = false,
         promotions = {},
         debug = false,
+        persistQueryInUrl = false,
+        queryParamName = 'smq',
     } = options;
 
     const title = result.title || result.name || 'Untitled';
     const description = result.description || result.excerpt || result.snippet || '';
-    const url = result.url || result.href || '#';
+    const rawUrl = result.url || result.href || '#';
+    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const type = result.section || result.type || '';
     const optionId = getOptionId(listboxId, index);
     const isPromoted = result.promoted === true;
@@ -468,11 +472,14 @@ function renderHierarchyParent(result, index, query, options = {}) {
         highlightTag = 'mark',
         highlightClass = '',
         debug = false,
+        persistQueryInUrl = false,
+        queryParamName = 'smq',
     } = options;
 
     const title = result.title || result.name || 'Untitled';
     const description = result.description || result.excerpt || '';
-    const url = result.url || '#';
+    const rawUrl = result.url || '#';
+    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const optionId = getOptionId(listboxId, index);
 
     const highlightOptions = {
@@ -539,6 +546,8 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         highlightTag = 'mark',
         highlightClass = '',
         debug = false,
+        persistQueryInUrl = false,
+        queryParamName = 'smq',
     } = options;
 
     const rawText = heading.text || '';
@@ -547,7 +556,8 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     const level = heading.level || 2;
     const anchorId = heading.id || (text ? slugifyHeading(text) : '');
     const baseUrl = result.url || '#';
-    const url = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
+    const rawUrl = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
+    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const optionId = getOptionId(listboxId, index);
 
     const highlightOptions = {

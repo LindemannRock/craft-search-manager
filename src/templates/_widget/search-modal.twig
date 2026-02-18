@@ -71,6 +71,10 @@
 {% set hideResultsWithoutUrl = hideResultsWithoutUrl ?? widgetConfig.isHideResultsWithoutUrlEnabled() %}
 {% set showCodeSnippets = showCodeSnippets ?? widgetConfig.isShowCodeSnippetsEnabled() %}
 {% set snippetMode = snippetMode ?? widgetConfig.getSnippetMode() %}
+{% set persistQueryInUrl = persistQueryInUrl ?? true %}
+{% set queryParamName = queryParamName ?? 'smq' %}
+{% set highlightDestinationPage = highlightDestinationPage ?? true %}
+{% set destinationHighlightSelector = destinationHighlightSelector ?? 'main, article, [data-search-content]' %}
 
 {# Trigger settings #}
 {% set showTrigger = showTrigger ?? widgetConfig.isShowTriggerEnabled() %}
@@ -134,6 +138,10 @@
     hide-results-without-url="{{ _self.toBool(hideResultsWithoutUrl, widgetConfig.isHideResultsWithoutUrlEnabled()) }}"
     show-code-snippets="{{ _self.toBool(showCodeSnippets, widgetConfig.isShowCodeSnippetsEnabled()) }}"
     snippet-mode="{{ snippetMode }}"
+    persist-query-in-url="{{ _self.toBool(persistQueryInUrl, true) }}"
+    query-param-name="{{ queryParamName|e('html_attr') }}"
+    highlight-destination-page="{{ _self.toBool(highlightDestinationPage, true) }}"
+    destination-highlight-selector="{{ destinationHighlightSelector|e('html_attr') }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}
     dir="{{ dir }}"
