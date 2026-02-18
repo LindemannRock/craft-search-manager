@@ -368,6 +368,16 @@ class WidgetConfig extends Model
         return (bool) $this->getSetting('behavior.showLoadingIndicator', true);
     }
 
+    /**
+     * Enable destination page highlighting after navigating from a search result.
+     *
+     * @since 5.39.0
+     */
+    public function isHighlightDestinationPageEnabled(): bool
+    {
+        return (bool) $this->getSetting('behavior.highlightDestinationPage', true);
+    }
+
     // Trigger
     public function isShowTriggerEnabled(): bool
     {

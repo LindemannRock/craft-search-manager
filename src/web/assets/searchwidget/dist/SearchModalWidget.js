@@ -1763,7 +1763,7 @@ var SearchModalWidget = (() => {
 
   // src/core/SearchWidgetBase.js
   var PAGE_HIGHLIGHT_STYLE_ID = "sm-page-highlight-style";
-  var PAGE_HIGHLIGHT_FLAG = "__smPageHighlightApplied";
+  var PAGE_HIGHLIGHT_REGISTRY = "__smPageHighlightRegistry";
   var SearchWidgetBase = class extends HTMLElement {
     /**
      * Initialize the base widget
@@ -2066,7 +2066,7 @@ var SearchModalWidget = (() => {
           highlightClass,
           showLoadingIndicator,
           debug,
-          persistQueryInUrl: this.config.enableHighlighting && this.config.persistQueryInUrl,
+          persistQueryInUrl: this.config.highlightDestinationPage && this.config.persistQueryInUrl,
           queryParamName: this.config.queryParamName,
           promotions: this.config.promotions,
           // Hierarchical display options
@@ -2213,7 +2213,7 @@ var SearchModalWidget = (() => {
       const destinationUrl = appendQueryParam(
         url,
         query,
-        this.config.enableHighlighting && this.config.persistQueryInUrl ? this.config.queryParamName : ""
+        this.config.highlightDestinationPage && this.config.persistQueryInUrl ? this.config.queryParamName : ""
       );
       if (!isRecentItem && query) {
         const updatedRecent = saveRecentSearch(
@@ -2275,21 +2275,24 @@ var SearchModalWidget = (() => {
      * parameter is present (for example, ?smq=redis).
      */
     applyDestinationPageHighlight() {
-      if (!this.config.enableHighlighting || !this.config.highlightDestinationPage || typeof window === "undefined" || typeof document === "undefined") {
-        return;
-      }
-      if (window[PAGE_HIGHLIGHT_FLAG]) {
+      if (!this.config.highlightDestinationPage || typeof window === "undefined" || typeof document === "undefined") {
         return;
       }
       const queryParamName = this.config.queryParamName || "smq";
+      const selector = this.config.destinationHighlightSelector || "main, article, [data-search-content]";
       const query = new URLSearchParams(window.location.search).get(queryParamName);
       if (!query || !query.trim()) {
         return;
       }
-      window[PAGE_HIGHLIGHT_FLAG] = true;
+      const registry = this.getPageHighlightRegistry();
+      const key = `${queryParamName}::${selector}`;
+      if (registry.has(key)) {
+        return;
+      }
+      registry.add(key);
       const run = () => {
         this.ensurePageHighlightStyles();
-        this.highlightDestinationNodes(query.trim());
+        this.highlightDestinationNodes(query.trim(), selector, key);
       };
       if (document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", run, { once: true });
@@ -2320,9 +2323,10 @@ var SearchModalWidget = (() => {
      * Highlight matching text in configured destination content areas.
      *
      * @param {string} query - Search query to highlight
+     * @param {string} selector - CSS selector for content scopes
+     * @param {string} key - De-duplication key for this highlight run
      */
-    highlightDestinationNodes(query) {
-      const selector = this.config.destinationHighlightSelector || "main, article, [data-search-content]";
+    highlightDestinationNodes(query, selector, key) {
       const scopes = Array.from(document.querySelectorAll(selector));
       if (scopes.length === 0) {
         return;
@@ -2337,7 +2341,11 @@ var SearchModalWidget = (() => {
       }
       const regex = new RegExp(`(${pattern})`, "gi");
       scopes.forEach((scope) => {
+        if (scope.getAttribute("data-sm-highlighted") === key) {
+          return;
+        }
         this.highlightTextNodesInScope(scope, regex);
+        scope.setAttribute("data-sm-highlighted", key);
       });
     }
     /**
@@ -2401,6 +2409,20 @@ var SearchModalWidget = (() => {
         }
         node.parentNode?.replaceChild(fragment, node);
       });
+    }
+    /**
+     * Get or initialize the global page-highlight registry.
+     *
+     * @returns {Set<string>} Registry of applied highlight keys
+     */
+    getPageHighlightRegistry() {
+      const existing = window[PAGE_HIGHLIGHT_REGISTRY];
+      if (existing instanceof Set) {
+        return existing;
+      }
+      const registry = /* @__PURE__ */ new Set();
+      window[PAGE_HIGHLIGHT_REGISTRY] = registry;
+      return registry;
     }
     // =========================================================================
     // LOADING STATE

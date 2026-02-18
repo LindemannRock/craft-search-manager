@@ -110,6 +110,14 @@
 	on: widgetConfig.isShowLoadingIndicatorEnabled(),
 }) }}
 
+{{ forms.lightswitchField({
+	label: 'Destination Page Highlighting'|t('search-manager'),
+	instructions: 'Highlight matching search terms on the destination page after navigating from a search result.'|t('search-manager'),
+	id: 'behavior-highlightDestinationPage',
+	name: 'settings[behavior][highlightDestinationPage]',
+	on: widgetConfig.isHighlightDestinationPageEnabled(),
+}) }}
+
 <hr>
 
 {# Result Display Settings #}

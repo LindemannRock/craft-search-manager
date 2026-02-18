@@ -53,7 +53,7 @@ import {
 } from '../modules/A11yUtils.js';
 
 const PAGE_HIGHLIGHT_STYLE_ID = 'sm-page-highlight-style';
-const PAGE_HIGHLIGHT_FLAG = '__smPageHighlightApplied';
+const PAGE_HIGHLIGHT_REGISTRY = '__smPageHighlightRegistry';
 
 /**
  * Abstract base class for search widgets
@@ -455,7 +455,7 @@ class SearchWidgetBase extends HTMLElement {
                 highlightClass,
                 showLoadingIndicator,
                 debug,
-                persistQueryInUrl: this.config.enableHighlighting && this.config.persistQueryInUrl,
+                persistQueryInUrl: this.config.highlightDestinationPage && this.config.persistQueryInUrl,
                 queryParamName: this.config.queryParamName,
                 promotions: this.config.promotions,
                 // Hierarchical display options
@@ -635,7 +635,7 @@ class SearchWidgetBase extends HTMLElement {
         const destinationUrl = appendQueryParam(
             url,
             query,
-            (this.config.enableHighlighting && this.config.persistQueryInUrl) ? this.config.queryParamName : ''
+            (this.config.highlightDestinationPage && this.config.persistQueryInUrl) ? this.config.queryParamName : ''
         );
 
         // Save to recent searches (for regular results, not re-clicking recent items)
@@ -714,26 +714,28 @@ class SearchWidgetBase extends HTMLElement {
      * parameter is present (for example, ?smq=redis).
      */
     applyDestinationPageHighlight() {
-        if (!this.config.enableHighlighting || !this.config.highlightDestinationPage || typeof window === 'undefined' || typeof document === 'undefined') {
-            return;
-        }
-
-        if (window[PAGE_HIGHLIGHT_FLAG]) {
+        if (!this.config.highlightDestinationPage || typeof window === 'undefined' || typeof document === 'undefined') {
             return;
         }
 
         const queryParamName = this.config.queryParamName || 'smq';
+        const selector = this.config.destinationHighlightSelector || 'main, article, [data-search-content]';
         const query = new URLSearchParams(window.location.search).get(queryParamName);
 
         if (!query || !query.trim()) {
             return;
         }
 
-        window[PAGE_HIGHLIGHT_FLAG] = true;
+        const registry = this.getPageHighlightRegistry();
+        const key = `${queryParamName}::${selector}`;
+        if (registry.has(key)) {
+            return;
+        }
+        registry.add(key);
 
         const run = () => {
             this.ensurePageHighlightStyles();
-            this.highlightDestinationNodes(query.trim());
+            this.highlightDestinationNodes(query.trim(), selector, key);
         };
 
         if (document.readyState === 'loading') {
@@ -769,9 +771,10 @@ class SearchWidgetBase extends HTMLElement {
      * Highlight matching text in configured destination content areas.
      *
      * @param {string} query - Search query to highlight
+     * @param {string} selector - CSS selector for content scopes
+     * @param {string} key - De-duplication key for this highlight run
      */
-    highlightDestinationNodes(query) {
-        const selector = this.config.destinationHighlightSelector || 'main, article, [data-search-content]';
+    highlightDestinationNodes(query, selector, key) {
         const scopes = Array.from(document.querySelectorAll(selector));
         if (scopes.length === 0) {
             return;
@@ -794,7 +797,11 @@ class SearchWidgetBase extends HTMLElement {
 
         const regex = new RegExp(`(${pattern})`, 'gi');
         scopes.forEach((scope) => {
+            if (scope.getAttribute('data-sm-highlighted') === key) {
+                return;
+            }
             this.highlightTextNodesInScope(scope, regex);
+            scope.setAttribute('data-sm-highlighted', key);
         });
     }
 
@@ -872,6 +879,22 @@ class SearchWidgetBase extends HTMLElement {
 
             node.parentNode?.replaceChild(fragment, node);
         });
+    }
+
+    /**
+     * Get or initialize the global page-highlight registry.
+     *
+     * @returns {Set<string>} Registry of applied highlight keys
+     */
+    getPageHighlightRegistry() {
+        const existing = window[PAGE_HIGHLIGHT_REGISTRY];
+        if (existing instanceof Set) {
+            return existing;
+        }
+
+        const registry = new Set();
+        window[PAGE_HIGHLIGHT_REGISTRY] = registry;
+        return registry;
     }
 
     // =========================================================================

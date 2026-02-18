@@ -73,7 +73,7 @@
 {% set snippetMode = snippetMode ?? widgetConfig.getSnippetMode() %}
 {% set persistQueryInUrl = persistQueryInUrl ?? true %}
 {% set queryParamName = queryParamName ?? 'smq' %}
-{% set highlightDestinationPage = highlightDestinationPage ?? true %}
+{% set highlightDestinationPage = highlightDestinationPage ?? widgetConfig.isHighlightDestinationPageEnabled() %}
 {% set destinationHighlightSelector = destinationHighlightSelector ?? 'main, article, [data-search-content]' %}
 
 {# Trigger settings #}
