@@ -10,10 +10,17 @@ use lindemannrock\searchmanager\SearchManager;
 $plugin = SearchManager::$plugin;
 
 // Available services
-$plugin->backend;     // BackendService - search and index operations
-$plugin->indexing;    // IndexingService - element indexing
-$plugin->analytics;   // AnalyticsService - analytics tracking and queries
-$plugin->autocomplete; // AutocompleteService - autocomplete suggestions
+$plugin->backend;          // BackendService - search and index operations
+$plugin->indexing;         // IndexingService - element indexing
+$plugin->analytics;        // AnalyticsService - analytics tracking and queries
+$plugin->autocomplete;     // AutocompleteService - autocomplete suggestions
+$plugin->widgetConfigs;    // WidgetConfigService - widget configuration CRUD
+$plugin->widgetStyles;     // WidgetStyleService - widget style preset CRUD
+$plugin->promotions;       // PromotionService - search promotions
+$plugin->queryRules;       // QueryRuleService - query rules management
+$plugin->deviceDetection;  // DeviceDetectionService - user-agent parsing
+$plugin->enrichment;       // EnrichmentService - result enrichment (snippets, headings, thumbnails)
+$plugin->transformers;     // TransformerService - index transformers
 ```
 
 ## BackendService
@@ -123,6 +130,23 @@ Rebuild a specific index — clears all data and re-indexes all matching element
 SearchManager::$plugin->indexing->rebuildIndex('entries-en');
 ```
 
+### `removeElement(element)`
+
+Remove an element from all applicable indices.
+
+```php
+SearchManager::$plugin->indexing->removeElement($entry);
+```
+
+### `batchIndex(elements, indexHandle)`
+
+Batch-index multiple elements at once.
+
+```php
+$entries = \craft\elements\Entry::find()->section('blog')->all();
+SearchManager::$plugin->indexing->batchIndex($entries, 'entries-en');
+```
+
 ### `rebuildAll()`
 
 Rebuild all configured indices.
@@ -173,6 +197,106 @@ Clear analytics data, optionally filtered by site.
 ```php
 $deleted = SearchManager::$plugin->analytics->clearAnalytics();
 $deleted = SearchManager::$plugin->analytics->clearAnalytics(1); // Specific site
+```
+
+## WidgetConfigService
+
+Manage widget configurations programmatically.
+
+### `getAll()`
+
+Get all widget configs (database + config file).
+
+```php
+$configs = SearchManager::$plugin->widgetConfigs->getAll();
+```
+
+### `getByHandle(handle)`
+
+Get a widget config by handle.
+
+```php
+$config = SearchManager::$plugin->widgetConfigs->getByHandle('main-search');
+```
+
+### `save(config)`
+
+Save a widget config.
+
+```php
+$config = new \lindemannrock\searchmanager\models\WidgetConfig();
+$config->handle = 'new-search';
+$config->name = 'New Search Widget';
+SearchManager::$plugin->widgetConfigs->save($config);
+```
+
+## WidgetStyleService
+
+Manage widget style presets programmatically.
+
+### `getAll()`
+
+Get all widget styles (database + config file).
+
+```php
+$styles = SearchManager::$plugin->widgetStyles->getAll();
+```
+
+### `getByHandle(handle)`
+
+Get a widget style by handle.
+
+```php
+$style = SearchManager::$plugin->widgetStyles->getByHandle('brand-dark');
+```
+
+### `save(style)`
+
+Save a widget style.
+
+```php
+$style = new \lindemannrock\searchmanager\models\WidgetStyle();
+$style->handle = 'brand-dark';
+$style->name = 'Brand Dark';
+$style->type = 'modal';
+SearchManager::$plugin->widgetStyles->save($style);
+```
+
+### `getUsageCountsByHandle()`
+
+Get how many widget configs reference each style.
+
+```php
+$counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
+// ['brand-dark' => 3, 'minimal' => 1]
+```
+
+## EnrichmentService @since(5.39.0)
+
+Transforms raw search hits into enriched results with snippets, heading expansion, thumbnails, and metadata. This is what the Search API uses when `enrich=1` is passed.
+
+### `enrichResults(rawHits, query, indexHandles, options)`
+
+Enrich raw search hits with contextual snippets, heading children, and element metadata.
+
+```php
+$rawResults = SearchManager::$plugin->backend->search('entries-en', 'craft cms');
+
+$enriched = SearchManager::$plugin->enrichment->enrichResults(
+    $rawResults['hits'],
+    'craft cms',
+    ['entries-en'],
+    [
+        'snippetMode' => 'balanced',     // 'early', 'balanced', or 'deep'
+        'snippetLength' => 150,          // 50–1000
+        'showCodeSnippets' => false,
+        'parseMarkdownSnippets' => false,
+        'hideResultsWithoutUrl' => false,
+        'includeDebugMeta' => false,
+    ],
+);
+
+// $enriched = [['id' => 123, 'title' => '...', 'url' => '...', 'description' => '...', 'headings' => [...]], ...]
 ```
 
 ## Events

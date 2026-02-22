@@ -37,8 +37,6 @@ Everything from the built-in backends, plus:
             'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
             'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
             'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
-            'timeout' => 5,
-            'connectTimeout' => 1,
         ],
     ],
 ],
@@ -58,8 +56,6 @@ ALGOLIA_SEARCH_API_KEY=your-search-key
 | `applicationId` | `string` | (required) | Your Algolia Application ID |
 | `adminApiKey` | `string` | (required) | Admin API key (for indexing) |
 | `searchApiKey` | `string` | (optional) | Search-only API key (for frontend) |
-| `timeout` | `int` | `5` | Request timeout in seconds |
-| `connectTimeout` | `int` | `1` | Connection timeout in seconds |
 
 ## Multi-Site Support
 

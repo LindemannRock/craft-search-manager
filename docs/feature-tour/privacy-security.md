@@ -8,11 +8,11 @@ Every IP address is hashed with a salt before storage using SHA256. The original
 
 Generate the salt (run once after installation):
 
-```bash
+```bash title="PHP"
 php craft search-manager/security/generate-salt
 ```
 
-```bash
+```bash title="DDEV"
 ddev craft search-manager/security/generate-salt
 ```
 

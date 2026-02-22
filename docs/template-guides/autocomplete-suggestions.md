@@ -148,7 +148,7 @@ input.addEventListener('input', (e) => {
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `index` | `all-sites` | Index handle |
+| `index` | (all indices) | Index handle. Omit to search all enabled indices. |
 | `limit` | `10` | Maximum suggestions/results |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code |
@@ -194,4 +194,4 @@ Basic CSS for the autocomplete dropdown:
 
 ## Using the Search Widget Instead
 
-For a complete out-of-the-box solution with autocomplete, keyboard navigation, themes, and analytics, consider using the [Frontend Widget](../feature-tour/frontend-widget.md) instead of building your own.
+For a complete out-of-the-box solution with autocomplete, keyboard navigation, themes, and analytics, consider using the [Frontend Widget](../widget/overview.md) instead of building your own.

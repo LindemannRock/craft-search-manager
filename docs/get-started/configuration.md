@@ -54,7 +54,7 @@ These settings control how content gets indexed and which backend handles search
 |--------|------|---------|-------------|
 | `defaultBackendHandle` | `string` | `null` | Handle of the default backend (must match a key in `backends`) |
 | `autoIndex` | `bool` | `true` | Automatically index elements when saved |
-| `batchSize` | `int` | `100` | Batch size for bulk indexing operations |
+| `batchSize` | `int` | `100` | Elements per batch during rebuild. Lower to 25–50 on memory-constrained hosting; increase to 250–500 for faster rebuilds on dedicated servers |
 | `queueEnabled` | `bool` | `true` | Use queue for indexing (recommended for large sites) |
 | `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
 | `indexPrefix` | `string` | `null` | Prefix for index names (useful for multi-environment setups) |
@@ -62,6 +62,13 @@ These settings control how content gets indexed and which backend handles search
 When `replaceNativeSearch` is enabled, all CP searches and `Entry::find()->search()` queries use your backend instead of Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
 
 The `indexPrefix` setting is especially useful when sharing an Algolia or Meilisearch account across environments. See [Indices](../feature-tour/indices.md) for details.
+
+To programmatically get the full prefixed index name, use:
+
+```php
+$fullName = SearchManager::$plugin->getSettings()->getFullIndexName('my-index');
+// Returns: "myprefix_my-index"
+```
 
 ### Search Algorithm
 
@@ -196,7 +203,7 @@ Backends are defined as named instances in the config file. Each backend has a u
 ],
 ```
 
-See [Backends](../feature-tour/backends.md) for backend-specific settings and configuration examples.
+See [Backends](../backends/backends.md) for backend-specific settings and configuration examples.
 
 ## Indices Configuration
 
@@ -221,7 +228,7 @@ See [Indices](../feature-tour/indices.md) for full configuration options.
 
 ## Widgets Configuration
 
-Widget configurations define how the frontend search modal appears and behaves:
+Widget configurations define how the frontend search widget appears and behaves:
 
 ```php
 'defaultWidgetHandle' => 'brand-search',
@@ -229,31 +236,65 @@ Widget configurations define how the frontend search modal appears and behaves:
 'widgets' => [
     'brand-search' => [
         'name' => 'Brand Search',
+        'type' => 'modal',     // 'modal', 'page', or 'inline'
         'enabled' => true,
+        'style' => 'brand-dark',  // Link to a widget style preset
         'settings' => [
             'search' => [
                 'indexHandles' => ['entries-en'],
+                'placeholder' => 'Search...',
             ],
             'behavior' => [
-                'debounce' => 300,
+                'debounce' => 200,
                 'minChars' => 2,
-                'maxResults' => 8,
+                'maxResults' => 10,
                 'hotkey' => 'k',
+                'resultLayout' => 'default',      // 'default' or 'hierarchical'
+                'hierarchyGroupBy' => '',          // Field for grouping (e.g., 'section')
+                'hierarchyStyle' => 'tree',        // 'tree', 'flat', or 'none'
+                'hierarchyDisplay' => 'individual', // 'individual' or 'unified'
+                'maxHeadingsPerResult' => 3,       // Heading children per result (1-50)
+                'snippetMode' => 'balanced',       // 'early', 'balanced', or 'deep'
+                'showCodeSnippets' => false,       // Show code in descriptions
+                'parseMarkdownSnippets' => false,  // Parse markdown before snippets
             ],
             'analytics' => [
                 'source' => 'header-search',
                 'idleTimeout' => 1500,
-            ],
-            'styles' => [
-                'modalBg' => '#ffffff',
-                'modalBorderColor' => '#0066cc',
             ],
         ],
     ],
 ],
 ```
 
-See [Frontend Widget](../feature-tour/frontend-widget.md) for all widget options.
+See [Widget Configuration](../widget/configuration.md) for all widget options.
+
+## Widget Styles Configuration
+
+Widget styles are reusable appearance presets that control colors, spacing, and dimensions. Define them in the `widgetStyles` key and reference them from widget configs via `styleHandle`:
+
+```php
+'widgetStyles' => [
+    'brand-dark' => [
+        'name' => 'Brand Dark',
+        'type' => 'modal',
+        'enabled' => true,
+        'styles' => [
+            'modalBg' => '#1a1a2e',
+            'modalBorderColor' => '#4da6ff',
+            'modalBorderRadius' => '16',
+            'inputBg' => '#2a2a2a',
+            'inputTextColor' => '#ffffff',
+            'resultActiveBg' => '#333333',
+            // Dark mode variants
+            'modalBgDark' => '#0f0f1a',
+            'modalBorderColorDark' => '#6db8ff',
+        ],
+    ],
+],
+```
+
+See [Widget Styles](../widget/styles.md) for all style properties and validation ranges.
 
 ## Environment Variables
 

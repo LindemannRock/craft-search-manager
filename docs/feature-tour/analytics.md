@@ -91,7 +91,7 @@ Analytics can be enabled or disabled per index. This is useful for excluding int
 ```php
 // In index configuration
 'internal-search' => [
-    'disableAnalytics' => true,
+    'enableAnalytics' => false,
     // ...
 ],
 ```
@@ -124,7 +124,7 @@ GET /actions/search-manager/api/search?q=shoes&source=ios-app&platform=iOS%2017.
 
 ## Export
 
-Analytics can be exported as CSV or JSON from the Recent Searches tab. Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected).
+Analytics can be exported as CSV, JSON, or Excel from the Recent Searches tab. Available formats depend on the [base plugin export configuration](../get-started/configuration.md). Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected).
 
 ## Retention
 

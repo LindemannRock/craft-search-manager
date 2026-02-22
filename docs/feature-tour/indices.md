@@ -41,30 +41,30 @@ Define indices in `config/search-manager.php`:
 ],
 ```
 
-#### Plugin Docs Integration
+#### Docs Manager Integration
 
-If [Plugin Docs](https://lindemannrock.com/plugins/plugin-docs) is installed, you can index documentation pages. Create a global index for all plugin docs, or scope to specific plugins:
+If [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed, you can index documentation pages. Create a global index for all docs, or scope to specific sources:
 
 ```php
-// All plugin documentation
+// All documentation
 'all-docs' => [
     'name' => 'All Documentation',
-    'elementType' => \lindemannrock\plugindocs\elements\PluginDoc::class,
+    'elementType' => \lindemannrock\docsmanager\elements\SourceDoc::class,
     'enabled' => true,
 ],
 
-// Documentation for a specific plugin
+// Documentation for a specific source
 'search-manager-docs' => [
     'name' => 'Search Manager Docs',
-    'elementType' => \lindemannrock\plugindocs\elements\PluginDoc::class,
+    'elementType' => \lindemannrock\docsmanager\elements\SourceDoc::class,
     'criteria' => function($query) {
-        return $query->pluginHandle('search-manager');
+        return $query->sourceHandle('search-manager');
     },
     'enabled' => true,
 ],
 ```
 
-When creating a PluginDoc index via the Control Panel, a checkbox group lets you select which plugins to include. Leave all unchecked to index all plugins.
+When creating a SourceDoc index via the Control Panel, a checkbox group lets you select which sources to include. Leave all unchecked to index all sources.
 
 ### Via Control Panel
 
@@ -77,14 +77,17 @@ Config-defined indices show a "Config" badge and cannot be edited in the CP. Dat
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `name` | `string` | (required) | Display name for the index |
-| `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `PluginDoc::class`, etc.) |
+| `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, etc.) |
 | `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
 | `criteria` | `callable` | `null` | Callback to filter elements (receives an ElementQuery) |
 | `transformer` | `string` | `null` | Transformer class for custom document structure |
 | `enabled` | `bool` | `true` | Whether the index is active |
+| `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
+| `language` | `string` | `null` | Language code (`en`, `ar`, `fr`, `es`, `de`). `null` = auto-detect from site locale |
+| `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) |
 | `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
 | `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |
-| `disableAnalytics` | `bool` | `false` | Disable analytics tracking for this index |
+| `enableAnalytics` | `bool` | `true` | Whether to track analytics for searches on this index |
 
 ## Multi-Site Indices
 
@@ -139,11 +142,11 @@ The `criteria` callback receives a Craft ElementQuery and should return it with 
 
 This is equivalent to building an element query in Twig — any method available on the element query works here.
 
-For PluginDoc elements, the `pluginHandle()` method is available to scope by plugin:
+For SourceDoc elements, the `sourceHandle()` method is available to scope by source:
 
 ```php
 'criteria' => function($query) {
-    return $query->pluginHandle(['search-manager', 'redirect-manager']);
+    return $query->sourceHandle(['search-manager', 'redirect-manager']);
 },
 ```
 
@@ -174,7 +177,7 @@ Internal or admin-facing indices may not need analytics tracking:
 
 ```php
 'internal-search' => [
-    'disableAnalytics' => true,
+    'enableAnalytics' => false,
     // ...
 ],
 ```
@@ -221,20 +224,32 @@ This is especially useful when sharing an Algolia or Meilisearch account across 
 
 Rebuild all indices:
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/rebuild
+```
+
+```bash title="DDEV"
+ddev craft search-manager/index/rebuild
 ```
 
 Rebuild a specific index:
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/rebuild entries-en
+```
+
+```bash title="DDEV"
+ddev craft search-manager/index/rebuild entries-en
 ```
 
 Clear an index:
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/clear entries-en
+```
+
+```bash title="DDEV"
+ddev craft search-manager/index/clear entries-en
 ```
 
 See [Console Commands](../developers/console-commands.md) for the full CLI reference.

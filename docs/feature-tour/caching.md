@@ -97,9 +97,15 @@ For high-traffic sites where content changes are rare, you may want to disable t
 - **Per-index**: Clear cache for a specific index without affecting others
 - **CLI**:
 
-```bash
-php craft search-manager/maintenance/clear-storage
+```bash title="PHP"
+php craft search-manager/maintenance/clear-storage --type=database
 ```
+
+```bash title="DDEV"
+ddev craft search-manager/maintenance/clear-storage --type=database
+```
+
+Valid types: `database`, `redis`, `file`.
 
 ### Craft Integration
 
@@ -131,4 +137,5 @@ Cache warming:
 
 Cache hit rates of 70–90% are common for sites with recurring search patterns.
 
-> **Tip:** Start with file-based caching. Switch to Redis only if you run multiple servers or need shared cache across load-balanced instances.
+> [!TIP]
+> Start with file-based caching. Switch to Redis only if you run multiple servers or need shared cache across load-balanced instances.

@@ -1,72 +1,75 @@
 [
-    {
-        "title": "Get Started",
-        "collapsable": false,
-        "children": [
-            "get-started/requirements",
-            "get-started/installation",
-            "get-started/configuration"
-        ]
-    },
-    {
-        "title": "Feature Tour",
-        "collapsable": false,
-        "children": [
-            "feature-tour/overview",
-            "feature-tour/backends",
-            "feature-tour/backend-mysql",
-            "feature-tour/backend-postgresql",
-            "feature-tour/backend-redis",
-            "feature-tour/backend-file",
-            "feature-tour/backend-algolia",
-            "feature-tour/backend-meilisearch",
-            "feature-tour/backend-typesense",
-            "feature-tour/indices",
-            "feature-tour/search-features",
-            "feature-tour/highlighting",
-            "feature-tour/autocomplete",
-            "feature-tour/query-rules",
-            "feature-tour/promotions",
-            "feature-tour/analytics",
-            "feature-tour/caching",
-            "feature-tour/multi-language",
-            "feature-tour/frontend-widget",
-            "feature-tour/privacy-security"
-        ]
-    },
-    {
-        "title": "Template Guides",
-        "collapsable": false,
-        "children": [
-            "template-guides/basic-search",
-            "template-guides/advanced-operators",
-            "template-guides/autocomplete-suggestions",
-            "template-guides/highlighting-snippets",
-            "template-guides/multi-index-search",
-            "template-guides/filtering-facets",
-            "template-guides/widget-integration",
-            "template-guides/api-endpoints"
-        ]
-    },
-    {
-        "title": "Developers",
-        "collapsable": false,
-        "children": [
-            "developers/permissions",
-            "developers/console-commands",
-            "developers/events",
-            "developers/template-variables",
-            "developers/custom-transformers",
-            "developers/api-reference",
-            "developers/twig-globals",
-            "developers/shared-features"
-        ]
-    },
-    {
-        "title": "Resources",
-        "collapsable": false,
-        "children": [
-            "troubleshooting"
-        ]
-    }
+	{
+		"title": "Get Started",
+		"collapsable": false,
+		"children": ["get-started/requirements", "get-started/installation", "get-started/quickstart", "get-started/configuration"]
+	},
+	{
+		"title": "Backends",
+		"collapsable": true,
+		"open": false,
+		"children": ["backends/backends", "backends/backend-mysql", "backends/backend-postgresql", "backends/backend-redis", "backends/backend-file", "backends/backend-algolia", "backends/backend-meilisearch", "backends/backend-typesense"]
+	},
+	{
+		"title": "Feature Tour",
+		"collapsable": true,
+		"open": true,
+		"children": [
+			"feature-tour/overview",
+			"feature-tour/indices",
+			"feature-tour/search-features",
+			"feature-tour/highlighting",
+			"feature-tour/autocomplete",
+			"feature-tour/query-rules",
+			"feature-tour/promotions",
+			"feature-tour/analytics",
+			"feature-tour/caching",
+			"feature-tour/multi-language",
+			"feature-tour/privacy-security"
+		]
+	},
+	{
+		"title": "Widget",
+		"collapsable": true,
+		"open": true,
+		"children": ["widget/overview", "widget/configuration", "widget/styles", "widget/integration", "widget/javascript-api"]
+	},
+	{
+		"title": "Template Guides",
+		"collapsable": true,
+		"open": true,
+		"children": [
+			"template-guides/basic-search",
+			"template-guides/advanced-operators",
+			"template-guides/autocomplete-suggestions",
+			"template-guides/highlighting-snippets",
+			"template-guides/multi-index-search",
+			"template-guides/filtering-facets",
+			"template-guides/api-endpoints"
+		]
+	},
+	{
+		"title": "Developers",
+		"collapsable": true,
+		"open": false,
+		"children": [
+			"developers/overview",
+			"developers/permissions",
+			"developers/console-commands",
+			"developers/events",
+			"developers/template-variables",
+			"developers/twig-globals",
+			"developers/custom-transformers",
+			"developers/api-reference",
+			"developers/shared-features"
+		]
+	},
+	{
+		"title": "Resources",
+		"collapsable": true,
+		"open": false,
+		"children": [
+			"resources/troubleshooting"
+		]
+	}
 ]

@@ -22,6 +22,17 @@ Create a widget configuration in the CP (Search Manager > Widgets) or config fil
 } %}
 ```
 
+## Using a Style Preset
+
+Apply a [Widget Style](styles.md) preset for consistent appearance:
+
+```twig
+{% include 'search-manager/_widget/search-modal' with {
+    config: 'main-search',
+    styleHandle: 'brand-dark',
+} %}
+```
+
 ## Customizing Inline
 
 Override specific settings without creating a config:
@@ -42,13 +53,11 @@ Override specific settings without creating a config:
 Replace the built-in trigger with your own design:
 
 ```twig
-{# Your custom search button #}
 <button id="search-trigger" class="my-search-button">
     <svg><!-- search icon --></svg>
     Search
 </button>
 
-{# Widget with external trigger #}
 {% include 'search-manager/_widget/search-modal' with {
     showTrigger: false,
     triggerSelector: '#search-trigger',
@@ -62,12 +71,10 @@ Any element matching the `triggerSelector` will open the modal when clicked.
 ### Light and Dark Mode
 
 ```twig
-{# Light mode (default) #}
 {% include 'search-manager/_widget/search-modal' with {
     theme: 'light',
 } %}
 
-{# Dark mode #}
 {% include 'search-manager/_widget/search-modal' with {
     theme: 'dark',
 } %}
@@ -84,7 +91,7 @@ Override individual style properties:
         modalBorderColor: '#333',
         inputBg: '#2a2a2a',
         inputTextColor: '#fff',
-        resultHoverBg: '#333',
+        resultActiveBg: '#333',
         modalBorderRadius: '16',
     },
 } %}
@@ -127,12 +134,10 @@ For right-to-left languages:
 Track where searches come from by setting a source identifier:
 
 ```twig
-{# Header search widget #}
 {% include 'search-manager/_widget/search-modal' with {
     source: 'header-search',
 } %}
 
-{# Mobile navigation search #}
 {% include 'search-manager/_widget/search-modal' with {
     source: 'mobile-nav',
 } %}
@@ -146,10 +151,9 @@ By default, a search is tracked after the user stops typing for 1.5 seconds. Adj
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    idleTimeout: 2000,  // 2 seconds
+    idleTimeout: 2000,
 } %}
 
-{# Disable idle tracking (only track on click/enter) #}
 {% include 'search-manager/_widget/search-modal' with {
     idleTimeout: 0,
 } %}
@@ -160,13 +164,15 @@ By default, a search is tracked after the user stops typing for 1.5 seconds. Adj
 Access the widget from JavaScript:
 
 ```javascript
-const widget = document.querySelector('search-widget');
+const widget = document.querySelector('search-modal');
 
 // Open/close/toggle
 widget.open();
 widget.close();
 widget.toggle();
 ```
+
+For the full JavaScript API including events and advanced control, see [JavaScript API](javascript-api.md).
 
 ## Accessibility
 
@@ -186,13 +192,11 @@ When overriding colors, check that you maintain sufficient contrast ratios.
 You can include multiple widgets with different configs on the same page:
 
 ```twig
-{# Header: search everything #}
 {% include 'search-manager/_widget/search-modal' with {
     config: 'main-search',
     triggerSelector: '#header-search',
 } %}
 
-{# Sidebar: search blog only #}
 {% include 'search-manager/_widget/search-modal' with {
     config: 'blog-search',
     indices: ['blog'],
@@ -200,6 +204,33 @@ You can include multiple widgets with different configs on the same page:
 } %}
 ```
 
-## Feature Reference
+## Hierarchical Results
 
-For the full list of widget parameters and configuration options, see [Frontend Widget](../feature-tour/frontend-widget.md).
+For documentation sites, use the hierarchical result layout to group results and show matched headings:
+
+```twig
+{% include 'search-manager/_widget/search-modal' with {
+    config: 'docs-search',
+    resultLayout: 'hierarchical',
+    maxHeadingsPerResult: 5,
+} %}
+```
+
+### Snippet Modes
+
+Control how snippets are extracted from content:
+
+```twig
+{% include 'search-manager/_widget/search-modal' with {
+    snippetMode: 'deep',
+    snippetLength: 200,
+    showCodeSnippets: true,
+    parseMarkdownSnippets: true,
+} %}
+```
+
+| Mode | Description |
+|------|-------------|
+| `early` | First match — shows the first occurrence of the search term |
+| `balanced` | Best match — shows the most relevant occurrence |
+| `deep` | All matches — shows all occurrences |

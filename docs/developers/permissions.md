@@ -1,6 +1,6 @@
 # Permissions
 
-Search Manager registers granular permissions for controlling access to each area of the plugin. Permissions use a nested structure where "Manage" permissions serve as the parent (view/access) with write operations nested underneath.
+Search Manager registers granular permissions that can be assigned to user groups via **Settings → Users → User Groups → [Group Name] → Search Manager**.
 
 ## Permission Structure
 
@@ -8,61 +8,65 @@ Search Manager registers granular permissions for controlling access to each are
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:manageBackends` | Parent permission for backends section |
-| `searchManager:viewBackends` | View backends and access the backends CP section |
-| `searchManager:createBackends` | Create new backends |
-| `searchManager:editBackends` | Edit existing backends |
-| `searchManager:deleteBackends` | Delete backends |
+| **`searchManager:manageBackends`** | Access the backends section (view and access) |
+| └─ `searchManager:createBackends` | Create new backends |
+| └─ `searchManager:editBackends` | Edit existing backends |
+| └─ `searchManager:deleteBackends` | Delete backends |
 
 ### Indices
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:manageIndices` | Parent permission for indices section |
-| `searchManager:viewIndices` | View indices and access the indices CP section |
-| `searchManager:createIndices` | Create new indices |
-| `searchManager:editIndices` | Edit existing indices |
-| `searchManager:deleteIndices` | Delete indices |
-| `searchManager:rebuildIndices` | Rebuild indices |
-| `searchManager:clearIndices` | Clear index data |
+| **`searchManager:manageIndices`** | Access the indices section (view and access) |
+| └─ `searchManager:createIndices` | Create new indices |
+| └─ `searchManager:editIndices` | Edit existing indices |
+| └─ `searchManager:deleteIndices` | Delete indices |
+| └─ `searchManager:rebuildIndices` | Rebuild indices |
+| └─ `searchManager:clearIndices` | Clear index data |
 
 ### Promotions
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:managePromotions` | Parent permission for promotions section |
-| `searchManager:viewPromotions` | View promotions and access the promotions CP section |
-| `searchManager:createPromotions` | Create new promotions |
-| `searchManager:editPromotions` | Edit existing promotions |
-| `searchManager:deletePromotions` | Delete promotions |
+| **`searchManager:managePromotions`** | Access the promotions section (view and access) |
+| └─ `searchManager:createPromotions` | Create new promotions |
+| └─ `searchManager:editPromotions` | Edit existing promotions |
+| └─ `searchManager:deletePromotions` | Delete promotions |
 
 ### Query Rules
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:manageQueryRules` | Parent permission for query rules section |
-| `searchManager:viewQueryRules` | View query rules and access the query rules CP section |
-| `searchManager:createQueryRules` | Create new query rules |
-| `searchManager:editQueryRules` | Edit existing query rules |
-| `searchManager:deleteQueryRules` | Delete query rules |
+| **`searchManager:manageQueryRules`** | Access the query rules section (view and access) |
+| └─ `searchManager:createQueryRules` | Create new query rules |
+| └─ `searchManager:editQueryRules` | Edit existing query rules |
+| └─ `searchManager:deleteQueryRules` | Delete query rules |
 
 ### Widget Configs
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:manageWidgetConfigs` | Parent permission for widget configs section |
-| `searchManager:viewWidgetConfigs` | View widget configs and access the widgets CP section |
-| `searchManager:createWidgetConfigs` | Create new widget configs |
-| `searchManager:editWidgetConfigs` | Edit existing widget configs |
-| `searchManager:deleteWidgetConfigs` | Delete widget configs |
+| **`searchManager:manageWidgetConfigs`** | Access the widget configs section (view and access) |
+| └─ `searchManager:createWidgetConfigs` | Create new widget configs |
+| └─ `searchManager:editWidgetConfigs` | Edit existing widget configs |
+| └─ `searchManager:deleteWidgetConfigs` | Delete widget configs |
+
+### Widget Styles
+
+| Permission | Description |
+|------------|-------------|
+| **`searchManager:manageWidgetStyles`** | Access the widget styles section (view and access) |
+| └─ `searchManager:createWidgetStyles` | Create new widget styles |
+| └─ `searchManager:editWidgetStyles` | Edit existing widget styles |
+| └─ `searchManager:deleteWidgetStyles` | Delete widget styles |
 
 ### Analytics
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:viewAnalytics` | View the analytics dashboard |
-| `searchManager:exportAnalytics` | Export analytics data |
-| `searchManager:clearAnalytics` | Clear analytics data |
+| **`searchManager:viewAnalytics`** | Parent — view the analytics dashboard |
+| └─ `searchManager:exportAnalytics` | Export analytics data |
+| └─ `searchManager:clearAnalytics` | Clear analytics data |
 
 ### Cache
 
@@ -80,9 +84,9 @@ Search Manager registers granular permissions for controlling access to each are
 
 | Permission | Description |
 |------------|-------------|
-| `searchManager:viewLogs` | View plugin logs |
-| `searchManager:viewSystemLogs` | View system-level logs |
-| `searchManager:downloadSystemLogs` | Download system log files |
+| **`searchManager:viewLogs`** | Parent — view plugin logs |
+| └─ `searchManager:viewSystemLogs` | View system-level logs |
+|     └─ `searchManager:downloadSystemLogs` | Download system log files |
 
 ### Settings
 
@@ -92,7 +96,7 @@ Search Manager registers granular permissions for controlling access to each are
 
 ## Checking Permissions
 
-### In Twig
+In Twig:
 
 ```twig
 {% if currentUser.can('searchManager:manageBackends') %}
@@ -104,7 +108,7 @@ Search Manager registers granular permissions for controlling access to each are
 {% endif %}
 ```
 
-### In PHP
+In PHP:
 
 ```php
 if (Craft::$app->getUser()->checkPermission('searchManager:manageBackends')) {
@@ -117,10 +121,9 @@ $this->requirePermission('searchManager:manageIndices');
 
 ## Nested Permission Pattern
 
-Craft's nested permissions are a UI convenience — the parent permission does not automatically grant child permissions. In Search Manager:
+Craft's nested permissions are a UI convenience — the parent permission does not automatically grant child permissions at runtime.
 
-- **"Manage" permissions** (e.g., `manageBackends`) are the top-level parent
-- **"View" permissions** (e.g., `viewBackends`) control read access and CP subnav visibility
-- **Write permissions** (e.g., `createBackends`, `editBackends`, `deleteBackends`) control specific operations
+- **"Manage" permissions** (e.g., `manageBackends`) are the access/view permission — checking this grants visibility of the section in the CP subnav
+- **Write permissions** (e.g., `createBackends`, `editBackends`, `deleteBackends`) are nested under manage and control specific write operations
 
-All view and write permissions are nested under the manage parent. To give a user read-only access to backends, grant `manageBackends` + `viewBackends`. For full access, also grant the specific write permissions they need.
+To give a user read-only access, grant only `manageBackends`. For full access, also grant the specific write permissions needed.

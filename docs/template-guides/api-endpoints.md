@@ -13,15 +13,31 @@ GET /actions/search-manager/api/search
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `index` | `all-sites` | Index handle to search |
-| `limit` | `20` | Maximum results (use `0` for unlimited, capped at 100) |
+| `indices` | (all indices) | Comma-separated index handles to search. Omit to search all enabled indices. |
+| `index` | (all indices) | Single index handle (legacy — prefer `indices`). |
+| `hitsPerPage` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
+| `page` | `0` | Page number (0-based) |
 | `type` | (none) | Filter by element type (e.g., `product`, `product,category`) |
+| `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `es`, `ar`) |
 | `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
+| `enrich` | `0` | Enable result enrichment. When `1`, results include snippets, heading expansion, thumbnails, and promoted/boosted flags. See [Enriched Response](#enriched-response). |
+| `skipAnalytics` | `0` | Skip analytics tracking for this search |
 
-> **Note:** The `siteId` parameter is not available on the search endpoint. If no `siteId` is set in the search options, all sites are searched. Use per-site index handles (e.g., `entries-en`, `entries-de`) to scope results to a specific site.
+#### Enrichment Parameters
+
+These parameters only apply when `enrich=1`:
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `snippetMode` | `balanced` | Snippet positioning: `early`, `balanced`, or `deep` |
+| `snippetLength` | `150` | Max snippet length in characters (50–1000) |
+| `showCodeSnippets` | `0` | Show code block content in snippets |
+| `parseMarkdownSnippets` | `0` | Parse markdown before generating snippets |
+| `hideResultsWithoutUrl` | `0` | Exclude results that have no URL |
+| `debug` | (devMode) | Include debug metadata. Requires `devMode` or `searchManager:viewDebug` permission. |
 
 ### Response
 
@@ -44,11 +60,60 @@ GET /actions/search-manager/api/search
             "type": "product"
         }
     ],
-    "total": 150
+    "total": 150,
+    "page": 0,
+    "hitsPerPage": 20,
+    "totalPages": 8
 }
 ```
 
-> **Note:** The public search API does not return internal metadata (synonyms expanded, rules matched, promotions matched). Use the `?debug=1` parameter with the `searchManager:viewDebug` permission to inspect query internals during development.
+> [!NOTE]
+> The raw response does not return internal metadata (synonyms expanded, rules matched, promotions matched). Use the `?debug=1` parameter with the `searchManager:viewDebug` permission to inspect query internals during development.
+
+### Enriched Response
+
+When `enrich=1`, results are resolved to full element data with snippets and heading expansion:
+
+```json
+{
+    "hits": [
+        {
+            "id": 123,
+            "title": "Getting Started with Craft CMS",
+            "url": "/docs/getting-started",
+            "description": "A snippet with <mark>matched</mark> terms...",
+            "section": "Documentation",
+            "type": "page",
+            "score": 45.23,
+            "promoted": false,
+            "headings": [
+                {
+                    "title": "Installation",
+                    "description": "How to install <mark>Craft</mark>...",
+                    "url": "/docs/getting-started#installation"
+                }
+            ]
+        }
+    ],
+    "total": 42,
+    "query": "craft",
+    "page": 0,
+    "hitsPerPage": 20,
+    "totalPages": 3
+}
+```
+
+Enriched mode is what the frontend widget uses internally. It's useful for headless integrations that need ready-to-render results without additional element lookups.
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `hits` | `array` | Array of hit objects (see below) |
+| `total` | `int` | Total number of matching results |
+| `page` | `int` | Current page number (0-based) |
+| `hitsPerPage` | `int` | Results per page |
+| `totalPages` | `int` | Total number of pages |
 
 ### Hit Fields
 
@@ -64,13 +129,22 @@ GET /actions/search-manager/api/search
 
 ### Examples
 
+**Full URL format:**
+
+```text
+https://your-site.com/actions/search-manager/api/search?q=plugin&index=docs-manager&language=en&hitsPerPage=5&page=0&siteId=1
+```
+
 ```javascript
 // Basic search
 const response = await fetch('/actions/search-manager/api/search?q=craft+cms&index=entries-en');
 const results = await response.json();
 
-// Filter by element type
-const response = await fetch('/actions/search-manager/api/search?q=laptop&type=product,category');
+// Filter by site and element type
+const response = await fetch('/actions/search-manager/api/search?q=laptop&type=product,category&siteId=1');
+
+// Paginated results
+const response = await fetch('/actions/search-manager/api/search?q=docs&index=entries-en&hitsPerPage=10&page=2');
 
 // With localized operators (German)
 const response = await fetch('/actions/search-manager/api/search?q=kaffee+ODER+tee&language=de');
@@ -97,8 +171,9 @@ GET /actions/search-manager/api/autocomplete
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `index` | `all-sites` | Index handle |
-| `limit` | `10` | Maximum suggestions/results |
+| `indices` | (all indices) | Comma-separated index handles. Omit to search all enabled indices. |
+| `index` | (all indices) | Single index handle (legacy — prefer `indices`). |
+| `hitsPerPage` | `10` | Maximum suggestions/results (capped at 100) |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code (alias: `lang`) |
 | `only` | (none) | Return only `suggestions` or `results` |
@@ -134,6 +209,12 @@ GET /actions/search-manager/api/autocomplete
 ```
 
 ### Examples
+
+**Full URL format:**
+
+```text
+https://your-site.com/actions/search-manager/api/autocomplete?q=test&index=entries-en&hitsPerPage=10&siteId=1
+```
 
 ```javascript
 // Default: both suggestions and results
@@ -187,6 +268,55 @@ This ensures:
 - Analytics records the request as coming from your iOS app
 - Platform and version info are tracked for analysis
 
+## Analytics Tracking Endpoints
+
+These endpoints are used by the frontend widget to track search activity. They accept anonymous requests (no CSRF token required) for compatibility with full-page static caching (Blitz, Servd, etc.).
+
+### Track Search
+
+```text
+POST /actions/search-manager/search/track-search
+```
+
+Records a search query when the user shows intent (clicking a result, pressing Enter, or idle timeout).
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `q` | (required) | Search query (truncated at 256 characters) |
+| `indices` | (all) | Comma-separated index handles. Only enabled indices are accepted. |
+| `resultsCount` | `0` | Number of results shown (capped at 1000) |
+| `trigger` | `unknown` | What triggered tracking: `click`, `enter`, `idle`, or `unknown` |
+| `source` | `frontend-widget` | Source identifier (alphanumeric, dash, underscore; max 64 chars) |
+| `siteId` | (none) | Site ID |
+
+```json
+{"success": true, "tracked": true}
+```
+
+Returns `"tracked": false` when analytics is disabled or no valid indices match.
+
+### Track Click
+
+```text
+POST /actions/search-manager/search/track-click
+```
+
+Records when a user clicks a search result.
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `elementId` | (required) | The clicked element's ID |
+| `query` | `''` | The search query that produced this result |
+| `index` | `''` | The index handle |
+| `position` | (none) | Position in the results list |
+
+```json
+{"success": true}
+```
+
+> [!NOTE]
+> Both tracking endpoints require a `POST` request with `Accept: application/json` header. They silently succeed when analytics is disabled.
+
 ## Instant Search Example
 
 ```html
@@ -210,7 +340,7 @@ input.addEventListener('input', (e) => {
     if (q.length < 2) { resultsDiv.innerHTML = ''; return; }
 
     timer = setTimeout(async () => {
-        const res = await fetch(`/actions/search-manager/api/search?q=${encodeURIComponent(q)}&index=all-sites&limit=10`);
+        const res = await fetch(`/actions/search-manager/api/search?q=${encodeURIComponent(q)}&index=all-sites&hitsPerPage=10`);
         const data = await res.json();
 
         resultsDiv.innerHTML = data.hits.map(hit => `

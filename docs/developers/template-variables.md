@@ -75,6 +75,24 @@ Get autocomplete suggestions for a partial query.
 
 ## Highlighting
 
+### `registerHighlighter()` @since(5.40.0)
+
+Register the standalone `SearchManagerHighlighter` JavaScript utility. After calling this, `window.SearchManagerHighlighter` is available in your JavaScript with:
+
+- `highlight(text, query, options)` — highlight matched terms in text (returns HTML string)
+- `escapeHtml(text)` — escape HTML special characters
+- `escapeRegex(string)` — escape regex special characters
+- `create(options)` — create a reusable highlighter function with preset options
+
+```twig
+{% do craft.searchManager.registerHighlighter() %}
+```
+
+See [Client-Side Highlighting](../template-guides/highlighting-snippets.md#client-side-highlighting) for full usage examples.
+
+> [!TIP]
+> The JS highlighter includes smart features like camelCase splitting (e.g., searching "date" highlights the "Date" part of "DateRangeHelper"), longest-first matching to avoid nested tags, and automatic range merging for overlapping matches.
+
 ### `highlight(text, terms, options)`
 
 Highlight search terms in text by wrapping them with an HTML tag.
@@ -117,7 +135,7 @@ Generate context snippets with highlighted terms.
 
 ## Analytics
 
-### `getRuleAnalytics(ruleId, dateRange)`
+### `getRuleAnalytics(ruleId, dateRange)` @since(5.10.0)
 
 Get analytics for a specific query rule.
 
@@ -127,7 +145,7 @@ Get analytics for a specific query rule.
 
 **Returns:** `array` with rule analytics data.
 
-### `getPromotionAnalytics(promotionId, dateRange)`
+### `getPromotionAnalytics(promotionId, dateRange)` @since(5.10.0)
 
 Get analytics for a specific promotion.
 
@@ -201,7 +219,7 @@ List all indices available in the backend.
 
 **Returns:** `array`
 
-### `withBackend(backendHandle)`
+### `withBackend(backendHandle)` @since(5.28.0)
 
 Get a proxy for a specific configured backend. All methods above are available on the proxy.
 

@@ -8,15 +8,15 @@ Search Manager provides CLI commands for index management, maintenance, and secu
 
 List all configured indices with their status.
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/list
 ```
 
-```bash
+```bash title="DDEV"
 ddev craft search-manager/index/list
 ```
 
-Shows each index's name, handle, backend, element count, and enabled status.
+Shows each index's name, handle, element type, document count, last indexed date, and enabled status.
 
 ### `search-manager/index/rebuild`
 
@@ -24,17 +24,21 @@ Rebuild all indices or a specific index. This clears the index data and re-index
 
 Rebuild all indices:
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/rebuild
+```
+
+```bash title="DDEV"
+ddev craft search-manager/index/rebuild
 ```
 
 Rebuild a specific index:
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/rebuild entries-en
 ```
 
-```bash
+```bash title="DDEV"
 ddev craft search-manager/index/rebuild entries-en
 ```
 
@@ -44,7 +48,8 @@ ddev craft search-manager/index/rebuild entries-en
 
 After rebuilding, cache warming runs automatically if enabled (see [Caching](../feature-tour/caching.md)).
 
-> **Tip:** For large sites, schedule rebuilds during off-hours to avoid queue congestion.
+> [!TIP]
+> For large sites, schedule rebuilds during off-hours to avoid queue congestion.
 
 ### `search-manager/index/clear`
 
@@ -52,17 +57,21 @@ Clear all indices or a specific index without re-indexing. The index configurati
 
 Clear all indices:
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/clear
+```
+
+```bash title="DDEV"
+ddev craft search-manager/index/clear
 ```
 
 Clear a specific index:
 
-```bash
+```bash title="PHP"
 php craft search-manager/index/clear entries-en
 ```
 
-```bash
+```bash title="DDEV"
 ddev craft search-manager/index/clear entries-en
 ```
 
@@ -76,37 +85,36 @@ ddev craft search-manager/index/clear entries-en
 
 Show the current state of all backend storage types (database, Redis, and file). Displays document counts, key counts, and file counts for each storage type.
 
-```bash
+```bash title="PHP"
 php craft search-manager/maintenance/status
 ```
 
-```bash
+```bash title="DDEV"
 ddev craft search-manager/maintenance/status
 ```
 
-This command takes no options — it always shows all storage types.
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--verbose` | `bool` | `false` | Show additional detail for each storage type |
 
 ### `search-manager/maintenance/clear-storage`
 
 Clear backend storage data. Use this for cleanup or troubleshooting. The `--type` option is **required**.
 
-```bash
+```bash title="PHP"
 php craft search-manager/maintenance/clear-storage --type=database
 ```
 
-```bash
-ddev craft search-manager/maintenance/clear-storage --type=redis
-```
-
-```bash
-ddev craft search-manager/maintenance/clear-storage --type=file
+```bash title="DDEV"
+ddev craft search-manager/maintenance/clear-storage --type=database
 ```
 
 | Option | Type | Required | Description |
 |--------|------|----------|-------------|
 | `--type` | `string` | Yes | Storage type to clear: `database`, `redis`, or `file` |
 
-> **Warning:** This permanently removes stored data. Rebuild your indices afterward to restore search functionality.
+> [!WARNING]
+> This permanently removes stored data. Rebuild your indices afterward to restore search functionality.
 
 ## Security Commands
 
@@ -114,11 +122,11 @@ ddev craft search-manager/maintenance/clear-storage --type=file
 
 Generate a cryptographically secure salt for IP hashing and add it to your `.env` file.
 
-```bash
+```bash title="PHP"
 php craft search-manager/security/generate-salt
 ```
 
-```bash
+```bash title="DDEV"
 ddev craft search-manager/security/generate-salt
 ```
 
@@ -135,25 +143,41 @@ Run this once after installation. Copy the salt value to your staging and produc
 
 1. Install the plugin:
 
-```bash
+```bash title="Composer"
+composer require lindemannrock/craft-search-manager
+```
+
+```bash title="DDEV"
 ddev composer require lindemannrock/craft-search-manager
 ```
 
 2. Enable it in Craft:
 
-```bash
+```bash title="PHP"
+php craft plugin/install search-manager
+```
+
+```bash title="DDEV"
 ddev craft plugin/install search-manager
 ```
 
 3. Generate the IP hash salt:
 
-```bash
+```bash title="PHP"
+php craft search-manager/security/generate-salt
+```
+
+```bash title="DDEV"
 ddev craft search-manager/security/generate-salt
 ```
 
 4. Build your indices:
 
-```bash
+```bash title="PHP"
+php craft search-manager/index/rebuild
+```
+
+```bash title="DDEV"
 ddev craft search-manager/index/rebuild
 ```
 
@@ -161,13 +185,21 @@ ddev craft search-manager/index/rebuild
 
 After changing index configuration or transformers, rebuild the affected index:
 
-```bash
+```bash title="PHP"
+php craft search-manager/index/rebuild entries-en
+```
+
+```bash title="DDEV"
 ddev craft search-manager/index/rebuild entries-en
 ```
 
 Or rebuild all indices:
 
-```bash
+```bash title="PHP"
+php craft search-manager/index/rebuild
+```
+
+```bash title="DDEV"
 ddev craft search-manager/index/rebuild
 ```
 
@@ -175,18 +207,30 @@ ddev craft search-manager/index/rebuild
 
 1. Check storage status:
 
-```bash
+```bash title="PHP"
+php craft search-manager/maintenance/status
+```
+
+```bash title="DDEV"
 ddev craft search-manager/maintenance/status
 ```
 
 2. Clear all index data:
 
-```bash
+```bash title="PHP"
+php craft search-manager/index/clear
+```
+
+```bash title="DDEV"
 ddev craft search-manager/index/clear
 ```
 
 3. Rebuild from scratch:
 
-```bash
+```bash title="PHP"
+php craft search-manager/index/rebuild
+```
+
+```bash title="DDEV"
 ddev craft search-manager/index/rebuild
 ```

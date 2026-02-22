@@ -1,4 +1,4 @@
-# Promotions
+# Promotions @since(5.10.0)
 
 Promotions let you pin specific elements to fixed positions in search results, bypassing normal relevance scoring. Use them for merchandising, editorial control, or ensuring important content appears first for specific queries.
 

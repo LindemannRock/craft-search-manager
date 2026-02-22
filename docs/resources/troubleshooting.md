@@ -6,7 +6,7 @@ Common issues and solutions for Search Manager.
 
 **Check the basics first:**
 
-1. **Is the index built?** Run `php craft search-manager/index/rebuild` (or `ddev craft search-manager/index/rebuild`).
+1. **Is the index built?** Run `php craft search-manager/index/rebuild` or `ddev craft search-manager/index/rebuild`.
 
 2. **Is the index enabled?** Check Search Manager > Indices — the index should show as enabled.
 
@@ -24,10 +24,17 @@ Common issues and solutions for Search Manager.
 
 ## Indexing Is Slow
 
-- **Increase batch size**: Set `batchSize` to a higher value (default: 100). Try 250 or 500.
+- **Adjust batch size**: The `batchSize` setting (default: 100) controls how many elements are loaded per batch. Increase to 250–500 for faster indexing on servers with plenty of memory. On shared or memory-constrained hosting, **lower it** to 25–50 to prevent out-of-memory errors — the rebuild takes longer but completes reliably.
 - **Use queue-based indexing**: Ensure `queueEnabled` is `true` (default).
 - **Check your transformer**: Complex transformers that query relations or perform heavy computation slow down indexing. Pre-fetch related data where possible.
 - **Rebuild during off-hours**: For large sites, schedule rebuilds during low-traffic periods.
+
+## Out of Memory During Rebuild
+
+Each batch loads full elements with their relations into memory. If your server runs out of memory during a rebuild:
+
+- **Lower `batchSize`**: Set it to `25` or `50` in your config. The default of 100 works for most servers, but shared hosting or entries with many relations (Matrix blocks, categories, assets) may need less.
+- **Check your PHP `memory_limit`**: The rebuild respects your server's memory limit. If you can't increase it, lower `batchSize` instead.
 
 ## Connection Refused (Redis)
 
@@ -50,7 +57,7 @@ If your search index disappears when Craft's cache is cleared:
 - Your hosting platform may use `FLUSHALL` (clears all Redis databases) instead of `FLUSHDB` (clears one database)
 - **Fix**: Set an explicit `database` number in your Redis backend config, or switch to MySQL/File backend
 
-See [Redis Backend](feature-tour/backend-redis.md) for database isolation details.
+See [Redis Backend](backends/backend-redis.md) for database isolation details.
 
 ## Algolia/Meilisearch/Typesense Connection Issues
 
@@ -62,12 +69,17 @@ See [Redis Backend](feature-tour/backend-redis.md) for database isolation detail
 ## Analytics Not Tracking
 
 1. **Is analytics enabled?** Check `enableAnalytics` is `true` in settings.
-2. **Is analytics enabled for the index?** Per-index analytics can be disabled with `disableAnalytics: true`.
+2. **Is analytics enabled for the index?** Per-index analytics can be disabled with `enableAnalytics: false`.
 3. **Is the IP hash salt configured?** Without a salt, IP hashing and geo-location won't work (but basic analytics still tracks). Generate one:
 
-```bash
+```bash title="PHP"
 php craft search-manager/security/generate-salt
 ```
+
+```bash title="DDEV"
+ddev craft search-manager/security/generate-salt
+```
+
 4. **Check queue**: Geo-location runs as a queue job. If your queue isn't processing, geo data won't be recorded.
 
 ## Geo-Location Shows Wrong Location
@@ -106,9 +118,20 @@ Typesense requires explicit `query_by` to search custom fields. The default sear
 }) %}
 ```
 
+## Heading Children Missing Descriptions
+
+In hierarchical search results, heading children show a description extracted from the paragraph text directly below each heading. If a heading has no description:
+
+- **No text between headings**: If a heading is immediately followed by a sub-heading with no paragraph in between, the description will be empty. Add an introductory sentence below the heading in your content.
+- **Content starts with a code block**: The description is extracted from the first `<p>` tag after the heading. If the content starts with `<pre>` or `<code>` instead, the description may show raw code or be empty.
+- **Content not re-indexed**: Heading descriptions are extracted at index time. After editing content, rebuild the index for changes to appear.
+
+The heading description is static — it always shows the same text regardless of the search query. The parent result's description is query-aware and centers around the matched term (controlled by `snippetMode` and `snippetLength`).
+
 ## Native Search Replacement Not Working
 
-> **Warning:** `replaceNativeSearch` only works with built-in backends (MySQL, PostgreSQL, Redis, File). It does not work with Algolia, Meilisearch, or Typesense.
+> [!WARNING]
+> `replaceNativeSearch` only works with built-in backends (MySQL, PostgreSQL, Redis, File). It does not work with Algolia, Meilisearch, or Typesense.
 
 ## Getting Help
 

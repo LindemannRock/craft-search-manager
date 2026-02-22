@@ -1,6 +1,7 @@
 # Installation & Setup
 
-> **Pre-Release:** Search Manager is in active development and not yet available on the Craft Plugin Store. Install via Composer for now.
+> [!NOTE]
+> Search Manager is in active development and not yet available on the Craft Plugin Store. Install via Composer for now.
 
 ## Composer
 
@@ -14,33 +15,42 @@ cd /path/to/project
 
 2. Then tell Composer to require the plugin, and Craft to install it:
 
-```bash
+```bash title="Composer"
 composer require lindemannrock/craft-search-manager && php craft plugin/install search-manager
 ```
 
-**Using DDEV:**
-
-```bash
+```bash title="DDEV"
 ddev composer require lindemannrock/craft-search-manager && ddev craft plugin/install search-manager
 ```
+
+3. **Optional** — Install [Logging Library](https://github.com/LindemannRock/craft-logging-library) for log viewing:
+
+```bash title="Composer"
+php craft plugin/install logging-library
+```
+
+```bash title="DDEV"
+ddev craft plugin/install logging-library
+```
+
+Or via the Control Panel: **Settings → Plugins → Logging Library → Install**
 
 ## Post-Install: Generate IP Hash Salt
 
 After installation, generate the IP hash salt so analytics can properly track and anonymize visitors:
 
-```bash
+```bash title="PHP"
 php craft search-manager/security/generate-salt
 ```
 
-Or with DDEV:
-
-```bash
+```bash title="DDEV"
 ddev craft search-manager/security/generate-salt
 ```
 
 This command automatically adds `SEARCH_MANAGER_IP_SALT` to your `.env` file. Copy this value to your staging and production `.env` files manually.
 
-> **Tip:** Skipping this step won't break anything — search works normally without it. Analytics still tracks queries, devices, and referrers, but IP hashing and geo-location won't be available. You can generate the salt later and full tracking resumes immediately.
+> [!TIP]
+> Skipping this step won't break anything — search works normally without it. Analytics still tracks queries, devices, and referrers, but IP hashing and geo-location won't be available. You can generate the salt later and full tracking resumes immediately.
 
 ## Copy Config File (Optional)
 
@@ -56,7 +66,7 @@ This gives you full control over backends, indices, widgets, and all plugin sett
 
 Once installed, the fastest way to get searching:
 
-1. **Pick a backend** — MySQL or File require zero setup. Go to Search Manager in the CP, or define one in `config/search-manager.php`. See [Backends](../feature-tour/backends.md).
+1. **Pick a backend** — MySQL or File require zero setup. Go to Search Manager in the CP, or define one in `config/search-manager.php`. See [Backends](../backends/backends.md).
 
 2. **Create an index** — Define what content to index (entries, assets, categories, doc pages, etc.). See [Indices](../feature-tour/indices.md).
 

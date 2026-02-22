@@ -9,14 +9,14 @@ Search Manager includes these transformers out of the box:
 | Transformer | Element Types | What It Indexes |
 |------------|---------------|-----------------|
 | `AutoTransformer` | Entries, Assets, Categories, Users | All custom fields, relational fields, Matrix blocks, Table fields. Default for most element types. |
-| `PluginDocsTransformer` | Plugin Docs (`PluginDoc`) | Full page content, headings, description, and keywords. Auto-selected when [Plugin Docs](https://lindemannrock.com/plugins/plugin-docs) is installed. |
+| `DocsManagerTransformer` | Docs Manager (`SourceDoc`) | Full page content, headings, description, and keywords. Auto-selected when [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed. |
 
 ### Transformer Resolution Order
 
 When indexing an element, Search Manager resolves the transformer in this order:
 
 1. **Index-specific transformer** — if a `transformer` class is set on the index config
-2. **Registered transformer** — matched by element type (e.g. `PluginDocsTransformer` for `PluginDoc`)
+2. **Registered transformer** — matched by element type (e.g. `DocsManagerTransformer` for `SourceDoc`)
 3. **AutoTransformer** — fallback that works with any element type
 
 In most cases, you don't need to specify a transformer — the right one is selected automatically.

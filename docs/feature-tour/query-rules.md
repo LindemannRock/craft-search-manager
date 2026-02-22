@@ -1,4 +1,4 @@
-# Query Rules
+# Query Rules @since(5.10.0)
 
 Query rules modify search behavior when a user's query matches a specific pattern. They support synonyms, boosting, filtering, and redirects.
 
@@ -28,7 +28,15 @@ Action: Synonyms
 Terms: notebook, portable computer, macbook
 ```
 
-When someone searches "laptop", the search also finds results containing "notebook", "portable computer", or "macbook".
+When someone searches "laptop", the search also finds results containing "notebook", "portable computer", or "macbook". Each synonym triggers a separate search query against the backend, so results are merged and deduplicated.
+
+#### Synonym Limits
+
+- **Per rule:** Maximum **10 terms** per synonym rule.
+- **Per search:** Maximum **10 total queries** (original + all synonyms combined) per search request. Duplicate terms across rules are automatically removed before counting.
+
+> [!WARNING]
+> Multiple rules can match the same search query — especially when using different match types. For example, a search for "laptop case" could match an exact rule for "laptop case" (3 synonyms), a contains rule for "laptop" (5 synonyms), and a starts-with rule for "laptop" (4 synonyms). After removing duplicates, this produces 13 unique queries — but only the first 10 are executed. The remaining terms are dropped and a warning is logged. To avoid this, keep synonym rules focused and avoid overlapping match patterns.
 
 ### Boost Section
 

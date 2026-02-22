@@ -2,7 +2,8 @@
 
 Search Manager is a full-featured search solution for Craft CMS that replaces or augments Craft's built-in search with powerful relevance ranking, analytics, and a polished frontend experience.
 
-> **Tip:** New to Search Manager? Jump straight to the [Next Steps](#next-steps) at the bottom for a guided setup path.
+> [!TIP]
+> New to Search Manager? Jump straight to the [Next Steps](#next-steps) at the bottom for a guided setup path.
 
 ## What It Does
 
@@ -12,7 +13,7 @@ You can use it alongside Craft's native search, or replace it entirely.
 
 ## Core Capabilities
 
-- **[Multiple Backends](backends.md)** — Choose from 7 search backends: MySQL, PostgreSQL, Redis, File (all built-in), plus Algolia, Meilisearch, and Typesense. Switch backends per environment without changing your templates.
+- **[Multiple Backends](../backends/backends.md)** — Choose from 7 search backends: MySQL, PostgreSQL, Redis, File (all built-in), plus Algolia, Meilisearch, and Typesense. Switch backends per environment without changing your templates.
 
 - **[Search Indices](indices.md)** — Define which content gets indexed, filter by section or entry type, and configure per-site indices for multi-language setups.
 
@@ -32,9 +33,24 @@ You can use it alongside Craft's native search, or replace it entirely.
 
 - **[Multi-Language](multi-language.md)** — Five languages supported (English, Arabic, German, French, Spanish) with localized boolean operators and per-language stop words.
 
-- **[Frontend Widget](frontend-widget.md)** — A CMD+K style search modal as a web component. WCAG 2.1 AA compliant, keyboard navigable, with light/dark themes and click analytics.
+- **[Frontend Widget](../widget/overview.md)** — A CMD+K style search modal as a web component. Three widget types (modal, page, inline). WCAG 2.1 AA compliant, keyboard navigable, with light/dark themes and click analytics.
+
+- **[Widget Styles](../widget/styles.md)** — Reusable appearance presets for the frontend widget. Define colors, spacing, and dimensions once and share across multiple widget configs. Manageable via CP or config file.
 
 - **[Privacy & Security](privacy-security.md)** — IP hashing with salt, subnet masking, async geo-lookup, bot filtering, and GDPR-friendly defaults.
+
+## Dashboard Widgets
+
+Search Manager provides four Craft dashboard widgets for at-a-glance analytics. Add them via **Dashboard > New Widget**.
+
+| Widget | Description |
+|--------|-------------|
+| **Analytics Summary** | Overview of search volume, zero-hit rate, and performance metrics |
+| **Top Searches** | Most popular search queries over a configurable date range |
+| **Trending Searches** | Queries with increasing search volume |
+| **Content Gaps** | Zero-result queries that indicate missing content |
+
+All widgets require the `searchManager:viewAnalytics` permission.
 
 ## What Makes Search Manager Different
 
@@ -49,6 +65,6 @@ You can use it alongside Craft's native search, or replace it entirely.
 If you're new to Search Manager, start here:
 
 1. [Install the plugin](../get-started/installation.md)
-2. [Choose a backend](backends.md)
+2. [Choose a backend](../backends/backends.md)
 3. [Create your first index](indices.md)
 4. [Search from your templates](../template-guides/basic-search.md)

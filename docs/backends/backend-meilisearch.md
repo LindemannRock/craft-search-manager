@@ -55,7 +55,7 @@ MEILISEARCH_SEARCH_API_KEY=your-search-key
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `host` | `string` | (required) | Meilisearch server URL (can be full URL like `https://meilisearch.example.com`) |
-| `adminApiKey` | `string` | (required) | Master/admin key for indexing operations |
+| `adminApiKey` | `string` | (optional) | Master/admin key for indexing operations. Not required if Meilisearch runs without authentication. |
 | `searchApiKey` | `string` | (optional) | Search-only key for frontend queries |
 
 ## Key Behaviors
