@@ -54,6 +54,7 @@ class TransformerService extends Component
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

@@ -21,15 +21,18 @@ class CacheWarmJob extends BaseJob
 
     /**
      * @var string The index handle to warm cache for
+     * @since 5.0.0
      */
     public string $indexHandle = '';
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
     public function execute($queue): void
     {
         $settings = SearchManager::$plugin->getSettings();

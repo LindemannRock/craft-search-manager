@@ -57,6 +57,7 @@ class BackendService extends Component
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -704,7 +705,6 @@ class BackendService extends Component
      * @param array $queries Array of query strings (original + synonyms)
      * @param array $options
      * @return array Merged search results
-     * @since 5.10.0
      */
     private function _searchWithSynonyms(BackendInterface $backend, string $indexName, array $queries, array $options): array
     {

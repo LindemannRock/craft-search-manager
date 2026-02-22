@@ -23,11 +23,13 @@ class MeilisearchBackend extends BaseBackend
     // BACKEND INTERFACE IMPLEMENTATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function getName(): string
     {
         return 'meilisearch';
     }
 
+    /** @inheritdoc */
     public function isAvailable(): bool
     {
         $settings = $this->getBackendSettings();
@@ -48,6 +50,7 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function getStatus(): array
     {
         $settings = $this->getBackendSettings();
@@ -61,6 +64,7 @@ class MeilisearchBackend extends BaseBackend
         ];
     }
 
+    /** @inheritdoc */
     public function index(string $indexName, array $data): bool
     {
         try {
@@ -90,6 +94,7 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function batchIndex(string $indexName, array $items): bool
     {
         try {
@@ -145,6 +150,7 @@ class MeilisearchBackend extends BaseBackend
         return $data;
     }
 
+    /** @inheritdoc */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
@@ -171,6 +177,7 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
@@ -239,6 +246,7 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function clearIndex(string $indexName): bool
     {
         try {
@@ -259,6 +267,7 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
@@ -296,6 +305,7 @@ class MeilisearchBackend extends BaseBackend
     /**
      * Browse all documents in an index
      *
+     * @inheritdoc
      * @param string $indexName Index to browse
      * @param string $query Optional query to filter (not used in browse, use search instead)
      * @param array $parameters Parameters like 'limit', 'offset', 'fields'
@@ -332,6 +342,7 @@ class MeilisearchBackend extends BaseBackend
     /**
      * Perform multiple search queries in a single request
      *
+     * @inheritdoc
      * @param array $queries Array of query objects with 'indexName', 'query', and optional 'params'
      * @return array Results from all queries
      */
@@ -380,6 +391,7 @@ class MeilisearchBackend extends BaseBackend
      *
      * Meilisearch syntax: key = "value" AND (key2 = "a" OR key2 = "b")
      *
+     * @inheritdoc
      * @param array $filters Key/value pairs of filters
      * @return string Meilisearch-compatible filter string
      */
@@ -408,11 +420,13 @@ class MeilisearchBackend extends BaseBackend
         return implode(' AND ', $filterParts);
     }
 
+    /** @inheritdoc */
     public function supportsBrowse(): bool
     {
         return true;
     }
 
+    /** @inheritdoc */
     public function supportsMultipleQueries(): bool
     {
         return true;
@@ -421,6 +435,7 @@ class MeilisearchBackend extends BaseBackend
     /**
      * List all indices in Meilisearch
      *
+     * @inheritdoc
      * @return array Array of index information
      */
     public function listIndices(): array
@@ -475,6 +490,7 @@ class MeilisearchBackend extends BaseBackend
      * @param string $query Partial search query
      * @param array $options Options like limit, siteId
      * @return array Array of suggestion strings (titles)
+     * @since 5.0.0
      */
     public function autocomplete(string $indexName, string $query, array $options = []): array
     {
@@ -522,6 +538,8 @@ class MeilisearchBackend extends BaseBackend
 
     /**
      * Check if this backend supports autocomplete
+     *
+     * @since 5.0.0
      */
     public function supportsAutocomplete(): bool
     {

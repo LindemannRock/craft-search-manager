@@ -21,13 +21,16 @@ class MaintenanceController extends Controller
 
     /**
      * @var string Backend storage type to clear (mysql, redis, file)
+     * @since 5.0.0
      */
     public string $type = '';
     /**
      * @var bool Show verbose backend details (like indices list/count)
+     * @since 5.0.0
      */
     public bool $verbose = false;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

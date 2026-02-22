@@ -22,12 +22,14 @@ class IndexElementJob extends BaseJob
     public string $elementType;
     public ?int $siteId = null;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
     public function execute($queue): void
     {
         // Get element

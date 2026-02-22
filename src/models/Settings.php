@@ -32,187 +32,224 @@ class Settings extends Model
 
     /**
      * @var string Plugin name displayed in the control panel
+     * @since 5.0.0
      */
     public string $pluginName = 'Search Manager';
 
     /**
      * @var string Log level for plugin operations
+     * @since 5.0.0
      */
     public string $logLevel = 'error';
 
     /**
      * @var int Number of items per page in CP listings
+     * @since 5.0.0
      */
     public int $itemsPerPage = 100;
 
     /**
      * @var bool Automatically index elements when saved
+     * @since 5.0.0
      */
     public bool $autoIndex = true;
 
     /**
      * @var string|null Handle of the default configured backend
+     * @since 5.0.0
      */
     public ?string $defaultBackendHandle = null;
 
     /**
      * @var string|null Handle of the default widget config
+     * @since 5.0.0
      */
     public ?string $defaultWidgetHandle = null;
 
     /**
      * @var int Batch size for bulk indexing operations
+     * @since 5.0.0
      */
     public int $batchSize = 100;
 
     /**
      * @var bool Use queue for indexing operations
+     * @since 5.0.0
      */
     public bool $queueEnabled = true;
 
     /**
      * @var bool Replace Craft's native search service (CP and ElementQuery search)
+     * @since 5.0.0
      */
     public bool $replaceNativeSearch = false;
 
     /**
      * @var bool Enable search analytics tracking
+     * @since 5.0.0
      */
     public bool $enableAnalytics = true;
 
     /**
      * @var int Analytics data retention period in days
+     * @since 5.0.0
      */
     public int $analyticsRetention = 90;
 
     /**
      * @var bool Anonymize IP addresses (subnet masking)
+     * @since 5.0.0
      */
     public bool $anonymizeIpAddress = false;
 
     /**
      * @var string|null IP hash salt (from .env, not saved to database)
+     * @since 5.0.0
      */
     public ?string $ipHashSalt = null;
 
     /**
      * @var bool Enable geo-location detection
+     * @since 5.0.0
      */
     public bool $enableGeoDetection = false;
 
     /**
      * @var string Geo IP lookup provider (ip-api.com, ipapi.co, ipinfo.io)
+     * @since 5.0.0
      */
     public string $geoProvider = 'ip-api.com';
 
     /**
      * @var string|null API key for paid provider tiers (enables HTTPS for ip-api.com)
+     * @since 5.0.0
      */
     public ?string $geoApiKey = null;
 
     /**
      * @var string|null Default country for local development (when IP is private)
+     * @since 5.0.0
      */
     public ?string $defaultCountry = null;
 
     /**
      * @var string|null Default city for local development (when IP is private)
+     * @since 5.0.0
      */
     public ?string $defaultCity = null;
 
     /**
      * @var bool Cache device detection results
+     * @since 5.0.0
      */
     public bool $cacheDeviceDetection = true;
 
     /**
      * @var int Device detection cache duration in seconds
+     * @since 5.0.0
      */
     public int $deviceDetectionCacheDuration = 3600;
 
     /**
      * @var string|null Prefix for index names (multi-environment support)
+     * @since 5.0.0
      */
     public ?string $indexPrefix = null;
 
     /**
      * @var float BM25 K1 parameter (term frequency saturation)
+     * @since 5.0.0
      */
     public float $bm25K1 = 1.5;
 
     /**
      * @var float BM25 B parameter (document length normalization)
+     * @since 5.0.0
      */
     public float $bm25B = 0.75;
 
     /**
      * @var float Title boost factor
+     * @since 5.0.0
      */
     public float $titleBoostFactor = 5.0;
 
     /**
      * @var float Exact match boost factor
+     * @since 5.0.0
      */
     public float $exactMatchBoostFactor = 3.0;
 
     /**
      * @var string N-gram sizes for fuzzy matching (comma-separated)
+     * @since 5.0.0
      */
     public string $ngramSizes = '2,3';
 
     /**
      * @var float Similarity threshold for fuzzy search
+     * @since 5.0.0
      */
     public float $similarityThreshold = 0.25;
 
     /**
      * @var int Maximum fuzzy candidates to process
+     * @since 5.0.0
      */
     public int $maxFuzzyCandidates = 100;
 
     /**
      * @var bool Enable search results caching
+     * @since 5.0.0
      */
     public bool $enableCache = true;
 
     /**
      * @var int Cache duration in seconds
+     * @since 5.0.0
      */
     public int $cacheDuration = 3600;
 
     /**
      * @var string Cache storage method (file or redis)
+     * @since 5.0.0
      */
     public string $cacheStorageMethod = 'file';
 
     /**
      * @var bool Only cache popular queries
+     * @since 5.0.0
      */
     public bool $cachePopularQueriesOnly = false;
 
     /**
      * @var int Threshold for popular queries (search count)
+     * @since 5.0.0
      */
     public int $popularQueryThreshold = 5;
 
     /**
      * @var bool Clear search cache when elements are saved
+     * @since 5.0.0
      */
     public bool $clearCacheOnSave = true;
 
     /**
      * @var int Status sync interval in minutes (0 = disabled)
      * Syncs entries that became live (postDate passed) or expired (expiryDate passed)
+     * @since 5.0.0
      */
     public int $statusSyncInterval = 15;
 
     /**
      * @var bool Enable cache warming after index rebuild
+     * @since 5.0.0
      */
     public bool $enableCacheWarming = true;
 
     /**
      * @var int Number of popular queries to warm after rebuild
+     * @since 5.0.0
      */
     public int $cacheWarmingQueryCount = 50;
 
@@ -222,16 +259,19 @@ class Settings extends Model
 
     /**
      * @var float Phrase search boost factor (for "exact phrase" searches)
+     * @since 5.0.0
      */
     public float $phraseBoostFactor = 4.0;
 
     /**
      * @var bool Enable stop words filtering
+     * @since 5.0.0
      */
     public bool $enableStopWords = true;
 
     /**
      * @var string|null Default language for search (null = auto-detect from site)
+     * @since 5.0.0
      */
     public ?string $defaultLanguage = null;
 
@@ -241,26 +281,31 @@ class Settings extends Model
 
     /**
      * @var bool Enable search result highlighting
+     * @since 5.0.0
      */
     public bool $enableHighlighting = true;
 
     /**
      * @var string HTML tag for highlighted terms
+     * @since 5.0.0
      */
     public string $highlightTag = 'mark';
 
     /**
      * @var string|null CSS class for highlighted terms
+     * @since 5.0.0
      */
     public ?string $highlightClass = null;
 
     /**
      * @var int Snippet length in characters
+     * @since 5.0.0
      */
     public int $snippetLength = 200;
 
     /**
      * @var int Maximum number of snippets per result
+     * @since 5.0.0
      */
     public int $maxSnippets = 3;
 
@@ -270,31 +315,37 @@ class Settings extends Model
 
     /**
      * @var bool Enable autocomplete/suggestions
+     * @since 5.0.0
      */
     public bool $enableAutocomplete = true;
 
     /**
      * @var int Minimum query length for autocomplete
+     * @since 5.0.0
      */
     public int $autocompleteMinLength = 2;
 
     /**
      * @var int Maximum number of autocomplete suggestions
+     * @since 5.0.0
      */
     public int $autocompleteLimit = 10;
 
     /**
      * @var bool Enable fuzzy matching in autocomplete
+     * @since 5.0.0
      */
     public bool $autocompleteFuzzy = false;
 
     /**
      * @var bool Enable autocomplete result caching
+     * @since 5.0.0
      */
     public bool $enableAutocompleteCache = true;
 
     /**
      * @var int Autocomplete cache duration in seconds (default: 5 minutes)
+     * @since 5.0.0
      */
     public int $autocompleteCacheDuration = 300;
 
@@ -302,6 +353,7 @@ class Settings extends Model
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -402,6 +454,7 @@ class Settings extends Model
     // VALIDATION RULES
     // =========================================================================
 
+    /** @inheritdoc */
     public function rules(): array
     {
         return [

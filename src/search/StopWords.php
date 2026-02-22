@@ -29,6 +29,7 @@ class StopWords
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param string $language Language code (default: 'en')
      */
     public function __construct(string $language = 'en')

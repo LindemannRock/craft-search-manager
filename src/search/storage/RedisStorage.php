@@ -43,6 +43,7 @@ class RedisStorage implements StorageInterface
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param string $indexHandle Index handle
      * @param array $config Redis configuration
      * @throws \Exception If Redis is not available

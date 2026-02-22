@@ -22,41 +22,85 @@ class QueryRule extends Model
     use LoggingTrait;
 
     // Action types
+    /** @since 5.10.0 */
     public const ACTION_SYNONYM = 'synonym';
+
+    /** @since 5.10.0 */
     public const ACTION_BOOST_SECTION = 'boost_section';
+
+    /** @since 5.10.0 */
     public const ACTION_BOOST_CATEGORY = 'boost_category';
+
+    /** @since 5.10.0 */
     public const ACTION_BOOST_ELEMENT = 'boost_element';
+
+    /** @since 5.10.0 */
     public const ACTION_FILTER = 'filter';
+
+    /** @since 5.10.0 */
     public const ACTION_REDIRECT = 'redirect';
 
     // Match types
+    /** @since 5.10.0 */
     public const MATCH_EXACT = 'exact';
+
+    /** @since 5.10.0 */
     public const MATCH_CONTAINS = 'contains';
+
+    /** @since 5.10.0 */
     public const MATCH_PREFIX = 'prefix';
+
+    /** @since 5.10.0 */
     public const MATCH_REGEX = 'regex';
 
     // =========================================================================
     // PROPERTIES
     // =========================================================================
 
+    /** @since 5.10.0 */
     public ?int $id = null;
+
+    /** @since 5.10.0 */
     public string $name = '';
+
+    /** @since 5.10.0 */
     public ?string $indexHandle = null; // null = applies to all indices
+
+    /** @since 5.10.0 */
     public string $matchType = self::MATCH_EXACT;
+
+    /** @since 5.10.0 */
     public string $matchValue = '';
+
+    /** @since 5.10.0 */
     public string $actionType = self::ACTION_SYNONYM;
+
+    /** @since 5.10.0 */
     public array $actionValue = []; // Decoded from JSON
+
+    /** @since 5.10.0 */
     public int $priority = 0; // Higher = applied first
+
+    /** @since 5.10.0 */
     public ?int $siteId = null;
+
+    /** @since 5.10.0 */
     public bool $enabled = true;
+
+    /** @since 5.10.0 */
     public ?\DateTime $dateCreated = null;
+
+    /** @since 5.10.0 */
     public ?\DateTime $dateUpdated = null;
+
+    /** @since 5.10.0 */
     public ?string $uid = null;
 
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -67,6 +111,7 @@ class QueryRule extends Model
     // VALIDATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function rules(): array
     {
         return [

@@ -58,6 +58,7 @@ class BM25Scorer
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param float $k1 Term frequency saturation (default: 1.5)
      * @param float $b Document length normalization (default: 0.75)
      * @param float $titleBoost Title boost factor (default: 5.0)

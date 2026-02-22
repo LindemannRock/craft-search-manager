@@ -28,6 +28,7 @@ class NgramGenerator
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param array $sizes N-gram sizes to generate (e.g., [2, 3] for bigrams and trigrams)
      */
     public function __construct(array $sizes = [2, 3])

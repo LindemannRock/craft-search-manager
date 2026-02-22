@@ -16,11 +16,13 @@ class TypesenseBackend extends BaseBackend
 {
     private ?Client $_client = null;
 
+    /** @inheritdoc */
     public function getName(): string
     {
         return 'typesense';
     }
 
+    /** @inheritdoc */
     public function isAvailable(): bool
     {
         $settings = $this->getBackendSettings();
@@ -42,6 +44,7 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function getStatus(): array
     {
         $settings = $this->getBackendSettings();
@@ -53,6 +56,7 @@ class TypesenseBackend extends BaseBackend
         ];
     }
 
+    /** @inheritdoc */
     public function index(string $indexName, array $data): bool
     {
         try {
@@ -74,6 +78,7 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function batchIndex(string $indexName, array $items): bool
     {
         try {
@@ -125,6 +130,7 @@ class TypesenseBackend extends BaseBackend
         return $data;
     }
 
+    /** @inheritdoc */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
@@ -143,6 +149,7 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
@@ -203,6 +210,7 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function clearIndex(string $indexName): bool
     {
         try {
@@ -228,6 +236,7 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
@@ -260,6 +269,7 @@ class TypesenseBackend extends BaseBackend
     /**
      * Browse all documents in an index
      *
+     * @inheritdoc
      * @param string $indexName Index to browse
      * @param string $query Optional query to filter (not used in browse)
      * @param array $parameters Parameters like 'filter_by', 'include_fields'
@@ -304,6 +314,7 @@ class TypesenseBackend extends BaseBackend
     /**
      * Perform multiple search queries in a single request
      *
+     * @inheritdoc
      * @param array $queries Array of query objects with 'indexName', 'query', and optional 'params'
      * @return array Results from all queries
      */
@@ -341,6 +352,7 @@ class TypesenseBackend extends BaseBackend
      *
      * Typesense syntax: key:=value && key2:=[value1, value2]
      *
+     * @inheritdoc
      * @param array $filters Key/value pairs of filters
      * @return string Typesense-compatible filter string
      */
@@ -375,11 +387,13 @@ class TypesenseBackend extends BaseBackend
         return implode(' && ', $filterParts);
     }
 
+    /** @inheritdoc */
     public function supportsBrowse(): bool
     {
         return true;
     }
 
+    /** @inheritdoc */
     public function supportsMultipleQueries(): bool
     {
         return true;
@@ -388,6 +402,7 @@ class TypesenseBackend extends BaseBackend
     /**
      * List all collections (indices) in Typesense
      *
+     * @inheritdoc
      * @return array Array of index information
      */
     public function listIndices(): array
@@ -426,6 +441,7 @@ class TypesenseBackend extends BaseBackend
      * @param string $query Partial search query
      * @param array $options Options like limit, siteId
      * @return array Array of suggestion strings (titles)
+     * @since 5.0.0
      */
     public function autocomplete(string $indexName, string $query, array $options = []): array
     {
@@ -477,6 +493,8 @@ class TypesenseBackend extends BaseBackend
 
     /**
      * Check if this backend supports autocomplete
+     *
+     * @since 5.0.0
      */
     public function supportsAutocomplete(): bool
     {

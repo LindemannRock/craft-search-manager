@@ -599,7 +599,9 @@ return [
          * - enabled: Whether the config is active
          * - styleHandle: Handle of a widget style preset (from widgetStyles below or CP)
          * - settings: Widget settings (merged with defaults)
-         *   - search.indexHandles: Array of index handles to search (empty = all, max 5)
+         *   - search: Search settings
+         *     - indexHandles: Array of index handles to search (empty = all, max 5)
+         *     - placeholder: Placeholder text in the search input (default: 'Search...')
          *   - highlighting: Highlight settings (enabled, tag, class)
          *   - backdrop: Modal backdrop (opacity, blur)
          *   - behavior: Widget behavior settings
@@ -614,6 +616,12 @@ return [
          *     - showLoadingIndicator: Show spinner while searching (default: true)
          *     - preventBodyScroll: Prevent page scroll when modal is open (default: true)
          *     - resultLayout: 'default' (flat list) or 'hierarchical' (parent/child) (default: 'default')
+         *     - hierarchyDisplay: 'individual' (each result as card) or 'unified' (page + headings
+         *       in one card, Starlight-style) (default: 'individual')
+         *     - hierarchyStyle: 'tree' (indented + connectors), 'flat' (no indentation + connectors),
+         *       'none' (no indentation, no connectors) (default: 'tree')
+         *     - maxHeadingsPerResult: Max heading children per result, 1-50 (default: 3)
+         *     - hierarchyGroupBy: Field to group hierarchical results by, e.g. 'section' (default: '')
          *     - showCodeSnippets: Show code block snippets in results (default: false)
          *     - snippetMode: How snippets find the best passage — 'early' (first match),
          *       'balanced' (best density), 'deep' (exhaustive scan) (default: 'balanced')
@@ -621,6 +629,12 @@ return [
          *     - resultDescLines: Max lines for result description, 1-5 (default: 1)
          *     - snippetLength: Snippet length in characters, 50-500 (default: 150)
          *     - parseMarkdownSnippets: Parse markdown in snippets (default: false)
+         *     - highlightDestinationPage: Highlight search terms on destination page after
+         *       navigating from a result (default: true)
+         *     - persistQueryInUrl: Append search query to destination URL (default: true)
+         *     - queryParamName: URL parameter name for the search query (default: 'smq')
+         *     - destinationHighlightSelector: CSS selector for page content areas to scan
+         *       for highlighting (default: 'main, article, [data-search-content]')
          *   - trigger: Trigger button (showTrigger, triggerText)
          *   - analytics: Analytics tracking
          *     - source: Identifier in analytics reports (alphanumeric, max 64 chars)
@@ -637,6 +651,7 @@ return [
             //     'settings' => [
             //         'search' => [
             //             'indexHandles' => ['entries-en', 'products'],
+            //             'placeholder' => 'Search...',
             //         ],
             //         'highlighting' => [
             //             'enabled' => true,
@@ -665,6 +680,10 @@ return [
             //             'resultDescLines' => 1,
             //             'snippetLength' => 150,
             //             'parseMarkdownSnippets' => false,
+            //             'highlightDestinationPage' => true,
+            //             'persistQueryInUrl' => true,
+            //             'queryParamName' => 'smq',
+            //             'destinationHighlightSelector' => 'main, article, [data-search-content]',
             //         ],
             //         'trigger' => [
             //             'showTrigger' => true,
@@ -689,6 +708,9 @@ return [
             //         ],
             //         'behavior' => [
             //             'resultLayout' => 'hierarchical',
+            //             'hierarchyDisplay' => 'unified',
+            //             'hierarchyStyle' => 'tree',
+            //             'maxHeadingsPerResult' => 3,
             //             'snippetMode' => 'deep',
             //             'resultDescLines' => 2,
             //             'snippetLength' => 200,

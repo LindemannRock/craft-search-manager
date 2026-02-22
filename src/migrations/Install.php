@@ -16,9 +16,12 @@ use craft\helpers\StringHelper;
  * - Transformers table (element type to transformer mappings)
  * - Index queue table (for async indexing operations)
  * - Index stats table (for dashboard analytics)
+ *
+ * @since 5.0.0
  */
 class Install extends Migration
 {
+    /** @inheritdoc */
     public function safeUp(): bool
     {
         $this->createSettingsTable();
@@ -45,6 +48,7 @@ class Install extends Migration
         return true;
     }
 
+    /** @inheritdoc */
     public function safeDown(): bool
     {
         // Drop tables in reverse order (respecting dependencies)

@@ -23,11 +23,13 @@ class TrendingSearchesWidget extends Widget
 {
     /**
      * @var int Number of trending searches to show
+     * @since 5.1.0
      */
     public int $limit = 5;
 
     /**
      * @var string Date range for analytics
+     * @since 5.1.0
      */
     public string $dateRange = 'last7days';
 

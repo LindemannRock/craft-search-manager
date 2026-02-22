@@ -20,6 +20,7 @@ class SettingsController extends Controller
     use LoggingTrait;
     use ElementTypeGuardTrait;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

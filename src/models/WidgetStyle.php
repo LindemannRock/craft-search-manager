@@ -17,37 +17,64 @@ class WidgetStyle extends Model
 {
     use ConfigSourceTrait;
 
+    /** @since 5.39.0 */
     public const TYPE_MODAL = 'modal';
+
+    /** @since 5.39.0 */
     public const TYPE_PAGE = 'page';
+
+    /** @since 5.39.0 */
     public const TYPE_INLINE = 'inline';
 
+    /**
+     * @since 5.39.0
+     */
     public const WIDGET_TYPES = [
         self::TYPE_MODAL,
         self::TYPE_PAGE,
         self::TYPE_INLINE,
     ];
 
+    /**
+     * @since 5.39.0
+     */
     public const WIDGET_TYPE_LABELS = [
         self::TYPE_MODAL => 'Modal',
         self::TYPE_PAGE => 'Search Page',
         self::TYPE_INLINE => 'Inline Search',
     ];
 
+    /** @since 5.39.0 */
     public ?int $id = null;
+
+    /** @since 5.39.0 */
     public string $handle = '';
+
+    /** @since 5.39.0 */
     public string $name = '';
+
+    /** @since 5.39.0 */
     public string $type = 'modal';
+
+    /** @since 5.39.0 */
     public bool $enabled = true;
 
     /**
      * @var array|string|null Styles stored as JSON in database
+     * @since 5.39.0
      */
     public array|string|null $styles = null;
 
+    /** @since 5.39.0 */
     public ?\DateTime $dateCreated = null;
+
+    /** @since 5.39.0 */
     public ?\DateTime $dateUpdated = null;
+
+    /** @since 5.39.0 */
     public ?string $uid = null;
 
+    /** @inheritdoc */
     public function rules(): array
     {
         return [
@@ -81,8 +108,18 @@ class WidgetStyle extends Model
         // Backdrop
         $this->validateStyleInt($s, 'backdropOpacity', 0, 100, 'Backdrop Opacity');
 
+        // Header
+        $this->validateStyleInt($s, 'headerBorderRadius', 0, 20, 'Header Border Radius');
+        $this->validateStyleInt($s, 'headerBorderWidth', 0, 10, 'Header Border Width');
+        $this->validateStyleInt($s, 'headerPaddingX', 0, 40, 'Header Padding X');
+        $this->validateStyleInt($s, 'headerPaddingY', 0, 40, 'Header Padding Y');
+
         // Input
         $this->validateStyleInt($s, 'inputFontSize', 12, 24, 'Input Font Size');
+        $this->validateStyleInt($s, 'inputBorderRadius', 0, 20, 'Input Border Radius');
+        $this->validateStyleInt($s, 'inputBorderWidth', 0, 10, 'Input Border Width');
+        $this->validateStyleInt($s, 'inputPaddingX', 0, 40, 'Input Padding X');
+        $this->validateStyleInt($s, 'inputPaddingY', 0, 40, 'Input Padding Y');
 
         // Results
         $this->validateStyleInt($s, 'resultGap', 0, 20, 'Result Gap');
@@ -117,6 +154,7 @@ class WidgetStyle extends Model
         }
     }
 
+    /** @since 5.39.0 */
     public function getStyles(): array
     {
         if (is_string($this->styles)) {
@@ -164,6 +202,7 @@ class WidgetStyle extends Model
         return $this->formatConfigDisplay($config, $this->handle, []);
     }
 
+    /** @since 5.39.0 */
     public function prepareForDb(): array
     {
         return [

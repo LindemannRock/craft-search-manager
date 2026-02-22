@@ -25,24 +25,50 @@ class Promotion extends Model
     // PROPERTIES
     // =========================================================================
 
+    /** @since 5.10.0 */
     public ?int $id = null;
+
+    /** @since 5.10.0 */
     public ?string $indexHandle = null; // null = applies to all indices
+
+    /** @since 5.10.0 */
     public ?string $title = null;
+
+    /** @since 5.10.0 */
     public string $query = '';
+
+    /** @since 5.10.0 */
     public string $matchType = 'exact'; // exact, contains, prefix
+
+    /** @since 5.10.0 */
     public ?int $elementId = null;
+
+    /** @since 5.10.0 */
     public ?string $elementType = null; // e.g. craft\elements\Entry
+
+    /** @since 5.10.0 */
     public int $position = 1; // 1 = first position
+
+    /** @since 5.10.0 */
     public ?int $siteId = null;
+
+    /** @since 5.10.0 */
     public bool $enabled = true;
+
+    /** @since 5.10.0 */
     public ?\DateTime $dateCreated = null;
+
+    /** @since 5.10.0 */
     public ?\DateTime $dateUpdated = null;
+
+    /** @since 5.10.0 */
     public ?string $uid = null;
 
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -53,6 +79,7 @@ class Promotion extends Model
     // VALIDATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function rules(): array
     {
         return [

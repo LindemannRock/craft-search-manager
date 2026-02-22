@@ -73,6 +73,7 @@ class SearchEngine
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param StorageInterface $storage Storage backend
      * @param string $indexHandle Index handle
      * @param array $config Configuration options

@@ -29,6 +29,7 @@ class WidgetStyleService extends Component
      */
     private ?array $_configFileStyles = null;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -69,12 +70,18 @@ class WidgetStyleService extends Component
         return $style;
     }
 
+    /**
+     * @since 5.39.0
+     */
     public function getConfigFileByHandle(string $handle): ?WidgetStyle
     {
         $styles = $this->getConfigFileStyles();
         return $styles[$handle] ?? null;
     }
 
+    /**
+     * @since 5.39.0
+     */
     public function getById(int $id): ?WidgetStyle
     {
         $row = (new Query())
@@ -86,6 +93,9 @@ class WidgetStyleService extends Component
         return $row ? $this->createFromRow($row) : null;
     }
 
+    /**
+     * @since 5.39.0
+     */
     public function getByHandle(string $handle): ?WidgetStyle
     {
         $configStyle = $this->getConfigFileByHandle($handle);
@@ -148,6 +158,9 @@ class WidgetStyleService extends Component
         return $styles;
     }
 
+    /**
+     * @since 5.39.0
+     */
     public function save(WidgetStyle $style): bool
     {
         if ($style->source === 'config') {
@@ -184,8 +197,6 @@ class WidgetStyleService extends Component
 
     /**
      * Ensure a handle is unique by appending -1, -2, etc. if needed
-     *
-     * @since 5.39.0
      */
     private function ensureUniqueHandle(string $handle, ?int $excludeId = null): string
     {

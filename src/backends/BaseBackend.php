@@ -35,6 +35,7 @@ abstract class BaseBackend extends Component implements BackendInterface
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -175,14 +176,49 @@ abstract class BaseBackend extends Component implements BackendInterface
     // ABSTRACT METHODS (must be implemented by subclasses)
     // =========================================================================
 
+    /**
+     * @since 5.0.0
+     */
     abstract public function index(string $indexName, array $data): bool;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function batchIndex(string $indexName, array $items): bool;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function delete(string $indexName, int $elementId, ?int $siteId = null): bool;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function search(string $indexName, string $query, array $options = []): array;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function clearIndex(string $indexName): bool;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function isAvailable(): bool;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function getStatus(): array;
+
+    /**
+     * @since 5.0.0
+     */
     abstract public function getName(): string;
 
     // =========================================================================

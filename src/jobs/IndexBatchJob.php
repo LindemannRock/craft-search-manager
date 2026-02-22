@@ -23,12 +23,14 @@ class IndexBatchJob extends BaseJob
     public string $indexHandle;
     public ?int $siteId = null;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
     public function execute($queue): void
     {
         $total = count($this->elementIds);

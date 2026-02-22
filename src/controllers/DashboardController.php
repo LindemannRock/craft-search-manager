@@ -19,6 +19,7 @@ class DashboardController extends Controller
 {
     use LoggingTrait;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

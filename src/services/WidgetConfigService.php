@@ -40,6 +40,7 @@ class WidgetConfigService extends Component
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

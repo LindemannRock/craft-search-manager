@@ -26,17 +26,27 @@ class BackendSettings extends Model
     // PROPERTIES
     // =========================================================================
 
+    /**
+     * @var int|null
+     * @since 5.28.0
+     */
     public ?int $id = null;
 
     /**
      * @var string Backend type (algolia|meilisearch|mysql|typesense)
+     * @since 5.28.0
      */
     public string $backend;
 
+    /**
+     * @var bool
+     * @since 5.28.0
+     */
     public bool $enabled = false;
 
     /**
      * @var array Decoded from configJson
+     * @since 5.28.0
      */
     public array $config = [];
 
@@ -44,6 +54,7 @@ class BackendSettings extends Model
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -54,6 +65,7 @@ class BackendSettings extends Model
     // VALIDATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function rules(): array
     {
         return [

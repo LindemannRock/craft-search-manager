@@ -24,12 +24,14 @@ class RebuildIndexJob extends BaseJob
 
     public ?string $indexHandle = null;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
     public function execute($queue): void
     {
         if ($this->indexHandle) {

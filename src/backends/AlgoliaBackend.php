@@ -16,11 +16,13 @@ class AlgoliaBackend extends BaseBackend
 {
     private ?SearchClient $_client = null;
 
+    /** @inheritdoc */
     public function getName(): string
     {
         return 'algolia';
     }
 
+    /** @inheritdoc */
     public function isAvailable(): bool
     {
         $settings = $this->getBackendSettings();
@@ -42,6 +44,7 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function getStatus(): array
     {
         $settings = $this->getBackendSettings();
@@ -53,6 +56,7 @@ class AlgoliaBackend extends BaseBackend
         ];
     }
 
+    /** @inheritdoc */
     public function index(string $indexName, array $data): bool
     {
         try {
@@ -74,6 +78,7 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function batchIndex(string $indexName, array $items): bool
     {
         try {
@@ -121,6 +126,7 @@ class AlgoliaBackend extends BaseBackend
         return $data;
     }
 
+    /** @inheritdoc */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
@@ -139,6 +145,7 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
@@ -197,6 +204,7 @@ class AlgoliaBackend extends BaseBackend
      *
      * Compatible with trendyminds/algolia browse() method
      *
+     * @inheritdoc
      * @param string $indexName Index to browse
      * @param string $query Optional query to filter results
      * @param array $browseParameters Additional browse parameters
@@ -227,6 +235,7 @@ class AlgoliaBackend extends BaseBackend
      *
      * Compatible with trendyminds/algolia multipleQueries() method
      *
+     * @inheritdoc
      * @param array $queries Array of query objects with 'indexName', 'query', and optional 'params'
      * @return array Results from all queries
      */
@@ -264,6 +273,7 @@ class AlgoliaBackend extends BaseBackend
      * Converts key/value pairs into Algolia's filter syntax
      * Syntax: (key:"value1" OR key:"value2") AND (key2:"value")
      *
+     * @inheritdoc
      * @param array $filters Key/value pairs of filters
      * @return string Algolia-compatible filter string
      */
@@ -303,6 +313,7 @@ class AlgoliaBackend extends BaseBackend
         return implode(' AND ', $filterParts);
     }
 
+    /** @inheritdoc */
     public function clearIndex(string $indexName): bool
     {
         try {
@@ -317,6 +328,7 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         try {
@@ -342,11 +354,13 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    /** @inheritdoc */
     public function supportsBrowse(): bool
     {
         return true;
     }
 
+    /** @inheritdoc */
     public function supportsMultipleQueries(): bool
     {
         return true;
@@ -355,6 +369,7 @@ class AlgoliaBackend extends BaseBackend
     /**
      * List all indices in Algolia account
      *
+     * @inheritdoc
      * @return array Array of index information
      */
     public function listIndices(): array
@@ -395,6 +410,7 @@ class AlgoliaBackend extends BaseBackend
      * @param string $query Partial search query
      * @param array $options Options like limit, siteId
      * @return array Array of suggestion strings (titles)
+     * @since 5.0.0
      */
     public function autocomplete(string $indexName, string $query, array $options = []): array
     {
@@ -443,6 +459,8 @@ class AlgoliaBackend extends BaseBackend
 
     /**
      * Check if this backend supports autocomplete
+     *
+     * @since 5.0.0
      */
     public function supportsAutocomplete(): bool
     {

@@ -53,6 +53,7 @@ class SearchController extends Controller
         return parent::beforeAction($action);
     }
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

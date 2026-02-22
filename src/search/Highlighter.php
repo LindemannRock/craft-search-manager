@@ -44,6 +44,7 @@ class Highlighter
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param array $config Configuration options
      */
     public function __construct(array $config = [])

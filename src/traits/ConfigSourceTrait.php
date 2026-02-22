@@ -16,6 +16,7 @@ trait ConfigSourceTrait
 {
     /**
      * @var string Source of this record ('config' or 'database')
+     * @since 5.0.0
      */
     public string $source = 'database';
 

@@ -28,28 +28,43 @@ class ConfiguredBackend extends Model
     // PROPERTIES
     // =========================================================================
 
+    /** @since 5.28.0 */
     public ?int $id = null;
+
+    /** @since 5.28.0 */
     public string $name = '';
+
+    /** @since 5.28.0 */
     public string $handle = '';
 
     /**
      * @var string Backend type (algolia, meilisearch, typesense, mysql, pgsql, redis, file)
+     * @since 5.28.0
      */
     public string $backendType = '';
 
     /**
      * @var array Backend-specific settings (credentials, hosts, etc.)
+     * @since 5.28.0
      */
     public array $settings = [];
 
+    /** @since 5.28.0 */
     public bool $enabled = true;
+
+    /** @since 5.28.0 */
     public int $sortOrder = 0;
 
+    /** @since 5.28.0 */
     public ?\DateTime $dateCreated = null;
+
+    /** @since 5.28.0 */
     public ?\DateTime $dateUpdated = null;
 
     /**
      * Available backend types and their labels
+     *
+     * @since 5.28.0
      */
     public const BACKEND_TYPES = [
         'algolia' => 'Algolia',
@@ -64,6 +79,8 @@ class ConfiguredBackend extends Model
     /**
      * Settings schema for each backend type
      * Includes instructions, placeholders, and env var suggestions
+     *
+     * @since 5.28.0
      */
     public const BACKEND_SETTINGS_SCHEMA = [
         'algolia' => [
@@ -189,6 +206,8 @@ class ConfiguredBackend extends Model
 
     /**
      * Backend descriptions shown in the edit form
+     *
+     * @since 5.28.0
      */
     public const BACKEND_DESCRIPTIONS = [
         'algolia' => [
@@ -232,6 +251,7 @@ class ConfiguredBackend extends Model
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -242,6 +262,7 @@ class ConfiguredBackend extends Model
     // VALIDATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function rules(): array
     {
         return [
@@ -263,6 +284,7 @@ class ConfiguredBackend extends Model
      * Validate storagePath setting against directory traversal and allowed locations
      *
      * @param string $attribute
+     * @since 5.28.0
      */
     public function validateStoragePath(string $attribute): void
     {

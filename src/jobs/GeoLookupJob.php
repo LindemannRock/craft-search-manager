@@ -21,20 +21,24 @@ class GeoLookupJob extends BaseJob
 
     /**
      * @var int The analytics record ID to update
+     * @since 5.0.0
      */
     public int $analyticsId;
 
     /**
      * @var string The IP address to look up (already anonymized if applicable)
+     * @since 5.0.0
      */
     public string $ip;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
     }
 
+    /** @inheritdoc */
     public function execute($queue): void
     {
         // Perform the geo-lookup

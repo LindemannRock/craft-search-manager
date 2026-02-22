@@ -21,6 +21,7 @@ class IndicesController extends Controller
 {
     use LoggingTrait;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

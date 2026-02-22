@@ -27,6 +27,9 @@ class AnalyticsTrackingService
 {
     use LoggingTrait;
 
+    /**
+     * @since 5.0.0
+     */
     public function __construct()
     {
         $this->setLoggingHandle('search-manager');

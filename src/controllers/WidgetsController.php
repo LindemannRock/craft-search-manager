@@ -25,6 +25,7 @@ class WidgetsController extends Controller
 {
     use LoggingTrait;
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -765,8 +766,8 @@ class WidgetsController extends Controller
             return true;
         }
 
-        // Hex: #fff, #ffffff, #ffffffff
-        if (preg_match('/^#[0-9a-fA-F]{3,8}$/', $value)) {
+        // Hex: #fff, #ffffff, #ffffffff (with or without # — Craft's colorField strips it)
+        if (preg_match('/^#?[0-9a-fA-F]{3,8}$/', $value)) {
             return true;
         }
 

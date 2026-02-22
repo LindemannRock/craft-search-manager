@@ -30,58 +30,82 @@ class SearchIndex extends Model
     // PROPERTIES
     // =========================================================================
 
+    /** @since 5.0.0 */
     public ?int $id = null;
+
+    /** @since 5.0.0 */
     public string $name = '';
+
+    /** @since 5.0.0 */
     public string $handle = '';
+
+    /** @since 5.0.0 */
     public string $elementType = '';
+
+    /** @since 5.0.0 */
     public int|array|null $siteId = null;
 
     /**
      * @var array|\Closure Decoded from criteriaJson (array) or callable from config (Closure)
+     * @since 5.0.0
      */
     public array|\Closure $criteria = [];
 
+    /** @since 5.0.0 */
     public ?string $transformerClass = null;
     /**
      * @var array<int>|null Heading levels to extract (e.g. [2,3,4])
+     * @since 5.0.0
      */
     public ?array $headingLevels = null;
 
     /**
      * @var string|null Language code (en, ar, fr, es, de) - null = auto-detect from site
+     * @since 5.0.0
      */
     public ?string $language = null;
 
     /**
      * @var string|null Handle of configured backend to use - null means use global default from settings
+     * @since 5.0.0
      */
     public ?string $backend = null;
 
+    /** @since 5.0.0 */
     public bool $enabled = true;
 
     /**
      * @var bool Whether to track analytics for searches on this index
+     * @since 5.0.0
      */
     public bool $enableAnalytics = true;
 
     /**
      * @var bool Whether to disable stop words for this index
+     * @since 5.0.0
      */
     public bool $disableStopWords = false;
 
     /**
      * @var bool Whether to skip indexing entries that don't have a URL
+     * @since 5.0.0
      */
     public bool $skipEntriesWithoutUrl = false;
 
+    /** @since 5.0.0 */
     public ?\DateTime $lastIndexed = null;
+
+    /** @since 5.0.0 */
     public int $documentCount = 0;
+
+    /** @since 5.0.0 */
     public int $sortOrder = 0;
 
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();
@@ -92,6 +116,7 @@ class SearchIndex extends Model
     // VALIDATION
     // =========================================================================
 
+    /** @inheritdoc */
     public function rules(): array
     {
         return [
@@ -113,6 +138,8 @@ class SearchIndex extends Model
 
     /**
      * Validate transformer class exists
+     *
+     * @since 5.0.0
      */
     public function validateTransformerClass($attribute): void
     {
@@ -138,6 +165,8 @@ class SearchIndex extends Model
 
     /**
      * Validate siteId (int, array of ints, or null)
+     *
+     * @since 5.0.0
      */
     public function validateSiteId($attribute): void
     {
@@ -173,6 +202,8 @@ class SearchIndex extends Model
 
     /**
      * Find index by ID
+     *
+     * @since 5.0.0
      */
     public static function findById(int $id): ?self
     {
@@ -196,6 +227,8 @@ class SearchIndex extends Model
     /**
      * Find index by handle
      * For config indices, config is the source of truth
+     *
+     * @since 5.0.0
      */
     public static function findByHandle(string $handle): ?self
     {
@@ -319,6 +352,8 @@ class SearchIndex extends Model
 
     /**
      * Get all indices (database + config)
+     *
+     * @since 5.0.0
      */
     public static function findAll(): array
     {
@@ -357,6 +392,8 @@ class SearchIndex extends Model
 
     /**
      * Load indices from config file
+     *
+     * @since 5.0.0
      */
     public static function loadFromConfig(): array
     {
@@ -415,6 +452,8 @@ class SearchIndex extends Model
     /**
      * Clear the config cache
      * Useful for testing or when config file changes during runtime
+     *
+     * @since 5.0.0
      */
     public static function clearConfigCache(): void
     {
@@ -486,6 +525,8 @@ class SearchIndex extends Model
 
     /**
      * Save index to database
+     *
+     * @since 5.0.0
      */
     public function save(): bool
     {
@@ -563,6 +604,8 @@ class SearchIndex extends Model
 
     /**
      * Delete index from database
+     *
+     * @since 5.0.0
      */
     public function delete(): bool
     {
@@ -611,6 +654,8 @@ class SearchIndex extends Model
     /**
      * Sync metadata from config file (for config indices)
      * Updates name, transformer, language from config without changing stats
+     *
+     * @since 5.0.0
      */
     public function syncMetadataFromConfig(): bool
     {
@@ -695,6 +740,8 @@ class SearchIndex extends Model
 
     /**
      * Update last indexed timestamp and document count
+     *
+     * @since 5.0.0
      */
     public function updateStats(int $documentCount): bool
     {
@@ -821,6 +868,8 @@ class SearchIndex extends Model
     /**
      * Increment document count by 1
      * Used when a single element is added to the index
+     *
+     * @since 5.0.0
      */
     public static function incrementDocumentCount(string $handle): bool
     {
@@ -830,6 +879,8 @@ class SearchIndex extends Model
     /**
      * Decrement document count by 1
      * Used when a single element is removed from the index
+     *
+     * @since 5.0.0
      */
     public static function decrementDocumentCount(string $handle): bool
     {
@@ -870,6 +921,8 @@ class SearchIndex extends Model
 
     /**
      * Convert to config array format (for export)
+     *
+     * @since 5.0.0
      */
     public function toConfigArray(): array
     {
@@ -898,6 +951,8 @@ class SearchIndex extends Model
 
     /**
      * Check if index is from config file
+     *
+     * @since 5.0.0
      */
     public function isFromConfig(): bool
     {
@@ -906,6 +961,8 @@ class SearchIndex extends Model
 
     /**
      * Check if this index has a custom backend override
+     *
+     * @since 5.0.0
      */
     public function hasBackendOverride(): bool
     {
@@ -915,6 +972,8 @@ class SearchIndex extends Model
     /**
      * Get the effective backend handle for this index
      * Returns the index-specific backend if set, otherwise the global default
+     *
+     * @since 5.0.0
      */
     public function getEffectiveBackend(): ?string
     {
@@ -929,6 +988,8 @@ class SearchIndex extends Model
     /**
      * Get the effective backend TYPE for this index (e.g., 'algolia', 'mysql', 'meilisearch')
      * Resolves the configured backend handle to its type
+     *
+     * @since 5.0.0
      */
     public function getEffectiveBackendType(): ?string
     {
@@ -956,6 +1017,8 @@ class SearchIndex extends Model
 
     /**
      * Get the configured backend for this index
+     *
+     * @since 5.0.0
      */
     public function getConfiguredBackend(): ?ConfiguredBackend
     {
@@ -971,6 +1034,8 @@ class SearchIndex extends Model
     /**
      * Get raw config display string for config indices
      * Returns a formatted representation of the config file definition
+     *
+     * @since 5.0.0
      */
     public function getRawConfigDisplay(): ?string
     {
@@ -1056,6 +1121,7 @@ class SearchIndex extends Model
      * Matches the logic in RebuildIndexJob for accurate comparison
      *
      * @return int Expected number of elements matching the index criteria
+     * @since 5.0.0
      */
     public function getExpectedCount(): int
     {
@@ -1306,6 +1372,8 @@ class SearchIndex extends Model
     /**
      * Get normalized site IDs for this index.
      * Returns null for "all sites".
+     *
+     * @since 5.0.0
      */
     public function getSiteIds(): ?array
     {
@@ -1322,6 +1390,8 @@ class SearchIndex extends Model
 
     /**
      * Check whether this index applies to the given site ID.
+     *
+     * @since 5.0.0
      */
     public function appliesToSiteId(int $siteId): bool
     {

@@ -37,6 +37,7 @@ class FuzzyMatcher
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param NgramGenerator $ngramGenerator N-gram generator instance
      * @param float $similarityThreshold Minimum similarity threshold (default: 0.50)
      * @param int $maxCandidates Maximum fuzzy candidates to process (default: 100)

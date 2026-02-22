@@ -40,9 +40,7 @@ class AnalyticsService extends Component
     private AnalyticsRulesService $_rules;
     private AnalyticsExportService $_export;
 
-    /**
-     * Initialize the service
-     */
+    /** @inheritdoc */
     public function init(): void
     {
         parent::init();

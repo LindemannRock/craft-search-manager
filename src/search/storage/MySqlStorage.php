@@ -31,6 +31,7 @@ class MySqlStorage implements StorageInterface
     /**
      * Constructor
      *
+     * @since 5.0.0
      * @param string $indexHandle Index handle
      */
     public function __construct(string $indexHandle)

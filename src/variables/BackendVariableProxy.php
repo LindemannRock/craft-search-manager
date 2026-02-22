@@ -23,6 +23,9 @@ class BackendVariableProxy
 
     private string $backendHandle;
 
+    /**
+     * @since 5.28.0
+     */
     public function __construct(BackendInterface $backend, string $backendHandle)
     {
         $this->backend = $backend;
