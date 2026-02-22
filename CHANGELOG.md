@@ -1,5 +1,35 @@
 # Changelog
 
+## [5.39.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.38.0...v5.39.0) (2026-02-22)
+
+
+### Features
+
+* add dedicated widget style permissions and fix nested permission pattern ([eef2f96](https://github.com/LindemannRock/craft-search-manager/commit/eef2f963bb6dd946d83cbef49cf0a14397719c52))
+* add hierarchical result display for search widget ([381a0be](https://github.com/LindemannRock/craft-search-manager/commit/381a0be187501619bc6a9ba78ef89a3ae47fd722))
+* add prose-only snippets (_contentClean) and rename allowCodeSnippets to showCodeSnippets ([7c8e746](https://github.com/LindemannRock/craft-search-manager/commit/7c8e746e13ccb50d4fdfddda7e7a6ec41212427d))
+* **analytics:** add recent searches and unhandled data loading ([885b429](https://github.com/LindemannRock/craft-search-manager/commit/885b429d3f0cc0b82b2d8e3d013b29e6e00153c5))
+* merge search endpoints, add enrichment service, search/transform ([5f53fd5](https://github.com/LindemannRock/craft-search-manager/commit/5f53fd527d0c20fe4951b80da4fc53b47ac47d52))
+* **plugin-docs:** add support for PluginDoc indexing and transformation ([d893b3e](https://github.com/LindemannRock/craft-search-manager/commit/d893b3e3bc68fbaf64cdacbaaadc9d7a30166c8d))
+* **searchwidget:** add query parameter handling and destination page highlighting ([610a9a6](https://github.com/LindemannRock/craft-search-manager/commit/610a9a66c835cdd0c3fec96d345e682cb49b5eeb))
+* **searchwidget:** enhance styling configuration for header and input ([237c056](https://github.com/LindemannRock/craft-search-manager/commit/237c0566f90bf3b41c99330cef5c4a7d712b67c2))
+* server-side matched terms, always-on document data, heading extraction, ([fa46c76](https://github.com/LindemannRock/craft-search-manager/commit/fa46c76ce6fe9297506bad5876a02c6ba221ac9c))
+* smart query parsing for standalone highlighter, enrichment test controls, and widget CSS isolation ([32b51b2](https://github.com/LindemannRock/craft-search-manager/commit/32b51b2d77191dddf8f628e824b97c5a45938e38))
+* **widget:** enhance search functionality with new settings and UI updates ([5ecb74c](https://github.com/LindemannRock/craft-search-manager/commit/5ecb74c4671c8522c8790a5175f0386a1755a775))
+
+
+### Bug Fixes
+
+* harden export CSRF protection, CSS injection sanitization, and docs-manager rename ([6b124b7](https://github.com/LindemannRock/craft-search-manager/commit/6b124b7e4cec54916eab1d0a4b857af12fc01adb))
+* Remove confirmation prompt for index rebuild action ([cb66de0](https://github.com/LindemannRock/craft-search-manager/commit/cb66de003bf905aba455f69e5339ea9124fc6a78))
+* **styles:** escape collision handles in warning message ([781eb77](https://github.com/LindemannRock/craft-search-manager/commit/781eb77ee5b76f5b41f3a60cae55cd3ff8935006))
+
+
+### Miscellaneous Chores
+
+* add .gitattributes with export-ignore for Packagist distribution ([ab013e6](https://github.com/LindemannRock/craft-search-manager/commit/ab013e689924dd8c0ee0769d4c5b68ded92d7b69))
+* Update license information in LICENSE.md and composer.json ([d224ab4](https://github.com/LindemannRock/craft-search-manager/commit/d224ab4a0feda8097b9194e86b82b2681e95c0df))
+
 ## [5.38.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.37.0...v5.38.0) (2026-02-07)
 
 
