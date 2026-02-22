@@ -36,20 +36,38 @@ This plugin is in active development and not yet available on the Craft Plugin S
 
 ## Requirements
 
-- PHP 8.2+
 - Craft CMS 5.0+
-- LindemannRock Logging Library ^5.0 (installed automatically)
+- PHP 8.2+
+- [Logging Library](https://github.com/LindemannRock/craft-logging-library) 5.0+ — optional, install in CP for logs
 
 ## Installation
 
+### Via Composer
+
 ```bash
-composer require lindemannrock/craft-search-manager && php craft plugin/install search-manager
+composer require lindemannrock/craft-search-manager
 ```
 
-After installation, generate the IP hash salt for analytics:
+```bash
+php craft plugin/install search-manager
+```
 
 ```bash
 php craft search-manager/security/generate-salt
+```
+
+### Using DDEV
+
+```bash
+ddev composer require lindemannrock/craft-search-manager
+```
+
+```bash
+ddev craft plugin/install search-manager
+```
+
+```bash
+ddev craft search-manager/security/generate-salt
 ```
 
 ## Documentation
