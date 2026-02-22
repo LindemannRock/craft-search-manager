@@ -1,0 +1,84 @@
+name: Bug Report
+description: Report a bug or unexpected behavior.
+labels: 'bug'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before submitting, please check:
+
+          - I've searched the [documentation](https://github.com/LindemannRock/craft-search-manager/tree/main/docs).
+          - I've searched [open and closed issues](https://github.com/LindemannRock/craft-search-manager/issues?q=is%3Aissue).
+
+  - type: textarea
+    id: bug-description
+    attributes:
+      label: Describe the bug
+      description: What happened? What did you expect to happen instead?
+      placeholder: "I have an issue where..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this issue?
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: setup-context
+    attributes:
+      label: Setup context
+      description: Tell us about your setup so we can reproduce the issue.
+      value: |
+        - Search backend: MySQL, PostgreSQL, Redis, File, Algolia, Meilisearch, or Typesense
+        - Widget enabled: Yes or No
+        - Autocomplete enabled: Yes or No
+        - Multi-site: Yes or No
+    validations:
+      required: true
+
+  - type: dropdown
+    id: craft-major
+    attributes:
+      label: Craft CMS major version
+      options:
+        - "Craft 5"
+    validations:
+      required: true
+
+  - type: input
+    id: craft-version
+    attributes:
+      label: Craft CMS exact version
+      description: "**Do not write \"latest\"** — run `php craft version` to check."
+      placeholder: e.g. 5.6.1
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Search Manager version
+      description: "**Do not write \"latest\"** — check in Settings → Plugins."
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP version
+      description: "Run `php -v` to check."
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Anything else that might help — screenshots, log entries, other plugins installed.
+      placeholder: I also have X plugin installed... or This only happens on production...

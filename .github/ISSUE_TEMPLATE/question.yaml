@@ -1,0 +1,27 @@
+name: Question
+description: "Ask a question about Search Manager. Not for bug reports."
+labels: 'question'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before asking, please check:
+
+          - I've searched the [documentation](https://github.com/LindemannRock/craft-search-manager/tree/main/docs).
+          - I've searched [open and closed issues](https://github.com/LindemannRock/craft-search-manager/issues?q=is%3Aissue).
+          - This is not a bug report — just a general question.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What would you like to know?
+      placeholder: Is it possible to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Screenshots, code snippets, or anything that helps clarify your question.
