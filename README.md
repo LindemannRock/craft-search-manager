@@ -76,4 +76,13 @@ Full documentation is available in the [docs](docs/) folder.
 
 ## Support
 
-For bugs and feature requests, please use the GitHub issue tracker.
+- **Issues**: [GitHub Issues](https://github.com/LindemannRock/craft-search-manager/issues)
+- **Email**: [support@lindemannrock.com](mailto:support@lindemannrock.com)
+
+## License
+
+This plugin is licensed under the [Craft License](https://craftcms.github.io/license/). See [LICENSE.md](LICENSE.md) for details.
+
+---
+
+Developed by [LindemannRock](https://lindemannrock.com)
