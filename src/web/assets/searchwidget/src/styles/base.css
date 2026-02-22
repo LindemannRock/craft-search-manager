@@ -22,14 +22,27 @@
     --sm-text-muted: var(--sm-result-muted-color, #6b7280);
     --sm-hierarchy-connector-color: var(--sm-result-muted-color, #6b7280);
 
+    /* Header defaults */
+    --sm-header-bg: transparent;
+    --sm-header-border-color: #e5e7eb;
+    --sm-header-px: 16px;
+    --sm-header-py: 12px;
+    --sm-header-radius: 0px;
+    --sm-header-border-width: 1px;
+
     /* Input defaults */
     --sm-input-bg: #ffffff;
     --sm-input-color: #111827;
     --sm-input-placeholder: #9ca3af;
     --sm-input-font-size: 16px;
+    --sm-input-border-color: transparent;
+    --sm-input-border-width: 0px;
+    --sm-input-radius: 0px;
+    --sm-input-px: 0px;
+    --sm-input-py: 0px;
 
     /* Borders and backgrounds - map from config variable names */
-    --sm-border-color: var(--sm-input-border-color, #e5e7eb);
+    --sm-border-color: var(--sm-header-border-color, #e5e7eb);
     --sm-selected-bg: var(--sm-result-active-bg, #e5e7eb);
     --sm-selected-border: var(--sm-result-active-border-color, #3b82f6);
     --sm-result-radius: 8px;
@@ -57,9 +70,8 @@
     --sm-kbd-color: var(--sm-kbd-text-color, #4b5563);
     --sm-kbd-radius: 4px;
 
-    /* Accent colors */
-    --sm-accent: #3b82f6;
-    --sm-accent-hover: #2563eb;
+    /* Icon color (hierarchy icons, arrows) */
+    --sm-icon: var(--sm-icon-color, #3b82f6);
 
     /* Spinner */
     --sm-spinner-color: var(--sm-spinner-color-light, #3b82f6);
@@ -80,7 +92,12 @@
     --sm-text-muted: var(--sm-result-muted-color-dark, #9ca3af);
     --sm-hierarchy-connector-color: var(--sm-result-muted-color-dark, #9ca3af);
 
-    --sm-border-color: var(--sm-input-border-color-dark, #374151);
+    --sm-header-bg: var(--sm-header-bg-dark, transparent);
+    --sm-header-border-color: var(--sm-header-border-color-dark, #374151);
+
+    --sm-input-border-color: var(--sm-input-border-color-dark, transparent);
+
+    --sm-border-color: var(--sm-header-border-color-dark, #374151);
     --sm-result-bg: var(--sm-result-bg-dark, transparent);
     --sm-result-border-color: var(--sm-result-border-color-dark, #374151);
     --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
@@ -96,6 +113,8 @@
     --sm-kbd-border: #4b5563;
     --sm-kbd-color: var(--sm-kbd-text-color-dark, #e5e7eb);
 
+    --sm-icon: var(--sm-icon-color-dark, #60a5fa);
+
     --sm-spinner-color: var(--sm-spinner-color-dark, #60a5fa);
 }
 
@@ -109,7 +128,9 @@
 
 .sm-input {
     flex: 1;
-    border: none;
+    border: var(--sm-input-border-width) solid var(--sm-input-border-color);
+    border-radius: var(--sm-input-radius);
+    padding: var(--sm-input-py) var(--sm-input-px);
     background: var(--sm-input-bg);
     color: var(--sm-input-color);
     font-size: var(--sm-input-font-size);
@@ -298,7 +319,7 @@
 
 .sm-result-arrow {
     flex-shrink: 0;
-    color: var(--sm-text-muted);
+    color: var(--sm-icon);
     opacity: 0;
     transition: opacity 0.1s ease;
 }
@@ -339,7 +360,7 @@
 
 .sm-hierarchy-parent .sm-hierarchy-icon {
     flex-shrink: 0;
-    color: var(--sm-accent);
+    color: var(--sm-icon);
 }
 
 /* Child result (heading-level) with gutter connector */

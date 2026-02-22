@@ -6,9 +6,105 @@
 </div>
 
 {# ========================================
-   INPUT FIELD
+   SEARCH HEADER (.sm-header container)
    ======================================== #}
-<h2>{{ "Input Field"|t('search-manager') }}</h2>
+<h2>{{ "Search Header"|t('search-manager') }}</h2>
+
+{# Light Mode Colors #}
+<div class="color-scheme-section" data-color-scheme="light">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-headerBg',
+			name: namePrefix ~ '[headerBg]',
+			value: styles.headerBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-headerBorderColor',
+			name: namePrefix ~ '[headerBorderColor]',
+			value: styles.headerBorderColor,
+		}) }}
+	</div>
+</div>
+
+{# Dark Mode Colors #}
+<div class="color-scheme-section hidden" data-color-scheme="dark">
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-headerBgDark',
+			name: namePrefix ~ '[headerBgDark]',
+			value: styles.headerBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-headerBorderColorDark',
+			name: namePrefix ~ '[headerBorderColorDark]',
+			value: styles.headerBorderColorDark,
+		}) }}
+	</div>
+</div>
+
+{# Shared Dimensions #}
+<div style="margin-top: 24px;">
+	<h4>{{ "Dimensions"|t('search-manager') }}</h4>
+	{{ forms.textField({
+		label: 'Border Radius (px)'|t('search-manager'),
+		id: 'styles-headerBorderRadius',
+		name: namePrefix ~ '[headerBorderRadius]',
+		value: styles.headerBorderRadius,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 0'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerBorderRadius') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Width (px)'|t('search-manager'),
+		id: 'styles-headerBorderWidth',
+		name: namePrefix ~ '[headerBorderWidth]',
+		value: styles.headerBorderWidth,
+		type: 'number',
+		min: 0,
+		max: 10,
+		size: 10,
+		tip: 'Min: 0, Max: 10. Default: 1'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerBorderWidth') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding X (px)'|t('search-manager'),
+		id: 'styles-headerPaddingX',
+		name: namePrefix ~ '[headerPaddingX]',
+		value: styles.headerPaddingX,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 16'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerPaddingX') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding Y (px)'|t('search-manager'),
+		id: 'styles-headerPaddingY',
+		name: namePrefix ~ '[headerPaddingY]',
+		value: styles.headerPaddingY,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 12'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.headerPaddingY') : [],
+	}) }}
+</div>
+
+<hr style="margin: 24px 0;">
+
+{# ========================================
+   SEARCH INPUT (.sm-input element)
+   ======================================== #}
+<h2>{{ "Search Input"|t('search-manager') }}</h2>
 
 {# Light Mode Colors #}
 <div class="color-scheme-section" data-color-scheme="light">
@@ -84,5 +180,53 @@
 		size: 10,
 		tip: 'Min: 12, Max: 24. Default: 16'|t('search-manager'),
 		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.inputFontSize') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Radius (px)'|t('search-manager'),
+		id: 'styles-inputBorderRadius',
+		name: namePrefix ~ '[inputBorderRadius]',
+		value: styles.inputBorderRadius,
+		type: 'number',
+		min: 0,
+		max: 20,
+		size: 10,
+		tip: 'Min: 0, Max: 20. Default: 0'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.inputBorderRadius') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Border Width (px)'|t('search-manager'),
+		id: 'styles-inputBorderWidth',
+		name: namePrefix ~ '[inputBorderWidth]',
+		value: styles.inputBorderWidth,
+		type: 'number',
+		min: 0,
+		max: 10,
+		size: 10,
+		tip: 'Min: 0, Max: 10. Default: 0'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.inputBorderWidth') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding X (px)'|t('search-manager'),
+		id: 'styles-inputPaddingX',
+		name: namePrefix ~ '[inputPaddingX]',
+		value: styles.inputPaddingX,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 0'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.inputPaddingX') : [],
+	}) }}
+	{{ forms.textField({
+		label: 'Padding Y (px)'|t('search-manager'),
+		id: 'styles-inputPaddingY',
+		name: namePrefix ~ '[inputPaddingY]',
+		value: styles.inputPaddingY,
+		type: 'number',
+		min: 0,
+		max: 40,
+		size: 10,
+		tip: 'Min: 0, Max: 40. Default: 0'|t('search-manager'),
+		errors: widgetStyle is defined and widgetStyle ? widgetStyle.getErrors('styles.inputPaddingY') : [],
 	}) }}
 </div>

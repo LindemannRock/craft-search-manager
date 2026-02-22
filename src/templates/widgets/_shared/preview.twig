@@ -33,12 +33,14 @@
 {# Light Mode Preview #}
 	<div class="widget-preview-container widget-preview-light" data-mode="light" style="--preview-connector-color: {{ previewConnectorLight }};">
 		<div class="preview-modal" style="background: {{ styles.modalBg }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColor }}; border-radius: {{ styles.modalBorderRadius }}px; padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
-			<div class="preview-input" style="background: {{ styles.inputBg }}; border-bottom: 1px solid {{ styles.inputBorderColor }};">
+			<div class="preview-header" style="background: {{ styles.headerBg }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColor }}; border-radius: {{ styles.headerBorderRadius }}px; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
 				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColor }}" stroke-width="2" style="opacity: 0.5;">
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
-				<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColor }};">{{ 'Search...'|t('search-manager') }}</span>
+				<span class="preview-input-field" style="background: {{ styles.inputBg }}; border: {{ styles.inputBorderWidth }}px solid {{ styles.inputBorderColor }}; border-radius: {{ styles.inputBorderRadius }}px; padding: {{ styles.inputPaddingY }}px {{ styles.inputPaddingX }}px;">
+					<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColor }};">{{ 'Search...'|t('search-manager') }}</span>
+				</span>
 				<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColor }};">
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
 					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
@@ -57,16 +59,19 @@
 						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgLight }}; color: {{ hlTextLight }};">{{ 'match'|t('search-manager') }}</mark></span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'With highlight'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColor }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColor ?? '#3b82f6' }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
 				<div class="preview-result preview-hierarchy-row preview-hierarchy-row-last" style="background: {{ styles.resultBg }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColor }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
+					<svg class="preview-icon-color" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColor ?? '#3b82f6' }}" stroke-width="2">
+						<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+					</svg>
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColor }};">{{ 'Another Result'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColor }};">{{ 'Another result'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColor }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColor ?? '#3b82f6' }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
@@ -88,12 +93,14 @@
 {# Dark Mode Preview (hidden by default) #}
 	<div class="widget-preview-container widget-preview-dark" data-mode="dark" style="display: none; --preview-connector-color: {{ previewConnectorDark }};">
 		<div class="preview-modal" style="background: {{ styles.modalBgDark }}; border: {{ styles.modalBorderWidth }}px solid {{ styles.modalBorderColorDark }}; border-radius: {{ styles.modalBorderRadius }}px; padding: {{ styles.modalPaddingY }}px {{ styles.modalPaddingX }}px;">
-			<div class="preview-input" style="background: {{ styles.inputBgDark }}; border-bottom: 1px solid {{ styles.inputBorderColorDark }};">
+			<div class="preview-header" style="background: {{ styles.headerBgDark }}; border-bottom: {{ styles.headerBorderWidth }}px solid {{ styles.headerBorderColorDark }}; border-radius: {{ styles.headerBorderRadius }}px; padding: {{ styles.headerPaddingY }}px {{ styles.headerPaddingX }}px;">
 				<svg class="preview-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="{{ styles.inputTextColorDark }}" stroke-width="2" style="opacity: 0.5;">
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
-				<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColorDark }};">{{ 'Search...'|t('search-manager') }}</span>
+				<span class="preview-input-field" style="background: {{ styles.inputBgDark }}; border: {{ styles.inputBorderWidth }}px solid {{ styles.inputBorderColorDark }}; border-radius: {{ styles.inputBorderRadius }}px; padding: {{ styles.inputPaddingY }}px {{ styles.inputPaddingX }}px;">
+					<span class="preview-placeholder" style="color: {{ styles.inputPlaceholderColorDark }};">{{ 'Search...'|t('search-manager') }}</span>
+				</span>
 				<svg class="preview-spinner" width="14" height="14" viewBox="0 0 24 24" style="color: {{ styles.spinnerColorDark }};">
 					<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
 					<path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round"/>
@@ -112,16 +119,19 @@
 						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Active'|t('search-manager') }} <mark style="background: {{ hlBgDark }}; color: {{ hlTextDark }};">{{ 'match'|t('search-manager') }}</mark></span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'With highlight'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColorDark }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColorDark ?? '#60a5fa' }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
 				<div class="preview-result preview-hierarchy-row preview-hierarchy-row-last" style="background: {{ styles.resultBgDark }}; border-radius: {{ styles.resultBorderRadius }}px; border: {{ styles.resultBorderWidth }}px solid {{ styles.resultBorderColorDark }}; padding: {{ styles.resultPaddingY }}px {{ styles.resultPaddingX }}px;">
+					<svg class="preview-icon-color" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColorDark ?? '#60a5fa' }}" stroke-width="2">
+						<line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+					</svg>
 					<div class="preview-result-content">
 						<span class="preview-result-title" style="color: {{ styles.resultTextColorDark }};">{{ 'Another Result'|t('search-manager') }}</span>
 						<span class="preview-result-desc" style="color: {{ styles.resultDescColorDark }};">{{ 'Another result'|t('search-manager') }}</span>
 					</div>
-					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.resultMutedColorDark }}" stroke-width="2">
+					<svg class="preview-result-arrow" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="{{ styles.iconColorDark ?? '#60a5fa' }}" stroke-width="2">
 						<path d="M5 12h14M12 5l7 7-7 7"/>
 					</svg>
 				</div>
@@ -176,11 +186,17 @@
 	font-size: 11px;
 }
 
-.preview-input {
+.preview-header {
 	display: flex;
 	align-items: center;
 	gap: 6px;
-	padding: 8px 10px;
+}
+
+.preview-input-field {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	min-width: 0;
 }
 
 .preview-placeholder {
@@ -259,6 +275,10 @@
 }
 
 .preview-result-arrow {
+	flex-shrink: 0;
+}
+
+.preview-icon-color {
 	flex-shrink: 0;
 }
 

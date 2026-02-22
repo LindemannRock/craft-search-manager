@@ -26,6 +26,14 @@
     --sm-modal-px: 16px;
     --sm-modal-py: 16px;
 
+    /* Search header (.sm-header container) */
+    --sm-header-bg: transparent;
+    --sm-header-border-color: #e5e7eb;
+    --sm-header-border-width: 1px;
+    --sm-header-radius: 0px;
+    --sm-header-px: 16px;
+    --sm-header-py: 12px;
+
     /* Trigger button */
     --sm-trigger-bg: #ffffff;
     --sm-trigger-color: var(--sm-trigger-text-color, #374151);
@@ -35,6 +43,11 @@
     --sm-trigger-px: 12px;
     --sm-trigger-py: 8px;
     --sm-trigger-font-size: 14px;
+
+    /* Trigger hover */
+    --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg, #f9fafb);
+    --sm-trigger-hover-color: var(--sm-trigger-hover-text-color, #111827);
+    --sm-trigger-hover-border: var(--sm-trigger-hover-border-color, #3b82f6);
 }
 
 /* Dark theme - modal-specific overrides */
@@ -42,9 +55,16 @@
     --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
     --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
 
+    --sm-header-bg: var(--sm-header-bg-dark, transparent);
+    --sm-header-border-color: var(--sm-header-border-color-dark, #374151);
+
     --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);
     --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);
     --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);
+
+    --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg-dark, #4b5563);
+    --sm-trigger-hover-color: var(--sm-trigger-hover-text-color-dark, #f9fafb);
+    --sm-trigger-hover-border: var(--sm-trigger-hover-border-color-dark, #60a5fa);
 }
 
 /* =========================================================================
@@ -66,8 +86,9 @@
 }
 
 .sm-trigger:hover {
-    border-color: var(--sm-accent);
-    color: var(--sm-text-primary);
+    background: var(--sm-trigger-hover-bg-resolved);
+    color: var(--sm-trigger-hover-color);
+    border-color: var(--sm-trigger-hover-border);
 }
 
 .sm-trigger-text {
@@ -150,8 +171,10 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: var(--sm-modal-py) var(--sm-modal-px);
-    border-bottom: 1px solid var(--sm-border-color);
+    padding: var(--sm-header-py) var(--sm-header-px);
+    background: var(--sm-header-bg);
+    border-bottom: var(--sm-header-border-width) solid var(--sm-header-border-color);
+    border-radius: var(--sm-header-radius);
 }
 
 .sm-search-icon {

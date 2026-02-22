@@ -5,6 +5,16 @@
 import { STYLE_MAPPINGS, NUMERIC_KEYS, VH_KEYS, COLOR_KEYS } from './StyleConfig.js';
 
 /**
+ * Check if a value is a CSS function (var(), calc(), light-dark(), etc.)
+ * These values must pass through without any prefix/suffix processing.
+ * @param {string} value
+ * @returns {boolean}
+ */
+function isCssFunction(value) {
+    return typeof value === 'string' && /^(var|light-dark|calc|env|clamp|min|max|rgb|hsl)\s*\(/.test(value.trim());
+}
+
+/**
  * Check if a value is a 6-character hex color without # prefix
  * @param {string} value
  * @returns {boolean}
@@ -41,6 +51,11 @@ export function processStyleValue(key, value) {
     }
 
     let processedValue = String(value);
+
+    // CSS functions pass through untouched
+    if (isCssFunction(processedValue)) {
+        return processedValue;
+    }
 
     // Add # prefix for hex colors
     if (COLOR_KEYS.includes(key) && isHexColor(processedValue)) {

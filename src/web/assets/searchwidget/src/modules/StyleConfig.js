@@ -27,7 +27,17 @@ export const STYLE_MAPPINGS = {
     modalPaddingX: '--sm-modal-px',
     modalPaddingY: '--sm-modal-py',
 
-    // Input
+    // Search Header (.sm-header container)
+    headerBg: '--sm-header-bg',
+    headerBgDark: '--sm-header-bg-dark',
+    headerBorderColor: '--sm-header-border-color',
+    headerBorderColorDark: '--sm-header-border-color-dark',
+    headerBorderWidth: '--sm-header-border-width',
+    headerBorderRadius: '--sm-header-radius',
+    headerPaddingX: '--sm-header-px',
+    headerPaddingY: '--sm-header-py',
+
+    // Search Input (.sm-input element)
     inputBg: '--sm-input-bg',
     inputBgDark: '--sm-input-bg-dark',
     inputTextColor: '--sm-input-color',
@@ -37,6 +47,10 @@ export const STYLE_MAPPINGS = {
     inputBorderColor: '--sm-input-border-color',
     inputBorderColorDark: '--sm-input-border-color-dark',
     inputFontSize: '--sm-input-font-size',
+    inputBorderRadius: '--sm-input-radius',
+    inputBorderWidth: '--sm-input-border-width',
+    inputPaddingX: '--sm-input-px',
+    inputPaddingY: '--sm-input-py',
 
     // Results
     resultBg: '--sm-result-bg',
@@ -74,6 +88,12 @@ export const STYLE_MAPPINGS = {
     triggerBorderWidth: '--sm-trigger-border-width',
     triggerBorderColor: '--sm-trigger-border-color',
     triggerBorderColorDark: '--sm-trigger-border-color-dark',
+    triggerHoverBg: '--sm-trigger-hover-bg',
+    triggerHoverBgDark: '--sm-trigger-hover-bg-dark',
+    triggerHoverTextColor: '--sm-trigger-hover-text-color',
+    triggerHoverTextColorDark: '--sm-trigger-hover-text-color-dark',
+    triggerHoverBorderColor: '--sm-trigger-hover-border-color',
+    triggerHoverBorderColorDark: '--sm-trigger-hover-border-color-dark',
     triggerPaddingX: '--sm-trigger-px',
     triggerPaddingY: '--sm-trigger-py',
     triggerFontSize: '--sm-trigger-font-size',
@@ -84,6 +104,10 @@ export const STYLE_MAPPINGS = {
     kbdTextColor: '--sm-kbd-text-color',
     kbdTextColorDark: '--sm-kbd-text-color-dark',
     kbdBorderRadius: '--sm-kbd-radius',
+
+    // Icon color (hierarchy icons, arrows)
+    iconColor: '--sm-icon-color',
+    iconColorDark: '--sm-icon-color-dark',
 
     // Highlighting
     highlightBgLight: '--sm-highlight-bg',
@@ -109,7 +133,15 @@ export const NUMERIC_KEYS = [
     'modalMaxWidth',
     'modalPaddingX',
     'modalPaddingY',
+    'headerBorderWidth',
+    'headerBorderRadius',
+    'headerPaddingX',
+    'headerPaddingY',
     'inputFontSize',
+    'inputBorderRadius',
+    'inputBorderWidth',
+    'inputPaddingX',
+    'inputPaddingY',
     'resultGap',
     'resultBorderWidth',
     'resultPaddingX',
@@ -131,6 +163,7 @@ export const VH_KEYS = [
 // Keys that are color values (need # prefix if missing)
 export const COLOR_KEYS = [
     'modalBg', 'modalBgDark', 'modalBorderColor', 'modalBorderColorDark',
+    'headerBg', 'headerBgDark', 'headerBorderColor', 'headerBorderColorDark',
     'inputBg', 'inputBgDark', 'inputTextColor', 'inputTextColorDark',
     'inputPlaceholderColor', 'inputPlaceholderColorDark', 'inputBorderColor', 'inputBorderColorDark',
     'resultBg', 'resultBgDark',
@@ -142,7 +175,10 @@ export const COLOR_KEYS = [
     'resultDescColor', 'resultDescColorDark', 'resultMutedColor', 'resultMutedColorDark',
     'triggerBg', 'triggerBgDark', 'triggerTextColor', 'triggerTextColorDark',
     'triggerBorderColor', 'triggerBorderColorDark',
+    'triggerHoverBg', 'triggerHoverBgDark', 'triggerHoverTextColor', 'triggerHoverTextColorDark',
+    'triggerHoverBorderColor', 'triggerHoverBorderColorDark',
     'kbdBg', 'kbdBgDark', 'kbdTextColor', 'kbdTextColorDark',
+    'iconColor', 'iconColorDark',
     'highlightBgLight', 'highlightColorLight', 'highlightBgDark', 'highlightColorDark',
     'promotedBg', 'promotedBgDark', 'promotedColor', 'promotedColorDark',
     'spinnerColor', 'spinnerColorDark',

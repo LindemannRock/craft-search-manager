@@ -41,10 +41,16 @@
 					value: styles.resultDescColor,
 				}) }}
 				{{ forms.colorField({
-					label: 'Muted (icons, arrows)'|t('search-manager'),
+					label: 'Muted'|t('search-manager'),
 					id: 'styles-resultMutedColor',
 					name: namePrefix ~ '[resultMutedColor]',
 					value: styles.resultMutedColor,
+				}) }}
+				{{ forms.colorField({
+					label: 'Icons'|t('search-manager'),
+					id: 'styles-iconColor',
+					name: namePrefix ~ '[iconColor]',
+					value: styles.iconColor,
 				}) }}
 			</div>
 		</div>
@@ -118,10 +124,16 @@
 					value: styles.resultDescColorDark,
 				}) }}
 				{{ forms.colorField({
-					label: 'Muted (icons, arrows)'|t('search-manager'),
+					label: 'Muted'|t('search-manager'),
 					id: 'styles-resultMutedColorDark',
 					name: namePrefix ~ '[resultMutedColorDark]',
 					value: styles.resultMutedColorDark,
+				}) }}
+				{{ forms.colorField({
+					label: 'Icons'|t('search-manager'),
+					id: 'styles-iconColorDark',
+					name: namePrefix ~ '[iconColorDark]',
+					value: styles.iconColorDark,
 				}) }}
 			</div>
 		</div>

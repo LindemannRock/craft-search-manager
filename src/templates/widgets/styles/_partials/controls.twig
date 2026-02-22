@@ -58,6 +58,56 @@
 	</div>
 </div>
 
+{# Hover Colors - Light #}
+<div class="color-scheme-section" data-color-scheme="light" style="margin-top: 24px;">
+	<h4>{{ "Hover"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-triggerHoverBg',
+			name: namePrefix ~ '[triggerHoverBg]',
+			value: styles.triggerHoverBg,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-triggerHoverTextColor',
+			name: namePrefix ~ '[triggerHoverTextColor]',
+			value: styles.triggerHoverTextColor,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-triggerHoverBorderColor',
+			name: namePrefix ~ '[triggerHoverBorderColor]',
+			value: styles.triggerHoverBorderColor,
+		}) }}
+	</div>
+</div>
+
+{# Hover Colors - Dark #}
+<div class="color-scheme-section hidden" data-color-scheme="dark" style="margin-top: 24px;">
+	<h4>{{ "Hover"|t('search-manager') }}</h4>
+	<div class="flex" style="gap: 24px; flex-wrap: wrap;">
+		{{ forms.colorField({
+			label: 'Background'|t('search-manager'),
+			id: 'styles-triggerHoverBgDark',
+			name: namePrefix ~ '[triggerHoverBgDark]',
+			value: styles.triggerHoverBgDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Text'|t('search-manager'),
+			id: 'styles-triggerHoverTextColorDark',
+			name: namePrefix ~ '[triggerHoverTextColorDark]',
+			value: styles.triggerHoverTextColorDark,
+		}) }}
+		{{ forms.colorField({
+			label: 'Border'|t('search-manager'),
+			id: 'styles-triggerHoverBorderColorDark',
+			name: namePrefix ~ '[triggerHoverBorderColorDark]',
+			value: styles.triggerHoverBorderColorDark,
+		}) }}
+	</div>
+</div>
+
 {# Shared Dimensions #}
 <div style="margin-top: 24px;">
 	<h4>{{ "Dimensions"|t('search-manager') }}</h4>

@@ -35,24 +35,48 @@ window.SearchManagerPreview = (function() {
 		modalShadow:     [{ mode: 'light', selector: '.preview-modal', prop: 'boxShadow' }],
 		modalShadowDark: [{ mode: 'dark', selector: '.preview-modal', prop: 'boxShadow' }],
 		resultMutedColor: [
-			{ mode: 'light', selector: '.preview-result-arrow', prop: 'stroke', all: true },
 			{ mode: 'light', cssVar: '--preview-connector-color' }
 		],
 		resultMutedColorDark: [
-			{ mode: 'dark', selector: '.preview-result-arrow', prop: 'stroke', all: true },
 			{ mode: 'dark', cssVar: '--preview-connector-color' }
 		],
 
-		// --- Input ---
-		inputBg:                   [{ mode: 'light', selector: '.preview-input', prop: 'backgroundColor' }],
-		inputBgDark:               [{ mode: 'dark', selector: '.preview-input', prop: 'backgroundColor' }],
+		// --- Search Header ---
+		headerBg:              [{ mode: 'light', selector: '.preview-header', prop: 'backgroundColor' }],
+		headerBgDark:          [{ mode: 'dark', selector: '.preview-header', prop: 'backgroundColor' }],
+		headerBorderColor:     [{ mode: 'light', selector: '.preview-header', prop: 'borderColor' }],
+		headerBorderColorDark: [{ mode: 'dark', selector: '.preview-header', prop: 'borderColor' }],
+		headerBorderWidth:     [{ mode: 'both', selector: '.preview-header', prop: 'borderBottomWidth', unit: 'px' }],
+		headerBorderRadius:    [{ mode: 'both', selector: '.preview-header', prop: 'borderRadius', unit: 'px' }],
+		headerPaddingX: [
+			{ mode: 'both', selector: '.preview-header', prop: 'paddingLeft', unit: 'px' },
+			{ mode: 'both', selector: '.preview-header', prop: 'paddingRight', unit: 'px' }
+		],
+		headerPaddingY: [
+			{ mode: 'both', selector: '.preview-header', prop: 'paddingTop', unit: 'px' },
+			{ mode: 'both', selector: '.preview-header', prop: 'paddingBottom', unit: 'px' }
+		],
+
+		// --- Search Input ---
+		inputBg:                   [{ mode: 'light', selector: '.preview-input-field', prop: 'backgroundColor' }],
+		inputBgDark:               [{ mode: 'dark', selector: '.preview-input-field', prop: 'backgroundColor' }],
 		inputTextColor:            [{ mode: 'light', selector: '.preview-search-icon', prop: 'stroke' }],
 		inputTextColorDark:        [{ mode: 'dark', selector: '.preview-search-icon', prop: 'stroke' }],
 		inputPlaceholderColor:     [{ mode: 'light', selector: '.preview-placeholder', prop: 'color' }],
 		inputPlaceholderColorDark: [{ mode: 'dark', selector: '.preview-placeholder', prop: 'color' }],
-		inputBorderColor:          [{ mode: 'light', selector: '.preview-input', prop: 'borderColor' }],
-		inputBorderColorDark:      [{ mode: 'dark', selector: '.preview-input', prop: 'borderColor' }],
+		inputBorderColor:          [{ mode: 'light', selector: '.preview-input-field', prop: 'borderColor' }],
+		inputBorderColorDark:      [{ mode: 'dark', selector: '.preview-input-field', prop: 'borderColor' }],
 		inputFontSize:             [{ mode: 'both', selector: '.preview-placeholder', prop: 'fontSize', unit: 'px' }],
+		inputBorderRadius:         [{ mode: 'both', selector: '.preview-input-field', prop: 'borderRadius', unit: 'px' }],
+		inputBorderWidth:          [{ mode: 'both', selector: '.preview-input-field', prop: 'borderWidth', unit: 'px' }],
+		inputPaddingX: [
+			{ mode: 'both', selector: '.preview-input-field', prop: 'paddingLeft', unit: 'px' },
+			{ mode: 'both', selector: '.preview-input-field', prop: 'paddingRight', unit: 'px' }
+		],
+		inputPaddingY: [
+			{ mode: 'both', selector: '.preview-input-field', prop: 'paddingTop', unit: 'px' },
+			{ mode: 'both', selector: '.preview-input-field', prop: 'paddingBottom', unit: 'px' }
+		],
 
 		// --- Results: Base ---
 		resultBg:              [{ mode: 'light', selector: '.preview-result', prop: 'backgroundColor', index: 0 }],
@@ -130,6 +154,16 @@ window.SearchManagerPreview = (function() {
 			{ mode: 'both', selector: '.preview-trigger-kbd', prop: 'borderRadius', unit: 'px' }
 		],
 
+		// --- Icon Color ---
+		iconColor: [
+			{ mode: 'light', selector: '.preview-icon-color', prop: 'stroke' },
+			{ mode: 'light', selector: '.preview-result-arrow', prop: 'stroke', all: true }
+		],
+		iconColorDark: [
+			{ mode: 'dark', selector: '.preview-icon-color', prop: 'stroke' },
+			{ mode: 'dark', selector: '.preview-result-arrow', prop: 'stroke', all: true }
+		],
+
 		// --- Spinner ---
 		spinnerColor:     [{ mode: 'light', selector: '.preview-spinner', prop: 'color' }],
 		spinnerColorDark: [{ mode: 'dark', selector: '.preview-spinner', prop: 'color' }]
@@ -202,6 +236,10 @@ window.SearchManagerPreview = (function() {
 		return /^[0-9a-fA-F]{6}$/.test(value);
 	}
 
+	function isCssFunction(value) {
+		return typeof value === 'string' && /^(var|light-dark|calc|env|clamp|min|max|rgb|hsl)\s*\(/.test(value.trim());
+	}
+
 	/**
 	 * Apply a value to all preview elements for a given config entry.
 	 */
@@ -209,12 +247,16 @@ window.SearchManagerPreview = (function() {
 		rules.forEach(function(rule) {
 			var finalValue = value;
 
-			if (isHexColor(value)) {
-				finalValue = '#' + value;
-			}
+			if (isCssFunction(value)) {
+				// CSS functions pass through untouched
+			} else {
+				if (isHexColor(value)) {
+					finalValue = '#' + value;
+				}
 
-			if (rule.unit) {
-				finalValue = value + rule.unit;
+				if (rule.unit) {
+					finalValue = value + rule.unit;
+				}
 			}
 
 			if (rule.cssVar) {
