@@ -25,7 +25,7 @@ ddev composer require lindemannrock/craft-search-manager && ddev craft plugin/in
 
 3. **Optional** — Install [Logging Library](https://github.com/LindemannRock/craft-logging-library) for log viewing:
 
-```bash title="Composer"
+```bash title="PHP"
 php craft plugin/install logging-library
 ```
 
@@ -64,12 +64,4 @@ This gives you full control over backends, indices, widgets, and all plugin sett
 
 ## Quick Start
 
-Once installed, the fastest way to get searching:
-
-1. **Pick a backend** — MySQL or File require zero setup. Go to Search Manager in the CP, or define one in `config/search-manager.php`. See [Backends](../backends/backends.md).
-
-2. **Create an index** — Define what content to index (entries, assets, categories, doc pages, etc.). See [Indices](../feature-tour/indices.md).
-
-3. **Rebuild** — Run `php craft search-manager/index/rebuild` (or use the CP button).
-
-4. **Search** — Use `craft.searchManager.search()` in your templates. See [Basic Search](../template-guides/basic-search.md).
+See [Quickstart](quickstart.md) for the fastest path from install to first result.
