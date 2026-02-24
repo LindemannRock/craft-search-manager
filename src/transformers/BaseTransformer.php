@@ -38,7 +38,6 @@ abstract class BaseTransformer extends Component implements TransformerInterface
      * Set which heading levels to extract
      *
      * @param array<int>|null $levels
-     * @since 5.0.0
      */
     public function setHeadingLevels(?array $levels): void
     {
@@ -85,8 +84,6 @@ abstract class BaseTransformer extends Component implements TransformerInterface
 
     /**
      * Check if this transformer supports the given element
-     *
-     * @since 5.0.0
      */
     public function supports(ElementInterface $element): bool
     {
@@ -199,7 +196,6 @@ abstract class BaseTransformer extends Component implements TransformerInterface
      *
      * @param array $data Transformer output
      * @return array Data with _contentClean added if applicable
-     * @since 5.0.0
      */
     public function finalizeContentClean(array $data): array
     {
@@ -417,8 +413,5 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     // ABSTRACT METHODS (must be implemented by subclasses)
     // =========================================================================
 
-    /**
-     * @since 5.0.0
-     */
     abstract public function transform(ElementInterface $element): array;
 }

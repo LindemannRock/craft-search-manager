@@ -50,7 +50,6 @@ class IndexingService extends Component
      * @param ElementInterface $element
      * @param bool|null $queue
      * @return bool
-     * @since 5.0.0
      */
     public function indexElement(ElementInterface $element, ?bool $queue = null): bool
     {
@@ -84,7 +83,6 @@ class IndexingService extends Component
      *
      * @param ElementInterface $element
      * @return bool
-     * @since 5.0.0
      */
     public function indexElementNow(ElementInterface $element): bool
     {
@@ -243,7 +241,6 @@ class IndexingService extends Component
      *
      * @param ElementInterface $element
      * @return bool
-     * @since 5.0.0
      */
     public function removeElement(ElementInterface $element): bool
     {
@@ -318,7 +315,6 @@ class IndexingService extends Component
      *
      * @param ElementInterface $element
      * @return bool
-     * @since 5.0.0
      */
     public function shouldIndexElementForSite(ElementInterface $element): bool
     {
@@ -369,7 +365,6 @@ class IndexingService extends Component
      * @param ElementInterface[] $elements
      * @param string $indexHandle
      * @return bool
-     * @since 5.0.0
      */
     public function batchIndex(array $elements, string $indexHandle): bool
     {
@@ -441,7 +436,6 @@ class IndexingService extends Component
      *
      * @param string $indexHandle
      * @return bool
-     * @since 5.0.0
      */
     public function rebuildIndex(string $indexHandle): bool
     {
@@ -458,7 +452,6 @@ class IndexingService extends Component
      * Rebuild all indices
      *
      * @return bool
-     * @since 5.0.0
      */
     public function rebuildAll(): bool
     {

@@ -31,7 +31,6 @@ class DocsManagerTransformer extends BaseTransformer
      *
      * @param ElementInterface|SourceDoc $element
      * @return array
-     * @since 5.39.0
      */
     public function transform(ElementInterface $element): array
     {

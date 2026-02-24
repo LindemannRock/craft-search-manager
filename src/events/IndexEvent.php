@@ -27,7 +27,6 @@ class IndexEvent extends Event
      * The transformed data (available in AFTER event)
      *
      * @var array
-     * @since 5.0.0
      */
     public $data = [];
 

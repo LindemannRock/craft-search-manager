@@ -50,7 +50,6 @@ class ApiController extends Controller
      * - only=results: [{text: "Product Name", type: "product", id: 123}, ...]
      *
      * @return Response
-     * @since 5.0.0
      */
     public function actionAutocomplete(): Response
     {
@@ -244,7 +243,6 @@ class ApiController extends Controller
      *   total, page, hitsPerPage, totalPages, query}
      *
      * @return Response
-     * @since 5.0.0
      */
     public function actionSearch(): Response
     {

@@ -77,7 +77,6 @@ class SearchManager extends Plugin
 
     /**
      * @var SearchManager|null Singleton plugin instance
-     * @since 5.0.0
      */
     public static ?SearchManager $plugin = null;
 
@@ -87,19 +86,16 @@ class SearchManager extends Plugin
 
     /**
      * @var string Schema version for database migrations
-     * @since 5.0.0
      */
     public string $schemaVersion = '1.0.0';
 
     /**
      * @var bool Whether the plugin exposes a control panel settings page
-     * @since 5.0.0
      */
     public bool $hasCpSettings = true;
 
     /**
      * @var bool Whether the plugin registers a control panel section
-     * @since 5.0.0
      */
     public bool $hasCpSection = true;
 
@@ -601,7 +597,6 @@ class SearchManager extends Plugin
      * Check if status sync job is running/scheduled
      *
      * @return bool
-     * @since 5.0.0
      */
     public function isStatusSyncRunning(): bool
     {
@@ -884,8 +879,6 @@ class SearchManager extends Plugin
     /**
      * Prevent Craft from overwriting settings with stale project config / plugins table data.
      * Settings are managed via SettingsPersistenceTrait (custom DB table), not project config.
-     *
-     * @since 5.0.0
      */
     public function setSettings(array|Model $settings): void
     {

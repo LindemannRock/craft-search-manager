@@ -35,7 +35,6 @@ class AnalyticsBreakdownService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getDeviceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -61,7 +60,6 @@ class AnalyticsBreakdownService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getBrowserBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -88,7 +86,6 @@ class AnalyticsBreakdownService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getOsBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -114,7 +111,6 @@ class AnalyticsBreakdownService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getBotStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -169,7 +165,6 @@ class AnalyticsBreakdownService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getSourceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -220,7 +215,6 @@ class AnalyticsBreakdownService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getPeakUsageHours(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -268,7 +262,6 @@ class AnalyticsBreakdownService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.0.0
      */
     public function getCountryBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -311,7 +304,6 @@ class AnalyticsBreakdownService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.0.0
      */
     public function getCityBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -352,7 +344,6 @@ class AnalyticsBreakdownService
      *
      * @param string $ip
      * @return array|null
-     * @since 5.0.0
      */
     public function getLocationFromIp(string $ip): ?array
     {

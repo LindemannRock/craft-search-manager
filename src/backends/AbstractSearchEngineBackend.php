@@ -62,7 +62,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      *
      * @param string $indexHandle Raw index handle (e.g., 'all-sites')
      * @return StorageInterface
-     * @since 5.0.0
      */
     public function getStorage(string $indexHandle): StorageInterface
     {

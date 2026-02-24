@@ -410,7 +410,6 @@ class AlgoliaBackend extends BaseBackend
      * @param string $query Partial search query
      * @param array $options Options like limit, siteId
      * @return array Array of suggestion strings (titles)
-     * @since 5.0.0
      */
     public function autocomplete(string $indexName, string $query, array $options = []): array
     {
@@ -459,8 +458,6 @@ class AlgoliaBackend extends BaseBackend
 
     /**
      * Check if this backend supports autocomplete
-     *
-     * @since 5.0.0
      */
     public function supportsAutocomplete(): bool
     {

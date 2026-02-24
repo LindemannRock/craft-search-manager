@@ -44,7 +44,6 @@ class AutocompleteService extends Component
      * @param string $indexHandle Index to search
      * @param array $options Suggestion options
      * @return array Array of suggestion strings
-     * @since 5.0.0
      */
     public function suggest(string $query, string $indexHandle, array $options = []): array
     {
@@ -343,7 +342,6 @@ class AutocompleteService extends Component
      * @param string $indexHandle Index to search
      * @param array $options Suggestion options
      * @return array Array of suggestion objects [{text, type, id}, ...]
-     * @since 5.0.0
      */
     public function suggestElements(string $query, string $indexHandle, array $options = []): array
     {
@@ -738,8 +736,6 @@ class AutocompleteService extends Component
 
     /**
      * Clear autocomplete cache for an index
-     *
-     * @since 5.0.0
      */
     public function clearCache(?string $indexHandle = null): void
     {

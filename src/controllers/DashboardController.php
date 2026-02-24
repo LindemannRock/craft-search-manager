@@ -26,9 +26,6 @@ class DashboardController extends Controller
         $this->setLoggingHandle('search-manager');
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionIndex(): Response
     {
         $user = Craft::$app->getUser();

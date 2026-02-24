@@ -28,43 +28,33 @@ class ConfiguredBackend extends Model
     // PROPERTIES
     // =========================================================================
 
-    /** @since 5.28.0 */
     public ?int $id = null;
 
-    /** @since 5.28.0 */
     public string $name = '';
 
-    /** @since 5.28.0 */
     public string $handle = '';
 
     /**
      * @var string Backend type (algolia, meilisearch, typesense, mysql, pgsql, redis, file)
-     * @since 5.28.0
      */
     public string $backendType = '';
 
     /**
      * @var array Backend-specific settings (credentials, hosts, etc.)
-     * @since 5.28.0
      */
     public array $settings = [];
 
-    /** @since 5.28.0 */
     public bool $enabled = true;
 
-    /** @since 5.28.0 */
     public int $sortOrder = 0;
 
-    /** @since 5.28.0 */
     public ?\DateTime $dateCreated = null;
 
-    /** @since 5.28.0 */
     public ?\DateTime $dateUpdated = null;
 
     /**
      * Available backend types and their labels
      *
-     * @since 5.28.0
      */
     public const BACKEND_TYPES = [
         'algolia' => 'Algolia',
@@ -80,7 +70,6 @@ class ConfiguredBackend extends Model
      * Settings schema for each backend type
      * Includes instructions, placeholders, and env var suggestions
      *
-     * @since 5.28.0
      */
     public const BACKEND_SETTINGS_SCHEMA = [
         'algolia' => [
@@ -207,7 +196,6 @@ class ConfiguredBackend extends Model
     /**
      * Backend descriptions shown in the edit form
      *
-     * @since 5.28.0
      */
     public const BACKEND_DESCRIPTIONS = [
         'algolia' => [
@@ -284,7 +272,6 @@ class ConfiguredBackend extends Model
      * Validate storagePath setting against directory traversal and allowed locations
      *
      * @param string $attribute
-     * @since 5.28.0
      */
     public function validateStoragePath(string $attribute): void
     {
@@ -338,7 +325,6 @@ class ConfiguredBackend extends Model
      * Validate database backend is compatible with Craft's database driver
      *
      * @param string $attribute
-     * @since 5.28.0
      */
     public function validateDatabaseBackend(string $attribute): void
     {
@@ -357,7 +343,6 @@ class ConfiguredBackend extends Model
      * Validate that the default backend cannot be disabled
      *
      * @param string $attribute
-     * @since 5.28.0
      */
     public function validateNotDisablingDefault(string $attribute): void
     {
@@ -379,7 +364,6 @@ class ConfiguredBackend extends Model
      * Validate handle is unique
      *
      * @param string $attribute
-     * @since 5.28.0
      */
     public function validateUniqueHandle(string $attribute): void
     {
@@ -405,7 +389,6 @@ class ConfiguredBackend extends Model
      *
      * @param int $id
      * @return self|null
-     * @since 5.28.0
      */
     public static function findById(int $id): ?self
     {
@@ -426,7 +409,6 @@ class ConfiguredBackend extends Model
      *
      * @param string $handle
      * @return self|null
-     * @since 5.28.0
      */
     public static function findByHandle(string $handle): ?self
     {
@@ -466,7 +448,6 @@ class ConfiguredBackend extends Model
      * Get all configured backends
      *
      * @return self[]
-     * @since 5.28.0
      */
     public static function findAll(): array
     {
@@ -504,7 +485,6 @@ class ConfiguredBackend extends Model
      * Get all backends defined in config file
      *
      * @return self[]
-     * @since 5.28.0
      */
     public static function findAllFromConfig(): array
     {
@@ -538,7 +518,6 @@ class ConfiguredBackend extends Model
      * Get all enabled configured backends
      *
      * @return self[]
-     * @since 5.28.0
      */
     public static function findAllEnabled(): array
     {
@@ -589,7 +568,6 @@ class ConfiguredBackend extends Model
      * Save backend to database
      *
      * @return bool
-     * @since 5.28.0
      */
     public function save(): bool
     {
@@ -650,7 +628,6 @@ class ConfiguredBackend extends Model
      * Delete backend from database
      *
      * @return bool
-     * @since 5.28.0
      */
     public function delete(): bool
     {
@@ -743,7 +720,6 @@ class ConfiguredBackend extends Model
      * Get the display label for this backend's type
      *
      * @return string
-     * @since 5.28.0
      */
     public function getTypeLabel(): string
     {
@@ -754,7 +730,6 @@ class ConfiguredBackend extends Model
      * Get the settings schema for this backend type
      *
      * @return array
-     * @since 5.28.0
      */
     public function getSettingsSchema(): array
     {
@@ -767,7 +742,6 @@ class ConfiguredBackend extends Model
      * @param string $key
      * @param mixed $default
      * @return mixed
-     * @since 5.28.0
      */
     public function getSetting(string $key, mixed $default = null): mixed
     {
@@ -778,7 +752,6 @@ class ConfiguredBackend extends Model
      * Check if this backend is properly configured
      *
      * @return bool
-     * @since 5.28.0
      */
     public function isConfigured(): bool
     {
@@ -798,7 +771,6 @@ class ConfiguredBackend extends Model
      *
      * @param bool $includeDefault
      * @return array
-     * @since 5.28.0
      */
     public static function getSelectOptions(bool $includeDefault = true): array
     {
@@ -833,7 +805,6 @@ class ConfiguredBackend extends Model
      * Get raw config display for showing in tooltip (config backends only)
      *
      * @return string
-     * @since 5.28.0
      */
     public function getRawConfigDisplay(): string
     {

@@ -31,9 +31,6 @@ class AutoTransformer extends BaseTransformer
         return ElementInterface::class;
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function supports(ElementInterface $element): bool
     {
         // Auto transformer supports everything
@@ -49,7 +46,6 @@ class AutoTransformer extends BaseTransformer
      *
      * @param ElementInterface $element
      * @return array
-     * @since 5.0.0
      */
     public function transform(ElementInterface $element): array
     {

@@ -31,8 +31,6 @@ class QueryRulesController extends Controller
 
     /**
      * List all query rules
-     *
-     * @since 5.10.0
      */
     public function actionIndex(): Response
     {
@@ -55,8 +53,6 @@ class QueryRulesController extends Controller
 
     /**
      * Edit or create a query rule
-     *
-     * @since 5.10.0
      */
     public function actionEdit(?int $ruleId = null, ?QueryRule $rule = null): Response
     {
@@ -153,8 +149,6 @@ class QueryRulesController extends Controller
 
     /**
      * Save a query rule
-     *
-     * @since 5.10.0
      */
     public function actionSave(): ?Response
     {
@@ -289,8 +283,6 @@ class QueryRulesController extends Controller
 
     /**
      * Delete a query rule
-     *
-     * @since 5.10.0
      */
     public function actionDelete(): Response
     {
@@ -333,8 +325,6 @@ class QueryRulesController extends Controller
 
     /**
      * Bulk enable query rules
-     *
-     * @since 5.10.0
      */
     public function actionBulkEnable(): Response
     {
@@ -368,8 +358,6 @@ class QueryRulesController extends Controller
 
     /**
      * Bulk disable query rules
-     *
-     * @since 5.10.0
      */
     public function actionBulkDisable(): Response
     {
@@ -403,8 +391,6 @@ class QueryRulesController extends Controller
 
     /**
      * Bulk delete query rules
-     *
-     * @since 5.10.0
      */
     public function actionBulkDelete(): Response
     {

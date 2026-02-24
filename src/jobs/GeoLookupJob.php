@@ -21,13 +21,11 @@ class GeoLookupJob extends BaseJob
 
     /**
      * @var int The analytics record ID to update
-     * @since 5.0.0
      */
     public int $analyticsId;
 
     /**
      * @var string The IP address to look up (already anonymized if applicable)
-     * @since 5.0.0
      */
     public string $ip;
 

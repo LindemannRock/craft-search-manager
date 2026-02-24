@@ -31,7 +31,6 @@ class AnalyticsRulesService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.10.0
      */
     public function getTopTriggeredRules(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -73,7 +72,6 @@ class AnalyticsRulesService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.10.0
      */
     public function getRulesByActionType(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -104,7 +102,6 @@ class AnalyticsRulesService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.10.0
      */
     public function getQueriesTriggeringRules(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
@@ -142,7 +139,6 @@ class AnalyticsRulesService
      * @param int $ruleId The query rule ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
-     * @since 5.10.0
      */
     public function getRuleAnalytics(int $ruleId, string $dateRange = 'last7days'): array
     {
@@ -208,7 +204,6 @@ class AnalyticsRulesService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.10.0
      */
     public function getTopPromotions(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -252,7 +247,6 @@ class AnalyticsRulesService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.10.0
      */
     public function getPromotionsByPosition(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -283,7 +277,6 @@ class AnalyticsRulesService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.10.0
      */
     public function getQueriesTriggeringPromotions(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 15): array
     {
@@ -321,7 +314,6 @@ class AnalyticsRulesService
      * @param int $promotionId The promotion ID
      * @param string $dateRange Date range filter
      * @return array Analytics data
-     * @since 5.10.0
      */
     public function getPromotionAnalytics(int $promotionId, string $dateRange = 'last7days'): array
     {

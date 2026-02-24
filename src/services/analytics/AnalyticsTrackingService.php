@@ -28,7 +28,6 @@ class AnalyticsTrackingService
     use LoggingTrait;
 
     /**
-     * @since 5.0.0
      */
     public function __construct()
     {
@@ -56,7 +55,6 @@ class AnalyticsTrackingService
      *   - matchedRules: Array of matched QueryRule objects (for detailed tracking)
      *   - matchedPromotions: Array of matched Promotion objects (for detailed tracking)
      * @param string|null $sessionId Optional session ID to group multi-index rows
-     * @since 5.0.0
      */
     public function trackSearch(
         string $indexHandle,
@@ -276,7 +274,6 @@ class AnalyticsTrackingService
      *
      * @param string $query The search query
      * @return string|null The classified intent
-     * @since 5.0.0
      */
     // TODO: Consider expanding intent categories later:
     // - 'local' for "near me", "[city]" queries

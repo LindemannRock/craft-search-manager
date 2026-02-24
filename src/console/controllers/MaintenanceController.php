@@ -21,12 +21,10 @@ class MaintenanceController extends Controller
 
     /**
      * @var string Backend storage type to clear (mysql, redis, file)
-     * @since 5.0.0
      */
     public string $type = '';
     /**
      * @var bool Show verbose backend details (like indices list/count)
-     * @since 5.0.0
      */
     public bool $verbose = false;
 
@@ -67,8 +65,6 @@ class MaintenanceController extends Controller
      * - Troubleshooting storage issues
      *
      * Example: php craft search-manager/maintenance/clear-storage --type=database
-     *
-     * @since 5.0.0
      */
     public function actionClearStorage(): int
     {
@@ -128,8 +124,6 @@ class MaintenanceController extends Controller
 
     /**
      * List available storage types and their current state
-     *
-     * @since 5.0.0
      */
     public function actionStatus(): int
     {

@@ -27,7 +27,6 @@ trait AnalyticsQueryTrait
      * @param Query $query
      * @param string $dateRange
      * @param string|null $column
-     * @since 5.0.0
      */
     public function applyDateRangeFilter(Query $query, string $dateRange, ?string $column = null): void
     {

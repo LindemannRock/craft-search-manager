@@ -21,7 +21,6 @@ class CacheWarmJob extends BaseJob
 
     /**
      * @var string The index handle to warm cache for
-     * @since 5.0.0
      */
     public string $indexHandle = '';
 

@@ -35,7 +35,6 @@ class PromotionService extends Component
     /**
      * Get promotion by ID
      *
-     * @since 5.10.0
      */
     public function getById(int $id): ?Promotion
     {
@@ -45,7 +44,6 @@ class PromotionService extends Component
     /**
      * Get all promotions
      *
-     * @since 5.10.0
      */
     public function getAll(?string $indexHandle = null): array
     {
@@ -55,7 +53,6 @@ class PromotionService extends Component
     /**
      * Get promotion count
      *
-     * @since 5.10.0
      */
     public function getPromotionCount(?bool $enabledOnly = null): int
     {
@@ -69,7 +66,6 @@ class PromotionService extends Component
     /**
      * Get promotions for an index
      *
-     * @since 5.10.0
      */
     public function getByIndex(string $indexHandle, ?int $siteId = null): array
     {
@@ -79,7 +75,6 @@ class PromotionService extends Component
     /**
      * Save a promotion
      *
-     * @since 5.10.0
      */
     public function save(Promotion $promotion): bool
     {
@@ -89,7 +84,6 @@ class PromotionService extends Component
     /**
      * Delete a promotion
      *
-     * @since 5.10.0
      */
     public function delete(Promotion $promotion): bool
     {
@@ -99,7 +93,6 @@ class PromotionService extends Component
     /**
      * Delete promotion by ID
      *
-     * @since 5.10.0
      */
     public function deleteById(int $id): bool
     {
@@ -119,7 +112,6 @@ class PromotionService extends Component
      * Returns full Promotion objects sorted by position
      *
      * @return Promotion[]
-     * @since 5.10.0
      */
     public function getPromotedElements(string $query, string $indexHandle, ?int $siteId = null): array
     {
@@ -136,7 +128,6 @@ class PromotionService extends Component
      * @param string $indexHandle Index handle
      * @param int|null $siteId Site ID
      * @return array Modified results with promotions applied
-     * @since 5.10.0
      */
     public function applyPromotions(array $results, string $query, string $indexHandle, ?int $siteId = null): array
     {
@@ -220,7 +211,6 @@ class PromotionService extends Component
     /**
      * Check if an element is already promoted for a query pattern
      *
-     * @since 5.10.0
      */
     public function isAlreadyPromoted(int $elementId, string $query, string $indexHandle, ?int $siteId = null, ?int $excludeId = null): bool
     {
@@ -243,7 +233,6 @@ class PromotionService extends Component
     /**
      * Get available indices for dropdown
      *
-     * @since 5.10.0
      */
     public function getIndexOptions(): array
     {

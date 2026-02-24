@@ -43,7 +43,6 @@ class CraftSearchAdapter extends \craft\services\Search
      *
      * @param ElementQuery $query
      * @return array Element IDs with scores
-     * @since 5.0.0
      */
     public function searchElements(ElementQuery $query): array
     {
@@ -142,7 +141,6 @@ class CraftSearchAdapter extends \craft\services\Search
      * @param ElementInterface $element
      * @param array|null $fieldHandles Specific field handles to index (null = all fields)
      * @return bool
-     * @since 5.0.0
      */
     public function indexElementAttributes(ElementInterface $element, ?array $fieldHandles = null): bool
     {
@@ -184,7 +182,6 @@ class CraftSearchAdapter extends \craft\services\Search
      * @param string $siteId
      * @param string|array $value
      * @return void
-     * @since 5.0.0
      */
     public function indexElementFields(int $elementId, string $fieldHandle, string $siteId, string|array $value): void
     {

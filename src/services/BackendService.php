@@ -72,7 +72,6 @@ class BackendService extends Component
      * Get the active backend
      *
      * @return BackendInterface|null
-     * @since 5.0.0
      */
     public function getActiveBackend(): ?BackendInterface
     {
@@ -151,7 +150,6 @@ class BackendService extends Component
      *
      * @param string $name
      * @return BackendInterface|null
-     * @since 5.0.0
      */
     public function getBackend(string $name): ?BackendInterface
     {
@@ -179,7 +177,6 @@ class BackendService extends Component
      * Get all available backends
      *
      * @return BackendInterface[]
-     * @since 5.0.0
      */
     public function getAllBackends(): array
     {
@@ -286,7 +283,6 @@ class BackendService extends Component
      * @param string $indexName
      * @param array $data
      * @return bool
-     * @since 5.0.0
      */
     public function index(string $indexName, array $data): bool
     {
@@ -305,7 +301,6 @@ class BackendService extends Component
      * @param string $indexName
      * @param array $items
      * @return bool
-     * @since 5.0.0
      */
     public function batchIndex(string $indexName, array $items): bool
     {
@@ -325,7 +320,6 @@ class BackendService extends Component
      * @param int $elementId
      * @param int|null $siteId
      * @return bool
-     * @since 5.0.0
      */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
@@ -345,7 +339,6 @@ class BackendService extends Component
      * @param int $elementId
      * @param int|null $siteId
      * @return bool
-     * @since 5.0.0
      */
     public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
     {
@@ -365,7 +358,6 @@ class BackendService extends Component
      * @param string $query
      * @param array $options
      * @return array
-     * @since 5.0.0
      */
     public function search(string $indexName, string $query, array $options = []): array
     {
@@ -774,7 +766,6 @@ class BackendService extends Component
      *
      * @param string $indexName
      * @return bool
-     * @since 5.0.0
      */
     public function clearIndex(string $indexName): bool
     {
@@ -794,7 +785,6 @@ class BackendService extends Component
      * @param string $query Search query
      * @param array $options Search options
      * @return array Merged search results with index metadata
-     * @since 5.0.0
      */
     public function searchMultiple(array $indexNames, string $query, array $options = []): array
     {
@@ -1189,7 +1179,6 @@ class BackendService extends Component
      *
      * @param string $indexName Index handle
      * @return void
-     * @since 5.0.0
      */
     public function clearSearchCache(string $indexName): void
     {
@@ -1240,7 +1229,6 @@ class BackendService extends Component
      * Clear all search cache
      *
      * @return void
-     * @since 5.0.0
      */
     public function clearAllSearchCache(): void
     {

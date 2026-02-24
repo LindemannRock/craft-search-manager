@@ -32,7 +32,6 @@ class AnalyticsQueryInsightsService
      * @param int $limit
      * @param string|null $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getMostCommonSearches(int|array|null $siteId, int $limit = 10, ?string $dateRange = null): array
     {
@@ -74,7 +73,6 @@ class AnalyticsQueryInsightsService
      * @param bool|null $hasResults
      * @param string|null $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getRecentSearches(int|array|null $siteId, int $limit = 5, ?bool $hasResults = null, ?string $dateRange = null): array
     {
@@ -128,7 +126,6 @@ class AnalyticsQueryInsightsService
      * @param bool|null $hasResults
      * @param string|null $dateRange
      * @return int
-     * @since 5.0.0
      */
     public function getAnalyticsCount(int|array|null $siteId = null, ?bool $hasResults = null, ?string $dateRange = null): int
     {
@@ -161,7 +158,6 @@ class AnalyticsQueryInsightsService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getQueryLengthDistribution(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -213,7 +209,6 @@ class AnalyticsQueryInsightsService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.0.0
      */
     public function getWordCloudData(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 50): array
     {
@@ -278,7 +273,6 @@ class AnalyticsQueryInsightsService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.0.0
      */
     public function getZeroResultClusters(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 20): array
     {
@@ -352,7 +346,6 @@ class AnalyticsQueryInsightsService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getIntentBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -396,7 +389,6 @@ class AnalyticsQueryInsightsService
      * @param string $dateRange Date range for current period
      * @param int $limit Number of queries to return
      * @return array Queries with trend data (up, down, new, same)
-     * @since 5.0.0
      */
     public function getTrendingQueries(int|array|null $siteId, string $dateRange = 'last7days', int $limit = 10): array
     {
@@ -524,7 +516,6 @@ class AnalyticsQueryInsightsService
      * @param int|array|null $siteId
      * @param int $days
      * @return int
-     * @since 5.0.0
      */
     public function getUniqueQueriesCount(int|array|null $siteId, int $days = 30): int
     {

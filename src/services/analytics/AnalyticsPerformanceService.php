@@ -32,7 +32,6 @@ class AnalyticsPerformanceService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getPerformanceData(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -74,7 +73,6 @@ class AnalyticsPerformanceService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getCacheStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -120,7 +118,6 @@ class AnalyticsPerformanceService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.0.0
      */
     public function getTopPerformingQueries(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -176,7 +173,6 @@ class AnalyticsPerformanceService
      * @param string $dateRange
      * @param int $limit
      * @return array
-     * @since 5.0.0
      */
     public function getWorstPerformingQueries(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -230,7 +226,6 @@ class AnalyticsPerformanceService
      * @param int|array|null $siteId
      * @param int $days
      * @return float
-     * @since 5.0.0
      */
     public function getAverageExecutionTime(int|array|null $siteId, int $days = 30): float
     {

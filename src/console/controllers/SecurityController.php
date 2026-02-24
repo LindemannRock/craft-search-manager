@@ -18,7 +18,6 @@ class SecurityController extends Controller
      * Generate a secure salt for IP hashing and optionally update .env file
      *
      * @return int
-     * @since 5.0.0
      */
     public function actionGenerateSalt(): int
     {

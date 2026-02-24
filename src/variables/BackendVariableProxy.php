@@ -23,9 +23,6 @@ class BackendVariableProxy
 
     private string $backendHandle;
 
-    /**
-     * @since 5.28.0
-     */
     public function __construct(BackendInterface $backend, string $backendHandle)
     {
         $this->backend = $backend;
@@ -34,8 +31,6 @@ class BackendVariableProxy
 
     /**
      * Get the backend handle this proxy is using
-     *
-     * @since 5.28.0
      */
     public function getBackendHandle(): string
     {
@@ -44,8 +39,6 @@ class BackendVariableProxy
 
     /**
      * Get the backend instance
-     *
-     * @since 5.28.0
      */
     public function getBackend(): BackendInterface
     {
@@ -55,7 +48,6 @@ class BackendVariableProxy
     /**
      * Perform a search using this backend
      *
-     * @since 5.28.0
      * @param string $indexName
      * @param string $query
      * @param array $options
@@ -69,7 +61,6 @@ class BackendVariableProxy
     /**
      * Browse an index (iterate through all objects)
      *
-     * @since 5.28.0
      * @param array $options Options array with 'index', 'query', and optional 'params'
      * @return iterable Iterator or array of all matching objects
      */
@@ -90,7 +81,6 @@ class BackendVariableProxy
     /**
      * Perform multiple queries at once
      *
-     * @since 5.28.0
      * @param array $queries Array of query objects
      * @return array Results from all queries
      */
@@ -102,7 +92,6 @@ class BackendVariableProxy
     /**
      * Parse filters array into backend-specific filter string
      *
-     * @since 5.28.0
      * @param array $filters Key/value pairs of filters
      * @return string Backend-compatible filter string
      */
@@ -114,7 +103,6 @@ class BackendVariableProxy
     /**
      * Check if this backend supports browse functionality
      *
-     * @since 5.28.0
      * @return bool
      */
     public function supportsBrowse(): bool
@@ -125,7 +113,6 @@ class BackendVariableProxy
     /**
      * Check if this backend supports native multiple queries
      *
-     * @since 5.28.0
      * @return bool
      */
     public function supportsMultipleQueries(): bool
@@ -136,7 +123,6 @@ class BackendVariableProxy
     /**
      * List all indices available in this backend
      *
-     * @since 5.28.0
      * @return array Array of index information
      */
     public function listIndices(): array
@@ -147,7 +133,6 @@ class BackendVariableProxy
     /**
      * Get backend name
      *
-     * @since 5.28.0
      * @return string
      */
     public function getName(): string
@@ -158,7 +143,6 @@ class BackendVariableProxy
     /**
      * Check if backend is available
      *
-     * @since 5.28.0
      * @return bool
      */
     public function isAvailable(): bool
@@ -169,7 +153,6 @@ class BackendVariableProxy
     /**
      * Get backend status
      *
-     * @since 5.28.0
      * @return array
      */
     public function getStatus(): array

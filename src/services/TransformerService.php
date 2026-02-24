@@ -85,7 +85,6 @@ class TransformerService extends Component
     /**
      * Register a transformer for an element type
      *
-     * @since 5.0.0
      */
     public function registerTransformer(string $elementType, string $transformerClass): void
     {
@@ -105,7 +104,6 @@ class TransformerService extends Component
      * 2. Registered transformer for element type
      * 3. AutoTransformer (fallback - uses Craft's searchable fields)
      *
-     * @since 5.0.0
      */
     public function getTransformer(ElementInterface $element, ?string $transformerClass = null): ?TransformerInterface
     {
@@ -174,7 +172,6 @@ class TransformerService extends Component
      * @param string|null $transformerClass Override transformer class (from index config)
      * @param array|null $headingLevels Heading levels to extract (from index config)
      * @return array|null Transformed data, or null if skipped/failed
-     * @since 5.0.0
      */
     public function transform(ElementInterface $element, string $indexName = '', ?string $transformerClass = null, ?array $headingLevels = null): ?array
     {

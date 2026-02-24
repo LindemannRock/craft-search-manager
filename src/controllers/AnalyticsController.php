@@ -60,7 +60,6 @@ class AnalyticsController extends Controller
     /**
      * Analytics index - Charts and analytics
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionIndex(): Response
@@ -98,7 +97,6 @@ class AnalyticsController extends Controller
     /**
      * Delete an analytic
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionDelete(): Response
@@ -118,7 +116,6 @@ class AnalyticsController extends Controller
     /**
      * Clear all analytics
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionClearAll(): Response
@@ -142,7 +139,6 @@ class AnalyticsController extends Controller
     /**
      * Export analytics data
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionExport(): Response
@@ -470,7 +466,6 @@ class AnalyticsController extends Controller
     /**
      * Get analytics data via AJAX
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionGetData(): Response
@@ -842,7 +837,6 @@ class AnalyticsController extends Controller
     /**
      * Get chart data (AJAX)
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionGetChartData(): Response
@@ -1107,7 +1101,6 @@ class AnalyticsController extends Controller
     /**
      * Export tab-specific data
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionExportTab(): Response
@@ -1265,7 +1258,6 @@ class AnalyticsController extends Controller
     /**
      * Export content gaps data (zero-hit queries)
      *
-     * @since 5.0.0
      * @return Response
      */
     public function actionExportContentGaps(): Response

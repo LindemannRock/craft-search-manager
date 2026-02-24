@@ -20,7 +20,6 @@ interface StorageInterface
     /**
      * Store a document in the index
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @param array $termFreqs Term frequencies [term => frequency]
@@ -33,7 +32,6 @@ interface StorageInterface
     /**
      * Get all terms for a document with their frequencies
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return array Term frequencies [term => frequency]
@@ -43,7 +41,6 @@ interface StorageInterface
     /**
      * Delete a document from the index
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return void
@@ -53,7 +50,6 @@ interface StorageInterface
     /**
      * Get document length
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return int Document length
@@ -63,7 +59,6 @@ interface StorageInterface
     /**
      * Get document lengths for multiple documents in batch
      *
-     * @since 5.0.0
      * @param array $docIds Array of [siteId => [...elementIds]]
      * @return array Lengths indexed by "siteId:elementId"
      */
@@ -72,7 +67,6 @@ interface StorageInterface
     /**
      * Get document language
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return string Language code (default: 'en')
@@ -86,7 +80,6 @@ interface StorageInterface
     /**
      * Store a term-document association
      *
-     * @since 5.0.0
      * @param string $term The term
      * @param int $siteId Site ID
      * @param int $elementId Element ID
@@ -99,7 +92,6 @@ interface StorageInterface
     /**
      * Get all documents for a term
      *
-     * @since 5.0.0
      * @param string $term The term
      * @param int $siteId Site ID
      * @return array Documents with frequencies ["siteId:elementId" => frequency]
@@ -109,7 +101,6 @@ interface StorageInterface
     /**
      * Remove a term-document association
      *
-     * @since 5.0.0
      * @param string $term The term
      * @param int $siteId Site ID
      * @param int $elementId Element ID
@@ -123,7 +114,6 @@ interface StorageInterface
      * Returns terms with their frequencies, sorted by frequency (most common first).
      * Used for autocomplete/type-ahead functionality.
      *
-     * @since 5.0.0
      * @param int|null $siteId Site ID (null for all sites)
      * @param string|null $language Language filter (e.g., 'en', 'ar')
      * @param int $limit Maximum terms to return
@@ -138,7 +128,6 @@ interface StorageInterface
     /**
      * Store element metadata for autocomplete suggestions
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @param string $title Full title for display
@@ -151,7 +140,6 @@ interface StorageInterface
     /**
      * Get element info for a list of element IDs
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param array $elementIds Array of element IDs
      * @return array Map of elementId => ['title' => ..., 'elementType' => ..., 'documentData' => ...]
@@ -165,7 +153,6 @@ interface StorageInterface
     /**
      * Store title terms for a document
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @param array $titleTerms Array of terms
@@ -176,7 +163,6 @@ interface StorageInterface
     /**
      * Get title terms for a document
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return array Array of terms
@@ -186,7 +172,6 @@ interface StorageInterface
     /**
      * Delete title terms for a document
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $elementId Element ID
      * @return void
@@ -200,7 +185,6 @@ interface StorageInterface
     /**
      * Store n-grams for a term
      *
-     * @since 5.0.0
      * @param string $term The term
      * @param array $ngrams Array of n-grams
      * @param int $siteId Site ID
@@ -211,7 +195,6 @@ interface StorageInterface
     /**
      * Check if a term already has n-grams stored
      *
-     * @since 5.0.0
      * @param string $term The term
      * @param int $siteId Site ID
      * @return bool
@@ -224,7 +207,6 @@ interface StorageInterface
      * Returns terms that have similar n-grams to the provided set,
      * sorted by similarity score (highest first).
      *
-     * @since 5.0.0
      * @param array $ngrams N-grams to match
      * @param int $siteId Site ID
      * @param float $threshold Minimum similarity threshold
@@ -239,7 +221,6 @@ interface StorageInterface
      * Returns all terms that start with the given prefix.
      * Used for wildcard searches like "test*" to match "test", "testing", "tested", etc.
      *
-     * @since 5.0.0
      * @param string $prefix Prefix to match
      * @param int $siteId Site ID
      * @return array Array of matching terms
@@ -253,7 +234,6 @@ interface StorageInterface
     /**
      * Get total document count
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @return int Total documents
      */
@@ -262,7 +242,6 @@ interface StorageInterface
     /**
      * Get total length (sum of all document lengths)
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @return int Total length
      */
@@ -271,7 +250,6 @@ interface StorageInterface
     /**
      * Get average document length
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @return float Average length
      */
@@ -280,7 +258,6 @@ interface StorageInterface
     /**
      * Update metadata after document operations
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @param int $docLength Document length (can be negative for deletion)
      * @param bool $isAddition True if adding, false if removing
@@ -295,7 +272,6 @@ interface StorageInterface
     /**
      * Clear all index data for a site
      *
-     * @since 5.0.0
      * @param int $siteId Site ID
      * @return void
      */
@@ -304,7 +280,6 @@ interface StorageInterface
     /**
      * Clear all index data
      *
-     * @since 5.0.0
      * @return void
      */
     public function clearAll(): void;

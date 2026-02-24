@@ -82,7 +82,6 @@ class BackendSettings extends Model
      *
      * @param string $attribute
      * @param array|null $params
-     * @since 5.0.0
      */
     public function validateBackendConfig($attribute, $params): void
     {
@@ -150,7 +149,6 @@ class BackendSettings extends Model
      *
      * @param string $field The config field name (e.g., 'host', 'apiKey')
      * @return bool
-     * @since 5.0.0
      */
     public function isOverriddenByConfig(string $field): bool
     {
@@ -174,7 +172,6 @@ class BackendSettings extends Model
      *
      * @param string $backend Backend name
      * @return self
-     * @since 5.0.0
      */
     public static function loadFromDatabase(string $backend): self
     {
@@ -220,7 +217,6 @@ class BackendSettings extends Model
      *
      * @param string $backend
      * @return self|null
-     * @since 5.0.0
      */
     public static function findByBackend(string $backend): ?self
     {
@@ -251,7 +247,6 @@ class BackendSettings extends Model
      * Get all backend settings
      *
      * @return self[]
-     * @since 5.0.0
      */
     public static function findAll(): array
     {
@@ -282,7 +277,6 @@ class BackendSettings extends Model
      * Save backend settings to database
      *
      * @return bool
-     * @since 5.0.0
      */
     public function save(): bool
     {
@@ -356,7 +350,6 @@ class BackendSettings extends Model
      * @param string $key
      * @param mixed $default
      * @return mixed
-     * @since 5.0.0
      */
     public function getConfigValue(string $key, mixed $default = null): mixed
     {
@@ -368,7 +361,6 @@ class BackendSettings extends Model
      *
      * @param string $key
      * @param mixed $value
-     * @since 5.0.0
      */
     public function setConfigValue(string $key, $value): void
     {

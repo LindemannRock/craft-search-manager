@@ -44,7 +44,6 @@ class Highlighter
     /**
      * Constructor
      *
-     * @since 5.0.0
      * @param array $config Configuration options
      */
     public function __construct(array $config = [])
@@ -62,7 +61,6 @@ class Highlighter
     /**
      * Highlight terms in text
      *
-     * @since 5.0.0
      * @param string $text Text to highlight
      * @param array $terms Search terms to highlight
      * @param bool $stripTags Strip HTML tags before highlighting
@@ -102,7 +100,6 @@ class Highlighter
     /**
      * Generate snippets with highlighted terms
      *
-     * @since 5.0.0
      * @param string $text Full text content
      * @param array $terms Search terms
      * @param bool $stripTags Strip HTML tags
@@ -225,7 +222,6 @@ class Highlighter
     /**
      * Extract search terms from a ParsedQuery
      *
-     * @since 5.0.0
      * @param ParsedQuery $parsed Parsed query object
      * @return array Array of terms to highlight
      */
@@ -259,7 +255,6 @@ class Highlighter
     /**
      * Get configuration
      *
-     * @since 5.0.0
      * @return array
      */
     public function getConfig(): array

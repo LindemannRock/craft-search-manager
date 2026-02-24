@@ -17,61 +17,43 @@ class WidgetStyle extends Model
 {
     use ConfigSourceTrait;
 
-    /** @since 5.39.0 */
     public const TYPE_MODAL = 'modal';
 
-    /** @since 5.39.0 */
     public const TYPE_PAGE = 'page';
 
-    /** @since 5.39.0 */
     public const TYPE_INLINE = 'inline';
 
-    /**
-     * @since 5.39.0
-     */
     public const WIDGET_TYPES = [
         self::TYPE_MODAL,
         self::TYPE_PAGE,
         self::TYPE_INLINE,
     ];
 
-    /**
-     * @since 5.39.0
-     */
     public const WIDGET_TYPE_LABELS = [
         self::TYPE_MODAL => 'Modal',
         self::TYPE_PAGE => 'Search Page',
         self::TYPE_INLINE => 'Inline Search',
     ];
 
-    /** @since 5.39.0 */
     public ?int $id = null;
 
-    /** @since 5.39.0 */
     public string $handle = '';
 
-    /** @since 5.39.0 */
     public string $name = '';
 
-    /** @since 5.39.0 */
     public string $type = 'modal';
 
-    /** @since 5.39.0 */
     public bool $enabled = true;
 
     /**
      * @var array|string|null Styles stored as JSON in database
-     * @since 5.39.0
      */
     public array|string|null $styles = null;
 
-    /** @since 5.39.0 */
     public ?\DateTime $dateCreated = null;
 
-    /** @since 5.39.0 */
     public ?\DateTime $dateUpdated = null;
 
-    /** @since 5.39.0 */
     public ?string $uid = null;
 
     /** @inheritdoc */
@@ -90,8 +72,6 @@ class WidgetStyle extends Model
 
     /**
      * Validate style dimension values
-     *
-     * @since 5.39.0
      */
     public function validateStyles(): void
     {
@@ -154,7 +134,6 @@ class WidgetStyle extends Model
         }
     }
 
-    /** @since 5.39.0 */
     public function getStyles(): array
     {
         if (is_string($this->styles)) {
@@ -178,8 +157,6 @@ class WidgetStyle extends Model
 
     /**
      * Get raw config display for tooltip on index page
-     *
-     * @since 5.39.0
      */
     public function getRawConfigDisplay(): string
     {
@@ -202,7 +179,6 @@ class WidgetStyle extends Model
         return $this->formatConfigDisplay($config, $this->handle, []);
     }
 
-    /** @since 5.39.0 */
     public function prepareForDb(): array
     {
         return [

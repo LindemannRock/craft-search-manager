@@ -24,21 +24,18 @@ class ParsedQuery
     /**
      * @var array Regular search terms (after removing operators)
      * Example: ['test', 'entry']
-     * @since 5.0.0
      */
     public array $terms = [];
 
     /**
      * @var array Exact phrase searches (content within quotes)
      * Example: ['exact phrase', 'another phrase']
-     * @since 5.0.0
      */
     public array $phrases = [];
 
     /**
      * @var array Terms to exclude from results (NOT operator)
      * Example: ['spam', 'unwanted']
-     * @since 5.0.0
      */
     public array $notTerms = [];
 
@@ -46,14 +43,12 @@ class ParsedQuery
      * @var array Field-specific search filters
      * Format: ['field' => ['term1', 'term2']]
      * Example: ['title' => ['blog'], 'content' => ['test']]
-     * @since 5.0.0
      */
     public array $fieldFilters = [];
 
     /**
      * @var array Wildcard terms (prefix matching)
      * Example: ['test', 'java'] for queries "test*" and "java*"
-     * @since 5.0.0
      */
     public array $wildcards = [];
 
@@ -61,27 +56,23 @@ class ParsedQuery
      * @var array Per-term boost factors
      * Format: ['term' => boostFactor]
      * Example: ['test' => 2.0, 'entry' => 1.5]
-     * @since 5.0.0
      */
     public array $boosts = [];
 
     /**
      * @var string Boolean operator for combining terms
      * Values: 'AND' (default) or 'OR'
-     * @since 5.0.0
      */
     public string $operator = 'AND';
 
     /**
      * @var string Original raw query string (before parsing)
-     * @since 5.0.0
      */
     public string $originalQuery = '';
 
     /**
      * Check if query is empty (no searchable content)
      *
-     * @since 5.0.0
      * @return bool
      */
     public function isEmpty(): bool
@@ -95,7 +86,6 @@ class ParsedQuery
     /**
      * Check if query has advanced operators
      *
-     * @since 5.0.0
      * @return bool True if query uses any advanced features
      */
     public function hasAdvancedOperators(): bool
@@ -110,7 +100,6 @@ class ParsedQuery
     /**
      * Get all searchable terms (terms + phrases as terms)
      *
-     * @since 5.0.0
      * @return array Combined array of all searchable content
      */
     public function getAllSearchableTerms(): array
@@ -137,7 +126,6 @@ class ParsedQuery
     /**
      * Get boost factor for a term
      *
-     * @since 5.0.0
      * @param string $term The term to check
      * @return float Boost factor (1.0 if no boost specified)
      */
@@ -149,7 +137,6 @@ class ParsedQuery
     /**
      * Convert to array for debugging/logging
      *
-     * @since 5.0.0
      * @return array
      */
     public function toArray(): array

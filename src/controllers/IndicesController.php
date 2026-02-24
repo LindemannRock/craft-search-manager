@@ -30,8 +30,6 @@ class IndicesController extends Controller
 
     /**
      * List all indices
-     *
-     * @since 5.0.0
      */
     public function actionIndex(): Response
     {
@@ -54,8 +52,6 @@ class IndicesController extends Controller
 
     /**
      * View an index (read-only, for config indices)
-     *
-     * @since 5.0.0
      */
     public function actionView(?string $handle = null): Response
     {
@@ -83,8 +79,6 @@ class IndicesController extends Controller
 
     /**
      * Edit or create an index
-     *
-     * @since 5.0.0
      */
     public function actionEdit(?int $indexId = null, ?SearchIndex $index = null): Response
     {
@@ -121,8 +115,6 @@ class IndicesController extends Controller
 
     /**
      * Save an index
-     *
-     * @since 5.0.0
      */
     public function actionSave(): ?Response
     {
@@ -200,8 +192,6 @@ class IndicesController extends Controller
 
     /**
      * Delete an index
-     *
-     * @since 5.0.0
      */
     public function actionDelete(): Response
     {
@@ -238,8 +228,6 @@ class IndicesController extends Controller
 
     /**
      * Clear an index (remove all indexed data but keep index definition)
-     *
-     * @since 5.0.0
      */
     public function actionClear(): Response
     {
@@ -273,8 +261,6 @@ class IndicesController extends Controller
 
     /**
      * Clear cache for a specific index (search cache + autocomplete cache)
-     *
-     * @since 5.0.0
      */
     public function actionClearCache(): Response
     {
@@ -436,8 +422,6 @@ class IndicesController extends Controller
 
     /**
      * Rebuild an index
-     *
-     * @since 5.0.0
      */
     public function actionRebuild(): Response
     {
@@ -473,8 +457,6 @@ class IndicesController extends Controller
 
     /**
      * Bulk enable indices
-     *
-     * @since 5.0.0
      */
     public function actionBulkEnable(): Response
     {
@@ -504,8 +486,6 @@ class IndicesController extends Controller
 
     /**
      * Bulk disable indices
-     *
-     * @since 5.0.0
      */
     public function actionBulkDisable(): Response
     {
@@ -535,8 +515,6 @@ class IndicesController extends Controller
 
     /**
      * Bulk delete indices
-     *
-     * @since 5.0.0
      */
     public function actionBulkDelete(): Response
     {

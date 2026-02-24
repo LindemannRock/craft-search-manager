@@ -59,8 +59,6 @@ class UtilitiesController extends Controller
 
     /**
      * Rebuild all indices
-     *
-     * @since 5.0.0
      */
     public function actionRebuildAllIndices(): Response
     {
@@ -101,8 +99,6 @@ class UtilitiesController extends Controller
 
     /**
      * Clear device detection cache
-     *
-     * @since 5.0.0
      */
     public function actionClearDeviceCache(): Response
     {
@@ -168,8 +164,6 @@ class UtilitiesController extends Controller
 
     /**
      * Clear search results cache
-     *
-     * @since 5.0.0
      */
     public function actionClearSearchCache(): Response
     {
@@ -215,8 +209,6 @@ class UtilitiesController extends Controller
 
     /**
      * Clear autocomplete cache
-     *
-     * @since 5.0.0
      */
     public function actionClearAutocompleteCache(): Response
     {
@@ -268,8 +260,6 @@ class UtilitiesController extends Controller
 
     /**
      * Clear all caches (device + search + autocomplete)
-     *
-     * @since 5.0.0
      */
     public function actionClearAllCaches(): Response
     {
@@ -367,8 +357,6 @@ class UtilitiesController extends Controller
 
     /**
      * Clear all analytics data
-     *
-     * @since 5.0.0
      */
     public function actionClearAllAnalytics(): Response
     {
@@ -408,8 +396,6 @@ class UtilitiesController extends Controller
      * Clear ALL data from a specific backend storage type (database, redis, or file)
      *
      * This is a maintenance function to clear orphaned data when backends change
-     *
-     * @since 5.0.0
      */
     public function actionClearStorageByType(): Response
     {
@@ -476,8 +462,6 @@ class UtilitiesController extends Controller
 
     /**
      * Get storage statistics for all backend types
-     *
-     * @since 5.0.0
      */
     public function actionGetStorageStats(): Response
     {

@@ -38,7 +38,6 @@ class EnrichmentService extends Component
      *   - includeDebugMeta: bool (default: false)
      *   - siteId: int|null (default: null)
      * @return array Enriched results array
-     * @since 5.39.0
      */
     public function enrichResults(array $rawHits, string $query, array $indexHandles, array $options = []): array
     {

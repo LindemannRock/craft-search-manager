@@ -59,7 +59,6 @@ class AnalyticsService extends Component
     // =========================================================================
 
     /**
-     * @since 5.0.0
      */
     public function trackSearch(
         string $indexHandle,
@@ -75,7 +74,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function classifyIntent(string $query): ?string
     {
@@ -87,7 +85,6 @@ class AnalyticsService extends Component
     // =========================================================================
 
     /**
-     * @since 5.0.0
      */
     public function getMostCommonSearches(int|array|null $siteId, int $limit = 10, ?string $dateRange = null): array
     {
@@ -95,7 +92,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getRecentSearches(int|array|null $siteId, int $limit = 5, ?bool $hasResults = null, ?string $dateRange = null): array
     {
@@ -103,7 +99,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getAnalyticsCount(int|array|null $siteId = null, ?bool $hasResults = null, ?string $dateRange = null): int
     {
@@ -111,7 +106,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getQueryLengthDistribution(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -119,7 +113,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getWordCloudData(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 50): array
     {
@@ -127,7 +120,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getZeroResultClusters(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 20): array
     {
@@ -135,7 +127,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getIntentBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -143,7 +134,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getTrendingQueries(int|array|null $siteId, string $dateRange = 'last7days', int $limit = 10): array
     {
@@ -151,7 +141,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getUniqueQueriesCount(int|array|null $siteId, int $days = 30): int
     {
@@ -163,7 +152,6 @@ class AnalyticsService extends Component
     // =========================================================================
 
     /**
-     * @since 5.0.0
      */
     public function getDeviceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -171,7 +159,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getBrowserBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -179,7 +166,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getOsBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -187,7 +173,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getBotStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -195,7 +180,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getSourceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -203,7 +187,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getPeakUsageHours(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -211,7 +194,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getCountryBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -219,7 +201,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getCityBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -227,7 +208,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getLocationFromIp(string $ip): ?array
     {
@@ -239,7 +219,6 @@ class AnalyticsService extends Component
     // =========================================================================
 
     /**
-     * @since 5.0.0
      */
     public function getPerformanceData(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -247,7 +226,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getCacheStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -255,7 +233,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getTopPerformingQueries(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -263,7 +240,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getWorstPerformingQueries(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
@@ -271,7 +247,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getAverageExecutionTime(int|array|null $siteId, int $days = 30): float
     {
@@ -351,7 +326,6 @@ class AnalyticsService extends Component
     // =========================================================================
 
     /**
-     * @since 5.0.0
      */
     public function getAnalyticsSummary(int|array|null $siteId = null, string $dateRange = 'last7days'): array
     {
@@ -359,7 +333,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function getChartData(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -367,7 +340,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function exportAnalytics(int|array|null $siteId, string $dateRange): array
     {
@@ -375,7 +347,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function deleteAnalytic(int $id): bool
     {
@@ -383,7 +354,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function clearAnalytics(int|array|null $siteId = null): int
     {
@@ -391,7 +361,6 @@ class AnalyticsService extends Component
     }
 
     /**
-     * @since 5.0.0
      */
     public function cleanupOldAnalytics(): int
     {
@@ -404,7 +373,6 @@ class AnalyticsService extends Component
      * @param Query $query
      * @param string $dateRange
      * @param string|null $column
-     * @since 5.0.0
      */
     public function applyDateRangeFilter(Query $query, string $dateRange, ?string $column = null): void
     {

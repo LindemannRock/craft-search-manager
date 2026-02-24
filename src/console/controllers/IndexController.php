@@ -19,8 +19,6 @@ class IndexController extends Controller
 
     /**
      * List all search indices
-     *
-     * @since 5.0.0
      */
     public function actionList(): int
     {
@@ -51,8 +49,6 @@ class IndexController extends Controller
 
     /**
      * Rebuild all indices or a specific index
-     *
-     * @since 5.0.0
      */
     public function actionRebuild(?string $handle = null): int
     {
@@ -84,8 +80,6 @@ class IndexController extends Controller
 
     /**
      * Clear all indices or a specific index
-     *
-     * @since 5.0.0
      */
     public function actionClear(?string $handle = null): int
     {

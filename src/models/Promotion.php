@@ -25,43 +25,30 @@ class Promotion extends Model
     // PROPERTIES
     // =========================================================================
 
-    /** @since 5.10.0 */
     public ?int $id = null;
 
-    /** @since 5.10.0 */
     public ?string $indexHandle = null; // null = applies to all indices
 
-    /** @since 5.10.0 */
     public ?string $title = null;
 
-    /** @since 5.10.0 */
     public string $query = '';
 
-    /** @since 5.10.0 */
     public string $matchType = 'exact'; // exact, contains, prefix
 
-    /** @since 5.10.0 */
     public ?int $elementId = null;
 
-    /** @since 5.10.0 */
     public ?string $elementType = null; // e.g. craft\elements\Entry
 
-    /** @since 5.10.0 */
     public int $position = 1; // 1 = first position
 
-    /** @since 5.10.0 */
     public ?int $siteId = null;
 
-    /** @since 5.10.0 */
     public bool $enabled = true;
 
-    /** @since 5.10.0 */
     public ?\DateTime $dateCreated = null;
 
-    /** @since 5.10.0 */
     public ?\DateTime $dateUpdated = null;
 
-    /** @since 5.10.0 */
     public ?string $uid = null;
 
     // =========================================================================
@@ -99,7 +86,6 @@ class Promotion extends Model
      * Validate that element exists
      *
      * @param string $attribute
-     * @since 5.10.0
      */
     public function validateElement(string $attribute): void
     {
@@ -128,7 +114,6 @@ class Promotion extends Model
      *
      * @param int $id
      * @return self|null
-     * @since 5.10.0
      */
     public static function findById(int $id): ?self
     {
@@ -146,7 +131,6 @@ class Promotion extends Model
      * @param string|null $indexHandle
      * @param int|null $siteId
      * @return self[]
-     * @since 5.10.0
      */
     public static function findByIndex(?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -173,7 +157,6 @@ class Promotion extends Model
      *
      * @param string|null $indexHandle
      * @return self[]
-     * @since 5.10.0
      */
     public static function findAll(?string $indexHandle = null): array
     {
@@ -197,7 +180,6 @@ class Promotion extends Model
      * @param string $indexHandle
      * @param int|null $siteId
      * @return self[]
-     * @since 5.10.0
      */
     public static function findMatching(string $searchQuery, string $indexHandle, ?int $siteId = null): array
     {
@@ -263,7 +245,6 @@ class Promotion extends Model
      *
      * @param string $searchQuery
      * @return bool
-     * @since 5.10.0
      */
     public function matches(string $searchQuery): bool
     {
@@ -320,7 +301,6 @@ class Promotion extends Model
      * Save promotion to database
      *
      * @return bool
-     * @since 5.10.0
      */
     public function save(): bool
     {
@@ -383,7 +363,6 @@ class Promotion extends Model
      * Delete promotion from database
      *
      * @return bool
-     * @since 5.10.0
      */
     public function delete(): bool
     {
@@ -418,7 +397,6 @@ class Promotion extends Model
      * Get the promoted element (for CP display)
      *
      * @return \craft\base\ElementInterface|null
-     * @since 5.10.0
      */
     public function getElement(): ?\craft\base\ElementInterface
     {

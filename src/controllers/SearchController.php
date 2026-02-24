@@ -72,7 +72,6 @@ class SearchController extends Controller
      * - position: The position in results (optional)
      *
      * @return Response
-     * @since 5.0.0
      */
     public function actionTrackClick(): Response
     {
@@ -125,7 +124,6 @@ class SearchController extends Controller
      * - siteId: Site ID (optional)
      *
      * @return Response
-     * @since 5.0.0
      */
     public function actionTrackSearch(): Response
     {

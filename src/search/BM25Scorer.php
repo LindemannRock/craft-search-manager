@@ -58,7 +58,6 @@ class BM25Scorer
     /**
      * Constructor
      *
-     * @since 5.0.0
      * @param float $k1 Term frequency saturation (default: 1.5)
      * @param float $b Document length normalization (default: 0.75)
      * @param float $titleBoost Title boost factor (default: 5.0)
@@ -87,7 +86,6 @@ class BM25Scorer
     /**
      * Calculate BM25 relevance score for a term in a document
      *
-     * @since 5.0.0
      * @param int $termFreq Term frequency in the document
      * @param int $docFreq Number of documents containing the term
      * @param int $docLength Document length in tokens
@@ -124,7 +122,6 @@ class BM25Scorer
     /**
      * Apply title boost to a score
      *
-     * @since 5.0.0
      * @param float $score Base BM25 score
      * @return float Boosted score
      */
@@ -136,7 +133,6 @@ class BM25Scorer
     /**
      * Apply exact match boost to a score
      *
-     * @since 5.0.0
      * @param float $score Base score
      * @return float Boosted score
      */
@@ -148,7 +144,6 @@ class BM25Scorer
     /**
      * Get the k1 parameter
      *
-     * @since 5.0.0
      * @return float
      */
     public function getK1(): float
@@ -159,7 +154,6 @@ class BM25Scorer
     /**
      * Get the b parameter
      *
-     * @since 5.0.0
      * @return float
      */
     public function getB(): float
@@ -170,7 +164,6 @@ class BM25Scorer
     /**
      * Get the title boost factor
      *
-     * @since 5.0.0
      * @return float
      */
     public function getTitleBoost(): float
@@ -181,7 +174,6 @@ class BM25Scorer
     /**
      * Get the exact match boost factor
      *
-     * @since 5.0.0
      * @return float
      */
     public function getExactMatchBoost(): float

@@ -39,7 +39,6 @@ class WidgetStyleService extends Component
     /**
      * Get all widget styles defined in config file
      *
-     * @since 5.39.0
      */
     public function getConfigFileStyles(): array
     {
@@ -71,7 +70,6 @@ class WidgetStyleService extends Component
     }
 
     /**
-     * @since 5.39.0
      */
     public function getConfigFileByHandle(string $handle): ?WidgetStyle
     {
@@ -80,7 +78,6 @@ class WidgetStyleService extends Component
     }
 
     /**
-     * @since 5.39.0
      */
     public function getById(int $id): ?WidgetStyle
     {
@@ -94,7 +91,6 @@ class WidgetStyleService extends Component
     }
 
     /**
-     * @since 5.39.0
      */
     public function getByHandle(string $handle): ?WidgetStyle
     {
@@ -115,7 +111,6 @@ class WidgetStyleService extends Component
     /**
      * Get all widget styles (config + database)
      *
-     * @since 5.39.0
      */
     public function getAll(?string $type = null, bool $enabledOnly = false): array
     {
@@ -159,7 +154,6 @@ class WidgetStyleService extends Component
     }
 
     /**
-     * @since 5.39.0
      */
     public function save(WidgetStyle $style): bool
     {
@@ -224,7 +218,6 @@ class WidgetStyleService extends Component
     /**
      * Delete a widget style by ID
      *
-     * @since 5.39.0
      */
     public function delete(int $id): bool
     {
@@ -255,7 +248,6 @@ class WidgetStyleService extends Component
      * Get usage counts for all styles (how many widget configs reference each style handle)
      *
      * @return array<string, int> Handle => count
-     * @since 5.39.0
      */
     public function getUsageCountsByHandle(): array
     {

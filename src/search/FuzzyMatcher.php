@@ -37,7 +37,6 @@ class FuzzyMatcher
     /**
      * Constructor
      *
-     * @since 5.0.0
      * @param NgramGenerator $ngramGenerator N-gram generator instance
      * @param float $similarityThreshold Minimum similarity threshold (default: 0.50)
      * @param int $maxCandidates Maximum fuzzy candidates to process (default: 100)
@@ -56,7 +55,6 @@ class FuzzyMatcher
     /**
      * Find fuzzy matches for a search term using the storage layer
      *
-     * @since 5.0.0
      * @param string $searchTerm The term to find matches for
      * @param StorageInterface $storage Storage layer to query
      * @param int $siteId Site ID to search within
@@ -111,7 +109,6 @@ class FuzzyMatcher
     /**
      * Calculate similarity between two terms
      *
-     * @since 5.0.0
      * @param string $term1 First term
      * @param string $term2 Second term
      * @return float Similarity score between 0.0 and 1.0
@@ -124,7 +121,6 @@ class FuzzyMatcher
     /**
      * Check if two terms are similar enough based on threshold
      *
-     * @since 5.0.0
      * @param string $term1 First term
      * @param string $term2 Second term
      * @return bool True if similarity meets threshold
@@ -140,7 +136,6 @@ class FuzzyMatcher
     /**
      * Get the similarity threshold
      *
-     * @since 5.0.0
      * @return float
      */
     public function getSimilarityThreshold(): float
@@ -151,7 +146,6 @@ class FuzzyMatcher
     /**
      * Get the maximum candidates limit
      *
-     * @since 5.0.0
      * @return int
      */
     public function getMaxCandidates(): int

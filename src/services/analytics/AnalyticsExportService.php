@@ -31,7 +31,6 @@ class AnalyticsExportService
     use LoggingTrait;
 
     /**
-     * @since 5.0.0
      */
     public function __construct()
     {
@@ -44,7 +43,6 @@ class AnalyticsExportService
      * @param int|array|null $siteId Site ID(s) to filter by
      * @param string $dateRange Date range filter
      * @return array Analytics summary data
-     * @since 5.0.0
      */
     public function getAnalyticsSummary(int|array|null $siteId = null, string $dateRange = 'last7days'): array
     {
@@ -75,7 +73,6 @@ class AnalyticsExportService
      * @param int|array|null $siteId
      * @param string $dateRange
      * @return array
-     * @since 5.0.0
      */
     public function getChartData(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
@@ -110,7 +107,6 @@ class AnalyticsExportService
      * @param int|array|null $siteId Site ID(s) to filter by
      * @param string $dateRange Date range to filter
      * @return array Export data (rows, headers, jsonData)
-     * @since 5.0.0
      */
     public function exportAnalytics(int|array|null $siteId, string $dateRange): array
     {
@@ -269,7 +265,6 @@ class AnalyticsExportService
      *
      * @param int $id
      * @return bool
-     * @since 5.0.0
      */
     public function deleteAnalytic(int $id): bool
     {
@@ -289,7 +284,6 @@ class AnalyticsExportService
      *
      * @param int|array|null $siteId
      * @return int
-     * @since 5.0.0
      */
     public function clearAnalytics(int|array|null $siteId = null): int
     {
@@ -307,7 +301,6 @@ class AnalyticsExportService
      * Clean up old analytics based on retention setting
      *
      * @return int Number of records deleted
-     * @since 5.0.0
      */
     public function cleanupOldAnalytics(): int
     {

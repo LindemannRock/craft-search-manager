@@ -33,7 +33,6 @@ class EntryTransformer extends BaseTransformer
      *
      * @param ElementInterface|Entry $element
      * @return array
-     * @since 5.0.0
      */
     public function transform(ElementInterface $element): array
     {

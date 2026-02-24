@@ -27,17 +27,11 @@ class SettingsController extends Controller
         $this->setLoggingHandle('search-manager');
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionIndex(): Response
     {
         return $this->actionGeneral();
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionGeneral(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -62,17 +56,12 @@ class SettingsController extends Controller
 
     /**
      * Redirect to general settings (backend settings consolidated)
-     *
-     * @since 5.0.0
      */
     public function actionBackend(): Response
     {
         return $this->redirect('search-manager/settings/general');
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionIndexing(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -83,9 +72,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionAnalytics(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -96,9 +82,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionSearch(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -109,9 +92,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionLanguage(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -122,9 +102,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionHighlighting(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -135,9 +112,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionCache(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -148,9 +122,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionInterface(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -209,9 +180,6 @@ class SettingsController extends Controller
         return $this->redirect('search-manager/settings/general');
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionTest(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -228,9 +196,6 @@ class SettingsController extends Controller
         ]);
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionTestSearch(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -404,9 +369,6 @@ class SettingsController extends Controller
         }
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionTestAutocomplete(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -449,9 +411,6 @@ class SettingsController extends Controller
         }
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionClearTestCache(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -663,9 +622,6 @@ class SettingsController extends Controller
         }
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionSave(): ?Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -750,9 +706,6 @@ class SettingsController extends Controller
         return $this->redirect('search-manager/settings/general');
     }
 
-    /**
-     * @since 5.0.0
-     */
     public function actionCleanupAnalytics(): Response
     {
         $this->requirePermission('searchManager:manageSettings');

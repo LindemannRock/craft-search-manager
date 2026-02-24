@@ -18,8 +18,6 @@ class Tokenizer
 
     /**
      * Constructor
-     *
-     * @since 5.0.0
      */
     public function __construct()
     {
@@ -36,7 +34,6 @@ class Tokenizer
      * 4. Split on whitespace
      * 5. Filter empty tokens
      *
-     * @since 5.0.0
      * @param string $text Text to tokenize
      * @return array Array of tokens
      */
@@ -70,7 +67,6 @@ class Tokenizer
     /**
      * Tokenize and count term frequencies
      *
-     * @since 5.0.0
      * @param string $text Text to tokenize
      * @return array Associative array of [term => frequency]
      */
@@ -90,7 +86,6 @@ class Tokenizer
     /**
      * Get the total number of tokens in text
      *
-     * @since 5.0.0
      * @param string $text Text to count
      * @return int Number of tokens
      */

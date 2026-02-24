@@ -21,37 +21,27 @@ class WidgetConfig extends Model
     // PROPERTIES
     // =========================================================================
 
-    /** @since 5.30.0 */
     public ?int $id = null;
 
-    /** @since 5.30.0 */
     public string $handle = '';
 
-    /** @since 5.30.0 */
     public string $name = '';
 
-    /** @since 5.30.0 */
     public string $type = 'modal';
 
-    /** @since 5.30.0 */
     public bool $enabled = true;
 
-    /** @since 5.30.0 */
     public ?string $styleHandle = null;
 
     /**
      * @var array|string|null Settings stored as JSON in database
-     * @since 5.30.0
      */
     public array|string|null $settings = null;
 
-    /** @since 5.30.0 */
     public ?\DateTime $dateCreated = null;
 
-    /** @since 5.30.0 */
     public ?\DateTime $dateUpdated = null;
 
-    /** @since 5.30.0 */
     public ?string $uid = null;
 
     // =========================================================================
@@ -62,7 +52,6 @@ class WidgetConfig extends Model
      * Default settings structure for new widget configs
      *
      * @return array
-     * @since 5.30.0
      */
     public static function defaultSettings(): array
     {
@@ -112,7 +101,6 @@ class WidgetConfig extends Model
      * Get settings as array (parses JSON if needed)
      *
      * @return array
-     * @since 5.30.0
      */
     public function getSettingsArray(): array
     {
@@ -129,7 +117,6 @@ class WidgetConfig extends Model
      * @param string $key Dot notation key (e.g., 'behavior.debounce')
      * @param mixed $default Default value if not found
      * @return mixed
-     * @since 5.30.0
      */
     public function getSetting(string $key, mixed $default = null): mixed
     {
@@ -152,7 +139,6 @@ class WidgetConfig extends Model
      *
      * @param string $key
      * @param mixed $value
-     * @since 5.30.0
      */
     public function setSetting(string $key, mixed $value): void
     {
@@ -181,7 +167,6 @@ class WidgetConfig extends Model
      * Get selected index handles (empty array = search all)
      *
      * @return string[]
-     * @since 5.30.0
      */
     public function getIndexHandles(): array
     {
@@ -208,7 +193,6 @@ class WidgetConfig extends Model
 
     /**
      * @deprecated Use getIndexHandles() instead
-     * @since 5.30.0
      */
     public function getIndexHandle(): string
     {
@@ -217,25 +201,21 @@ class WidgetConfig extends Model
     }
 
     // Behavior
-    /** @since 5.30.0 */
     public function isPreventBodyScrollEnabled(): bool
     {
         return (bool) $this->getSetting('behavior.preventBodyScroll', true);
     }
 
-    /** @since 5.30.0 */
     public function getDebounce(): int
     {
         return (int) $this->getSetting('behavior.debounce', 200);
     }
 
-    /** @since 5.30.0 */
     public function getMinChars(): int
     {
         return (int) $this->getSetting('behavior.minChars', 2);
     }
 
-    /** @since 5.30.0 */
     public function getMaxResults(): int
     {
         return (int) $this->getSetting('behavior.maxResults', 10);
@@ -251,31 +231,26 @@ class WidgetConfig extends Model
         return (int) $this->getSetting('behavior.maxHeadingsPerResult', 3);
     }
 
-    /** @since 5.30.0 */
     public function isShowRecentEnabled(): bool
     {
         return (bool) $this->getSetting('behavior.showRecent', true);
     }
 
-    /** @since 5.30.0 */
     public function getMaxRecentSearches(): int
     {
         return (int) $this->getSetting('behavior.maxRecentSearches', 5);
     }
 
-    /** @since 5.30.0 */
     public function isGroupResultsEnabled(): bool
     {
         return (bool) $this->getSetting('behavior.groupResults', true);
     }
 
-    /** @since 5.30.0 */
     public function getHotkey(): string
     {
         return $this->getSetting('behavior.hotkey', 'k');
     }
 
-    /** @since 5.30.0 */
     public function isHideResultsWithoutUrlEnabled(): bool
     {
         return (bool) $this->getSetting('behavior.hideResultsWithoutUrl', false);
@@ -389,7 +364,6 @@ class WidgetConfig extends Model
         return (bool) $this->getSetting('behavior.parseMarkdownSnippets', false);
     }
 
-    /** @since 5.30.0 */
     public function isShowLoadingIndicatorEnabled(): bool
     {
         return (bool) $this->getSetting('behavior.showLoadingIndicator', true);
@@ -436,33 +410,28 @@ class WidgetConfig extends Model
     }
 
     // Trigger
-    /** @since 5.30.0 */
     public function isShowTriggerEnabled(): bool
     {
         return (bool) $this->getSetting('trigger.showTrigger', true);
     }
 
-    /** @since 5.30.0 */
     public function getTriggerText(): string
     {
         return $this->getSetting('trigger.triggerText', 'Search');
     }
 
     // Analytics
-    /** @since 5.30.0 */
     public function getAnalyticsSource(): string
     {
         return $this->getSetting('analytics.source', '');
     }
 
-    /** @since 5.30.0 */
     public function getIdleTimeout(): int
     {
         return (int) $this->getSetting('analytics.idleTimeout', 1500);
     }
 
     // Styles - returns styles from style preset or inline config
-    /** @since 5.30.0 */
     public function getStyles(): array
     {
         // Style preset takes priority
@@ -484,7 +453,6 @@ class WidgetConfig extends Model
      * Merges configured styles with defaults so preview renders correctly
      *
      * @return array
-     * @since 5.30.0
      */
     public function getStylesForPreview(): array
     {
@@ -502,7 +470,6 @@ class WidgetConfig extends Model
      * This is also imported by JavaScript StyleConfig.js
      *
      * @return array
-     * @since 5.30.0
      */
     public static function defaultStyleValues(): array
     {
@@ -530,7 +497,6 @@ class WidgetConfig extends Model
      * Get raw config display for showing in tooltip (config widgets only)
      *
      * @return string
-     * @since 5.30.0
      */
     public function getRawConfigDisplay(): string
     {
@@ -678,7 +644,6 @@ class WidgetConfig extends Model
      * Prepare for database save
      *
      * @return array
-     * @since 5.30.0
      */
     public function prepareForDb(): array
     {

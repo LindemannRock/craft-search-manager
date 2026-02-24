@@ -22,78 +22,55 @@ class QueryRule extends Model
     use LoggingTrait;
 
     // Action types
-    /** @since 5.10.0 */
     public const ACTION_SYNONYM = 'synonym';
 
-    /** @since 5.10.0 */
     public const ACTION_BOOST_SECTION = 'boost_section';
 
-    /** @since 5.10.0 */
     public const ACTION_BOOST_CATEGORY = 'boost_category';
 
-    /** @since 5.10.0 */
     public const ACTION_BOOST_ELEMENT = 'boost_element';
 
-    /** @since 5.10.0 */
     public const ACTION_FILTER = 'filter';
 
-    /** @since 5.10.0 */
     public const ACTION_REDIRECT = 'redirect';
 
     // Match types
-    /** @since 5.10.0 */
     public const MATCH_EXACT = 'exact';
 
-    /** @since 5.10.0 */
     public const MATCH_CONTAINS = 'contains';
 
-    /** @since 5.10.0 */
     public const MATCH_PREFIX = 'prefix';
 
-    /** @since 5.10.0 */
     public const MATCH_REGEX = 'regex';
 
     // =========================================================================
     // PROPERTIES
     // =========================================================================
 
-    /** @since 5.10.0 */
     public ?int $id = null;
 
-    /** @since 5.10.0 */
     public string $name = '';
 
-    /** @since 5.10.0 */
     public ?string $indexHandle = null; // null = applies to all indices
 
-    /** @since 5.10.0 */
     public string $matchType = self::MATCH_EXACT;
 
-    /** @since 5.10.0 */
     public string $matchValue = '';
 
-    /** @since 5.10.0 */
     public string $actionType = self::ACTION_SYNONYM;
 
-    /** @since 5.10.0 */
     public array $actionValue = []; // Decoded from JSON
 
-    /** @since 5.10.0 */
     public int $priority = 0; // Higher = applied first
 
-    /** @since 5.10.0 */
     public ?int $siteId = null;
 
-    /** @since 5.10.0 */
     public bool $enabled = true;
 
-    /** @since 5.10.0 */
     public ?\DateTime $dateCreated = null;
 
-    /** @since 5.10.0 */
     public ?\DateTime $dateUpdated = null;
 
-    /** @since 5.10.0 */
     public ?string $uid = null;
 
     // =========================================================================
@@ -139,7 +116,6 @@ class QueryRule extends Model
      * Validate action value based on action type
      *
      * @param string $attribute
-     * @since 5.10.0
      */
     public function validateActionValue(string $attribute): void
     {
@@ -219,7 +195,6 @@ class QueryRule extends Model
      * Validate that the match value is a valid regex pattern
      *
      * @param string $attribute
-     * @since 5.10.0
      */
     public function validateRegexPattern(string $attribute): void
     {
@@ -251,7 +226,6 @@ class QueryRule extends Model
      *
      * @param int $id
      * @return self|null
-     * @since 5.10.0
      */
     public static function findById(int $id): ?self
     {
@@ -269,7 +243,6 @@ class QueryRule extends Model
      * @param string|null $indexHandle
      * @param int|null $siteId
      * @return self[]
-     * @since 5.10.0
      */
     public static function findByIndex(?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -295,7 +268,6 @@ class QueryRule extends Model
      *
      * @param string|null $indexHandle
      * @return self[]
-     * @since 5.10.0
      */
     public static function findAll(?string $indexHandle = null): array
     {
@@ -318,7 +290,6 @@ class QueryRule extends Model
      * @param string|null $indexHandle
      * @param int|null $siteId
      * @return self[]
-     * @since 5.10.0
      */
     public static function findMatching(string $searchQuery, ?string $indexHandle = null, ?int $siteId = null): array
     {
@@ -342,7 +313,6 @@ class QueryRule extends Model
      *
      * @param string $searchQuery
      * @return bool
-     * @since 5.10.0
      */
     public function matches(string $searchQuery): bool
     {
@@ -435,7 +405,6 @@ class QueryRule extends Model
      * Save rule to database
      *
      * @return bool
-     * @since 5.10.0
      */
     public function save(): bool
     {
@@ -498,7 +467,6 @@ class QueryRule extends Model
      * Delete rule from database
      *
      * @return bool
-     * @since 5.10.0
      */
     public function delete(): bool
     {
@@ -537,7 +505,6 @@ class QueryRule extends Model
      * Get synonyms for synonym action type
      *
      * @return string[]
-     * @since 5.10.0
      */
     public function getSynonyms(): array
     {
@@ -552,7 +519,6 @@ class QueryRule extends Model
      * Get boost multiplier for boost action types
      *
      * @return float
-     * @since 5.10.0
      */
     public function getBoostMultiplier(): float
     {
@@ -565,7 +531,6 @@ class QueryRule extends Model
      *
      * @param int|null $siteId Optional site ID - if provided, will get element URL for that site
      * @return string|null
-     * @since 5.10.0
      */
     public function getRedirectUrl(?int $siteId = null): ?string
     {
@@ -598,7 +563,6 @@ class QueryRule extends Model
      * Check if this is a redirect rule
      *
      * @return bool
-     * @since 5.10.0
      */
     public function isRedirect(): bool
     {
@@ -609,7 +573,6 @@ class QueryRule extends Model
      * Get human-readable action description
      *
      * @return string
-     * @since 5.10.0
      */
     public function getActionDescription(): string
     {
@@ -628,7 +591,6 @@ class QueryRule extends Model
      * Get available action types for dropdown
      *
      * @return array<string, string>
-     * @since 5.10.0
      */
     public static function getActionTypes(): array
     {
@@ -646,7 +608,6 @@ class QueryRule extends Model
      * Get available match types for dropdown
      *
      * @return array<string, string>
-     * @since 5.10.0
      */
     public static function getMatchTypes(): array
     {

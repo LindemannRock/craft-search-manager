@@ -31,8 +31,6 @@ class PromotionsController extends Controller
 
     /**
      * List all promotions
-     *
-     * @since 5.10.0
      */
     public function actionIndex(): Response
     {
@@ -55,8 +53,6 @@ class PromotionsController extends Controller
 
     /**
      * Edit or create a promotion
-     *
-     * @since 5.10.0
      */
     public function actionEdit(?int $promotionId = null, ?Promotion $promotion = null): Response
     {
@@ -121,8 +117,6 @@ class PromotionsController extends Controller
 
     /**
      * Save a promotion
-     *
-     * @since 5.10.0
      */
     public function actionSave(): ?Response
     {
@@ -194,8 +188,6 @@ class PromotionsController extends Controller
 
     /**
      * Delete a promotion
-     *
-     * @since 5.10.0
      */
     public function actionDelete(): Response
     {
@@ -240,8 +232,6 @@ class PromotionsController extends Controller
 
     /**
      * Bulk enable promotions
-     *
-     * @since 5.10.0
      */
     public function actionBulkEnable(): Response
     {
@@ -277,8 +267,6 @@ class PromotionsController extends Controller
 
     /**
      * Bulk disable promotions
-     *
-     * @since 5.10.0
      */
     public function actionBulkDisable(): Response
     {
@@ -314,8 +302,6 @@ class PromotionsController extends Controller
 
     /**
      * Bulk delete promotions
-     *
-     * @since 5.10.0
      */
     public function actionBulkDelete(): Response
     {
