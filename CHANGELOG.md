@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.39.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.0...v5.39.1) (2026-02-24)
+
+
+### Bug Fixes
+
+* **EnrichmentService:** use per-hit siteId for element retrieval ([392001c](https://github.com/LindemannRock/craft-search-manager/commit/392001cb931589d68e2ca6c06c3e3f3bc0213cbd))
+* **SettingsController:** respect configured siteId for search options ([518022f](https://github.com/LindemannRock/craft-search-manager/commit/518022f0a3e233858134287d209e7a15edab9825))
+* **Tokenizer:** normalize text processing for consistent indexing ([c59dd54](https://github.com/LindemannRock/craft-search-manager/commit/c59dd54311a5abc0a3fb0dfa079be2f063253ab8))
+
 ## [5.39.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.38.0...v5.39.0) (2026-02-22)
 
 
