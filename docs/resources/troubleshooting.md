@@ -36,6 +36,17 @@ Each batch loads full elements with their relations into memory. If your server 
 - **Lower `batchSize`**: Set it to `25` or `50` in your config. The default of 100 works on servers with 256 MB+ PHP memory limit, but shared hosting or entries with many relations (Matrix blocks, categories, assets) may need less.
 - **Check your PHP `memory_limit`**: The rebuild respects your server's memory limit. If you can't increase it, lower `batchSize` instead.
 
+## Duplicate Key Errors During Indexing (MySQL)
+
+```text
+Integrity constraint violation: 1062 Duplicate entry 'my-index-البحـر-2-60807'
+for key 'searchmanager_search_terms.PRIMARY'
+```
+
+This happens when content contains Unicode character variants that MySQL's `utf8mb4_0900_ai_ci` collation treats as equivalent — for example, Arabic text with tatweel (`البحـر` vs `البحر`), Arabic-Indic digits (`٢` vs `2`), or accented Latin characters (`jalapeño` vs `jalapeno`).
+
+**Fix:** Update to the latest version of Search Manager and rebuild your indices. The current version normalizes all text before storage (tatweel removal, digit folding, accent folding) and uses upsert writes on MySQL to handle any remaining collation equivalences gracefully. See [Text Normalization](../feature-tour/search-features.md#text-normalization) for details.
+
 ## Connection Refused (Redis)
 
 ```text

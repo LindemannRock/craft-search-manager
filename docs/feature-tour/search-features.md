@@ -139,6 +139,20 @@ Common words like "the", "a", "is" are automatically filtered from queries to im
 
 Stop words can be disabled globally or per-index. See [Multi-Language](multi-language.md) for language details.
 
+## Text Normalization
+
+Search Manager normalizes text during both indexing and querying so that equivalent characters always match, regardless of how they were typed or stored. This runs automatically — no configuration needed.
+
+| Normalization | Example | Effect |
+|---------------|---------|--------|
+| Unicode compatibility (NFKC) | `ﬁ` → `fi`, `Ａ` → `A` | Fullwidth and ligature variants match their standard forms |
+| Arabic tatweel removal | `البحـر` → `البحر` | Tatweel (kashida) stretching characters are ignored |
+| Universal digit folding | `٢` → `2`, `๒` → `2`, `२` → `2` | Digits from any script (Arabic-Indic, Thai, Devanagari, Bengali, etc.) are folded to ASCII |
+| Case folding | `Craft` → `craft` | All text is lowercased |
+| Accent folding | `jalapeño` → `jalapeno`, `naïve` → `naive` | Diacritics and accents are stripped |
+
+This means a search for `البحـر` (with tatweel) matches content stored as `البحر` (without), and a search for `٢` matches content containing `2`. All built-in backends (MySQL, PostgreSQL, Redis, File) produce identical results because normalization happens before any storage.
+
 ## Localized Boolean Operators
 
 Boolean operators work in all five supported languages:
