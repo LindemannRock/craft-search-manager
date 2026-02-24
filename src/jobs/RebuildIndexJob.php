@@ -9,6 +9,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
+use yii\queue\RetryableJobInterface;
 
 /**
  * Rebuild Index Job
@@ -17,7 +18,7 @@ use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
  *
  * @since 5.0.0
  */
-class RebuildIndexJob extends BaseJob
+class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 {
     use LoggingTrait;
     use ElementTypeGuardTrait;
@@ -30,6 +31,14 @@ class RebuildIndexJob extends BaseJob
     public function getTtr(): int
     {
         return 1800; // 30 minutes — rebuilds can be slow on large indices
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function canRetry($attempt, $error): bool
+    {
+        return false; // Don't auto-retry — rebuilds should be triggered manually
     }
 
     /** @inheritdoc */
