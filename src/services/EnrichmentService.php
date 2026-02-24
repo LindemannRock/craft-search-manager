@@ -59,11 +59,14 @@ class EnrichmentService extends Component
             // Cast to int for getElementById (search backends may return strings)
             $elementId = (int) $elementId;
 
+            // Use per-hit siteId if available (from searchAllSites), fall back to global option
+            $hitSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : $siteId;
+
             // Try to get the actual element for URL and additional data
             // For public (non-CP) requests, only return live elements to prevent
             // disabled/expired content from appearing in search results
             $criteria = Craft::$app->getRequest()->getIsCpRequest() ? [] : ['status' => 'live'];
-            $element = Craft::$app->elements->getElementById($elementId, null, $siteId, $criteria);
+            $element = Craft::$app->elements->getElementById($elementId, null, $hitSiteId, $criteria);
 
             if ($element === null) {
                 // Element might have been deleted or is not live, skip it

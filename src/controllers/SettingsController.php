@@ -249,6 +249,7 @@ class SettingsController extends Controller
                     $originalQuery,
                     [$indexHandle],
                     [
+                        'siteId' => $index ? $index->siteId : null,
                         'snippetMode' => $request->getBodyParam('snippetMode', 'balanced'),
                         'snippetLength' => (int) $request->getBodyParam('snippetLength', 200),
                         'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', false),
