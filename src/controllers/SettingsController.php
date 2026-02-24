@@ -213,10 +213,11 @@ class SettingsController extends Controller
 
             $originalQuery = $query;
 
-            // CP Test: Search across all sites by default
-            $searchOptions = [
-                'siteId' => '*', // Special value to search all sites
-            ];
+            // Respect the index's configured siteId for scoping
+            $searchOptions = [];
+            if ($index && $index->siteId !== null) {
+                $searchOptions['siteId'] = $index->siteId;
+            }
 
             // Add wildcard support (auto-append * if enabled and no wildcard present)
             if ($wildcard && !str_contains($query, '*')) {
