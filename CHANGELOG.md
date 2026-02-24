@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.40.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.1...v5.40.2) (2026-02-24)
+
+
+### Bug Fixes
+
+* **RebuildIndexJob:** implement canRetry method for job retries ([f42b6e9](https://github.com/LindemannRock/craft-search-manager/commit/f42b6e9c6f40c6ae239fe8066fed374b63a93d63))
+
 ## [5.40.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.0...v5.40.1) (2026-02-24)
 
 
