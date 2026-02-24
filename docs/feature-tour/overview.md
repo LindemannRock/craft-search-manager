@@ -39,6 +39,8 @@ You can use it alongside Craft's native search, or replace it entirely.
 
 - **[Privacy & Security](privacy-security.md)** — IP hashing with salt, subnet masking, async geo-lookup, bot filtering, and GDPR-friendly defaults.
 
+- **[Utilities](utilities.md)** — CP tools for rebuilding indices, clearing storage by type (orphan cleanup), managing caches, and resetting analytics data.
+
 ## Dashboard Widgets
 
 Search Manager provides four Craft dashboard widgets for at-a-glance analytics. Add them via **Dashboard > New Widget**.
