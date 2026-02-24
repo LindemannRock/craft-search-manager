@@ -128,3 +128,16 @@ Stop words can be:
 - **Disabled globally**: `'enableStopWords' => false`
 - **Disabled per-index**: `'disableStopWords' => true` in the index config
 - **Customized per-region**: Create custom stop word files as described above
+
+## Text Normalization
+
+Search Manager normalizes text during both indexing and querying, which is especially important for Arabic and other scripts with character variants.
+
+| Normalization | Relevant Languages |
+|---|---|
+| Arabic tatweel removal | Arabic — `البحـر` and `البحر` match |
+| Universal digit folding | Arabic (`٢` → `2`), Thai (`๒` → `2`), Devanagari, Bengali, etc. |
+| Accent folding | French, German, Spanish — `jalapeño` → `jalapeno`, `naïve` → `naive` |
+| Unicode compatibility (NFKC) | All languages — fullwidth and ligature variants |
+
+This runs automatically — no configuration needed. See [Text Normalization](search-features.md#text-normalization) for the full details.

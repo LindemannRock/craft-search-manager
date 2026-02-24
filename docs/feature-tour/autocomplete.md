@@ -6,6 +6,8 @@ Search Manager provides search-as-you-type suggestions based on indexed terms. A
 
 As users type, autocomplete returns matching terms from the index. Built-in backends (MySQL, PostgreSQL, Redis, File) return individual term suggestions. External backends (Algolia, Meilisearch, Typesense) return full entry titles.
 
+Queries are normalized the same way as search — accents are folded, Arabic tatweel is removed, and Unicode digits are converted to ASCII. This means typing `Maámoul` will suggest terms stored as `maamoul`, and `البحـر` (with tatweel) matches `البحر`. See [Text Normalization](search-features.md#text-normalization) for the full list.
+
 ## Configuration
 
 ```php
