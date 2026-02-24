@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\search\storage;
 use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use yii\db\Expression;
 
 /**
  * MySqlStorage
@@ -243,7 +244,8 @@ class MySqlStorage implements StorageInterface
      */
     public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
-        $this->db->createCommand()->insert(
+        // Upsert avoids duplicate-key failures when collation-equivalent terms collide.
+        $this->db->createCommand()->upsert(
             '{{%searchmanager_search_terms}}',
             [
                 'indexHandle' => $this->indexHandle,
@@ -251,6 +253,13 @@ class MySqlStorage implements StorageInterface
                 'siteId' => $siteId,
                 'elementId' => $elementId,
                 'frequency' => $frequency,
+                'language' => $language,
+            ],
+            [
+                // Keep the larger frequency to avoid inflating BM25 from equivalent variants.
+                'frequency' => new Expression('GREATEST([[frequency]], :incomingFrequency)', [
+                    ':incomingFrequency' => $frequency,
+                ]),
                 'language' => $language,
             ]
         )->execute();
