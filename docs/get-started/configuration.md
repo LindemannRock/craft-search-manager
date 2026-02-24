@@ -54,7 +54,7 @@ These settings control how content gets indexed and which backend handles search
 |--------|------|---------|-------------|
 | `defaultBackendHandle` | `string` | `null` | Handle of the default backend (must match a key in `backends`) |
 | `autoIndex` | `bool` | `true` | Automatically index elements when saved |
-| `batchSize` | `int` | `100` | Elements per batch during rebuild. Lower to 25–50 on memory-constrained hosting; increase to 250–500 for faster rebuilds on dedicated servers |
+| `batchSize` | `int` | `100` | Elements per batch during rebuild. Lower to 25–50 on memory-constrained hosting; increase to 250–500 for faster rebuilds on dedicated servers. See [Troubleshooting](../resources/troubleshooting.md#indexing-is-slow) for tuning tips |
 | `queueEnabled` | `bool` | `true` | Use queue for indexing (recommended for indices with 1,000+ elements) |
 | `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
 | `indexPrefix` | `string` | `null` | Prefix for index names (useful for multi-environment setups) |

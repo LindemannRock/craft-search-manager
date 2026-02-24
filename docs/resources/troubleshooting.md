@@ -36,6 +36,28 @@ Each batch loads full elements with their relations into memory. If your server 
 - **Lower `batchSize`**: Set it to `25` or `50` in your config. The default of 100 works on servers with 256 MB+ PHP memory limit, but shared hosting or entries with many relations (Matrix blocks, categories, assets) may need less.
 - **Check your PHP `memory_limit`**: The rebuild respects your server's memory limit. If you can't increase it, lower `batchSize` instead.
 
+## Rebuild Job Times Out
+
+```text
+The process "'/usr/local/bin/php' './craft' 'queue/exec' '1008994' '300' ..."
+exceeded the timeout of 300 seconds.
+```
+
+The rebuild job has a 30-minute TTR (time to reserve) by default. If your index is very large and still times out, you can increase the global queue TTR in `config/app.php`:
+
+```php
+'components' => [
+    'queue' => [
+        'ttr' => 3600, // 1 hour
+    ],
+],
+```
+
+Other tips for large rebuilds:
+- **Lower `batchSize`** to `25`–`50` — smaller batches mean more progress checkpoints
+- **Rebuild individual indices** instead of all at once: `php craft search-manager/index/rebuild my-index`
+- **Check your transformer** — slow transformers (heavy relation queries, API calls) multiply rebuild time
+
 ## Duplicate Key Errors During Indexing (MySQL)
 
 ```text

@@ -49,7 +49,7 @@ ddev craft search-manager/index/rebuild entries-en
 After rebuilding, cache warming runs automatically if enabled (see [Caching](../feature-tour/caching.md)).
 
 > [!TIP]
-> For sites with 10,000+ elements, schedule rebuilds during off-hours to avoid queue congestion.
+> For sites with 10,000+ elements, schedule rebuilds during off-hours to avoid queue congestion. If a rebuild times out, see [Troubleshooting](../resources/troubleshooting.md#rebuild-job-times-out).
 
 ### `search-manager/index/clear`
 
