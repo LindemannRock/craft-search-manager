@@ -4,8 +4,8 @@
 
 | Requirement | Version |
 |-------------|---------|
-| Craft CMS | 5.0+ |
-| PHP | 8.2+ |
+| [Craft CMS](https://craftcms.com/) | 5.0+ |
+| [PHP](https://php.net/) | 8.2+ |
 
 ## Search Backends
 
@@ -17,9 +17,9 @@ Depending on which search backend you choose, you may need additional infrastruc
 | PostgreSQL | No additional requirements (uses Craft's database) |
 | File | No additional requirements (stores data in `@storage/runtime/`) |
 | Redis | PHP Redis extension (`ext-redis`) |
-| Algolia | PHP cURL extension, Algolia account |
-| Meilisearch | Running Meilisearch server |
-| Typesense | Running Typesense server |
+| [Algolia](https://www.algolia.com/) | PHP cURL extension, Algolia account |
+| [Meilisearch](https://www.meilisearch.com/) | Running Meilisearch server |
+| [Typesense](https://typesense.org/) | Running Typesense server |
 
 If you're not sure which backend to choose, start with **MySQL** or **File** — they work out of the box with zero additional setup. See [Backends](../backends/backends.md) for a full comparison.
 
