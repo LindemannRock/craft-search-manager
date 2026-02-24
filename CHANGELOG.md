@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.40.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.0...v5.40.1) (2026-02-24)
+
+
+### Bug Fixes
+
+* **RebuildIndexJob:** update getTtr method documentation for clarity ([a4949f9](https://github.com/LindemannRock/craft-search-manager/commit/a4949f9f21d1b94b07d1ce44514f4360737bcb22))
+
 ## [5.40.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.1...v5.40.0) (2026-02-24)
 
 
