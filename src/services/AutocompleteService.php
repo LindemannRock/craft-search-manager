@@ -6,6 +6,7 @@ use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
+use lindemannrock\searchmanager\search\TermNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
@@ -530,11 +531,12 @@ class AutocompleteService extends Component
     // =========================================================================
 
     /**
-     * Normalize query for caching (lowercase, trim, collapse whitespace)
+     * Normalize query for cache keys and prefix matching.
      */
     private function normalizeQuery(string $query): string
     {
-        return mb_strtolower(trim(preg_replace('/\s+/', ' ', $query)));
+        $query = TermNormalizer::normalize($query);
+        return trim(preg_replace('/\s+/', ' ', $query));
     }
 
     /**
