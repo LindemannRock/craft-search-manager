@@ -24,6 +24,14 @@ class RebuildIndexJob extends BaseJob
 
     public ?string $indexHandle = null;
 
+    /**
+     * @inheritdoc
+     */
+    public function getTtr(): int
+    {
+        return 1800; // 30 minutes — rebuilds can be slow on large indices
+    }
+
     /** @inheritdoc */
     public function init(): void
     {
