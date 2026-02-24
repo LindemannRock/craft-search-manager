@@ -6,10 +6,10 @@ Search Manager supports seven search backends. You can configure multiple backen
 
 | Backend | Best For | External Service | BM25 Ranking | Browse API |
 |---------|----------|-----------------|--------------|------------|
-| [MySQL](backend-mysql.md) | Most Craft sites | No | Yes | No |
-| [PostgreSQL](backend-postgresql.md) | PostgreSQL-based Craft sites | No | Yes | No |
-| [Redis](backend-redis.md) | High-traffic sites, shared cache infra | No (PHP extension) | Yes | No |
-| [File](backend-file.md) | Development, small sites | No | Yes | No |
+| [MySQL](backend-mysql.md) | Most Craft sites (up to ~50k elements per index) | No | Yes | No |
+| [PostgreSQL](backend-postgresql.md) | PostgreSQL-based Craft sites (up to ~50k elements per index) | No | Yes | No |
+| [Redis](backend-redis.md) | Multi-server setups, 50k+ element indices | No (PHP extension) | Yes | No |
+| [File](backend-file.md) | Development, prototyping (under ~500 elements) | No | Yes | No |
 | [Algolia](backend-algolia.md) | Cloud-hosted, Scout replacement | Yes | Native | Yes |
 | [Meilisearch](backend-meilisearch.md) | Self-hosted Algolia alternative | Yes | Native | Yes |
 | [Typesense](backend-typesense.md) | Self-hosted, native typo tolerance | Yes | Native | Yes |
@@ -18,16 +18,16 @@ Search Manager supports seven search backends. You can configure multiple backen
 
 **Start with MySQL or File** if:
 - You want zero additional setup
-- Your site is small to medium traffic
+- Your indices have up to ~50,000 elements (MySQL) or ~500 elements (File)
 - You're evaluating Search Manager for the first time
 
 **Use Redis** if:
 - You already have Redis in your stack
-- You need fast in-memory search
-- You're running a multi-server setup
+- You're running a multi-server setup and need shared search data
+- Your indices exceed ~50,000 elements and you want in-memory speed
 
 **Use an external backend** (Algolia, Meilisearch, Typesense) if:
-- You need cloud-hosted search at scale
+- You need cloud-hosted, fully managed search infrastructure
 - You want native typo tolerance and faceting
 - You're migrating from Scout or another Algolia plugin
 

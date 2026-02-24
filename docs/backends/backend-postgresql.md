@@ -33,8 +33,12 @@ The PostgreSQL backend uses your Craft database for search storage, just like th
 
 No additional settings are needed — it uses your existing Craft database connection.
 
+## Sizing Guidance
+
+Performance characteristics are similar to the MySQL backend. See [MySQL Backend — Sizing Guidance](backend-mysql.md#sizing-guidance) for element count thresholds and row estimates. For indices above ~100,000 elements, consider Redis or an external backend.
+
 ## Limitations
 
 - Only available when Craft uses PostgreSQL as its database
 - No `browse()` or native `multipleQueries()` support (sequential fallback is used)
-- Search performance depends on your database server's capacity
+- For indices above ~100,000 elements, consider Redis or an external backend for faster query response

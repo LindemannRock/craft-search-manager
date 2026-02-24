@@ -1,13 +1,13 @@
 # Redis Backend
 
-The Redis backend stores search data in-memory for fast access. It's ideal for high-traffic sites or when you already have Redis in your stack.
+The Redis backend stores search data in-memory for fast access. It's ideal for multi-server deployments or when your indices exceed ~50,000 elements and MySQL query times start to increase.
 
 ## When to Use Redis
 
-- You need fast in-memory search with persistence
-- You already use Redis for Craft's cache
+- You already use Redis for Craft's cache or sessions
 - You're running a multi-server setup and need shared search data
-- You want better performance than MySQL for large indices
+- Your indices exceed ~50,000 elements and you need faster query response than MySQL
+- You want in-memory speed with optional persistence
 
 ## Requirements
 
@@ -101,8 +101,14 @@ REDIS_HOST=redis-server
 
 `127.0.0.1` refers to localhost inside the container, not your host machine. If you see `Connection refused` errors, this is almost always the issue.
 
+## Memory Sizing
+
+Redis stores all index data in memory. As a rough guide, expect ~1–2 KB per indexed element (including term data). A 10,000-element index uses approximately 10–20 MB of RAM; a 100,000-element index uses approximately 100–200 MB. Indices with many searchable fields or very long content will use more.
+
+Check actual usage with `redis-cli INFO memory` after a rebuild.
+
 ## Limitations
 
 - Requires PHP Redis extension
-- Data is stored in memory — ensure your Redis server has enough RAM
+- Data is stored in memory — size your Redis server based on index size (see above)
 - No `browse()` or native `multipleQueries()` support (sequential fallback is used)

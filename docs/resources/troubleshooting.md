@@ -27,13 +27,13 @@ Common issues and solutions for Search Manager.
 - **Adjust batch size**: The `batchSize` setting (default: 100) controls how many elements are loaded per batch. Increase to 250–500 for faster indexing on servers with plenty of memory. On shared or memory-constrained hosting, **lower it** to 25–50 to prevent out-of-memory errors — the rebuild takes longer but completes reliably.
 - **Use queue-based indexing**: Ensure `queueEnabled` is `true` (default).
 - **Check your transformer**: Complex transformers that query relations or perform heavy computation slow down indexing. Pre-fetch related data where possible.
-- **Rebuild during off-hours**: For large sites, schedule rebuilds during low-traffic periods.
+- **Rebuild during off-hours**: For sites with 10,000+ elements, schedule rebuilds during low-traffic periods to avoid queue congestion.
 
 ## Out of Memory During Rebuild
 
 Each batch loads full elements with their relations into memory. If your server runs out of memory during a rebuild:
 
-- **Lower `batchSize`**: Set it to `25` or `50` in your config. The default of 100 works for most servers, but shared hosting or entries with many relations (Matrix blocks, categories, assets) may need less.
+- **Lower `batchSize`**: Set it to `25` or `50` in your config. The default of 100 works on servers with 256 MB+ PHP memory limit, but shared hosting or entries with many relations (Matrix blocks, categories, assets) may need less.
 - **Check your PHP `memory_limit`**: The rebuild respects your server's memory limit. If you can't increase it, lower `batchSize` instead.
 
 ## Connection Refused (Redis)

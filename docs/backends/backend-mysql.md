@@ -45,9 +45,21 @@ You can tune BM25 parameters in [Configuration](../get-started/configuration.md)
 
 No additional settings are needed — it uses your existing Craft database connection.
 
+## Sizing Guidance
+
+Each indexed element produces multiple rows in the database — typically 50–100+ term rows per element depending on content length and the number of searchable fields. A site with 2,700 elements across 3 indices can have ~200,000 document rows and ~190,000 term rows — this is completely normal and performs well on standard MySQL servers.
+
+| Index Size (elements) | Approximate DB Rows | MySQL Performance |
+|----------------------|--------------------|--------------------|
+| Up to 5,000 | ~500k rows | Excellent — no tuning needed |
+| 5,000–50,000 | 500k–5M rows | Good — standard shared hosting handles this fine |
+| 50,000–100,000 | 5M–10M rows | Adequate — dedicated DB recommended, consider Redis if queries slow down |
+| 100,000+ | 10M+ rows | Consider Redis or an external backend |
+
+These numbers assume default BM25 settings and typical content (entries with title, body, and a few custom fields). Indices with many searchable fields or very long content will have more rows per element.
+
 ## Limitations
 
 - Only available when Craft uses MySQL as its database
-- Search performance depends on your database server's capacity
 - No `browse()` or native `multipleQueries()` support (sequential fallback is used)
-- Large indices (100k+ documents) may benefit from Redis or an external backend
+- For indices above ~100,000 elements, consider Redis or an external backend for faster query response

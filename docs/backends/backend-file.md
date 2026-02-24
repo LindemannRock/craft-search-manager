@@ -5,7 +5,7 @@ The File backend stores search data as files in Craft's storage directory. It's 
 ## When to Use File
 
 - Development and testing environments
-- Small sites with limited content
+- Sites with fewer than ~500 indexed elements
 - When you want zero dependencies beyond PHP
 - Quick prototyping before choosing a production backend
 
@@ -72,9 +72,8 @@ The path supports Craft aliases (`@storage`, `@root`) and environment variables 
 
 ## Limitations
 
-- Slower than MySQL or Redis for large datasets
+- Slower than MySQL or Redis for indices above ~500 elements due to file I/O overhead
 - Not suitable for multi-server deployments (files are local to each server)
 - No `browse()` or native `multipleQueries()` support (sequential fallback is used)
-- File I/O can be a bottleneck on high-traffic sites
 
-For production sites with more than a few hundred indexed documents, consider MySQL, Redis, or an external backend.
+For production sites with more than ~500 indexed elements, switch to MySQL, Redis, or an external backend.

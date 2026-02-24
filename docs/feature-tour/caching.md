@@ -55,7 +55,7 @@ Uses Craft's Redis cache connection:
 'cacheStorageMethod' => 'redis',
 ```
 
-Good for: multi-server setups, edge networks (Servd, Platform.sh), high-traffic sites.
+Good for: multi-server setups, edge networks (Servd, Platform.sh), sites handling 10+ searches per second.
 
 ## Popular Queries Only
 
@@ -129,13 +129,17 @@ Cache warming:
 
 ## Performance Impact
 
+Typical response times for a MySQL/PostgreSQL backend with an index of 1,000–10,000 elements on a standard VPS (2 CPU, 4 GB RAM):
+
 | Scenario | Without Cache | With Cache |
 |----------|--------------|------------|
 | Search response | 50–200ms | 5–10ms |
 | Autocomplete | 20–50ms | 2–5ms |
 | API costs (external backends) | Per-query billing | Reduced by cache hit rate |
 
-Cache hit rates of 70–90% are common for sites with recurring search patterns.
+Uncached times increase with index size — a 50,000-element index may take 300–500ms per query on MySQL. Caching eliminates this for repeated queries.
+
+Sites where users frequently search the same terms (e.g., product catalogs, documentation) typically see cache hit rates of 70–90%. Sites with highly unique queries (e.g., support ticket search) see lower hit rates — consider `cachePopularQueriesOnly` to avoid caching one-off queries.
 
 > [!TIP]
 > Start with file-based caching. Switch to Redis only if you run multiple servers or need shared cache across load-balanced instances.
