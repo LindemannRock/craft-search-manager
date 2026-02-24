@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.40.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.1...v5.40.0) (2026-02-24)
+
+
+### Features
+
+* **TermNormalizer:** add shared Unicode-aware text normalization ([bc4798d](https://github.com/LindemannRock/craft-search-manager/commit/bc4798d822b534929d2a13b76a8d3c4e233ce264))
+
 ## [5.39.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.0...v5.39.1) (2026-02-24)
 
 
