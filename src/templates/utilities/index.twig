@@ -162,7 +162,7 @@
                     </button>
                 </form>
 
-                <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL data from a specific storage type. Use this to remove orphaned data when changing backends."|t('search-manager') }}</p>
+                <p class="light" style="margin-bottom: 12px;">{{ "Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting."|t('search-manager') }}</p>
 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     {{ forms.select({
@@ -182,7 +182,7 @@
                 </div>
 
                 {% include 'lindemannrock-base/_components/info-box' with {
-                    message: 'Clears ALL data from the selected storage type including orphaned data.'|t('search-manager'),
+                    message: 'This will delete all search index data stored in the selected storage type across all indices. You\'ll need to rebuild affected indices afterwards.'|t('search-manager'),
                     type: 'warning',
                     bg: 'white'
                 } %}
