@@ -29,11 +29,6 @@
 
 {% block content %}
 
-    {% include 'lindemannrock-base/_components/ip-salt-error' with {
-        pluginHandle: 'search-manager',
-        envVarName: 'SEARCH_MANAGER_IP_SALT'
-    } %}
-
     {# Tab Content #}
     <div id="backend" class="tab-content hidden">
         {% include 'search-manager/settings/test/_partials/backend' %}

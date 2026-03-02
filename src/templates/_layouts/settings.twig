@@ -5,6 +5,10 @@
 {% set selectedSettingsItem = selectedSettingsItem ?? 'general' %}
 {% set selectedSubnavItem = 'settings' %}
 
+{% set errorSummary = include('lindemannrock-base/_partials/ip-salt-error', {
+    translationCategory: 'search-manager'
+})|trim %}
+
 {% block sidebar %}
     {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}
     {% set activeBackend = craft.app.plugins.getPlugin('search-manager').backend.getActiveBackend() %}

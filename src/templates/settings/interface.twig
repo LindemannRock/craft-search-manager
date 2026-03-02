@@ -28,11 +28,6 @@
 
 {% block content %}
 
-    {% include 'lindemannrock-base/_components/ip-salt-error' with {
-		pluginHandle: 'search-manager',
-		envVarName: 'SEARCH_MANAGER_IP_SALT'
-	} %}
-
 	<form method="post" accept-charset="UTF-8">
 		<input type="hidden" name="action" value="search-manager/settings/save">
 		{{ csrfInput() }}

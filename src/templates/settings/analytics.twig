@@ -29,11 +29,6 @@
 
 {% block content %}
 
-    {% include 'lindemannrock-base/_components/ip-salt-error' with {
-		pluginHandle: 'search-manager',
-		envVarName: 'SEARCH_MANAGER_IP_SALT'
-	} %}
-
 	<form method="post" accept-charset="UTF-8">
 		<input type="hidden" name="action" value="search-manager/settings/save">
 		{{ csrfInput() }}
@@ -78,7 +73,7 @@
         <div id="geo-provider-settings" class="{{ not (settings.enableGeoDetection ?? false) ? 'hidden' }}" style="margin-top: 24px;">
             {% include 'lindemannrock-base/_partials/geo-settings' with {
                 settings: settings,
-                pluginHandle: 'search-manager'
+                translationCategory: 'search-manager'
             } %}
         </div>
 
@@ -189,4 +184,3 @@
         });
     });
 {% endjs %}
-
