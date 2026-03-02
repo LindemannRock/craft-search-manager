@@ -16,7 +16,7 @@ ehthumbs.db
 Desktop.ini
 
 # Dependencies
-/node_modules/
+node_modules/
 /vendor/
 
 # Build artifacts
