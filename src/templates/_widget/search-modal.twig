@@ -119,7 +119,7 @@
 
 {# Register the NEW SearchModalWidget JS (minified in production, unminified in devMode) #}
 {% set widgetJs = craft.app.config.general.devMode ? 'SearchModalWidget.js' : 'SearchModalWidget.min.js' %}
-{% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget', true) ~ '/dist/' ~ widgetJs, {
+{% do view.registerJsFile(craft.app.assetManager.getPublishedUrl('@searchmanager/web/assets/searchwidget/dist', true) ~ '/' ~ widgetJs, {
     position: 3
 }) %}
 
