@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\jobs;
 use Craft;
 use craft\db\Query;
 use craft\queue\BaseJob;
+use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -20,18 +21,11 @@ use yii\queue\RetryableJobInterface;
  */
 class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 {
+    use QueueTtrTrait;
     use LoggingTrait;
     use ElementTypeGuardTrait;
 
     public ?string $indexHandle = null;
-
-    /**
-     * @inheritdoc
-     */
-    public function getTtr(): int
-    {
-        return 1800; // 30 minutes — rebuilds can be slow on large indices
-    }
 
     /**
      * @inheritdoc

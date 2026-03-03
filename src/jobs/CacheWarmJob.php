@@ -4,8 +4,10 @@ namespace lindemannrock\searchmanager\jobs;
 
 use Craft;
 use craft\queue\BaseJob;
+use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
+use yii\queue\RetryableJobInterface;
 
 /**
  * Cache Warm Job
@@ -15,8 +17,9 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * @since 5.0.0
  */
-class CacheWarmJob extends BaseJob
+class CacheWarmJob extends BaseJob implements RetryableJobInterface
 {
+    use QueueTtrTrait;
     use LoggingTrait;
 
     /**
@@ -29,6 +32,14 @@ class CacheWarmJob extends BaseJob
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function canRetry($attempt, $error): bool
+    {
+        return false;
     }
 
     /** @inheritdoc */

@@ -12,9 +12,11 @@ namespace lindemannrock\searchmanager\jobs;
 use Craft;
 use craft\elements\Entry;
 use craft\queue\BaseJob;
+use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use yii\queue\RetryableJobInterface;
 
 /**
  * Sync element status changes that don't fire events
@@ -25,8 +27,9 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * @since 5.0.0
  */
-class SyncStatusJob extends BaseJob
+class SyncStatusJob extends BaseJob implements RetryableJobInterface
 {
+    use QueueTtrTrait;
     use LoggingTrait;
 
     /**
@@ -59,6 +62,14 @@ class SyncStatusJob extends BaseJob
                 $this->nextRunTime = date('M j, g:ia', time() + $delay);
             }
         }
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function canRetry($attempt, $error): bool
+    {
+        return false;
     }
 
     /**
