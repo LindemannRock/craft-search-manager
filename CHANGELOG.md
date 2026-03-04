@@ -1,5 +1,30 @@
 # Changelog
 
+## [5.41.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.2...v5.41.0) (2026-03-04)
+
+
+### Features
+
+* **controller:** add widget type options and style error handling ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+* **model:** enhance query rule validation ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+* **model:** enhance widget configuration validation ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+* **model:** implement settings schema validation for backends ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+* **model:** improve settings validation in Settings ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+* **model:** validate backend handle and heading levels in SearchIndex ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+
+
+### Bug Fixes
+
+* **jobs:** implement RetryableJobInterface in job classes ([4e53a87](https://github.com/LindemannRock/craft-search-manager/commit/4e53a873963323e184359a742e496855f7224b73))
+* **jobs:** implement RetryableJobInterface in job classes ([52ace2d](https://github.com/LindemannRock/craft-search-manager/commit/52ace2d08a0cc4fc156aa76ae2c58c03477ac886))
+* **template:** ensure proper error handling in widget behavior settings ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+* **template:** improve error handling in settings and edit templates ([bb30573](https://github.com/LindemannRock/craft-search-manager/commit/bb3057346b048d40222b8f6fec226f5506b2b5d1))
+
+
+### Miscellaneous Chores
+
+* **gitignore:** update node_modules entry to exclude root directory ([e12a6bf](https://github.com/LindemannRock/craft-search-manager/commit/e12a6bfb325956b2527127e8460e854565b0a3ce))
+
 ## [5.40.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.1...v5.40.2) (2026-02-24)
 
 
