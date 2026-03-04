@@ -4,8 +4,10 @@ namespace lindemannrock\searchmanager\jobs;
 
 use Craft;
 use craft\queue\BaseJob;
+use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
+use yii\queue\RetryableJobInterface;
 
 /**
  * Index Element Job
@@ -14,13 +16,22 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * @since 5.0.0
  */
-class IndexElementJob extends BaseJob
+class IndexElementJob extends BaseJob implements RetryableJobInterface
 {
+    use QueueTtrTrait;
     use LoggingTrait;
 
     public int $elementId;
     public string $elementType;
     public ?int $siteId = null;
+
+    /**
+     * @inheritdoc
+     */
+    public function canRetry($attempt, $error): bool
+    {
+        return false;
+    }
 
     /** @inheritdoc */
     public function init(): void

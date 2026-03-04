@@ -4,8 +4,10 @@ namespace lindemannrock\searchmanager\jobs;
 
 use Craft;
 use craft\queue\BaseJob;
+use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
+use yii\queue\RetryableJobInterface;
 
 /**
  * Geo Lookup Job
@@ -15,8 +17,9 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * @since 5.0.0
  */
-class GeoLookupJob extends BaseJob
+class GeoLookupJob extends BaseJob implements RetryableJobInterface
 {
+    use QueueTtrTrait;
     use LoggingTrait;
 
     /**
@@ -28,6 +31,14 @@ class GeoLookupJob extends BaseJob
      * @var string The IP address to look up (already anonymized if applicable)
      */
     public string $ip;
+
+    /**
+     * @inheritdoc
+     */
+    public function canRetry($attempt, $error): bool
+    {
+        return false;
+    }
 
     /** @inheritdoc */
     public function init(): void
