@@ -87,7 +87,7 @@
 	toggle: 'max-recent-searches-field',
 }) }}
 
-<div id="max-recent-searches-field"{% if not widgetConfig.isShowRecentEnabled() %} class="hidden"{% endif %}>
+<div id="max-recent-searches-field"{% if not widgetConfig.isShowRecentEnabled() and not widgetConfig.getErrors('settings.behavior.maxRecentSearches') %} class="hidden"{% endif %}>
 	{{ forms.textField({
 		label: 'Max Recent Searches'|t('search-manager'),
 		instructions: 'Maximum number of recent searches to store and display'|t('search-manager'),

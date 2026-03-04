@@ -264,8 +264,61 @@ class ConfiguredBackend extends Model
             [['enabled'], 'validateNotDisablingDefault'],
             [['sortOrder'], 'integer'],
             [['settings'], 'safe'],
+            [['settings'], 'validateSettingsSchema'],
             [['settings'], 'validateStoragePath'],
         ];
+    }
+
+    /**
+     * Validate backend settings against backend type schema.
+     *
+     * Adds field-specific errors on `settings.{key}` so templates can render inline.
+     */
+    public function validateSettingsSchema(string $attribute): void
+    {
+        if ($this->backendType === '' || !isset(self::BACKEND_SETTINGS_SCHEMA[$this->backendType])) {
+            return;
+        }
+
+        $schema = self::BACKEND_SETTINGS_SCHEMA[$this->backendType];
+        $settings = $this->settings;
+
+        foreach ($schema as $key => $config) {
+            $value = $settings[$key] ?? null;
+            $valueString = trim((string)$value);
+            $isRequired = (bool)$config['required'];
+            $fieldType = (string)$config['type'];
+            $fieldLabel = (string)$config['label'];
+
+            if ($isRequired && $valueString === '') {
+                $this->addError(
+                    "settings.{$key}",
+                    Craft::t('search-manager', '{field} cannot be blank.', ['field' => $fieldLabel])
+                );
+                continue;
+            }
+
+            if ($valueString === '') {
+                continue;
+            }
+
+            if ($fieldType === 'number' && !is_numeric($valueString)) {
+                $this->addError(
+                    "settings.{$key}",
+                    Craft::t('search-manager', '{field} must be a valid number.', ['field' => $fieldLabel])
+                );
+            }
+
+            if ($fieldType === 'select') {
+                $allowedValues = array_map('strval', array_keys($config['options']));
+                if (!in_array((string)$value, $allowedValues, true)) {
+                    $this->addError(
+                        "settings.{$key}",
+                        Craft::t('search-manager', '{field} has an invalid value.', ['field' => $fieldLabel])
+                    );
+                }
+            }
+        }
     }
 
     /**

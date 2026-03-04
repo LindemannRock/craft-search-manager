@@ -2,11 +2,13 @@
 
 namespace lindemannrock\searchmanager\models;
 
+use Craft;
 use craft\base\Model;
 use lindemannrock\base\traits\SettingsConfigTrait;
 use lindemannrock\base\traits\SettingsDisplayNameTrait;
 use lindemannrock\base\traits\SettingsPersistenceTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * Settings model for Search Manager plugin
@@ -416,7 +418,8 @@ class Settings extends Model
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
             [['geoProvider'], 'in', 'range' => ['ip-api.com', 'ipapi.co', 'ipinfo.io']],
             [['geoApiKey'], 'string', 'max' => 255, 'skipOnEmpty' => true],
-            [['itemsPerPage', 'batchSize', 'analyticsRetention', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
+            [['itemsPerPage', 'batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
+            [['analyticsRetention'], 'integer', 'min' => 0, 'max' => 3650],
             [['itemsPerPage'], 'integer', 'max' => 500],
             [['batchSize'], 'integer', 'max' => 1000],
             [['maxFuzzyCandidates'], 'integer', 'min' => 10, 'max' => 1000],
@@ -436,7 +439,80 @@ class Settings extends Model
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
             [['logLevel'], 'in', 'range' => ['debug', 'info', 'warning', 'error']],
             [['defaultBackendHandle', 'defaultWidgetHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
+            [['defaultBackendHandle'], 'validateDefaultBackendHandle'],
+            [['defaultWidgetHandle'], 'validateDefaultWidgetHandle'],
+            [['ngramSizes'], 'validateNgramSizes'],
         ];
+    }
+
+    /**
+     * Ensure default backend exists and is enabled.
+     */
+    public function validateDefaultBackendHandle(string $attribute): void
+    {
+        $handle = $this->$attribute;
+        if (!$handle) {
+            return;
+        }
+
+        $backend = ConfiguredBackend::findByHandle($handle);
+        if (!$backend) {
+            $this->addError($attribute, Craft::t(static::pluginHandle(), 'Selected backend does not exist.'));
+            return;
+        }
+
+        if (!$backend->enabled) {
+            $this->addError($attribute, Craft::t(static::pluginHandle(), 'Selected backend is disabled.'));
+        }
+    }
+
+    /**
+     * Ensure default widget exists and is enabled.
+     */
+    public function validateDefaultWidgetHandle(string $attribute): void
+    {
+        $handle = $this->$attribute;
+        if (!$handle) {
+            return;
+        }
+
+        $widget = SearchManager::$plugin->widgetConfigs->getByHandle($handle);
+        if (!$widget) {
+            $this->addError($attribute, Craft::t(static::pluginHandle(), 'Selected widget does not exist.'));
+            return;
+        }
+
+        if (!$widget->enabled) {
+            $this->addError($attribute, Craft::t(static::pluginHandle(), 'Selected widget is disabled.'));
+        }
+    }
+
+    /**
+     * Validate n-gram size configuration.
+     */
+    public function validateNgramSizes(string $attribute): void
+    {
+        $value = trim((string)$this->$attribute);
+        if ($value === '') {
+            return;
+        }
+
+        $tokens = array_filter(array_map('trim', explode(',', $value)), static fn(string $token): bool => $token !== '');
+        if ($tokens === []) {
+            return;
+        }
+
+        $allowed = ['1', '2', '3', '4', '5'];
+        foreach ($tokens as $token) {
+            if (!in_array($token, $allowed, true)) {
+                $this->addError($attribute, Craft::t(static::pluginHandle(), 'Invalid n-gram size "{size}". Allowed values: 1, 2, 3, 4, 5.', ['size' => $token]));
+                return;
+            }
+        }
+
+        if (count($tokens) !== count(array_unique($tokens))) {
+            $this->addError($attribute, Craft::t(static::pluginHandle(), 'Duplicate n-gram sizes are not allowed.'));
+        }
     }
 
     /**

@@ -42,6 +42,22 @@
     },
 } %}
 
+{% set selectedTab = 'general' %}
+{% if widgetConfig.hasErrors() %}
+	{% set errorKeys = widgetConfig.getErrors()|keys %}
+	{% if errorKeys|filter(k => k starts with 'settings.analytics.')|length %}
+		{% set selectedTab = 'analytics' %}
+	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.queryParamName' or k starts with 'settings.behavior.destinationHighlightSelector')|length %}
+		{% set selectedTab = 'highlights' %}
+	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.snippetMode' or k starts with 'settings.behavior.snippetLength')|length %}
+		{% set selectedTab = 'snippets' %}
+	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.maxResults' or k starts with 'settings.behavior.result' or k starts with 'settings.behavior.hierarchy' or k starts with 'settings.behavior.maxHeadingsPerResult')|length %}
+		{% set selectedTab = 'results' %}
+	{% elseif errorKeys|filter(k => k starts with 'settings.behavior.' or k starts with 'settings.trigger.')|length %}
+		{% set selectedTab = 'behavior' %}
+	{% endif %}
+{% endif %}
+
 {% block actionButton %}
 	<div class="btngroup submit">
 		<button type="submit" class="btn submit">{{ "Save"|t('app') }}</button>
@@ -75,31 +91,11 @@
 
 {# Display validation errors summary before content #}
 {% if widgetConfig.hasErrors() %}
-	{% set errorList = [] %}
-	{% for attribute, errors in widgetConfig.getErrors() %}
-		{% for error in errors %}
-			{% set errorList = errorList|merge([{
-				attribute: attribute,
-				message: error
-			}]) %}
-		{% endfor %}
-	{% endfor %}
-
-	{% set errorSummary %}
-		<div class="error-summary" tabindex="-1">
-			<div>
-				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
-				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
-			</div>
-			<ul class="errors">
-				{% for error in errorList %}
-					<li>
-						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
-					</li>
-				{% endfor %}
-			</ul>
-		</div>
-	{% endset %}
+	{% set errorSummary = include('lindemannrock-base/_partials/error-summary', {
+		errors: widgetConfig.getErrors(),
+		linkMode: 'data-key',
+		translationCategory: 'search-manager',
+	}) %}
 {% endif %}
 
 {% block content %}
@@ -111,7 +107,7 @@
 	{{ csrfInput() }}
 
 	{# General Tab #}
-	<div id="general">
+	<div id="general"{% if selectedTab != 'general' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/settings" with {
 			widgetConfig: widgetConfig,
 			indices: indices,
@@ -120,35 +116,35 @@
 	</div>
 
 	{# Behavior Tab #}
-	<div id="behavior" class="hidden">
+	<div id="behavior"{% if selectedTab != 'behavior' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/behavior" with {
 			widgetConfig: widgetConfig,
 		} %}
 	</div>
 
 	{# Results Tab #}
-	<div id="results" class="hidden">
+	<div id="results"{% if selectedTab != 'results' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/results" with {
 			widgetConfig: widgetConfig,
 		} %}
 	</div>
 
 	{# Snippets Tab #}
-	<div id="snippets" class="hidden">
+	<div id="snippets"{% if selectedTab != 'snippets' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/snippets" with {
 			widgetConfig: widgetConfig,
 		} %}
 	</div>
 
 	{# Highlights Tab #}
-	<div id="highlights" class="hidden">
+	<div id="highlights"{% if selectedTab != 'highlights' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/highlights" with {
 			widgetConfig: widgetConfig,
 		} %}
 	</div>
 
 	{# Analytics Tab #}
-	<div id="analytics" class="hidden">
+	<div id="analytics"{% if selectedTab != 'analytics' %} class="hidden"{% endif %}>
 		{% include "search-manager/widgets/_partials/analytics" with {
 			widgetConfig: widgetConfig,
 		} %}
@@ -246,6 +242,7 @@
 			name: 'styleHandle',
 			value: widgetConfig.styleHandle ?? '',
 			options: _styleOptions,
+			errors: widgetConfig.getErrors('styleHandle')
 		}) }}
 	</div>
 

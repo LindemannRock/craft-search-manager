@@ -204,6 +204,7 @@
                 {label: '5-gram - Most precise'|t('search-manager'), value: '5'},
             ],
             values: settings.ngramSizes ? settings.ngramSizes|split(',') : [],
+            errors: settings.getErrors('ngramSizes'),
             tip: 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('ngramSizes'),
             warning: settings.isOverriddenByConfig('ngramSizes') ?

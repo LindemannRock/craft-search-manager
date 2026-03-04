@@ -64,31 +64,11 @@
 
 {# Display validation errors summary before content #}
 {% if rule.hasErrors() %}
-	{% set errorList = [] %}
-	{% for attribute, errors in rule.getErrors() %}
-		{% for error in errors %}
-			{% set errorList = errorList|merge([{
-				attribute: attribute,
-				message: error
-			}]) %}
-		{% endfor %}
-	{% endfor %}
-
-	{% set errorSummary %}
-		<div class="error-summary" tabindex="-1">
-			<div>
-				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
-				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
-			</div>
-			<ul class="errors">
-				{% for error in errorList %}
-					<li>
-						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
-					</li>
-				{% endfor %}
-			</ul>
-		</div>
-	{% endset %}
+	{% set errorSummary = include('lindemannrock-base/_partials/error-summary', {
+		errors: rule.getErrors(),
+		linkMode: 'data-key',
+		translationCategory: 'search-manager',
+	}) %}
 {% endif %}
 
 {% block content %}
@@ -499,7 +479,7 @@
 
 		<hr>
 
-		<div class="field">
+		<div class="field{% if rule.getErrors('priority') %} has-errors{% endif %}">
 			<div class="heading">
 				<label for="priority">{{ 'Priority'|t('search-manager') }}</label>
 				<div class="instructions">
@@ -517,6 +497,13 @@
 					</select>
 				</div>
 			</div>
+			{% if rule.getErrors('priority') %}
+				<ul class="errors">
+					{% for error in rule.getErrors('priority') %}
+						<li>{{ error }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
 			<p class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
 				<span class="visually-hidden">Tip:</span>
@@ -552,7 +539,8 @@
 				id: 'siteId',
 				name: 'siteId',
 				options: siteOptions,
-				value: rule.siteId
+				value: rule.siteId,
+				errors: rule.getErrors('siteId')
 			}) }}
 		{% endif %}
 	</div>

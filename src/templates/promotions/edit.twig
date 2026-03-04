@@ -64,31 +64,11 @@
 
 {# Display validation errors summary before content #}
 {% if promotion.hasErrors() %}
-	{% set errorList = [] %}
-	{% for attribute, errors in promotion.getErrors() %}
-		{% for error in errors %}
-			{% set errorList = errorList|merge([{
-				attribute: attribute,
-				message: error
-			}]) %}
-		{% endfor %}
-	{% endfor %}
-
-	{% set errorSummary %}
-		<div class="error-summary" tabindex="-1">
-			<div>
-				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
-				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
-			</div>
-			<ul class="errors">
-				{% for error in errorList %}
-					<li>
-						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
-					</li>
-				{% endfor %}
-			</ul>
-		</div>
-	{% endset %}
+	{% set errorSummary = include('lindemannrock-base/_partials/error-summary', {
+		errors: promotion.getErrors(),
+		linkMode: 'data-key',
+		translationCategory: 'search-manager',
+	}) %}
 {% endif %}
 
 {% block content %}
@@ -233,6 +213,13 @@
 					</select>
 				</div>
 			</div>
+			{% if promotion.getErrors('position') %}
+				<ul class="errors">
+					{% for error in promotion.getErrors('position') %}
+						<li>{{ error }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
 			<p class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
 				<span class="visually-hidden">Tip:</span>
@@ -267,7 +254,8 @@
 				id: 'siteId',
 				name: 'siteId',
 				options: siteOptions,
-				value: promotion.siteId
+				value: promotion.siteId,
+				errors: promotion.getErrors('siteId')
 			}) }}
 		{% endif %}
 	</div>

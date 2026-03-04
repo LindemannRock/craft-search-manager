@@ -65,33 +65,12 @@
 	{% endif %}
 {% endblock %}
 
-{# Display validation errors summary before content #}
 {% if backend.hasErrors() %}
-	{% set errorList = [] %}
-	{% for attribute, errors in backend.getErrors() %}
-		{% for error in errors %}
-			{% set errorList = errorList|merge([{
-				attribute: attribute,
-				message: error
-			}]) %}
-		{% endfor %}
-	{% endfor %}
-
-	{% set errorSummary %}
-		<div class="error-summary" tabindex="-1">
-			<div>
-				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
-				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
-			</div>
-			<ul class="errors">
-				{% for error in errorList %}
-					<li>
-						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
-					</li>
-				{% endfor %}
-			</ul>
-		</div>
-	{% endset %}
+	{% set errorSummary = include('lindemannrock-base/_partials/error-summary', {
+		errors: backend.getErrors(),
+		linkMode: 'data-key',
+		translationCategory: 'search-manager',
+	}) %}
 {% endif %}
 
 {% block content %}
@@ -168,6 +147,13 @@
 				<div id="no-settings-message" style="color: #8f98a3; font-style: italic; {% if backend.backendType %}display: none;{% endif %}">
 					{{ 'Select a backend type above to configure its settings.'|t('search-manager') }}
 				</div>
+				{% if backend.getErrors('settings') %}
+					<ul class="errors">
+						{% for error in backend.getErrors('settings') %}
+							<li>{{ error }}</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
 
 				{% set backendDescriptions = constant('lindemannrock\\searchmanager\\models\\ConfiguredBackend::BACKEND_DESCRIPTIONS') %}
 
@@ -242,6 +228,7 @@
                                         required: config.required ?? false,
                                         placeholder: fieldPlaceholder,
                                         suggestEnvVars: true,
+                                        errors: backend.getErrors('settings.' ~ key),
                                     }) }}
 									{% elseif config.type == 'number' %}
 										{{ forms.autosuggestField({
@@ -253,6 +240,7 @@
                                         required: config.required ?? false,
                                         placeholder: fieldPlaceholder,
                                         suggestEnvVars: true,
+                                        errors: backend.getErrors('settings.' ~ key),
                                     }) }}
 									{% elseif config.type == 'select' %}
 										{{ forms.selectField({
@@ -263,6 +251,7 @@
                                         value: fieldValue,
                                         required: config.required ?? false,
                                         options: config.options,
+                                        errors: backend.getErrors('settings.' ~ key),
                                     }) }}
 									{% else %}
 										{{ forms.autosuggestField({
@@ -275,7 +264,7 @@
                                         required: config.required ?? false,
                                         placeholder: fieldPlaceholder,
                                         suggestEnvVars: true,
-                                        errors: backend.getErrors('settings'),
+                                        errors: backend.getErrors('settings.' ~ key),
                                     }) }}
 									{% endif %}
 								{% endfor %}

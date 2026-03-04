@@ -5,9 +5,17 @@
 {% set selectedSettingsItem = selectedSettingsItem ?? 'general' %}
 {% set selectedSubnavItem = 'settings' %}
 
-{% set errorSummary = include('lindemannrock-base/_partials/ip-salt-error', {
+{% set ipSaltSummary = include('lindemannrock-base/_partials/ip-salt-error', {
     translationCategory: 'search-manager'
 })|trim %}
+{% set validationSummary = '' %}
+{% if settings is defined and settings.hasErrors() %}
+    {% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
+        errors: settings.getErrors(),
+        translationCategory: 'search-manager',
+    })|trim %}
+{% endif %}
+{% set errorSummary = [ipSaltSummary, validationSummary]|filter(v => v)|join("\n") %}
 
 {% block sidebar %}
     {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}

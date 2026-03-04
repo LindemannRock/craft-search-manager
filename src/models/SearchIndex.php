@@ -109,12 +109,13 @@ class SearchIndex extends Model
             [['language'], 'string', 'max' => 10],
             [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => 'Language must be a valid language code (e.g., en, ar, fr-ca)'],
             [['backend'], 'string', 'max' => 255],
+            [['backend'], 'validateBackendHandle'],
             [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl'], 'boolean'],
             [['documentCount', 'sortOrder'], 'integer'],
             [['siteId'], 'validateSiteId'],
             [['source'], 'in', 'range' => ['config', 'database']],
             [['criteria'], 'safe'],
-            [['headingLevels'], 'safe'],
+            [['headingLevels'], 'validateHeadingLevels'],
             [['transformerClass'], 'validateTransformerClass'],
         ];
     }
@@ -173,6 +174,58 @@ class SearchIndex extends Model
         }
 
         $this->addError($attribute, 'siteId must be an integer, an array of integers, or null.');
+    }
+
+    /**
+     * Validate backend handle exists and is enabled when provided.
+     */
+    public function validateBackendHandle(string $attribute): void
+    {
+        $handle = $this->$attribute;
+        if ($handle === null || $handle === '') {
+            return;
+        }
+
+        $backend = ConfiguredBackend::findByHandle($handle);
+        if (!$backend) {
+            $this->addError($attribute, Craft::t('search-manager', 'Selected backend does not exist.'));
+            return;
+        }
+
+        if (!$backend->enabled) {
+            $this->addError($attribute, Craft::t('search-manager', 'Selected backend is disabled.'));
+        }
+    }
+
+    /**
+     * Validate heading levels are integers between 1 and 6.
+     */
+    public function validateHeadingLevels(string $attribute): void
+    {
+        if ($this->$attribute === null) {
+            return;
+        }
+
+        if (!is_array($this->$attribute)) {
+            $this->addError($attribute, Craft::t('search-manager', 'Heading levels must be an array.'));
+            return;
+        }
+
+        $normalized = [];
+        foreach ($this->$attribute as $level) {
+            if (!is_numeric($level)) {
+                $this->addError($attribute, Craft::t('search-manager', 'Heading levels must be numbers between 1 and 6.'));
+                return;
+            }
+            $intLevel = (int)$level;
+            if ($intLevel < 1 || $intLevel > 6) {
+                $this->addError($attribute, Craft::t('search-manager', 'Heading levels must be between 1 and 6.'));
+                return;
+            }
+            $normalized[] = $intLevel;
+        }
+
+        $this->$attribute = array_values(array_unique($normalized));
     }
 
     // =========================================================================

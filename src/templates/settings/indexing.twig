@@ -111,6 +111,7 @@
             id: 'indexPrefix',
             name: 'settings[indexPrefix]',
             value: settings.indexPrefix,
+            errors: settings.getErrors('indexPrefix'),
             placeholder: 'e.g., dev_, staging_, prod_',
             disabled: settings.isOverriddenByConfig('indexPrefix'),
             warning: settings.isOverriddenByConfig('indexPrefix') ?

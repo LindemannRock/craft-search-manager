@@ -106,6 +106,7 @@ class QueryRule extends Model
                 self::ACTION_REDIRECT,
             ]],
             [['priority', 'siteId'], 'integer'],
+            [['priority'], 'integer', 'min' => -10, 'max' => 10],
             [['enabled'], 'boolean'],
             [['actionValue'], 'validateActionValue'],
             [['matchValue'], 'validateRegexPattern', 'when' => fn() => $this->matchType === self::MATCH_REGEX],

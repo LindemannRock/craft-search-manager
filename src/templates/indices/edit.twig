@@ -44,31 +44,11 @@
 
 {# Display validation errors summary before content #}
 {% if index.hasErrors() %}
-	{% set errorList = [] %}
-	{% for attribute, errors in index.getErrors() %}
-		{% for error in errors %}
-			{% set errorList = errorList|merge([{
-				attribute: attribute,
-				message: error
-			}]) %}
-		{% endfor %}
-	{% endfor %}
-
-	{% set errorSummary %}
-		<div class="error-summary" tabindex="-1">
-			<div>
-				<span class="notification-icon" data-icon="alert" aria-label="error" role="img"></span>
-				<h2>{{ 'Found {count, number} {count, plural, =1{error} other{errors}}'|t('app', {count: errorList|length}) }}</h2>
-			</div>
-			<ul class="errors">
-				{% for error in errorList %}
-					<li>
-						<a href="#" data-field-error-key="{{ error.attribute }}">{{ error.message }}</a>
-					</li>
-				{% endfor %}
-			</ul>
-		</div>
-	{% endset %}
+	{% set errorSummary = include('lindemannrock-base/_partials/error-summary', {
+		errors: index.getErrors(),
+		linkMode: 'data-key',
+		translationCategory: 'search-manager',
+	}) %}
 {% endif %}
 
 {% block content %}
@@ -287,6 +267,7 @@
         name: 'siteId',
         options: craft.app.sites.getAllSites()|map(s => { label: s.name, value: s.id }),
         values: selectedSiteIds,
+        errors: index.getErrors('siteId'),
     }) }}
 
     {% set settings = craft.searchManager.getSettings() %}
@@ -304,6 +285,7 @@
             name: 'language',
             value: index.language,
             options: languageOptions,
+            errors: index.getErrors('language'),
             warning: index.language ? 'Manual override active. Language will NOT auto-detect from site.'|t('search-manager') : null,
         }) }}
     {% else %}
@@ -357,6 +339,7 @@
         name: 'headingLevels',
         options: headingLevelOptions,
         values: selectedHeadingLevels,
+        errors: index.getErrors('headingLevels'),
     }) }}
 
     {# Helpful transformer examples #}
@@ -411,6 +394,7 @@
         name: 'backend',
         value: index.backend ?? '',
         options: backendOptions,
+        errors: index.getErrors('backend'),
     }) }}
 
     {% if backendOptions|length <= 1 %}

@@ -6,6 +6,7 @@ use Craft;
 use craft\helpers\Db;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use yii\web\Response;
@@ -629,7 +630,10 @@ class SettingsController extends Controller
         $this->requirePermission('searchManager:manageSettings');
         $this->requirePostRequest();
 
-        $settings = SearchManager::$plugin->getSettings();
+        $section = $this->_validSettingsSection(Craft::$app->getRequest()->getBodyParam('section', 'general'));
+        $attributesToValidate = $this->_validationAttributesForSection($section);
+
+        $settings = Settings::loadFromDatabase();
         $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
 
         // Convert ngramSizes array to comma-separated string
@@ -643,21 +647,92 @@ class SettingsController extends Controller
 
         $settings->setAttributes($postedSettings);
 
-        if (!$settings->validate()) {
+        // Skip validation for fields overridden by config.
+        $attributesToValidate = array_values(array_filter(
+            $attributesToValidate,
+            static fn(string $attribute): bool => !$settings->isOverriddenByConfig($attribute),
+        ));
+
+        if (!$settings->validate($attributesToValidate)) {
             $this->logError('Settings validation failed', ['errors' => $settings->getErrors()]);
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
-            return null;
+            return $this->_renderSettingsTemplate($section, $settings);
         }
 
-        if (!$settings->saveToDatabase()) {
+        if (!$settings->saveToDatabase($attributesToValidate)) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
-            return null;
+            return $this->_renderSettingsTemplate($section, $settings);
         }
 
         $this->logInfo('Settings saved successfully');
         Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));
 
         return $this->redirectToPostedUrl();
+    }
+
+    /**
+     * Validate and sanitize the settings section parameter.
+     */
+    private function _validSettingsSection(string $section): string
+    {
+        $allowed = ['general', 'indexing', 'analytics', 'search', 'language', 'highlighting', 'cache', 'interface', 'test'];
+
+        return in_array($section, $allowed, true) ? $section : 'general';
+    }
+
+    /**
+     * Return top-level settings attributes validated for the active settings section.
+     */
+    private function _validationAttributesForSection(string $section): array
+    {
+        return match ($section) {
+            'general' => ['pluginName', 'defaultBackendHandle', 'defaultWidgetHandle', 'logLevel'],
+            'indexing' => ['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'batchSize', 'indexPrefix'],
+            'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
+            'search' => ['bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
+            'language' => ['defaultLanguage', 'enableStopWords'],
+            'highlighting' => ['enableHighlighting', 'highlightTag', 'highlightClass', 'snippetLength', 'maxSnippets', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit', 'autocompleteFuzzy'],
+            'cache' => ['cacheStorageMethod', 'enableCache', 'cacheDuration', 'cachePopularQueriesOnly', 'popularQueryThreshold', 'enableAutocompleteCache', 'autocompleteCacheDuration', 'clearCacheOnSave', 'statusSyncInterval', 'enableCacheWarming', 'cacheWarmingQueryCount', 'cacheDeviceDetection', 'deviceDetectionCacheDuration'],
+            'interface' => ['itemsPerPage'],
+            default => [],
+        };
+    }
+
+    /**
+     * Render the current settings section with the failed settings model.
+     */
+    private function _renderSettingsTemplate(string $section, Settings $settings): Response
+    {
+        $template = "search-manager/settings/{$section}";
+
+        if ($section === 'general') {
+            $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+            $enabledBackends = array_filter($backends, fn($b) => $b->enabled);
+            $widgets = SearchManager::$plugin->widgetConfigs->getAll();
+            $enabledWidgets = array_filter($widgets, fn($w) => $w->enabled);
+
+            return $this->renderTemplate($template, [
+                'settings' => $settings,
+                'backends' => $backends,
+                'enabledBackends' => $enabledBackends,
+                'widgets' => $widgets,
+                'enabledWidgets' => $enabledWidgets,
+            ]);
+        }
+
+        if ($section === 'test') {
+            $backends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
+
+            return $this->renderTemplate($template, [
+                'settings' => $settings,
+                'cacheEnabled' => $settings->enableCache ?? true,
+                'backends' => $backends,
+            ]);
+        }
+
+        return $this->renderTemplate($template, [
+            'settings' => $settings,
+        ]);
     }
 
     /**

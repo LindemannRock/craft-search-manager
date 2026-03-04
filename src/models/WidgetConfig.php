@@ -81,6 +81,10 @@ class WidgetConfig extends Model
                 'snippetLength' => 150,
                 'parseMarkdownSnippets' => false,
                 'showLoadingIndicator' => true,
+                'highlightDestinationPage' => true,
+                'persistQueryInUrl' => true,
+                'queryParamName' => 'smq',
+                'destinationHighlightSelector' => 'main, article, [data-search-content]',
             ],
             'trigger' => [
                 'showTrigger' => true,
@@ -565,13 +569,16 @@ class WidgetConfig extends Model
 
         // Search settings
         $this->validateStringField($s, 'search', 'placeholder', 'Placeholder', 255);
+        $this->validateIndexHandles($s);
 
         // Behavior settings — integers with ranges
         $this->validateIntField($s, 'behavior', 'debounce', 'Debounce', 0, 2000);
         $this->validateIntField($s, 'behavior', 'minChars', 'Minimum Characters', 1, 10);
         $this->validateIntField($s, 'behavior', 'maxResults', 'Maximum Results', 1, 100);
         $this->validateIntField($s, 'behavior', 'maxHeadingsPerResult', 'Max Headings per Result', 1, 50);
-        $this->validateIntField($s, 'behavior', 'maxRecentSearches', 'Max Recent Searches', 1, 50);
+        if ((bool)($s['behavior']['showRecent'] ?? true)) {
+            $this->validateIntField($s, 'behavior', 'maxRecentSearches', 'Max Recent Searches', 1, 50);
+        }
         $this->validateIntField($s, 'behavior', 'resultTitleLines', 'Result Title Lines', 1, 5);
         $this->validateIntField($s, 'behavior', 'resultDescLines', 'Result Description Lines', 1, 5);
         $this->validateIntField($s, 'behavior', 'snippetLength', 'Snippet Length', 50, 500);
@@ -584,6 +591,10 @@ class WidgetConfig extends Model
         // Behavior settings — strings
         $this->validateStringField($s, 'behavior', 'hotkey', 'Hotkey', 1);
         $this->validateStringField($s, 'behavior', 'hierarchyGroupBy', 'Group By Field', 64);
+        $this->validateStringField($s, 'behavior', 'queryParamName', 'Query Parameter Name', 32);
+        $this->validateStringField($s, 'behavior', 'destinationHighlightSelector', 'Content Selector', 255);
+        $this->validateQueryParamName($s);
+        $this->validateCssSelector('settings.behavior.destinationHighlightSelector', (string)($s['behavior']['destinationHighlightSelector'] ?? ''));
 
         // Trigger settings
         $this->validateStringField($s, 'trigger', 'triggerText', 'Trigger Text', 255);
@@ -591,6 +602,7 @@ class WidgetConfig extends Model
         // Analytics settings
         $this->validateIntField($s, 'analytics', 'idleTimeout', 'Idle Timeout', 0, 10000);
         $this->validateStringField($s, 'analytics', 'source', 'Source Identifier', 64);
+        $this->validateSourceIdentifier($s);
     }
 
     /**
@@ -600,6 +612,10 @@ class WidgetConfig extends Model
     {
         $value = $settings[$group][$key] ?? null;
         if ($value === null || $value === '') {
+            return;
+        }
+        if (!is_numeric($value) || preg_match('/^-?\d+$/', (string)$value) !== 1) {
+            $this->addError("settings.{$group}.{$key}", "{$label} must be a whole number.");
             return;
         }
         $intVal = (int) $value;
@@ -633,6 +649,93 @@ class WidgetConfig extends Model
         }
         if (!in_array(strtolower(trim((string) $value)), $allowed, true)) {
             $this->addError("settings.{$group}.{$key}", "{$label} must be one of: " . implode(', ', $allowed) . '.');
+        }
+    }
+
+    /**
+     * Validate selected search index handles exist.
+     */
+    private function validateIndexHandles(array $settings): void
+    {
+        $handles = $settings['search']['indexHandles'] ?? [];
+        if ($handles === '' || $handles === []) {
+            return;
+        }
+
+        if (!is_array($handles)) {
+            $this->addError('settings.search.indexHandles', 'Search Indices must be an array of index handles.');
+            return;
+        }
+
+        $validHandles = array_map(
+            static fn(SearchIndex $index): string => $index->handle,
+            SearchIndex::findAll(),
+        );
+
+        foreach ($handles as $handle) {
+            if (!is_string($handle) || $handle === '' || !in_array($handle, $validHandles, true)) {
+                $this->addError('settings.search.indexHandles', 'One or more selected search indices are invalid.');
+                return;
+            }
+        }
+    }
+
+    /**
+     * Validate query parameter name format.
+     */
+    private function validateQueryParamName(array $settings): void
+    {
+        $value = trim((string)($settings['behavior']['queryParamName'] ?? ''));
+        if ($value === '') {
+            return;
+        }
+
+        if (preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,31}$/', $value) !== 1) {
+            $this->addError(
+                'settings.behavior.queryParamName',
+                'Query Parameter Name must start with a letter and contain only letters, numbers, hyphens, and underscores.'
+            );
+        }
+    }
+
+    /**
+     * Validate analytics source identifier format.
+     */
+    private function validateSourceIdentifier(array $settings): void
+    {
+        $value = trim((string)($settings['analytics']['source'] ?? ''));
+        if ($value === '') {
+            return;
+        }
+
+        if (preg_match('/^[a-z][a-z0-9_-]{0,63}$/', $value) !== 1) {
+            $this->addError(
+                'settings.analytics.source',
+                'Source Identifier must start with a lowercase letter and contain only lowercase letters, numbers, hyphens, and underscores.'
+            );
+        }
+    }
+
+    /**
+     * Validate CSS selector field is syntactically safe.
+     */
+    private function validateCssSelector(string $attribute, string $value): void
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return;
+        }
+
+        if (preg_match('/[<>"\'`{};]/', $value) === 1 || stripos($value, 'javascript:') !== false) {
+            $this->addError($attribute, 'Content Selector contains unsafe characters.');
+            return;
+        }
+
+        if (preg_match('/[^a-zA-Z0-9\s\-\_\.\#\[\]\:\,\>\+\~\*\(\)=]/', $value) === 1) {
+            $this->addError(
+                $attribute,
+                'Content Selector contains invalid characters. Use CSS selectors only (for example: main, article, [data-search-content]).'
+            );
         }
     }
 

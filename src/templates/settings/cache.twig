@@ -48,6 +48,7 @@
 				{ value: 'redis', label: 'Redis/Database (load-balanced, multi-server, cloud hosting)'|t('search-manager') },
 			],
 			disabled: settings.isOverriddenByConfig('cacheStorageMethod'),
+			errors: settings.getErrors('cacheStorageMethod'),
 			warning: settings.isOverriddenByConfig('cacheStorageMethod') ?
 				"This is being overridden by the <code>cacheStorageMethod</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
 		}) }}
@@ -205,7 +206,7 @@
                 "This is being overridden by config file."|t('search-manager')|raw : null,
         }) }}
 
-		{{ forms.selectField({
+        {{ forms.selectField({
             label: 'Status Sync Interval'|t('search-manager'),
             instructions: 'How often to sync entries that become live or expire automatically.'|t('search-manager'),
             id: 'statusSyncInterval',
@@ -223,6 +224,7 @@
             ],
             tip: 'Handles entries with scheduled postDate or expiryDate that change status without a save event'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('statusSyncInterval'),
+            errors: settings.getErrors('statusSyncInterval'),
             warning: settings.isOverriddenByConfig('statusSyncInterval') ?
                 "This is being overridden by config file."|t('search-manager')|raw : null,
         }) }}
@@ -325,6 +327,7 @@
                     max: 604800,
                     tip: 'Min: 60 (1 minute), Max: 604800 (7 days)'|t('search-manager'),
                     disabled: settings.isOverriddenByConfig('deviceDetectionCacheDuration'),
+                    errors: settings.getErrors('deviceDetectionCacheDuration'),
                     warning: settings.isOverriddenByConfig('deviceDetectionCacheDuration') ?
                         "This is being overridden by the <code>deviceDetectionCacheDuration</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
                 }) }}
@@ -406,4 +409,3 @@ $('#cacheDuration-human').text(secondsToHuman($('#cacheDuration').val()));
 $('#deviceDetectionCacheDuration-human').text(secondsToHuman($('#deviceDetectionCacheDuration').val()));
 $('#autocompleteCacheDuration-human').text(secondsToHuman($('#autocompleteCacheDuration').val()));
 {% endjs %}
-

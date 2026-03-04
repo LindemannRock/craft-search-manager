@@ -212,6 +212,7 @@ class WidgetsController extends Controller
             'isNew' => !$configId,
             'indices' => $indices,
             'widgetStyles' => $widgetStyles,
+            'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
         ];
@@ -221,6 +222,7 @@ class WidgetsController extends Controller
         if ($styleHandle) {
             $existingStyle = SearchManager::$plugin->widgetStyles->getByHandle($styleHandle);
             if ($existingStyle === null) {
+                $widgetConfig->addError('styleHandle', Craft::t('search-manager', 'Selected style preset not found.'));
                 Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected style preset not found.'));
                 Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
                 return null;
