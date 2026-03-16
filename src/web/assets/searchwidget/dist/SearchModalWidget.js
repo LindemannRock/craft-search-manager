@@ -1,1629 +1,124 @@
-var SearchModalWidget = (() => {
-  var __defProp = Object.defineProperty;
-  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
-  var __getOwnPropNames = Object.getOwnPropertyNames;
-  var __hasOwnProp = Object.prototype.hasOwnProperty;
-  var __export = (target, all) => {
-    for (var name in all)
-      __defProp(target, name, { get: all[name], enumerable: true });
-  };
-  var __copyProps = (to, from, except, desc) => {
-    if (from && typeof from === "object" || typeof from === "function") {
-      for (let key of __getOwnPropNames(from))
-        if (!__hasOwnProp.call(to, key) && key !== except)
-          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-    }
-    return to;
-  };
-  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
-
-  // src/widgets/SearchModalWidget.js
-  var SearchModalWidget_exports = {};
-  __export(SearchModalWidget_exports, {
-    default: () => SearchModalWidget_default
-  });
-
-  // src/core/ConfigParser.js
-  var BASE_DEFAULTS = {
-    indices: [],
-    placeholder: "Search...",
-    theme: "light",
-    maxResults: 20,
-    debounce: 200,
-    minChars: 2,
-    showRecent: true,
-    maxRecentSearches: 5,
-    groupResults: true,
-    siteId: "",
-    // Internal endpoints (not user-configurable)
-    searchEndpoint: "/actions/search-manager/api/search",
-    trackClickEndpoint: "/actions/search-manager/search/track-click",
-    trackSearchEndpoint: "/actions/search-manager/search/track-search",
-    // Analytics settings (user-configurable)
-    idleTimeout: 1500,
-    // Track search after 1.5s idle (0 = disabled)
-    source: "",
-    // Custom source identifier (empty = 'frontend-widget')
-    enableHighlighting: true,
-    highlightTag: "mark",
-    highlightClass: "",
-    hideResultsWithoutUrl: false,
-    showCodeSnippets: false,
-    snippetMode: "balanced",
-    showLoadingIndicator: true,
-    debug: false,
-    resultTitleLines: 1,
-    resultDescLines: 1,
-    snippetLength: 150,
-    parseMarkdownSnippets: false,
-    persistQueryInUrl: true,
-    queryParamName: "smq",
-    highlightDestinationPage: true,
-    destinationHighlightSelector: "main, article, [data-search-content]",
-    // Hierarchical result display (Algolia DocSearch-style)
-    resultLayout: "default",
-    // 'default' | 'grouped' | 'hierarchical'
-    hierarchyGroupBy: "",
-    // Field to group by (e.g., 'section', 'category')
-    hierarchyStyle: "tree",
-    // 'tree' (indented + connectors) | 'flat' (same depth + connectors) | 'none' (same depth, no connectors)
-    hierarchyDisplay: "individual",
-    // 'individual' (each result is its own card) | 'unified' (page + headings share one card)
-    maxHeadingsPerResult: 3,
-    // Max heading children per result
-    styles: {},
-    promotions: {
-      showBadge: true,
-      badgeText: "Featured",
-      badgePosition: "top-right"
-    }
-  };
-  var MODAL_DEFAULTS = {
-    hotkey: "k",
-    showTrigger: true,
-    triggerSelector: "",
-    backdropOpacity: 50,
-    enableBackdropBlur: true,
-    preventBodyScroll: true
-  };
-  var PAGE_DEFAULTS = {
-    showFilters: true,
-    paginationType: "numbered",
-    resultsPerPage: 20,
-    updateUrl: true,
-    sortOptions: ["relevance", "date-desc", "date-asc", "title"]
-  };
-  var INLINE_DEFAULTS = {
-    dropdownPosition: "below",
-    dropdownMaxHeight: 400,
-    showOnFocus: true
-  };
-  function getDefaultsForType(widgetType) {
-    const typeDefaults = {
-      modal: MODAL_DEFAULTS,
-      page: PAGE_DEFAULTS,
-      inline: INLINE_DEFAULTS
-    };
-    return {
-      ...BASE_DEFAULTS,
-      ...typeDefaults[widgetType] || {}
-    };
-  }
-  function parseBoolean(value, defaultValue = false) {
-    if (value === null || value === void 0) {
-      return defaultValue;
-    }
-    if (value === "") {
-      return true;
-    }
-    return value !== "false" && value !== "0";
-  }
-  function parseInt(value, defaultValue = 0) {
-    if (value === null || value === void 0) {
-      return defaultValue;
-    }
-    const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? defaultValue : parsed;
-  }
-  function parseJson(value, defaultValue = {}) {
-    if (!value) {
-      return defaultValue;
-    }
-    try {
-      return JSON.parse(value);
-    } catch (e) {
-      console.warn("SearchWidget: Invalid JSON attribute", e);
-      return defaultValue;
-    }
-  }
-  function parseArray(value) {
-    if (!value) {
-      return [];
-    }
-    return value.split(",").map((s) => s.trim()).filter(Boolean);
-  }
-  function parseConfig(element, widgetType = "modal") {
-    const defaults = getDefaultsForType(widgetType);
-    const indicesAttr = element.getAttribute("indices") || "";
-    const indices = parseArray(indicesAttr);
-    const config = {
-      // Array/special parsing
-      indices,
-      index: indices[0] || "",
-      // String attributes (user-configurable)
-      placeholder: element.getAttribute("placeholder") || defaults.placeholder,
-      theme: element.getAttribute("theme") || defaults.theme,
-      siteId: element.getAttribute("site-id") || defaults.siteId,
-      source: element.getAttribute("source") || defaults.source,
-      highlightTag: element.getAttribute("highlight-tag") || defaults.highlightTag,
-      highlightClass: element.getAttribute("highlight-class") || defaults.highlightClass,
-      // Internal endpoints (not user-configurable, use defaults)
-      searchEndpoint: defaults.searchEndpoint,
-      trackClickEndpoint: defaults.trackClickEndpoint,
-      trackSearchEndpoint: defaults.trackSearchEndpoint,
-      // Integer attributes
-      maxResults: parseInt(element.getAttribute("max-results"), defaults.maxResults),
-      debounce: parseInt(element.getAttribute("debounce"), defaults.debounce),
-      minChars: parseInt(element.getAttribute("min-chars"), defaults.minChars),
-      maxRecentSearches: parseInt(element.getAttribute("max-recent-searches"), defaults.maxRecentSearches),
-      idleTimeout: parseInt(element.getAttribute("idle-timeout"), defaults.idleTimeout),
-      // Boolean attributes (default true - check for 'false')
-      showRecent: parseBoolean(element.getAttribute("show-recent"), defaults.showRecent),
-      groupResults: parseBoolean(element.getAttribute("group-results"), defaults.groupResults),
-      enableHighlighting: parseBoolean(element.getAttribute("enable-highlighting"), defaults.enableHighlighting),
-      showLoadingIndicator: parseBoolean(element.getAttribute("show-loading-indicator"), defaults.showLoadingIndicator),
-      // Boolean attributes (default false - check for presence)
-      hideResultsWithoutUrl: parseBoolean(element.getAttribute("hide-results-without-url"), defaults.hideResultsWithoutUrl),
-      showCodeSnippets: parseBoolean(element.getAttribute("show-code-snippets"), defaults.showCodeSnippets),
-      debug: parseBoolean(element.getAttribute("debug"), defaults.debug),
-      snippetMode: element.getAttribute("snippet-mode") || defaults.snippetMode,
-      snippetLength: parseInt(element.getAttribute("snippet-length"), defaults.snippetLength),
-      parseMarkdownSnippets: parseBoolean(element.getAttribute("parse-markdown-snippets"), defaults.parseMarkdownSnippets),
-      persistQueryInUrl: parseBoolean(element.getAttribute("persist-query-in-url"), defaults.persistQueryInUrl),
-      highlightDestinationPage: parseBoolean(element.getAttribute("highlight-destination-page"), defaults.highlightDestinationPage),
-      // Result line clamping
-      resultTitleLines: parseInt(element.getAttribute("result-title-lines"), defaults.resultTitleLines),
-      resultDescLines: parseInt(element.getAttribute("result-desc-lines"), defaults.resultDescLines),
-      queryParamName: element.getAttribute("query-param-name") || defaults.queryParamName,
-      destinationHighlightSelector: element.getAttribute("destination-highlight-selector") || defaults.destinationHighlightSelector,
-      // Hierarchical result display
-      resultLayout: element.getAttribute("result-layout") || defaults.resultLayout,
-      hierarchyGroupBy: element.getAttribute("hierarchy-group-by") || defaults.hierarchyGroupBy,
-      hierarchyStyle: element.getAttribute("hierarchy-style") || defaults.hierarchyStyle,
-      hierarchyDisplay: element.getAttribute("hierarchy-display") || defaults.hierarchyDisplay,
-      maxHeadingsPerResult: parseInt(element.getAttribute("max-headings-per-result"), defaults.maxHeadingsPerResult),
-      // JSON attributes
-      styles: parseJson(element.getAttribute("styles"), defaults.styles),
-      promotions: parseJson(element.getAttribute("promotions"), defaults.promotions)
-    };
-    if (widgetType === "modal") {
-      Object.assign(config, {
-        hotkey: element.getAttribute("hotkey") || defaults.hotkey,
-        triggerSelector: element.getAttribute("trigger-selector") || defaults.triggerSelector,
-        backdropOpacity: parseInt(element.getAttribute("backdrop-opacity"), defaults.backdropOpacity),
-        showTrigger: parseBoolean(element.getAttribute("show-trigger"), defaults.showTrigger),
-        enableBackdropBlur: parseBoolean(element.getAttribute("enable-backdrop-blur"), defaults.enableBackdropBlur),
-        preventBodyScroll: parseBoolean(element.getAttribute("prevent-body-scroll"), defaults.preventBodyScroll)
-      });
-    }
-    if (widgetType === "page") {
-      Object.assign(config, {
-        resultsPerPage: parseInt(element.getAttribute("results-per-page"), defaults.resultsPerPage),
-        paginationType: element.getAttribute("pagination-type") || defaults.paginationType,
-        showFilters: parseBoolean(element.getAttribute("show-filters"), defaults.showFilters),
-        updateUrl: parseBoolean(element.getAttribute("update-url"), defaults.updateUrl),
-        sortOptions: parseArray(element.getAttribute("sort-options")) || defaults.sortOptions
-      });
-    }
-    if (widgetType === "inline") {
-      Object.assign(config, {
-        dropdownPosition: element.getAttribute("dropdown-position") || defaults.dropdownPosition,
-        dropdownMaxHeight: parseInt(element.getAttribute("dropdown-max-height"), defaults.dropdownMaxHeight),
-        showOnFocus: parseBoolean(element.getAttribute("show-on-focus"), defaults.showOnFocus)
-      });
-    }
-    return config;
-  }
-  function getObservedAttributes(widgetType = "modal") {
-    const baseAttrs = [
-      "indices",
-      "placeholder",
-      "theme",
-      "max-results",
-      "debounce",
-      "min-chars",
-      "show-recent",
-      "max-recent-searches",
-      "group-results",
-      "site-id",
-      "idle-timeout",
-      "source",
-      "enable-highlighting",
-      "highlight-tag",
-      "highlight-class",
-      "hide-results-without-url",
-      "show-code-snippets",
-      "snippet-mode",
-      "show-loading-indicator",
-      "debug",
-      "styles",
-      "promotions",
-      "result-layout",
-      "hierarchy-group-by",
-      "hierarchy-style",
-      "hierarchy-display",
-      "max-headings-per-result",
-      "result-title-lines",
-      "result-desc-lines",
-      "snippet-length",
-      "parse-markdown-snippets",
-      "persist-query-in-url",
-      "query-param-name",
-      "highlight-destination-page",
-      "destination-highlight-selector"
-    ];
-    const modalAttrs = [
-      "hotkey",
-      "show-trigger",
-      "trigger-selector",
-      "backdrop-opacity",
-      "enable-backdrop-blur",
-      "prevent-body-scroll"
-    ];
-    const pageAttrs = [
-      "show-filters",
-      "pagination-type",
-      "results-per-page",
-      "update-url",
-      "sort-options"
-    ];
-    const inlineAttrs = [
-      "dropdown-position",
-      "dropdown-max-height",
-      "show-on-focus"
-    ];
-    const typeAttrs = {
-      modal: modalAttrs,
-      page: pageAttrs,
-      inline: inlineAttrs
-    };
-    return [...baseAttrs, ...typeAttrs[widgetType] || []];
-  }
-
-  // src/core/StateManager.js
-  var DEFAULT_STATE = {
-    isOpen: false,
-    query: "",
-    results: [],
-    recentSearches: [],
-    selectedIndex: -1,
-    loading: false,
-    error: null,
-    meta: null
-  };
-  function createStateManager(initialState = {}, onChange = null) {
-    let state = {
-      ...DEFAULT_STATE,
-      ...initialState
-    };
-    return {
-      /**
-       * Get a single state value
-       *
-       * @param {string} key - State key to retrieve
-       * @returns {*} State value
-       *
-       * @example
-       * const query = state.get('query');
-       */
-      get(key) {
-        return state[key];
-      },
-      /**
-       * Get the full state object
-       *
-       * Returns a shallow copy to prevent direct mutation.
-       *
-       * @returns {WidgetState} Full state object
-       *
-       * @example
-       * const { query, results, loading } = state.getAll();
-       */
-      getAll() {
-        return { ...state };
-      },
-      /**
-       * Set state values
-       *
-       * Merges the provided values with current state.
-       * Only triggers onChange if values actually changed.
-       *
-       * @param {Partial<WidgetState>} updates - State updates to apply
-       * @returns {Array<string>} Array of keys that changed
-       *
-       * @example
-       * // Single update
-       * state.set({ query: 'test' });
-       *
-       * // Multiple updates
-       * state.set({
-       *   loading: true,
-       *   results: [],
-       *   error: null,
-       * });
-       */
-      set(updates) {
-        const changedKeys = [];
-        Object.keys(updates).forEach((key) => {
-          const oldValue = state[key];
-          const newValue = updates[key];
-          if (!isEqual(oldValue, newValue)) {
-            changedKeys.push(key);
-          }
-        });
-        if (changedKeys.length > 0) {
-          state = {
-            ...state,
-            ...updates
-          };
-          if (onChange) {
-            onChange(state, changedKeys);
-          }
-        }
-        return changedKeys;
-      },
-      /**
-       * Reset state to initial values
-       *
-       * @param {Partial<WidgetState>} [newInitial] - Optional new initial values
-       *
-       * @example
-       * state.reset(); // Reset to original initial state
-       * state.reset({ query: 'default' }); // Reset with new defaults
-       */
-      reset(newInitial = initialState) {
-        const newState = {
-          ...DEFAULT_STATE,
-          ...newInitial
-        };
-        const changedKeys = Object.keys(newState).filter(
-          (key) => !isEqual(state[key], newState[key])
-        );
-        if (changedKeys.length > 0) {
-          state = newState;
-          if (onChange) {
-            onChange(state, changedKeys);
-          }
-        }
-      },
-      /**
-       * Check if a specific state value matches
-       *
-       * @param {string} key - State key to check
-       * @param {*} value - Value to compare against
-       * @returns {boolean} True if values match
-       *
-       * @example
-       * if (state.is('loading', true)) {
-       *   showSpinner();
-       * }
-       */
-      is(key, value) {
-        return state[key] === value;
-      },
-      /**
-       * Toggle a boolean state value
-       *
-       * @param {string} key - State key to toggle
-       * @returns {boolean} New value after toggle
-       *
-       * @example
-       * state.toggle('isOpen'); // Toggles between true/false
-       */
-      toggle(key) {
-        const newValue = !state[key];
-        this.set({ [key]: newValue });
-        return newValue;
-      }
-    };
-  }
-  function isEqual(a, b) {
-    if (a === b) {
-      return true;
-    }
-    if (a == null || b == null) {
-      return false;
-    }
-    if (Array.isArray(a) && Array.isArray(b)) {
-      if (a.length !== b.length) {
-        return false;
-      }
-      return a.every((item, index) => isEqual(item, b[index]));
-    }
-    if (typeof a === "object" && typeof b === "object") {
-      const keysA = Object.keys(a);
-      const keysB = Object.keys(b);
-      if (keysA.length !== keysB.length) {
-        return false;
-      }
-      return keysA.every((key) => isEqual(a[key], b[key]));
-    }
-    return false;
-  }
-
-  // src/modules/SearchService.js
-  async function performSearch({ query, endpoint, indices = [], siteId = "", maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = "balanced", snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
-    const params = new URLSearchParams({
-      q: query,
-      hitsPerPage: maxResults.toString()
-    });
-    params.append("enrich", "1");
-    if (indices.length > 0) {
-      params.append("indices", indices.join(","));
-    }
-    if (siteId) {
-      params.append("siteId", siteId);
-    }
-    if (hideResultsWithoutUrl) {
-      params.append("hideResultsWithoutUrl", "1");
-    }
-    if (showCodeSnippets) {
-      params.append("showCodeSnippets", "1");
-    }
-    if (snippetMode && snippetMode !== "balanced") {
-      params.append("snippetMode", snippetMode);
-    }
-    if (snippetLength && snippetLength !== 150) {
-      params.append("snippetLength", String(snippetLength));
-    }
-    if (parseMarkdownSnippets) {
-      params.append("parseMarkdownSnippets", "1");
-    }
-    if (debug) {
-      params.append("debug", "1");
-    }
-    params.append("skipAnalytics", "1");
-    const separator = endpoint.includes("?") ? "&" : "?";
-    const response = await fetch(`${endpoint}${separator}${params}`, {
-      signal,
-      headers: {
-        "Accept": "application/json"
-      }
-    });
-    if (!response.ok) {
-      throw new Error("Search failed");
-    }
-    const data = await response.json();
-    if (data.error) {
-      console.warn("Search warning:", data.error);
-    }
-    return {
-      results: data.results || data.hits || [],
-      total: data.total || 0,
-      meta: data.meta || null,
-      error: data.error || null
-    };
-  }
-  function trackClick({ endpoint, elementId, query, index }) {
-    if (!elementId || !endpoint)
-      return;
-    try {
-      const formData = new FormData();
-      formData.append("elementId", elementId);
-      formData.append("query", query);
-      formData.append("index", index);
-      fetch(endpoint, {
-        method: "POST",
-        body: formData,
-        headers: { "Accept": "application/json" }
-      }).catch(() => {
-      });
-    } catch (e) {
-    }
-  }
-  function trackSearch({ endpoint, query, indices = [], resultsCount = 0, trigger = "unknown", source = "", siteId = "" }) {
-    if (!query || !endpoint)
-      return;
-    try {
-      const formData = new FormData();
-      formData.append("q", query);
-      formData.append("indices", indices.join(","));
-      formData.append("resultsCount", resultsCount.toString());
-      formData.append("trigger", trigger);
-      formData.append("source", source || "frontend-widget");
-      if (siteId) {
-        formData.append("siteId", siteId);
-      }
-      fetch(endpoint, {
-        method: "POST",
-        body: formData,
-        headers: { "Accept": "application/json" }
-      }).catch(() => {
-      });
-    } catch (e) {
-    }
-  }
-  function groupResultsByType(results) {
-    const groups = {};
-    results.forEach((result) => {
-      const type = result.section || result.type || "Results";
-      if (!groups[type]) {
-        groups[type] = [];
-      }
-      groups[type].push(result);
-    });
-    return groups;
-  }
-  function groupResultsByField(results, field) {
-    const groups = {};
-    results.forEach((result) => {
-      const key = result[field] || result.section || result.type || "Results";
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(result);
-    });
-    return groups;
-  }
-
-  // src/modules/RecentSearches.js
-  var DEFAULT_MAX_RECENT_SEARCHES = 5;
-  var STORAGE_PREFIX = "sm-recent-";
-  function getStorageKey(index) {
-    return `${STORAGE_PREFIX}${index || "default"}`;
-  }
-  function loadRecentSearches(index) {
-    try {
-      const key = getStorageKey(index);
-      const stored = localStorage.getItem(key);
-      return stored ? JSON.parse(stored) : [];
-    } catch (e) {
-      return [];
-    }
-  }
-  function saveRecentSearch(index, query, result = null, maxRecent = DEFAULT_MAX_RECENT_SEARCHES) {
-    if (!query || !query.trim())
-      return loadRecentSearches(index);
-    const key = getStorageKey(index);
-    const entry = {
-      query: query.trim(),
-      title: result?.title || query,
-      url: result?.url || null,
-      timestamp: Date.now()
-    };
-    let recentSearches = loadRecentSearches(index);
-    recentSearches = recentSearches.filter((s) => s.query !== entry.query);
-    recentSearches.unshift(entry);
-    recentSearches = recentSearches.slice(0, maxRecent);
-    try {
-      localStorage.setItem(key, JSON.stringify(recentSearches));
-    } catch (e) {
-    }
-    return recentSearches;
-  }
-  function clearRecentSearches(index) {
-    try {
-      const key = getStorageKey(index);
-      localStorage.removeItem(key);
-    } catch (e) {
-    }
-  }
-
-  // ../../../config/style-defaults.json
-  var style_defaults_default = {
-    spinnerColor: "#3b82f6",
-    spinnerColorDark: "#60a5fa",
-    modalBg: "#ffffff",
-    modalBgDark: "#1f2937",
-    modalBorderRadius: "12",
-    modalBorderWidth: "1",
-    modalBorderColor: "#e5e7eb",
-    modalBorderColorDark: "#374151",
-    modalShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
-    modalShadowDark: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-    modalMaxWidth: "640",
-    modalMaxHeight: "80",
-    modalPaddingX: "16",
-    modalPaddingY: "16",
-    headerBg: "transparent",
-    headerBgDark: "transparent",
-    headerBorderColor: "#e5e7eb",
-    headerBorderColorDark: "#374151",
-    headerBorderWidth: "1",
-    headerBorderRadius: "0",
-    headerPaddingX: "16",
-    headerPaddingY: "12",
-    inputBg: "#ffffff",
-    inputBgDark: "#1f2937",
-    inputTextColor: "#111827",
-    inputTextColorDark: "#f9fafb",
-    inputPlaceholderColor: "#9ca3af",
-    inputPlaceholderColorDark: "#9ca3af",
-    inputBorderColor: "transparent",
-    inputBorderColorDark: "transparent",
-    inputFontSize: "16",
-    inputBorderRadius: "0",
-    inputBorderWidth: "0",
-    inputPaddingX: "0",
-    inputPaddingY: "0",
-    resultBg: "transparent",
-    resultBgDark: "transparent",
-    resultBorderColor: "#e5e7eb",
-    resultBorderColorDark: "#374151",
-    resultActiveBg: "#e5e7eb",
-    resultActiveBgDark: "#4b5563",
-    resultActiveBorderColor: "#e5e7eb",
-    resultActiveBorderColorDark: "#374151",
-    resultActiveTextColor: "#111827",
-    resultActiveTextColorDark: "#f9fafb",
-    resultActiveDescColor: "#4b5563",
-    resultActiveDescColorDark: "#d1d5db",
-    resultActiveMutedColor: "#6b7280",
-    resultActiveMutedColorDark: "#d1d5db",
-    resultTextColor: "#111827",
-    resultTextColorDark: "#f9fafb",
-    resultDescColor: "#4b5563",
-    resultDescColorDark: "#d1d5db",
-    resultMutedColor: "#6b7280",
-    resultMutedColorDark: "#d1d5db",
-    resultGap: "8",
-    resultBorderWidth: "0",
-    resultPaddingX: "12",
-    resultPaddingY: "12",
-    resultBorderRadius: "8",
-    triggerBg: "#ffffff",
-    triggerBgDark: "#374151",
-    triggerTextColor: "#374151",
-    triggerTextColorDark: "#d1d5db",
-    triggerBorderRadius: "8",
-    triggerBorderWidth: "1",
-    triggerBorderColor: "#d1d5db",
-    triggerBorderColorDark: "#4b5563",
-    triggerHoverBg: "#f9fafb",
-    triggerHoverBgDark: "#4b5563",
-    triggerHoverTextColor: "#111827",
-    triggerHoverTextColorDark: "#f9fafb",
-    triggerHoverBorderColor: "#3b82f6",
-    triggerHoverBorderColorDark: "#60a5fa",
-    triggerPaddingX: "12",
-    triggerPaddingY: "8",
-    triggerFontSize: "14",
-    kbdBg: "#f3f4f6",
-    kbdBgDark: "#4b5563",
-    kbdTextColor: "#4b5563",
-    kbdTextColorDark: "#e5e7eb",
-    kbdBorderRadius: "4",
-    backdropOpacity: "50",
-    backdropBlur: "1",
-    highlightEnabled: "1",
-    highlightTag: "",
-    highlightClass: "",
-    highlightBgLight: "fef08a",
-    highlightColorLight: "854d0e",
-    highlightBgDark: "854d0e",
-    highlightColorDark: "fef08a",
-    iconColor: "#3b82f6",
-    iconColorDark: "#60a5fa",
-    promotedBg: "#2563eb",
-    promotedBgDark: "#3b82f6",
-    promotedColor: "#ffffff",
-    promotedColorDark: "#ffffff"
-  };
-
-  // src/modules/StyleConfig.js
-  var STYLE_MAPPINGS = {
-    // Modal
-    modalBg: "--sm-modal-bg",
-    modalBgDark: "--sm-modal-bg-dark",
-    modalBorderRadius: "--sm-modal-radius",
-    modalBorderWidth: "--sm-modal-border-width",
-    modalBorderColor: "--sm-modal-border-color",
-    modalBorderColorDark: "--sm-modal-border-color-dark",
-    modalShadow: "--sm-modal-shadow",
-    modalShadowDark: "--sm-modal-shadow-dark",
-    modalMaxWidth: "--sm-modal-width",
-    modalMaxHeight: "--sm-modal-max-height",
-    modalPaddingX: "--sm-modal-px",
-    modalPaddingY: "--sm-modal-py",
-    // Search Header (.sm-header container)
-    headerBg: "--sm-header-bg",
-    headerBgDark: "--sm-header-bg-dark",
-    headerBorderColor: "--sm-header-border-color",
-    headerBorderColorDark: "--sm-header-border-color-dark",
-    headerBorderWidth: "--sm-header-border-width",
-    headerBorderRadius: "--sm-header-radius",
-    headerPaddingX: "--sm-header-px",
-    headerPaddingY: "--sm-header-py",
-    // Search Input (.sm-input element)
-    inputBg: "--sm-input-bg",
-    inputBgDark: "--sm-input-bg-dark",
-    inputTextColor: "--sm-input-color",
-    inputTextColorDark: "--sm-input-color-dark",
-    inputPlaceholderColor: "--sm-input-placeholder",
-    inputPlaceholderColorDark: "--sm-input-placeholder-dark",
-    inputBorderColor: "--sm-input-border-color",
-    inputBorderColorDark: "--sm-input-border-color-dark",
-    inputFontSize: "--sm-input-font-size",
-    inputBorderRadius: "--sm-input-radius",
-    inputBorderWidth: "--sm-input-border-width",
-    inputPaddingX: "--sm-input-px",
-    inputPaddingY: "--sm-input-py",
-    // Results
-    resultBg: "--sm-result-bg",
-    resultBgDark: "--sm-result-bg-dark",
-    resultBorderColor: "--sm-result-border-color",
-    resultBorderColorDark: "--sm-result-border-color-dark",
-    resultActiveBg: "--sm-result-active-bg",
-    resultActiveBgDark: "--sm-result-active-bg-dark",
-    resultActiveBorderColor: "--sm-result-active-border-color",
-    resultActiveBorderColorDark: "--sm-result-active-border-color-dark",
-    resultActiveTextColor: "--sm-result-active-text-color",
-    resultActiveTextColorDark: "--sm-result-active-text-color-dark",
-    resultActiveDescColor: "--sm-result-active-desc-color",
-    resultActiveDescColorDark: "--sm-result-active-desc-color-dark",
-    resultActiveMutedColor: "--sm-result-active-muted-color",
-    resultActiveMutedColorDark: "--sm-result-active-muted-color-dark",
-    resultTextColor: "--sm-result-text-color",
-    resultTextColorDark: "--sm-result-text-color-dark",
-    resultDescColor: "--sm-result-desc-color",
-    resultDescColorDark: "--sm-result-desc-color-dark",
-    resultMutedColor: "--sm-result-muted-color",
-    resultMutedColorDark: "--sm-result-muted-color-dark",
-    resultGap: "--sm-result-gap",
-    resultBorderWidth: "--sm-result-border-width",
-    resultPaddingX: "--sm-result-px",
-    resultPaddingY: "--sm-result-py",
-    resultBorderRadius: "--sm-result-radius",
-    // Trigger
-    triggerBg: "--sm-trigger-bg",
-    triggerBgDark: "--sm-trigger-bg-dark",
-    triggerTextColor: "--sm-trigger-text-color",
-    triggerTextColorDark: "--sm-trigger-text-color-dark",
-    triggerBorderRadius: "--sm-trigger-radius",
-    triggerBorderWidth: "--sm-trigger-border-width",
-    triggerBorderColor: "--sm-trigger-border-color",
-    triggerBorderColorDark: "--sm-trigger-border-color-dark",
-    triggerHoverBg: "--sm-trigger-hover-bg",
-    triggerHoverBgDark: "--sm-trigger-hover-bg-dark",
-    triggerHoverTextColor: "--sm-trigger-hover-text-color",
-    triggerHoverTextColorDark: "--sm-trigger-hover-text-color-dark",
-    triggerHoverBorderColor: "--sm-trigger-hover-border-color",
-    triggerHoverBorderColorDark: "--sm-trigger-hover-border-color-dark",
-    triggerPaddingX: "--sm-trigger-px",
-    triggerPaddingY: "--sm-trigger-py",
-    triggerFontSize: "--sm-trigger-font-size",
-    // Keyboard badge
-    kbdBg: "--sm-kbd-bg",
-    kbdBgDark: "--sm-kbd-bg-dark",
-    kbdTextColor: "--sm-kbd-text-color",
-    kbdTextColorDark: "--sm-kbd-text-color-dark",
-    kbdBorderRadius: "--sm-kbd-radius",
-    // Icon color (hierarchy icons, arrows)
-    iconColor: "--sm-icon-color",
-    iconColorDark: "--sm-icon-color-dark",
-    // Highlighting
-    highlightBgLight: "--sm-highlight-bg",
-    highlightColorLight: "--sm-highlight-color",
-    highlightBgDark: "--sm-highlight-bg-dark",
-    highlightColorDark: "--sm-highlight-color-dark",
-    // Promoted badge
-    promotedBg: "--sm-promoted-bg",
-    promotedBgDark: "--sm-promoted-bg-dark",
-    promotedColor: "--sm-promoted-color",
-    promotedColorDark: "--sm-promoted-color-dark",
-    // Spinner
-    spinnerColor: "--sm-spinner-color-light",
-    spinnerColorDark: "--sm-spinner-color-dark"
-  };
-  var NUMERIC_KEYS = [
-    "modalBorderRadius",
-    "modalBorderWidth",
-    "modalMaxWidth",
-    "modalPaddingX",
-    "modalPaddingY",
-    "headerBorderWidth",
-    "headerBorderRadius",
-    "headerPaddingX",
-    "headerPaddingY",
-    "inputFontSize",
-    "inputBorderRadius",
-    "inputBorderWidth",
-    "inputPaddingX",
-    "inputPaddingY",
-    "resultGap",
-    "resultBorderWidth",
-    "resultPaddingX",
-    "resultPaddingY",
-    "resultBorderRadius",
-    "triggerBorderRadius",
-    "triggerBorderWidth",
-    "triggerPaddingX",
-    "triggerPaddingY",
-    "triggerFontSize",
-    "kbdBorderRadius"
-  ];
-  var VH_KEYS = [
-    "modalMaxHeight"
-  ];
-  var COLOR_KEYS = [
-    "modalBg",
-    "modalBgDark",
-    "modalBorderColor",
-    "modalBorderColorDark",
-    "headerBg",
-    "headerBgDark",
-    "headerBorderColor",
-    "headerBorderColorDark",
-    "inputBg",
-    "inputBgDark",
-    "inputTextColor",
-    "inputTextColorDark",
-    "inputPlaceholderColor",
-    "inputPlaceholderColorDark",
-    "inputBorderColor",
-    "inputBorderColorDark",
-    "resultBg",
-    "resultBgDark",
-    "resultBorderColor",
-    "resultBorderColorDark",
-    "resultActiveBg",
-    "resultActiveBgDark",
-    "resultActiveBorderColor",
-    "resultActiveBorderColorDark",
-    "resultTextColor",
-    "resultTextColorDark",
-    "resultActiveTextColor",
-    "resultActiveTextColorDark",
-    "resultActiveDescColor",
-    "resultActiveDescColorDark",
-    "resultActiveMutedColor",
-    "resultActiveMutedColorDark",
-    "resultDescColor",
-    "resultDescColorDark",
-    "resultMutedColor",
-    "resultMutedColorDark",
-    "triggerBg",
-    "triggerBgDark",
-    "triggerTextColor",
-    "triggerTextColorDark",
-    "triggerBorderColor",
-    "triggerBorderColorDark",
-    "triggerHoverBg",
-    "triggerHoverBgDark",
-    "triggerHoverTextColor",
-    "triggerHoverTextColorDark",
-    "triggerHoverBorderColor",
-    "triggerHoverBorderColorDark",
-    "kbdBg",
-    "kbdBgDark",
-    "kbdTextColor",
-    "kbdTextColorDark",
-    "iconColor",
-    "iconColorDark",
-    "highlightBgLight",
-    "highlightColorLight",
-    "highlightBgDark",
-    "highlightColorDark",
-    "promotedBg",
-    "promotedBgDark",
-    "promotedColor",
-    "promotedColorDark",
-    "spinnerColor",
-    "spinnerColorDark"
-  ];
-  var DEFAULT_STYLES = {
-    ...style_defaults_default,
-    // Highlighting (from highlighting settings, not styles config)
-    highlightBgLight: "#fef08a",
-    highlightColorLight: "#854d0e",
-    highlightBgDark: "#854d0e",
-    highlightColorDark: "#fef08a"
-  };
-
-  // src/modules/StyleUtils.js
-  function isCssFunction(value) {
-    return typeof value === "string" && /^(var|light-dark|calc|env|clamp|min|max|rgb|hsl)\s*\(/.test(value.trim());
-  }
-  function isHexColor(value) {
-    return /^[0-9a-fA-F]{6}$/.test(value);
-  }
-  function processStyleValue(key, value) {
-    if (value === void 0 || value === null || value === "") {
-      return null;
-    }
-    let processedValue = String(value);
-    if (isCssFunction(processedValue)) {
-      return processedValue;
-    }
-    if (COLOR_KEYS.includes(key) && isHexColor(processedValue)) {
-      processedValue = "#" + processedValue;
-    }
-    if (NUMERIC_KEYS.includes(key)) {
-      processedValue = processedValue + "px";
-    }
-    if (VH_KEYS.includes(key)) {
-      processedValue = processedValue + "vh";
-    }
-    return processedValue;
-  }
-  function applyStylesToElement(element, styles2, theme = "light") {
-    if (!styles2 || typeof styles2 !== "object")
-      return;
-    const isDark = theme === "dark";
-    const entries = Object.entries(STYLE_MAPPINGS);
-    const sharedKeys = /* @__PURE__ */ new Set([...NUMERIC_KEYS, ...VH_KEYS]);
-    for (const [key, cssVar] of entries) {
-      const isDarkKey = key.endsWith("Dark");
-      if (isDark) {
-        if (!isDarkKey && !sharedKeys.has(key)) {
-          continue;
-        }
-      } else if (isDarkKey) {
-        continue;
-      }
-      if (styles2[key] !== void 0 && styles2[key] !== null && styles2[key] !== "") {
-        const value = processStyleValue(key, styles2[key]);
-        if (value) {
-          element.style.setProperty(cssVar, value);
-        }
-      }
-    }
-  }
-
-  // src/modules/Highlighter.js
-  function escapeHtml(text) {
-    if (!text)
-      return "";
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  }
-  function escapeRegex(string) {
-    if (!string)
-      return "";
-    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
-  function parseQueryTerms(query) {
-    if (!query)
-      return [];
-    const terms = [];
-    const phraseRegex = /"([^"]+)"/g;
-    let match;
-    while ((match = phraseRegex.exec(query)) !== null) {
-      if (match[1].trim())
-        terms.push(match[1].trim());
-    }
-    const remaining = query.replace(/"[^"]*"/g, "");
-    const operators = /* @__PURE__ */ new Set([
-      "and",
-      "or",
-      "not",
-      // English
-      "und",
-      "oder",
-      "nicht",
-      // German
-      "et",
-      "ou",
-      "sauf",
-      // French
-      "y",
-      "o",
-      "no"
-      // Spanish
-    ]);
-    remaining.split(/\s+/).filter((w) => w.length > 0).forEach((word) => {
-      word = word.replace(/^[a-zA-Z]+:/, "");
-      word = word.replace(/\*/g, "");
-      word = word.replace(/\^\d+(\.\d+)?/, "");
-      word = word.replace(/"/g, "");
-      if (!word || operators.has(word.toLowerCase()))
-        return;
-      terms.push(word);
-    });
-    const withCamel = [];
-    terms.forEach((word) => {
-      withCamel.push(word);
-      const parts = word.split(/(?<=[a-z])(?=[A-Z])/);
-      if (parts.length > 1) {
-        parts.forEach((p) => {
-          if (p.length >= 3)
-            withCamel.push(p);
-        });
-      }
-    });
-    return withCamel;
-  }
-  function highlightMatches(text, query, options = {}) {
-    const {
-      enabled = true,
-      tag = "mark",
-      className = "",
-      terms = null
-    } = options;
-    if (!enabled) {
-      return escapeHtml(text);
-    }
-    const classes = ["sm-highlight"];
-    if (className) {
-      classes.push(className);
-    }
-    const classAttr = ` class="${classes.join(" ")}"`;
-    const termList = buildHighlightTerms(query, terms);
-    if (termList.length === 0) {
-      return escapeHtml(text);
-    }
-    return applyHighlightRanges(text, termList, tag, classAttr);
-  }
-  function buildHighlightTerms(query, terms) {
-    if (Array.isArray(terms) && terms.length > 0) {
-      return normalizeTerms(terms);
-    }
-    if (!query) {
-      return [];
-    }
-    return normalizeTerms(parseQueryTerms(query));
-  }
-  function normalizeTerms(terms) {
-    const seen = /* @__PURE__ */ new Set();
-    return terms.filter((w) => typeof w === "string" && w.length > 0).sort((a, b) => b.length - a.length).filter((w) => {
-      const lower = w.toLowerCase();
-      if (seen.has(lower))
-        return false;
-      seen.add(lower);
-      return true;
-    });
-  }
-  function applyHighlightRanges(text, terms, tag, classAttr) {
-    const lowerText = text.toLowerCase();
-    const ranges = [];
-    terms.forEach((term) => {
-      const lowerTerm = term.toLowerCase();
-      if (!lowerTerm)
-        return;
-      let start = 0;
-      while (start < lowerText.length) {
-        const index = lowerText.indexOf(lowerTerm, start);
-        if (index === -1)
-          break;
-        ranges.push({ start: index, end: index + lowerTerm.length });
-        start = index + lowerTerm.length;
-      }
-    });
-    if (ranges.length === 0) {
-      return escapeHtml(text);
-    }
-    ranges.sort((a, b) => {
-      if (a.start !== b.start)
-        return a.start - b.start;
-      return b.end - b.start - (a.end - a.start);
-    });
-    const merged = [];
-    let lastEnd = -1;
-    ranges.forEach((range) => {
-      if (range.start >= lastEnd) {
-        merged.push(range);
-        lastEnd = range.end;
-      }
-    });
-    let result = "";
-    let cursor = 0;
-    merged.forEach((range) => {
-      if (cursor < range.start) {
-        result += escapeHtml(text.slice(cursor, range.start));
-      }
-      result += `<${tag}${classAttr}>${escapeHtml(text.slice(range.start, range.end))}</${tag}>`;
-      cursor = range.end;
-    });
-    if (cursor < text.length) {
-      result += escapeHtml(text.slice(cursor));
-    }
-    return result;
-  }
-
-  // src/modules/UrlUtils.js
-  function appendQueryParam(url, query, paramName = "smq") {
-    if (!url || url === "#") {
-      return url;
-    }
-    const trimmedQuery = (query || "").trim();
-    if (!trimmedQuery) {
-      return url;
-    }
-    if (!paramName) {
-      return url;
-    }
-    if (/^(mailto:|tel:|javascript:)/i.test(url)) {
-      return url;
-    }
-    const [beforeHash, hashFragment] = url.split("#", 2);
-    const [path, rawSearch] = beforeHash.split("?", 2);
-    const params = new URLSearchParams(rawSearch || "");
-    params.set(paramName, trimmedQuery);
-    const queryString = params.toString();
-    const hash = hashFragment ? `#${hashFragment}` : "";
-    return `${path}${queryString ? `?${queryString}` : ""}${hash}`;
-  }
-
-  // src/modules/A11yUtils.js
-  var idCounter = 0;
-  function generateId(prefix = "sm") {
-    return `${prefix}-${++idCounter}-${Date.now().toString(36)}`;
-  }
-  function createLiveRegion(shadowRoot) {
-    const liveRegion = document.createElement("div");
-    liveRegion.setAttribute("role", "status");
-    liveRegion.setAttribute("aria-live", "polite");
-    liveRegion.setAttribute("aria-atomic", "true");
-    liveRegion.className = "sm-sr-only";
-    shadowRoot.appendChild(liveRegion);
-    return liveRegion;
-  }
-  function announce(liveRegion, message, delay = 100) {
-    if (!liveRegion)
-      return;
-    liveRegion.textContent = "";
-    setTimeout(() => {
-      liveRegion.textContent = message;
-    }, delay);
-  }
-  function getResultsAnnouncement(count, query) {
-    if (count === 0) {
-      return `No results found for "${query}"`;
-    }
-    if (count === 1) {
-      return `1 result found for "${query}"`;
-    }
-    return `${count} results found for "${query}"`;
-  }
-  function getLoadingAnnouncement() {
-    return "Searching...";
-  }
-  function getRecentSearchesAnnouncement(count) {
-    if (count === 0) {
-      return "No recent searches";
-    }
-    if (count === 1) {
-      return "1 recent search available";
-    }
-    return `${count} recent searches available`;
-  }
-  function updateComboboxAria(input, { expanded, activeDescendant, listboxId }) {
-    input.setAttribute("aria-expanded", String(expanded));
-    input.setAttribute("aria-controls", listboxId);
-    if (activeDescendant) {
-      input.setAttribute("aria-activedescendant", activeDescendant);
-    } else {
-      input.removeAttribute("aria-activedescendant");
-    }
-  }
-  function getOptionId(baseId, index) {
-    return `${baseId}-option-${index}`;
-  }
-  function scrollIntoViewIfNeeded(element, container) {
-    if (!element || !container)
-      return;
-    const elementRect = element.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    if (elementRect.top < containerRect.top) {
-      element.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    } else if (elementRect.bottom > containerRect.bottom) {
-      element.scrollIntoView({ block: "nearest", behavior: "smooth" });
-    }
-  }
-
-  // src/modules/ResultRenderer.js
-  function renderResults(results, query, options = {}) {
-    const { groupResults = false, resultLayout = "default", listboxId } = options;
-    if (!results || results.length === 0) {
-      return "";
-    }
-    if (resultLayout === "hierarchical") {
-      return renderHierarchicalResults(results, query, options);
-    }
-    if (groupResults) {
-      const groups = groupResultsByType(results);
-      let globalIndex = 0;
-      return Object.entries(groups).map(([type, items]) => `
-            <div class="sm-section" role="group" aria-label="${escapeHtml(type)}">
-                <div class="sm-section-header">${escapeHtml(type)}</div>
-                ${items.map((result) => renderResultItem(result, globalIndex++, query, options)).join("")}
+var SearchModalWidget=(()=>{var K=Object.defineProperty;var _e=Object.getOwnPropertyDescriptor;var qe=Object.getOwnPropertyNames;var ze=Object.prototype.hasOwnProperty;var je=(e,r)=>{for(var t in r)K(e,t,{get:r[t],enumerable:!0})},Ge=(e,r,t,n)=>{if(r&&typeof r=="object"||typeof r=="function")for(let o of qe(r))!ze.call(e,o)&&o!==t&&K(e,o,{get:()=>r[o],enumerable:!(n=_e(r,o))||n.enumerable});return e};var We=e=>Ge(K({},"__esModule",{value:!0}),e);var vt={};je(vt,{default:()=>ft});var Ye={indices:[],placeholder:"Search...",theme:"light",maxResults:20,debounce:200,minChars:2,showRecent:!0,maxRecentSearches:5,groupResults:!0,siteId:"",searchEndpoint:"/actions/search-manager/api/search",trackClickEndpoint:"/actions/search-manager/search/track-click",trackSearchEndpoint:"/actions/search-manager/search/track-search",idleTimeout:1500,source:"",enableHighlighting:!0,highlightTag:"mark",highlightClass:"",hideResultsWithoutUrl:!1,showCodeSnippets:!1,snippetMode:"balanced",showLoadingIndicator:!0,debug:!1,resultTitleLines:1,resultDescLines:1,snippetLength:150,parseMarkdownSnippets:!1,persistQueryInUrl:!0,queryParamName:"smq",highlightDestinationPage:!0,destinationHighlightSelector:"main, article, [data-search-content]",resultLayout:"default",hierarchyGroupBy:"",hierarchyStyle:"tree",hierarchyDisplay:"individual",maxHeadingsPerResult:3,styles:{},promotions:{showBadge:!0,badgeText:"Featured",badgePosition:"top-right"}},Ke={hotkey:"k",showTrigger:!0,triggerSelector:"",backdropOpacity:50,enableBackdropBlur:!0,preventBodyScroll:!0},Ve={showFilters:!0,paginationType:"numbered",resultsPerPage:20,updateUrl:!0,sortOptions:["relevance","date-desc","date-asc","title"]},Qe={dropdownPosition:"below",dropdownMaxHeight:400,showOnFocus:!0};function Xe(e){return{...Ye,...{modal:Ke,page:Ve,inline:Qe}[e]||{}}}function f(e,r=!1){return e==null?r:e===""?!0:e!=="false"&&e!=="0"}function C(e,r=0){if(e==null)return r;let t=Number.parseInt(e,10);return Number.isNaN(t)?r:t}function se(e,r={}){if(!e)return r;try{return JSON.parse(e)}catch(t){return console.warn("SearchWidget: Invalid JSON attribute",t),r}}function ae(e){return e?e.split(",").map(r=>r.trim()).filter(Boolean):[]}function V(e,r="modal"){let t=Xe(r),n=e.getAttribute("indices")||"",o=ae(n),a={indices:o,index:o[0]||"",placeholder:e.getAttribute("placeholder")||t.placeholder,theme:e.getAttribute("theme")||t.theme,siteId:e.getAttribute("site-id")||t.siteId,source:e.getAttribute("source")||t.source,highlightTag:e.getAttribute("highlight-tag")||t.highlightTag,highlightClass:e.getAttribute("highlight-class")||t.highlightClass,searchEndpoint:t.searchEndpoint,trackClickEndpoint:t.trackClickEndpoint,trackSearchEndpoint:t.trackSearchEndpoint,maxResults:C(e.getAttribute("max-results"),t.maxResults),debounce:C(e.getAttribute("debounce"),t.debounce),minChars:C(e.getAttribute("min-chars"),t.minChars),maxRecentSearches:C(e.getAttribute("max-recent-searches"),t.maxRecentSearches),idleTimeout:C(e.getAttribute("idle-timeout"),t.idleTimeout),showRecent:f(e.getAttribute("show-recent"),t.showRecent),groupResults:f(e.getAttribute("group-results"),t.groupResults),enableHighlighting:f(e.getAttribute("enable-highlighting"),t.enableHighlighting),showLoadingIndicator:f(e.getAttribute("show-loading-indicator"),t.showLoadingIndicator),hideResultsWithoutUrl:f(e.getAttribute("hide-results-without-url"),t.hideResultsWithoutUrl),showCodeSnippets:f(e.getAttribute("show-code-snippets"),t.showCodeSnippets),debug:f(e.getAttribute("debug"),t.debug),snippetMode:e.getAttribute("snippet-mode")||t.snippetMode,snippetLength:C(e.getAttribute("snippet-length"),t.snippetLength),parseMarkdownSnippets:f(e.getAttribute("parse-markdown-snippets"),t.parseMarkdownSnippets),persistQueryInUrl:f(e.getAttribute("persist-query-in-url"),t.persistQueryInUrl),highlightDestinationPage:f(e.getAttribute("highlight-destination-page"),t.highlightDestinationPage),resultTitleLines:C(e.getAttribute("result-title-lines"),t.resultTitleLines),resultDescLines:C(e.getAttribute("result-desc-lines"),t.resultDescLines),queryParamName:e.getAttribute("query-param-name")||t.queryParamName,destinationHighlightSelector:e.getAttribute("destination-highlight-selector")||t.destinationHighlightSelector,resultLayout:e.getAttribute("result-layout")||t.resultLayout,hierarchyGroupBy:e.getAttribute("hierarchy-group-by")||t.hierarchyGroupBy,hierarchyStyle:e.getAttribute("hierarchy-style")||t.hierarchyStyle,hierarchyDisplay:e.getAttribute("hierarchy-display")||t.hierarchyDisplay,maxHeadingsPerResult:C(e.getAttribute("max-headings-per-result"),t.maxHeadingsPerResult),styles:se(e.getAttribute("styles"),t.styles),promotions:se(e.getAttribute("promotions"),t.promotions)};return r==="modal"&&Object.assign(a,{hotkey:e.getAttribute("hotkey")||t.hotkey,triggerSelector:e.getAttribute("trigger-selector")||t.triggerSelector,backdropOpacity:C(e.getAttribute("backdrop-opacity"),t.backdropOpacity),showTrigger:f(e.getAttribute("show-trigger"),t.showTrigger),enableBackdropBlur:f(e.getAttribute("enable-backdrop-blur"),t.enableBackdropBlur),preventBodyScroll:f(e.getAttribute("prevent-body-scroll"),t.preventBodyScroll)}),r==="page"&&Object.assign(a,{resultsPerPage:C(e.getAttribute("results-per-page"),t.resultsPerPage),paginationType:e.getAttribute("pagination-type")||t.paginationType,showFilters:f(e.getAttribute("show-filters"),t.showFilters),updateUrl:f(e.getAttribute("update-url"),t.updateUrl),sortOptions:ae(e.getAttribute("sort-options"))||t.sortOptions}),r==="inline"&&Object.assign(a,{dropdownPosition:e.getAttribute("dropdown-position")||t.dropdownPosition,dropdownMaxHeight:C(e.getAttribute("dropdown-max-height"),t.dropdownMaxHeight),showOnFocus:f(e.getAttribute("show-on-focus"),t.showOnFocus)}),a}function ie(e="modal"){let r=["indices","placeholder","theme","max-results","debounce","min-chars","show-recent","max-recent-searches","group-results","site-id","idle-timeout","source","enable-highlighting","highlight-tag","highlight-class","hide-results-without-url","show-code-snippets","snippet-mode","show-loading-indicator","debug","styles","promotions","result-layout","hierarchy-group-by","hierarchy-style","hierarchy-display","max-headings-per-result","result-title-lines","result-desc-lines","snippet-length","parse-markdown-snippets","persist-query-in-url","query-param-name","highlight-destination-page","destination-highlight-selector"],a={modal:["hotkey","show-trigger","trigger-selector","backdrop-opacity","enable-backdrop-blur","prevent-body-scroll"],page:["show-filters","pagination-type","results-per-page","update-url","sort-options"],inline:["dropdown-position","dropdown-max-height","show-on-focus"]};return[...r,...a[e]||[]]}var z={isOpen:!1,query:"",results:[],recentSearches:[],selectedIndex:-1,loading:!1,error:null,meta:null};function le(e={},r=null){let t={...z,...e};return{get(n){return t[n]},getAll(){return{...t}},set(n){let o=[];return Object.keys(n).forEach(a=>{let s=t[a],l=n[a];j(s,l)||o.push(a)}),o.length>0&&(t={...t,...n},r&&r(t,o)),o},reset(n=e){let o={...z,...n},a=Object.keys(o).filter(s=>!j(t[s],o[s]));a.length>0&&(t=o,r&&r(t,a))},is(n,o){return t[n]===o},toggle(n){let o=!t[n];return this.set({[n]:o}),o}}}function j(e,r){if(e===r)return!0;if(e==null||r==null)return!1;if(Array.isArray(e)&&Array.isArray(r))return e.length!==r.length?!1:e.every((t,n)=>j(t,r[n]));if(typeof e=="object"&&typeof r=="object"){let t=Object.keys(e),n=Object.keys(r);return t.length!==n.length?!1:t.every(o=>j(e[o],r[o]))}return!1}async function de({query:e,endpoint:r,indices:t=[],siteId:n="",maxResults:o=10,hideResultsWithoutUrl:a=!1,showCodeSnippets:s=!1,snippetMode:l="balanced",snippetLength:i=150,parseMarkdownSnippets:d=!1,debug:c=!1,signal:u}){let g=new URLSearchParams({q:e,hitsPerPage:o.toString()});g.append("enrich","1"),t.length>0&&g.append("indices",t.join(",")),n&&g.append("siteId",n),a&&g.append("hideResultsWithoutUrl","1"),s&&g.append("showCodeSnippets","1"),l&&l!=="balanced"&&g.append("snippetMode",l),i&&i!==150&&g.append("snippetLength",String(i)),d&&g.append("parseMarkdownSnippets","1"),c&&g.append("debug","1"),g.append("skipAnalytics","1");let m=r.includes("?")?"&":"?",v=await fetch(`${r}${m}${g}`,{signal:u,headers:{Accept:"application/json"}});if(!v.ok)throw new Error("Search failed");let p=await v.json();return p.error&&console.warn("Search warning:",p.error),{results:p.results||p.hits||[],total:p.total||0,meta:p.meta||null,error:p.error||null}}function ce({endpoint:e,elementId:r,query:t,index:n}){if(!(!r||!e))try{let o=new FormData;o.append("elementId",r),o.append("query",t),o.append("index",n),fetch(e,{method:"POST",body:o,headers:{Accept:"application/json"}}).catch(()=>{})}catch{}}function he({endpoint:e,query:r,indices:t=[],resultsCount:n=0,trigger:o="unknown",source:a="",siteId:s=""}){if(!(!r||!e))try{let l=new FormData;l.append("q",r),l.append("indices",t.join(",")),l.append("resultsCount",n.toString()),l.append("trigger",o),l.append("source",a||"frontend-widget"),s&&l.append("siteId",s),fetch(e,{method:"POST",body:l,headers:{Accept:"application/json"}}).catch(()=>{})}catch{}}function ge(e){let r={};return e.forEach(t=>{let n=t.section||t.type||"Results";r[n]||(r[n]=[]),r[n].push(t)}),r}function ue(e,r){let t={};return e.forEach(n=>{let o=n[r]||n.section||n.type||"Results";t[o]||(t[o]=[]),t[o].push(n)}),t}var Je="sm-recent-";function Q(e){return`${Je}${e||"default"}`}function G(e){try{let r=Q(e),t=localStorage.getItem(r);return t?JSON.parse(t):[]}catch{return[]}}function me(e,r,t=null,n=5){if(!r||!r.trim())return G(e);let o=Q(e),a={query:r.trim(),title:t?.title||r,url:t?.url||null,timestamp:Date.now()},s=G(e);s=s.filter(l=>l.query!==a.query),s.unshift(a),s=s.slice(0,n);try{localStorage.setItem(o,JSON.stringify(s))}catch{}return s}function pe(e){try{let r=Q(e);localStorage.removeItem(r)}catch{}}var be={spinnerColor:"#3b82f6",spinnerColorDark:"#60a5fa",modalBg:"#ffffff",modalBgDark:"#1f2937",modalBorderRadius:"12",modalBorderWidth:"1",modalBorderColor:"#e5e7eb",modalBorderColorDark:"#374151",modalShadow:"0 25px 50px -12px rgba(0, 0, 0, 0.25)",modalShadowDark:"0 25px 50px -12px rgba(0, 0, 0, 0.5)",modalMaxWidth:"640",modalMaxHeight:"80",modalPaddingX:"16",modalPaddingY:"16",headerBg:"transparent",headerBgDark:"transparent",headerBorderColor:"#e5e7eb",headerBorderColorDark:"#374151",headerBorderWidth:"1",headerBorderRadius:"0",headerPaddingX:"16",headerPaddingY:"12",inputBg:"#ffffff",inputBgDark:"#1f2937",inputTextColor:"#111827",inputTextColorDark:"#f9fafb",inputPlaceholderColor:"#9ca3af",inputPlaceholderColorDark:"#9ca3af",inputBorderColor:"transparent",inputBorderColorDark:"transparent",inputFontSize:"16",inputBorderRadius:"0",inputBorderWidth:"0",inputPaddingX:"0",inputPaddingY:"0",resultBg:"transparent",resultBgDark:"transparent",resultBorderColor:"#e5e7eb",resultBorderColorDark:"#374151",resultActiveBg:"#e5e7eb",resultActiveBgDark:"#4b5563",resultActiveBorderColor:"#e5e7eb",resultActiveBorderColorDark:"#374151",resultActiveTextColor:"#111827",resultActiveTextColorDark:"#f9fafb",resultActiveDescColor:"#4b5563",resultActiveDescColorDark:"#d1d5db",resultActiveMutedColor:"#6b7280",resultActiveMutedColorDark:"#d1d5db",resultTextColor:"#111827",resultTextColorDark:"#f9fafb",resultDescColor:"#4b5563",resultDescColorDark:"#d1d5db",resultMutedColor:"#6b7280",resultMutedColorDark:"#d1d5db",resultGap:"8",resultBorderWidth:"0",resultPaddingX:"12",resultPaddingY:"12",resultBorderRadius:"8",triggerBg:"#ffffff",triggerBgDark:"#374151",triggerTextColor:"#374151",triggerTextColorDark:"#d1d5db",triggerBorderRadius:"8",triggerBorderWidth:"1",triggerBorderColor:"#d1d5db",triggerBorderColorDark:"#4b5563",triggerHoverBg:"#f9fafb",triggerHoverBgDark:"#4b5563",triggerHoverTextColor:"#111827",triggerHoverTextColorDark:"#f9fafb",triggerHoverBorderColor:"#3b82f6",triggerHoverBorderColorDark:"#60a5fa",triggerPaddingX:"12",triggerPaddingY:"8",triggerFontSize:"14",kbdBg:"#f3f4f6",kbdBgDark:"#4b5563",kbdTextColor:"#4b5563",kbdTextColorDark:"#e5e7eb",kbdBorderRadius:"4",backdropOpacity:"50",backdropBlur:"1",highlightEnabled:"1",highlightTag:"",highlightClass:"",highlightBgLight:"fef08a",highlightColorLight:"854d0e",highlightBgDark:"854d0e",highlightColorDark:"fef08a",iconColor:"#3b82f6",iconColorDark:"#60a5fa",promotedBg:"#2563eb",promotedBgDark:"#3b82f6",promotedColor:"#ffffff",promotedColorDark:"#ffffff"};var fe={modalBg:"--sm-modal-bg",modalBgDark:"--sm-modal-bg-dark",modalBorderRadius:"--sm-modal-radius",modalBorderWidth:"--sm-modal-border-width",modalBorderColor:"--sm-modal-border-color",modalBorderColorDark:"--sm-modal-border-color-dark",modalShadow:"--sm-modal-shadow",modalShadowDark:"--sm-modal-shadow-dark",modalMaxWidth:"--sm-modal-width",modalMaxHeight:"--sm-modal-max-height",modalPaddingX:"--sm-modal-px",modalPaddingY:"--sm-modal-py",headerBg:"--sm-header-bg",headerBgDark:"--sm-header-bg-dark",headerBorderColor:"--sm-header-border-color",headerBorderColorDark:"--sm-header-border-color-dark",headerBorderWidth:"--sm-header-border-width",headerBorderRadius:"--sm-header-radius",headerPaddingX:"--sm-header-px",headerPaddingY:"--sm-header-py",inputBg:"--sm-input-bg",inputBgDark:"--sm-input-bg-dark",inputTextColor:"--sm-input-color",inputTextColorDark:"--sm-input-color-dark",inputPlaceholderColor:"--sm-input-placeholder",inputPlaceholderColorDark:"--sm-input-placeholder-dark",inputBorderColor:"--sm-input-border-color",inputBorderColorDark:"--sm-input-border-color-dark",inputFontSize:"--sm-input-font-size",inputBorderRadius:"--sm-input-radius",inputBorderWidth:"--sm-input-border-width",inputPaddingX:"--sm-input-px",inputPaddingY:"--sm-input-py",resultBg:"--sm-result-bg",resultBgDark:"--sm-result-bg-dark",resultBorderColor:"--sm-result-border-color",resultBorderColorDark:"--sm-result-border-color-dark",resultActiveBg:"--sm-result-active-bg",resultActiveBgDark:"--sm-result-active-bg-dark",resultActiveBorderColor:"--sm-result-active-border-color",resultActiveBorderColorDark:"--sm-result-active-border-color-dark",resultActiveTextColor:"--sm-result-active-text-color",resultActiveTextColorDark:"--sm-result-active-text-color-dark",resultActiveDescColor:"--sm-result-active-desc-color",resultActiveDescColorDark:"--sm-result-active-desc-color-dark",resultActiveMutedColor:"--sm-result-active-muted-color",resultActiveMutedColorDark:"--sm-result-active-muted-color-dark",resultTextColor:"--sm-result-text-color",resultTextColorDark:"--sm-result-text-color-dark",resultDescColor:"--sm-result-desc-color",resultDescColorDark:"--sm-result-desc-color-dark",resultMutedColor:"--sm-result-muted-color",resultMutedColorDark:"--sm-result-muted-color-dark",resultGap:"--sm-result-gap",resultBorderWidth:"--sm-result-border-width",resultPaddingX:"--sm-result-px",resultPaddingY:"--sm-result-py",resultBorderRadius:"--sm-result-radius",triggerBg:"--sm-trigger-bg",triggerBgDark:"--sm-trigger-bg-dark",triggerTextColor:"--sm-trigger-text-color",triggerTextColorDark:"--sm-trigger-text-color-dark",triggerBorderRadius:"--sm-trigger-radius",triggerBorderWidth:"--sm-trigger-border-width",triggerBorderColor:"--sm-trigger-border-color",triggerBorderColorDark:"--sm-trigger-border-color-dark",triggerHoverBg:"--sm-trigger-hover-bg",triggerHoverBgDark:"--sm-trigger-hover-bg-dark",triggerHoverTextColor:"--sm-trigger-hover-text-color",triggerHoverTextColorDark:"--sm-trigger-hover-text-color-dark",triggerHoverBorderColor:"--sm-trigger-hover-border-color",triggerHoverBorderColorDark:"--sm-trigger-hover-border-color-dark",triggerPaddingX:"--sm-trigger-px",triggerPaddingY:"--sm-trigger-py",triggerFontSize:"--sm-trigger-font-size",kbdBg:"--sm-kbd-bg",kbdBgDark:"--sm-kbd-bg-dark",kbdTextColor:"--sm-kbd-text-color",kbdTextColorDark:"--sm-kbd-text-color-dark",kbdBorderRadius:"--sm-kbd-radius",iconColor:"--sm-icon-color",iconColorDark:"--sm-icon-color-dark",highlightBgLight:"--sm-highlight-bg",highlightColorLight:"--sm-highlight-color",highlightBgDark:"--sm-highlight-bg-dark",highlightColorDark:"--sm-highlight-color-dark",promotedBg:"--sm-promoted-bg",promotedBgDark:"--sm-promoted-bg-dark",promotedColor:"--sm-promoted-color",promotedColorDark:"--sm-promoted-color-dark",spinnerColor:"--sm-spinner-color-light",spinnerColorDark:"--sm-spinner-color-dark"},X=["modalBorderRadius","modalBorderWidth","modalMaxWidth","modalPaddingX","modalPaddingY","headerBorderWidth","headerBorderRadius","headerPaddingX","headerPaddingY","inputFontSize","inputBorderRadius","inputBorderWidth","inputPaddingX","inputPaddingY","resultGap","resultBorderWidth","resultPaddingX","resultPaddingY","resultBorderRadius","triggerBorderRadius","triggerBorderWidth","triggerPaddingX","triggerPaddingY","triggerFontSize","kbdBorderRadius"],J=["modalMaxHeight"],ve=["modalBg","modalBgDark","modalBorderColor","modalBorderColorDark","headerBg","headerBgDark","headerBorderColor","headerBorderColorDark","inputBg","inputBgDark","inputTextColor","inputTextColorDark","inputPlaceholderColor","inputPlaceholderColorDark","inputBorderColor","inputBorderColorDark","resultBg","resultBgDark","resultBorderColor","resultBorderColorDark","resultActiveBg","resultActiveBgDark","resultActiveBorderColor","resultActiveBorderColorDark","resultTextColor","resultTextColorDark","resultActiveTextColor","resultActiveTextColorDark","resultActiveDescColor","resultActiveDescColorDark","resultActiveMutedColor","resultActiveMutedColorDark","resultDescColor","resultDescColorDark","resultMutedColor","resultMutedColorDark","triggerBg","triggerBgDark","triggerTextColor","triggerTextColorDark","triggerBorderColor","triggerBorderColorDark","triggerHoverBg","triggerHoverBgDark","triggerHoverTextColor","triggerHoverTextColorDark","triggerHoverBorderColor","triggerHoverBorderColorDark","kbdBg","kbdBgDark","kbdTextColor","kbdTextColorDark","iconColor","iconColorDark","highlightBgLight","highlightColorLight","highlightBgDark","highlightColorDark","promotedBg","promotedBgDark","promotedColor","promotedColorDark","spinnerColor","spinnerColorDark"],At={...be,highlightBgLight:"#fef08a",highlightColorLight:"#854d0e",highlightBgDark:"#854d0e",highlightColorDark:"#fef08a"};function et(e){return typeof e=="string"&&/^(var|light-dark|calc|env|clamp|min|max|rgb|hsl)\s*\(/.test(e.trim())}function tt(e){return/^[0-9a-fA-F]{6}$/.test(e)}function rt(e,r){if(r==null||r==="")return null;let t=String(r);return et(t)||(ve.includes(e)&&tt(t)&&(t="#"+t),X.includes(e)&&(t=t+"px"),J.includes(e)&&(t=t+"vh")),t}function ye(e,r,t="light"){if(!r||typeof r!="object")return;let n=t==="dark",o=Object.entries(fe),a=new Set([...X,...J]);for(let[s,l]of o){let i=s.endsWith("Dark");if(n){if(!i&&!a.has(s))continue}else if(i)continue;if(r[s]!==void 0&&r[s]!==null&&r[s]!==""){let d=rt(s,r[s]);d&&e.style.setProperty(l,d)}}}function h(e){if(!e)return"";let r=document.createElement("div");return r.textContent=e,r.innerHTML}function xe(e){return e?e.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"):""}function Z(e){if(!e)return[];let r=[],t=/"([^"]+)"/g,n;for(;(n=t.exec(e))!==null;)n[1].trim()&&r.push(n[1].trim());let o=e.replace(/"[^"]*"/g,""),a=new Set(["and","or","not","und","oder","nicht","et","ou","sauf","y","o","no"]);o.split(/\s+/).filter(l=>l.length>0).forEach(l=>{l=l.replace(/^[a-zA-Z]+:/,""),l=l.replace(/\*/g,""),l=l.replace(/\^\d+(\.\d+)?/,""),l=l.replace(/"/g,""),!(!l||a.has(l.toLowerCase()))&&r.push(l)});let s=[];return r.forEach(l=>{s.push(l);let i=l.split(/(?<=[a-z])(?=[A-Z])/);i.length>1&&i.forEach(d=>{d.length>=3&&s.push(d)})}),s}function $(e,r,t={}){let{enabled:n=!0,tag:o="mark",className:a="",terms:s=null}=t;if(!n)return h(e);let l=["sm-highlight"];a&&l.push(a);let i=` class="${l.join(" ")}"`,d=nt(r,s);return d.length===0?h(e):ot(e,d,o,i)}function nt(e,r){return Array.isArray(r)&&r.length>0?ke(r):e?ke(Z(e)):[]}function ke(e){let r=new Set;return e.filter(t=>typeof t=="string"&&t.length>0).sort((t,n)=>n.length-t.length).filter(t=>{let n=t.toLowerCase();return r.has(n)?!1:(r.add(n),!0)})}function ot(e,r,t,n){let o=e.toLowerCase(),a=[];if(r.forEach(c=>{let u=c.toLowerCase();if(!u)return;let g=0;for(;g<o.length;){let m=o.indexOf(u,g);if(m===-1)break;a.push({start:m,end:m+u.length}),g=m+u.length}}),a.length===0)return h(e);a.sort((c,u)=>c.start!==u.start?c.start-u.start:u.end-u.start-(c.end-c.start));let s=[],l=-1;a.forEach(c=>{c.start>=l&&(s.push(c),l=c.end)});let i="",d=0;return s.forEach(c=>{d<c.start&&(i+=h(e.slice(d,c.start))),i+=`<${t}${n}>${h(e.slice(c.start,c.end))}</${t}>`,d=c.end}),d<e.length&&(i+=h(e.slice(d))),i}function N(e,r,t="smq"){if(!e||e==="#")return e;let n=(r||"").trim();if(!n||!t||/^(mailto:|tel:|javascript:)/i.test(e))return e;let[o,a]=e.split("#",2),[s,l]=o.split("?",2),i=new URLSearchParams(l||"");i.set(t,n);let d=i.toString(),c=a?`#${a}`:"";return`${s}${d?`?${d}`:""}${c}`}var st=0;function ee(e="sm"){return`${e}-${++st}-${Date.now().toString(36)}`}function we(e){let r=document.createElement("div");return r.setAttribute("role","status"),r.setAttribute("aria-live","polite"),r.setAttribute("aria-atomic","true"),r.className="sm-sr-only",e.appendChild(r),r}function U(e,r,t=100){e&&(e.textContent="",setTimeout(()=>{e.textContent=r},t))}function te(e,r){return e===0?`No results found for "${r}"`:e===1?`1 result found for "${r}"`:`${e} results found for "${r}"`}function Ce(){return"Searching..."}function Se(e){return e===0?"No recent searches":e===1?"1 recent search available":`${e} recent searches available`}function W(e,{expanded:r,activeDescendant:t,listboxId:n}){e.setAttribute("aria-expanded",String(r)),e.setAttribute("aria-controls",n),t?e.setAttribute("aria-activedescendant",t):e.removeAttribute("aria-activedescendant")}function L(e,r){return`${e}-option-${r}`}function Te(e,r){if(!e||!r)return;let t=e.getBoundingClientRect(),n=r.getBoundingClientRect();t.top<n.top?e.scrollIntoView({block:"nearest",behavior:"smooth"}):t.bottom>n.bottom&&e.scrollIntoView({block:"nearest",behavior:"smooth"})}function at(e,r,t={}){let{groupResults:n=!1,resultLayout:o="default",listboxId:a}=t;if(!e||e.length===0)return"";if(o==="hierarchical")return ct(e,r,t);if(n){let s=ge(e),l=0;return Object.entries(s).map(([i,d])=>`
+            <div class="sm-section" role="group" aria-label="${h(i)}">
+                <div class="sm-section-header">${h(i)}</div>
+                ${d.map(c=>Ae(c,l++,r,t)).join("")}
             </div>
-        `).join("");
-    }
-    return results.map((result, i) => renderResultItem(result, i, query, options)).join("");
-  }
-  function renderResultItem(result, index, query, options = {}) {
-    const {
-      listboxId,
-      enableHighlighting = true,
-      highlightTag = "mark",
-      highlightClass = "",
-      groupResults = false,
-      promotions = {},
-      debug = false,
-      persistQueryInUrl = false,
-      queryParamName = "smq"
-    } = options;
-    const title = result.title || result.name || "Untitled";
-    const description = result.description || result.excerpt || result.snippet || "";
-    const rawUrl = result.url || result.href || "#";
-    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : "");
-    const type = result.section || result.type || "";
-    const optionId = getOptionId(listboxId, index);
-    const isPromoted = result.promoted === true;
-    const highlightOptions = {
-      enabled: enableHighlighting,
-      tag: highlightTag,
-      className: highlightClass
-    };
-    const highlightedTitle = highlightMatches(title, query, {
-      ...highlightOptions,
-      terms: getHighlightTerms(result, "title")
-    });
-    const highlightedDesc = description ? highlightMatches(description, query, {
-      ...highlightOptions,
-      terms: getHighlightTerms(result, "description")
-    }) : "";
-    const promotedBadge = renderPromotedBadge(result, promotions);
-    const promotedClass = isPromoted ? " sm-promoted" : "";
-    const typeBadge = type && !groupResults ? `<span class="sm-result-type">${escapeHtml(type)}</span>` : "";
-    const debugInfo = debug ? renderDebugInfo(result) : "";
-    if (debug) {
-      return `
-            <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(title)}">
+        `).join("")}return e.map((s,l)=>Ae(s,l,r,t)).join("")}function Ae(e,r,t,n={}){let{listboxId:o,enableHighlighting:a=!0,highlightTag:s="mark",highlightClass:l="",groupResults:i=!1,promotions:d={},debug:c=!1,persistQueryInUrl:u=!1,queryParamName:g="smq"}=n,m=e.title||e.name||"Untitled",v=e.description||e.excerpt||e.snippet||"",p=e.url||e.href||"#",y=N(p,t,u?g:""),A=e.section||e.type||"",b=L(o,r),k=e.promoted===!0,E={enabled:a,tag:s,className:l},x=$(m,t,{...E,terms:F(e,"title")}),T=v?$(v,t,{...E,terms:F(e,"description")}):"",H=it(e,d),I=k?" sm-promoted":"",B=A&&!i?`<span class="sm-result-type">${h(A)}</span>`:"",w=c?Re(e):"";return c?`
+            <a class="sm-result-item sm-debug-enabled${I}" id="${b}" role="option" aria-selected="false" href="${h(y)}" data-index="${r}" data-id="${e.id||""}" data-title="${h(m)}">
                 <div class="sm-result-main">
-                    ${promotedBadge}
+                    ${H}
                     <div class="sm-result-content">
-                        <span class="sm-result-title">${highlightedTitle}</span>
-                        ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                        <span class="sm-result-title">${x}</span>
+                        ${T?`<span class="sm-result-desc">${T}</span>`:""}
                     </div>
-                    ${typeBadge}
-                    ${arrowSvg()}
+                    ${B}
+                    ${P()}
                 </div>
-                ${debugInfo}
+                ${w}
             </a>
-        `;
-    }
-    return `
-        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(title)}">
-            ${promotedBadge}
+        `:`
+        <a class="sm-result-item${I}" id="${b}" role="option" aria-selected="false" href="${h(y)}" data-index="${r}" data-id="${e.id||""}" data-title="${h(m)}">
+            ${H}
             <div class="sm-result-content">
-                <span class="sm-result-title">${highlightedTitle}</span>
-                ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                <span class="sm-result-title">${x}</span>
+                ${T?`<span class="sm-result-desc">${T}</span>`:""}
             </div>
-            ${typeBadge}
-            ${arrowSvg()}
+            ${B}
+            ${P()}
         </a>
-    `;
-  }
-  function renderDebugInfo(result) {
-    const debugItems = [];
-    const backendValue = result.backend ? result.backend.toLowerCase() : "";
-    if (result._index || result.index) {
-      debugItems.push(debugItem("index", result._index || result.index, "index"));
-    }
-    if (result.backend) {
-      debugItems.push(debugItem("backend", backendValue, "backend", backendValue));
-    }
-    if (result.id) {
-      debugItems.push(debugItem("id", result.id, "generic"));
-    }
-    if (result.score !== void 0 && result.score !== null) {
-      const scoreDisplay = typeof result.score === "number" ? result.score.toFixed(2) : result.score;
-      debugItems.push(debugItem("score", scoreDisplay, "score"));
-    }
-    if (result.site) {
-      debugItems.push(debugItem("site", result.site, "generic"));
-    }
-    if (result.language) {
-      debugItems.push(debugItem("lang", result.language, "generic"));
-    }
-    if (result.matchedIn && Array.isArray(result.matchedIn) && result.matchedIn.length > 0) {
-      const matchedDisplay = result.matchedIn.join(", ");
-      debugItems.push(debugItem("matched", matchedDisplay, "matched"));
-    }
-    if (result.promoted) {
-      debugItems.push(debugItem("promoted", "yes", "promoted"));
-    }
-    if (result.boosted) {
-      debugItems.push(debugItem("boosted", "yes", "boosted"));
-    }
-    if (debugItems.length === 0) {
-      return "";
-    }
-    return `<div class="sm-debug-info">${debugItems.join("")}</div>`;
-  }
-  function getHighlightTerms(result, area) {
-    const phrases = Array.isArray(result.matchedPhrases) ? result.matchedPhrases : [];
-    const matchedTerms = result.matchedTerms;
-    let terms = [];
-    if (matchedTerms) {
-      if (area === "title" && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
-        terms = matchedTerms.title;
-      } else if (area === "description" && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
-        terms = matchedTerms.content;
-      } else {
-        terms = [
-          ...Array.isArray(matchedTerms.title) ? matchedTerms.title : [],
-          ...Array.isArray(matchedTerms.content) ? matchedTerms.content : []
-        ];
-      }
-    }
-    const combined = [...phrases, ...terms];
-    return combined.length > 0 ? combined : null;
-  }
-  function debugItem(label, value, type, backendType = "") {
-    const backendAttr = backendType ? ` data-backend="${escapeHtml(backendType)}"` : "";
-    return `<span class="sm-debug-item"><span class="sm-debug-label">${escapeHtml(label)}</span><span class="sm-debug-value" data-type="${escapeHtml(type)}"${backendAttr}>${escapeHtml(String(value))}</span></span>`;
-  }
-  function renderPromotedBadge(result, config = {}) {
-    const {
-      showBadge = true,
-      badgeText = "Featured",
-      badgePosition = "top-right"
-    } = config;
-    if (!result.promoted || !showBadge) {
-      return "";
-    }
-    const positionClass = `sm-promoted-badge--${badgePosition}`;
-    return `<span class="sm-promoted-badge ${positionClass}">${escapeHtml(badgeText)}</span>`;
-  }
-  function arrowSvg() {
-    return `<svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    `}function Re(e){let r=[],t=e.backend?e.backend.toLowerCase():"";if((e._index||e.index)&&r.push(S("index",e._index||e.index,"index")),e.backend&&r.push(S("backend",t,"backend",t)),e.id&&r.push(S("id",e.id,"generic")),e.score!==void 0&&e.score!==null){let n=typeof e.score=="number"?e.score.toFixed(2):e.score;r.push(S("score",n,"score"))}if(e.site&&r.push(S("site",e.site,"generic")),e.language&&r.push(S("lang",e.language,"generic")),e.matchedIn&&Array.isArray(e.matchedIn)&&e.matchedIn.length>0){let n=e.matchedIn.join(", ");r.push(S("matched",n,"matched"))}return e.promoted&&r.push(S("promoted","yes","promoted")),e.boosted&&r.push(S("boosted","yes","boosted")),r.length===0?"":`<div class="sm-debug-info">${r.join("")}</div>`}function F(e,r){let t=Array.isArray(e.matchedPhrases)?e.matchedPhrases:[],n=e.matchedTerms,o=[];n&&(r==="title"&&Array.isArray(n.title)&&n.title.length>0?o=n.title:r==="description"&&Array.isArray(n.content)&&n.content.length>0?o=n.content:o=[...Array.isArray(n.title)?n.title:[],...Array.isArray(n.content)?n.content:[]]);let a=[...t,...o];return a.length>0?a:null}function S(e,r,t,n=""){let o=n?` data-backend="${h(n)}"`:"";return`<span class="sm-debug-item"><span class="sm-debug-label">${h(e)}</span><span class="sm-debug-value" data-type="${h(t)}"${o}>${h(String(r))}</span></span>`}function it(e,r={}){let{showBadge:t=!0,badgeText:n="Featured",badgePosition:o="top-right"}=r;return!e.promoted||!t?"":`<span class="sm-promoted-badge ${`sm-promoted-badge--${o}`}">${h(n)}</span>`}function P(){return`<svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <path d="M5 12h14M12 5l7 7-7 7"/>
-    </svg>`;
-  }
-  function documentIcon() {
-    return `<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+    </svg>`}function lt(){return`<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
         <line x1="16" y1="13" x2="8" y2="13"/>
         <line x1="16" y1="17" x2="8" y2="17"/>
         <polyline points="10 9 9 9 8 9"/>
-    </svg>`;
-  }
-  function contentIcon() {
-    return `<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+    </svg>`}function dt(){return`<svg class="sm-hierarchy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
         <line x1="4" y1="7" x2="20" y2="7"/>
         <line x1="4" y1="12" x2="20" y2="12"/>
         <line x1="4" y1="17" x2="14" y2="17"/>
-    </svg>`;
-  }
-  function hashIcon() {
-    return `<svg class="sm-hierarchy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    </svg>`}function De(){return`<svg class="sm-hierarchy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
         <line x1="4" y1="9" x2="20" y2="9"/>
         <line x1="4" y1="15" x2="20" y2="15"/>
         <line x1="10" y1="3" x2="8" y2="21"/>
         <line x1="16" y1="3" x2="14" y2="21"/>
-    </svg>`;
-  }
-  function renderHierarchicalResults(results, query, options = {}) {
-    const {
-      hierarchyGroupBy = "section",
-      hierarchyStyle = "tree",
-      hierarchyDisplay = "individual",
-      maxHeadingsPerResult = 3,
-      listboxId
-    } = options;
-    const useTree = hierarchyStyle === "tree";
-    const useConnectors = hierarchyStyle !== "none";
-    const groupField = hierarchyGroupBy || "section";
-    const groups = groupResultsByField(results, groupField);
-    let globalIndex = 0;
-    return Object.entries(groups).map(([groupName, items]) => {
-      const itemsHtml = items.map((result) => {
-        const parentIndex = globalIndex++;
-        const parentHtml = renderHierarchyParent(result, parentIndex, query, options);
-        let childrenHtml = "";
-        const headings = result._matchedHeadings || [];
-        const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
-        if (limitedHeadings.length > 0) {
-          const minLevel = Math.min(...limitedHeadings.map((h) => h.level || 2));
-          const depths = limitedHeadings.map((h) => useTree ? (h.level || 2) - minLevel : 0);
-          childrenHtml = limitedHeadings.map((heading, headingIndex) => {
-            const depth = depths[headingIndex];
-            const isLastAtLevel = !depths.slice(headingIndex + 1).some((d) => d === depth);
-            const activeGuides = [];
-            if (useTree) {
-              const remainingDepths = depths.slice(headingIndex + 1);
-              for (let dl = 0; dl < depth; dl++) {
-                if (remainingDepths.some((d) => d === dl)) {
-                  activeGuides.push(dl);
-                }
-              }
-            }
-            return renderHeadingChild(result, heading, globalIndex++, query, options, isLastAtLevel, depth, activeGuides);
-          }).join("");
-        }
-        const hasChildren = Boolean(childrenHtml);
-        const unifiedClass = hierarchyDisplay === "unified" ? " sm-hierarchy-block--unified" : "";
-        return `
-                <div class="sm-hierarchy-block${hasChildren ? " sm-hierarchy-block--has-children" : ""}${unifiedClass}">
-                    ${hasChildren ? parentHtml.replace("sm-result-item sm-hierarchy-parent", "sm-result-item sm-hierarchy-parent sm-hierarchy-parent--has-children") : parentHtml}
-                    ${hasChildren ? `<div class="sm-hierarchy-children${!useConnectors ? " sm-hierarchy-children--no-connectors" : ""}">${childrenHtml}</div>` : ""}
+    </svg>`}function ct(e,r,t={}){let{hierarchyGroupBy:n="section",hierarchyStyle:o="tree",hierarchyDisplay:a="individual",maxHeadingsPerResult:s=3,listboxId:l}=t,i=o==="tree",d=o!=="none",u=ue(e,n||"section"),g=0;return Object.entries(u).map(([m,v])=>{let p=v.map(y=>{let A=g++,b=ht(y,A,r,t),k="",x=(y._matchedHeadings||[]).slice(0,s);if(x.length>0){let I=Math.min(...x.map(w=>w.level||2)),B=x.map(w=>i?(w.level||2)-I:0);k=x.map((w,M)=>{let O=B[M],_=!B.slice(M+1).some(Y=>Y===O),R=[];if(i){let Y=B.slice(M+1);for(let q=0;q<O;q++)Y.some(Ue=>Ue===q)&&R.push(q)}return gt(y,w,g++,r,t,_,O,R)}).join("")}let T=!!k;return`
+                <div class="sm-hierarchy-block${T?" sm-hierarchy-block--has-children":""}${a==="unified"?" sm-hierarchy-block--unified":""}">
+                    ${T?b.replace("sm-result-item sm-hierarchy-parent","sm-result-item sm-hierarchy-parent sm-hierarchy-parent--has-children"):b}
+                    ${T?`<div class="sm-hierarchy-children${d?"":" sm-hierarchy-children--no-connectors"}">${k}</div>`:""}
                 </div>
-            `;
-      }).join("");
-      return `
-            <div class="sm-hierarchy-group" role="group" aria-label="${escapeHtml(groupName)}">
-                <div class="sm-hierarchy-group-header">${escapeHtml(groupName)}</div>
-                ${itemsHtml}
+            `}).join("");return`
+            <div class="sm-hierarchy-group" role="group" aria-label="${h(m)}">
+                <div class="sm-hierarchy-group-header">${h(m)}</div>
+                ${p}
             </div>
-        `;
-    }).join("");
-  }
-  function renderHierarchyParent(result, index, query, options = {}) {
-    const {
-      listboxId,
-      enableHighlighting = true,
-      highlightTag = "mark",
-      highlightClass = "",
-      debug = false,
-      persistQueryInUrl = false,
-      queryParamName = "smq"
-    } = options;
-    const title = result.title || result.name || "Untitled";
-    const description = result.description || result.excerpt || "";
-    const rawUrl = result.url || "#";
-    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : "");
-    const optionId = getOptionId(listboxId, index);
-    const highlightOptions = {
-      enabled: enableHighlighting,
-      tag: highlightTag,
-      className: highlightClass
-    };
-    const highlightedTitle = highlightMatches(title, query, {
-      ...highlightOptions,
-      terms: getHighlightTerms(result, "title")
-    });
-    const highlightedDesc = description ? highlightMatches(description, query, {
-      ...highlightOptions,
-      terms: getHighlightTerms(result, "description")
-    }) : "";
-    const debugInfo = debug ? renderDebugInfo(result) : "";
-    const hasHeadings = result._matchedHeadings && result._matchedHeadings.length > 0;
-    const icon = hasHeadings ? documentIcon() : contentIcon();
-    if (debug) {
-      return `
-            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(title)}">
+        `}).join("")}function ht(e,r,t,n={}){let{listboxId:o,enableHighlighting:a=!0,highlightTag:s="mark",highlightClass:l="",debug:i=!1,persistQueryInUrl:d=!1,queryParamName:c="smq"}=n,u=e.title||e.name||"Untitled",g=e.description||e.excerpt||"",m=e.url||"#",v=N(m,t,d?c:""),p=L(o,r),y={enabled:a,tag:s,className:l},A=$(u,t,{...y,terms:F(e,"title")}),b=g?$(g,t,{...y,terms:F(e,"description")}):"",k=i?Re(e):"",x=e._matchedHeadings&&e._matchedHeadings.length>0?lt():dt();return i?`
+            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${p}" role="option" aria-selected="false" href="${h(v)}" data-index="${r}" data-id="${e.id||""}" data-title="${h(u)}">
                 <div class="sm-result-main">
-                    ${icon}
+                    ${x}
                     <div class="sm-result-content">
-                        <span class="sm-result-title">${highlightedTitle}</span>
-                        ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                        <span class="sm-result-title">${A}</span>
+                        ${b?`<span class="sm-result-desc">${b}</span>`:""}
                     </div>
-                    ${arrowSvg()}
+                    ${P()}
                 </div>
-                ${debugInfo}
+                ${k}
             </a>
-        `;
-    }
-    return `
-        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(title)}">
-            ${icon}
+        `:`
+        <a class="sm-result-item sm-hierarchy-parent" id="${p}" role="option" aria-selected="false" href="${h(v)}" data-index="${r}" data-id="${e.id||""}" data-title="${h(u)}">
+            ${x}
             <div class="sm-result-content">
-                <span class="sm-result-title">${highlightedTitle}</span>
-                ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                <span class="sm-result-title">${A}</span>
+                ${b?`<span class="sm-result-desc">${b}</span>`:""}
             </div>
-            ${arrowSvg()}
+            ${P()}
         </a>
-    `;
-  }
-  function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0, activeGuides = []) {
-    const {
-      listboxId,
-      enableHighlighting = true,
-      highlightTag = "mark",
-      highlightClass = "",
-      debug = false,
-      persistQueryInUrl = false,
-      queryParamName = "smq"
-    } = options;
-    const rawText = heading.text || "";
-    const text = rawText.replace(/^#+\s*/, "");
-    const description = heading.description || "";
-    const level = heading.level || 2;
-    const anchorId = heading.id || (text ? slugifyHeading(text) : "");
-    const baseUrl = result.url || "#";
-    const rawUrl = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
-    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : "");
-    const optionId = getOptionId(listboxId, index);
-    const highlightOptions = {
-      enabled: enableHighlighting,
-      tag: highlightTag,
-      className: highlightClass
-    };
-    const highlightedText = highlightMatches(text, query, {
-      ...highlightOptions,
-      terms: getHighlightTerms(result, "title")
-    });
-    const highlightedDesc = description ? highlightMatches(description, query, {
-      ...highlightOptions,
-      terms: getHighlightTerms(result, "description")
-    }) : "";
-    const rowClass = isLast ? " sm-hierarchy-child-row-last" : "";
-    const guidesHtml = activeGuides.map(
-      (dl) => `<div class="sm-hierarchy-guide" style="--sm-guide-depth:${dl}" aria-hidden="true"></div>`
-    ).join("");
-    let debugInfo = "";
-    if (debug) {
-      const childDebugItems = [];
-      childDebugItems.push(debugItem("h", level, "generic"));
-      if (anchorId) {
-        childDebugItems.push(debugItem("anchor", anchorId, "generic"));
-      }
-      if (result.id) {
-        childDebugItems.push(debugItem("parent", result.id, "generic"));
-      }
-      debugInfo = `<div class="sm-debug-info">${childDebugItems.join("")}</div>`;
-    }
-    if (debug) {
-      return `
-            <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
-                ${guidesHtml}
-                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(text)}">
+    `}function gt(e,r,t,n,o={},a=!1,s=0,l=[]){let{listboxId:i,enableHighlighting:d=!0,highlightTag:c="mark",highlightClass:u="",debug:g=!1,persistQueryInUrl:m=!1,queryParamName:v="smq"}=o,y=(r.text||"").replace(/^#+\s*/,""),A=r.description||"",b=r.level||2,k=r.id||(y?ut(y):""),E=e.url||"#",x=k?`${E}#${k}`:E,T=N(x,n,m?v:""),H=L(i,t),I={enabled:d,tag:c,className:u},B=$(y,n,{...I,terms:F(e,"title")}),w=A?$(A,n,{...I,terms:F(e,"description")}):"",M=a?" sm-hierarchy-child-row-last":"",O=l.map(R=>`<div class="sm-hierarchy-guide" style="--sm-guide-depth:${R}" aria-hidden="true"></div>`).join(""),_="";if(g){let R=[];R.push(S("h",b,"generic")),k&&R.push(S("anchor",k,"generic")),e.id&&R.push(S("parent",e.id,"generic")),_=`<div class="sm-debug-info">${R.join("")}</div>`}return g?`
+            <div class="sm-hierarchy-child-row sm-hierarchy-level-${b} sm-hierarchy-depth-${s}${M}" style="--sm-hierarchy-depth:${s}">
+                ${O}
+                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${b} sm-debug-enabled" id="${H}" role="option" aria-selected="false" href="${h(T)}" data-index="${t}" data-id="${e.id||""}" data-title="${h(y)}">
                     <div class="sm-result-main">
-                        ${hashIcon()}
+                        ${De()}
                         <div class="sm-result-content">
-                            <span class="sm-result-title">${highlightedText}</span>
-                            ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                            <span class="sm-result-title">${B}</span>
+                            ${w?`<span class="sm-result-desc">${w}</span>`:""}
                         </div>
-                        ${arrowSvg()}
+                        ${P()}
                     </div>
-                    ${debugInfo}
+                    ${_}
                 </a>
             </div>
-        `;
-    }
-    return `
-        <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
-            ${guidesHtml}
-            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ""}" data-title="${escapeHtml(text)}">
-                ${hashIcon()}
+        `:`
+        <div class="sm-hierarchy-child-row sm-hierarchy-level-${b} sm-hierarchy-depth-${s}${M}" style="--sm-hierarchy-depth:${s}">
+            ${O}
+            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${b}" id="${H}" role="option" aria-selected="false" href="${h(T)}" data-index="${t}" data-id="${e.id||""}" data-title="${h(y)}">
+                ${De()}
                 <div class="sm-result-content">
-                    <span class="sm-result-title">${highlightedText}</span>
-                    ${highlightedDesc ? `<span class="sm-result-desc">${highlightedDesc}</span>` : ""}
+                    <span class="sm-result-title">${B}</span>
+                    ${w?`<span class="sm-result-desc">${w}</span>`:""}
                 </div>
-                ${arrowSvg()}
+                ${P()}
             </a>
         </div>
-    `;
-  }
-  function slugifyHeading(text) {
-    const normalized = text.normalize("NFKD").toLowerCase();
-    try {
-      return normalized.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "");
-    } catch (err) {
-      return normalized.replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    }
-  }
-  function renderRecentSearches(recentSearches, listboxId) {
-    if (!recentSearches || recentSearches.length === 0) {
-      return "";
-    }
-    return `
+    `}function ut(e){let r=e.normalize("NFKD").toLowerCase();try{return r.replace(/[^\p{L}\p{N}]+/gu,"-").replace(/^-+|-+$/g,"")}catch{return r.replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"")}}function mt(e,r){return!e||e.length===0?"":`
         <div class="sm-section">
             <div class="sm-section-header">
-                <span id="${listboxId}-recent-label">Recent searches</span>
+                <span id="${r}-recent-label">Recent searches</span>
                 <button class="sm-clear-recent" part="clear-recent">Clear</button>
             </div>
-            ${recentSearches.map((item, i) => `
-                <div class="sm-result-item sm-recent-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${item.url || ""}" data-query="${escapeHtml(item.query)}">
+            ${e.map((t,n)=>`
+                <div class="sm-result-item sm-recent-item" id="${L(r,n)}" role="option" aria-selected="false" data-index="${n}" data-url="${t.url||""}" data-query="${h(t.query)}">
                     <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>
                     </svg>
-                    <span class="sm-result-title">${escapeHtml(item.title || item.query)}</span>
-                    ${arrowSvg()}
+                    <span class="sm-result-title">${h(t.title||t.query)}</span>
+                    ${P()}
                 </div>
             `).join("")}
         </div>
-    `;
-  }
-  function renderEmptyState(query) {
-    if (!query || !query.trim()) {
-      return `
+    `}function Be(e){return!e||!e.trim()?`
             <div class="sm-empty" part="empty">
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"/>
@@ -1631,20 +126,15 @@ var SearchModalWidget = (() => {
                 </svg>
                 <p>Start typing to search</p>
             </div>
-        `;
-    }
-    return `
+        `:`
         <div class="sm-empty" part="empty">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                 <circle cx="12" cy="12" r="10"/>
                 <path d="m15 9-6 6M9 9l6 6"/>
             </svg>
-            <p>No results for "<strong>${escapeHtml(query)}</strong>"</p>
+            <p>No results for "<strong>${h(e)}</strong>"</p>
         </div>
-    `;
-  }
-  function renderLoadingState() {
-    return `
+    `}function pt(){return`
         <div class="sm-loading-state" part="loading-state">
             <svg class="sm-spinner" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" fill="none" opacity="0.25"/>
@@ -1652,1050 +142,14 @@ var SearchModalWidget = (() => {
             </svg>
             <p>Searching...</p>
         </div>
-    `;
-  }
-  function getContentToRender(state, options) {
-    const { query, results, recentSearches, loading, showRecent } = state;
-    const { showLoadingIndicator = true } = options;
-    const hasQuery = query && query.trim();
-    if (loading && showLoadingIndicator) {
-      return {
-        html: renderLoadingState(),
-        hasResults: false,
-        showListbox: false
-      };
-    }
-    if (!hasQuery) {
-      if (showRecent && recentSearches && recentSearches.length > 0) {
-        return {
-          html: renderRecentSearches(recentSearches, options.listboxId),
-          hasResults: true,
-          showListbox: true
-        };
-      }
-      return {
-        html: renderEmptyState(""),
-        hasResults: false,
-        showListbox: false
-      };
-    }
-    if (!results || results.length === 0) {
-      return {
-        html: renderEmptyState(query),
-        hasResults: false,
-        showListbox: false
-      };
-    }
-    return {
-      html: renderResults(results, query, options),
-      hasResults: true,
-      showListbox: true
-    };
-  }
-
-  // src/modules/DebugToolbar.js
-  function renderDebugToolbarContent(meta, totalResults, collapsed = false) {
-    if (!meta) {
-      return "";
-    }
-    const items = [];
-    items.push(toolbarItem("results", totalResults, "generic"));
-    if (meta.took !== void 0) {
-      const timeDisplay = meta.took < 1 ? "<1ms" : `${Math.round(meta.took)}ms`;
-      items.push(toolbarItem("time", timeDisplay, "time"));
-    }
-    if (meta.cacheEnabled !== void 0) {
-      if (!meta.cacheEnabled) {
-        items.push(toolbarItem("cache", "off", "cache-off"));
-      } else if (meta.cached) {
-        items.push(toolbarItem("cache", "hit", "cache-hit"));
-      } else {
-        items.push(toolbarItem("cache", "miss", "cache-miss"));
-      }
-    }
-    if (meta.cacheDriver) {
-      items.push(toolbarItem("storage", meta.cacheDriver, "cache-driver", meta.cacheDriver));
-    }
-    if (meta.indices && meta.indices.length > 0) {
-      const indicesDisplay = meta.indices.length > 2 ? `${meta.indices.length} indices` : meta.indices.join(", ");
-      items.push(toolbarItem("indices", indicesDisplay, "generic"));
-    }
-    if (meta.synonymsExpanded) {
-      const synonymCount = meta.expandedQueries ? meta.expandedQueries.length - 1 : 0;
-      items.push(toolbarItem("synonyms", `+${synonymCount}`, "synonyms"));
-    }
-    const rulesCount = meta.rulesMatched?.length || 0;
-    items.push(toolbarItem("rules", rulesCount, rulesCount > 0 ? "rules" : "generic"));
-    const promotedCount = meta.promotionsMatched?.length || 0;
-    items.push(toolbarItem("promoted", promotedCount, promotedCount > 0 ? "promotions" : "generic"));
-    const toggleIcon = collapsed ? '<path d="M6 9l6 6 6-6"/>' : '<path d="M18 15l-6-6-6 6"/>';
-    const toggleSvg = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${toggleIcon}</svg>`;
-    if (collapsed) {
-      return `<div class="sm-toolbar-collapsed-bar"><span class="sm-toolbar-collapsed-label">Debug</span>${toggleSvg}</div>`;
-    }
-    return `<div class="sm-toolbar-content">${items.join("")}</div><button class="sm-toolbar-toggle" aria-label="Collapse debug panel" aria-expanded="true">${toggleSvg}</button>`;
-  }
-  function toolbarItem(label, value, type, backendType = "") {
-    const backendAttr = backendType ? ` data-backend="${escapeHtml(backendType)}"` : "";
-    return `<span class="sm-toolbar-item"><span class="sm-toolbar-label">${escapeHtml(label)}</span><span class="sm-toolbar-value" data-type="${escapeHtml(type)}"${backendAttr}>${escapeHtml(String(value))}</span></span>`;
-  }
-
-  // src/modules/KeyboardNavigator.js
-  function createKeyboardNavigator(callbacks, config) {
-    const { onSelect, onIndexChange, onEscape } = callbacks;
-    const { listboxId } = config;
-    return {
-      /**
-       * Handle keyboard events for navigation
-       *
-       * @param {KeyboardEvent} e - Keyboard event
-       * @param {number} itemCount - Total number of navigable items
-       * @param {number} currentIndex - Current selected index
-       * @returns {number|null} New index if changed, null if no change
-       */
-      handleKeydown(e, itemCount, currentIndex) {
-        let newIndex = currentIndex;
-        switch (e.key) {
-          case "ArrowDown":
-            e.preventDefault();
-            newIndex = Math.min(currentIndex + 1, itemCount - 1);
-            if (newIndex !== currentIndex && onIndexChange) {
-              onIndexChange(newIndex);
-            }
-            return newIndex;
-          case "ArrowUp":
-            e.preventDefault();
-            newIndex = Math.max(currentIndex - 1, -1);
-            if (newIndex !== currentIndex && onIndexChange) {
-              onIndexChange(newIndex);
-            }
-            return newIndex;
-          case "Enter":
-            e.preventDefault();
-            if (currentIndex >= 0 && onSelect) {
-              onSelect(currentIndex);
-            }
-            return null;
-          case "Escape":
-            e.preventDefault();
-            if (onEscape) {
-              onEscape();
-            }
-            return null;
-          default:
-            return null;
-        }
-      },
-      /**
-       * Get the listbox ID for this navigator
-       * @returns {string} Listbox ID
-       */
-      getListboxId() {
-        return listboxId;
-      }
-    };
-  }
-  function updateSelectionState(items, selectedIndex, options = {}) {
-    const {
-      scrollContainer,
-      inputElement,
-      listboxId,
-      selectedClass = "sm-selected"
-    } = options;
-    const activeId = selectedIndex >= 0 ? getOptionId(listboxId, selectedIndex) : null;
-    if (inputElement) {
-      updateComboboxAria(inputElement, {
-        expanded: items.length > 0,
-        activeDescendant: activeId,
-        listboxId
-      });
-    }
-    items.forEach((item, i) => {
-      const isSelected = i === selectedIndex;
-      item.classList.toggle(selectedClass, isSelected);
-      item.setAttribute("aria-selected", String(isSelected));
-      if (isSelected && scrollContainer) {
-        scrollIntoViewIfNeeded(item, scrollContainer);
-      }
-    });
-  }
-  function attachHoverHandlers(items, onHover) {
-    items.forEach((item, index) => {
-      item.addEventListener("mouseenter", () => {
-        if (onHover) {
-          onHover(index);
-        }
-      });
-    });
-  }
-
-  // src/core/SearchWidgetBase.js
-  var PAGE_HIGHLIGHT_STYLE_ID = "sm-page-highlight-style";
-  var PAGE_HIGHLIGHT_REGISTRY = "__smPageHighlightRegistry";
-  var SearchWidgetBase = class extends HTMLElement {
-    /**
-     * Initialize the base widget
-     *
-     * Sets up shadow DOM, state management, unique IDs, and binds methods.
-     * Subclasses should call super() in their constructor.
-     */
-    constructor() {
-      super();
-      this.attachShadow({ mode: "open" });
-      this.config = null;
-      this.state = createStateManager(
-        { ...DEFAULT_STATE },
-        this.handleStateChange.bind(this)
-      );
-      this.abortController = null;
-      this.debounceTimer = null;
-      this.analyticsIdleTimer = null;
-      this.lastTrackedQuery = null;
-      this.listboxId = generateId("sm-listbox");
-      this.inputId = generateId("sm-input");
-      this.liveRegion = null;
-      this.keyboardNavigator = null;
-      this.elements = {};
-      this.handleInput = this.handleInput.bind(this);
-      this.handleKeydown = this.handleKeydown.bind(this);
-      this.handleResultClick = this.handleResultClick.bind(this);
-    }
-    // =========================================================================
-    // ABSTRACT METHODS - Must be implemented by subclasses
-    // =========================================================================
-    /**
-     * Get the widget type identifier
-     *
-     * @abstract
-     * @returns {string} Widget type: 'modal', 'page', or 'inline'
-     * @throws {Error} If not implemented by subclass
-     *
-     * @example
-     * get widgetType() {
-     *   return 'modal';
-     * }
-     */
-    get widgetType() {
-      throw new Error("Subclass must implement widgetType getter");
-    }
-    /**
-     * Render the widget HTML structure
-     *
-     * Subclasses must implement this to render their specific UI.
-     * Should set this.elements with references to key DOM elements.
-     *
-     * @abstract
-     * @throws {Error} If not implemented by subclass
-     *
-     * @example
-     * render() {
-     *   this.shadowRoot.innerHTML = `<style>${styles}</style><div>...</div>`;
-     *   this.elements = {
-     *     input: this.shadowRoot.querySelector('.sm-input'),
-     *     results: this.shadowRoot.querySelector('.sm-results'),
-     *   };
-     * }
-     */
-    render() {
-      throw new Error("Subclass must implement render()");
-    }
-    /**
-     * Get the results container element
-     *
-     * @abstract
-     * @returns {HTMLElement} Results container
-     * @throws {Error} If not implemented by subclass
-     */
-    getResultsContainer() {
-      throw new Error("Subclass must implement getResultsContainer()");
-    }
-    /**
-     * Get the search input element
-     *
-     * @abstract
-     * @returns {HTMLInputElement} Search input
-     * @throws {Error} If not implemented by subclass
-     */
-    getInputElement() {
-      throw new Error("Subclass must implement getInputElement()");
-    }
-    /**
-     * Get the loading indicator element (optional)
-     *
-     * @returns {HTMLElement|null} Loading element or null
-     */
-    getLoadingElement() {
-      return this.elements.loading || null;
-    }
-    /**
-     * Get the debug toolbar element (optional)
-     *
-     * Subclasses can override to provide a dedicated debug toolbar container.
-     *
-     * @returns {HTMLElement|null} Debug toolbar element or null
-     */
-    getDebugToolbarElement() {
-      return this.elements.debugToolbar || null;
-    }
-    // =========================================================================
-    // LIFECYCLE METHODS
-    // =========================================================================
-    /**
-     * Called when element is added to the DOM
-     *
-     * Subclasses should call super.connectedCallback() first,
-     * then perform their own initialization.
-     */
-    connectedCallback() {
-      this.config = parseConfig(this, this.widgetType);
-      this.state.set({
-        recentSearches: loadRecentSearches(this.config.index)
-      });
-      this.keyboardNavigator = createKeyboardNavigator(
-        {
-          onSelect: (index) => this.selectResultAtIndex(index),
-          onIndexChange: (index) => this.state.set({ selectedIndex: index }),
-          onEscape: () => this.handleEscape()
-        },
-        { listboxId: this.listboxId }
-      );
-      this.applyDestinationPageHighlight();
-    }
-    /**
-     * Called when element is removed from the DOM
-     *
-     * Subclasses should call super.disconnectedCallback() to ensure cleanup.
-     */
-    disconnectedCallback() {
-      if (this.abortController) {
-        this.abortController.abort();
-        this.abortController = null;
-      }
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-        this.debounceTimer = null;
-      }
-    }
-    /**
-     * Called when an observed attribute changes
-     *
-     * Triggers re-render if the widget has been rendered.
-     *
-     * @param {string} name - Attribute name
-     * @param {string|null} oldValue - Previous value
-     * @param {string|null} newValue - New value
-     */
-    attributeChangedCallback(name, oldValue, newValue) {
-      if (oldValue !== newValue && this.shadowRoot.children.length > 0) {
-        this.config = parseConfig(this, this.widgetType);
-        this.render();
-        this.applyCustomStyles();
-      }
-    }
-    // =========================================================================
-    // STATE CHANGE HANDLING
-    // =========================================================================
-    /**
-     * Handle state changes
-     *
-     * Called automatically when state.set() is used.
-     * Subclasses can override to handle additional state changes.
-     *
-     * @protected
-     * @param {Object} newState - The new state object
-     * @param {Array<string>} changedKeys - Keys that changed
-     */
-    handleStateChange(newState, changedKeys) {
-      if (changedKeys.includes("results") || changedKeys.includes("query") || changedKeys.includes("recentSearches")) {
-        this.renderResultsContent();
-      }
-      if (changedKeys.includes("results") || changedKeys.includes("meta")) {
-        this.updateDebugToolbar();
-      }
-      if (changedKeys.includes("selectedIndex")) {
-        this.updateSelectionVisual();
-      }
-      if (changedKeys.includes("loading")) {
-        this.updateLoadingVisual();
-      }
-    }
-    // =========================================================================
-    // SEARCH FUNCTIONALITY
-    // =========================================================================
-    /**
-     * Handle input change with debouncing
-     *
-     * @param {Event} e - Input event
-     */
-    handleInput(e) {
-      const query = e.target.value;
-      this.state.set({
-        query,
-        selectedIndex: -1
-      });
-      if (this.debounceTimer) {
-        clearTimeout(this.debounceTimer);
-      }
-      if (this.analyticsIdleTimer) {
-        clearTimeout(this.analyticsIdleTimer);
-        this.analyticsIdleTimer = null;
-      }
-      if (!query.trim()) {
-        this.state.set({ results: [] });
-        return;
-      }
-      if (query.length < this.config.minChars) {
-        return;
-      }
-      this.debounceTimer = setTimeout(() => {
-        this.executeSearch(query);
-      }, this.config.debounce);
-    }
-    /**
-     * Execute a search query
-     *
-     * @param {string} query - Search query
-     */
-    async executeSearch(query) {
-      if (this.abortController) {
-        this.abortController.abort();
-      }
-      this.abortController = new AbortController();
-      this.state.set({ loading: true, error: null });
-      if (this.liveRegion) {
-        announce(this.liveRegion, getLoadingAnnouncement());
-      }
-      try {
-        const { results, meta } = await performSearch({
-          query,
-          endpoint: this.config.searchEndpoint,
-          indices: this.config.indices,
-          siteId: this.config.siteId,
-          maxResults: this.config.maxResults,
-          hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
-          showCodeSnippets: this.config.showCodeSnippets,
-          snippetMode: this.config.snippetMode,
-          snippetLength: this.config.snippetLength,
-          parseMarkdownSnippets: this.config.parseMarkdownSnippets,
-          debug: this.config.debug,
-          signal: this.abortController.signal
-        });
-        this.state.set({
-          results,
-          meta,
-          loading: false,
-          selectedIndex: results.length > 0 ? 0 : -1
-        });
-        if (this.liveRegion) {
-          announce(this.liveRegion, getResultsAnnouncement(results.length, query));
-        }
-        this.dispatchWidgetEvent("search", { query, results, meta });
-        this.startAnalyticsIdleTimer(query, results.length);
-      } catch (error) {
-        if (error.name === "AbortError") {
-          return;
-        }
-        console.error("Search error:", error);
-        this.state.set({
-          results: [],
-          loading: false,
-          error: error.message
-        });
-        this.dispatchWidgetEvent("error", { query, error: error.message });
-      }
-    }
-    // =========================================================================
-    // RESULT RENDERING
-    // =========================================================================
-    /**
-     * Render results content into the results container
-     *
-     * Determines what to show based on current state and renders it.
-     */
-    renderResultsContent() {
-      const container = this.getResultsContainer();
-      if (!container)
-        return;
-      const state = this.state.getAll();
-      const { showRecent, groupResults, enableHighlighting, highlightTag, highlightClass, showLoadingIndicator, debug } = this.config;
-      const { html, hasResults, showListbox } = getContentToRender(
-        {
-          query: state.query,
-          results: state.results,
-          recentSearches: state.recentSearches,
-          loading: state.loading,
-          showRecent
-        },
-        {
-          listboxId: this.listboxId,
-          groupResults,
-          enableHighlighting,
-          highlightTag,
-          highlightClass,
-          showLoadingIndicator,
-          debug,
-          persistQueryInUrl: this.config.highlightDestinationPage && this.config.persistQueryInUrl,
-          queryParamName: this.config.queryParamName,
-          promotions: this.config.promotions,
-          // Hierarchical display options
-          resultLayout: this.config.resultLayout,
-          hierarchyGroupBy: this.config.hierarchyGroupBy,
-          hierarchyStyle: this.config.hierarchyStyle,
-          hierarchyDisplay: this.config.hierarchyDisplay,
-          maxHeadingsPerResult: this.config.maxHeadingsPerResult
-        }
-      );
-      container.innerHTML = html;
-      if (showListbox) {
-        container.setAttribute("role", "listbox");
-      } else {
-        container.removeAttribute("role");
-      }
-      const input = this.getInputElement();
-      if (input) {
-        updateComboboxAria(input, {
-          expanded: hasResults,
-          activeDescendant: null,
-          listboxId: this.listboxId
-        });
-      }
-      if (this.liveRegion && !state.loading) {
-        if (state.query && state.results.length === 0) {
-          announce(this.liveRegion, getResultsAnnouncement(0, state.query));
-        } else if (!state.query && state.recentSearches.length > 0 && showRecent) {
-          announce(this.liveRegion, getRecentSearchesAnnouncement(state.recentSearches.length));
-        }
-      }
-      this.attachResultHandlers();
-      const clearBtn = container.querySelector(".sm-clear-recent");
-      if (clearBtn) {
-        clearBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          clearRecentSearches(this.config.index);
-          this.state.set({ recentSearches: [] });
-        });
-      }
-      if (hasResults && state.results.length > 0) {
-        this.state.set({ selectedIndex: 0 });
-      }
-    }
-    /**
-     * Attach event handlers to result items
-     *
-     * Called after rendering results to wire up click and hover handlers.
-     */
-    attachResultHandlers() {
-      const container = this.getResultsContainer();
-      if (!container)
-        return;
-      const items = container.querySelectorAll(".sm-result-item");
-      items.forEach((item) => {
-        item.addEventListener("click", (e) => this.handleResultClick(e, item));
-      });
-      attachHoverHandlers(items, (index) => {
-        this.state.set({ selectedIndex: index });
-      });
-    }
-    // =========================================================================
-    // SELECTION AND NAVIGATION
-    // =========================================================================
-    /**
-     * Update visual selection state
-     *
-     * Highlights the selected item and updates ARIA attributes.
-     */
-    updateSelectionVisual() {
-      const container = this.getResultsContainer();
-      const input = this.getInputElement();
-      if (!container)
-        return;
-      const items = container.querySelectorAll(".sm-result-item");
-      const selectedIndex = this.state.get("selectedIndex");
-      updateSelectionState(items, selectedIndex, {
-        scrollContainer: container,
-        inputElement: input,
-        listboxId: this.listboxId
-      });
-    }
-    /**
-     * Handle keyboard navigation
-     *
-     * @param {KeyboardEvent} e - Keyboard event
-     */
-    handleKeydown(e) {
-      const container = this.getResultsContainer();
-      if (!container)
-        return;
-      const items = container.querySelectorAll(".sm-result-item");
-      const currentIndex = this.state.get("selectedIndex");
-      if (e.key === "Enter") {
-        const query = this.state.get("query");
-        const results = this.state.get("results") || [];
-        if (query && results.length > 0) {
-          this.trackSearchAnalytics(query, results.length, "enter");
-        }
-      }
-      this.keyboardNavigator.handleKeydown(e, items.length, currentIndex);
-    }
-    /**
-     * Select and activate the result at the given index
-     *
-     * @param {number} index - Index of result to select
-     */
-    selectResultAtIndex(index) {
-      const container = this.getResultsContainer();
-      if (!container)
-        return;
-      const items = container.querySelectorAll(".sm-result-item");
-      if (index >= 0 && items[index]) {
-        items[index].click();
-      }
-    }
-    /**
-     * Handle Escape key press
-     *
-     * Subclasses should override to implement close behavior.
-     * @protected
-     */
-    handleEscape() {
-    }
-    // =========================================================================
-    // RESULT CLICK HANDLING
-    // =========================================================================
-    /**
-     * Handle result item click
-     *
-     * Handles navigation, recent search saving, and analytics tracking.
-     *
-     * @param {Event} e - Click event
-     * @param {HTMLElement} item - Clicked item element
-     */
-    handleResultClick(e, item) {
-      const href = item.getAttribute("href");
-      const dataUrl = item.dataset.url;
-      const url = href || dataUrl;
-      const title = item.dataset.title || item.querySelector(".sm-result-title")?.textContent;
-      const id = item.dataset.id;
-      const query = item.dataset.query || this.state.get("query");
-      const isRecentItem = item.classList.contains("sm-recent-item");
-      const destinationUrl = appendQueryParam(
-        url,
-        query,
-        this.config.highlightDestinationPage && this.config.persistQueryInUrl ? this.config.queryParamName : ""
-      );
-      if (!isRecentItem && query) {
-        const updatedRecent = saveRecentSearch(
-          this.config.index,
-          query,
-          { title, url },
-          this.config.maxRecentSearches
-        );
-        this.state.set({ recentSearches: updatedRecent });
-      }
-      if (id && this.config.index) {
-        trackClick({
-          endpoint: this.config.trackClickEndpoint,
-          elementId: id,
-          query,
-          index: this.config.index
-        });
-      }
-      if (!isRecentItem && query) {
-        this.trackSearchAnalytics(query, this.state.get("results")?.length || 0, "click");
-      }
-      this.dispatchWidgetEvent("result-click", {
-        id,
-        title,
-        url: destinationUrl,
-        query,
-        isRecent: isRecentItem
-      });
-      if (url && url !== "#") {
-        if (isRecentItem) {
-          e.preventDefault();
-          window.location.href = destinationUrl;
-        }
-        this.onResultSelected(destinationUrl, title, id);
-      } else if (query) {
-        e.preventDefault();
-        const input = this.getInputElement();
-        if (input) {
-          input.value = query;
-          this.state.set({ query });
-          this.executeSearch(query);
-        }
-      }
-    }
-    /**
-     * Called when a result with a URL is selected
-     *
-     * Subclasses can override to perform actions like closing the modal.
-     *
-     * @protected
-     * @param {string} url - Result URL
-     * @param {string} title - Result title
-     * @param {string|number} id - Result ID
-     */
-    onResultSelected(url, title, id) {
-    }
-    /**
-     * Apply destination-page highlights once per page load when a query
-     * parameter is present (for example, ?smq=redis).
-     */
-    applyDestinationPageHighlight() {
-      if (!this.config.highlightDestinationPage || typeof window === "undefined" || typeof document === "undefined") {
-        return;
-      }
-      const queryParamName = this.config.queryParamName || "smq";
-      const selector = this.config.destinationHighlightSelector || "main, article, [data-search-content]";
-      const query = new URLSearchParams(window.location.search).get(queryParamName);
-      if (!query || !query.trim()) {
-        return;
-      }
-      const registry = this.getPageHighlightRegistry();
-      const key = `${queryParamName}::${selector}`;
-      if (registry.has(key)) {
-        return;
-      }
-      registry.add(key);
-      const run = () => {
-        this.ensurePageHighlightStyles();
-        this.highlightDestinationNodes(query.trim(), selector, key);
-      };
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", run, { once: true });
-      } else {
-        window.requestAnimationFrame(run);
-      }
-    }
-    /**
-     * Inject global styles for page-level highlights.
-     */
-    ensurePageHighlightStyles() {
-      if (document.getElementById(PAGE_HIGHLIGHT_STYLE_ID)) {
-        return;
-      }
-      const style = document.createElement("style");
-      style.id = PAGE_HIGHLIGHT_STYLE_ID;
-      style.textContent = `
+    `}function Ee(e,r){let{query:t,results:n,recentSearches:o,loading:a,showRecent:s}=e,{showLoadingIndicator:l=!0}=r,i=t&&t.trim();return a&&l?{html:pt(),hasResults:!1,showListbox:!1}:i?!n||n.length===0?{html:Be(t),hasResults:!1,showListbox:!1}:{html:at(n,t,r),hasResults:!0,showListbox:!0}:s&&o&&o.length>0?{html:mt(o,r.listboxId),hasResults:!0,showListbox:!0}:{html:Be(""),hasResults:!1,showListbox:!1}}function re(e,r,t=!1){if(!e)return"";let n=[];if(n.push(D("results",r,"generic")),e.took!==void 0){let i=e.took<1?"<1ms":`${Math.round(e.took)}ms`;n.push(D("time",i,"time"))}if(e.cacheEnabled!==void 0&&(e.cacheEnabled?e.cached?n.push(D("cache","hit","cache-hit")):n.push(D("cache","miss","cache-miss")):n.push(D("cache","off","cache-off"))),e.cacheDriver&&n.push(D("storage",e.cacheDriver,"cache-driver",e.cacheDriver)),e.indices&&e.indices.length>0){let i=e.indices.length>2?`${e.indices.length} indices`:e.indices.join(", ");n.push(D("indices",i,"generic"))}if(e.synonymsExpanded){let i=e.expandedQueries?e.expandedQueries.length-1:0;n.push(D("synonyms",`+${i}`,"synonyms"))}let o=e.rulesMatched?.length||0;n.push(D("rules",o,o>0?"rules":"generic"));let a=e.promotionsMatched?.length||0;n.push(D("promoted",a,a>0?"promotions":"generic"));let l=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${t?'<path d="M6 9l6 6 6-6"/>':'<path d="M18 15l-6-6-6 6"/>'}</svg>`;return t?`<div class="sm-toolbar-collapsed-bar"><span class="sm-toolbar-collapsed-label">Debug</span>${l}</div>`:`<div class="sm-toolbar-content">${n.join("")}</div><button class="sm-toolbar-toggle" aria-label="Collapse debug panel" aria-expanded="true">${l}</button>`}function D(e,r,t,n=""){let o=n?` data-backend="${h(n)}"`:"";return`<span class="sm-toolbar-item"><span class="sm-toolbar-label">${h(e)}</span><span class="sm-toolbar-value" data-type="${h(t)}"${o}>${h(String(r))}</span></span>`}function Ie(e,r){let{onSelect:t,onIndexChange:n,onEscape:o}=e,{listboxId:a}=r;return{handleKeydown(s,l,i){let d=i;switch(s.key){case"ArrowDown":return s.preventDefault(),d=Math.min(i+1,l-1),d!==i&&n&&n(d),d;case"ArrowUp":return s.preventDefault(),d=Math.max(i-1,-1),d!==i&&n&&n(d),d;case"Enter":return s.preventDefault(),i>=0&&t&&t(i),null;case"Escape":return s.preventDefault(),o&&o(),null;default:return null}},getListboxId(){return a}}}function $e(e,r,t={}){let{scrollContainer:n,inputElement:o,listboxId:a,selectedClass:s="sm-selected"}=t,l=r>=0?L(a,r):null;o&&W(o,{expanded:e.length>0,activeDescendant:l,listboxId:a}),e.forEach((i,d)=>{let c=d===r;i.classList.toggle(s,c),i.setAttribute("aria-selected",String(c)),c&&n&&Te(i,n)})}function Le(e,r){e.forEach((t,n)=>{t.addEventListener("mouseenter",()=>{r&&r(n)})})}var Pe="sm-page-highlight-style",He="__smPageHighlightRegistry",ne=class extends HTMLElement{constructor(){super(),this.attachShadow({mode:"open"}),this.config=null,this.state=le({...z},this.handleStateChange.bind(this)),this.abortController=null,this.debounceTimer=null,this.analyticsIdleTimer=null,this.lastTrackedQuery=null,this.listboxId=ee("sm-listbox"),this.inputId=ee("sm-input"),this.liveRegion=null,this.keyboardNavigator=null,this.elements={},this.handleInput=this.handleInput.bind(this),this.handleKeydown=this.handleKeydown.bind(this),this.handleResultClick=this.handleResultClick.bind(this)}get widgetType(){throw new Error("Subclass must implement widgetType getter")}render(){throw new Error("Subclass must implement render()")}getResultsContainer(){throw new Error("Subclass must implement getResultsContainer()")}getInputElement(){throw new Error("Subclass must implement getInputElement()")}getLoadingElement(){return this.elements.loading||null}getDebugToolbarElement(){return this.elements.debugToolbar||null}connectedCallback(){this.config=V(this,this.widgetType),this.state.set({recentSearches:G(this.config.index)}),this.keyboardNavigator=Ie({onSelect:r=>this.selectResultAtIndex(r),onIndexChange:r=>this.state.set({selectedIndex:r}),onEscape:()=>this.handleEscape()},{listboxId:this.listboxId}),this.applyDestinationPageHighlight()}disconnectedCallback(){this.abortController&&(this.abortController.abort(),this.abortController=null),this.debounceTimer&&(clearTimeout(this.debounceTimer),this.debounceTimer=null)}attributeChangedCallback(r,t,n){t!==n&&this.shadowRoot.children.length>0&&(this.config=V(this,this.widgetType),this.render(),this.applyCustomStyles())}handleStateChange(r,t){(t.includes("results")||t.includes("query")||t.includes("recentSearches"))&&this.renderResultsContent(),(t.includes("results")||t.includes("meta"))&&this.updateDebugToolbar(),t.includes("selectedIndex")&&this.updateSelectionVisual(),t.includes("loading")&&this.updateLoadingVisual()}handleInput(r){let t=r.target.value;if(this.state.set({query:t,selectedIndex:-1}),this.debounceTimer&&clearTimeout(this.debounceTimer),this.analyticsIdleTimer&&(clearTimeout(this.analyticsIdleTimer),this.analyticsIdleTimer=null),!t.trim()){this.state.set({results:[]});return}t.length<this.config.minChars||(this.debounceTimer=setTimeout(()=>{this.executeSearch(t)},this.config.debounce))}async executeSearch(r){this.abortController&&this.abortController.abort(),this.abortController=new AbortController,this.state.set({loading:!0,error:null}),this.liveRegion&&U(this.liveRegion,Ce());try{let{results:t,meta:n}=await de({query:r,endpoint:this.config.searchEndpoint,indices:this.config.indices,siteId:this.config.siteId,maxResults:this.config.maxResults,hideResultsWithoutUrl:this.config.hideResultsWithoutUrl,showCodeSnippets:this.config.showCodeSnippets,snippetMode:this.config.snippetMode,snippetLength:this.config.snippetLength,parseMarkdownSnippets:this.config.parseMarkdownSnippets,debug:this.config.debug,signal:this.abortController.signal});this.state.set({results:t,meta:n,loading:!1,selectedIndex:t.length>0?0:-1}),this.liveRegion&&U(this.liveRegion,te(t.length,r)),this.dispatchWidgetEvent("search",{query:r,results:t,meta:n}),this.startAnalyticsIdleTimer(r,t.length)}catch(t){if(t.name==="AbortError")return;console.error("Search error:",t),this.state.set({results:[],loading:!1,error:t.message}),this.dispatchWidgetEvent("error",{query:r,error:t.message})}}renderResultsContent(){let r=this.getResultsContainer();if(!r)return;let t=this.state.getAll(),{showRecent:n,groupResults:o,enableHighlighting:a,highlightTag:s,highlightClass:l,showLoadingIndicator:i,debug:d}=this.config,{html:c,hasResults:u,showListbox:g}=Ee({query:t.query,results:t.results,recentSearches:t.recentSearches,loading:t.loading,showRecent:n},{listboxId:this.listboxId,groupResults:o,enableHighlighting:a,highlightTag:s,highlightClass:l,showLoadingIndicator:i,debug:d,persistQueryInUrl:this.config.highlightDestinationPage&&this.config.persistQueryInUrl,queryParamName:this.config.queryParamName,promotions:this.config.promotions,resultLayout:this.config.resultLayout,hierarchyGroupBy:this.config.hierarchyGroupBy,hierarchyStyle:this.config.hierarchyStyle,hierarchyDisplay:this.config.hierarchyDisplay,maxHeadingsPerResult:this.config.maxHeadingsPerResult});r.innerHTML=c,g?r.setAttribute("role","listbox"):r.removeAttribute("role");let m=this.getInputElement();m&&W(m,{expanded:u,activeDescendant:null,listboxId:this.listboxId}),this.liveRegion&&!t.loading&&(t.query&&t.results.length===0?U(this.liveRegion,te(0,t.query)):!t.query&&t.recentSearches.length>0&&n&&U(this.liveRegion,Se(t.recentSearches.length))),this.attachResultHandlers();let v=r.querySelector(".sm-clear-recent");v&&v.addEventListener("click",p=>{p.stopPropagation(),pe(this.config.index),this.state.set({recentSearches:[]})}),u&&t.results.length>0&&this.state.set({selectedIndex:0})}attachResultHandlers(){let r=this.getResultsContainer();if(!r)return;let t=r.querySelectorAll(".sm-result-item");t.forEach(n=>{n.addEventListener("click",o=>this.handleResultClick(o,n))}),Le(t,n=>{this.state.set({selectedIndex:n})})}updateSelectionVisual(){let r=this.getResultsContainer(),t=this.getInputElement();if(!r)return;let n=r.querySelectorAll(".sm-result-item"),o=this.state.get("selectedIndex");$e(n,o,{scrollContainer:r,inputElement:t,listboxId:this.listboxId})}handleKeydown(r){let t=this.getResultsContainer();if(!t)return;let n=t.querySelectorAll(".sm-result-item"),o=this.state.get("selectedIndex");if(r.key==="Enter"){let a=this.state.get("query"),s=this.state.get("results")||[];a&&s.length>0&&this.trackSearchAnalytics(a,s.length,"enter")}this.keyboardNavigator.handleKeydown(r,n.length,o)}selectResultAtIndex(r){let t=this.getResultsContainer();if(!t)return;let n=t.querySelectorAll(".sm-result-item");r>=0&&n[r]&&n[r].click()}handleEscape(){}handleResultClick(r,t){let n=t.getAttribute("href"),o=t.dataset.url,a=n||o,s=t.dataset.title||t.querySelector(".sm-result-title")?.textContent,l=t.dataset.id,i=t.dataset.query||this.state.get("query"),d=t.classList.contains("sm-recent-item"),c=N(a,i,this.config.highlightDestinationPage&&this.config.persistQueryInUrl?this.config.queryParamName:"");if(!d&&i){let u=me(this.config.index,i,{title:s,url:a},this.config.maxRecentSearches);this.state.set({recentSearches:u})}if(l&&this.config.index&&ce({endpoint:this.config.trackClickEndpoint,elementId:l,query:i,index:this.config.index}),!d&&i&&this.trackSearchAnalytics(i,this.state.get("results")?.length||0,"click"),this.dispatchWidgetEvent("result-click",{id:l,title:s,url:c,query:i,isRecent:d}),a&&a!=="#")d&&(r.preventDefault(),window.location.href=c),this.onResultSelected(c,s,l);else if(i){r.preventDefault();let u=this.getInputElement();u&&(u.value=i,this.state.set({query:i}),this.executeSearch(i))}}onResultSelected(r,t,n){}applyDestinationPageHighlight(){if(!this.config.highlightDestinationPage||typeof window>"u"||typeof document>"u")return;let r=this.config.queryParamName||"smq",t=this.config.destinationHighlightSelector||"main, article, [data-search-content]",n=new URLSearchParams(window.location.search).get(r);if(!n||!n.trim())return;let o=this.getPageHighlightRegistry(),a=`${r}::${t}`;if(o.has(a))return;o.add(a);let s=()=>{this.ensurePageHighlightStyles(),this.highlightDestinationNodes(n.trim(),t,a)};document.readyState==="loading"?document.addEventListener("DOMContentLoaded",s,{once:!0}):window.requestAnimationFrame(s)}ensurePageHighlightStyles(){if(document.getElementById(Pe))return;let r=document.createElement("style");r.id=Pe,r.textContent=`
             .sm-page-highlight {
                 background: var(--sm-highlight-bg, #fef08a);
                 color: var(--sm-highlight-color, #854d0e);
                 border-radius: 0.15em;
                 padding: 0 0.08em;
             }
-        `;
-      document.head.appendChild(style);
-    }
-    /**
-     * Highlight matching text in configured destination content areas.
-     *
-     * @param {string} query - Search query to highlight
-     * @param {string} selector - CSS selector for content scopes
-     * @param {string} key - De-duplication key for this highlight run
-     */
-    highlightDestinationNodes(query, selector, key) {
-      const scopes = Array.from(document.querySelectorAll(selector));
-      if (scopes.length === 0) {
-        return;
-      }
-      const terms = [...new Set(parseQueryTerms(query).map((t) => t.trim()).filter((t) => t.length >= 2))];
-      if (terms.length === 0) {
-        return;
-      }
-      const pattern = terms.map((term) => escapeRegex(term)).filter(Boolean).sort((a, b) => b.length - a.length).join("|");
-      if (!pattern) {
-        return;
-      }
-      const regex = new RegExp(`(${pattern})`, "gi");
-      scopes.forEach((scope) => {
-        if (scope.getAttribute("data-sm-highlighted") === key) {
-          return;
-        }
-        this.highlightTextNodesInScope(scope, regex);
-        scope.setAttribute("data-sm-highlighted", key);
-      });
-    }
-    /**
-     * Wrap matching text nodes with <mark class="sm-page-highlight">.
-     *
-     * @param {Element} scope - Root element to process
-     * @param {RegExp} regex - Global, case-insensitive regex
-     */
-    highlightTextNodesInScope(scope, regex) {
-      const walker = document.createTreeWalker(
-        scope,
-        NodeFilter.SHOW_TEXT,
-        {
-          acceptNode: (node) => {
-            const text = node.nodeValue;
-            if (!text || !text.trim()) {
-              return NodeFilter.FILTER_REJECT;
-            }
-            const parent = node.parentElement;
-            if (!parent) {
-              return NodeFilter.FILTER_REJECT;
-            }
-            if (parent.closest("script, style, noscript, textarea, code, pre, mark, .sm-highlight, .sm-page-highlight, search-modal")) {
-              return NodeFilter.FILTER_REJECT;
-            }
-            return NodeFilter.FILTER_ACCEPT;
-          }
-        }
-      );
-      const textNodes = [];
-      while (walker.nextNode()) {
-        textNodes.push(walker.currentNode);
-      }
-      textNodes.forEach((node) => {
-        const text = node.nodeValue || "";
-        regex.lastIndex = 0;
-        if (!regex.test(text)) {
-          return;
-        }
-        const fragment = document.createDocumentFragment();
-        let cursor = 0;
-        regex.lastIndex = 0;
-        const matches = text.matchAll(regex);
-        for (const match of matches) {
-          const matchText = match[0];
-          const matchIndex = match.index ?? -1;
-          if (matchIndex < 0) {
-            continue;
-          }
-          if (matchIndex > cursor) {
-            fragment.appendChild(document.createTextNode(text.slice(cursor, matchIndex)));
-          }
-          const mark = document.createElement("mark");
-          mark.className = "sm-highlight sm-page-highlight";
-          mark.textContent = matchText;
-          fragment.appendChild(mark);
-          cursor = matchIndex + matchText.length;
-        }
-        if (cursor < text.length) {
-          fragment.appendChild(document.createTextNode(text.slice(cursor)));
-        }
-        node.parentNode?.replaceChild(fragment, node);
-      });
-    }
-    /**
-     * Get or initialize the global page-highlight registry.
-     *
-     * @returns {Set<string>} Registry of applied highlight keys
-     */
-    getPageHighlightRegistry() {
-      const existing = window[PAGE_HIGHLIGHT_REGISTRY];
-      if (existing instanceof Set) {
-        return existing;
-      }
-      const registry = /* @__PURE__ */ new Set();
-      window[PAGE_HIGHLIGHT_REGISTRY] = registry;
-      return registry;
-    }
-    // =========================================================================
-    // LOADING STATE
-    // =========================================================================
-    /**
-     * Update loading indicator visibility
-     *
-     * Respects showLoadingIndicator config - if disabled, spinner stays hidden.
-     */
-    updateLoadingVisual() {
-      const loading = this.getLoadingElement();
-      if (loading) {
-        const isLoading = this.state.get("loading");
-        const showIndicator = this.config?.showLoadingIndicator !== false;
-        loading.hidden = !isLoading || !showIndicator;
-      }
-    }
-    /**
-     * Update the debug toolbar
-     *
-     * Shows/hides and populates the debug toolbar based on state.
-     */
-    updateDebugToolbar() {
-      const toolbar = this.getDebugToolbarElement();
-      if (!toolbar)
-        return;
-      const { debug } = this.config;
-      const state = this.state.getAll();
-      if (!debug || !state.meta || state.results.length === 0) {
-        toolbar.hidden = true;
-        return;
-      }
-      const isCollapsed = toolbar.classList.contains("sm-collapsed");
-      toolbar.innerHTML = renderDebugToolbarContent(state.meta, state.results.length, isCollapsed);
-      toolbar.hidden = false;
-      if (isCollapsed) {
-        toolbar.classList.add("sm-collapsed");
-      }
-      this.attachDebugToolbarHandlers(toolbar);
-    }
-    /**
-     * Attach click handlers to debug toolbar elements
-     */
-    attachDebugToolbarHandlers(toolbar) {
-      const toggleBtn = toolbar.querySelector(".sm-toolbar-toggle");
-      if (toggleBtn) {
-        toggleBtn.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.toggleDebugToolbar();
-        });
-      }
-      const collapsedBar = toolbar.querySelector(".sm-toolbar-collapsed-bar");
-      if (collapsedBar) {
-        collapsedBar.addEventListener("click", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          this.toggleDebugToolbar();
-        });
-      }
-    }
-    /**
-     * Toggle debug toolbar collapsed state
-     */
-    toggleDebugToolbar() {
-      const toolbar = this.getDebugToolbarElement();
-      if (!toolbar)
-        return;
-      const isCollapsed = toolbar.classList.toggle("sm-collapsed");
-      const state = this.state.getAll();
-      toolbar.innerHTML = renderDebugToolbarContent(state.meta, state.results.length, isCollapsed);
-      if (isCollapsed) {
-        toolbar.classList.add("sm-collapsed");
-      }
-      this.attachDebugToolbarHandlers(toolbar);
-    }
-    // =========================================================================
-    // STYLING
-    // =========================================================================
-    /**
-     * Apply custom styles from config
-     *
-     * Applies CSS custom properties to the host element.
-     * Subclasses can override to add additional styling logic.
-     */
-    applyCustomStyles() {
-      if (!this.config)
-        return;
-      const host = this.shadowRoot.host;
-      const { theme, styles: styles2, resultTitleLines, resultDescLines } = this.config;
-      applyStylesToElement(host, styles2, theme);
-      if (resultTitleLines) {
-        host.style.setProperty("--sm-result-title-lines", String(resultTitleLines));
-      }
-      if (resultDescLines) {
-        host.style.setProperty("--sm-result-desc-lines", String(resultDescLines));
-      }
-    }
-    // =========================================================================
-    // ACCESSIBILITY
-    // =========================================================================
-    /**
-     * Initialize the live region for screen reader announcements
-     *
-     * Call this from subclass render() after setting up the DOM.
-     */
-    initializeLiveRegion() {
-      this.liveRegion = createLiveRegion(this.shadowRoot);
-    }
-    // =========================================================================
-    // ANALYTICS TRACKING
-    // =========================================================================
-    /**
-     * Start analytics idle timer
-     *
-     * Tracks search when user stops typing for analyticsIdleTimeout ms
-     * (captures "browsing" behavior - user reads results without clicking).
-     *
-     * @param {string} query - The search query
-     * @param {number} resultsCount - Number of results returned
-     */
-    startAnalyticsIdleTimer(query, resultsCount) {
-      if (this.analyticsIdleTimer) {
-        clearTimeout(this.analyticsIdleTimer);
-      }
-      const idleTimeout = this.config.idleTimeout;
-      if (!idleTimeout || idleTimeout <= 0) {
-        return;
-      }
-      this.analyticsIdleTimer = setTimeout(() => {
-        this.trackSearchAnalytics(query, resultsCount, "idle");
-      }, idleTimeout);
-    }
-    /**
-     * Track search analytics (explicit tracking)
-     *
-     * Called when user shows intent:
-     * - Clicks a result (trigger='click')
-     * - Presses Enter (trigger='enter')
-     * - Stops typing for idle timeout (trigger='idle')
-     *
-     * Prevents double tracking of the same query.
-     *
-     * @param {string} query - The search query
-     * @param {number} resultsCount - Number of results
-     * @param {string} trigger - What triggered tracking ('click', 'enter', 'idle')
-     */
-    trackSearchAnalytics(query, resultsCount, trigger) {
-      if (!query || query === this.lastTrackedQuery) {
-        return;
-      }
-      this.lastTrackedQuery = query;
-      if (this.analyticsIdleTimer) {
-        clearTimeout(this.analyticsIdleTimer);
-        this.analyticsIdleTimer = null;
-      }
-      trackSearch({
-        endpoint: this.config.trackSearchEndpoint,
-        query,
-        indices: this.config.indices,
-        resultsCount,
-        trigger,
-        source: this.config.source,
-        siteId: this.config.siteId
-      });
-    }
-    /**
-     * Reset analytics tracking state
-     *
-     * Call when modal closes or search context changes.
-     */
-    resetAnalyticsTracking() {
-      this.lastTrackedQuery = null;
-      if (this.analyticsIdleTimer) {
-        clearTimeout(this.analyticsIdleTimer);
-        this.analyticsIdleTimer = null;
-      }
-    }
-    // =========================================================================
-    // EVENT DISPATCHING
-    // =========================================================================
-    /**
-     * Dispatch a custom widget event
-     *
-     * Events are prefixed with 'search-' and bubble up the DOM.
-     *
-     * @param {string} name - Event name (without 'search-' prefix)
-     * @param {Object} detail - Event detail data
-     *
-     * @example
-     * this.dispatchWidgetEvent('open', { source: 'hotkey' });
-     * // Dispatches 'search-open' event
-     */
-    dispatchWidgetEvent(name, detail = {}) {
-      this.dispatchEvent(new CustomEvent(`search-${name}`, {
-        bubbles: true,
-        composed: true,
-        detail
-      }));
-    }
-  };
-  var SearchWidgetBase_default = SearchWidgetBase;
-
-  // src/styles/base.css
-  var base_default = `/**
+        `,document.head.appendChild(r)}highlightDestinationNodes(r,t,n){let o=Array.from(document.querySelectorAll(t));if(o.length===0)return;let a=[...new Set(Z(r).map(i=>i.trim()).filter(i=>i.length>=2))];if(a.length===0)return;let s=a.map(i=>xe(i)).filter(Boolean).sort((i,d)=>d.length-i.length).join("|");if(!s)return;let l=new RegExp(`(${s})`,"gi");o.forEach(i=>{i.getAttribute("data-sm-highlighted")!==n&&(this.highlightTextNodesInScope(i,l),i.setAttribute("data-sm-highlighted",n))})}highlightTextNodesInScope(r,t){let n=document.createTreeWalker(r,NodeFilter.SHOW_TEXT,{acceptNode:a=>{let s=a.nodeValue;if(!s||!s.trim())return NodeFilter.FILTER_REJECT;let l=a.parentElement;return!l||l.closest("script, style, noscript, textarea, code, pre, mark, .sm-highlight, .sm-page-highlight, search-modal")?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT}}),o=[];for(;n.nextNode();)o.push(n.currentNode);o.forEach(a=>{let s=a.nodeValue||"";if(t.lastIndex=0,!t.test(s))return;let l=document.createDocumentFragment(),i=0;t.lastIndex=0;let d=s.matchAll(t);for(let c of d){let u=c[0],g=c.index??-1;if(g<0)continue;g>i&&l.appendChild(document.createTextNode(s.slice(i,g)));let m=document.createElement("mark");m.className="sm-highlight sm-page-highlight",m.textContent=u,l.appendChild(m),i=g+u.length}i<s.length&&l.appendChild(document.createTextNode(s.slice(i))),a.parentNode?.replaceChild(l,a)})}getPageHighlightRegistry(){let r=window[He];if(r instanceof Set)return r;let t=new Set;return window[He]=t,t}updateLoadingVisual(){let r=this.getLoadingElement();if(r){let t=this.state.get("loading"),n=this.config?.showLoadingIndicator!==!1;r.hidden=!t||!n}}updateDebugToolbar(){let r=this.getDebugToolbarElement();if(!r)return;let{debug:t}=this.config,n=this.state.getAll();if(!t||!n.meta||n.results.length===0){r.hidden=!0;return}let o=r.classList.contains("sm-collapsed");r.innerHTML=re(n.meta,n.results.length,o),r.hidden=!1,o&&r.classList.add("sm-collapsed"),this.attachDebugToolbarHandlers(r)}attachDebugToolbarHandlers(r){let t=r.querySelector(".sm-toolbar-toggle");t&&t.addEventListener("click",o=>{o.preventDefault(),o.stopPropagation(),this.toggleDebugToolbar()});let n=r.querySelector(".sm-toolbar-collapsed-bar");n&&n.addEventListener("click",o=>{o.preventDefault(),o.stopPropagation(),this.toggleDebugToolbar()})}toggleDebugToolbar(){let r=this.getDebugToolbarElement();if(!r)return;let t=r.classList.toggle("sm-collapsed"),n=this.state.getAll();r.innerHTML=re(n.meta,n.results.length,t),t&&r.classList.add("sm-collapsed"),this.attachDebugToolbarHandlers(r)}applyCustomStyles(){if(!this.config)return;let r=this.shadowRoot.host,{theme:t,styles:n,resultTitleLines:o,resultDescLines:a}=this.config;ye(r,n,t),o&&r.style.setProperty("--sm-result-title-lines",String(o)),a&&r.style.setProperty("--sm-result-desc-lines",String(a))}initializeLiveRegion(){this.liveRegion=we(this.shadowRoot)}startAnalyticsIdleTimer(r,t){this.analyticsIdleTimer&&clearTimeout(this.analyticsIdleTimer);let n=this.config.idleTimeout;!n||n<=0||(this.analyticsIdleTimer=setTimeout(()=>{this.trackSearchAnalytics(r,t,"idle")},n))}trackSearchAnalytics(r,t,n){!r||r===this.lastTrackedQuery||(this.lastTrackedQuery=r,this.analyticsIdleTimer&&(clearTimeout(this.analyticsIdleTimer),this.analyticsIdleTimer=null),he({endpoint:this.config.trackSearchEndpoint,query:r,indices:this.config.indices,resultsCount:t,trigger:n,source:this.config.source,siteId:this.config.siteId}))}resetAnalyticsTracking(){this.lastTrackedQuery=null,this.analyticsIdleTimer&&(clearTimeout(this.analyticsIdleTimer),this.analyticsIdleTimer=null)}dispatchWidgetEvent(r,t={}){this.dispatchEvent(new CustomEvent(`search-${r}`,{bubbles:!0,composed:!0,detail:t}))}},Me=ne;var Oe=`/**
  * Search Widget Base Styles
  *
  * Shared styles used by all widget types (modal, page, inline).
@@ -3372,13 +826,298 @@ var SearchModalWidget = (() => {
 :host([dir="rtl"]) .sm-hierarchy-child-row {
     flex-direction: row-reverse;
 }
-`;
+`;var Ne=`/**
+ * Search Widget Modal Styles
+ *
+ * Styles specific to the modal widget variant.
+ * Includes backdrop, modal container, trigger button,
+ * header, footer, and mobile responsive behavior.
+ *
+ * @module styles/modal
+ * @author Search Manager
+ * @since 5.32.0
+ */
 
-  // src/styles/modal.css
-  var modal_default = '/**\n * Search Widget Modal Styles\n *\n * Styles specific to the modal widget variant.\n * Includes backdrop, modal container, trigger button,\n * header, footer, and mobile responsive behavior.\n *\n * @module styles/modal\n * @author Search Manager\n * @since 5.32.0\n */\n\n/* =========================================================================\n   MODAL-SPECIFIC HOST VARIABLES\n   ========================================================================= */\n\n:host {\n    /* Modal container */\n    --sm-modal-bg: #ffffff;\n    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);\n    --sm-modal-border-width: 1px;\n    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);\n    --sm-modal-radius: 12px;\n    --sm-modal-width: 640px;\n    --sm-modal-max-height: 80vh;\n    --sm-modal-px: 16px;\n    --sm-modal-py: 16px;\n\n    /* Search header (.sm-header container) */\n    --sm-header-bg: transparent;\n    --sm-header-border-color: #e5e7eb;\n    --sm-header-border-width: 1px;\n    --sm-header-radius: 0px;\n    --sm-header-px: 16px;\n    --sm-header-py: 12px;\n\n    /* Trigger button */\n    --sm-trigger-bg: #ffffff;\n    --sm-trigger-color: var(--sm-trigger-text-color, #374151);\n    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);\n    --sm-trigger-radius: 8px;\n    --sm-trigger-border-width: 1px;\n    --sm-trigger-px: 12px;\n    --sm-trigger-py: 8px;\n    --sm-trigger-font-size: 14px;\n\n    /* Trigger hover */\n    --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg, #f9fafb);\n    --sm-trigger-hover-color: var(--sm-trigger-hover-text-color, #111827);\n    --sm-trigger-hover-border: var(--sm-trigger-hover-border-color, #3b82f6);\n}\n\n/* Dark theme - modal-specific overrides */\n:host([data-theme="dark"]) {\n    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);\n    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);\n\n    --sm-header-bg: var(--sm-header-bg-dark, transparent);\n    --sm-header-border-color: var(--sm-header-border-color-dark, #374151);\n\n    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);\n    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);\n    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);\n\n    --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg-dark, #4b5563);\n    --sm-trigger-hover-color: var(--sm-trigger-hover-text-color-dark, #f9fafb);\n    --sm-trigger-hover-border: var(--sm-trigger-hover-border-color-dark, #60a5fa);\n}\n\n/* =========================================================================\n   TRIGGER BUTTON\n   ========================================================================= */\n\n.sm-trigger {\n    display: inline-flex;\n    align-items: center;\n    gap: 8px;\n    padding: var(--sm-trigger-py) var(--sm-trigger-px);\n    background: var(--sm-trigger-bg);\n    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);\n    border-radius: var(--sm-trigger-radius);\n    color: var(--sm-trigger-color);\n    font-size: var(--sm-trigger-font-size);\n    cursor: pointer;\n    transition: all 0.15s ease;\n}\n\n.sm-trigger:hover {\n    background: var(--sm-trigger-hover-bg-resolved);\n    color: var(--sm-trigger-hover-color);\n    border-color: var(--sm-trigger-hover-border);\n}\n\n.sm-trigger-text {\n    /* Text shown next to search icon */\n}\n\n.sm-trigger-kbd {\n    display: inline-flex;\n    align-items: center;\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   BACKDROP\n   ========================================================================= */\n\n.sm-backdrop {\n    position: fixed;\n    inset: 0;\n    z-index: 99999;\n    display: flex;\n    align-items: flex-start;\n    justify-content: center;\n    padding-top: 10vh;\n    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));\n    backdrop-filter: var(--sm-backdrop-blur, blur(4px));\n    animation: sm-fade-in 0.15s ease;\n}\n\n.sm-backdrop[hidden] {\n    display: none;\n}\n\n@keyframes sm-fade-in {\n    from { opacity: 0; }\n    to { opacity: 1; }\n}\n\n/* =========================================================================\n   MODAL CONTAINER\n   ========================================================================= */\n\n.sm-modal {\n    width: var(--sm-modal-width);\n    max-width: calc(100vw - 32px);\n    max-height: var(--sm-modal-max-height);\n    background: var(--sm-modal-bg);\n    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);\n    border-radius: var(--sm-modal-radius);\n    box-shadow: var(--sm-modal-shadow);\n    display: flex;\n    flex-direction: column;\n    overflow: hidden;\n    animation: sm-slide-up 0.2s ease;\n    text-align: start;\n}\n\n@keyframes sm-slide-up {\n    from {\n        opacity: 0;\n        transform: translateY(-10px) scale(0.98);\n    }\n    to {\n        opacity: 1;\n        transform: translateY(0) scale(1);\n    }\n}\n\n/* =========================================================================\n   MODAL HEADER\n   ========================================================================= */\n\n.sm-header {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    padding: var(--sm-header-py) var(--sm-header-px);\n    background: var(--sm-header-bg);\n    border-bottom: var(--sm-header-border-width) solid var(--sm-header-border-color);\n    border-radius: var(--sm-header-radius);\n}\n\n.sm-search-icon {\n    flex-shrink: 0;\n    color: var(--sm-text-muted);\n}\n\n.sm-close {\n    flex-shrink: 0;\n    display: flex;\n    align-items: center;\n    padding: 4px 8px;\n    background: transparent;\n    border: none;\n    cursor: pointer;\n}\n\n.sm-close kbd {\n    padding: 2px 6px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 11px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n/* =========================================================================\n   MODAL RESULTS\n   ========================================================================= */\n\n.sm-results {\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n}\n\n/* =========================================================================\n   MODAL FOOTER\n   ========================================================================= */\n\n.sm-footer {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    gap: 16px;\n    padding: var(--sm-modal-py) var(--sm-modal-px);\n    border-top: 1px solid var(--sm-border-color);\n    font-size: 12px;\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-hints {\n    display: flex;\n    align-items: center;\n    gap: 12px;\n}\n\n.sm-footer-hints span {\n    display: flex;\n    align-items: center;\n    gap: 4px;\n}\n\n.sm-footer kbd {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 20px;\n    padding: 2px 4px;\n    background: var(--sm-kbd-bg);\n    border: 1px solid var(--sm-kbd-border);\n    border-radius: var(--sm-kbd-radius);\n    font-size: 10px;\n    font-family: inherit;\n    color: var(--sm-kbd-color);\n}\n\n.sm-footer-brand {\n    color: var(--sm-text-muted);\n}\n\n.sm-footer-brand strong {\n    color: var(--sm-text-secondary);\n}\n\n/* =========================================================================\n   RTL SUPPORT (MODAL-SPECIFIC)\n   ========================================================================= */\n\n:host([dir="rtl"]) .sm-header,\n:host([dir="rtl"]) .sm-footer {\n    direction: rtl;\n}\n\n/* =========================================================================\n   MOBILE RESPONSIVE\n   ========================================================================= */\n\n@media (max-width: 640px) {\n    .sm-backdrop {\n        padding-top: 0;\n        align-items: flex-end;\n    }\n\n    .sm-modal {\n        max-width: 100%;\n        max-height: 90vh;\n        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;\n    }\n\n    .sm-trigger-text,\n    .sm-footer-hints {\n        display: none;\n    }\n}\n';
+/* =========================================================================
+   MODAL-SPECIFIC HOST VARIABLES
+   ========================================================================= */
 
-  // src/styles/debug.css
-  var debug_default = `/* =========================================================================
+:host {
+    /* Modal container */
+    --sm-modal-bg: #ffffff;
+    --sm-modal-border: var(--sm-modal-border-color, #e5e7eb);
+    --sm-modal-border-width: 1px;
+    --sm-modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    --sm-modal-radius: 12px;
+    --sm-modal-width: 640px;
+    --sm-modal-max-height: 80vh;
+    --sm-modal-px: 16px;
+    --sm-modal-py: 16px;
+
+    /* Search header (.sm-header container) */
+    --sm-header-bg: transparent;
+    --sm-header-border-color: #e5e7eb;
+    --sm-header-border-width: 1px;
+    --sm-header-radius: 0px;
+    --sm-header-px: 16px;
+    --sm-header-py: 12px;
+
+    /* Trigger button */
+    --sm-trigger-bg: #ffffff;
+    --sm-trigger-color: var(--sm-trigger-text-color, #374151);
+    --sm-trigger-border: var(--sm-trigger-border-color, #d1d5db);
+    --sm-trigger-radius: 8px;
+    --sm-trigger-border-width: 1px;
+    --sm-trigger-px: 12px;
+    --sm-trigger-py: 8px;
+    --sm-trigger-font-size: 14px;
+
+    /* Trigger hover */
+    --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg, #f9fafb);
+    --sm-trigger-hover-color: var(--sm-trigger-hover-text-color, #111827);
+    --sm-trigger-hover-border: var(--sm-trigger-hover-border-color, #3b82f6);
+}
+
+/* Dark theme - modal-specific overrides */
+:host([data-theme="dark"]) {
+    --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
+    --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
+
+    --sm-header-bg: var(--sm-header-bg-dark, transparent);
+    --sm-header-border-color: var(--sm-header-border-color-dark, #374151);
+
+    --sm-trigger-bg: var(--sm-trigger-bg-dark, #374151);
+    --sm-trigger-color: var(--sm-trigger-text-color-dark, #e5e7eb);
+    --sm-trigger-border: var(--sm-trigger-border-color-dark, #4b5563);
+
+    --sm-trigger-hover-bg-resolved: var(--sm-trigger-hover-bg-dark, #4b5563);
+    --sm-trigger-hover-color: var(--sm-trigger-hover-text-color-dark, #f9fafb);
+    --sm-trigger-hover-border: var(--sm-trigger-hover-border-color-dark, #60a5fa);
+}
+
+/* =========================================================================
+   TRIGGER BUTTON
+   ========================================================================= */
+
+.sm-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: var(--sm-trigger-py) var(--sm-trigger-px);
+    background: var(--sm-trigger-bg);
+    border: var(--sm-trigger-border-width) solid var(--sm-trigger-border);
+    border-radius: var(--sm-trigger-radius);
+    color: var(--sm-trigger-color);
+    font-size: var(--sm-trigger-font-size);
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.sm-trigger:hover {
+    background: var(--sm-trigger-hover-bg-resolved);
+    color: var(--sm-trigger-hover-color);
+    border-color: var(--sm-trigger-hover-border);
+}
+
+.sm-trigger-text {
+    /* Text shown next to search icon */
+}
+
+.sm-trigger-kbd {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: var(--sm-kbd-bg);
+    border: 1px solid var(--sm-kbd-border);
+    border-radius: var(--sm-kbd-radius);
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--sm-kbd-color);
+}
+
+/* =========================================================================
+   BACKDROP
+   ========================================================================= */
+
+.sm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 10vh;
+    background: rgba(0, 0, 0, var(--sm-backdrop-opacity, 0.5));
+    backdrop-filter: var(--sm-backdrop-blur, blur(4px));
+    animation: sm-fade-in 0.15s ease;
+}
+
+.sm-backdrop[hidden] {
+    display: none;
+}
+
+@keyframes sm-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+/* =========================================================================
+   MODAL CONTAINER
+   ========================================================================= */
+
+.sm-modal {
+    width: var(--sm-modal-width);
+    max-width: calc(100vw - 32px);
+    max-height: var(--sm-modal-max-height);
+    background: var(--sm-modal-bg);
+    border: var(--sm-modal-border-width, 1px) solid var(--sm-modal-border);
+    border-radius: var(--sm-modal-radius);
+    box-shadow: var(--sm-modal-shadow);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: sm-slide-up 0.2s ease;
+    text-align: start;
+}
+
+@keyframes sm-slide-up {
+    from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* =========================================================================
+   MODAL HEADER
+   ========================================================================= */
+
+.sm-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: var(--sm-header-py) var(--sm-header-px);
+    background: var(--sm-header-bg);
+    border-bottom: var(--sm-header-border-width) solid var(--sm-header-border-color);
+    border-radius: var(--sm-header-radius);
+}
+
+.sm-search-icon {
+    flex-shrink: 0;
+    color: var(--sm-text-muted);
+}
+
+.sm-close {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+.sm-close kbd {
+    padding: 2px 6px;
+    background: var(--sm-kbd-bg);
+    border: 1px solid var(--sm-kbd-border);
+    border-radius: var(--sm-kbd-radius);
+    font-size: 11px;
+    font-family: inherit;
+    color: var(--sm-kbd-color);
+}
+
+/* =========================================================================
+   MODAL RESULTS
+   ========================================================================= */
+
+.sm-results {
+    padding: var(--sm-modal-py) var(--sm-modal-px);
+}
+
+/* =========================================================================
+   MODAL FOOTER
+   ========================================================================= */
+
+.sm-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: var(--sm-modal-py) var(--sm-modal-px);
+    border-top: 1px solid var(--sm-border-color);
+    font-size: 12px;
+    color: var(--sm-text-muted);
+}
+
+.sm-footer-hints {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.sm-footer-hints span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.sm-footer kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    padding: 2px 4px;
+    background: var(--sm-kbd-bg);
+    border: 1px solid var(--sm-kbd-border);
+    border-radius: var(--sm-kbd-radius);
+    font-size: 10px;
+    font-family: inherit;
+    color: var(--sm-kbd-color);
+}
+
+.sm-footer-brand {
+    color: var(--sm-text-muted);
+}
+
+.sm-footer-brand strong {
+    color: var(--sm-text-secondary);
+}
+
+/* =========================================================================
+   RTL SUPPORT (MODAL-SPECIFIC)
+   ========================================================================= */
+
+:host([dir="rtl"]) .sm-header,
+:host([dir="rtl"]) .sm-footer {
+    direction: rtl;
+}
+
+/* =========================================================================
+   MOBILE RESPONSIVE
+   ========================================================================= */
+
+@media (max-width: 640px) {
+    .sm-backdrop {
+        padding-top: 0;
+        align-items: flex-end;
+    }
+
+    .sm-modal {
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: var(--sm-modal-radius) var(--sm-modal-radius) 0 0;
+    }
+
+    .sm-trigger-text,
+    .sm-footer-hints {
+        display: none;
+    }
+}
+`;var Fe=`/* =========================================================================
    DEBUG MODE - Developer Tools Panel
    Extensible key:value format with labels for clarity
    ========================================================================= */
@@ -3936,68 +1675,13 @@ var SearchModalWidget = (() => {
     background: rgba(59, 130, 246, 0.2);
     color: #93c5fd;
 }
-`;
-
-  // src/widgets/SearchModalWidget.js
-  var styles = base_default + "\n" + modal_default + "\n" + debug_default;
-  var SearchModalWidget = class extends SearchWidgetBase_default {
-    /**
-     * Initialize modal widget
-     */
-    constructor() {
-      super();
-      this.externalTrigger = null;
-      this.open = this.open.bind(this);
-      this.close = this.close.bind(this);
-      this.toggle = this.toggle.bind(this);
-      this.handleGlobalKeydown = this.handleGlobalKeydown.bind(this);
-      this.handleBackdropClick = this.handleBackdropClick.bind(this);
-    }
-    /**
-     * Widget type identifier
-     * @returns {string} 'modal'
-     */
-    get widgetType() {
-      return "modal";
-    }
-    /**
-     * Observed attributes for this widget type
-     * @returns {Array<string>} Attribute names
-     */
-    static get observedAttributes() {
-      return getObservedAttributes("modal");
-    }
-    // =========================================================================
-    // LIFECYCLE
-    // =========================================================================
-    /**
-     * Called when element is added to DOM
-     */
-    connectedCallback() {
-      super.connectedCallback();
-      this.render();
-      this.attachEventListeners();
-    }
-    /**
-     * Called when element is removed from DOM
-     */
-    disconnectedCallback() {
-      super.disconnectedCallback();
-      this.detachEventListeners();
-    }
-    // =========================================================================
-    // RENDERING
-    // =========================================================================
-    /**
-     * Render the modal HTML structure
-     */
-    render() {
-      const { theme, placeholder, showTrigger } = this.config;
-      this.shadowRoot.innerHTML = `
-            <style>${styles}</style>
+`;var bt=Oe+`
+`+Ne+`
+`+Fe,oe=class extends Me{constructor(){super(),this.externalTrigger=null,this.open=this.open.bind(this),this.close=this.close.bind(this),this.toggle=this.toggle.bind(this),this.handleGlobalKeydown=this.handleGlobalKeydown.bind(this),this.handleBackdropClick=this.handleBackdropClick.bind(this)}get widgetType(){return"modal"}static get observedAttributes(){return ie("modal")}connectedCallback(){super.connectedCallback(),this.render(),this.attachEventListeners()}disconnectedCallback(){super.disconnectedCallback(),this.detachEventListeners()}render(){let{theme:r,placeholder:t,showTrigger:n}=this.config;this.shadowRoot.innerHTML=`
+            <style>${bt}</style>
 
             <!-- Trigger button -->
-            <button class="sm-trigger" part="trigger" aria-label="Open search" ${showTrigger ? "" : 'style="display: none;"'}>
+            <button class="sm-trigger" part="trigger" aria-label="Open search" ${n?"":'style="display: none;"'}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
@@ -4020,7 +1704,7 @@ var SearchModalWidget = (() => {
                             id="${this.inputId}"
                             class="sm-input"
                             part="input"
-                            placeholder="${placeholder}"
+                            placeholder="${t}"
                             maxlength="256"
                             autocomplete="off"
                             autocorrect="off"
@@ -4062,203 +1746,5 @@ var SearchModalWidget = (() => {
                     </div>
                 </div>
             </div>
-        `;
-      this.elements = {
-        trigger: this.shadowRoot.querySelector(".sm-trigger"),
-        backdrop: this.shadowRoot.querySelector(".sm-backdrop"),
-        modal: this.shadowRoot.querySelector(".sm-modal"),
-        input: this.shadowRoot.querySelector(".sm-input"),
-        results: this.shadowRoot.querySelector(".sm-results"),
-        loading: this.shadowRoot.querySelector(".sm-loading"),
-        close: this.shadowRoot.querySelector(".sm-close"),
-        debugToolbar: this.shadowRoot.querySelector(".sm-debug-toolbar")
-      };
-      this.initializeLiveRegion();
-      this.shadowRoot.host.setAttribute("data-theme", theme);
-      this.applyCustomStyles();
-    }
-    /**
-     * Get results container element
-     * @returns {HTMLElement} Results container
-     */
-    getResultsContainer() {
-      return this.elements.results;
-    }
-    /**
-     * Get search input element
-     * @returns {HTMLInputElement} Search input
-     */
-    getInputElement() {
-      return this.elements.input;
-    }
-    /**
-     * Get loading indicator element
-     * @returns {HTMLElement} Loading element
-     */
-    getLoadingElement() {
-      return this.elements.loading;
-    }
-    // =========================================================================
-    // CUSTOM STYLES (MODAL-SPECIFIC)
-    // =========================================================================
-    /**
-     * Apply custom styles including modal-specific backdrop settings
-     */
-    applyCustomStyles() {
-      super.applyCustomStyles();
-      if (!this.config)
-        return;
-      const { backdropOpacity, enableBackdropBlur } = this.config;
-      const host = this.shadowRoot.host;
-      host.style.setProperty("--sm-backdrop-opacity", backdropOpacity / 100);
-      host.style.setProperty("--sm-backdrop-blur", enableBackdropBlur ? "blur(4px)" : "none");
-    }
-    // =========================================================================
-    // EVENT LISTENERS
-    // =========================================================================
-    /**
-     * Attach modal-specific event listeners
-     */
-    attachEventListeners() {
-      this.elements.trigger.addEventListener("click", this.toggle);
-      this.elements.close.addEventListener("click", this.close);
-      this.elements.backdrop.addEventListener("click", this.handleBackdropClick);
-      this.elements.input.addEventListener("input", this.handleInput);
-      this.elements.input.addEventListener("keydown", this.handleKeydown);
-      document.addEventListener("keydown", this.handleGlobalKeydown);
-      const { triggerSelector } = this.config;
-      if (triggerSelector) {
-        this.externalTrigger = document.querySelector(triggerSelector);
-        if (this.externalTrigger) {
-          this.externalTrigger.addEventListener("click", this.toggle);
-        }
-      }
-    }
-    /**
-     * Detach modal-specific event listeners
-     */
-    detachEventListeners() {
-      document.removeEventListener("keydown", this.handleGlobalKeydown);
-      if (this.externalTrigger) {
-        this.externalTrigger.removeEventListener("click", this.toggle);
-        this.externalTrigger = null;
-      }
-    }
-    // =========================================================================
-    // MODAL OPEN/CLOSE
-    // =========================================================================
-    /**
-     * Open the modal
-     */
-    open() {
-      this.state.set({ isOpen: true });
-      this.elements.backdrop.hidden = false;
-      this.elements.input.value = "";
-      this.state.set({
-        query: "",
-        results: [],
-        selectedIndex: -1
-      });
-      this.renderResultsContent();
-      requestAnimationFrame(() => {
-        this.elements.input.focus();
-      });
-      if (this.config.preventBodyScroll) {
-        document.body.style.overflow = "hidden";
-      }
-      this.dispatchWidgetEvent("open", { source: "programmatic" });
-    }
-    /**
-     * Close the modal
-     */
-    close() {
-      this.state.set({ isOpen: false });
-      this.elements.backdrop.hidden = true;
-      if (this.config.preventBodyScroll) {
-        document.body.style.overflow = "";
-      }
-      this.resetAnalyticsTracking();
-      this.dispatchWidgetEvent("close");
-    }
-    /**
-     * Toggle modal open/close
-     */
-    toggle() {
-      if (this.state.get("isOpen")) {
-        this.close();
-      } else {
-        this.open();
-      }
-    }
-    // =========================================================================
-    // KEYBOARD HANDLING
-    // =========================================================================
-    /**
-     * Handle global keyboard shortcuts
-     *
-     * @param {KeyboardEvent} e - Keyboard event
-     */
-    handleGlobalKeydown(e) {
-      const hotkey = this.config.hotkey.toLowerCase();
-      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-      const modifier = isMac ? e.metaKey : e.ctrlKey;
-      if (modifier && e.key.toLowerCase() === hotkey) {
-        e.preventDefault();
-        this.toggle();
-      }
-      if (e.key === "Escape" && this.state.get("isOpen")) {
-        e.preventDefault();
-        this.close();
-      }
-    }
-    /**
-     * Handle Escape key from keyboard navigator
-     * @protected
-     */
-    handleEscape() {
-      this.close();
-    }
-    /**
-     * Handle backdrop click
-     *
-     * @param {Event} e - Click event
-     */
-    handleBackdropClick(e) {
-      if (e.target === this.elements.backdrop) {
-        this.close();
-      }
-    }
-    // =========================================================================
-    // RESULT SELECTION HANDLING
-    // =========================================================================
-    /**
-     * Called when a result with URL is selected
-     *
-     * Closes the modal after selection.
-     *
-     * @protected
-     * @param {string} url - Result URL
-     * @param {string} title - Result title
-     * @param {string|number} id - Result ID
-     */
-    onResultSelected(url, title, id) {
-      this.close();
-    }
-    // =========================================================================
-    // HELPERS
-    // =========================================================================
-    /**
-     * Get hotkey display string
-     *
-     * @returns {string} Formatted hotkey (e.g., "⌘K" or "Ctrl+K")
-     */
-    getHotkeyDisplay() {
-      const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
-      const key = this.config.hotkey.toUpperCase();
-      return isMac ? `\u2318${key}` : `Ctrl+${key}`;
-    }
-  };
-  var SearchModalWidget_default = SearchModalWidget;
-  return __toCommonJS(SearchModalWidget_exports);
-})();
+        `,this.elements={trigger:this.shadowRoot.querySelector(".sm-trigger"),backdrop:this.shadowRoot.querySelector(".sm-backdrop"),modal:this.shadowRoot.querySelector(".sm-modal"),input:this.shadowRoot.querySelector(".sm-input"),results:this.shadowRoot.querySelector(".sm-results"),loading:this.shadowRoot.querySelector(".sm-loading"),close:this.shadowRoot.querySelector(".sm-close"),debugToolbar:this.shadowRoot.querySelector(".sm-debug-toolbar")},this.initializeLiveRegion(),this.shadowRoot.host.setAttribute("data-theme",r),this.applyCustomStyles()}getResultsContainer(){return this.elements.results}getInputElement(){return this.elements.input}getLoadingElement(){return this.elements.loading}applyCustomStyles(){if(super.applyCustomStyles(),!this.config)return;let{backdropOpacity:r,enableBackdropBlur:t}=this.config,n=this.shadowRoot.host;n.style.setProperty("--sm-backdrop-opacity",r/100),n.style.setProperty("--sm-backdrop-blur",t?"blur(4px)":"none")}attachEventListeners(){this.elements.trigger.addEventListener("click",this.toggle),this.elements.close.addEventListener("click",this.close),this.elements.backdrop.addEventListener("click",this.handleBackdropClick),this.elements.input.addEventListener("input",this.handleInput),this.elements.input.addEventListener("keydown",this.handleKeydown),document.addEventListener("keydown",this.handleGlobalKeydown);let{triggerSelector:r}=this.config;r&&(this.externalTrigger=document.querySelector(r),this.externalTrigger&&this.externalTrigger.addEventListener("click",this.toggle))}detachEventListeners(){document.removeEventListener("keydown",this.handleGlobalKeydown),this.externalTrigger&&(this.externalTrigger.removeEventListener("click",this.toggle),this.externalTrigger=null)}open(){this.state.set({isOpen:!0}),this.elements.backdrop.hidden=!1,this.elements.input.value="",this.state.set({query:"",results:[],selectedIndex:-1}),this.renderResultsContent(),requestAnimationFrame(()=>{this.elements.input.focus()}),this.config.preventBodyScroll&&(document.body.style.overflow="hidden"),this.dispatchWidgetEvent("open",{source:"programmatic"})}close(){this.state.set({isOpen:!1}),this.elements.backdrop.hidden=!0,this.config.preventBodyScroll&&(document.body.style.overflow=""),this.resetAnalyticsTracking(),this.dispatchWidgetEvent("close")}toggle(){this.state.get("isOpen")?this.close():this.open()}handleGlobalKeydown(r){let t=this.config.hotkey.toLowerCase();(navigator.platform.toUpperCase().indexOf("MAC")>=0?r.metaKey:r.ctrlKey)&&r.key.toLowerCase()===t&&(r.preventDefault(),this.toggle()),r.key==="Escape"&&this.state.get("isOpen")&&(r.preventDefault(),this.close())}handleEscape(){this.close()}handleBackdropClick(r){r.target===this.elements.backdrop&&this.close()}onResultSelected(r,t,n){this.close()}getHotkeyDisplay(){let r=navigator.platform.toUpperCase().indexOf("MAC")>=0,t=this.config.hotkey.toUpperCase();return r?`\u2318${t}`:`Ctrl+${t}`}},ft=oe;return We(vt);})();
 if(typeof customElements!=='undefined'&&!customElements.get('search-modal')){customElements.define('search-modal',SearchModalWidget.default);}

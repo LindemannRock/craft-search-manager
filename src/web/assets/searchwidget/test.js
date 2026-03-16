@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIST_DIR = path.join(__dirname, 'dist');
-const REQUIRED_FILES = ['SearchModalWidget.js', 'SearchModalWidget.min.js'];
+const REQUIRED_FILES = ['SearchModalWidget.js'];
 const MIN_FILE_SIZE = 10000; // At least 10KB
 
 let passed = 0;
@@ -50,15 +50,6 @@ if (fs.existsSync(mainFile)) {
     test('Contains customElements.define', content.includes('customElements.define'));
     test('Contains search-modal registration', content.includes('search-modal'));
     test('Contains SearchModalWidget class', content.includes('SearchModalWidget'));
-}
-
-// Test 5: Minified file is smaller than regular
-const regularFile = path.join(DIST_DIR, 'SearchModalWidget.js');
-const minFile = path.join(DIST_DIR, 'SearchModalWidget.min.js');
-if (fs.existsSync(regularFile) && fs.existsSync(minFile)) {
-    const regularSize = fs.statSync(regularFile).size;
-    const minSize = fs.statSync(minFile).size;
-    test(`Minified file is smaller (${(minSize / 1024).toFixed(1)}KB < ${(regularSize / 1024).toFixed(1)}KB)`, minSize < regularSize);
 }
 
 // Summary

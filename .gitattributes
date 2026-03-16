@@ -14,5 +14,11 @@ src/web/assets/searchwidget/package-lock.json       export-ignore
 src/web/assets/searchwidget/test-modal.html         export-ignore
 src/web/assets/searchwidget/test.js                 export-ignore
 
+# Analytics: only dist/ is needed
+src/web/assets/analytics/src/                       export-ignore
+
+# Widget preview: only dist/ is needed
+src/web/assets/widgetpreview/src/                   export-ignore
+
 # Docs are available on the website
 docs/                                               export-ignore

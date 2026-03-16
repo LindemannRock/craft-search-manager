@@ -96,36 +96,24 @@ async function build() {
             ]);
             console.log('Dev build complete!');
         } else {
-            // Production build - unminified + minified
+            // Production build - single shipped artifact per output
             await Promise.all([
                 esbuild.build({
                     ...modalOptions,
                     outfile: 'dist/SearchModalWidget.js',
-                    minify: false,
-                    sourcemap: false,
-                }),
-                esbuild.build({
-                    ...modalOptions,
-                    outfile: 'dist/SearchModalWidget.min.js',
                     minify: true,
                     sourcemap: false,
                 }),
                 esbuild.build({
                     ...highlighterOptions,
                     outfile: `${highlighterDir}/SearchManagerHighlighter.js`,
-                    minify: false,
-                    sourcemap: false,
-                }),
-                esbuild.build({
-                    ...highlighterOptions,
-                    outfile: `${highlighterDir}/SearchManagerHighlighter.min.js`,
                     minify: true,
                     sourcemap: false,
                 }),
             ]);
             console.log('Production build complete!');
-            console.log('  - SearchModalWidget.js + SearchModalWidget.min.js');
-            console.log('  - SearchManagerHighlighter.js + SearchManagerHighlighter.min.js');
+            console.log('  - SearchModalWidget.js');
+            console.log('  - SearchManagerHighlighter.js');
         }
     } catch (error) {
         console.error('Build failed:', error);

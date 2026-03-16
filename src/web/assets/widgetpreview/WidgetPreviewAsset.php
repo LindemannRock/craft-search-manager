@@ -25,7 +25,7 @@ class WidgetPreviewAsset extends AssetBundle
      */
     public function init(): void
     {
-        $this->sourcePath = __DIR__;
+        $this->sourcePath = __DIR__ . '/dist';
 
         $this->js = [
             'widget-preview.js',

@@ -4,7 +4,9 @@
   "private": true,
   "description": "Build tools for Search Manager plugin",
   "scripts": {
-    "build": "npm run build:widget",
+    "build": "npm run build:widget && npm run build:analytics && npm run build:widgetpreview",
+    "build:analytics": "mkdir -p src/web/assets/analytics/dist && terser src/web/assets/analytics/src/analytics.js -o src/web/assets/analytics/dist/analytics.js -c -m",
+    "build:widgetpreview": "mkdir -p src/web/assets/widgetpreview/dist && terser src/web/assets/widgetpreview/src/widget-preview.js -o src/web/assets/widgetpreview/dist/widget-preview.js -c -m",
     "build:widget": "cd src/web/assets/searchwidget && npm run build",
     "dev": "cd src/web/assets/searchwidget && npm run dev",
     "watch": "cd src/web/assets/searchwidget && npm run watch",
@@ -13,11 +15,12 @@
     "test:a11y:ui": "cd src/web/assets/searchwidget && npm run test:a11y:ui",
     "test:a11y:live": "cd src/web/assets/searchwidget && npm run test:a11y:live",
     "test:a11y:live:ui": "cd src/web/assets/searchwidget && npm run test:a11y:live:ui",
-    "minify": "npm run minify:analytics",
-    "minify:analytics": "terser src/web/assets/analytics/analytics.js -o src/web/assets/analytics/analytics.min.js -c -m"
+    "minify": "npm run build:analytics && npm run build:widgetpreview",
+    "minify:analytics": "npm run build:analytics",
+    "minify:widgetpreview": "npm run build:widgetpreview"
   },
   "devDependencies": {
-    "terser": "^5.31.6"
+    "terser": "^5.46.1"
   },
   "author": {
     "name": "Bilal Harry Lindemann",

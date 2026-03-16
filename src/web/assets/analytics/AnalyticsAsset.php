@@ -8,14 +8,12 @@
 
 namespace lindemannrock\searchmanager\web\assets\analytics;
 
-use Craft;
 use craft\web\AssetBundle;
 
 /**
  * Search Analytics Asset Bundle
  *
  * Provides Search Manager analytics wiring for cp-analytics pages.
- * Uses minified versions in production mode.
  *
  * @since 5.29.0
  */
@@ -26,16 +24,14 @@ class AnalyticsAsset extends AssetBundle
      */
     public function init(): void
     {
-        $this->sourcePath = __DIR__;
-
-        $devMode = Craft::$app->getConfig()->getGeneral()->devMode;
+        $this->sourcePath = __DIR__ . '/dist';
 
         $this->depends = [
             \lindemannrock\base\web\assets\analytics\AnalyticsAsset::class,
         ];
 
         $this->js = [
-            $devMode ? 'analytics.js' : 'analytics.min.js',
+            'analytics.js',
         ];
 
         parent::init();

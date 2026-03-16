@@ -32,7 +32,7 @@ class SearchHighlighterAsset extends AssetBundle
         $this->sourcePath = __DIR__ . '/dist';
 
         $this->js = [
-            'SearchManagerHighlighter.min.js',
+            'SearchManagerHighlighter.js',
         ];
 
         parent::init();
