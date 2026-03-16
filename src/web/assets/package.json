@@ -1,0 +1,24 @@
+{
+  "name": "@lindemannrock/search-manager",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Build tools for Search Manager asset packages",
+  "scripts": {
+    "build": "npm run build:analytics && npm run build:widgetpreview",
+    "build:analytics": "mkdir -p analytics/dist && terser analytics/src/analytics.js -o analytics/dist/analytics.js -c -m",
+    "build:widgetpreview": "mkdir -p widgetpreview/dist && terser widgetpreview/src/widget-preview.js -o widgetpreview/dist/widget-preview.js -c -m"
+  },
+  "devDependencies": {
+    "terser": "^5.46.1"
+  },
+  "author": {
+    "name": "Bilal Harry Lindemann",
+    "email": "hello@lindemannrock.com",
+    "url": "https://lindemannrock.com"
+  },
+  "company": {
+    "name": "LindemannRock",
+    "url": "https://lindemannrock.com"
+  },
+  "license": "Proprietary"
+}

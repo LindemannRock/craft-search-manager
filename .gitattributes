@@ -14,6 +14,11 @@ src/web/assets/searchwidget/package-lock.json       export-ignore
 src/web/assets/searchwidget/test-modal.html         export-ignore
 src/web/assets/searchwidget/test.js                 export-ignore
 
+# Shared asset tooling: analytics/widgetpreview build package
+src/web/assets/node_modules/                        export-ignore
+src/web/assets/package.json                         export-ignore
+src/web/assets/package-lock.json                    export-ignore
+
 # Analytics: only dist/ is needed
 src/web/assets/analytics/src/                       export-ignore
 
