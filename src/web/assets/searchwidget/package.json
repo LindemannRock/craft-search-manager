@@ -13,9 +13,9 @@
     "test:a11y:live:ui": "npx playwright test --config=tests/playwright-live.config.js --ui"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.8.0",
-    "@playwright/test": "^1.40.0",
-    "esbuild": "^0.20.0",
+    "@axe-core/playwright": "^4.11.1",
+    "@playwright/test": "^1.58.2",
+    "esbuild": "^0.27.4",
     "http-server": "^14.1.1"
   },
   "author": {
