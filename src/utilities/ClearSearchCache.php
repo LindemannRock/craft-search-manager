@@ -42,7 +42,7 @@ class ClearSearchCache extends Utility
      */
     public static function icon(): ?string
     {
-        return 'magnifying-glass';
+        return '@lindemannrock/searchmanager/icon-mask.svg';
     }
 
     /**
