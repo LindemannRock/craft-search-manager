@@ -1,5 +1,24 @@
 # Changelog
 
+## [5.42.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.41.0...v5.42.0) (2026-03-17)
+
+
+### Features
+
+* **assets:** update build scripts and add package-lock.json ([6c01c78](https://github.com/LindemannRock/craft-search-manager/commit/6c01c78f96de86dc915490be86f2c4acf4a39d1f))
+* **searchmanager:** add installation experience configuration ([229239b](https://github.com/LindemannRock/craft-search-manager/commit/229239b1e514e2ec992e1a8d5d3e5855d02ab582))
+* **searchwidget:** update version and license, remove minified file check ([791e4b0](https://github.com/LindemannRock/craft-search-manager/commit/791e4b040f5e76f5f965c6e765c4bea66bbebe9d))
+
+
+### Bug Fixes
+
+* **settings:** remove redundant submit button from settings forms ([9a53d00](https://github.com/LindemannRock/craft-search-manager/commit/9a53d001392a6a6f00213e06ed7cda9a5b2f6cef))
+
+
+### Miscellaneous Chores
+
+* **searchwidget:** update dependencies in package.json and package-lock.json ([9a48204](https://github.com/LindemannRock/craft-search-manager/commit/9a482041bf836f25f19cc937f223e82546b3dd56))
+
 ## [5.41.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.2...v5.41.0) (2026-03-04)
 
 
