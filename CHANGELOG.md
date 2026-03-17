@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.43.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.42.0...v5.43.0) (2026-03-17)
+
+
+### Features
+
+* **analytics:** streamline IP processing using AnalyticsIpHelper ([956795a](https://github.com/LindemannRock/craft-search-manager/commit/956795a77710b29559eb90d5ce3bde9c4dc93632))
+
 ## [5.42.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.41.0...v5.42.0) (2026-03-17)
 
 
