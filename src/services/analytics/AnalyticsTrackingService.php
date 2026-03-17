@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services\analytics;
 use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
+use lindemannrock\base\helpers\AnalyticsIpHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -152,31 +153,19 @@ class AnalyticsTrackingService
         // Detect device information using Matomo DeviceDetector
         $deviceInfo = SearchManager::$plugin->deviceDetection->detectDevice($userAgent);
 
-        // Multi-step IP processing for privacy
-        $ip = null;
-        $rawIp = $request->getUserIP();
-        $ipForGeoLookup = null;
+        $ipState = AnalyticsIpHelper::prepare(
+            $request->getUserIP(),
+            $settings->anonymizeIpAddress,
+            $settings->enableGeoDetection,
+            fn(string $ip): string => $this->_hashIpWithSalt($ip),
+        );
 
-        // Step 1: Subnet masking (if anonymizeIpAddress enabled)
-        if ($settings->anonymizeIpAddress && $rawIp) {
-            $rawIp = $this->_anonymizeIp($rawIp);
+        if ($ipState['hashError'] !== null) {
+            $this->logError('Failed to hash IP address', ['error' => $ipState['hashError']->getMessage()]);
         }
 
-        // Step 2: Store IP for async geo-lookup (BEFORE hashing)
-        if ($settings->enableGeoDetection && $rawIp) {
-            $ipForGeoLookup = $rawIp;
-        }
-
-        // Step 3: Hash with salt for storage
-        if ($rawIp) {
-            try {
-                $ip = $this->_hashIpWithSalt($rawIp);
-            } catch (\Exception $e) {
-                $this->logError('Failed to hash IP address', ['error' => $e->getMessage()]);
-                $ip = null;
-                $ipForGeoLookup = null;
-            }
-        }
+        $ip = $ipState['hashedIp'];
+        $ipForGeoLookup = $ipState['geoLookupIp'];
 
         // Determine if this is a hit (results found)
         $isHit = $resultsCount > 0;
@@ -445,36 +434,6 @@ class AnalyticsTrackingService
 
         // No referrer or external referrer = likely API call
         return 'api';
-    }
-
-    /**
-     * Anonymize IP address (keep first 3 octets for IPv4, first 4 segments for IPv6)
-     *
-     * @param string|null $ip
-     * @return string|null
-     */
-    private function _anonymizeIp(?string $ip): ?string
-    {
-        if (empty($ip)) {
-            return null;
-        }
-
-        // IPv4
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            $parts = explode('.', $ip);
-            $parts[3] = '0';
-            return implode('.', $parts);
-        }
-
-        // IPv6
-        if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
-            $parts = explode(':', $ip);
-            // Keep first 4 segments, anonymize the rest
-            $parts = array_slice($parts, 0, 4);
-            return implode(':', $parts) . '::';
-        }
-
-        return null;
     }
 
     /**
