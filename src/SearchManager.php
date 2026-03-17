@@ -151,6 +151,14 @@ class SearchManager extends Plugin
                         'inline' => ColorHelper::getPaletteColor('rose'),
                     ],
                 ],
+                'installExperience' => [
+                    'headline' => 'Search Manager',
+                    'body' => 'Configure backends, tune indexing, and manage search behavior from one control panel workspace.',
+                    'ctaLabel' => 'Open Search Manager',
+                    'ctaUrl' => 'search-manager',
+                    'redirectUri' => 'search-manager',
+                    'confettiPreset' => 'surprise',
+                ],
             ]
         );
         PluginHelper::applyPluginNameFromConfig($this);
