@@ -3,6 +3,8 @@
 return [
     // Plugin name
     'Search Manager' => 'Search Manager',
+    'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Configure backends, tune indexing, and manage search behavior from one control panel workspace.',
+    'Open Search Manager' => 'Open Search Manager',
 
     // Navigation
     'Dashboard' => 'Dashboard',
