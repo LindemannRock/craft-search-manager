@@ -152,9 +152,9 @@ class SearchManager extends Plugin
                     ],
                 ],
                 'installExperience' => [
-                    'headline' => 'Search Manager',
-                    'body' => 'Configure backends, tune indexing, and manage search behavior from one control panel workspace.',
-                    'ctaLabel' => 'Open Search Manager',
+                    'headline' => Craft::t('search-manager', 'Search Manager'),
+                    'body' => Craft::t('search-manager', 'Configure backends, tune indexing, and manage search behavior from one control panel workspace.'),
+                    'ctaLabel' => Craft::t('search-manager', 'Open Search Manager'),
                     'ctaUrl' => 'search-manager',
                     'redirectUri' => 'search-manager',
                     'confettiPreset' => 'surprise',
