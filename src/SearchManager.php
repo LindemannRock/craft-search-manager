@@ -95,6 +95,11 @@ class SearchManager extends Plugin
     public bool $hasCpSettings = true;
 
     /**
+     * @var bool Whether the plugin settings page is accessible when allowAdminChanges is false
+     */
+    public bool $hasReadOnlyCpSettings = true;
+
+    /**
      * @var bool Whether the plugin registers a control panel section
      */
     public bool $hasCpSection = true;
@@ -937,6 +942,14 @@ class SearchManager extends Plugin
 
     /** @inheritdoc */
     public function getSettingsResponse(): mixed
+    {
+        return Craft::$app->getResponse()->redirect(
+            UrlHelper::cpUrl('search-manager/settings')
+        );
+    }
+
+    /** @inheritdoc */
+    public function getReadOnlySettingsResponse(): mixed
     {
         return Craft::$app->getResponse()->redirect(
             UrlHelper::cpUrl('search-manager/settings')
