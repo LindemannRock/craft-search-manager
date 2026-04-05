@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.43.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.0...v5.43.1) (2026-04-05)
+
+
+### Bug Fixes
+
+* **icon:** update icon color to match branding guidelines ([ef633af](https://github.com/LindemannRock/craft-search-manager/commit/ef633af85e9e6233a49cedf2d546ee5057e3097a))
+* read-only settings page for admin changes ([84e748f](https://github.com/LindemannRock/craft-search-manager/commit/84e748f7f736c4c1adf8290e8cb656b97ac5ab8e))
+* update install experience text to use Craft translation ([90706dd](https://github.com/LindemannRock/craft-search-manager/commit/90706dd2bec29aca1991bb439a7989aeb4519b06))
+
 ## [5.43.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.42.0...v5.43.0) (2026-03-17)
 
 
