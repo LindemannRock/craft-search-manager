@@ -37,6 +37,7 @@ test-results/
 
 # Internal
 /.internal/
+/CLAUDE.md
 
 # Plugin releases
 *.zip
