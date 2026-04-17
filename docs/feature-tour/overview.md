@@ -31,7 +31,7 @@ You can use it alongside Craft's native search, or replace it entirely.
 
 - **[Caching](caching.md)** — Multi-layer caching for search results, autocomplete, and device detection. Cache warming after rebuilds. File or Redis storage.
 
-- **[Multi-Language](multi-language.md)** — Boolean operators in 12 languages (en, de, fr, es, nl, it, pt, sv, da, no, ja, ar) and per-language stop words for 5 (en, ar, de, fr, es).
+- **[Multi-Language](multi-language.md)** — Boolean operators and per-language stop words in 12 languages (en, de, fr, es, nl, it, pt, sv, da, no, ja, ar). Japanese requires a space-separated query because the built-in tokeniser doesn't segment CJK.
 
 - **[Frontend Widget](../widget/overview.md)** — A CMD+K style search modal as a web component. Three widget types (modal, page, inline). WCAG 2.1 AA compliant, keyboard navigable, with light/dark themes and click analytics.
 

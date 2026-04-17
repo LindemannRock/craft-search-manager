@@ -13,8 +13,8 @@ The PostgreSQL backend uses your Craft database for search storage, just like th
 - Full BM25 relevance ranking
 - All search operators (phrase, NOT, wildcards, field-specific, boosting, boolean)
 - Fuzzy matching with n-gram similarity
-- Stop words filtering in 5 languages
-- Localized boolean operators
+- Stop words filtering in 12 languages
+- Localized boolean operators in 12 languages
 - Native search replacement (CP search + `Entry::find()->search()`)
 - No external dependencies
 

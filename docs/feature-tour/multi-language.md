@@ -1,16 +1,25 @@
 # Multi-Language Support
 
-Search Manager detects language automatically from your Craft site settings and applies per-language stop words and boolean operators. Stop word lists ship for 5 languages, boolean operators for 12.
+Search Manager detects language automatically from your Craft site settings and applies per-language stop words and boolean operators. Stop word lists ship for 12 languages, boolean operators for 12.
 
 ## Stop Words
 
 | Language | Code | Stop Words |
 |----------|------|-----------|
 | English | `en` | 297 |
-| Arabic | `ar` | 122 |
-| German | `de` | 130+ |
-| French | `fr` | 140+ |
-| Spanish | `es` | 135+ |
+| Portuguese | `pt` | 266 |
+| Italian | `it` | 264 |
+| Spanish | `es` | 260 |
+| French | `fr` | 206 |
+| Norwegian | `no` | 194 |
+| Dutch | `nl` | 179 |
+| Swedish | `sv` | 176 |
+| German | `de` | 171 |
+| Danish | `da` | 162 |
+| Japanese | `ja` | 115 |
+| Arabic | `ar` | 112 |
+
+Japanese note: written Japanese doesn't use whitespace between words and the built-in tokeniser splits on whitespace/punctuation only. Stop-word filtering helps for space-separated query terms (`東京 から 大阪`) and mixed Latin+Japanese content, but not for uninterrupted Japanese sentences. Full morphological segmentation would require a dedicated CJK tokeniser (MeCab, Kuromoji, Sudachi) which Search Manager doesn't currently ship.
 
 Other site languages still benefit from tokenisation, indexing, and boolean operator parsing — they just don't filter common words. See [Regional Variants](#regional-variants) below to add your own stop word file.
 

@@ -38,8 +38,8 @@ The built-in backends (MySQL, PostgreSQL, Redis, File) all share the same featur
 - Full BM25 ranking algorithm
 - All search operators (phrase, NOT, field-specific, wildcards, boosting, boolean)
 - Fuzzy matching with n-gram similarity
-- Stop words filtering in 5 languages
-- Localized boolean operators
+- Stop words filtering in 12 languages
+- Localized boolean operators in 12 languages
 - Native search replacement (CP search, `Entry::find()->search()`)
 
 The external backends (Algolia, Meilisearch, Typesense) use their own ranking and search capabilities, plus:

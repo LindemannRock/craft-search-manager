@@ -22,7 +22,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **BM25 Ranking** — Industry-standard relevance scoring with configurable parameters
 - **Search Operators** — Phrase search, NOT, wildcards, field-specific, per-term boosting, boolean operators
 - **Fuzzy Matching** — Typo tolerance with n-gram similarity
-- **Multi-Language** — 5 languages (EN, AR, DE, FR, ES) with localized boolean operators and stop words
+- **Multi-Language** — Stop words and localized boolean operators in 12 languages (EN, PT, IT, ES, FR, NO, NL, SV, DE, DA, JA, AR)
 - **Highlighting & Snippets** — Highlight matched terms and show contextual excerpts
 - **Autocomplete** — Search-as-you-type suggestions with separate caching
 - **Query Rules** — Synonyms, section/category/element boosting, filtering, redirects

@@ -129,13 +129,20 @@ A lower `similarityThreshold` catches more typos but may return less relevant re
 
 ## Stop Words
 
-Common words like "the", "a", "is" are automatically filtered from queries to improve relevance. Stop words are supported in five languages:
+Common words like "the", "a", "is" are automatically filtered from queries to improve relevance. Stop words are supported in twelve languages:
 
 - English (297 stop words)
-- Arabic (122 stop words)
-- German (130+ stop words)
-- French (140+ stop words)
-- Spanish (135+ stop words)
+- Portuguese (266 stop words)
+- Italian (264 stop words)
+- Spanish (260 stop words)
+- French (206 stop words)
+- Norwegian (194 stop words, Bokmål + Nynorsk)
+- Dutch (179 stop words)
+- Swedish (176 stop words)
+- German (171 stop words)
+- Danish (162 stop words)
+- Japanese (115 stop words — see [Multi-Language](multi-language.md) for caveats)
+- Arabic (112 stop words)
 
 Stop words can be disabled globally or per-index. See [Multi-Language](multi-language.md) for language details.
 
