@@ -395,7 +395,7 @@
     {# Source badge #}
     <td>
         {% include 'lindemannrock-base/_components/badge' with {
-            label: item.source|capitalize,
+            label: item.source == 'config' ? 'Config'|t('search-manager') : 'Database'|t('search-manager'),
             value: item.source,
             colorSet: 'configSource',
         } only %}

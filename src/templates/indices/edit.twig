@@ -349,32 +349,32 @@
         </div>
         <div style="font-size: 0.85em; color: #596673; line-height: 1.6;">
             <div style="margin-bottom: 8px;">
-                <strong style="color: #0d78f2;">Recommended:</strong> Leave blank for auto-detection (default)
+                <strong style="color: #0d78f2;">{{ 'Recommended: Leave blank for auto-detection (default)'|t('search-manager') }}</strong>
             </div>
             <div style="padding-left: 20px; border-left: 2px solid #e3e5e8; margin-bottom: 12px;">
                 <div style="margin-bottom: 6px;">
                     <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">AutoTransformer</code>
-                    <span style="color: #8f98a3;"> — Entries, Assets, Categories, Users</span>
-                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">Indexes all custom fields, relational fields, Matrix blocks, and Table fields</div>
+                    <span style="color: #8f98a3;"> — {{ 'Entries, Assets, Categories, Users'|t('search-manager') }}</span>
+                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes all custom fields, relational fields, Matrix blocks, and Table fields'|t('search-manager') }}</div>
                 </div>
                 {% if lrPluginEnabled('docs-manager') %}
                 <div style="margin-bottom: 6px;">
                     <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">DocsManagerTransformer</code>
-                    <span style="color: #8f98a3;"> — Doc Pages</span>
-                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">Indexes full page content, headings, description, and keywords</div>
+                    <span style="color: #8f98a3;"> — {{ 'Doc Pages'|t('search-manager') }}</span>
+                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes full page content, headings, description, and keywords'|t('search-manager') }}</div>
                 </div>
                 {% endif %}
             </div>
             <details style="margin-top: 10px;">
-                <summary style="cursor: pointer; color: #0d78f2; font-weight: 500;">Custom transformer examples</summary>
+                <summary style="cursor: pointer; color: #0d78f2; font-weight: 500;">{{ 'Custom transformer examples'|t('search-manager') }}</summary>
                 <ul style="margin: 8px 0 0 20px; padding: 0;">
                     <li style="margin-bottom: 6px;">
                         <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">lindemannrock\searchmanager\transformers\EntryTransformer</code>
-                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">Basic entry fields only</span>
+                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">{{ 'Basic entry fields only'|t('search-manager') }}</span>
                     </li>
                     <li style="margin-bottom: 6px;">
                         <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">modules\transformers\MyCustomTransformer</code>
-                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">Your custom transformer class</span>
+                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">{{ 'Your custom transformer class'|t('search-manager') }}</span>
                     </li>
                 </ul>
             </details>

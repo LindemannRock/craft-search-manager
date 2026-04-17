@@ -111,19 +111,19 @@
             }) }}
 
 			{# Build backend type options with availability info for mysql/pgsql #}
-			{% set backendTypeOptions = [{ label: 'Select a backend type...', value: '' }] %}
+			{% set backendTypeOptions = [{ label: 'Select a backend type...'|t('search-manager'), value: '' }] %}
 			{% for value, label in backendTypes %}
 				{% if value == 'mysql' %}
 					{% if dbDriver == 'mysql' %}
-						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (MySQL)', value: 'mysql' }]) %}
+						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (MySQL)'|t('search-manager'), value: 'mysql' }]) %}
 					{% else %}
-						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (MySQL) - Not available (Craft uses PostgreSQL)', value: 'mysql' }]) %}
+						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (MySQL) - Not available (Craft uses PostgreSQL)'|t('search-manager'), value: 'mysql' }]) %}
 					{% endif %}
 				{% elseif value == 'pgsql' %}
 					{% if dbDriver == 'pgsql' %}
-						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (PostgreSQL)', value: 'pgsql' }]) %}
+						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (PostgreSQL)'|t('search-manager'), value: 'pgsql' }]) %}
 					{% else %}
-						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (PostgreSQL) - Not available (Craft uses MySQL)', value: 'pgsql' }]) %}
+						{% set backendTypeOptions = backendTypeOptions|merge([{ label: 'Craft Database (PostgreSQL) - Not available (Craft uses MySQL)'|t('search-manager'), value: 'pgsql' }]) %}
 					{% endif %}
 				{% else %}
 					{% set backendTypeOptions = backendTypeOptions|merge([{ label: label, value: value }]) %}
@@ -176,7 +176,7 @@
 
 							{% if typeDesc.infoBox and type != 'redis' %}
 								{% include 'lindemannrock-base/_components/info-box' with {
-                                    message: typeDesc.infoBox
+                                    message: typeDesc.infoBox|t('search-manager')
                                 } %}
 							{% endif %}
 						{% endif %}
@@ -185,12 +185,12 @@
 						{% if type == 'mysql' and dbDriver != 'mysql' %}
 							{% include 'lindemannrock-base/_components/info-box' with {
                                 type: 'warning',
-                                message: '<strong>Not Available:</strong> This backend requires Craft CMS to use MySQL. Your installation currently uses PostgreSQL. Please select a different backend or change your database configuration.'
+                                message: 'MySQL backend requires Craft to use MySQL. Your installation uses PostgreSQL.'|t('search-manager'),
                             } %}
 						{% elseif type == 'pgsql' and dbDriver != 'pgsql' %}
 							{% include 'lindemannrock-base/_components/info-box' with {
                                 type: 'warning',
-                                message: '<strong>Not Available:</strong> This backend requires Craft CMS to use PostgreSQL. Your installation currently uses MySQL. Please select a different backend or change your database configuration.'
+                                message: 'PostgreSQL backend requires Craft to use PostgreSQL. Your installation uses MySQL.'|t('search-manager'),
                             } %}
 						{% endif %}
 
@@ -200,19 +200,19 @@
 							{% if craftUsesRedis %}
 								{% include 'lindemannrock-base/_components/info-box' with {
                                     type: 'success',
-                                    message: '<strong>Redis Detected:</strong> Craft uses Redis at <code>' ~ craftRedisHost ~ ':' ~ craftRedisPort ~ '</code> on DB <code>' ~ craftRedisDb ~ '</code>. If no settings are provided below, Search Manager will reuse this connection and store its data on DB <code>' ~ searchFallbackDb ~ '</code> — isolated from Craft\'s cache so it survives cache flushes. If DB <code>' ~ searchFallbackDb ~ '</code> is already used for sessions or queue, set <code>database</code> explicitly below.'
+                                    message: 'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.'|t('search-manager', {host: craftRedisHost, port: craftRedisPort, db: craftRedisDb, fallbackDb: searchFallbackDb}),
                                 } %}
                             {% else %}
                                 {% include 'lindemannrock-base/_components/info-box' with {
                                     type: 'info',
-                                    message: '<strong>Redis Not Detected in Craft:</strong> Redis caching is not configured in <code>config/app.php</code>. You must provide connection settings below, or <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">configure Redis in Craft</a> first.'
+                                    message: 'Redis not detected in Craft. Redis caching is not configured in config/app.php. You must provide connection settings below, or configure Redis in Craft first.'|t('search-manager'),
                                 } %}
                             {% endif %}
 
 							{# 2. Managed-platform note #}
                             {% include 'lindemannrock-base/_components/info-box' with {
                                 type: 'warning',
-                                message: '<strong>Important:</strong> On managed platforms such as Servd, Fortrabbit, or Platform.sh, Redis should be configured explicitly via their environment variables (for example, <code>REDIS_HOST</code>, <code>REDIS_PORT</code>).'
+                                message: 'On managed platforms such as Servd, Fortrabbit, or Platform.sh, Redis should be configured explicitly via their environment variables (for example, REDIS_HOST, REDIS_PORT).'|t('search-manager'),
                             } %}
 						{% endif %}
 
