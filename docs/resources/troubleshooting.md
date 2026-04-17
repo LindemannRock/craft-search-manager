@@ -22,6 +22,20 @@ Common issues and solutions for Search Manager.
 - Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
+## Element Stays in Index After Editor Change
+
+**Symptom:** An editor changes a field that the index's criteria filter depends on (e.g. marks a product `sold`, flips a custom status, sets an expiry date), but the element still appears in search results. Running a full rebuild removes it; the next edit of the same kind brings the problem back.
+
+**Quick checks:**
+
+1. The index is using a `criteria` closure that filters by the field that changed (e.g. `->section(['products'])->status('available')` or a custom query method).
+2. Logs show a `Sync element state` line for the element after the save, but no `Element removed from index` or `Element indexed successfully` line follows.
+3. The element fires `EVENT_AFTER_SAVE_ELEMENT` normally — other edits to the same element do sync.
+
+**Fix:** Upgrade to Search Manager 5.43.2 or later. Earlier versions would silently skip the sync when an element's field change made it no longer match the index criteria — the element would stay in the backend with stale data until a full rebuild. The sync now removes stale documents from any index whose criteria no longer matches, regardless of whether the element is still enabled.
+
+**Why this happened:** The auto-sync previously re-ran the index criteria to decide which indices to touch. When criteria excluded the element, the sync correctly saw "this element doesn't belong in index X" — but then did nothing, rather than removing the old document.
+
 ## Indexing Is Slow
 
 - **Adjust batch size**: The `batchSize` setting (default: 100) controls how many elements are loaded per batch. Increase to 250–500 for faster indexing on servers with plenty of memory. On shared or memory-constrained hosting, **lower it** to 25–50 to prevent out-of-memory errors — the rebuild takes longer but completes reliably.
