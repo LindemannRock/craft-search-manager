@@ -1,16 +1,35 @@
 # Multi-Language Support
 
-Search Manager supports five languages with localized stop words, boolean operators, and automatic language detection from your Craft site settings.
+Search Manager detects language automatically from your Craft site settings and applies per-language stop words and boolean operators. Stop word lists ship for 5 languages, boolean operators for 12.
 
-## Supported Languages
+## Stop Words
 
-| Language | Code | Stop Words | Boolean Operators |
-|----------|------|-----------|-------------------|
-| English | `en` | 297 | AND, OR, NOT |
-| Arabic | `ar` | 122 | و, أو/او, ليس/لا |
-| German | `de` | 130+ | UND, ODER, NICHT |
-| French | `fr` | 140+ | ET, OU, SAUF |
-| Spanish | `es` | 135+ | Y, O, NO |
+| Language | Code | Stop Words |
+|----------|------|-----------|
+| English | `en` | 297 |
+| Arabic | `ar` | 122 |
+| German | `de` | 130+ |
+| French | `fr` | 140+ |
+| Spanish | `es` | 135+ |
+
+Other site languages still benefit from tokenisation, indexing, and boolean operator parsing — they just don't filter common words. See [Regional Variants](#regional-variants) below to add your own stop word file.
+
+## Boolean Operators
+
+| Language | Code | AND | OR | NOT |
+|----------|------|-----|-----|-----|
+| English | `en` | `AND` | `OR` | `NOT` |
+| German | `de` | `UND` | `ODER` | `NICHT` |
+| French | `fr` | `ET` | `OU` | `SAUF` |
+| Spanish | `es` | `Y` | `O` | `NO` |
+| Dutch | `nl` | `EN` | `OF` | `NIET` |
+| Italian | `it` | `E` | `O` | `NON` |
+| Portuguese | `pt` | `E` | `OU` | `NÃO` / `NAO` |
+| Swedish | `sv` | `OCH` | `ELLER` | `INTE` |
+| Danish | `da` | `OG` | `ELLER` | `IKKE` |
+| Norwegian | `no` | `OG` | `ELLER` | `IKKE` / `IKKJE` |
+| Japanese | `ja` | `かつ` | `または` / `もしくは` | `でない` / `ではない` |
+| Arabic | `ar` | `و` | `أو` / `او` | `ليس` / `لا` |
 
 ## Auto-Detection
 

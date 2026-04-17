@@ -78,7 +78,24 @@ Assign custom weights to individual terms:
 
 ## Localized Boolean Operators
 
-On non-English sites, boolean operators work in the site's language:
+On non-English sites, boolean operators work in the site's language. Supported languages:
+
+| Language | AND | OR | NOT |
+|---|---|---|---|
+| English (`en`) | `AND` | `OR` | `NOT` |
+| German (`de`) | `UND` | `ODER` | `NICHT` |
+| French (`fr`) | `ET` | `OU` | `SAUF` |
+| Spanish (`es`) | `Y` | `O` | `NO` |
+| Dutch (`nl`) | `EN` | `OF` | `NIET` |
+| Italian (`it`) | `E` | `O` | `NON` |
+| Portuguese (`pt`) | `E` | `OU` | `NÃO` / `NAO` |
+| Swedish (`sv`) | `OCH` | `ELLER` | `INTE` |
+| Danish (`da`) | `OG` | `ELLER` | `IKKE` |
+| Norwegian (`no`) | `OG` | `ELLER` | `IKKE` / `IKKJE` |
+| Japanese (`ja`) | `かつ` | `または` / `もしくは` | `でない` / `ではない` |
+| Arabic (`ar`) | `و` | `أو` / `او` | `ليس` / `لا` |
+
+All operators are case-insensitive. English operators always work as a fallback on any language site.
 
 ```twig
 {# German #}
@@ -91,9 +108,10 @@ On non-English sites, boolean operators work in the site's language:
 
 {# Spanish #}
 {% set results = craft.searchManager.search('products', 'café O té') %}
-```
 
-English operators always work as a fallback on any language site.
+{# Swedish #}
+{% set results = craft.searchManager.search('products', 'kaffe ELLER te') %}
+```
 
 ## Combining Operators
 
