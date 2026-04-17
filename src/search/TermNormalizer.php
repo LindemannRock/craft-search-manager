@@ -62,6 +62,22 @@ class TermNormalizer
             }
         }
 
-        return preg_replace('/\p{Mn}+/u', '', $text) ?? $text;
+        // Strip combining marks (diacritics) EXCEPT Japanese dakuten (U+3099)
+        // and handakuten (U+309A). Those marks change the syllable itself
+        // (て vs で, は vs ぱ) rather than decorate it, so folding them
+        // conflates distinct words (e.g. 金 "gold" and 銀 "silver" both read
+        // as きん after folding).
+        $text = preg_replace('/(?!\x{3099}|\x{309A})\p{Mn}+/u', '', $text) ?? $text;
+
+        // Recompose so preserved combining marks merge back into their
+        // precomposed syllable (て + U+3099 -> で, 안 Jamo -> 안 syllable).
+        if (class_exists(Normalizer::class)) {
+            $recomposed = Normalizer::normalize($text, Normalizer::FORM_C);
+            if ($recomposed !== false && $recomposed !== null) {
+                $text = $recomposed;
+            }
+        }
+
+        return $text;
     }
 }
