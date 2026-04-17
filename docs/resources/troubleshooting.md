@@ -32,7 +32,7 @@ Common issues and solutions for Search Manager.
 2. Logs show a `Sync element state` line for the element after the save, but no `Element removed from index` or `Element indexed successfully` line follows.
 3. The element fires `EVENT_AFTER_SAVE_ELEMENT` normally — other edits to the same element do sync.
 
-**Fix:** Upgrade to Search Manager 5.43.2 or later. Earlier versions would silently skip the sync when an element's field change made it no longer match the index criteria — the element would stay in the backend with stale data until a full rebuild. The sync now removes stale documents from any index whose criteria no longer matches, regardless of whether the element is still enabled.
+**Fix:** Upgrade to Search Manager 5.44.0 or later. Earlier versions would silently skip the sync when an element's field change made it no longer match the index criteria — the element would stay in the backend with stale data until a full rebuild. The sync now removes stale documents from any index whose criteria no longer matches, regardless of whether the element is still enabled.
 
 **Why this happened:** The auto-sync previously re-ran the index criteria to decide which indices to touch. When criteria excluded the element, the sync correctly saw "this element doesn't belong in index X" — but then did nothing, rather than removing the old document.
 
@@ -68,6 +68,7 @@ The rebuild job has a 30-minute TTR (time to reserve) by default. If your index 
 ```
 
 Other tips for large rebuilds:
+
 - **Lower `batchSize`** to `25`–`50` — smaller batches mean more progress checkpoints
 - **Rebuild individual indices** instead of all at once: `php craft search-manager/index/rebuild my-index`
 - **Check your transformer** — slow transformers (heavy relation queries, API calls) multiply rebuild time
@@ -160,9 +161,11 @@ ddev craft search-manager/security/generate-salt
 Typesense requires explicit `query_by` to search custom fields. The default searches `title`, `content`, `url`. For additional fields:
 
 ```twig
-{% set results = craft.searchManager.search('products', query, {
-    query_by: 'title,content,url,description,category',
-}) %}
+{%
+	set results = craft.searchManager.search('products', query, {
+	query_by: 'title,content,url,description,category',
+	})
+%}
 ```
 
 ## Heading Children Missing Descriptions
