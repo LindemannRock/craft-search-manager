@@ -233,6 +233,56 @@ class IndexingService extends Component
             }
         }
 
+        // Cleanup pass: the element passed shouldIndexElementForSite but may have
+        // fallen out of some indices' criteria (e.g. custom status flipped). Scan
+        // same-type-and-site indices the element did NOT match and purge any
+        // stale documents — otherwise they linger until a full rebuild.
+        $matchedHandles = array_flip($indexHandles);
+        $elementClass = get_class($element);
+        $siteId = (int) $element->siteId;
+
+        foreach ($this->getAllIndices() as $index) {
+            if (!$index->enabled) {
+                continue;
+            }
+            if ($index->elementType !== $elementClass) {
+                continue;
+            }
+            if (!$index->appliesToSiteId($siteId)) {
+                continue;
+            }
+            if (isset($matchedHandles[$index->handle])) {
+                continue;
+            }
+
+            try {
+                if (!SearchManager::$plugin->backend->documentExists($index->handle, $element->id, $siteId)) {
+                    continue;
+                }
+
+                if (SearchManager::$plugin->backend->delete($index->handle, $element->id, $siteId)) {
+                    SearchIndex::decrementDocumentCount($index->handle);
+                    if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+                        SearchManager::$plugin->backend->clearSearchCache($index->handle);
+                        SearchManager::$plugin->autocomplete->clearCache($index->handle);
+                    }
+                    $this->logInfo('Removed stale document from non-matching index', [
+                        'elementId' => $element->id,
+                        'siteId' => $siteId,
+                        'indexHandle' => $index->handle,
+                        'reason' => 'criteria no longer matches',
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                $this->logError('Failed to clean up stale document', [
+                    'elementId' => $element->id,
+                    'siteId' => $siteId,
+                    'indexHandle' => $index->handle,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $success;
     }
 
@@ -244,48 +294,55 @@ class IndexingService extends Component
      */
     public function removeElement(ElementInterface $element): bool
     {
-        $indexHandles = $this->getIndexHandlesForElement($element);
-
-        if (empty($indexHandles)) {
-            return true; // Not indexed, nothing to remove
-        }
-
+        // Iterate all indices matching elementType + site WITHOUT the criteria
+        // filter — criteria is irrelevant for removal, and filtering by it would
+        // skip deletions when the element's fields changed such that it no
+        // longer qualifies (e.g. status fields, custom filters).
+        $elementClass = get_class($element);
+        $siteId = (int) $element->siteId;
         $success = true;
 
-        foreach ($indexHandles as $indexHandle) {
+        foreach ($this->getAllIndices() as $index) {
+            if (!$index->enabled) {
+                continue;
+            }
+            if ($index->elementType !== $elementClass) {
+                continue;
+            }
+            if (!$index->appliesToSiteId($siteId)) {
+                continue;
+            }
+
             try {
-                // Check if document actually exists in this index before removing
                 $documentExists = SearchManager::$plugin->backend->documentExists(
-                    $indexHandle,
+                    $index->handle,
                     $element->id,
-                    $element->siteId
+                    $siteId
                 );
 
                 if (!$documentExists) {
                     $this->logDebug('Document not in index, skipping removal', [
                         'elementId' => $element->id,
-                        'siteId' => $element->siteId,
-                        'indexHandle' => $indexHandle,
+                        'siteId' => $siteId,
+                        'indexHandle' => $index->handle,
                     ]);
                     continue;
                 }
 
-                $result = SearchManager::$plugin->backend->delete($indexHandle, $element->id, $element->siteId);
+                $result = SearchManager::$plugin->backend->delete($index->handle, $element->id, $siteId);
 
                 if ($result) {
-                    // Clear caches for this index (if enabled)
                     if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
-                        SearchManager::$plugin->backend->clearSearchCache($indexHandle);
-                        SearchManager::$plugin->autocomplete->clearCache($indexHandle);
+                        SearchManager::$plugin->backend->clearSearchCache($index->handle);
+                        SearchManager::$plugin->autocomplete->clearCache($index->handle);
                     }
 
-                    // Decrement document count (only if document actually existed)
-                    SearchIndex::decrementDocumentCount($indexHandle);
+                    SearchIndex::decrementDocumentCount($index->handle);
 
                     $this->logInfo('Element removed from index', [
                         'elementId' => $element->id,
-                        'siteId' => $element->siteId,
-                        'indexHandle' => $indexHandle,
+                        'siteId' => $siteId,
+                        'indexHandle' => $index->handle,
                     ]);
                 } else {
                     $success = false;
@@ -293,8 +350,8 @@ class IndexingService extends Component
             } catch (\Throwable $e) {
                 $this->logError('Failed to remove element from index', [
                     'elementId' => $element->id,
-                    'siteId' => $element->siteId,
-                    'indexHandle' => $indexHandle,
+                    'siteId' => $siteId,
+                    'indexHandle' => $index->handle,
                     'error' => $e->getMessage(),
                 ]);
                 $success = false;
