@@ -15,7 +15,8 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * - Boosting: test^2 entry
  * - Boolean: test OR entry, test AND entry
  *
- * Supports localized operators for: English, German, French, Spanish, Arabic
+ * Supports localized operators for: English, German, French, Spanish, Dutch,
+ * Italian, Portuguese, Swedish, Danish, Norwegian, Japanese, Arabic
  *
  * Query parsing order:
  * 1. Extract quoted phrases → "exact phrase"
@@ -41,6 +42,25 @@ class QueryParser
         'de' => ['and' => 'UND', 'or' => 'ODER', 'not' => 'NICHT'],
         'fr' => ['and' => 'ET', 'or' => 'OU', 'not' => 'SAUF'],
         'es' => ['and' => 'Y', 'or' => 'O', 'not' => 'NO'],
+        'nl' => ['and' => 'EN', 'or' => 'OF', 'not' => 'NIET'],
+        'it' => ['and' => 'E', 'or' => 'O', 'not' => 'NON'],
+        // Portuguese: NÃO has a common unaccented variant on keyboards without easy tilde
+        'pt' => ['and' => 'E', 'or' => 'OU', 'not' => ['NÃO', 'NAO']],
+        // Swedish / Danish / Norwegian (Bokmål) share OR/NOT forms
+        'sv' => ['and' => 'OCH', 'or' => 'ELLER', 'not' => 'INTE'],
+        'da' => ['and' => 'OG', 'or' => 'ELLER', 'not' => 'IKKE'],
+        // Norwegian: Bokmål (IKKE) and Nynorsk (IKKJE) are both standard written forms
+        'no' => ['and' => 'OG', 'or' => 'ELLER', 'not' => ['IKKE', 'IKKJE']],
+        // Japanese: standard boolean-logic terms used in library and technical contexts
+        // Note: most Japanese users type English operators (AND/OR/NOT) in DB search;
+        // these native terms support queries that read naturally in Japanese.
+        // OR: または (standard) / もしくは (formal "or alternatively")
+        // NOT: でない (plain) / ではない (polite form)
+        'ja' => [
+            'and' => 'かつ',
+            'or' => ['または', 'もしくは'],
+            'not' => ['でない', 'ではない'],
+        ],
         // Arabic: support common spelling variations
         // OR: أو (with hamza) and او (without hamza)
         // NOT: ليس (formal "is not") and لا (common "no/not")
