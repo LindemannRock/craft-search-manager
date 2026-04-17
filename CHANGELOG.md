@@ -1,5 +1,23 @@
 # Changelog
 
+## [5.44.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.1...v5.44.0) (2026-04-17)
+
+
+### Features
+
+* Add 12-language translation support with 1,250 keys across EN, DE, FR, NL, ES, AR, IT, PT, JA, SV, DA, NO ([577625d](https://github.com/LindemannRock/craft-search-manager/commit/577625d1a0daa42475ed16cd2a4dc88e7f8212ca))
+* **stopwords:** add stop word lists for Danish, Italian, Japanese, Dutch, Norwegian, Portuguese, and Swedish ([827593e](https://github.com/LindemannRock/craft-search-manager/commit/827593e411c00a27b58040d77d01a24fe2cd2be2))
+
+
+### Bug Fixes
+
+* **edit.twig:** update Redis connection handling and messaging ([c494308](https://github.com/LindemannRock/craft-search-manager/commit/c494308cb393a514f2c3d1538fc356474822e914))
+* **IndexingService:** clean up stale documents from non-matching indices ([6718f3e](https://github.com/LindemannRock/craft-search-manager/commit/6718f3e480895d2bc65dc5df9d7afa519f11d96c))
+* **QueryParser:** support localized operators in all 12 shipped languages ([ed75206](https://github.com/LindemannRock/craft-search-manager/commit/ed752063249ecf3b49a486cedca3585707d5097e))
+* **release-please:** drop PAT requirement for release-please — use built-in GITHUB_TOKEN ([58d5c0f](https://github.com/LindemannRock/craft-search-manager/commit/58d5c0f16f8f64ba4ed5d3a87906e6c0e233d25a))
+* **templates:** translate hardcoded strings in CP editors ([d33ef5e](https://github.com/LindemannRock/craft-search-manager/commit/d33ef5ecb9dd7034a3da94245ab96264042c8adb))
+* **TermNormalizer:** improve diacritic handling and recomposition ([2a22f7c](https://github.com/LindemannRock/craft-search-manager/commit/2a22f7c2439c6552729e000cba6ee2a0de21adbc))
+
 ## [5.43.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.0...v5.43.1) (2026-04-05)
 
 
