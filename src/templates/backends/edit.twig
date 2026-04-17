@@ -159,6 +159,10 @@
 
 				{# Check if Craft is using Redis for caching (indicates Redis is available) #}
 				{% set craftUsesRedis = craft.app.cache is defined and craft.app.cache.className is defined and craft.app.cache.className == 'yii\\redis\\Cache' %}
+				{% set craftRedisDb = craftUsesRedis ? (craft.app.cache.redis.database ?? 0) : 0 %}
+				{% set craftRedisHost = craftUsesRedis ? (craft.app.cache.redis.hostname ?? 'localhost') : null %}
+				{% set craftRedisPort = craftUsesRedis ? (craft.app.cache.redis.port ?? 6379) : null %}
+				{% set searchFallbackDb = craftRedisDb + 1 %}
 
 				{% for type, schema in settingsSchemas %}
 					{% set typeDesc = backendDescriptions[type] ?? null %}
@@ -196,7 +200,7 @@
 							{% if craftUsesRedis %}
 								{% include 'lindemannrock-base/_components/info-box' with {
                                     type: 'success',
-                                    message: '<strong>Redis Detected:</strong> Craft is configured to use Redis for caching via <code>config/app.php</code>. If no settings are provided below, the backend will use Craft\'s Redis connection by default.'
+                                    message: '<strong>Redis Detected:</strong> Craft uses Redis at <code>' ~ craftRedisHost ~ ':' ~ craftRedisPort ~ '</code> on DB <code>' ~ craftRedisDb ~ '</code>. If no settings are provided below, Search Manager will reuse this connection and store its data on DB <code>' ~ searchFallbackDb ~ '</code> — isolated from Craft\'s cache so it survives cache flushes. If DB <code>' ~ searchFallbackDb ~ '</code> is already used for sessions or queue, set <code>database</code> explicitly below.'
                                 } %}
                             {% else %}
                                 {% include 'lindemannrock-base/_components/info-box' with {
@@ -205,10 +209,10 @@
                                 } %}
                             {% endif %}
 
-							{# 2. Important notes (database isolation + hosting platform) #}
+							{# 2. Managed-platform note #}
                             {% include 'lindemannrock-base/_components/info-box' with {
                                 type: 'warning',
-                                message: '<strong>Important:</strong> If no host is configured, Search Manager will reuse Craft\'s existing Redis connection but store its data in a separate Redis database (Craft database + 1), preventing search data from being lost when Craft\'s cache is cleared. When using managed platforms such as Servd, Fortrabbit, or Platform.sh, Redis should be configured explicitly via their environment variables (for example, <code>REDIS_HOST</code>, <code>REDIS_PORT</code>).'
+                                message: '<strong>Important:</strong> On managed platforms such as Servd, Fortrabbit, or Platform.sh, Redis should be configured explicitly via their environment variables (for example, <code>REDIS_HOST</code>, <code>REDIS_PORT</code>).'
                             } %}
 						{% endif %}
 
