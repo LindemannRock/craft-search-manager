@@ -116,18 +116,21 @@ class IndexingService extends Component
             return false;
         }
 
-        // Get all index handles for this element
+        // Get all index handles for this element. An empty array is valid
+        // here — the element may have fallen out of every index's criteria
+        // (e.g. custom status flipped from available → sold). We must still
+        // fall through to the cleanup pass below so stale documents get
+        // purged from any index that previously held them.
         $indexHandles = $this->getIndexHandlesForElement($element);
 
         if (empty($indexHandles)) {
-            $this->logDebug('No index configured for element', [
+            $this->logDebug('No matching indices — will run cleanup pass only', [
                 'elementId' => $element->id,
                 'elementType' => get_class($element),
             ]);
-            return true; // Not an error, just not indexed
         }
 
-        // Index to all matching indices
+        // Index to all matching indices (no-op when $indexHandles is empty)
         $success = true;
         foreach ($indexHandles as $indexHandle) {
             try {
