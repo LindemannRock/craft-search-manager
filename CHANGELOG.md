@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.44.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.0...v5.44.1) (2026-04-18)
+
+
+### Bug Fixes
+
+* **IndexingService:** run stale-doc cleanup when element matches zero indices ([35a0845](https://github.com/LindemannRock/craft-search-manager/commit/35a0845df892069a2b6ca79df8b1a087d816cc30))
+
 ## [5.44.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.1...v5.44.0) (2026-04-17)
 
 
