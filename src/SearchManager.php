@@ -916,21 +916,12 @@ class SearchManager extends Plugin
         /** @var Settings $settings */
         $settings = parent::getSettings();
 
-        // Override with config file values using Craft's native multi-environment handling
-        // This properly merges '*' with environment-specific configs (e.g., 'production')
         try {
-            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
-
-            if (!empty($config) && is_array($config)) {
-                foreach ($config as $key => $value) {
-                    // Skip special config keys that are handled elsewhere
-                    if ($key !== 'indices' && $key !== 'backends' && $key !== 'transformers') {
-                        if (property_exists($settings, $key)) {
-                            $settings->$key = $value;
-                        }
-                    }
-                }
-            }
+            PluginHelper::applyConfigOverridesToSettings($settings, 'search-manager', [
+                'indices',
+                'backends',
+                'transformers',
+            ]);
         } catch (\Throwable $e) {
             $this->logError('Failed to apply config overrides', [
                 'error' => $e->getMessage(),
