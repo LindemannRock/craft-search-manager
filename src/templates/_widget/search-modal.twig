@@ -81,6 +81,10 @@
 {% set triggerText = triggerText ?? widgetConfig.getTriggerText()|t('search-manager') %}
 {% set triggerSelector = triggerSelector ?? '' %}
 
+{# Analytics settings — forwarded to the web component as HTML attributes #}
+{% set source = source ?? widgetConfig.getAnalyticsSource() %}
+{% set idleTimeout = idleTimeout ?? widgetConfig.getIdleTimeout() %}
+
 {# Resolve styles first (needed for highlighting/backdrop defaults) #}
 {% set resolvedStyles = widgetConfig.getStylesForPreview() %}
 {% if styles is defined and styles is iterable %}
@@ -143,6 +147,8 @@
     destination-highlight-selector="{{ destinationHighlightSelector|e('html_attr') }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}
+    {% if source %}source="{{ source|e('html_attr') }}"{% endif %}
+    idle-timeout="{{ idleTimeout }}"
     dir="{{ dir }}"
     enable-highlighting="{{ _self.toBool(enableHighlighting, true) }}"
     highlight-tag="{{ highlightTag }}"
