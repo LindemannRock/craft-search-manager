@@ -162,15 +162,22 @@ This means a search for `البحـر` (with tatweel) matches content stored as 
 
 ## Localized Boolean Operators
 
-Boolean operators work in all five supported languages:
+Boolean operators work in all 12 supported languages:
 
 | Language | AND | OR | NOT |
 |----------|-----|-----|-----|
 | English | AND | OR | NOT |
 | German | UND | ODER | NICHT |
 | French | ET | OU | SAUF |
+| Dutch | EN | OF | NIET |
 | Spanish | Y | O | NO |
 | Arabic | و | أو / او | ليس / لا |
+| Italian | E | O | NON |
+| Portuguese | E | OU | NÃO |
+| Japanese | かつ | または | ない |
+| Swedish | OCH | ELLER | INTE |
+| Danish | OG | ELLER | IKKE |
+| Norwegian | OG | ELLER | IKKE / IKKJE |
 
 The language is auto-detected from the current site's locale. English operators always work as a fallback regardless of language.
 

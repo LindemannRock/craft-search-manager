@@ -83,7 +83,7 @@ Config-defined indices show a "Config" badge and cannot be edited in the CP. Dat
 | `transformer` | `string` | `null` | Transformer class for custom document structure |
 | `enabled` | `bool` | `true` | Whether the index is active |
 | `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
-| `language` | `string` | `null` | Language code (`en`, `ar`, `fr`, `es`, `de`). `null` = auto-detect from site locale |
+| `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
 | `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) |
 | `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
 | `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |

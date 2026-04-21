@@ -89,7 +89,7 @@ php craft search-manager/index/rebuild
 php craft search-manager/index/rebuild entries-en
 
 # Clear search cache
-php craft search-manager/cache/clear
+php craft search-manager/maintenance/clear-storage --type=database
 ```
 
 See [Console Commands](../developers/console-commands.md) for the full list.

@@ -124,7 +124,7 @@ If your search index disappears when Craft's cache is cleared:
 - Your hosting platform may use `FLUSHALL` (clears all Redis databases) instead of `FLUSHDB` (clears one database)
 - **Fix**: Set an explicit `database` number in your Redis backend config, or switch to MySQL/File backend
 
-See [Redis Backend](backends/backend-redis.md) for database isolation details.
+See [Redis Backend](../backends/backend-redis.md) for database isolation details.
 
 ## Algolia/Meilisearch/Typesense Connection Issues
 

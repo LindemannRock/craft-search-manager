@@ -149,7 +149,7 @@ input.addEventListener('input', (e) => {
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
 | `index` | (all indices) | Index handle. Omit to search all enabled indices. |
-| `limit` | `10` | Maximum suggestions/results |
+| `hitsPerPage` | `10` | Maximum suggestions/results |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code |
 | `only` | (none) | Return only `suggestions` or `results` |

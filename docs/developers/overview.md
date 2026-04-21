@@ -41,6 +41,9 @@ $plugin->widgetConfigs;    // Widget configuration CRUD
 $plugin->widgetStyles;     // Widget style preset CRUD
 $plugin->promotions;       // Search promotions
 $plugin->queryRules;       // Query rules management
+$plugin->deviceDetection;  // Device detection for analytics
+$plugin->enrichment;       // Search result enrichment
+$plugin->transformers;     // Document transformer management
 ```
 
 See [API Reference](api-reference.md) for full method documentation.

@@ -262,4 +262,4 @@ class ArticleTransformer extends BaseTransformer
 
 ## Modifying Data via Events
 
-You can also modify indexed data without a custom transformer by using the `EVENT_BEFORE_INDEX` event. See [Events](events.md) for details.
+You can also modify indexed data without a custom transformer by using the `EVENT_AFTER_TRANSFORM` event. See [Events](events.md) for details.

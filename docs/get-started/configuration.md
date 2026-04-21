@@ -52,12 +52,12 @@ These settings control how content gets indexed and which backend handles search
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `defaultBackendHandle` | `string` | `null` | Handle of the default backend (must match a key in `backends`) |
+| `defaultBackendHandle` | `?string` | `null` | Handle of the default backend (must match a key in `backends`) |
 | `autoIndex` | `bool` | `true` | Automatically index elements when saved |
 | `batchSize` | `int` | `100` | Elements per batch during rebuild. Lower to 25–50 on memory-constrained hosting; increase to 250–500 for faster rebuilds on dedicated servers. See [Troubleshooting](../resources/troubleshooting.md#indexing-is-slow) for tuning tips |
 | `queueEnabled` | `bool` | `true` | Use queue for indexing (recommended for indices with 1,000+ elements) |
 | `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
-| `indexPrefix` | `string` | `null` | Prefix for index names (useful for multi-environment setups) |
+| `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups) |
 
 When `replaceNativeSearch` is enabled, all CP searches and `Entry::find()->search()` queries use your backend instead of Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
 
@@ -90,9 +90,9 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enableStopWords` | `bool` | `true` | Filter out common words (the, a, is, etc.) |
-| `defaultLanguage` | `string` | `null` | Default language code. `null` = auto-detect from site locale |
+| `defaultLanguage` | `?string` | `null` | Default language code. `null` = auto-detect from site locale |
 
-Search Manager supports English, Arabic, German, French, and Spanish. Language is auto-detected from each site's locale setting. See [Multi-Language](../feature-tour/multi-language.md) for details.
+Search Manager supports 12 languages: English, German, French, Dutch, Spanish, Arabic, Italian, Portuguese, Japanese, Swedish, Danish, and Norwegian. Language is auto-detected from each site's locale setting. See [Multi-Language](../feature-tour/multi-language.md) for details.
 
 ### Highlighting
 
@@ -100,7 +100,7 @@ Search Manager supports English, Arabic, German, French, and Spanish. Language i
 |--------|------|---------|-------------|
 | `enableHighlighting` | `bool` | `true` | Enable search term highlighting |
 | `highlightTag` | `string` | `'mark'` | HTML tag wrapping highlighted terms (`mark`, `em`, `strong`, `span`) |
-| `highlightClass` | `string` | `null` | CSS class added to the highlight tag |
+| `highlightClass` | `?string` | `null` | CSS class added to the highlight tag |
 | `snippetLength` | `int` | `200` | Characters per context snippet |
 | `maxSnippets` | `int` | `3` | Maximum snippets per result |
 
@@ -131,12 +131,12 @@ Analytics can also be toggled per-index, so you can track searches on your publi
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `anonymizeIpAddress` | `bool` | `false` | Subnet masking (replace last octet with 0) |
-| `ipHashSalt` | `string` | `null` | Salt for IP hashing (read from `.env` automatically) |
+| `ipHashSalt` | `?string` | `null` | Salt for IP hashing (read from `.env` automatically) |
 | `enableGeoDetection` | `bool` | `false` | Enable country/city detection |
 | `geoProvider` | `string` | `'ip-api.com'` | Geo provider: `ip-api.com`, `ipapi.co`, `ipinfo.io` |
-| `geoApiKey` | `string` | `null` | API key for paid provider tiers |
-| `defaultCountry` | `string` | `null` | Default country for local dev (when IP is private) |
-| `defaultCity` | `string` | `null` | Default city for local dev |
+| `geoApiKey` | `?string` | `null` | API key for paid provider tiers |
+| `defaultCountry` | `?string` | `null` | Default country for local dev (when IP is private) |
+| `defaultCity` | `?string` | `null` | Default city for local dev |
 
 The IP hash salt is typically set via `.env` as `SEARCH_MANAGER_IP_SALT` — the plugin reads it automatically. See [Privacy & Security](../feature-tour/privacy-security.md).
 
@@ -176,7 +176,7 @@ Status sync automatically indexes entries that become live (postDate passed) or 
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `defaultWidgetHandle` | `string` | `null` | Handle of the default widget configuration |
+| `defaultWidgetHandle` | `?string` | `null` | Handle of the default widget configuration |
 
 ## Backends Configuration
 

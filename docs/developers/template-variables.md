@@ -221,7 +221,11 @@ List all indices available in the backend.
 
 ### `withBackend(backendHandle)` @since(5.28.0)
 
-Get a proxy for a specific configured backend. All methods above are available on the proxy.
+Get a proxy for a specific configured backend. All methods above are available on the proxy, plus:
+
+- `getBackendHandle()` — returns the configured backend handle
+- `getBackend()` — returns the underlying `BackendInterface` instance
+- `getStatus()` — returns backend status as an array
 
 ```twig
 {% set algolia = craft.searchManager.withBackend('production-algolia') %}

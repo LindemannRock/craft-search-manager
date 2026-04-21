@@ -19,7 +19,7 @@ GET /actions/search-manager/api/search
 | `page` | `0` | Page number (0-based) |
 | `type` | (none) | Filter by element type (e.g., `product`, `product,category`) |
 | `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
-| `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `es`, `ar`) |
+| `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
 | `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |

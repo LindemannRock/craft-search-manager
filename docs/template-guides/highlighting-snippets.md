@@ -147,7 +147,7 @@ These settings apply when you don't pass options to the template functions:
 
 Per-call options override these defaults.
 
-## Code Snippets @since(5.43.0)
+## Code Snippets @since(5.39.0)
 
 By default, code blocks (`<pre>` elements) in your content are included in search results but excluded from snippet descriptions. The `showCodeSnippets` setting controls this behavior.
 
@@ -197,7 +197,7 @@ Enable `showCodeSnippets` when code is the primary content users are searching f
 
 Keep it disabled (the default) for documentation sites, blogs, and general content where code blocks are supplementary and prose snippets provide better context.
 
-## Client-Side Highlighting
+## Client-Side Highlighting @since(5.40.0)
 
 Search Manager provides a standalone JavaScript highlighter for use in custom search UIs — the same highlighter used by the [Search Widget](../widget/overview.md).
 
@@ -316,7 +316,7 @@ document.getElementById('search-input').addEventListener('input', async function
     const query = this.value.trim();
     if (query.length < 2) return;
 
-    const response = await fetch('/actions/search-manager/search/query', {
+    const response = await fetch('/actions/search-manager/api/search', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
