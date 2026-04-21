@@ -27,7 +27,7 @@
 {% set statusFilter = craft.app.request.getParam('status', 'all') %}
 {% set typeFilter = craft.app.request.getParam('type', 'all') %}
 {% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'name') %}
+{% set sort = craft.app.request.getParam('sort', 'source') %}
 {% set dir = craft.app.request.getParam('dir', 'asc') %}
 {% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
 {% set limit = settings.itemsPerPage ?? 50 %}

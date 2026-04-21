@@ -46,8 +46,6 @@ class ConfiguredBackend extends Model
 
     public bool $enabled = true;
 
-    public int $sortOrder = 0;
-
     public ?\DateTime $dateCreated = null;
 
     public ?\DateTime $dateUpdated = null;
@@ -262,7 +260,6 @@ class ConfiguredBackend extends Model
             [['backendType'], 'validateDatabaseBackend'],
             [['enabled'], 'boolean'],
             [['enabled'], 'validateNotDisablingDefault'],
-            [['sortOrder'], 'integer'],
             [['settings'], 'safe'],
             [['settings'], 'validateSettingsSchema'],
             [['settings'], 'validateStoragePath'],
@@ -517,7 +514,7 @@ class ConfiguredBackend extends Model
         try {
             $rows = (new Query())
                 ->from('{{%searchmanager_backends}}')
-                ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
+                ->orderBy(['name' => SORT_ASC])
                 ->all();
 
             foreach ($rows as $row) {
@@ -562,7 +559,6 @@ class ConfiguredBackend extends Model
         $model->backendType = $config['backendType'] ?? '';
         $model->settings = $config['settings'] ?? [];
         $model->enabled = $config['enabled'] ?? true;
-        $model->sortOrder = $config['sortOrder'] ?? 0;
         $model->source = 'config';
         return $model;
     }
@@ -605,7 +601,6 @@ class ConfiguredBackend extends Model
         $model->settings = $settings;
 
         $model->enabled = (bool)$row['enabled'];
-        $model->sortOrder = (int)$row['sortOrder'];
 
         if (!empty($row['dateCreated'])) {
             $model->dateCreated = new \DateTime($row['dateCreated']);
@@ -645,7 +640,6 @@ class ConfiguredBackend extends Model
                 'backendType' => $this->backendType,
                 'settings' => $settingsValue,
                 'enabled' => (int)$this->enabled,
-                'sortOrder' => $this->sortOrder,
                 'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
             ];
 
@@ -750,7 +744,7 @@ class ConfiguredBackend extends Model
             ->select('handle')
             ->from('{{%searchmanager_backends}}')
             ->where(['enabled' => 1])
-            ->orderBy(['sortOrder' => SORT_ASC, 'id' => SORT_ASC])
+            ->orderBy(['name' => SORT_ASC, 'id' => SORT_ASC])
             ->one();
 
         if ($row) {

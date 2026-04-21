@@ -82,8 +82,6 @@ class SearchIndex extends Model
 
     public int $documentCount = 0;
 
-    public int $sortOrder = 0;
-
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -111,7 +109,7 @@ class SearchIndex extends Model
             [['backend'], 'string', 'max' => 255],
             [['backend'], 'validateBackendHandle'],
             [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl'], 'boolean'],
-            [['documentCount', 'sortOrder'], 'integer'],
+            [['documentCount'], 'integer'],
             [['siteId'], 'validateSiteId'],
             [['source'], 'in', 'range' => ['config', 'database']],
             [['criteria'], 'safe'],
@@ -396,7 +394,7 @@ class SearchIndex extends Model
             $rows = (new Query())
                 ->from('{{%searchmanager_indices}}')
                 ->where(['source' => 'database'])
-                ->orderBy(['sortOrder' => SORT_ASC, 'name' => SORT_ASC])
+                ->orderBy(['name' => SORT_ASC])
                 ->all();
 
             $indexIds = array_map(fn($row) => (int)$row['id'], $rows);
@@ -540,7 +538,6 @@ class SearchIndex extends Model
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
         $model->documentCount = (int)$row['documentCount'];
-        $model->sortOrder = (int)$row['sortOrder'];
 
         return $model;
     }
@@ -585,7 +582,6 @@ class SearchIndex extends Model
                 'source' => $this->source,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
                 'documentCount' => $this->documentCount,
-                'sortOrder' => $this->sortOrder,
                 'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
             ];
 
@@ -831,7 +827,6 @@ class SearchIndex extends Model
                         'source' => 'config',
                         'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
                         'documentCount' => $documentCount,
-                        'sortOrder' => 999,
                         'dateCreated' => Db::prepareDateForDb(new \DateTime()),
                         'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
                         'uid' => \craft\helpers\StringHelper::UUID(),
