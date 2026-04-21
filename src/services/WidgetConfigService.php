@@ -82,7 +82,7 @@ class WidgetConfigService extends Component
         $widgetConfig->type = $configData['type'] ?? 'modal';
         $widgetConfig->enabled = $configData['enabled'] ?? true;
         $widgetConfig->source = 'config';
-        $widgetConfig->styleHandle = $configData['style'] ?? null;
+        $widgetConfig->styleHandle = $configData['styleHandle'] ?? null;
 
         // Merge settings with defaults
         $settings = $configData['settings'] ?? [];
