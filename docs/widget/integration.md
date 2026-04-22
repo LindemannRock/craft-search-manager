@@ -22,16 +22,22 @@ Create a widget configuration in the CP (Search Manager > Widgets) or config fil
 } %}
 ```
 
-## Using a Style Preset
+## Overriding Styles Inline
 
-Apply a [Widget Style](styles.md) preset for consistent appearance:
+Override specific visual styles at render time. These merge on top of the widget config's [style preset](styles.md):
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
     config: 'main-search',
-    styleHandle: 'brand-dark',
+    styles: {
+        modalBg: '#0f172a',
+        inputBg: '#1e293b',
+        spinnerColor: '#818cf8',
+    },
 } %}
 ```
+
+> Style presets are assigned to widget configs via `styleHandle` in the [config file](../get-started/configuration.md) or the CP. The `styles` Twig parameter lets you override individual properties at render time without changing the preset.
 
 ## Customizing Inline
 

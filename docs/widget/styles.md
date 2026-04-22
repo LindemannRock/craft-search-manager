@@ -96,16 +96,19 @@ Reference a style preset from a widget config:
 ],
 ```
 
-Or pass it as a Twig parameter:
+You can also override individual style properties at render time using the `styles` Twig parameter:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
     config: 'main-search',
-    styleHandle: 'brand-dark',
+    styles: {
+        modalBg: '#0f172a',
+        spinnerColor: '#818cf8',
+    },
 } %}
 ```
 
-The style preset is resolved at render time. If the referenced style doesn't exist or is disabled, the widget falls back to the built-in defaults.
+Inline `styles` merge on top of the widget config's style preset. If the referenced preset doesn't exist or is disabled, the widget falls back to the built-in defaults.
 
 ## Style Properties
 

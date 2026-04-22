@@ -299,6 +299,104 @@ $enriched = SearchManager::$plugin->enrichment->enrichResults(
 // $enriched = [['id' => 123, 'title' => '...', 'url' => '...', 'description' => '...', 'headings' => [...]], ...]
 ```
 
+## PromotionService @since(5.10.0)
+
+Manages search promotions — pinned results that appear for specific queries.
+
+### `getAll(indexHandle)`
+
+Get all promotions, optionally filtered by index.
+
+```php
+$all = SearchManager::$plugin->promotions->getAll();
+$forIndex = SearchManager::$plugin->promotions->getAll('entries-en');
+```
+
+### `getPromotedElements(query, indexHandle, siteId)`
+
+Get promoted elements matching a query.
+
+```php
+$promoted = SearchManager::$plugin->promotions->getPromotedElements('craft cms', 'entries-en');
+```
+
+### `save(promotion)` / `delete(promotion)`
+
+```php
+$promotion = new Promotion();
+$promotion->query = 'craft cms';
+$promotion->indexHandle = 'entries-en';
+$promotion->elementId = 123;
+SearchManager::$plugin->promotions->save($promotion);
+SearchManager::$plugin->promotions->delete($promotion);
+```
+
+### `getPromotionCount(enabledOnly)`
+
+```php
+$total = SearchManager::$plugin->promotions->getPromotionCount();
+$enabled = SearchManager::$plugin->promotions->getPromotionCount(true);
+```
+
+## QueryRuleService @since(5.10.0)
+
+Manages query rules — synonyms, boosts, filters, and redirects triggered by search queries.
+
+### `getAll(indexHandle)`
+
+Get all query rules, optionally filtered by index.
+
+```php
+$all = SearchManager::$plugin->queryRules->getAll();
+$forIndex = SearchManager::$plugin->queryRules->getAll('entries-en');
+```
+
+### `getMatchingRules(query, indexHandle, siteId)`
+
+Get rules that match a given query.
+
+```php
+$rules = SearchManager::$plugin->queryRules->getMatchingRules('laptop', 'products');
+```
+
+### `getRedirectUrl(query, indexHandle, siteId)`
+
+Check if a query triggers a redirect rule. Returns the URL or `null`.
+
+```php
+$url = SearchManager::$plugin->queryRules->getRedirectUrl('contact us');
+if ($url) {
+    return $this->redirect($url);
+}
+```
+
+### `expandWithSynonyms(query, indexHandle, siteId)`
+
+Expand a query with synonym rules.
+
+```php
+$expanded = SearchManager::$plugin->queryRules->expandWithSynonyms('laptop');
+// ['laptop', 'notebook', 'portable computer']
+```
+
+### `save(rule)` / `delete(rule)`
+
+```php
+$rule = new QueryRule();
+$rule->query = 'laptop';
+$rule->actionType = QueryRule::ACTION_SYNONYM;
+$rule->actionValue = 'notebook,portable computer';
+SearchManager::$plugin->queryRules->save($rule);
+SearchManager::$plugin->queryRules->delete($rule);
+```
+
+### `getQueryRuleCount(enabledOnly)`
+
+```php
+$total = SearchManager::$plugin->queryRules->getQueryRuleCount();
+$enabled = SearchManager::$plugin->queryRules->getQueryRuleCount(true);
+```
+
 ## Events
 
 For extending Search Manager behavior without modifying core code, use [Events](events.md).
@@ -314,4 +412,13 @@ $settings->enableCache;
 $settings->cacheDuration;
 $settings->defaultBackendHandle;
 // etc.
+```
+
+### `getFullIndexName(handle)`
+
+Get the full prefixed index name (combines `indexPrefix` setting with the handle):
+
+```php
+$fullName = SearchManager::$plugin->getSettings()->getFullIndexName('entries-en');
+// Returns: "prod_entries-en" (when indexPrefix is "prod_")
 ```

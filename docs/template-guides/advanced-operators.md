@@ -155,4 +155,4 @@ This query:
 
 ## Fuzzy Matching
 
-Fuzzy matching is automatic — no special syntax needed. If a user searches for "tst", Search Manager finds documents containing "test". Configure sensitivity in [Configuration](../get-started/configuration.md).
+Fuzzy matching is automatic — no special syntax needed. If a user searches for "tst", Search Manager finds documents containing "test". Configure sensitivity in [Fuzzy Matching](../feature-tour/search-features.md#fuzzy-matching).

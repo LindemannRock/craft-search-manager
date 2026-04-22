@@ -6,7 +6,13 @@ Most settings can be managed from the CP without touching config files. The conf
 
 ## Config File
 
-Create `config/search-manager.php` in your project:
+Copy the sample config file to your project:
+
+```bash
+cp vendor/lindemannrock/craft-search-manager/src/config.php config/search-manager.php
+```
+
+Or create `config/search-manager.php` manually:
 
 ```php
 <?php
@@ -59,16 +65,11 @@ These settings control how content gets indexed and which backend handles search
 | `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
 | `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups) |
 
-When `replaceNativeSearch` is enabled, all CP searches and `Entry::find()->search()` queries use your backend instead of Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
+> [!NOTE]
+> When `replaceNativeSearch` is enabled, all CP searches and `Entry::find()->search()` queries use your backend instead of Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
 
-The `indexPrefix` setting is especially useful when sharing an Algolia or Meilisearch account across environments. See [Indices](../feature-tour/indices.md) for details.
-
-To programmatically get the full prefixed index name, use:
-
-```php
-$fullName = SearchManager::$plugin->getSettings()->getFullIndexName('my-index');
-// Returns: "myprefix_my-index"
-```
+> [!NOTE]
+> The `indexPrefix` setting is especially useful when sharing an Algolia or Meilisearch account across environments. See [Indices](../feature-tour/indices.md) for details.
 
 ### Search Algorithm
 
@@ -238,7 +239,7 @@ Widget configurations define how the frontend search widget appears and behaves:
         'name' => 'Brand Search',
         'type' => 'modal',     // 'modal', 'page', or 'inline'
         'enabled' => true,
-        'style' => 'brand-dark',  // Link to a widget style preset
+        'styleHandle' => 'brand-dark',  // Link to a widget style preset
         'settings' => [
             'search' => [
                 'indexHandles' => ['entries-en'],
@@ -296,6 +297,168 @@ Widget styles are reusable appearance presets that control colors, spacing, and 
 
 See [Widget Styles](../widget/styles.md) for all style properties and validation ranges.
 
+### Inline Styles (Alternative to Style Presets)
+
+Instead of referencing a style preset via `styleHandle`, you can define styles directly on the widget config under `settings.styles`. This is useful for one-off widgets that don't share their appearance with others:
+
+```php
+'widgets' => [
+    'docs-search' => [
+        'name' => 'Docs Search',
+        'type' => 'modal',
+        'enabled' => true,
+        // No styleHandle — styles are inline instead
+        'settings' => [
+            'styles' => [
+                'modalBg' => '#ffffff',
+                'modalBgDark' => '#0f172a',
+                'modalBorderRadius' => '16',
+                'inputBg' => '#f8fafc',
+                'inputBgDark' => '#1e293b',
+                'spinnerColor' => '#6366f1',
+                'spinnerColorDark' => '#818cf8',
+            ],
+            'search' => [
+                'indexHandles' => ['docs-manager'],
+            ],
+        ],
+    ],
+],
+```
+
+> [!NOTE]
+> If both `styleHandle` and `settings.styles` are set, the style preset takes priority. See [Widget Styles](../widget/styles.md) for all available style properties.
+
+## Full Multi-Environment Example
+
+```php
+<?php
+
+use craft\helpers\App;
+
+return [
+    '*' => [
+        // General
+        'pluginName' => 'Search Manager',
+        'logLevel' => 'error',
+
+        // Indexing
+        'autoIndex' => true,
+        'batchSize' => 100,
+        'queueEnabled' => true,
+
+        // Analytics
+        'enableAnalytics' => true,
+        'analyticsRetention' => 90,
+        'enableGeoDetection' => true,
+        'geoProvider' => 'ip-api.com',
+        'ipHashSalt' => App::env('SEARCH_MANAGER_IP_SALT'),
+
+        // Caching
+        'enableCache' => true,
+        'cacheDuration' => 3600,
+        'cacheStorageMethod' => 'file',
+        'enableCacheWarming' => true,
+
+        // Backends
+        'defaultBackendHandle' => 'craft-mysql',
+        'backends' => [
+            'craft-mysql' => [
+                'name' => 'Craft MySQL',
+                'backendType' => 'mysql',
+                'enabled' => true,
+                'settings' => [],
+            ],
+            'production-algolia' => [
+                'name' => 'Production Algolia',
+                'backendType' => 'algolia',
+                'enabled' => true,
+                'settings' => [
+                    'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
+                    'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
+                    'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
+                ],
+            ],
+        ],
+
+        // Indexing
+        'indexPrefix' => App::env('SEARCH_INDEX_PREFIX'),
+
+        // Indices
+        'indices' => [
+            'entries-en' => [
+                'name' => 'Entries (English)',
+                'elementType' => \craft\elements\Entry::class,
+                'siteId' => 1,
+                'criteria' => function($query) {
+                    return $query->section(['news', 'blog', 'pages']);
+                },
+                'transformer' => \modules\transformers\EntryTransformer::class, // Optional — defaults to AutoTransformer
+                'enabled' => true,
+            ],
+        ],
+
+        // Widgets
+        'defaultWidgetHandle' => 'main-search',
+        'widgets' => [
+            'main-search' => [
+                'name' => 'Main Search',
+                'type' => 'modal',
+                'enabled' => true,
+                'styleHandle' => 'brand-theme',
+                'settings' => [
+                    'search' => [
+                        'indexHandles' => ['entries-en'],
+                        'placeholder' => 'Search...',
+                    ],
+                    'behavior' => [
+                        'maxResults' => 10,
+                        'hotkey' => 'k',
+                        'groupResults' => true,
+                    ],
+                    'analytics' => [
+                        'source' => 'header-search',
+                    ],
+                ],
+            ],
+        ],
+
+        // Widget Styles
+        'widgetStyles' => [
+            'brand-theme' => [
+                'name' => 'Brand Theme',
+                'type' => 'modal',
+                'enabled' => true,
+                'styles' => [
+                    'modalBg' => '#ffffff',
+                    'modalBgDark' => '#1f2937',
+                    'modalBorderRadius' => '12',
+                    'inputBg' => '#f9fafb',
+                    'inputBgDark' => '#111827',
+                    'spinnerColor' => '#3b82f6',
+                    'spinnerColorDark' => '#60a5fa',
+                ],
+            ],
+        ],
+    ],
+
+    'dev' => [
+        'logLevel' => 'debug',
+        'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'US',
+        'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY') ?: 'New York',
+    ],
+
+    'staging' => [
+        'logLevel' => 'info',
+    ],
+
+    'production' => [
+        'defaultBackendHandle' => 'production-algolia',
+        'cacheStorageMethod' => 'redis',
+    ],
+];
+```
+
 ## Environment Variables
 
 These environment variables are commonly used with Search Manager:
@@ -329,91 +492,6 @@ REDIS_SEARCH_DATABASE=1
 
 # Typesense
 TYPESENSE_API_KEY=your-api-key
-```
-
-## Full Multi-Environment Example
-
-```php
-<?php
-
-use craft\helpers\App;
-
-return [
-    '*' => [
-        // General
-        'pluginName' => 'Search Manager',
-        'logLevel' => 'error',
-
-        // Indexing
-        'autoIndex' => true,
-        'batchSize' => 100,
-        'queueEnabled' => true,
-
-        // Analytics
-        'enableAnalytics' => true,
-        'analyticsRetention' => 90,
-        'enableGeoDetection' => true,
-        'geoProvider' => 'ip-api.com',
-
-        // Caching
-        'enableCache' => true,
-        'cacheDuration' => 3600,
-        'cacheStorageMethod' => 'file',
-        'enableCacheWarming' => true,
-
-        // Default backend
-        'defaultBackendHandle' => 'craft-mysql',
-        'backends' => [
-            'craft-mysql' => [
-                'name' => 'Craft MySQL',
-                'backendType' => 'mysql',
-                'enabled' => true,
-                'settings' => [],
-            ],
-            'production-algolia' => [
-                'name' => 'Production Algolia',
-                'backendType' => 'algolia',
-                'enabled' => true,
-                'settings' => [
-                    'applicationId' => App::env('ALGOLIA_APPLICATION_ID'),
-                    'adminApiKey' => App::env('ALGOLIA_ADMIN_API_KEY'),
-                    'searchApiKey' => App::env('ALGOLIA_SEARCH_API_KEY'),
-                ],
-            ],
-        ],
-
-        // Indices
-        'indices' => [
-            'entries-en' => [
-                'name' => 'Entries (English)',
-                'elementType' => \craft\elements\Entry::class,
-                'siteId' => 1,
-                'criteria' => function($query) {
-                    return $query->section(['news', 'blog', 'pages']);
-                },
-                'transformer' => \modules\transformers\EntryTransformer::class,
-                'enabled' => true,
-            ],
-        ],
-    ],
-
-    'dev' => [
-        'logLevel' => 'debug',
-        'indexPrefix' => 'local_',
-        'defaultCountry' => 'US',
-        'defaultCity' => 'New York',
-    ],
-
-    'staging' => [
-        'indexPrefix' => 'stage_',
-    ],
-
-    'production' => [
-        'indexPrefix' => 'prod_',
-        'defaultBackendHandle' => 'production-algolia',
-        'cacheStorageMethod' => 'redis',
-    ],
-];
 ```
 
 ## Translations

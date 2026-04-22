@@ -20,7 +20,7 @@ Define widget configs in `config/search-manager.php`:
         'name' => 'Main Search',
         'type' => 'modal',
         'enabled' => true,
-        'style' => 'brand-dark',
+        'styleHandle' => 'brand-dark',
         'settings' => [
             'search' => [
                 'indexHandles' => ['blog', 'products'],
@@ -117,8 +117,7 @@ Override settings per-include:
 | `theme` | `string` | `'light'` | `'light'` or `'dark'` |
 | `siteId` | `int` | — | Specific site to search |
 | `dir` | `string` | — | Text direction: `'ltr'` or `'rtl'` |
-| `styles` | `object` | `{}` | Override individual style values |
-| `styleHandle` | `string` | — | Handle of a [Widget Style](styles.md) preset for appearance |
+| `styles` | `object` | `{}` | Override individual [style properties](styles.md) at render time |
 
 ### Behavior
 

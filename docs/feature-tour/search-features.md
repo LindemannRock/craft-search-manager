@@ -111,7 +111,7 @@ When multiple boost factors apply, they stack. From highest to lowest impact:
 | 4 | Per-term boosts (`term^2`) | Custom multiplier |
 | 5 | Base BM25 score | 1x |
 
-You can adjust the boost factors in [Configuration](../get-started/configuration.md).
+You can adjust the boost factors in [Configuration](../get-started/configuration.md#search-algorithm).
 
 ## Fuzzy Matching
 
@@ -174,7 +174,7 @@ Boolean operators work in all 12 supported languages:
 | Arabic | و | أو / او | ليس / لا |
 | Italian | E | O | NON |
 | Portuguese | E | OU | NÃO |
-| Japanese | かつ | または | ない |
+| Japanese | かつ | または | でない / ではない |
 | Swedish | OCH | ELLER | INTE |
 | Danish | OG | ELLER | IKKE |
 | Norwegian | OG | ELLER | IKKE / IKKJE |

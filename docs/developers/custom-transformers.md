@@ -9,6 +9,7 @@ Search Manager includes these transformers out of the box:
 | Transformer | Element Types | What It Indexes |
 |------------|---------------|-----------------|
 | `AutoTransformer` | Entries, Assets, Categories, Users | All custom fields, relational fields, Matrix blocks, Table fields. Default for most element types. |
+| `EntryTransformer` | Entries | Everything from `AutoTransformer` plus entry-specific metadata: `section`, `sectionName`, `entryType`, `slug`, `postDate`, `authorName`. Use when you need to filter or boost by section/type. |
 | `DocsManagerTransformer` | Docs Manager (`SourceDoc`) | Full page content, headings, description, and keywords. Auto-selected when [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed. |
 
 ### Transformer Resolution Order
