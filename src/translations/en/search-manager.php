@@ -3,7 +3,7 @@
 /**
  * Search Manager translation file (English)
  *
- * @copyright Copyright (c) 2025 LindemannRock
+ * @copyright Copyright (c) 2026 LindemannRock
  */
 
 return [
@@ -1321,7 +1321,6 @@ return [
     'Port' => 'Port',
     'Password' => 'Password',
     'Protocol' => 'Protocol',
-    'API Key' => 'API Key',
     'Admin API Key' => 'Admin API Key',
     'Search API Key' => 'Search API Key',
     'Application ID' => 'Application ID',
@@ -1361,4 +1360,131 @@ return [
     'Custom transformer examples' => 'Custom transformer examples',
     'Basic entry fields only' => 'Basic entry fields only',
     'Your custom transformer class' => 'Your custom transformer class',
+
+    // Settings: General
+    'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.' => 'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.',
+    'Select a default backend...' => 'Select a default backend...',
+    'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.',
+    'Select a default widget...' => 'Select a default widget...',
+
+    // Settings: Indexing
+    'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.' => 'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.',
+    'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.' => 'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.',
+    '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.' => '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.',
+    'e.g., dev_, staging_, prod_' => 'e.g., dev_, staging_, prod_',
+
+    // Settings: Search
+    'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.',
+    'Learn about BM25' => 'Learn about BM25',
+    'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.',
+    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".',
+
+    // Settings: Highlighting
+    'Highlighting shows users which terms matched in search results. Use in templates:' => 'Highlighting shows users which terms matched in search results. Use in templates:',
+    '<mark> - Highlighted text (yellow background)' => '<mark> - Highlighted text (yellow background)',
+    '<em> - Emphasized text (italic)' => '<em> - Emphasized text (italic)',
+    '<strong> - Strong importance (bold)' => '<strong> - Strong importance (bold)',
+    '<span> - Generic container (no default style)' => '<span> - Generic container (no default style)',
+    '<b> - Bold text' => '<b> - Bold text',
+    '<i> - Italic text' => '<i> - Italic text',
+    'Preview of how highlighted text will appear:' => 'Preview of how highlighted text will appear:',
+    'This is a ' => 'This is a ',
+    'highlighted term' => 'highlighted term',
+    ' in search results.' => ' in search results.',
+    'HTML output:' => 'HTML output:',
+    'Snippets show contextual excerpts around matched terms. Use in templates:' => 'Snippets show contextual excerpts around matched terms. Use in templates:',
+    'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:' => 'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:',
+
+    // Settings: Language
+    '<strong>How language detection works:</strong><br>
+• Language is auto-detected from each element\'s site language during indexing<br>
+• Example: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Documents are stored with their language for filtering and analytics<br>
+• You can override language per-index in config file' => '<strong>How language detection works:</strong><br>
+• Language is auto-detected from each element\'s site language during indexing<br>
+• Example: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Documents are stored with their language for filtering and analytics<br>
+• You can override language per-index in config file',
+    'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.' => 'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.',
+    'Stop words are automatically loaded based on language:' => 'Stop words are automatically loaded based on language:',
+    'Stop Words File' => 'Stop Words File',
+    'Word Count' => 'Word Count',
+    'English' => 'English',
+    'Arabic (MSA)' => 'Arabic (MSA)',
+    'German' => 'German',
+    'French' => 'French',
+    'Spanish' => 'Spanish',
+    '{count} words' => '{count} words',
+    'To customize stop words for specific regions (e.g., Saudi Arabic vs Egyptian Arabic):' => 'To customize stop words for specific regions (e.g., Saudi Arabic vs Egyptian Arabic):',
+    'Create directory:' => 'Create directory:',
+    'Copy default file:' => 'Copy default file:',
+    'Edit {file} to add Saudi-specific terms' => 'Edit {file} to add Saudi-specific terms',
+    'Configure index:' => 'Configure index:',
+    '<strong>Fallback chain:</strong> ar-sa.php → ar.php → empty (no filtering)<br>
+<strong>Regional variants:</strong> ar-sa (Saudi), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico), etc.' => '<strong>Fallback chain:</strong> ar-sa.php → ar.php → empty (no filtering)<br>
+<strong>Regional variants:</strong> ar-sa (Saudi), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico), etc.',
+
+    // Settings: Analytics
+    '<strong>Privacy Levels:</strong><br>
+• <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+• <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Privacy Levels:</strong><br>
+• <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+• <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)',
+
+    // Settings: Cache
+    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cache Location:</strong> <code>{path}</code>',
+    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>',
+    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>',
+    'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>',
+    '<strong>How it works:</strong><br>
+• Search results are cached per query, index, site, and search options<br>
+• Cached results are returned instantly without hitting the backend<br>
+• Cache is automatically cleared when content changes (if enabled below)' => '<strong>How it works:</strong><br>
+• Search results are cached per query, index, site, and search options<br>
+• Cached results are returned instantly without hitting the backend<br>
+• Cache is automatically cleared when content changes (if enabled below)',
+    '<strong>How it works:</strong><br>
+• Autocomplete suggestions are cached per query prefix, index, and language<br>
+• Uses the same storage method as search results (file or Redis)<br>
+• Cache is cleared when content is re-indexed' => '<strong>How it works:</strong><br>
+• Autocomplete suggestions are cached per query prefix, index, and language<br>
+• Uses the same storage method as search results (file or Redis)<br>
+• Cache is cleared when content is re-indexed',
+    '<strong>How it works:</strong><br>
+• When enabled, cache is cleared automatically when elements are saved or deleted<br>
+• Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
+• Both search cache and autocomplete cache are cleared together per index' => '<strong>How it works:</strong><br>
+• When enabled, cache is cleared automatically when elements are saved or deleted<br>
+• Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
+• Both search cache and autocomplete cache are cleared together per index',
+    '<strong>How it works:</strong><br>
+• After index rebuild completes, a background job warms the cache<br>
+• Popular queries are pulled from search analytics (most searched terms)<br>
+• Both search results and autocomplete suggestions are pre-cached<br>
+• Requires analytics to be enabled for query data' => '<strong>How it works:</strong><br>
+• After index rebuild completes, a background job warms the cache<br>
+• Popular queries are pulled from search analytics (most searched terms)<br>
+• Both search results and autocomplete suggestions are pre-cached<br>
+• Requires analytics to be enabled for query data',
+    '<strong>How it works:</strong><br>
+• Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
+• Results are cached to avoid re-parsing the same user-agent repeatedly<br>
+• Recommended to keep enabled for production sites' => '<strong>How it works:</strong><br>
+• Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
+• Results are cached to avoid re-parsing the same user-agent repeatedly<br>
+• Recommended to keep enabled for production sites',
+    '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.',
+    '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.',
+
+    // Time units (used in cache.twig JS)
+    'second' => 'second',
+    'seconds' => 'seconds',
+    'minute' => 'minute',
+    'minutes' => 'minutes',
+    'hour' => 'hour',
+    'hours' => 'hours',
+    'day' => 'day',
+    'days' => 'days',
 ];

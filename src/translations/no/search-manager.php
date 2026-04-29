@@ -3,7 +3,7 @@
 /**
  * Search Manager translation file (Norwegian)
  *
- * @copyright Copyright (c) 2025 LindemannRock
+ * @copyright Copyright (c) 2026 LindemannRock
  */
 
 return [
@@ -1321,7 +1321,6 @@ return [
     'Port' => 'Port',
     'Password' => 'Passord',
     'Protocol' => 'Protokoll',
-    'API Key' => 'API Key',
     'Admin API Key' => 'Admin API Key',
     'Search API Key' => 'Søke-API Key',
     'Application ID' => 'Applikasjons-ID',
@@ -1361,4 +1360,131 @@ return [
     'Custom transformer examples' => 'Tilpassede transformer-eksempler',
     'Basic entry fields only' => 'Kun grunnleggende postfelt',
     'Your custom transformer class' => 'Din tilpassede transformer-klasse',
+
+    // Settings: General
+    'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.' => 'Ingen aktive backends. <a href="{url}">Opprett en backend</a> for å bruke som standard.',
+    'Select a default backend...' => 'Velg en standard-backend...',
+    'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'Ingen aktive widgeter. <a href="{url}">Opprett en widget</a> for å bruke som standard.',
+    'Select a default widget...' => 'Velg en standard-widget...',
+
+    // Settings: Indexing
+    'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.' => 'Erstatt Craft sin innebygde søkefunksjon med Search Manager. Når aktivert vil CP-søk og Entry::find()->search() bruke den konfigurerte backend.',
+    'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.' => 'Erstatt Craft sin innebygde søkefunksjon med Search Manager i hele Control Panel og maler.',
+    '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.' => '<strong>Ikke tilgjengelig:</strong> Denne funksjonen krever MySQL-, Redis- eller File-backend. Du bruker for øyeblikket <strong>{backendUpper}</strong>, som håndterer søk via sitt eget API. For {backend} bruker du <code>craft.searchManager.search()</code> i maler i stedet for innebygd søkeerstatning.',
+    'e.g., dev_, staging_, prod_' => 'f.eks. dev_, staging_, prod_',
+
+    // Settings: Search
+    'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) er en bransjestandard rangerings-algoritme brukt av Elasticsearch, Solr og andre søkemotorer. Disse parameterne styrer hvordan søkeresultater scores og rangeres.',
+    'Learn about BM25' => 'Lær om BM25',
+    'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'Boost-faktorer multipliserer relevansscoren for bestemte matchtyper. Høyere verdier rangerer disse treffene høyere i resultatene.',
+    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'Uklar matching aktiverer toleranse for skrivefeil ved hjelp av n-gram-likhet. Søk som «tst» kan finne «test», og «javascirpt» finner «javascript».',
+
+    // Settings: Highlighting
+    'Highlighting shows users which terms matched in search results. Use in templates:' => 'Utheving viser brukerne hvilke ord som matchet i søkeresultatene. Bruk i maler:',
+    '<mark> - Highlighted text (yellow background)' => '<mark> - Uthevet tekst (gul bakgrunn)',
+    '<em> - Emphasized text (italic)' => '<em> - Fremhevet tekst (kursiv)',
+    '<strong> - Strong importance (bold)' => '<strong> - Sterk viktighet (fet)',
+    '<span> - Generic container (no default style)' => '<span> - Generisk beholder (ingen standard stil)',
+    '<b> - Bold text' => '<b> - Fet tekst',
+    '<i> - Italic text' => '<i> - Kursiv tekst',
+    'Preview of how highlighted text will appear:' => 'Forhåndsvisning av hvordan uthevet tekst vil vises:',
+    'This is a ' => 'Dette er et ',
+    'highlighted term' => 'uthevet ord',
+    ' in search results.' => ' i søkeresultatene.',
+    'HTML output:' => 'HTML-utdata:',
+    'Snippets show contextual excerpts around matched terms. Use in templates:' => 'Utdrag viser kontekstuelle utsnitt rundt matchende ord. Bruk i maler:',
+    'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:' => 'Autofullføring gir søkeforslag mens du skriver, basert på indekserte ord. Bruk i maler:',
+
+    // Settings: Language
+    '<strong>How language detection works:</strong><br>
+• Language is auto-detected from each element\'s site language during indexing<br>
+• Example: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Documents are stored with their language for filtering and analytics<br>
+• You can override language per-index in config file' => '<strong>Slik fungerer språkgjenkjenning:</strong><br>
+• Språk gjenkjennes automatisk fra hvert elements nettstedsspråk under indeksering<br>
+• Eksempel: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Dokumenter lagres med sitt språk for filtrering og analyse<br>
+• Du kan overstyre språk per indeks i konfigurasjonsfilen',
+    'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.' => 'Stoppord er vanlige ord (the, a, is osv.) som filtreres bort under indeksering for å forbedre søkerelevansen. Search Manager inkluderer stoppord for: Engelsk, Arabisk, Tysk, Fransk, Spansk.',
+    'Stop words are automatically loaded based on language:' => 'Stoppord lastes automatisk basert på språk:',
+    'Stop Words File' => 'Stoppord-fil',
+    'Word Count' => 'Antall ord',
+    'English' => 'Engelsk',
+    'Arabic (MSA)' => 'Arabisk (MSA)',
+    'German' => 'Tysk',
+    'French' => 'Fransk',
+    'Spanish' => 'Spansk',
+    '{count} words' => '{count} ord',
+    'To customize stop words for specific regions (e.g., Saudi Arabic vs Egyptian Arabic):' => 'For å tilpasse stoppord for bestemte regioner (f.eks. Saudi-arabisk vs. egyptisk arabisk):',
+    'Create directory:' => 'Opprett mappe:',
+    'Copy default file:' => 'Kopier standardfil:',
+    'Edit {file} to add Saudi-specific terms' => 'Rediger {file} for å legge til Saudi-spesifikke termer',
+    'Configure index:' => 'Konfigurer indeks:',
+    '<strong>Fallback chain:</strong> ar-sa.php → ar.php → empty (no filtering)<br>
+<strong>Regional variants:</strong> ar-sa (Saudi), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico), etc.' => '<strong>Reservekjede:</strong> ar-sa.php → ar.php → tom (ingen filtrering)<br>
+<strong>Regionale varianter:</strong> ar-sa (Saudi-Arabia), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico) osv.',
+
+    // Settings: Analytics
+    '<strong>Privacy Levels:</strong><br>
+• <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+• <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Personvernnivåer:</strong><br>
+• <strong>Deaktivert</strong> (standard): Fullstendig IP hashet med salt (nøyaktig antall unike besøkende)<br>
+• <strong>Aktivert</strong>: Subnett maskert + hashet med salt (maksimalt personvern, mindre nøyaktig)',
+
+    // Settings: Cache
+    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cache-plassering:</strong> <code>{path}</code>',
+    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cache-plassering:</strong> Bruker Craft sin konfigurerte Redis-cache fra <code>config/app.php</code>',
+    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis ikke konfigurert:</strong> For å bruke Redis-cache, installer <code>yiisoft/yii2-redis</code> og konfigurer det i <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Les mer</a>',
+    'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cache-varighet i sekunder. Gjeldende: <strong id="cacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cache-varighet i sekunder. Gjeldende: <strong id="autocompleteCacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Cache-varighet i sekunder. Gjeldende: <strong id="deviceDetectionCacheDuration-human"></strong>',
+    '<strong>How it works:</strong><br>
+• Search results are cached per query, index, site, and search options<br>
+• Cached results are returned instantly without hitting the backend<br>
+• Cache is automatically cleared when content changes (if enabled below)' => '<strong>Slik fungerer det:</strong><br>
+• Søkeresultater caches per spørring, indeks, nettsted og søkealternativer<br>
+• Cachede resultater returneres umiddelbart uten å treffe backend<br>
+• Cache tømmes automatisk når innhold endres (hvis aktivert nedenfor)',
+    '<strong>How it works:</strong><br>
+• Autocomplete suggestions are cached per query prefix, index, and language<br>
+• Uses the same storage method as search results (file or Redis)<br>
+• Cache is cleared when content is re-indexed' => '<strong>Slik fungerer det:</strong><br>
+• Autofullføringforslag caches per spørringsprefix, indeks og språk<br>
+• Bruker samme lagringsmetode som søkeresultater (File eller Redis)<br>
+• Cache tømmes når innhold re-indekseres',
+    '<strong>How it works:</strong><br>
+• When enabled, cache is cleared automatically when elements are saved or deleted<br>
+• Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
+• Both search cache and autocomplete cache are cleared together per index' => '<strong>Slik fungerer det:</strong><br>
+• Når aktivert tømmes cache automatisk når elementer lagres eller slettes<br>
+• Status Sync håndterer planlagte poster (postDate/expiryDate) som endrer status uten lagringshendelser<br>
+• Både søke-cache og autofullføringscache tømmes samlet per indeks',
+    '<strong>How it works:</strong><br>
+• After index rebuild completes, a background job warms the cache<br>
+• Popular queries are pulled from search analytics (most searched terms)<br>
+• Both search results and autocomplete suggestions are pre-cached<br>
+• Requires analytics to be enabled for query data' => '<strong>Slik fungerer det:</strong><br>
+• Etter at indeksoppbygging er fullført, varmer en bakgrunnsjobb opp cachen<br>
+• Populære spørringer hentes fra søkeanalyse (mest søkte termer)<br>
+• Både søkeresultater og autofullføringforslag forhåndscaches<br>
+• Krever at analyse er aktivert for spørringsdata',
+    '<strong>How it works:</strong><br>
+• Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
+• Results are cached to avoid re-parsing the same user-agent repeatedly<br>
+• Recommended to keep enabled for production sites' => '<strong>Slik fungerer det:</strong><br>
+• Enhetsgjenkjenning analyserer user-agent-strenger for å identifisere enheter, nettlesere og operativsystemer<br>
+• Resultater caches for å unngå gjentatt analysering av samme user-agent<br>
+• Anbefales å holde aktivert for produksjonsnettsted',
+    '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync aktiv:</strong> En synkroniseringsjobb er planlagt og vil kjøre hvert {minutes}. minutt.',
+    '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync kjører ikke:</strong> Lagre innstillingene for å starte synkroniseringsjobben, eller den starter automatisk ved neste sideinnlasting.',
+
+    // Time units (used in cache.twig JS)
+    'second' => 'sekund',
+    'seconds' => 'sekunder',
+    'minute' => 'minutt',
+    'minutes' => 'minutter',
+    'hour' => 'time',
+    'hours' => 'timer',
+    'day' => 'dag',
+    'days' => 'dager',
 ];

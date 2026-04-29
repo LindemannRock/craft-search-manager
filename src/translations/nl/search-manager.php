@@ -3,7 +3,7 @@
 /**
  * Search Manager translation file (Dutch)
  *
- * @copyright Copyright (c) 2025 LindemannRock
+ * @copyright Copyright (c) 2026 LindemannRock
  */
 
 return [
@@ -1321,7 +1321,6 @@ return [
     'Port' => 'Poort',
     'Password' => 'Wachtwoord',
     'Protocol' => 'Protocol',
-    'API Key' => 'API Key',
     'Admin API Key' => 'Admin API Key',
     'Search API Key' => 'Zoek-API Key',
     'Application ID' => 'Applicatie-ID',
@@ -1361,4 +1360,131 @@ return [
     'Custom transformer examples' => 'Aangepaste transformer-voorbeelden',
     'Basic entry fields only' => 'Alleen basisitemvelden',
     'Your custom transformer class' => 'Uw aangepaste transformer-klasse',
+
+    // Settings: General
+    'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.' => 'Geen ingeschakelde backends. <a href="{url}">Maak een backend aan</a> om als standaard te gebruiken.',
+    'Select a default backend...' => 'Selecteer een standaardbackend…',
+    'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'Geen ingeschakelde widgets. <a href="{url}">Maak een widget aan</a> om als standaard te gebruiken.',
+    'Select a default widget...' => 'Selecteer een standaardwidget…',
+
+    // Settings: Indexing
+    'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.' => 'Vervang de native zoekopdracht van Craft door Search Manager. Wanneer ingeschakeld, zullen CP-zoekopdrachten en Entry::find()->search() uw geconfigureerde backend gebruiken.',
+    'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.' => 'Vervang de native zoekopdracht van Craft door Search Manager in het gehele Control Panel en de sjablonen.',
+    '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.' => '<strong>Niet beschikbaar:</strong> Deze functie vereist een MySQL-, Redis- of File-backend. U gebruikt momenteel <strong>{backendUpper}</strong>, dat zoeken verwerkt via zijn eigen API. Gebruik voor {backend} <code>craft.searchManager.search()</code> in sjablonen in plaats van de native zoekvervangingsfunctie.',
+    'e.g., dev_, staging_, prod_' => 'bijv. dev_, staging_, prod_',
+
+    // Settings: Search
+    'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) is een industriestandaard rangschikkingsalgoritme dat wordt gebruikt door Elasticsearch, Solr en andere zoekmachines. Deze parameters bepalen hoe zoekresultaten worden gescoord en gerangschikt.',
+    'Learn about BM25' => 'Meer over BM25',
+    'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'Boostfactoren vermenigvuldigen de relevantiescore voor specifieke overeenkomsttypes. Hogere waarden plaatsen die overeenkomsten hoger in de resultaten.',
+    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'Vaag zoeken maakt typfouttolerantie mogelijk via n-gram-overeenkomst. Zoekopdrachten zoals "tst" kunnen "test" vinden, "javascirpt" vindt "javascript".',
+
+    // Settings: Highlighting
+    'Highlighting shows users which terms matched in search results. Use in templates:' => 'Markering toont gebruikers welke termen overeenkomen in de zoekresultaten. Gebruik in sjablonen:',
+    '<mark> - Highlighted text (yellow background)' => '<mark> - Gemarkeerde tekst (gele achtergrond)',
+    '<em> - Emphasized text (italic)' => '<em> - Benadrukte tekst (cursief)',
+    '<strong> - Strong importance (bold)' => '<strong> - Sterke nadruk (vet)',
+    '<span> - Generic container (no default style)' => '<span> - Generieke container (geen standaardstijl)',
+    '<b> - Bold text' => '<b> - Vetgedrukte tekst',
+    '<i> - Italic text' => '<i> - Cursieve tekst',
+    'Preview of how highlighted text will appear:' => 'Voorvertoning van hoe gemarkeerde tekst wordt weergegeven:',
+    'This is a ' => 'Dit is een ',
+    'highlighted term' => 'gemarkeerde term',
+    ' in search results.' => ' in zoekresultaten.',
+    'HTML output:' => 'HTML-uitvoer:',
+    'Snippets show contextual excerpts around matched terms. Use in templates:' => 'Fragmenten tonen contextuele uittreksels rondom overeenkomende termen. Gebruik in sjablonen:',
+    'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:' => 'Automatisch aanvullen biedt suggesties tijdens het typen op basis van geïndexeerde termen. Gebruik in sjablonen:',
+
+    // Settings: Language
+    '<strong>How language detection works:</strong><br>
+• Language is auto-detected from each element\'s site language during indexing<br>
+• Example: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Documents are stored with their language for filtering and analytics<br>
+• You can override language per-index in config file' => '<strong>Hoe taaldetectie werkt:</strong><br>
+• Taal wordt automatisch gedetecteerd vanuit de sitetaal van elk element tijdens indexering<br>
+• Voorbeeld: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Documenten worden opgeslagen met hun taal voor filtering en analyses<br>
+• U kunt de taal per index overschrijven in het configuratiebestand',
+    'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.' => 'Stopwoorden zijn veelgebruikte woorden (de, een, is, enz.) die worden gefilterd tijdens indexering om de zoekgerelatieheid te verbeteren. Search Manager bevat stopwoorden voor: Engels, Arabisch, Duits, Frans, Spaans.',
+    'Stop words are automatically loaded based on language:' => 'Stopwoorden worden automatisch geladen op basis van taal:',
+    'Stop Words File' => 'Stopwoordenbestand',
+    'Word Count' => 'Woordenaantal',
+    'English' => 'Engels',
+    'Arabic (MSA)' => 'Arabisch (MSA)',
+    'German' => 'Duits',
+    'French' => 'Frans',
+    'Spanish' => 'Spaans',
+    '{count} words' => '{count} woorden',
+    'To customize stop words for specific regions (e.g., Saudi Arabic vs Egyptian Arabic):' => 'Om stopwoorden aan te passen voor specifieke regio\'s (bijv. Saoedi-Arabisch vs Egyptisch Arabisch):',
+    'Create directory:' => 'Map aanmaken:',
+    'Copy default file:' => 'Standaardbestand kopiëren:',
+    'Edit {file} to add Saudi-specific terms' => 'Bewerk {file} om Saoedi-specifieke termen toe te voegen',
+    'Configure index:' => 'Index configureren:',
+    '<strong>Fallback chain:</strong> ar-sa.php → ar.php → empty (no filtering)<br>
+<strong>Regional variants:</strong> ar-sa (Saudi), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico), etc.' => '<strong>Terugvalvolgorde:</strong> ar-sa.php → ar.php → leeg (geen filtering)<br>
+<strong>Regionale varianten:</strong> ar-sa (Saoedi-Arabië), ar-eg (Egypte), ar-ae (VAE), fr-ca (Quebec), es-mx (Mexico), enz.',
+
+    // Settings: Analytics
+    '<strong>Privacy Levels:</strong><br>
+• <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+• <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Privacyniveaus:</strong><br>
+• <strong>Uitgeschakeld</strong> (standaard): Volledig IP gehasht met salt (nauwkeurige unieke bezoekers)<br>
+• <strong>Ingeschakeld</strong>: Subnet gemaskeerd + gehasht met salt (maximale privacy, minder nauwkeurig)',
+
+    // Settings: Cache
+    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cachelocatie:</strong> <code>{path}</code>',
+    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cachelocatie:</strong> Gebruik van de geconfigureerde Redis-cache van Craft uit <code>config/app.php</code>',
+    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis niet geconfigureerd:</strong> Om Redis-caching te gebruiken, installeer <code>yiisoft/yii2-redis</code> en configureer dit in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Meer informatie</a>',
+    'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cacheduur in seconden. Huidig: <strong id="cacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cacheduur in seconden. Huidig: <strong id="autocompleteCacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Cacheduur in seconden. Huidig: <strong id="deviceDetectionCacheDuration-human"></strong>',
+    '<strong>How it works:</strong><br>
+• Search results are cached per query, index, site, and search options<br>
+• Cached results are returned instantly without hitting the backend<br>
+• Cache is automatically cleared when content changes (if enabled below)' => '<strong>Hoe het werkt:</strong><br>
+• Zoekresultaten worden gecached per query, index, site en zoekopties<br>
+• Gecachte resultaten worden onmiddellijk geretourneerd zonder de backend te raadplegen<br>
+• Cache wordt automatisch gewist wanneer inhoud wijzigt (indien hieronder ingeschakeld)',
+    '<strong>How it works:</strong><br>
+• Autocomplete suggestions are cached per query prefix, index, and language<br>
+• Uses the same storage method as search results (file or Redis)<br>
+• Cache is cleared when content is re-indexed' => '<strong>Hoe het werkt:</strong><br>
+• Suggesties voor automatisch aanvullen worden gecached per queryprefix, index en taal<br>
+• Gebruikt dezelfde opslagmethode als zoekresultaten (bestand of Redis)<br>
+• Cache wordt gewist wanneer inhoud opnieuw wordt geïndexeerd',
+    '<strong>How it works:</strong><br>
+• When enabled, cache is cleared automatically when elements are saved or deleted<br>
+• Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
+• Both search cache and autocomplete cache are cleared together per index' => '<strong>Hoe het werkt:</strong><br>
+• Wanneer ingeschakeld, wordt de cache automatisch gewist wanneer elementen worden opgeslagen of verwijderd<br>
+• Status Sync verwerkt geplande items (postDate/expiryDate) die van status veranderen zonder opslaggebeurtenissen<br>
+• Zowel de zoekcache als de autocomplete-cache worden samen gewist per index',
+    '<strong>How it works:</strong><br>
+• After index rebuild completes, a background job warms the cache<br>
+• Popular queries are pulled from search analytics (most searched terms)<br>
+• Both search results and autocomplete suggestions are pre-cached<br>
+• Requires analytics to be enabled for query data' => '<strong>Hoe het werkt:</strong><br>
+• Na voltooiing van de indexopbouw warmt een achtergrondtaak de cache op<br>
+• Populaire zoekopdrachten worden opgehaald uit de zoekanalyses (meest gezochte termen)<br>
+• Zowel zoekresultaten als suggesties voor automatisch aanvullen worden vooraf gecached<br>
+• Vereist dat analyses zijn ingeschakeld voor querygegevens',
+    '<strong>How it works:</strong><br>
+• Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
+• Results are cached to avoid re-parsing the same user-agent repeatedly<br>
+• Recommended to keep enabled for production sites' => '<strong>Hoe het werkt:</strong><br>
+• Apparaatdetectie parseert user-agent-strings om apparaten, browsers en besturingssystemen te identificeren<br>
+• Resultaten worden gecached om herhaald parsen van dezelfde user-agent te voorkomen<br>
+• Aanbevolen om ingeschakeld te houden voor productiesites',
+    '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync actief:</strong> Een synchronisatietaak is ingepland en wordt elke {minutes} minuten uitgevoerd.',
+    '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync niet actief:</strong> Sla de instellingen op om de synchronisatietaak te starten, of deze wordt automatisch gestart bij de volgende paginalading.',
+
+    // Time units (used in cache.twig JS)
+    'second' => 'seconde',
+    'seconds' => 'seconden',
+    'minute' => 'minuut',
+    'minutes' => 'minuten',
+    'hour' => 'uur',
+    'hours' => 'uren',
+    'day' => 'dag',
+    'days' => 'dagen',
 ];

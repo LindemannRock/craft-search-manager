@@ -3,7 +3,7 @@
 /**
  * Search Manager translation file (Japanese)
  *
- * @copyright Copyright (c) 2025 LindemannRock
+ * @copyright Copyright (c) 2026 LindemannRock
  */
 
 return [
@@ -38,7 +38,7 @@ return [
     'Indexing' => 'インデックス作成',
     'Advanced' => '詳細',
     'Search' => '検索',
-    'Cache' => 'Cache',
+    'Cache' => 'キャッシュ',
     'Interface' => 'インターフェース',
     'Language' => '言語',
     'Highlighting' => 'ハイライト',
@@ -123,55 +123,55 @@ return [
     'Autocomplete / Suggestions' => 'オートコンプリート / サジェスト',
     'Autocomplete Suggestions' => 'オートコンプリートサジェスト',
     'Enable Autocomplete' => 'オートコンプリートを有効化',
-    'Autocomplete Caching' => 'オートコンプリート キャッシュ',
-    'Autocomplete Cache Duration' => 'オートコンプリート Cache の有効期間',
+    'Autocomplete Caching' => 'オートコンプリートキャッシュ',
+    'Autocomplete Cache Duration' => 'オートコンプリートキャッシュの有効期間',
     'Suggestion Limit' => 'サジェスト上限',
     'Minimum Length' => '最小文字数',
     'Minimum characters before showing suggestions. Range: 1 - 5. Lower = more suggestions but slower performance.' => 'サジェストを表示する前の最小文字数。範囲: 1 - 5。低い = サジェストが多いがパフォーマンスが遅い。',
     'Maximum suggestions to return. Range: 1 - 50. More = more choice, but can overwhelm users.' => '返す最大サジェスト数。範囲: 1 - 50。多い = 選択肢が増えるが、ユーザーを圧倒する可能性あり。',
-    'Cache autocomplete suggestions separately from search results. Uses a shorter TTL since autocomplete is called more frequently.' => '検索結果とは別にオートコンプリートサジェストを Cache に保存。オートコンプリートはより頻繁に呼び出されるため、短い TTL を使用。',
+    'Cache autocomplete suggestions separately from search results. Uses a shorter TTL since autocomplete is called more frequently.' => '検索結果とは別にオートコンプリートサジェストをキャッシュに保存。オートコンプリートはより頻繁に呼び出されるため、短い TTL を使用。',
     'Default: 10 suggestions. Returns top 10 most frequent/relevant terms.' => 'デフォルト: 10 件のサジェスト。最も頻度が高い/関連性の高い上位 10 用語を返します。',
     'Default: 2 characters. User types "te" → shows "test", "testing".' => 'デフォルト: 2 文字。ユーザーが "te" と入力 → "test"、"testing" を表示。',
     'Type at least {minLength} characters above to see suggestions' => 'サジェストを表示するには、上に {minLength} 文字以上入力してください',
-    'Enable Cache Autocomplete Results' => 'オートコンプリート結果の Cache を有効化',
-    'Cache Autocomplete Results' => 'オートコンプリート結果を Cache に保存',
+    'Enable Cache Autocomplete Results' => 'オートコンプリート結果のキャッシュを有効化',
+    'Cache Autocomplete Results' => 'オートコンプリート結果をキャッシュに保存',
     'Test Autocomplete' => 'オートコンプリートをテスト',
     'Autocomplete' => 'オートコンプリート',
     'Available Languages' => '利用可能な言語',
 
     // Cache settings
-    'Cache Settings' => 'Cache 設定',
-    'Cache Storage Settings' => 'Cache ストレージ設定',
-    'Enable Cache Warming' => 'Cache ウォーミングを有効化',
-    'Cache Search Results' => '検索結果を Cache に保存',
-    'Cache Popular Queries Only' => '人気のクエリのみ Cache に保存',
-    'Cache Storage Method' => 'Cache ストレージ方法',
-    'Cache Invalidation' => 'Cache 無効化',
-    'Cache Device Detection' => 'デバイス検出 Cache',
-    'Search Results Cache Duration' => '検索結果 Cache の有効期間',
-    'Cache Warming' => 'Cache ウォーミング',
+    'Cache Settings' => 'キャッシュ設定',
+    'Cache Storage Settings' => 'キャッシュストレージ設定',
+    'Enable Cache Warming' => 'キャッシュウォーミングを有効化',
+    'Cache Search Results' => '検索結果をキャッシュに保存',
+    'Cache Popular Queries Only' => '人気のクエリのみキャッシュに保存',
+    'Cache Storage Method' => 'キャッシュストレージ方法',
+    'Cache Invalidation' => 'キャッシュ無効化',
+    'Cache Device Detection' => 'デバイス検出キャッシュ',
+    'Search Results Cache Duration' => '検索結果キャッシュの有効期間',
+    'Cache Warming' => 'キャッシュウォーミング',
     'Popular Queries to Warm' => 'ウォーミングする人気のクエリ',
     'Popular Query Threshold' => '人気クエリのしきい値',
-    'Cache search results to improve performance and reduce backend load' => '検索結果を Cache に保存してパフォーマンスを向上させ、バックエンドの負荷を軽減',
-    'Cache autocomplete suggestions for better performance' => 'より良いパフォーマンスのためにオートコンプリートサジェストを Cache に保存',
-    'Cache device detection results for better performance' => 'より良いパフォーマンスのためにデバイス検出結果を Cache に保存',
-    'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.' => 'インデックス再構築後に人気のクエリで Cache を自動的にウォーミング。最初の訪問者が高速な Cache された結果を取得できます。',
+    'Cache search results to improve performance and reduce backend load' => '検索結果をキャッシュに保存してパフォーマンスを向上させ、バックエンドの負荷を軽減',
+    'Cache autocomplete suggestions for better performance' => 'より良いパフォーマンスのためにオートコンプリートサジェストをキャッシュに保存',
+    'Cache device detection results for better performance' => 'より良いパフォーマンスのためにデバイス検出結果をキャッシュに保存',
+    'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.' => 'インデックス再構築後に人気のクエリでキャッシュを自動的にウォーミング。最初の訪問者が高速なキャッシュされた結果を取得できます。',
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'インデックス再構築後にプリキャッシュする人気クエリの数。クエリはアナリティクスデータから取得されます。',
-    'Number of times a query must be searched before it gets cached' => 'クエリが Cache に保存される前に検索される必要がある回数',
-    'Only cache queries that have been searched multiple times' => '複数回検索されたクエリのみ Cache に保存',
-    'Saves cache space by only caching frequently-used queries' => '頻繁に使用されるクエリのみ Cache に保存して Cache 容量を節約',
-    'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'エントリの保存または削除時に検索 Cache を自動的にクリア。高トラフィックサイトでは Cache スラッシングを減らすために無効にしてください。',
-    'Higher values warm more cache but take longer to complete' => '値が高いほど多くの Cache がウォーミングされますが、完了に時間がかかります',
-    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'Cache データの保存方法。ロードバランスまたはマルチサーバー環境には Redis/Database を使用。',
-    'When disabled, cache expires naturally based on Cache Duration setting' => '無効にすると、Cache は Cache 有効期間の設定に基づいて自然に期限切れになります',
+    'Number of times a query must be searched before it gets cached' => 'クエリがキャッシュに保存される前に検索される必要がある回数',
+    'Only cache queries that have been searched multiple times' => '複数回検索されたクエリのみキャッシュに保存',
+    'Saves cache space by only caching frequently-used queries' => '頻繁に使用されるクエリのみキャッシュに保存してキャッシュ容量を節約',
+    'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'エントリの保存または削除時に検索キャッシュを自動的にクリア。高トラフィックサイトではキャッシュスラッシングを減らすために無効にしてください。',
+    'Higher values warm more cache but take longer to complete' => '値が高いほど多くのキャッシュがウォーミングされますが、完了に時間がかかります',
+    'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'キャッシュデータの保存方法。ロードバランスまたはマルチサーバー環境には Redis/Database を使用。',
+    'When disabled, cache expires naturally based on Cache Duration setting' => '無効にすると、キャッシュはキャッシュ有効期間の設定に基づいて自然に期限切れになります',
     'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/Database（ロードバランス、マルチサーバー、クラウドホスティング）',
-    'Cache Hit Rate' => 'Cache ヒット率',
-    'Cache Hits' => 'Cache ヒット',
-    'Cache Misses' => 'Cache ミス',
-    'Cache Status' => 'Cache ステータス',
-    'Cache Management' => 'Cache 管理',
-    'Total cached entries' => 'Cache されたエントリの合計',
-    'Clear Cache on Element Save' => 'エレメント保存時に Cache をクリア',
+    'Cache Hit Rate' => 'キャッシュヒット率',
+    'Cache Hits' => 'キャッシュヒット',
+    'Cache Misses' => 'キャッシュミス',
+    'Cache Status' => 'キャッシュステータス',
+    'Cache Management' => 'キャッシュ管理',
+    'Total cached entries' => 'キャッシュされたエントリの合計',
+    'Clear Cache on Element Save' => 'エレメント保存時にキャッシュをクリア',
     '10 queries (Light)' => '10 クエリ（軽量）',
     '25 queries (Moderate)' => '25 クエリ（中程度）',
     '50 queries (Recommended)' => '50 クエリ（推奨）',
@@ -274,9 +274,9 @@ return [
     'Geographic Distribution' => '地理的分布',
     'Geographic detection is disabled.' => '地理検出は無効です。',
     'Detect user location for analytics' => 'アナリティクスのためにユーザーの位置を検出',
-    'Device Detection Caching' => 'デバイス検出 Cache',
-    'Device Detection Cache Duration' => 'デバイス検出 Cache の有効期間',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'デバイス検出の Cache はアナリティクスが有効な場合のみ利用可能です。',
+    'Device Detection Caching' => 'デバイス検出キャッシュ',
+    'Device Detection Cache Duration' => 'デバイス検出キャッシュの有効期間',
+    'Device detection caching is only available when Analytics is enabled. Go to' => 'デバイス検出のキャッシュはアナリティクスが有効な場合のみ利用可能です。',
     'to enable analytics.' => 'アナリティクスを有効にするには。',
 
     // Interface settings
@@ -464,14 +464,14 @@ return [
     'Rebuild index? This will re-index all elements.' => 'インデックスを再構築しますか？すべてのエレメントが再インデックスされます。',
     'Rebuild All Indices' => 'すべてのインデックスを再構築',
     'Rebuild indices or clear storage data.' => 'インデックスを再構築するかストレージデータをクリアします。',
-    'Clear Index Cache' => 'インデックス Cache をクリア',
+    'Clear Index Cache' => 'インデックスキャッシュをクリア',
     'Clear Index' => 'インデックスをクリア',
     'Clear Index Data' => 'インデックスデータをクリア',
-    'Clear Search Cache' => '検索 Cache をクリア',
-    'Clear Autocomplete Cache' => 'オートコンプリート Cache をクリア',
+    'Clear Search Cache' => '検索キャッシュをクリア',
+    'Clear Autocomplete Cache' => 'オートコンプリートキャッシュをクリア',
     'Sync Count from Backend' => 'バックエンドからカウントを同期',
     'Clear all data from this index? This cannot be undone.' => 'このインデックスのすべてのデータをクリアしますか？この操作は元に戻せません。',
-    'Clear cached search results and autocomplete suggestions for this index?' => 'このインデックスの Cache された検索結果とオートコンプリートサジェストをクリアしますか？',
+    'Clear cached search results and autocomplete suggestions for this index?' => 'このインデックスのキャッシュされた検索結果とオートコンプリートサジェストをクリアしますか？',
     'This will remove all documents from the index. Continue?' => 'インデックスからすべてのドキュメントが削除されます。続行しますか？',
     'Last indexed' => '最終インデックス',
     'Last Indexed' => '最終インデックス',
@@ -959,14 +959,14 @@ return [
     'Export failed. Check logs for details.' => 'エクスポートに失敗しました。詳細はログを確認してください。',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => '検索インデックスの監視、ファイル Cache のクリア、検索インフラストラクチャの管理。',
+    'Monitor search indices, clear file cache, and manage your search infrastructure.' => '検索インデックスの監視、ファイルキャッシュのクリア、検索インフラストラクチャの管理。',
     'Clear Storage' => 'ストレージをクリア',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'ストレージタイプからすべてのインデックスデータをクリア。そのストレージを使用するすべてのインデックスからデータを削除します — もう存在しないインデックスの孤立データを含みます。バックエンドの切り替えやトラブルシューティング時に使用。',
-    'Clear temporary cached data to improve performance and free up storage space.' => 'パフォーマンスを向上させ、ストレージ容量を解放するために一時的な Cache データをクリア。',
-    'Clear All Caches' => 'すべての Cache をクリア',
-    'Clear Device Cache' => 'デバイス Cache をクリア',
+    'Clear temporary cached data to improve performance and free up storage space.' => 'パフォーマンスを向上させ、ストレージ容量を解放するために一時的なキャッシュデータをクリア。',
+    'Clear All Caches' => 'すべてのキャッシュをクリア',
+    'Clear Device Cache' => 'デバイスキャッシュをクリア',
     'Clear All Analytics' => 'すべてのアナリティクスをクリア',
-    'Are you sure you want to clear all caches?' => 'すべての Cache をクリアしてもよろしいですか？',
+    'Are you sure you want to clear all caches?' => 'すべてのキャッシュをクリアしてもよろしいですか？',
     'Are you sure you want to clear ALL data from' => 'すべてのデータをクリアしてもよろしいですか：',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'すべてのアナリティクス追跡データを完全に削除します。この操作は元に戻せません！',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'これにより、すべての検索追跡データが削除され、すべての統計がリセットされます。本当によろしいですか？',
@@ -980,8 +980,8 @@ return [
     'Failed to clear storage' => 'ストレージのクリアに失敗しました',
     'Count synced' => 'カウント同期済み',
     'Count synced successfully' => 'カウントが正常に同期されました',
-    'Cache cleared' => 'Cache がクリアされました',
-    'Cache cleared successfully' => 'Cache が正常にクリアされました',
+    'Cache cleared' => 'キャッシュがクリアされました',
+    'Cache cleared successfully' => 'キャッシュが正常にクリアされました',
 
     // Test features
     'Test Features' => 'テスト機能',
@@ -1097,30 +1097,30 @@ return [
     'Failed to load backend info. Check logs for details.' => 'バックエンド情報の読み込みに失敗しました。詳細はログを確認してください。',
 
     // Cache action messages
-    'Cache cleared for "{name}".' => '「{name}」の Cache をクリアしました。',
-    'Search cache cleared for index: {handle}' => 'インデックス {handle} の検索 Cache をクリアしました',
-    'Search cache cleared successfully ({count} files).' => '検索 Cache が正常にクリアされました（{count} ファイル）。',
-    'Search cache cleared successfully.' => '検索 Cache が正常にクリアされました。',
-    'All search caches cleared' => 'すべての検索 Cache をクリアしました',
-    'Autocomplete cache cleared successfully ({count} files).' => 'オートコンプリート Cache が正常にクリアされました（{count} ファイル）。',
-    'Autocomplete cache cleared successfully.' => 'オートコンプリート Cache が正常にクリアされました。',
-    'Device cache cleared successfully ({count} files).' => 'デバイス Cache が正常にクリアされました（{count} ファイル）。',
-    'Device cache cleared successfully.' => 'デバイス Cache が正常にクリアされました。',
-    'All caches cleared successfully ({count} files).' => 'すべての Cache が正常にクリアされました（{count} ファイル）。',
-    'All caches cleared successfully.' => 'すべての Cache が正常にクリアされました。',
+    'Cache cleared for "{name}".' => '「{name}」のキャッシュをクリアしました。',
+    'Search cache cleared for index: {handle}' => 'インデックス {handle} の検索キャッシュをクリアしました',
+    'Search cache cleared successfully ({count} files).' => '検索キャッシュが正常にクリアされました（{count} ファイル）。',
+    'Search cache cleared successfully.' => '検索キャッシュが正常にクリアされました。',
+    'All search caches cleared' => 'すべての検索キャッシュをクリアしました',
+    'Autocomplete cache cleared successfully ({count} files).' => 'オートコンプリートキャッシュが正常にクリアされました（{count} ファイル）。',
+    'Autocomplete cache cleared successfully.' => 'オートコンプリートキャッシュが正常にクリアされました。',
+    'Device cache cleared successfully ({count} files).' => 'デバイスキャッシュが正常にクリアされました（{count} ファイル）。',
+    'Device cache cleared successfully.' => 'デバイスキャッシュが正常にクリアされました。',
+    'All caches cleared successfully ({count} files).' => 'すべてのキャッシュが正常にクリアされました（{count} ファイル）。',
+    'All caches cleared successfully.' => 'すべてのキャッシュが正常にクリアされました。',
     'File storage cleared successfully ({count} files deleted). Rebuild affected indices to re-index your content.' => 'ファイルストレージが正常にクリアされました（{count} ファイル削除）。コンテンツを再インデックスするには、影響を受けたインデックスを再構築してください。',
     'File storage is already empty.' => 'ファイルストレージはすでに空です。',
     'Redis storage cleared successfully ({count} keys deleted). Rebuild affected indices to re-index your content.' => 'Redis ストレージが正常にクリアされました（{count} キー削除）。コンテンツを再インデックスするには、影響を受けたインデックスを再構築してください。',
     '{driver} storage cleared successfully ({count} rows deleted). Rebuild affected indices to re-index your content.' => '{driver} ストレージが正常にクリアされました（{count} 行削除）。コンテンツを再インデックスするには、影響を受けたインデックスを再構築してください。',
-    'Failed to clear cache.' => 'Cache のクリアに失敗しました。',
-    'Failed to clear cache. Check logs for details.' => 'Cache のクリアに失敗しました。詳細はログを確認してください。',
-    'Failed to clear search cache.' => '検索 Cache のクリアに失敗しました。',
-    'Failed to clear autocomplete cache.' => 'オートコンプリート Cache のクリアに失敗しました。',
-    'Failed to clear device cache.' => 'デバイス Cache のクリアに失敗しました。',
-    'Failed to clear all caches.' => 'すべての Cache のクリアに失敗しました。',
+    'Failed to clear cache.' => 'キャッシュのクリアに失敗しました。',
+    'Failed to clear cache. Check logs for details.' => 'キャッシュのクリアに失敗しました。詳細はログを確認してください。',
+    'Failed to clear search cache.' => '検索キャッシュのクリアに失敗しました。',
+    'Failed to clear autocomplete cache.' => 'オートコンプリートキャッシュのクリアに失敗しました。',
+    'Failed to clear device cache.' => 'デバイスキャッシュのクリアに失敗しました。',
+    'Failed to clear all caches.' => 'すべてのキャッシュのクリアに失敗しました。',
     'Failed to clear {type} storage.' => '{type} ストレージのクリアに失敗しました。',
     'Failed to get storage statistics.' => 'ストレージ統計の取得に失敗しました。',
-    '{displayName} caches' => '{displayName} Cache',
+    '{displayName} caches' => '{displayName} キャッシュ',
 
     // Analytics action messages
     'All analytics data cleared successfully ({count} records deleted).' => 'すべてのアナリティクスデータが正常にクリアされました（{count} レコード削除）。',
@@ -1130,7 +1130,7 @@ return [
     'Failed to cleanup analytics. Check logs for details.' => 'アナリティクスのクリーンアップに失敗しました。詳細はログを確認してください。',
     'Analytics retention must be greater than 0 to perform cleanup.' => 'クリーンアップを実行するには、アナリティクスの保持期間が 0 より大きい必要があります。',
     'clear analytics' => 'アナリティクスをクリア',
-    'clear cache' => 'Cache をクリア',
+    'clear cache' => 'キャッシュをクリア',
     'clear indices' => 'インデックスをクリア',
 
     // Count sync messages
@@ -1166,8 +1166,8 @@ return [
     '{pluginName}: Syncing element status changes' => '{pluginName}: エレメントのステータス変更を同期中',
     'Adding newly live entries to {index}' => '新しく公開されたエントリを {index} に追加中',
     'Removing expired entries from {index}' => '期限切れのエントリを {index} から削除中',
-    'Warming cache for index: {index}' => 'インデックス {index} の Cache をウォーミング中',
-    'Warming cache: {query}' => 'Cache をウォーミング中: {query}',
+    'Warming cache for index: {index}' => 'インデックス {index} のキャッシュをウォーミング中',
+    'Warming cache: {query}' => 'キャッシュをウォーミング中: {query}',
     'Indexing element {id}' => 'エレメント {id} をインデックス中',
     'Indexing {count} elements' => '{count} 件のエレメントをインデックス中',
     'Rebuilding index: {handle}' => 'インデックスを再構築中: {handle}',
@@ -1227,7 +1227,7 @@ return [
     'Built-in Transformers' => '組み込み Transformer',
     'Category' => 'カテゴリ',
     'Clear analytics' => 'アナリティクスをクリア',
-    'Clear cache' => 'Cache をクリア',
+    'Clear cache' => 'キャッシュをクリア',
     'Clear indices' => 'インデックスをクリア',
     'Daily' => '毎日',
     'Date Range' => '日付範囲',
@@ -1261,11 +1261,11 @@ return [
     'Examples: en, ar, de, fr, es, ar-sa (regional variant)' => '例: en、ar、de、fr、es、ar-sa（地域バリアント）',
     'Failed' => '失敗',
     'Failed to clear analytics' => 'アナリティクスのクリアに失敗しました',
-    'Failed to clear autocomplete cache' => 'オートコンプリート Cache のクリアに失敗しました',
-    'Failed to clear cache' => 'Cache のクリアに失敗しました',
-    'Failed to clear caches' => 'Cache のクリアに失敗しました',
-    'Failed to clear device cache' => 'デバイス Cache のクリアに失敗しました',
-    'Failed to clear search cache' => '検索 Cache のクリアに失敗しました',
+    'Failed to clear autocomplete cache' => 'オートコンプリートキャッシュのクリアに失敗しました',
+    'Failed to clear cache' => 'キャッシュのクリアに失敗しました',
+    'Failed to clear caches' => 'キャッシュのクリアに失敗しました',
+    'Failed to clear device cache' => 'デバイスキャッシュのクリアに失敗しました',
+    'Failed to clear search cache' => '検索キャッシュのクリアに失敗しました',
     'Failed to sync count' => 'カウントの同期に失敗しました',
     'Fallback language when auto-detection fails (leave empty to use "en")' => '自動検出に失敗した場合のフォールバック言語（"en" を使用するには空白のまま）',
     'Field Handle' => 'フィールドハンドル',
@@ -1289,7 +1289,7 @@ return [
     'New query' => '新規クエリ',
     'Results' => '結果',
     'Rules' => 'ルール',
-    'Search Results Caching' => '検索結果の Cache',
+    'Search Results Caching' => '検索結果のキャッシュ',
     'Search...' => '検索…',
     'Section' => 'セクション',
     'Show Highlighting' => 'ハイライトを表示',
@@ -1321,7 +1321,6 @@ return [
     'Port' => 'ポート',
     'Password' => 'パスワード',
     'Protocol' => 'プロトコル',
-    'API Key' => 'API Key',
     'Admin API Key' => '管理者 API Key',
     'Search API Key' => '検索 API Key',
     'Application ID' => 'アプリケーション ID',
@@ -1336,7 +1335,7 @@ return [
     'Typesense server host' => 'Typesense サーバーホスト',
     'Typesense server port (default: 8108)' => 'Typesense サーバーポート（デフォルト: 8108）',
     'Typesense API Key' => 'Typesense API Key',
-    'Redis server host. Leave empty to use Craft\'s Redis cache settings.' => 'Redis サーバーホスト。Craft の Redis Cache 設定を使用するには空白のままにしてください。',
+    'Redis server host. Leave empty to use Craft\'s Redis cache settings.' => 'Redis サーバーホスト。Craft の Redis キャッシュ設定を使用するには空白のままにしてください。',
     'Redis server port. Leave empty to use Craft\'s Redis settings or default (6379).' => 'Redis サーバーポート。Craft の Redis 設定またはデフォルト（6379）を使用するには空白のままにしてください。',
     'Redis password (leave empty if no password required)' => 'Redis パスワード（パスワード不要の場合は空白）',
     'Redis database number. When using Craft\'s Redis settings, defaults to Craft database + 1 to isolate search data.' => 'Redis データベース番号。Craft の Redis 設定を使用する場合、検索データを分離するために Craft データベース + 1 がデフォルトになります。',
@@ -1346,10 +1345,10 @@ return [
     'Get your API keys from your <a href="https://www.algolia.com/dashboard" target="_blank" rel="noopener">Algolia Dashboard</a>' => 'API キーは <a href="https://www.algolia.com/dashboard" target="_blank" rel="noopener">Algolia ダッシュボード</a> から取得してください',
     '<strong>Quick Start:</strong> <code>docker run -d -p 7700:7700 getmeili/meilisearch:latest</code>' => '<strong>クイックスタート:</strong> <code>docker run -d -p 7700:7700 getmeili/meilisearch:latest</code>',
     '<strong>Quick Start:</strong> <code>docker run -d -p 8108:8108 typesense/typesense:latest</code>' => '<strong>クイックスタート:</strong> <code>docker run -d -p 8108:8108 typesense/typesense:latest</code>',
-    '<strong>Important:</strong> When no host is configured, Search Manager uses Craft\'s Redis cache settings but stores data in a separate database (Craft database + 1) to prevent data loss when Craft cache is cleared.' => '<strong>重要:</strong> ホストが設定されていない場合、Search Manager は Craft の Redis Cache 設定を使用しますが、Craft の Cache がクリアされた際のデータ損失を防ぐために、別のデータベース（Craft データベース + 1）にデータを保存します。',
+    '<strong>Important:</strong> When no host is configured, Search Manager uses Craft\'s Redis cache settings but stores data in a separate database (Craft database + 1) to prevent data loss when Craft cache is cleared.' => '<strong>重要:</strong> ホストが設定されていない場合、Search Manager は Craft の Redis キャッシュ設定を使用しますが、Craft のキャッシュがクリアされた際のデータ損失を防ぐために、別のデータベース（Craft データベース + 1）にデータを保存します。',
     '<strong>Default Storage:</strong> <code>@storage/runtime/search-manager/indices/</code>' => '<strong>デフォルトストレージ:</strong> <code>@storage/runtime/search-manager/indices/</code>',
-    'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.' => 'Redis 検出済み: Craft は {host}:{port} の DB {db} で Redis を使用しています。以下に設定が提供されない場合、Search Manager はこの接続を再利用し、データを DB {fallbackDb} に保存します — Craft の Cache から分離されているため、Cache フラッシュ後もデータは保持されます。DB {fallbackDb} がセッションやキューに使用されている場合は、以下で database を明示的に設定してください。',
-    'Redis not detected in Craft. Redis caching is not configured in config/app.php. You must provide connection settings below, or configure Redis in Craft first.' => 'Craft で Redis が検出されませんでした。config/app.php で Redis Cache が設定されていません。以下で接続設定を提供するか、先に Craft で Redis を設定してください。',
+    'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.' => 'Redis 検出済み: Craft は {host}:{port} の DB {db} で Redis を使用しています。以下に設定が提供されない場合、Search Manager はこの接続を再利用し、データを DB {fallbackDb} に保存します — Craft のキャッシュから分離されているため、キャッシュフラッシュ後もデータは保持されます。DB {fallbackDb} がセッションやキューに使用されている場合は、以下で database を明示的に設定してください。',
+    'Redis not detected in Craft. Redis caching is not configured in config/app.php. You must provide connection settings below, or configure Redis in Craft first.' => 'Craft で Redis が検出されませんでした。config/app.php で Redis キャッシュが設定されていません。以下で接続設定を提供するか、先に Craft で Redis を設定してください。',
     'On managed platforms such as Servd, Fortrabbit, or Platform.sh, Redis should be configured explicitly via their environment variables (for example, REDIS_HOST, REDIS_PORT).' => 'Servd、Fortrabbit、Platform.sh などのマネージドプラットフォームでは、環境変数（例: REDIS_HOST、REDIS_PORT）を使用して Redis を明示的に設定する必要があります。',
 
     // Transformer help text
@@ -1361,4 +1360,131 @@ return [
     'Custom transformer examples' => 'カスタム Transformer の例',
     'Basic entry fields only' => '基本的なエントリフィールドのみ',
     'Your custom transformer class' => 'カスタム Transformer クラス',
+
+    // Settings: General
+    'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.' => '有効なバックエンドがありません。<a href="{url}">バックエンドを作成</a> してデフォルトとして使用してください。',
+    'Select a default backend...' => 'デフォルトのバックエンドを選択...',
+    'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => '有効なウィジェットがありません。<a href="{url}">ウィジェットを作成</a> してデフォルトとして使用してください。',
+    'Select a default widget...' => 'デフォルトのウィジェットを選択...',
+
+    // Settings: Indexing
+    'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.' => 'Craft のネイティブ検索を Search Manager に置き換えます。有効にすると、コントロールパネルの検索および Entry::find()->search() が設定されたバックエンドを使用します。',
+    'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.' => 'コントロールパネルとテンプレート全体で Craft のネイティブ検索を Search Manager に置き換えます。',
+    '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.' => '<strong>利用不可:</strong> この機能には MySQL、Redis、またはファイルバックエンドが必要です。現在 <strong>{backendUpper}</strong> を使用しており、独自の API で検索を処理します。{backend} の場合は、ネイティブ検索の置き換えの代わりにテンプレートで <code>craft.searchManager.search()</code> を使用してください。',
+    'e.g., dev_, staging_, prod_' => '例: dev_、staging_、prod_',
+
+    // Settings: Search
+    'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) は Elasticsearch、Solr などの検索エンジンで使用される業界標準のランキングアルゴリズムです。これらのパラメータは検索結果のスコアリングとランキングを制御します。',
+    'Learn about BM25' => 'BM25 について学ぶ',
+    'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'ブースト係数は特定のマッチタイプの関連性スコアを乗算します。値が高いほど、検索結果でのランキングが上がります。',
+    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'ファジーマッチングは n-gram 類似度を使用してタイポ許容を有効にします。「tst」のような検索で「test」を見つけ、「javascirpt」で「javascript」を見つけることができます。',
+
+    // Settings: Highlighting
+    'Highlighting shows users which terms matched in search results. Use in templates:' => 'ハイライトは検索結果でどの用語が一致したかをユーザーに示します。テンプレートでの使用方法:',
+    '<mark> - Highlighted text (yellow background)' => '<mark> - ハイライトされたテキスト（黄色の背景）',
+    '<em> - Emphasized text (italic)' => '<em> - 強調されたテキスト（イタリック）',
+    '<strong> - Strong importance (bold)' => '<strong> - 重要なテキスト（太字）',
+    '<span> - Generic container (no default style)' => '<span> - 汎用コンテナ（デフォルトスタイルなし）',
+    '<b> - Bold text' => '<b> - 太字テキスト',
+    '<i> - Italic text' => '<i> - イタリックテキスト',
+    'Preview of how highlighted text will appear:' => 'ハイライトされたテキストの表示プレビュー:',
+    'This is a ' => 'これは ',
+    'highlighted term' => 'ハイライトされた用語',
+    ' in search results.' => ' の検索結果です。',
+    'HTML output:' => 'HTML 出力:',
+    'Snippets show contextual excerpts around matched terms. Use in templates:' => 'スニペットは一致した用語の周辺のコンテキスト抜粋を表示します。テンプレートでの使用方法:',
+    'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:' => 'オートコンプリートはインデックスされた用語に基づいて入力中の検索候補を提供します。テンプレートでの使用方法:',
+
+    // Settings: Language
+    '<strong>How language detection works:</strong><br>
+• Language is auto-detected from each element\'s site language during indexing<br>
+• Example: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Documents are stored with their language for filtering and analytics<br>
+• You can override language per-index in config file' => '<strong>言語検出の仕組み:</strong><br>
+• インデックス作成時に各エレメントのサイト言語から言語が自動検出されます<br>
+• 例: en-US → en、ar-SA → ar、fr-FR → fr<br>
+• ドキュメントはフィルタリングとアナリティクスのために言語と共に保存されます<br>
+• 設定ファイルでインデックスごとに言語をオーバーライドできます',
+    'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.' => 'ストップワードは検索の関連性を向上させるためにインデックス作成中にフィルタリングされる一般的な単語（the、a、is など）です。Search Manager には英語、アラビア語、ドイツ語、フランス語、スペイン語のストップワードが含まれています。',
+    'Stop words are automatically loaded based on language:' => 'ストップワードは言語に基づいて自動的に読み込まれます:',
+    'Stop Words File' => 'ストップワードファイル',
+    'Word Count' => '単語数',
+    'English' => '英語',
+    'Arabic (MSA)' => 'アラビア語 (MSA)',
+    'German' => 'ドイツ語',
+    'French' => 'フランス語',
+    'Spanish' => 'スペイン語',
+    '{count} words' => '{count} 語',
+    'To customize stop words for specific regions (e.g., Saudi Arabic vs Egyptian Arabic):' => '特定の地域のストップワードをカスタマイズするには（例: サウジアラビア語とエジプトアラビア語）:',
+    'Create directory:' => 'ディレクトリを作成:',
+    'Copy default file:' => 'デフォルトファイルをコピー:',
+    'Edit {file} to add Saudi-specific terms' => '{file} を編集してサウジアラビア固有の用語を追加してください',
+    'Configure index:' => 'インデックスを設定:',
+    '<strong>Fallback chain:</strong> ar-sa.php → ar.php → empty (no filtering)<br>
+<strong>Regional variants:</strong> ar-sa (Saudi), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico), etc.' => '<strong>フォールバックチェーン:</strong> ar-sa.php → ar.php → 空（フィルタリングなし）<br>
+<strong>地域バリアント:</strong> ar-sa（サウジアラビア）、ar-eg（エジプト）、ar-ae（UAE）、fr-ca（ケベック）、es-mx（メキシコ）など',
+
+    // Settings: Analytics
+    '<strong>Privacy Levels:</strong><br>
+• <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+• <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>プライバシーレベル:</strong><br>
+• <strong>無効</strong>（デフォルト）: IP アドレス全体をソルト付きでハッシュ化（正確なユニーク訪問者数）<br>
+• <strong>有効</strong>: サブネットマスク適用後にソルト付きでハッシュ化（最大プライバシー、精度低下）',
+
+    // Settings: Cache
+    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>キャッシュの場所:</strong> <code>{path}</code>',
+    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>キャッシュの場所:</strong> <code>config/app.php</code> で設定された Craft の Redis キャッシュを使用しています',
+    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis 未設定:</strong> Redis キャッシュを使用するには、<code>yiisoft/yii2-redis</code> をインストールして <code>config/app.php</code> で設定してください。<a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">詳細を見る</a>',
+    'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'キャッシュ時間（秒単位）。現在: <strong id="cacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'キャッシュ時間（秒単位）。現在: <strong id="autocompleteCacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'キャッシュ時間（秒単位）。現在: <strong id="deviceDetectionCacheDuration-human"></strong>',
+    '<strong>How it works:</strong><br>
+• Search results are cached per query, index, site, and search options<br>
+• Cached results are returned instantly without hitting the backend<br>
+• Cache is automatically cleared when content changes (if enabled below)' => '<strong>仕組み:</strong><br>
+• 検索結果はクエリ、インデックス、サイト、検索オプションごとにキャッシュされます<br>
+• キャッシュされた結果はバックエンドにアクセスせずに即座に返されます<br>
+• コンテンツが変更されると、キャッシュは自動的にクリアされます（以下で有効にした場合）',
+    '<strong>How it works:</strong><br>
+• Autocomplete suggestions are cached per query prefix, index, and language<br>
+• Uses the same storage method as search results (file or Redis)<br>
+• Cache is cleared when content is re-indexed' => '<strong>仕組み:</strong><br>
+• オートコンプリートの候補はクエリプレフィックス、インデックス、言語ごとにキャッシュされます<br>
+• 検索結果と同じストレージ方法（ファイルまたは Redis）を使用します<br>
+• コンテンツが再インデックスされるとキャッシュはクリアされます',
+    '<strong>How it works:</strong><br>
+• When enabled, cache is cleared automatically when elements are saved or deleted<br>
+• Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
+• Both search cache and autocomplete cache are cleared together per index' => '<strong>仕組み:</strong><br>
+• 有効にすると、エレメントが保存または削除されたときにキャッシュが自動的にクリアされます<br>
+• ステータス同期は保存イベントなしにステータスが変化するスケジュールされたエントリ（postDate/expiryDate）を処理します<br>
+• 検索キャッシュとオートコンプリートキャッシュは両方ともインデックスごとに一緒にクリアされます',
+    '<strong>How it works:</strong><br>
+• After index rebuild completes, a background job warms the cache<br>
+• Popular queries are pulled from search analytics (most searched terms)<br>
+• Both search results and autocomplete suggestions are pre-cached<br>
+• Requires analytics to be enabled for query data' => '<strong>仕組み:</strong><br>
+• インデックスの再構築完了後、バックグラウンドジョブがキャッシュをウォームアップします<br>
+• 人気のあるクエリは検索アナリティクス（最も検索された用語）から取得されます<br>
+• 検索結果とオートコンプリートの候補の両方が事前にキャッシュされます<br>
+• クエリデータのためにアナリティクスが有効になっている必要があります',
+    '<strong>How it works:</strong><br>
+• Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
+• Results are cached to avoid re-parsing the same user-agent repeatedly<br>
+• Recommended to keep enabled for production sites' => '<strong>仕組み:</strong><br>
+• デバイス検出はユーザーエージェント文字列を解析してデバイス、ブラウザ、オペレーティングシステムを識別します<br>
+• 同じユーザーエージェントを繰り返し解析しないように結果がキャッシュされます<br>
+• 本番サイトでは有効のままにしておくことをお勧めします',
+    '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>ステータス同期が有効:</strong> 同期ジョブがスケジュールされており、{minutes} 分ごとに実行されます。',
+    '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>ステータス同期が停止中:</strong> 同期ジョブを開始するには設定を保存してください。または次のページ読み込み時に自動的に開始されます。',
+
+    // Time units (used in cache.twig JS)
+    'second' => '秒',
+    'seconds' => '秒',
+    'minute' => '分',
+    'minutes' => '分',
+    'hour' => '時間',
+    'hours' => '時間',
+    'day' => '日',
+    'days' => '日',
 ];

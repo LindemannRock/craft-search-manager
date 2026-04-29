@@ -3,7 +3,7 @@
 /**
  * Search Manager translation file (Spanish)
  *
- * @copyright Copyright (c) 2025 LindemannRock
+ * @copyright Copyright (c) 2026 LindemannRock
  */
 
 return [
@@ -1321,7 +1321,6 @@ return [
     'Port' => 'Puerto',
     'Password' => 'Contraseña',
     'Protocol' => 'Protocolo',
-    'API Key' => 'API Key',
     'Admin API Key' => 'API Key de administrador',
     'Search API Key' => 'API Key de búsqueda',
     'Application ID' => 'ID de aplicación',
@@ -1361,4 +1360,131 @@ return [
     'Custom transformer examples' => 'Ejemplos de transformers personalizados',
     'Basic entry fields only' => 'Solo campos de entrada básicos',
     'Your custom transformer class' => 'Su clase de transformer personalizado',
+
+    // Settings: General
+    'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.' => 'No hay backends habilitados. <a href="{url}">Cree un backend</a> para usar como predeterminado.',
+    'Select a default backend...' => 'Seleccionar un backend predeterminado…',
+    'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'No hay widgets habilitados. <a href="{url}">Cree un widget</a> para usar como predeterminado.',
+    'Select a default widget...' => 'Seleccionar un widget predeterminado…',
+
+    // Settings: Indexing
+    'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.' => 'Reemplazar la búsqueda nativa de Craft con Search Manager. Cuando esté habilitado, las búsquedas en el Control Panel y Entry::find()->search() usarán el backend configurado.',
+    'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.' => 'Reemplazar la búsqueda nativa de Craft con Search Manager en todo el Control Panel y las plantillas.',
+    '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.' => '<strong>No disponible:</strong> Esta función requiere el backend MySQL, Redis o File. Actualmente está usando <strong>{backendUpper}</strong>, que gestiona la búsqueda a través de su propia API. Para {backend}, use <code>craft.searchManager.search()</code> en las plantillas en lugar de reemplazar la búsqueda nativa.',
+    'e.g., dev_, staging_, prod_' => 'p. ej., dev_, staging_, prod_',
+
+    // Settings: Search
+    'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) es un algoritmo de clasificación estándar de la industria usado por Elasticsearch, Solr y otros motores de búsqueda. Estos parámetros controlan cómo se puntúan y clasifican los resultados de búsqueda.',
+    'Learn about BM25' => 'Aprender sobre BM25',
+    'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'Los factores de impulso multiplican la puntuación de relevancia para tipos de coincidencia específicos. Los valores más altos clasifican esas coincidencias más arriba en los resultados.',
+    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'La coincidencia aproximada habilita la tolerancia a errores tipográficos mediante similitud n-gram. Búsquedas como "tst" pueden encontrar "test", "javascirpt" encuentra "javascript".',
+
+    // Settings: Highlighting
+    'Highlighting shows users which terms matched in search results. Use in templates:' => 'El resaltado muestra a los usuarios qué términos coincidieron en los resultados de búsqueda. Usar en plantillas:',
+    '<mark> - Highlighted text (yellow background)' => '<mark> - Texto resaltado (fondo amarillo)',
+    '<em> - Emphasized text (italic)' => '<em> - Texto enfatizado (cursiva)',
+    '<strong> - Strong importance (bold)' => '<strong> - Gran importancia (negrita)',
+    '<span> - Generic container (no default style)' => '<span> - Contenedor genérico (sin estilo predeterminado)',
+    '<b> - Bold text' => '<b> - Texto en negrita',
+    '<i> - Italic text' => '<i> - Texto en cursiva',
+    'Preview of how highlighted text will appear:' => 'Vista previa de cómo aparecerá el texto resaltado:',
+    'This is a ' => 'Este es un ',
+    'highlighted term' => 'término resaltado',
+    ' in search results.' => ' en los resultados de búsqueda.',
+    'HTML output:' => 'Salida HTML:',
+    'Snippets show contextual excerpts around matched terms. Use in templates:' => 'Los fragmentos muestran extractos contextuales alrededor de los términos coincidentes. Usar en plantillas:',
+    'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:' => 'El autocompletado ofrece sugerencias mientras se escribe, basadas en términos indexados. Usar en plantillas:',
+
+    // Settings: Language
+    '<strong>How language detection works:</strong><br>
+• Language is auto-detected from each element\'s site language during indexing<br>
+• Example: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Documents are stored with their language for filtering and analytics<br>
+• You can override language per-index in config file' => '<strong>Cómo funciona la detección de idioma:</strong><br>
+• El idioma se detecta automáticamente a partir del idioma del sitio de cada elemento durante la indexación<br>
+• Ejemplo: en-US → en, ar-SA → ar, fr-FR → fr<br>
+• Los documentos se almacenan con su idioma para filtrado y analíticas<br>
+• Puede anular el idioma por índice en el archivo de configuración',
+    'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.' => 'Las palabras vacías son palabras comunes (the, a, is, etc.) que se filtran durante la indexación para mejorar la relevancia de búsqueda. Search Manager incluye palabras vacías para: Inglés, Árabe, Alemán, Francés, Español.',
+    'Stop words are automatically loaded based on language:' => 'Las palabras vacías se cargan automáticamente según el idioma:',
+    'Stop Words File' => 'Archivo de palabras vacías',
+    'Word Count' => 'Recuento de palabras',
+    'English' => 'Inglés',
+    'Arabic (MSA)' => 'Árabe (MSA)',
+    'German' => 'Alemán',
+    'French' => 'Francés',
+    'Spanish' => 'Español',
+    '{count} words' => '{count} palabras',
+    'To customize stop words for specific regions (e.g., Saudi Arabic vs Egyptian Arabic):' => 'Para personalizar las palabras vacías para regiones específicas (p. ej., árabe saudí frente a árabe egipcio):',
+    'Create directory:' => 'Crear directorio:',
+    'Copy default file:' => 'Copiar archivo predeterminado:',
+    'Edit {file} to add Saudi-specific terms' => 'Editar {file} para agregar términos específicos de Arabia Saudita',
+    'Configure index:' => 'Configurar índice:',
+    '<strong>Fallback chain:</strong> ar-sa.php → ar.php → empty (no filtering)<br>
+<strong>Regional variants:</strong> ar-sa (Saudi), ar-eg (Egypt), ar-ae (UAE), fr-ca (Quebec), es-mx (Mexico), etc.' => '<strong>Cadena de respaldo:</strong> ar-sa.php → ar.php → vacío (sin filtrado)<br>
+<strong>Variantes regionales:</strong> ar-sa (Arabia Saudita), ar-eg (Egipto), ar-ae (EAU), fr-ca (Quebec), es-mx (México), etc.',
+
+    // Settings: Analytics
+    '<strong>Privacy Levels:</strong><br>
+• <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+• <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Niveles de privacidad:</strong><br>
+• <strong>Deshabilitado</strong> (predeterminado): IP completa cifrada con sal (visitantes únicos precisos)<br>
+• <strong>Habilitado</strong>: Subred enmascarada + cifrada con sal (máxima privacidad, menos precisa)',
+
+    // Settings: Cache
+    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Ubicación de Caché:</strong> <code>{path}</code>',
+    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Ubicación de Caché:</strong> Usando el Cache Redis configurado de Craft desde <code>config/app.php</code>',
+    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis no configurado:</strong> Para usar el Cache Redis, instale <code>yiisoft/yii2-redis</code> y configúrelo en <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Más información</a>',
+    'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Duración del Caché en segundos. Actual: <strong id="cacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Duración del Caché en segundos. Actual: <strong id="autocompleteCacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Duración del Caché en segundos. Actual: <strong id="deviceDetectionCacheDuration-human"></strong>',
+    '<strong>How it works:</strong><br>
+• Search results are cached per query, index, site, and search options<br>
+• Cached results are returned instantly without hitting the backend<br>
+• Cache is automatically cleared when content changes (if enabled below)' => '<strong>Cómo funciona:</strong><br>
+• Los resultados de búsqueda se almacenan en Caché por consulta, índice, sitio y opciones de búsqueda<br>
+• Los resultados en Caché se devuelven al instante sin consultar el backend<br>
+• El Caché se borra automáticamente cuando cambia el contenido (si está habilitado abajo)',
+    '<strong>How it works:</strong><br>
+• Autocomplete suggestions are cached per query prefix, index, and language<br>
+• Uses the same storage method as search results (file or Redis)<br>
+• Cache is cleared when content is re-indexed' => '<strong>Cómo funciona:</strong><br>
+• Las sugerencias de autocompletado se almacenan en Caché por prefijo de consulta, índice e idioma<br>
+• Usa el mismo método de almacenamiento que los resultados de búsqueda (File o Redis)<br>
+• El Caché se borra cuando el contenido es reindexado',
+    '<strong>How it works:</strong><br>
+• When enabled, cache is cleared automatically when elements are saved or deleted<br>
+• Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
+• Both search cache and autocomplete cache are cleared together per index' => '<strong>Cómo funciona:</strong><br>
+• Cuando está habilitado, el Caché se borra automáticamente cuando los elementos se guardan o eliminan<br>
+• Status Sync gestiona las entradas programadas (postDate/expiryDate) que cambian de estado sin eventos de guardado<br>
+• Tanto el Caché de búsqueda como el Caché de autocompletado se borran juntos por índice',
+    '<strong>How it works:</strong><br>
+• After index rebuild completes, a background job warms the cache<br>
+• Popular queries are pulled from search analytics (most searched terms)<br>
+• Both search results and autocomplete suggestions are pre-cached<br>
+• Requires analytics to be enabled for query data' => '<strong>Cómo funciona:</strong><br>
+• Después de que se completa la reconstrucción del índice, una tarea en segundo plano calienta el Caché<br>
+• Las consultas populares se obtienen de las analíticas de búsqueda (términos más buscados)<br>
+• Tanto los resultados de búsqueda como las sugerencias de autocompletado se almacenan en Caché previamente<br>
+• Requiere que las analíticas estén habilitadas para los datos de consulta',
+    '<strong>How it works:</strong><br>
+• Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
+• Results are cached to avoid re-parsing the same user-agent repeatedly<br>
+• Recommended to keep enabled for production sites' => '<strong>Cómo funciona:</strong><br>
+• La detección de dispositivos analiza las cadenas user-agent para identificar dispositivos, navegadores y sistemas operativos<br>
+• Los resultados se almacenan en Caché para evitar reanálisis del mismo user-agent repetidamente<br>
+• Se recomienda mantenerlo habilitado en sitios de producción',
+    '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync activo:</strong> Hay una tarea de sincronización programada que se ejecutará cada {minutes} minutos.',
+    '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync no está en ejecución:</strong> Guarde la Configuración para iniciar la tarea de sincronización, o se iniciará automáticamente en la próxima carga de página.',
+
+    // Time units (used in cache.twig JS)
+    'second' => 'segundo',
+    'seconds' => 'segundos',
+    'minute' => 'minuto',
+    'minutes' => 'minutos',
+    'hour' => 'hora',
+    'hours' => 'horas',
+    'day' => 'día',
+    'days' => 'días',
 ];
