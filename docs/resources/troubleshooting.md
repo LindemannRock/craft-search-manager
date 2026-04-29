@@ -22,25 +22,6 @@ Common issues and solutions for Search Manager.
 - Enable debug logging: set `logLevel` to `'debug'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
-## Japanese or Korean Search Returns Wrong Results After Upgrade
-
-**Symptom:** You upgraded from an earlier version and Japanese or Korean searches now return different results — either no matches where there used to be matches, or matches against obviously unrelated words.
-
-**Fix:** **Rebuild your indices** after upgrading to Search Manager 5.44.0 or later.
-
-**Why this happened:** Earlier versions had a text-normalization bug that affected Japanese and Korean content at index time:
-
-- **Japanese** — The dakuten (゛) and handakuten (゜) marks were being stripped from voiced kana, collapsing distinct words into the same index term. `金` (gold, きん) and `銀` (silver, ぎん) both stored as きん; `タブレット` (tablet) stored as `タフレット`; `です` (polite is) stored as `てす`. Search worked by accident for exact matches (query was mangled the same way) but precision was degraded — searching for "gold" would also return "silver" content.
-- **Korean** — Hangul syllables were stored in decomposed Jamo form (`안` → `ᄋ` + `ᅡ` + `ᆫ`) rather than precomposed syllables. Search worked but index size was ~3x larger than necessary.
-
-5.44.0 fixes the normalization to preserve Japanese combining marks and recompose Korean Hangul. After upgrade, **existing index documents still hold the old (broken) forms** — new queries go through the new normalization and don't match the old index. A full rebuild realigns everything:
-
-```bash
-php craft search-manager/index/rebuild
-```
-
-If you have Japanese or Korean content and search looks "off" after 5.44.0, this is the cause.
-
 ## Element Stays in Index After Editor Change
 
 **Symptom:** An editor changes a field that the index's criteria filter depends on (e.g. marks a product `sold`, flips a custom status, sets an expiry date), but the element still appears in search results. Running a full rebuild removes it; the next edit of the same kind brings the problem back.
@@ -196,6 +177,14 @@ In hierarchical search results, heading children show a description extracted fr
 - **Content not re-indexed**: Heading descriptions are extracted at index time. After editing content, rebuild the index for changes to appear.
 
 The heading description is static — it always shows the same text regardless of the search query. The parent result's description is query-aware and centers around the matched term (controlled by `snippetMode` and `snippetLength`).
+
+## Config File Overrides CP Settings
+
+**Symptom:** You created or edited a backend, index, widget, or style in the CP, but your changes aren't taking effect — the old values keep appearing.
+
+**Cause:** A config file definition (`config/search-manager.php`) with the same handle takes precedence over the CP version. Config-defined items show a **"Config"** badge in the CP and cannot be edited there.
+
+**Fix:** Either rename the CP item to use a different handle, or edit the config file directly. To stop the config override, remove the item from `config/search-manager.php` — the CP version will then take effect.
 
 ## Native Search Replacement Not Working
 

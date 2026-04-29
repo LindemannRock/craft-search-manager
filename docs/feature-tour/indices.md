@@ -1,4 +1,4 @@
-# Search Indices
+# Indices
 
 A search index tells Search Manager what content to index and how to transform it into searchable documents. You can create indices through the Control Panel or define them in your config file.
 

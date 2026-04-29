@@ -136,7 +136,7 @@ All style properties are optional. Unset properties use the built-in defaults (W
 | Property | Type | Range | Default | Description |
 |----------|------|-------|---------|-------------|
 | `backdropOpacity` | `int` | 0-100 | `50` | Backdrop opacity percentage |
-| `backdropBlur` | `string` | — | `1` | Backdrop blur (CSS value) |
+| `backdropBlur` | `string` | — | `1` | Backdrop blur (`1` = enabled, `0` = disabled) |
 
 ### Spinner
 

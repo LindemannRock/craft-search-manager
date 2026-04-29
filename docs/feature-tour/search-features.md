@@ -111,8 +111,6 @@ When multiple boost factors apply, they stack. From highest to lowest impact:
 | 4 | Per-term boosts (`term^2`) | Custom multiplier |
 | 5 | Base BM25 score | 1x |
 
-You can adjust the boost factors in [Configuration](../get-started/configuration.md#search-algorithm).
-
 ## Fuzzy Matching
 
 Search Manager automatically finds similar terms using n-gram similarity. If a user searches for "tst", it will find documents containing "test". This works transparently — no special syntax needed.

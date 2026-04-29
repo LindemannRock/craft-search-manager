@@ -45,20 +45,29 @@ The `*` key applies to all environments. Environment-specific keys (`dev`, `stag
 Settings are grouped by area. All settings can be set in the config file or managed via the CP (unless noted otherwise).
 
 ### General
+**CP:** Settings → General
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `pluginName` | `string` | `'Search Manager'` | Custom display name in the CP sidebar |
+| `defaultBackendHandle` | `?string` | `null` | Handle of the default backend (must match a key in `backends`) |
+| `defaultWidgetHandle` | `?string` | `null` | Handle of the default widget configuration |
 | `logLevel` | `string` | `'error'` | Log level: `debug`, `info`, `warning`, `error` |
-| `itemsPerPage` | `int` | `100` | Items per page in CP listings |
 
-### Backends & Indexing
-
-These settings control how content gets indexed and which backend handles search queries.
+### Interface
+**CP:** Settings → Interface
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `defaultBackendHandle` | `?string` | `null` | Handle of the default backend (must match a key in `backends`) |
+| `itemsPerPage` | `int` | `100` | Items per page in CP listings |
+
+### Indexing
+**CP:** Settings → Indexing
+
+These settings control how content gets indexed.
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
 | `autoIndex` | `bool` | `true` | Automatically index elements when saved |
 | `batchSize` | `int` | `100` | Elements per batch during rebuild. Lower to 25–50 on memory-constrained hosting; increase to 250–500 for faster rebuilds on dedicated servers. See [Troubleshooting](../resources/troubleshooting.md#indexing-is-slow) for tuning tips |
 | `queueEnabled` | `bool` | `true` | Use queue for indexing (recommended for indices with 1,000+ elements) |
@@ -72,6 +81,7 @@ These settings control how content gets indexed and which backend handles search
 > The `indexPrefix` setting is especially useful when sharing an Algolia or Meilisearch account across environments. See [Indices](../feature-tour/indices.md) for details.
 
 ### Search Algorithm
+**CP:** Settings → Search
 
 These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The defaults work well for most sites — only adjust these if you understand information retrieval scoring.
 
@@ -87,6 +97,7 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 | `maxFuzzyCandidates` | `int` | `100` | Maximum fuzzy candidates to evaluate per query |
 
 ### Language
+**CP:** Settings → Language
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -96,6 +107,7 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 Search Manager supports 12 languages: English, German, French, Dutch, Spanish, Arabic, Italian, Portuguese, Japanese, Swedish, Danish, and Norwegian. Language is auto-detected from each site's locale setting. See [Multi-Language](../feature-tour/multi-language.md) for details.
 
 ### Highlighting
+**CP:** Settings → Highlighting & Autocomplete
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -108,6 +120,7 @@ Search Manager supports 12 languages: English, German, French, Dutch, Spanish, A
 See [Highlighting](../feature-tour/highlighting.md) and the [Highlighting & Snippets](../template-guides/highlighting-snippets.md) template guide.
 
 ### Autocomplete
+**CP:** Settings → Highlighting & Autocomplete
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -119,6 +132,7 @@ See [Highlighting](../feature-tour/highlighting.md) and the [Highlighting & Snip
 See [Autocomplete](../feature-tour/autocomplete.md) for details.
 
 ### Analytics
+**CP:** Settings → Analytics
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -128,6 +142,7 @@ See [Autocomplete](../feature-tour/autocomplete.md) for details.
 Analytics can also be toggled per-index, so you can track searches on your public indices without tracking internal/admin searches. See [Analytics](../feature-tour/analytics.md).
 
 ### Privacy & Geo-Detection
+**CP:** Settings → Analytics
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -142,6 +157,7 @@ Analytics can also be toggled per-index, so you can track searches on your publi
 The IP hash salt is typically set via `.env` as `SEARCH_MANAGER_IP_SALT` — the plugin reads it automatically. See [Privacy & Security](../feature-tour/privacy-security.md).
 
 ### Caching
+**CP:** Settings → Cache
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -159,6 +175,7 @@ The IP hash salt is typically set via `.env` as `SEARCH_MANAGER_IP_SALT` — the
 See [Caching](../feature-tour/caching.md) for cache strategies and recommendations.
 
 ### Status Sync
+**CP:** Settings → Cache
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -167,17 +184,12 @@ See [Caching](../feature-tour/caching.md) for cache strategies and recommendatio
 Status sync automatically indexes entries that become live (postDate passed) or removes expired entries, without needing a manual save. This runs as a periodic queue job.
 
 ### Device Detection
+**CP:** Settings → Cache
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `cacheDeviceDetection` | `bool` | `true` | Cache parsed user-agent strings |
 | `deviceDetectionCacheDuration` | `int` | `3600` | Device cache TTL in seconds |
-
-### Widget
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `defaultWidgetHandle` | `?string` | `null` | Handle of the default widget configuration |
 
 ## Backends Configuration
 

@@ -148,9 +148,7 @@ GET /actions/search-manager/api/search?q=kaffee+ODER+tee&language=de
 
 This is useful when the API request doesn't come from a Craft site context and language can't be auto-detected.
 
-## Stop Words
-
-Stop words are common words (the, a, is, etc.) that are filtered from queries to improve relevance. Each language has its own stop word list.
+### Disabling Stop Words
 
 Stop words can be:
 - **Disabled globally**: `'enableStopWords' => false`

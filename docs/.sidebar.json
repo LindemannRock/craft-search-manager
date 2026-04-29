@@ -5,12 +5,6 @@
 		"children": ["get-started/requirements", "get-started/installation", "get-started/quickstart", "get-started/configuration"]
 	},
 	{
-		"title": "Backends",
-		"collapsable": true,
-		"open": false,
-		"children": ["backends/backends", "backends/backend-mysql", "backends/backend-postgresql", "backends/backend-redis", "backends/backend-file", "backends/backend-algolia", "backends/backend-meilisearch", "backends/backend-typesense"]
-	},
-	{
 		"title": "Feature Tour",
 		"collapsable": true,
 		"open": true,
@@ -30,7 +24,13 @@
 		]
 	},
 	{
-		"title": "Widget",
+		"title": "Backends",
+		"collapsable": true,
+		"open": false,
+		"children": ["backends/backends", "backends/backend-mysql", "backends/backend-postgresql", "backends/backend-redis", "backends/backend-file", "backends/backend-algolia", "backends/backend-meilisearch", "backends/backend-typesense"]
+	},
+	{
+		"title": "Widgets",
 		"collapsable": true,
 		"open": true,
 		"children": ["widget/overview", "widget/configuration", "widget/styles", "widget/integration", "widget/javascript-api"]

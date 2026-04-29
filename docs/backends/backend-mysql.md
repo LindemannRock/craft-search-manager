@@ -28,7 +28,7 @@ The BM25 algorithm considers:
 - **Inverse document frequency** — how rare the term is across all documents
 - **Document length normalization** — shorter documents with the term rank higher
 
-You can tune BM25 parameters in [Configuration](../get-started/configuration.md#search-algorithm) if needed, but the defaults work well for most sites.
+You can tune BM25 parameters under **Settings → Search** in the CP if needed, but the defaults work well for most sites.
 
 ## Configuration
 

@@ -14,7 +14,7 @@ Go to **Search Manager > Settings > Search Backend** and select a backend. For a
 
 1. Go to **Search Manager > Indices**
 2. Click **New Index**
-3. Give it a name (e.g. "Main")
+3. Give it a name (e.g. "Main") — the handle is auto-generated from the name (e.g. `main`)
 4. Select the sections and entry types you want to index
 5. Click **Save**, then click **Rebuild** to index existing content
 
