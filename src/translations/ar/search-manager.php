@@ -283,7 +283,7 @@ return [
     'Interface Settings' => 'إعدادات الواجهة',
     'Default Widget' => 'الأداة الافتراضية',
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'تكوين الأداة الذي سيتم استخدامه عند عرض أداة البحث بدون تحديد handle.',
-    'Items Per Page' => 'العناصر لكل صفحة',
+    'Items Per Page' => 'العناصر في الصفحة',
     'Number of {pluginName} to show per page' => 'عدد {pluginName} لعرضها لكل صفحة',
 
     // Override warnings

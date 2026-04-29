@@ -15,7 +15,7 @@ return [
     'Quick Actions' => 'Hurtige handlinger',
 
     // Navigation
-    'Dashboard' => 'Dashboard',
+    'Dashboard' => 'Oversigt',
     'Indices' => 'Indekser',
     'Backends' => 'Backends',
     'Promotions' => 'Kampagner',
@@ -44,7 +44,7 @@ return [
     'Highlighting' => 'Fremhævning',
 
     // General settings fields
-    'Plugin Name' => 'Pluginnavn',
+    'Plugin Name' => 'Plugin-navn',
     'The name of the plugin as it appears in the Control Panel' => 'Navnet på pluginet som det vises i kontrolpanelet',
     'The name of the plugin as it appears in the Control Panel menu' => 'Navnet på pluginet som det vises i kontrolpanelets menu',
     'Log Level' => 'Logniveau',
@@ -283,7 +283,7 @@ return [
     'Interface Settings' => 'Brugerfladeindstillinger',
     'Default Widget' => 'Standardwidget',
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'Den widgetkonfiguration der bruges ved rendering af søgewidgeten uden at angive et handle.',
-    'Items Per Page' => 'Elementer per side',
+    'Items Per Page' => 'Elementer pr. side',
     'Number of {pluginName} to show per page' => 'Antal {pluginName} der skal vises per side',
 
     // Override warnings

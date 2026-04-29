@@ -15,7 +15,7 @@ return [
     'Quick Actions' => 'Azioni rapide',
 
     // Navigation
-    'Dashboard' => 'Dashboard',
+    'Dashboard' => 'Pannello',
     'Indices' => 'Indici',
     'Backends' => 'Backend',
     'Promotions' => 'Promozioni',
@@ -140,7 +140,7 @@ return [
     'Available Languages' => 'Lingue disponibili',
 
     // Cache settings
-    'Cache Settings' => 'Impostazioni della Cache',
+    'Cache Settings' => 'Impostazioni cache',
     'Cache Storage Settings' => 'Impostazioni di archiviazione della Cache',
     'Enable Cache Warming' => 'Abilita preriscaldamento della Cache',
     'Cache Search Results' => 'Memorizza nella Cache i risultati di ricerca',

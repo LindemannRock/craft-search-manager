@@ -22,7 +22,7 @@ return [
     'Query Rules' => 'Reglas de consulta',
     'Widgets' => 'Widgets',
     'Analytics' => 'Analíticas',
-    'Settings' => 'Ajustes',
+    'Settings' => 'Configuración',
     'Logs' => 'Registros',
     'Overview' => 'Resumen',
     'Performance' => 'Rendimiento',
@@ -38,7 +38,7 @@ return [
     'Indexing' => 'Indexación',
     'Advanced' => 'Avanzado',
     'Search' => 'Búsqueda',
-    'Cache' => 'Cache',
+    'Cache' => 'Caché',
     'Interface' => 'Interfaz',
     'Language' => 'Idioma',
     'Highlighting' => 'Resaltado',
@@ -140,7 +140,7 @@ return [
     'Available Languages' => 'Idiomas disponibles',
 
     // Cache settings
-    'Cache Settings' => 'Ajustes de cache',
+    'Cache Settings' => 'Configuración de caché',
     'Cache Storage Settings' => 'Ajustes de almacenamiento de cache',
     'Enable Cache Warming' => 'Habilitar precalentamiento de cache',
     'Cache Search Results' => 'Almacenar en cache los resultados de búsqueda',

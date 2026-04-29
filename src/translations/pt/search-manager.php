@@ -140,7 +140,7 @@ return [
     'Available Languages' => 'Idiomas disponíveis',
 
     // Cache settings
-    'Cache Settings' => 'Definições de Cache',
+    'Cache Settings' => 'Definições de cache',
     'Cache Storage Settings' => 'Definições de armazenamento de Cache',
     'Enable Cache Warming' => 'Ativar pré-aquecimento de Cache',
     'Cache Search Results' => 'Armazenar resultados de pesquisa na Cache',

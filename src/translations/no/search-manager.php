@@ -15,13 +15,13 @@ return [
     'Quick Actions' => 'Hurtighandlinger',
 
     // Navigation
-    'Dashboard' => 'Dashbord',
+    'Dashboard' => 'Oversikt',
     'Indices' => 'Indekser',
     'Backends' => 'Backends',
     'Promotions' => 'Kampanjer',
     'Query Rules' => 'Spørringsregler',
     'Widgets' => 'Widgeter',
-    'Analytics' => 'Analyser',
+    'Analytics' => 'Analyse',
     'Settings' => 'Innstillinger',
     'Logs' => 'Logger',
     'Overview' => 'Oversikt',
@@ -44,7 +44,7 @@ return [
     'Highlighting' => 'Utheving',
 
     // General settings fields
-    'Plugin Name' => 'Pluginnavn',
+    'Plugin Name' => 'Plugin-navn',
     'The name of the plugin as it appears in the Control Panel' => 'Navnet på pluginet slik det vises i kontrollpanelet',
     'The name of the plugin as it appears in the Control Panel menu' => 'Navnet på pluginet slik det vises i kontrollpanelets meny',
     'Log Level' => 'Loggnivå',

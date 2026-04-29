@@ -21,7 +21,7 @@ return [
     'Promotions' => 'Kampanjer',
     'Query Rules' => 'Frågeregler',
     'Widgets' => 'Widgetar',
-    'Analytics' => 'Analyser',
+    'Analytics' => 'Analys',
     'Settings' => 'Inställningar',
     'Logs' => 'Loggar',
     'Overview' => 'Översikt',
@@ -44,7 +44,7 @@ return [
     'Highlighting' => 'Markering',
 
     // General settings fields
-    'Plugin Name' => 'Pluginnamn',
+    'Plugin Name' => 'Plugin-namn',
     'The name of the plugin as it appears in the Control Panel' => 'Namnet på pluginet som det visas i kontrollpanelen',
     'The name of the plugin as it appears in the Control Panel menu' => 'Namnet på pluginet som det visas i kontrollpanelens meny',
     'Log Level' => 'Loggnivå',
@@ -140,7 +140,7 @@ return [
     'Available Languages' => 'Tillgängliga språk',
 
     // Cache settings
-    'Cache Settings' => 'Cache-inställningar',
+    'Cache Settings' => 'Cacheinställningar',
     'Cache Storage Settings' => 'Cache-lagringsinställningar',
     'Enable Cache Warming' => 'Aktivera Cache-uppvärmning',
     'Cache Search Results' => 'Cacha sökresultat',
