@@ -77,15 +77,15 @@
 		{% else %}
 			<div class="field">
 				<div class="heading">
-					<label>Replace Native Search</label>
+					<label>{{ 'Replace Native Search'|t('search-manager') }}</label>
 				</div>
 				<div class="instructions">
-					<p>Replace Craft's native search with Search Manager throughout the Control Panel and templates.</p>
+					<p>{{ 'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.'|t('search-manager') }}</p>
 				</div>
 			</div>
 			{% include 'lindemannrock-base/_components/info-box' with {
 				type: 'warning',
-				message: '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>' ~ backendType|upper ~ '</strong>, which handles search via its own API. For ' ~ backendType|capitalize ~ ', use <code>craft.searchManager.search()</code> in templates instead of native search replacement.'
+				message: '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.'|t('search-manager', {backendUpper: backendType|upper, backend: backendType|capitalize})
 			} %}
 		{% endif %}
 
@@ -112,7 +112,7 @@
             name: 'settings[indexPrefix]',
             value: settings.indexPrefix,
             errors: settings.getErrors('indexPrefix'),
-            placeholder: 'e.g., dev_, staging_, prod_',
+            placeholder: 'e.g., dev_, staging_, prod_'|t('search-manager'),
             disabled: settings.isOverriddenByConfig('indexPrefix'),
             warning: settings.isOverriddenByConfig('indexPrefix') ?
                 "This is being overridden by the <code>indexPrefix</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,

@@ -29,6 +29,11 @@
 
 {% js %}
 (function() {
+	const i18n = {
+		thisIsA: {{ 'This is a '|t('search-manager')|json_encode|raw }},
+		highlightedTerm: {{ 'highlighted term'|t('search-manager')|json_encode|raw }},
+		inSearchResults: {{ ' in search results.'|t('search-manager')|json_encode|raw }},
+	};
 	const highlightTagSelect = document.getElementById('highlightTag');
 	const highlightClassInput = document.getElementById('highlightClass');
 	const highlightPreview = document.getElementById('highlighting-preview');
@@ -43,14 +48,14 @@
 		const cls = (highlightClassInput && highlightClassInput.value) ? highlightClassInput.value : defaultClass;
 
 		highlightPreview.innerHTML = '';
-		highlightPreview.append('This is a ');
+		highlightPreview.append(i18n.thisIsA);
 		const el = document.createElement(tag || 'mark');
 		if (cls) {
 			el.className = cls;
 		}
-		el.textContent = 'highlighted term';
+		el.textContent = i18n.highlightedTerm;
 		highlightPreview.appendChild(el);
-		highlightPreview.append(' in search results.');
+		highlightPreview.append(i18n.inSearchResults);
 
 		const classAttr = cls ? ` class="${cls}"` : '';
 		highlightHtml.textContent = `<${tag}${classAttr}>term</${tag}>`;
@@ -78,8 +83,8 @@
 
         <div class="field">
             <p class="light">
-                Highlighting shows users which terms matched in search results.
-                Use in templates: <code>craft.searchManager.highlight(text, query)</code>
+                {{ 'Highlighting shows users which terms matched in search results. Use in templates:'|t('search-manager') }}
+                <code>craft.searchManager.highlight(text, query)</code>
             </p>
         </div>
 
@@ -105,12 +110,12 @@
                 value: settings.highlightTag ?? 'mark',
                 required: true,
                 options: [
-                    {value: 'mark', label: '<mark> - Highlighted text (yellow background)'},
-                    {value: 'em', label: '<em> - Emphasized text (italic)'},
-                    {value: 'strong', label: '<strong> - Strong importance (bold)'},
-                    {value: 'span', label: '<span> - Generic container (no default style)'},
-                    {value: 'b', label: '<b> - Bold text'},
-                    {value: 'i', label: '<i> - Italic text'},
+                    {value: 'mark', label: '<mark> - Highlighted text (yellow background)'|t('search-manager')},
+                    {value: 'em', label: '<em> - Emphasized text (italic)'|t('search-manager')},
+                    {value: 'strong', label: '<strong> - Strong importance (bold)'|t('search-manager')},
+                    {value: 'span', label: '<span> - Generic container (no default style)'|t('search-manager')},
+                    {value: 'b', label: '<b> - Bold text'|t('search-manager')},
+                    {value: 'i', label: '<i> - Italic text'|t('search-manager')},
                 ],
                 tip: 'Default: <mark>. Recommended for search highlighting due to semantic meaning and yellow background.'|t('search-manager'),
                 disabled: settings.isOverriddenByConfig('highlightTag'),
@@ -139,14 +144,14 @@
                     <label>{{ "Highlighting Example"|t('search-manager') }}</label>
                 </div>
                 <div class="instructions">
-                    <p>Preview of how highlighted text will appear:</p>
+                    <p>{{ 'Preview of how highlighted text will appear:'|t('search-manager') }}</p>
                 </div>
                 <div class="input">
                     <div id="highlighting-preview" data-default-tag="{{ settings.highlightTag ?? 'mark' }}" data-default-class="{{ settings.highlightClass ?? '' }}" style="background: #f5f5f5; padding: 15px; border-radius: 4px;">
-                        This is a <{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}>highlighted term</{{ settings.highlightTag ?? 'mark' }}> in search results.
+                        {{ 'This is a '|t('search-manager') }}<{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}>{{ 'highlighted term'|t('search-manager') }}</{{ settings.highlightTag ?? 'mark' }}>{{ ' in search results.'|t('search-manager') }}
                     </div>
                     <p class="light" style="margin-top: 10px;">
-                        HTML output: <code id="highlighting-html">&lt;{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}&gt;term&lt;/{{ settings.highlightTag ?? 'mark' }}&gt;</code>
+                        {{ 'HTML output:'|t('search-manager') }} <code id="highlighting-html">&lt;{{ settings.highlightTag ?? 'mark' }}{% if settings.highlightClass %} class="{{ settings.highlightClass }}"{% endif %}&gt;term&lt;/{{ settings.highlightTag ?? 'mark' }}&gt;</code>
                     </p>
                 </div>
             </div>
@@ -157,8 +162,8 @@
 
             <div class="field">
                 <p class="light">
-                    Snippets show contextual excerpts around matched terms.
-                    Use in templates: <code>craft.searchManager.snippets(text, query)</code>
+                    {{ 'Snippets show contextual excerpts around matched terms. Use in templates:'|t('search-manager') }}
+                    <code>craft.searchManager.snippets(text, query)</code>
                 </p>
             </div>
 
@@ -204,8 +209,8 @@
 
         <div class="field">
             <p class="light">
-                Autocomplete provides search-as-you-type suggestions based on indexed terms.
-                Use in templates: <code>craft.searchManager.suggest(query)</code>
+                {{ 'Autocomplete provides search-as-you-type suggestions based on indexed terms. Use in templates:'|t('search-manager') }}
+                <code>craft.searchManager.suggest(query)</code>
             </p>
         </div>
 

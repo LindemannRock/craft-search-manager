@@ -39,9 +39,8 @@
 
         <div class="field">
             <p class="light">
-                BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines.
-                These parameters control how search results are scored and ranked.
-                <a href="https://en.wikipedia.org/wiki/Okapi_BM25" target="_blank" rel="noopener">Learn about BM25</a>
+                {{ 'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.'|t('search-manager') }}
+                <a href="https://en.wikipedia.org/wiki/Okapi_BM25" target="_blank" rel="noopener">{{ 'Learn about BM25'|t('search-manager') }}</a>
             </p>
         </div>
 
@@ -87,7 +86,7 @@
 
         <div class="field">
             <p class="light">
-                Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.
+                {{ 'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.'|t('search-manager') }}
             </p>
         </div>
 
@@ -151,8 +150,7 @@
 
         <div class="field">
             <p class="light">
-                Fuzzy matching enables typo-tolerance using n-gram similarity.
-                Searches like "tst" can find "test", "javascirpt" finds "javascript".
+                {{ 'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".'|t('search-manager') }}
             </p>
         </div>
 

@@ -73,7 +73,7 @@
         <div id="geo-provider-settings" class="{{ not (settings.enableGeoDetection ?? false) ? 'hidden' }}" style="margin-top: 24px;">
             {% include 'lindemannrock-base/_partials/geo-settings' with {
                 settings: settings,
-                translationCategory: 'search-manager'
+                pluginHandle: 'search-manager'
             } %}
         </div>
 
@@ -94,9 +94,9 @@
 
         <div class="field">
             <p class="light">
-                <strong>Privacy Levels:</strong><br>
-                • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
-                • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)
+                {{ '<strong>Privacy Levels:</strong><br>
+• <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
+• <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)'|t('search-manager')|raw }}
             </p>
         </div>
 

@@ -57,7 +57,7 @@
 
 		<div id="cache-location-file" class="{{ settings.cacheStorageMethod == 'redis' ? 'hidden' }}">
 			{% include 'lindemannrock-base/_components/info-box' with {
-				message: '<strong>Cache Location:</strong> <code>' ~ searchHelper.cacheBasePath ~ '</code>',
+				message: '<strong>Cache Location:</strong> <code>{path}</code>'|t('search-manager', {path: searchHelper.cacheBasePath}),
 				type: 'info'
 			} %}
 		</div>
@@ -66,12 +66,12 @@
 			{% if craftUsesRedis %}
 				{% include 'lindemannrock-base/_components/info-box' with {
 					type: 'success',
-					message: '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>'
+					message: '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>'|t('search-manager')
 				} %}
 			{% else %}
 				{% include 'lindemannrock-base/_components/info-box' with {
 					type: 'warning',
-					message: '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>'
+					message: '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>'|t('search-manager')
 				} %}
 			{% endif %}
 		</div>
@@ -93,7 +93,7 @@
 
 		{{ forms.textField({
             label: 'Search Results Cache Duration'|t('search-manager'),
-            instructions: ('Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>')|raw,
+            instructions: 'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>'|t('search-manager')|raw,
             id: 'cacheDuration',
             name: 'settings[cacheDuration]',
             value: settings.cacheDuration ?? 3600,
@@ -146,7 +146,7 @@
 			message: '<strong>How it works:</strong><br>
 • Search results are cached per query, index, site, and search options<br>
 • Cached results are returned instantly without hitting the backend<br>
-• Cache is automatically cleared when content changes (if enabled below)'
+• Cache is automatically cleared when content changes (if enabled below)'|t('search-manager')
 		} %}
 
 		<hr>
@@ -168,7 +168,7 @@
 		<div id="autocomplete-cache-settings" class="{{ not (settings.enableAutocompleteCache ?? true) ? 'hidden' }}">
 			{{ forms.textField({
 				label: 'Autocomplete Cache Duration'|t('search-manager'),
-				instructions: ('Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>')|raw,
+				instructions: 'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>'|t('search-manager')|raw,
 				id: 'autocompleteCacheDuration',
 				name: 'settings[autocompleteCacheDuration]',
 				value: settings.autocompleteCacheDuration ?? 300,
@@ -186,7 +186,7 @@
 				message: '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
 • Uses the same storage method as search results (file or Redis)<br>
-• Cache is cleared when content is re-indexed'
+• Cache is cleared when content is re-indexed'|t('search-manager')
 			} %}
 		</div>
 
@@ -233,7 +233,7 @@
 			message: '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
 • Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
-• Both search cache and autocomplete cache are cleared together per index'
+• Both search cache and autocomplete cache are cleared together per index'|t('search-manager')
 		} %}
 
 		<hr>
@@ -279,7 +279,7 @@
 • After index rebuild completes, a background job warms the cache<br>
 • Popular queries are pulled from search analytics (most searched terms)<br>
 • Both search results and autocomplete suggestions are pre-cached<br>
-• Requires analytics to be enabled for query data'
+• Requires analytics to be enabled for query data'|t('search-manager')
 			} %}
 		</div>
 
@@ -288,12 +288,12 @@
 			{% if syncRunning %}
 				{% include 'lindemannrock-base/_components/info-box' with {
 					type: 'success',
-					message: '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every ' ~ settings.statusSyncInterval ~ ' minutes.'
+					message: '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.'|t('search-manager', {minutes: settings.statusSyncInterval})
 				} %}
 			{% else %}
 				{% include 'lindemannrock-base/_components/info-box' with {
 					type: 'warning',
-					message: '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.'
+					message: '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.'|t('search-manager')
 				} %}
 			{% endif %}
 		{% endif %}
@@ -318,7 +318,7 @@
             <div id="device-cache-settings" class="{{ not (settings.cacheDeviceDetection ?? true) ? 'hidden' }}">
                 {{ forms.textField({
                     label: "Device Detection Cache Duration"|t('search-manager'),
-                    instructions: ('Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>')|raw,
+                    instructions: 'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>'|t('search-manager')|raw,
                     id: 'deviceDetectionCacheDuration',
                     name: 'settings[deviceDetectionCacheDuration]',
                     value: settings.deviceDetectionCacheDuration ?? 3600,
@@ -336,7 +336,7 @@
                     message: '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
-• Recommended to keep enabled for production sites'
+• Recommended to keep enabled for production sites'|t('search-manager')
                 } %}
             </div>
         {% else %}
@@ -372,19 +372,30 @@ $('#cacheStorageMethod').on('change', function() {
 });
 
 // Convert seconds to human-readable duration
+const secondsToHumanI18n = {
+	second: {{ 'second'|t('search-manager')|json_encode|raw }},
+	seconds: {{ 'seconds'|t('search-manager')|json_encode|raw }},
+	minute: {{ 'minute'|t('search-manager')|json_encode|raw }},
+	minutes: {{ 'minutes'|t('search-manager')|json_encode|raw }},
+	hour: {{ 'hour'|t('search-manager')|json_encode|raw }},
+	hours: {{ 'hours'|t('search-manager')|json_encode|raw }},
+	day: {{ 'day'|t('search-manager')|json_encode|raw }},
+	days: {{ 'days'|t('search-manager')|json_encode|raw }},
+};
+
 function secondsToHuman(seconds) {
 	seconds = parseInt(seconds) || 0;
 	if (seconds < 60) {
-		return seconds + ' second' + (seconds !== 1 ? 's' : '');
+		return seconds + ' ' + (seconds !== 1 ? secondsToHumanI18n.seconds : secondsToHumanI18n.second);
 	} else if (seconds < 3600) {
 		const mins = Math.round(seconds / 60 * 10) / 10;
-		return mins + ' minute' + (mins !== 1 ? 's' : '');
+		return mins + ' ' + (mins !== 1 ? secondsToHumanI18n.minutes : secondsToHumanI18n.minute);
 	} else if (seconds < 86400) {
 		const hours = Math.round(seconds / 3600 * 10) / 10;
-		return hours + ' hour' + (hours !== 1 ? 's' : '');
+		return hours + ' ' + (hours !== 1 ? secondsToHumanI18n.hours : secondsToHumanI18n.hour);
 	} else {
 		const days = Math.round(seconds / 86400 * 10) / 10;
-		return days + ' day' + (days !== 1 ? 's' : '');
+		return days + ' ' + (days !== 1 ? secondsToHumanI18n.days : secondsToHumanI18n.day);
 	}
 }
 

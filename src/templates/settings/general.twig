@@ -49,10 +49,10 @@
 		{% if enabledBackends|length == 0 %}
 			{% include 'lindemannrock-base/_components/info-box' with {
 				type: 'notice',
-				message: 'No enabled backends. <a href="' ~ url('search-manager/backends/new') ~ '">Create a backend</a> to use as the default.'
+				message: 'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.'|t('search-manager', {url: url('search-manager/backends/new')})
 			} %}
 		{% else %}
-			{% set backendOptions = [{ label: 'Select a default backend...', value: '' }] %}
+			{% set backendOptions = [{ label: 'Select a default backend...'|t('search-manager'), value: '' }] %}
 			{% for backend in enabledBackends %}
 				{% set backendOptions = backendOptions|merge([{
 					label: backend.name ~ ' (' ~ backend.getTypeLabel() ~ ')',
@@ -77,10 +77,10 @@
 		{% if enabledWidgets|length == 0 %}
 			{% include 'lindemannrock-base/_components/info-box' with {
 				type: 'notice',
-				message: 'No enabled widgets. <a href="' ~ url('search-manager/widgets/new') ~ '">Create a widget</a> to use as the default.'
+				message: 'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.'|t('search-manager', {url: url('search-manager/widgets/new')})
 			} %}
 		{% else %}
-			{% set widgetOptions = [{ label: 'Select a default widget...', value: '' }] %}
+			{% set widgetOptions = [{ label: 'Select a default widget...'|t('search-manager'), value: '' }] %}
 			{% for widget in enabledWidgets %}
 				{% set widgetOptions = widgetOptions|merge([{
 					label: widget.name,
