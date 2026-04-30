@@ -171,7 +171,7 @@
 
 						{# Backend type header and description #}
 						{% if typeDesc %}
-							<h2 style="margin-top: 0;">{{ typeDesc.title|t('search-manager') }}</h2>
+							<h2 class="first">{{ typeDesc.title|t('search-manager') }}</h2>
 							<p class="light">{{ typeDesc.description|t('search-manager')|raw }}</p>
 
 							{% if typeDesc.infoBox and type != 'redis' %}

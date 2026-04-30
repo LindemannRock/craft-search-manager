@@ -33,7 +33,7 @@
 
 {# Search Configuration #}
 <div class="pane" style="margin-bottom: 24px;">
-    <h3 style="margin-top: 0;">{{ "Search Configuration"|t('search-manager') }}</h3>
+    <h3 class="first">{{ "Search Configuration"|t('search-manager') }}</h3>
 
     {{ forms.selectField({
         label: 'Search Index'|t('search-manager'),
@@ -150,7 +150,7 @@
 
 {# Quick Operator Tests #}
 <div class="pane" style="margin-bottom: 24px;">
-    <h3 style="margin-top: 0;">{{ "Quick Operator Tests"|t('search-manager') }}</h3>
+    <h3 class="first">{{ "Quick Operator Tests"|t('search-manager') }}</h3>
     <p class="light">{{ "Click to test different search operators"|t('search-manager') }}</p>
     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button type="button" class="btn small quick-test" data-query="test">Basic</button>
@@ -166,7 +166,7 @@
 
 {# Autocomplete Preview Section #}
 <div id="autocomplete-section" class="pane" style="margin-bottom: 24px; display: none;">
-    <h3 style="margin-top: 0;">{{ "Autocomplete Suggestions"|t('search-manager') }}</h3>
+    <h3 class="first">{{ "Autocomplete Suggestions"|t('search-manager') }}</h3>
     <div id="autocomplete-results">
         <p class="light">{{ "Type at least {minLength} characters above to see suggestions"|t('search-manager', {minLength: settings.autocompleteMinLength ?? 2}) }}</p>
     </div>
@@ -174,7 +174,7 @@
 
 {# Promotions Preview Section #}
 <div id="promotions-section" class="pane" style="margin-bottom: 24px; display: none;">
-    <h3 style="margin-top: 0;">{{ "Matched Promotions"|t('search-manager') }}</h3>
+    <h3 class="first">{{ "Matched Promotions"|t('search-manager') }}</h3>
     <div id="promotions-results">
         <p class="light">{{ "Run a search to see which promotions match"|t('search-manager') }}</p>
     </div>
@@ -182,7 +182,7 @@
 
 {# Query Rules Preview Section #}
 <div id="queryrules-section" class="pane" style="margin-bottom: 24px; display: none;">
-    <h3 style="margin-top: 0;">{{ "Matched Query Rules"|t('search-manager') }}</h3>
+    <h3 class="first">{{ "Matched Query Rules"|t('search-manager') }}</h3>
     <div id="queryrules-results">
         <p class="light">{{ "Run a search to see which query rules apply"|t('search-manager') }}</p>
     </div>
@@ -191,7 +191,7 @@
 {# Main Results Section #}
 <div id="testResults" style="display: none;">
     <div class="pane">
-        <h3 id="resultsTitle" style="margin-top: 0;"></h3>
+        <h3 id="resultsTitle" class="first"></h3>
         <div id="resultsContent"></div>
     </div>
 </div>
