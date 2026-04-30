@@ -53,14 +53,12 @@
 
 {% block content %}
 
-<form method="post" accept-charset="UTF-8">
-    {{ actionInput('search-manager/indices/save') }}
-    {{ csrfInput() }}
-    {{ redirectInput('search-manager/indices') }}
+{{ actionInput('search-manager/indices/save') }}
+{{ redirectInput('search-manager/indices') }}
 
-    {% if not isNew %}
-        {{ hiddenInput('indexId', index.id) }}
-    {% endif %}
+{% if not isNew %}
+    {{ hiddenInput('indexId', index.id) }}
+{% endif %}
 
     {{ forms.textField({
         first: true,
@@ -407,8 +405,6 @@
             message: '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.'
         } %}
     {% endif %}
-
-</form>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
