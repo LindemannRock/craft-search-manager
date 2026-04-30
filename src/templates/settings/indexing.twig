@@ -29,11 +29,9 @@
 
 {% block content %}
     
-	<form method="post" accept-charset="UTF-8">
-		<input type="hidden" name="action" value="search-manager/settings/save">
-		{{ csrfInput() }}
-		{{ redirectInput('search-manager/settings/indexing') }}
-		{{ hiddenInput('section', 'indexing') }}
+	{{ actionInput('search-manager/settings/save') }}
+	{{ redirectInput('search-manager/settings/indexing') }}
+	{{ hiddenInput('section', 'indexing') }}
 
 		<h2 class="first">{{ "Indexing Settings"|t('search-manager') }}</h2>
 
@@ -117,8 +115,6 @@
             warning: settings.isOverriddenByConfig('indexPrefix') ?
                 "This is being overridden by the <code>indexPrefix</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
-
-	</form>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

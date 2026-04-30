@@ -29,11 +29,9 @@
 
 {% block content %}
 
-	<form method="post" accept-charset="UTF-8">
-		<input type="hidden" name="action" value="search-manager/settings/save">
-		{{ csrfInput() }}
-		{{ redirectInput('search-manager/settings/search') }}
-		{{ hiddenInput('section', 'search') }}
+	{{ actionInput('search-manager/settings/save') }}
+	{{ redirectInput('search-manager/settings/search') }}
+	{{ hiddenInput('section', 'search') }}
 
 		<h2 class="first">{{ "BM25 Ranking Algorithm"|t('search-manager') }}</h2>
 
@@ -208,8 +206,6 @@
             warning: settings.isOverriddenByConfig('ngramSizes') ?
                 "This is being overridden by the <code>ngramSizes</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
-
-	</form>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

@@ -29,11 +29,9 @@
 
 {% block content %}
 
-	<form method="post" accept-charset="UTF-8">
-		<input type="hidden" name="action" value="search-manager/settings/save">
-		{{ csrfInput() }}
-		{{ redirectInput('search-manager/settings/cache') }}
-		{{ hiddenInput('section', 'cache') }}
+	{{ actionInput('search-manager/settings/save') }}
+	{{ redirectInput('search-manager/settings/cache') }}
+	{{ hiddenInput('section', 'cache') }}
 
 		<h2 class="first">{{ "Cache Storage Settings"|t('search-manager') }}</h2>
 
@@ -352,8 +350,6 @@
                 </p>
             </div>
         {% endif %}
-
-	</form>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

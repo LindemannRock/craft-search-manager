@@ -25,11 +25,9 @@
 
 {% block content %}
 
-	<form method="post" accept-charset="UTF-8">
-		<input type="hidden" name="action" value="search-manager/settings/save">
-		{{ csrfInput() }}
-		{{ redirectInput('search-manager/settings/general') }}
-		{{ hiddenInput('section', 'general') }}
+	{{ actionInput('search-manager/settings/save') }}
+	{{ redirectInput('search-manager/settings/general') }}
+	{{ hiddenInput('section', 'general') }}
 
 		<h2 class="first">{{ "General Settings"|t('search-manager') }}</h2>
 
@@ -130,8 +128,6 @@
             warning: settings.isOverriddenByConfig('logLevel') ?
                 "This is being overridden by the <code>logLevel</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
-
-	</form>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}

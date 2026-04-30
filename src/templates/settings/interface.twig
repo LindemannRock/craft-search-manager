@@ -28,11 +28,9 @@
 
 {% block content %}
 
-	<form method="post" accept-charset="UTF-8">
-		<input type="hidden" name="action" value="search-manager/settings/save">
-		{{ csrfInput() }}
-		{{ redirectInput('search-manager/settings/interface') }}
-		{{ hiddenInput('section', 'interface') }}
+	{{ actionInput('search-manager/settings/save') }}
+	{{ redirectInput('search-manager/settings/interface') }}
+	{{ hiddenInput('section', 'interface') }}
 
 		<h2 class="first">{{ "Interface Settings"|t('search-manager') }}</h2>
 
@@ -51,8 +49,6 @@
                 "This is being overridden by the <code>itemsPerPage</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
             errors: settings.getErrors('itemsPerPage')
         }) }}
-
-	</form>
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
