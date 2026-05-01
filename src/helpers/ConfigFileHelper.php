@@ -12,7 +12,7 @@ use Craft;
  *
  * Used by: ConfiguredBackend, SearchIndex, WidgetConfig, WidgetConfigService
  *
- * @since 5.0.0
+ * @since 5.30.0
  */
 class ConfigFileHelper
 {

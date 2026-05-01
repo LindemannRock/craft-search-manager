@@ -20,7 +20,7 @@ use craft\web\AssetBundle;
  *
  * @author    LindemannRock
  * @package   SearchManager
- * @since     5.40.0
+ * @since 5.39.0
  */
 class SearchHighlighterAsset extends AssetBundle
 {

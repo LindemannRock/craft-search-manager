@@ -17,7 +17,7 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * Shows searches that returned zero results - helps identify content gaps.
  *
- * @since 5.1.0
+ * @since 5.27.0
  */
 class ContentGapsWidget extends Widget
 {

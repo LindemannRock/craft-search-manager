@@ -15,7 +15,7 @@ use yii\web\Response;
  * Provides analytics tracking endpoints for the search widget.
  * Search and enrichment are handled by ApiController and EnrichmentService.
  *
- * @since 5.0.0
+ * @since 5.30.0
  */
 class SearchController extends Controller
 {

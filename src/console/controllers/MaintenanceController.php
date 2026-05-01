@@ -13,7 +13,7 @@ use yii\console\ExitCode;
 /**
  * Maintenance commands for search storage
  *
- * @since 5.0.0
+ * @since 5.30.0
  */
 class MaintenanceController extends Controller
 {

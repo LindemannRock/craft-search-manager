@@ -22,7 +22,7 @@ use yii\queue\RetryableJobInterface;
  * Automatically cleans up old analytics based on retention settings.
  * Respects analyticsRetention from config (e.g., 30 days dev, 60 staging, 365 prod).
  *
- * @since 5.0.0
+ * @since 5.34.0
  */
 class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
 {

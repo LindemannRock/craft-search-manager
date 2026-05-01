@@ -8,7 +8,7 @@ use Normalizer;
 /**
  * Shared Unicode-aware term normalization for indexing and querying.
  *
- * @since 5.0.0
+ * @since 5.40.0
  */
 class TermNormalizer
 {

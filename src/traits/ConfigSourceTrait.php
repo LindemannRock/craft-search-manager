@@ -10,7 +10,7 @@ namespace lindemannrock\searchmanager\traits;
  *
  * Used by: ConfiguredBackend, SearchIndex, WidgetConfig
  *
- * @since 5.0.0
+ * @since 5.30.0
  */
 trait ConfigSourceTrait
 {

@@ -15,7 +15,7 @@ use yii\queue\RetryableJobInterface;
  * Queue job for asynchronously resolving geographic location from IP address.
  * This prevents the geo-lookup API call from blocking search requests.
  *
- * @since 5.0.0
+ * @since 5.29.0
  */
 class GeoLookupJob extends BaseJob implements RetryableJobInterface
 {

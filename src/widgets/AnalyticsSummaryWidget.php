@@ -15,7 +15,7 @@ use lindemannrock\searchmanager\SearchManager;
 /**
  * Search Manager Analytics Summary Widget
  *
- * @since 5.1.0
+ * @since 5.27.0
  */
 class AnalyticsSummaryWidget extends Widget
 {

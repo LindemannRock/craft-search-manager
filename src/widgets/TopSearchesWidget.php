@@ -15,7 +15,7 @@ use lindemannrock\searchmanager\SearchManager;
 /**
  * Search Manager Top Searches Widget
  *
- * @since 5.1.0
+ * @since 5.27.0
  */
 class TopSearchesWidget extends Widget
 {

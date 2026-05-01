@@ -17,7 +17,7 @@ use yii\queue\RetryableJobInterface;
  * Queue job for syncing a single element's index state for a specific site.
  * Checks if element should be indexed or removed based on current DB state.
  *
- * @since 5.0.0
+ * @since 5.21.1
  */
 class SyncElementJob extends BaseJob implements RetryableJobInterface
 {

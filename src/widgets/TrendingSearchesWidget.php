@@ -17,7 +17,7 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * Shows searches that are trending up or down compared to the previous period.
  *
- * @since 5.1.0
+ * @since 5.27.0
  */
 class TrendingSearchesWidget extends Widget
 {

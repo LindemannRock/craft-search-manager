@@ -17,7 +17,7 @@ use lindemannrock\base\helpers\DateRangeHelper;
  *
  * @author    LindemannRock
  * @package   SearchManager
- * @since     5.0.0
+ * @since 5.39.0
  */
 trait AnalyticsQueryTrait
 {

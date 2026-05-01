@@ -15,7 +15,7 @@ use lindemannrock\searchmanager\interfaces\BackendInterface;
  *     {% set indices = algolia.listIndices() %}
  *     {% set results = algolia.search('my-index', 'query') %}
  *
- * @since 5.28.0
+ * @since 5.29.0
  */
 class BackendVariableProxy
 {

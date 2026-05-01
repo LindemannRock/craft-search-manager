@@ -25,7 +25,7 @@ use yii\queue\RetryableJobInterface;
  * - Became live (postDate passed)
  * - Became expired (expiryDate passed)
  *
- * @since 5.0.0
+ * @since 5.29.0
  */
 class SyncStatusJob extends BaseJob implements RetryableJobInterface
 {

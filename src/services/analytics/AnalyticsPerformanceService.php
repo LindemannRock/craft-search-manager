@@ -20,7 +20,7 @@ use lindemannrock\base\helpers\DateFormatHelper;
  *
  * @author    LindemannRock
  * @package   SearchManager
- * @since     5.0.0
+ * @since 5.39.0
  */
 class AnalyticsPerformanceService
 {
