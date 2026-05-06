@@ -1,5 +1,25 @@
 # Changelog
 
+## [5.45.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.1...v5.45.0) (2026-05-06)
+
+
+### Features
+
+* **translations:** update copyright year and add new translation keys for settings ([0c9d212](https://github.com/LindemannRock/craft-search-manager/commit/0c9d212c85f6f8a465516cf566ab15c9161b5f3e))
+
+
+### Bug Fixes
+
+* apply config overrides through shared settings helper ([786d46b](https://github.com/LindemannRock/craft-search-manager/commit/786d46b831bcaf39ece1cc24843324876e5d665d))
+* **translations:** correct translations for various languages ([27c5923](https://github.com/LindemannRock/craft-search-manager/commit/27c59230b3f5e2aa609f27f2140352a1761fbce8))
+* **widgetConfig:** add missing analytics settings to search modal ([64bb5b4](https://github.com/LindemannRock/craft-search-manager/commit/64bb5b4508e3cec41721128d450839036cc940d4))
+* **WidgetConfigService:** correct styleHandle key in widget config ([0c6e5d1](https://github.com/LindemannRock/craft-search-manager/commit/0c6e5d166a71f6df14d8506ec372cdbf811edc54))
+
+
+### Miscellaneous Chores
+
+* update version annotations across multiple files ([0f59020](https://github.com/LindemannRock/craft-search-manager/commit/0f59020ea77bd757d76073983cb5e0fb12c454d7))
+
 ## [5.44.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.0...v5.44.1) (2026-04-18)
 
 
