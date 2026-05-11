@@ -57,6 +57,20 @@ If saved elements are not appearing in search:
 - **Check `autoIndex`**: When `autoIndex` is disabled, save/delete events do not add pending sync rows.
 - **Check `batchFlushInterval`**: A high value intentionally delays draining so bulk imports can coalesce.
 
+## Changing `autoIndex` Has No Effect Until Workers Restart
+
+The `autoIndex` setting is consulted **once** during the plugin's `init()`. When it is enabled, listeners are attached to `Elements::EVENT_AFTER_SAVE_ELEMENT` and `Elements::EVENT_AFTER_DELETE_ELEMENT`. When it is disabled, those listeners are never attached.
+
+Toggling the setting mid-process **does not detach already-attached listeners** and does not retroactively attach them — Yii has no public API for either operation.
+
+After changing `autoIndex`, restart every long-running PHP process so the plugin re-bootstraps with the new value:
+
+- **Queue workers**: `php craft queue/listen` processes — `daemon`/`supervisor` reload, or kill the worker so the supervisor respawns it.
+- **PHP-FPM / web workers**: `sudo service php8.x-fpm reload` (or platform equivalent).
+- **DDEV / local**: `ddev restart` is sufficient.
+
+Web requests served after the reload pick up the new behaviour immediately; any request still being served by a pre-reload worker will continue to use the old value until that worker recycles.
+
 ## Last Indexed Does Not Update After Every Save
 
 Automatic save/delete syncs debounce `lastIndexed` updates for 60 seconds by default. This is expected: the element is still indexed, but the metadata timestamp is only touched once per debounce window to avoid extra database writes during imports or rapid editing.

@@ -39,7 +39,7 @@ Event::on(
 ```
 
 > [!NOTE]
-> The `data` and `indexHandle` properties are not populated in the BEFORE event. To modify the document data before indexing, use `EVENT_AFTER_TRANSFORM` instead.
+> The `document` and `indexHandle` properties are not populated in the BEFORE event. To modify the document data before indexing, use `EVENT_AFTER_TRANSFORM` instead.
 
 ### `EVENT_AFTER_INDEX`
 
@@ -51,7 +51,7 @@ Event::on(
     IndexingService::EVENT_AFTER_INDEX,
     function(IndexEvent $event) {
         $element = $event->element;
-        $data = $event->data;             // The indexed document
+        $document = $event->document;       // The indexed document (array)
         $indexHandle = $event->indexHandle; // e.g., 'entries-en'
 
         // Log successful indexing
@@ -68,7 +68,7 @@ Event::on(
 | Property | Type | BEFORE | AFTER | Description |
 |----------|------|--------|-------|-------------|
 | `element` | `ElementInterface\|null` | Yes | Yes | The element being indexed |
-| `data` | `array` | — | Yes | The transformed document data |
+| `document` | `array\|null` | — | Yes | The transformed document data |
 | `indexHandle` | `string\|null` | — | Yes | The index handle (e.g., `'entries-en'`) |
 | `isValid` | `bool` | Yes | — | Set to `false` to cancel indexing |
 

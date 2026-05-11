@@ -68,7 +68,7 @@ These settings control how content gets indexed.
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `autoIndex` | `bool` | `true` | Automatically index elements when saved |
+| `autoIndex` | `bool` | `true` | Automatically index elements when saved. **Changing this setting requires restarting queue workers and PHP-FPM** — see note below |
 | `batchSize` | `int` | `100` | Elements per batch during rebuild. Lower to 25–50 on memory-constrained hosting; increase to 250–500 for faster rebuilds on dedicated servers. See [Troubleshooting](../resources/troubleshooting.md#indexing-is-slow) for tuning tips |
 | `lastIndexedDebounceSeconds` | `int` | `60` | Minimum seconds between automatic `lastIndexed` metadata updates during save/delete syncs. Set to `0` to update after every successful auto-sync |
 | `syncBatchSize` | `int` | `200` | Pending save/delete sync rows processed by each batch sync job |
@@ -78,6 +78,9 @@ These settings control how content gets indexed.
 | `queueEnabled` | `bool` | `true` | Use queue for indexing (recommended for indices with 1,000+ elements) |
 | `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
 | `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups) |
+
+> [!NOTE]
+> **`autoIndex` is read once at plugin bootstrap.** When it's enabled, listeners are attached to Craft's element save/delete events; when it's disabled, they aren't. Toggling the setting on a running PHP process does not retroactively attach or detach those listeners — Yii has no public API for either operation. After changing the value, restart your queue workers (`php craft queue/listen`) and reload PHP-FPM (or restart the container in DDEV) so the plugin re-bootstraps. See [Troubleshooting → Changing `autoIndex` Has No Effect](../resources/troubleshooting.md#changing-autoindex-has-no-effect-until-workers-restart) for the operator runbook.
 
 > [!NOTE]
 > When `replaceNativeSearch` is enabled, all CP searches and `Entry::find()->search()` queries use your backend instead of Craft's native search. This only works with MySQL, PostgreSQL, Redis, and File backends.
