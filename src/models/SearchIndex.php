@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\models;
 
 use Craft;
+use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\db\Query;
 use craft\helpers\Db;
@@ -81,6 +82,22 @@ class SearchIndex extends Model
 
     public ?\DateTime $lastIndexed = null;
 
+    /**
+     * @var int Number of documents in the index.
+     *
+     * **Eventually consistent.** As of 5.45.0, automatic save/delete syncs
+     * (`PendingSyncProcessor`, batch path, `SyncElementJob`) deliberately do
+     * not increment or decrement this counter — doing so would require a
+     * per-row `documentExists` probe to the backend, which would re-introduce
+     * the API amplification L3 set out to eliminate.
+     *
+     * Accurate values come from:
+     *   - Full rebuild (`SearchIndex::updateStats()`)
+     *   - Explicit recount actions exposed in the CP / console
+     *
+     * Treat this as advisory metadata for operators, not as a correctness
+     * signal for search behaviour.
+     */
     public int $documentCount = 0;
 
     // =========================================================================
@@ -1437,6 +1454,52 @@ class SearchIndex extends Model
         }
 
         return in_array($siteId, $siteIds, true);
+    }
+
+    /**
+     * Check whether an element matches this index's element type, site, and criteria.
+     *
+     * @since 5.45.0
+     */
+    public function matchesElement(ElementInterface $element): bool
+    {
+        $elementType = get_class($element);
+        if (!$this->enabled || $this->elementType !== $elementType || !$this->appliesToSiteId((int)$element->siteId)) {
+            return false;
+        }
+
+        /** @var \craft\elements\db\ElementQuery $query */
+        $query = $elementType::find()
+            ->id($element->id)
+            ->siteId($element->siteId)
+            ->status(null);
+
+        if (method_exists($query, 'drafts')) {
+            $query->drafts(false);
+        }
+        if (method_exists($query, 'revisions')) {
+            $query->revisions(false);
+        }
+
+        if ($this->criteria instanceof \Closure) {
+            $criteriaCallback = $this->criteria;
+            $query = $criteriaCallback($query);
+        } elseif (is_array($this->criteria) && !empty($this->criteria)) {
+            if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections']) && method_exists($query, 'section')) {
+                $query->section($this->criteria['sections']);
+            }
+            if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes']) && method_exists($query, 'volume')) {
+                $query->volume($this->criteria['volumes']);
+            }
+            if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups']) && method_exists($query, 'group')) {
+                $query->group($this->criteria['groups']);
+            }
+            if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles']) && method_exists($query, 'sourceHandle')) {
+                $query->sourceHandle($this->criteria['sourceHandles']);
+            }
+        }
+
+        return (bool)$query->exists();
     }
 
     /**

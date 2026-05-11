@@ -119,6 +119,74 @@
             errors: settings.getErrors('lastIndexedDebounceSeconds')
         }) }}
 
+		<hr>
+
+		<h3>{{ 'Batch Sync'|t('search-manager') }}</h3>
+
+		{{ forms.textField({
+            label: 'Sync Batch Size'|t('search-manager'),
+            instructions: 'Maximum number of pending sync rows processed by each batch sync job.'|t('search-manager'),
+            id: 'syncBatchSize',
+            name: 'settings[syncBatchSize]',
+            value: settings.syncBatchSize,
+            type: 'number',
+            min: 1,
+            max: 1000,
+            required: true,
+            disabled: settings.isOverriddenByConfig('syncBatchSize'),
+            warning: settings.isOverriddenByConfig('syncBatchSize') ?
+                "This is being overridden by the <code>syncBatchSize</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('syncBatchSize')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Batch Flush Interval'|t('search-manager'),
+            instructions: 'Seconds to wait before draining pending save and delete syncs. Shorter intervals reduce delay; longer intervals coalesce bulk imports more aggressively.'|t('search-manager'),
+            id: 'batchFlushInterval',
+            name: 'settings[batchFlushInterval]',
+            value: settings.batchFlushInterval,
+            type: 'number',
+            min: 0,
+            max: 300,
+            required: true,
+            disabled: settings.isOverriddenByConfig('batchFlushInterval'),
+            warning: settings.isOverriddenByConfig('batchFlushInterval') ?
+                "This is being overridden by the <code>batchFlushInterval</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('batchFlushInterval')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Pending Max Age'|t('search-manager'),
+            instructions: 'Seconds to keep abandoned pending sync rows before cleanup.'|t('search-manager'),
+            id: 'pendingMaxAge',
+            name: 'settings[pendingMaxAge]',
+            value: settings.pendingMaxAge,
+            type: 'number',
+            min: 60,
+            max: 604800,
+            required: true,
+            disabled: settings.isOverriddenByConfig('pendingMaxAge'),
+            warning: settings.isOverriddenByConfig('pendingMaxAge') ?
+                "This is being overridden by the <code>pendingMaxAge</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('pendingMaxAge')
+        }) }}
+
+		{{ forms.textField({
+            label: 'Batch Max Attempts'|t('search-manager'),
+            instructions: 'Number of failed processing attempts before a pending sync row is abandoned.'|t('search-manager'),
+            id: 'batchMaxAttempts',
+            name: 'settings[batchMaxAttempts]',
+            value: settings.batchMaxAttempts,
+            type: 'number',
+            min: 1,
+            max: 20,
+            required: true,
+            disabled: settings.isOverriddenByConfig('batchMaxAttempts'),
+            warning: settings.isOverriddenByConfig('batchMaxAttempts') ?
+                "This is being overridden by the <code>batchMaxAttempts</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('batchMaxAttempts')
+        }) }}
+
 		{{ forms.textField({
             label: 'Index Prefix'|t('search-manager'),
             instructions: 'Prefix for index names (useful for multi-environment setups)'|t('search-manager'),

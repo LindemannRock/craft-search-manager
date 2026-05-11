@@ -31,6 +31,16 @@ interface BackendInterface
     public function batchIndex(string $indexName, array $items): bool;
 
     /**
+     * Delete multiple documents from an index
+     *
+     * @param string $indexName The index name
+     * @param array $items Rows with elementId and optional siteId values
+     * @return bool Success status
+     * @since 5.45.0
+     */
+    public function batchDelete(string $indexName, array $items): bool;
+
+    /**
      * Delete a document from the index
      *
      * @param string $indexName The index name

@@ -43,13 +43,38 @@ Common issues and solutions for Search Manager.
 - **Check your transformer**: Complex transformers that query relations or perform heavy computation slow down indexing. Pre-fetch related data where possible.
 - **Rebuild during off-hours**: For sites with 10,000+ elements, schedule rebuilds during low-traffic periods to avoid queue congestion.
 
-The `lastIndexedDebounceSeconds` setting only affects how often the "Last Indexed" metadata timestamp is written during automatic save/delete syncs. It does not reduce backend indexing work. For large imports, keep using queue-based indexing and tune `batchSize`; future bulk-sync architecture will address save-event write amplification more directly.
+The `lastIndexedDebounceSeconds` setting only affects how often the "Last Indexed" metadata timestamp is written during automatic save/delete syncs. It does not delay or skip indexing work.
+
+Automatic save/delete syncs use a pending buffer and `BatchSyncJob`. For large imports, tune `syncBatchSize` and `batchFlushInterval`: increase `syncBatchSize` to process more pending rows per job, or increase `batchFlushInterval` to coalesce import bursts more aggressively before draining.
+
+## Pending Syncs Are Not Draining
+
+If saved elements are not appearing in search:
+
+- **Check the queue worker**: Pending syncs drain through `BatchSyncJob`; the queue must be running.
+- **Check abandoned rows**: Repeated backend failures leave rows in `searchmanager_pending_syncs` with `status = abandoned` and `lastError` populated.
+- **Check backend configuration**: A misconfigured backend causes pending rows to retry until `batchMaxAttempts` is reached.
+- **Check `autoIndex`**: When `autoIndex` is disabled, save/delete events do not add pending sync rows.
+- **Check `batchFlushInterval`**: A high value intentionally delays draining so bulk imports can coalesce.
 
 ## Last Indexed Does Not Update After Every Save
 
 Automatic save/delete syncs debounce `lastIndexed` updates for 60 seconds by default. This is expected: the element is still indexed, but the metadata timestamp is only touched once per debounce window to avoid extra database writes during imports or rapid editing.
 
 Set `lastIndexedDebounceSeconds` to `0` if you need the timestamp updated after every successful auto-sync, or lower it to a smaller value such as `5` while testing.
+
+## Document Count Looks Wrong After a Bulk Import
+
+The "Documents" column on the Indices index page is **eventually consistent**. Automatic save/delete syncs don't adjust this counter — doing so would require a backend probe per element, which would undo the API-amplification reduction that batch sync provides.
+
+This is by design, not a bug. Search results themselves are correct (the underlying index is updated as elements sync); only the metadata badge is delayed.
+
+**To force an accurate count:**
+
+- Rebuild the index: `php craft search-manager/index/rebuild <handle>`
+- Use the count refresh action on the index detail page (where exposed)
+
+If you regularly need real-time counts (e.g. for editor-facing dashboards), schedule a periodic rebuild for that index rather than relying on the live counter.
 
 ## Out of Memory During Rebuild
 

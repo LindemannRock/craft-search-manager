@@ -37,6 +37,8 @@ use lindemannrock\searchmanager\services\EnrichmentService;
 use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
+use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
+use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\services\WidgetConfigService;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
@@ -61,6 +63,8 @@ use yii\base\Event;
  * @property-read EnrichmentService $enrichment
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
+ * @property-read PendingSyncRepository $pendingSyncs
+ * @property-read PendingSyncProcessor $pendingSyncProcessor
  * @property-read WidgetConfigService $widgetConfigs
  * @property-read \lindemannrock\searchmanager\services\WidgetStyleService $widgetStyles
  * @property-read Settings $settings
@@ -229,6 +233,8 @@ class SearchManager extends Plugin
             'deviceDetection' => DeviceDetectionService::class,
             'enrichment' => EnrichmentService::class,
             'indexing' => IndexingService::class,
+            'pendingSyncs' => PendingSyncRepository::class,
+            'pendingSyncProcessor' => PendingSyncProcessor::class,
             'promotions' => PromotionService::class,
             'queryRules' => QueryRuleService::class,
             'transformers' => TransformerService::class,
@@ -689,6 +695,9 @@ class SearchManager extends Plugin
                 }
 
                 $element = $event->element;
+                if ($element->getIsDraft() || $element->getIsRevision()) {
+                    return;
+                }
 
                 $this->logDebug('Element save triggered', [
                     'elementId' => $element->id,
@@ -696,9 +705,7 @@ class SearchManager extends Plugin
                     'enabled' => $element->enabled,
                 ]);
 
-                // Queue sync jobs for ALL sites that have indices for this element type
-                // Each job will check that site's actual state and index/remove accordingly
-                $this->queueSyncJobs($element);
+                $this->queuePendingSync($element, PendingSyncRepository::OP_UPSERT);
             }
         );
 
@@ -707,8 +714,12 @@ class SearchManager extends Plugin
             Elements::class,
             Elements::EVENT_AFTER_DELETE_ELEMENT,
             function(ElementEvent $event) {
-                // Queue removal jobs for all sites
-                $this->queueSyncJobs($event->element);
+                $element = $event->element;
+                if ($element->getIsDraft() || $element->getIsRevision()) {
+                    return;
+                }
+
+                $this->queuePendingSync($element, PendingSyncRepository::OP_DELETE);
             }
         );
 
@@ -716,44 +727,18 @@ class SearchManager extends Plugin
     }
 
     /**
-     * Queue sync jobs for all sites that have indices for this element type
+     * Queue pending sync rows for all indices/sites that have this element type
      */
-    private function queueSyncJobs(\craft\base\ElementInterface $element): void
+    private function queuePendingSync(\craft\base\ElementInterface $element, string $op): void
     {
-        $indices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
-        $elementClass = get_class($element);
-        $queuedSites = [];
+        $queued = $this->pendingSyncs->queueForElement($element, $op);
 
-        foreach ($indices as $index) {
-            if (!$index->enabled) {
-                continue;
-            }
-            if ($index->elementType !== $elementClass) {
-                continue;
-            }
-
-            // Determine site IDs for this index
-            $siteIds = $index->getSiteIds();
-            if ($siteIds === null) {
-                $siteIds = Craft::$app->getSites()->getAllSiteIds();
-            }
-
-            foreach ($siteIds as $siteId) {
-                if (!in_array($siteId, $queuedSites, true)) {
-                    Craft::$app->getQueue()->push(new \lindemannrock\searchmanager\jobs\SyncElementJob([
-                        'elementId' => $element->id,
-                        'elementType' => $elementClass,
-                        'siteId' => (int)$siteId,
-                    ]));
-                    $queuedSites[] = $siteId;
-
-                    $this->logDebug('Queued sync job for site', [
-                        'elementId' => $element->id,
-                        'siteId' => $siteId,
-                    ]);
-                }
-            }
-        }
+        $this->logDebug('Queued pending sync rows', [
+            'elementId' => $element->id,
+            'elementType' => get_class($element),
+            'op' => $op,
+            'queued' => $queued,
+        ]);
     }
 
     // =========================================================================

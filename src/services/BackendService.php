@@ -314,6 +314,25 @@ class BackendService extends Component
     }
 
     /**
+     * Batch delete multiple documents
+     *
+     * @param string $indexName
+     * @param array $items
+     * @return bool
+     * @since 5.45.0
+     */
+    public function batchDelete(string $indexName, array $items): bool
+    {
+        $backend = $this->getBackendForIndex($indexName);
+        if (!$backend) {
+            $this->logError('No backend available for batch deletion', ['index' => $indexName]);
+            return false;
+        }
+
+        return $backend->batchDelete($indexName, $items);
+    }
+
+    /**
      * Delete a document from the index
      *
      * @param string $indexName

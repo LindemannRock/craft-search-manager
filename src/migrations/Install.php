@@ -30,6 +30,7 @@ class Install extends Migration
         $this->createIndexSitesTable();
         $this->createTransformersTable();
         $this->createIndexQueueTable();
+        $this->createPendingSyncsTable();
         $this->createIndexStatsTable();
         $this->createAnalyticsTable();
         $this->createSearchEngineTables();
@@ -67,6 +68,7 @@ class Install extends Migration
         $this->dropTableIfExists('{{%searchmanager_search_documents}}');
         $this->dropTableIfExists('{{%searchmanager_analytics}}');
         $this->dropTableIfExists('{{%searchmanager_index_stats}}');
+        $this->dropTableIfExists('{{%searchmanager_pending_syncs}}');
         $this->dropTableIfExists('{{%searchmanager_index_queue}}');
         $this->dropTableIfExists('{{%searchmanager_transformers}}');
         $this->dropTableIfExists('{{%searchmanager_index_sites}}');
@@ -97,6 +99,10 @@ class Install extends Migration
             'defaultWidgetHandle' => $this->string(255)->null()->comment('Handle of the default widget config'),
             'batchSize' => $this->integer()->notNull()->defaultValue(100),
             'lastIndexedDebounceSeconds' => $this->integer()->notNull()->defaultValue(60),
+            'syncBatchSize' => $this->integer()->notNull()->defaultValue(200),
+            'batchFlushInterval' => $this->integer()->notNull()->defaultValue(5),
+            'pendingMaxAge' => $this->integer()->notNull()->defaultValue(3600),
+            'batchMaxAttempts' => $this->integer()->notNull()->defaultValue(5),
             'queueEnabled' => $this->boolean()->notNull()->defaultValue(true),
             'replaceNativeSearch' => $this->boolean()->notNull()->defaultValue(false),
             'enableAnalytics' => $this->boolean()->notNull()->defaultValue(true),
@@ -325,6 +331,43 @@ class Install extends Migration
     }
 
     /**
+     * Create pending syncs table
+     * Collapses element save/delete events into per-index sync rows for batch processing
+     */
+    private function createPendingSyncsTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_pending_syncs}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_pending_syncs}}', [
+            'id' => $this->primaryKey(),
+            'indexHandle' => $this->string(255)->notNull(),
+            'elementType' => $this->string(255)->notNull(),
+            'elementId' => $this->integer()->notNull(),
+            'siteId' => $this->integer()->notNull(),
+            'op' => $this->enum('op', ['upsert', 'delete'])->notNull(),
+            'status' => $this->enum('status', ['pending', 'processing', 'failed', 'abandoned'])->notNull()->defaultValue('pending'),
+            'attemptCount' => $this->integer()->notNull()->defaultValue(0),
+            'queuedAt' => $this->dateTime()->notNull(),
+            'nextAttemptAt' => $this->dateTime()->notNull(),
+            'claimedAt' => $this->dateTime()->null(),
+            'claimToken' => $this->string(64)->null(),
+            'lastError' => $this->text()->null(),
+            'lastProcessedAt' => $this->dateTime()->null(),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['indexHandle', 'elementId', 'siteId'], true);
+        $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['status', 'nextAttemptAt'], false);
+        $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['status', 'claimedAt'], false);
+        $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['indexHandle', 'status'], false);
+        $this->createIndex(null, '{{%searchmanager_pending_syncs}}', ['queuedAt'], false);
+    }
+
+    /**
      * Create index stats table
      * Stores daily statistics for dashboard/analytics
      */
@@ -367,6 +410,10 @@ class Install extends Migration
             'defaultWidgetHandle' => null,
             'batchSize' => 100,
             'lastIndexedDebounceSeconds' => 60,
+            'syncBatchSize' => 200,
+            'batchFlushInterval' => 5,
+            'pendingMaxAge' => 3600,
+            'batchMaxAttempts' => 5,
             'queueEnabled' => 1,
             'replaceNativeSearch' => 0,
             'enableAnalytics' => 1,

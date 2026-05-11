@@ -180,6 +180,30 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     abstract public function batchIndex(string $indexName, array $items): bool;
 
+    /**
+     * @inheritdoc
+     * @since 5.45.0
+     */
+    public function batchDelete(string $indexName, array $items): bool
+    {
+        $success = true;
+
+        foreach ($items as $item) {
+            $elementId = (int)($item['elementId'] ?? $item['id'] ?? 0);
+            if ($elementId <= 0) {
+                $success = false;
+                continue;
+            }
+
+            $siteId = isset($item['siteId']) ? (int)$item['siteId'] : null;
+            if (!$this->delete($indexName, $elementId, $siteId)) {
+                $success = false;
+            }
+        }
+
+        return $success;
+    }
+
     abstract public function delete(string $indexName, int $elementId, ?int $siteId = null): bool;
 
     abstract public function search(string $indexName, string $query, array $options = []): array;

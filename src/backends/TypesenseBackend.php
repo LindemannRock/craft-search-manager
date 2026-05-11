@@ -143,6 +143,16 @@ class TypesenseBackend extends BaseBackend
             $client->collections[$fullIndexName]->documents[$documentId]->delete();
             $this->logDebug('Document deleted from Typesense', ['index' => $fullIndexName, 'id' => $documentId]);
             return true;
+        } catch (\Typesense\Exceptions\ObjectNotFound $e) {
+            // Delete of a missing document is treated as success — the desired
+            // post-condition (document absent) already holds. Without this,
+            // batch deletes would falsely fail for any already-removed doc,
+            // forcing the row into retry/abandon.
+            $this->logDebug('Typesense delete: document already absent (treated as success)', [
+                'index' => $indexName,
+                'elementId' => $elementId,
+            ]);
+            return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to delete from Typesense', ['error' => $e->getMessage()]);
             return false;

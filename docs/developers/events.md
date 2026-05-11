@@ -15,7 +15,7 @@ Search Manager dispatches events that let you hook into indexing, transformation
 
 ## Index Events
 
-Triggered by `IndexingService` during element indexing.
+Triggered when an element is indexed. These fire from both the direct per-element path (`IndexingService::indexElementNow()`) and the auto-sync batch path (`PendingSyncProcessor` draining the pending-sync buffer). Bulk rebuild paths (`IndexingService::batchIndex()`, `RebuildIndexJob`) do not fire these events — listen to `EVENT_AFTER_TRANSFORM` if you need coverage there.
 
 ### `EVENT_BEFORE_INDEX`
 

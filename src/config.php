@@ -89,6 +89,30 @@ return [
         // 'lastIndexedDebounceSeconds' => 60,
 
         /**
+         * Maximum pending sync rows processed by each batch sync job
+         * Default: 200
+         */
+        // 'syncBatchSize' => 200,
+
+        /**
+         * Seconds to wait before draining pending save/delete syncs
+         * Default: 5
+         */
+        // 'batchFlushInterval' => 5,
+
+        /**
+         * Seconds to keep abandoned pending sync rows before cleanup
+         * Default: 3600
+         */
+        // 'pendingMaxAge' => 3600,
+
+        /**
+         * Failed processing attempts before a pending sync row is abandoned
+         * Default: 5
+         */
+        // 'batchMaxAttempts' => 5,
+
+        /**
          * Prefix for index names
          * Useful for multi-environment setups
          * Example: 'dev_', 'staging_', 'prod_'

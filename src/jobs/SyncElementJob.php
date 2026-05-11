@@ -17,6 +17,13 @@ use yii\queue\RetryableJobInterface;
  * Queue job for syncing a single element's index state for a specific site.
  * Checks if element should be indexed or removed based on current DB state.
  *
+ * @deprecated 5.45.0 — Retained for one release as a transitional fallback so
+ *   legacy queued jobs from pre-L3 installs can still deserialize and run.
+ *   New code MUST NOT push this job. The save/delete auto-sync path now uses
+ *   `SearchManager::$plugin->pendingSyncs->queueForElement()` (see
+ *   `services/sync/PendingSyncRepository`) which collapses repeated work and
+ *   processes via `BatchSyncJob`. Scheduled for deletion in 5.46.0.
+ *
  * @since 5.21.1
  */
 class SyncElementJob extends BaseJob implements RetryableJobInterface
@@ -105,7 +112,13 @@ class SyncElementJob extends BaseJob implements RetryableJobInterface
     }
 
     /**
-     * Remove element from all indices for this site (when element not found)
+     * Remove element from all indices for this site (when element not found).
+     *
+     * Behaviour mirrors the L3 batch sync path: no documentExists pre-check,
+     * no documentCount writes. Backends must treat deleting a missing document
+     * as success. documentCount on indices is eventually consistent — accurate
+     * values come from full rebuild or explicit count refresh, not from
+     * automatic sync paths.
      */
     private function removeFromIndices(): void
     {
@@ -122,26 +135,20 @@ class SyncElementJob extends BaseJob implements RetryableJobInterface
                 continue;
             }
 
-            // Check if document exists and remove
-            $exists = SearchManager::$plugin->backend->documentExists(
-                $index->handle,
-                $this->elementId,
-                $this->siteId
-            );
-
-            if ($exists) {
-                SearchManager::$plugin->backend->delete($index->handle, $this->elementId, $this->siteId);
-                SearchIndex::decrementDocumentCount($index->handle);
-                SearchIndex::touchLastIndexedDebounced($index->handle);
-                if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
-                    SearchManager::$plugin->backend->clearSearchCache($index->handle);
-                    SearchManager::$plugin->autocomplete->clearCache($index->handle);
-                }
-                $this->logInfo('Removed deleted element from index', [
-                    'elementId' => $this->elementId,
-                    'indexHandle' => $index->handle,
-                ]);
+            $deleted = SearchManager::$plugin->backend->delete($index->handle, $this->elementId, $this->siteId);
+            if (!$deleted) {
+                continue;
             }
+
+            SearchIndex::touchLastIndexedDebounced($index->handle);
+            if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+                SearchManager::$plugin->backend->clearSearchCache($index->handle);
+                SearchManager::$plugin->autocomplete->clearCache($index->handle);
+            }
+            $this->logInfo('Removed deleted element from index', [
+                'elementId' => $this->elementId,
+                'indexHandle' => $index->handle,
+            ]);
         }
     }
 

@@ -71,6 +71,10 @@ These settings control how content gets indexed.
 | `autoIndex` | `bool` | `true` | Automatically index elements when saved |
 | `batchSize` | `int` | `100` | Elements per batch during rebuild. Lower to 25–50 on memory-constrained hosting; increase to 250–500 for faster rebuilds on dedicated servers. See [Troubleshooting](../resources/troubleshooting.md#indexing-is-slow) for tuning tips |
 | `lastIndexedDebounceSeconds` | `int` | `60` | Minimum seconds between automatic `lastIndexed` metadata updates during save/delete syncs. Set to `0` to update after every successful auto-sync |
+| `syncBatchSize` | `int` | `200` | Pending save/delete sync rows processed by each batch sync job |
+| `batchFlushInterval` | `int` | `5` | Seconds to wait before draining pending sync rows. Increase during bulk imports to coalesce more writes |
+| `pendingMaxAge` | `int` | `3600` | Seconds to retain abandoned pending sync rows before cleanup |
+| `batchMaxAttempts` | `int` | `5` | Failed processing attempts before a pending sync row is abandoned |
 | `queueEnabled` | `bool` | `true` | Use queue for indexing (recommended for indices with 1,000+ elements) |
 | `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
 | `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups) |
@@ -359,6 +363,10 @@ return [
         'autoIndex' => true,
         'batchSize' => 100,
         'lastIndexedDebounceSeconds' => 60,
+        'syncBatchSize' => 200,
+        'batchFlushInterval' => 5,
+        'pendingMaxAge' => 3600,
+        'batchMaxAttempts' => 5,
         'queueEnabled' => true,
 
         // Analytics

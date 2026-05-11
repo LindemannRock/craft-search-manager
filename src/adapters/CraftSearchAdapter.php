@@ -153,8 +153,10 @@ class CraftSearchAdapter extends \craft\services\Search
             return parent::indexElementAttributes($element, $fieldHandles);
         }
 
-        // When autoIndex is enabled, SyncElementJob handles indexing with proper
-        // multi-site logic. Skip here to avoid double-indexing.
+        // When autoIndex is enabled, the EVENT_AFTER_SAVE_ELEMENT listener
+        // routes the save through PendingSyncRepository → BatchSyncJob, which
+        // handles multi-site fanout and per-index criteria correctly. Skip
+        // here to avoid double-indexing.
         $settings = SearchManager::$plugin->getSettings();
         if ($settings->autoIndex) {
             $this->logDebug('Skipping Craft-triggered indexing (autoIndex handles it)', [

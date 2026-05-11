@@ -74,6 +74,30 @@ class Settings extends Model
     public int $lastIndexedDebounceSeconds = 60;
 
     /**
+     * @var int Max pending sync rows processed by each batch sync job
+     * @since 5.45.0
+     */
+    public int $syncBatchSize = 200;
+
+    /**
+     * @var int Delay in seconds before pending sync rows are drained
+     * @since 5.45.0
+     */
+    public int $batchFlushInterval = 5;
+
+    /**
+     * @var int Seconds to keep abandoned pending sync rows before purging
+     * @since 5.45.0
+     */
+    public int $pendingMaxAge = 3600;
+
+    /**
+     * @var int Attempts before a pending sync row is abandoned
+     * @since 5.45.0
+     */
+    public int $batchMaxAttempts = 5;
+
+    /**
      * @var bool Use queue for indexing operations
      */
     public bool $queueEnabled = true;
@@ -372,6 +396,10 @@ class Settings extends Model
             'itemsPerPage',
             'batchSize',
             'lastIndexedDebounceSeconds',
+            'syncBatchSize',
+            'batchFlushInterval',
+            'pendingMaxAge',
+            'batchMaxAttempts',
             'analyticsRetention',
             'deviceDetectionCacheDuration',
             'maxFuzzyCandidates',
@@ -427,6 +455,10 @@ class Settings extends Model
             [['geoApiKey'], 'string', 'max' => 255, 'skipOnEmpty' => true],
             [['itemsPerPage', 'batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
             [['lastIndexedDebounceSeconds'], 'integer', 'min' => 0, 'max' => 3600],
+            [['syncBatchSize'], 'integer', 'min' => 1, 'max' => 1000],
+            [['batchFlushInterval'], 'integer', 'min' => 0, 'max' => 300],
+            [['pendingMaxAge'], 'integer', 'min' => 60, 'max' => 604800],
+            [['batchMaxAttempts'], 'integer', 'min' => 1, 'max' => 20],
             [['analyticsRetention'], 'integer', 'min' => 0, 'max' => 3650],
             [['itemsPerPage'], 'integer', 'max' => 500],
             [['batchSize'], 'integer', 'max' => 1000],

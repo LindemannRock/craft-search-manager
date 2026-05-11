@@ -260,10 +260,27 @@ Go to Search Manager > Indices and use the rebuild/clear buttons for each index.
 
 ### Auto-Indexing
 
-When `autoIndex` is enabled (default), elements are automatically indexed when saved and removed when deleted. A status sync job periodically checks for entries that became live (postDate passed) or expired without a save event.
+When `autoIndex` is enabled (default), elements are automatically queued for indexing when saved and queued for removal when deleted. Search Manager stores those save/delete events in a pending sync buffer and drains them with `BatchSyncJob`, so rapid edits or imports can collapse repeated work into fewer backend calls.
+
+The batch sync worker groups pending rows by index and writes documents through backend batch APIs. This is especially useful for Feed Me, CSV imports, migrations, and other bulk-write workflows where one import can trigger thousands of element save events.
+
+A status sync job periodically checks for entries that became live (postDate passed) or expired without a save event. That job still uses the existing direct sync path in this release; the pending buffer is focused on normal save/delete auto-sync first.
 
 Search Manager debounces automatic `lastIndexed` metadata updates with `lastIndexedDebounceSeconds` (default: 60 seconds). This keeps the "Last Indexed" column current enough for operators while avoiding an extra metadata-table write for every save during imports or busy editing sessions. Set the value to `0` if you want the timestamp updated after every successful auto-sync.
 
 Manual rebuilds, clears, and backend count refreshes still update index stats immediately.
+
+#### Document Count Is Eventually Consistent
+
+The "Documents" column on the Indices index page reflects what the index contained at the last point a count was authoritative — either a full rebuild or an explicit count refresh. Automatic save/delete syncs **do not** update this counter, by design: doing so would require a per-row backend probe for every save, defeating the API-amplification reduction that batch sync provides.
+
+Expect the count to drift slightly during high-volume activity (large Feed Me runs, bulk imports). It does not affect what users see in search results — the underlying index is updated correctly, only the metadata badge is delayed.
+
+To force the count to refresh:
+
+- Run a rebuild: `php craft search-manager/index/rebuild <handle>`
+- Use the refresh action on the index detail page (where exposed)
+
+This is a deliberate trade-off against the API amplification that real-time counting would require; if your workflow depends on real-time document counts, prefer a periodic rebuild over relying on the live counter.
 
 See [Console Commands](../developers/console-commands.md) for all CLI options.

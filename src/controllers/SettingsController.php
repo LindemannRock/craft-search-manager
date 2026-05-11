@@ -691,7 +691,7 @@ class SettingsController extends Controller
     {
         return match ($section) {
             'general' => ['pluginName', 'defaultBackendHandle', 'defaultWidgetHandle', 'logLevel'],
-            'indexing' => ['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'batchSize', 'lastIndexedDebounceSeconds', 'indexPrefix'],
+            'indexing' => ['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'batchSize', 'lastIndexedDebounceSeconds', 'syncBatchSize', 'batchFlushInterval', 'pendingMaxAge', 'batchMaxAttempts', 'indexPrefix'],
             'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
             'search' => ['bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
             'language' => ['defaultLanguage', 'enableStopWords'],
