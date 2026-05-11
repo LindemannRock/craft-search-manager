@@ -43,6 +43,14 @@ Common issues and solutions for Search Manager.
 - **Check your transformer**: Complex transformers that query relations or perform heavy computation slow down indexing. Pre-fetch related data where possible.
 - **Rebuild during off-hours**: For sites with 10,000+ elements, schedule rebuilds during low-traffic periods to avoid queue congestion.
 
+The `lastIndexedDebounceSeconds` setting only affects how often the "Last Indexed" metadata timestamp is written during automatic save/delete syncs. It does not reduce backend indexing work. For large imports, keep using queue-based indexing and tune `batchSize`; future bulk-sync architecture will address save-event write amplification more directly.
+
+## Last Indexed Does Not Update After Every Save
+
+Automatic save/delete syncs debounce `lastIndexed` updates for 60 seconds by default. This is expected: the element is still indexed, but the metadata timestamp is only touched once per debounce window to avoid extra database writes during imports or rapid editing.
+
+Set `lastIndexedDebounceSeconds` to `0` if you need the timestamp updated after every successful auto-sync, or lower it to a smaller value such as `5` while testing.
+
 ## Out of Memory During Rebuild
 
 Each batch loads full elements with their relations into memory. If your server runs out of memory during a rebuild:

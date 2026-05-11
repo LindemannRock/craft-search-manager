@@ -68,6 +68,12 @@ class Settings extends Model
     public int $batchSize = 100;
 
     /**
+     * @var int Minimum seconds between automatic lastIndexed metadata updates
+     * @since 5.45.0
+     */
+    public int $lastIndexedDebounceSeconds = 60;
+
+    /**
      * @var bool Use queue for indexing operations
      */
     public bool $queueEnabled = true;
@@ -365,6 +371,7 @@ class Settings extends Model
         return [
             'itemsPerPage',
             'batchSize',
+            'lastIndexedDebounceSeconds',
             'analyticsRetention',
             'deviceDetectionCacheDuration',
             'maxFuzzyCandidates',
@@ -419,6 +426,7 @@ class Settings extends Model
             [['geoProvider'], 'in', 'range' => ['ip-api.com', 'ipapi.co', 'ipinfo.io']],
             [['geoApiKey'], 'string', 'max' => 255, 'skipOnEmpty' => true],
             [['itemsPerPage', 'batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
+            [['lastIndexedDebounceSeconds'], 'integer', 'min' => 0, 'max' => 3600],
             [['analyticsRetention'], 'integer', 'min' => 0, 'max' => 3650],
             [['itemsPerPage'], 'integer', 'max' => 500],
             [['batchSize'], 'integer', 'max' => 1000],

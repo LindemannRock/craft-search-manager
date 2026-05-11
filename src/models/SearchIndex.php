@@ -10,6 +10,7 @@ use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -890,6 +891,55 @@ class SearchIndex extends Model
     public static function decrementDocumentCount(string $handle): bool
     {
         return self::adjustDocumentCount($handle, -1);
+    }
+
+    /**
+     * Touch lastIndexed for automatic sync paths, debounced to avoid metadata write amplification.
+     * Updates the database row only; loaded SearchIndex instances are refreshed on the next load.
+     *
+     * @since 5.45.0
+     */
+    public static function touchLastIndexedDebounced(string $handle): bool
+    {
+        $debounceSeconds = max(0, SearchManager::$plugin->getSettings()->lastIndexedDebounceSeconds);
+        $now = new \DateTime();
+
+        try {
+            $db = Craft::$app->getDb();
+            $condition = ['handle' => $handle];
+
+            if ($debounceSeconds > 0) {
+                $cutoff = (clone $now)->modify("-{$debounceSeconds} seconds");
+                $condition = [
+                    'and',
+                    $condition,
+                    [
+                        'or',
+                        ['lastIndexed' => null],
+                        ['<', 'lastIndexed', Db::prepareDateForDb($cutoff)],
+                    ],
+                ];
+            }
+
+            $result = $db->createCommand()
+                ->update(
+                    '{{%searchmanager_indices}}',
+                    [
+                        'lastIndexed' => Db::prepareDateForDb($now),
+                        'dateUpdated' => Db::prepareDateForDb($now),
+                    ],
+                    $condition
+                )
+                ->execute();
+
+            return $result > 0;
+        } catch (\Throwable $e) {
+            LoggingService::log('Failed to touch lastIndexed', 'error', 'search-manager', [
+                'handle' => $handle,
+                'error' => $e->getMessage(),
+            ]);
+            return false;
+        }
     }
 
     /**

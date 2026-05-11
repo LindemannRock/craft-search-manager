@@ -132,6 +132,7 @@ class SyncElementJob extends BaseJob implements RetryableJobInterface
             if ($exists) {
                 SearchManager::$plugin->backend->delete($index->handle, $this->elementId, $this->siteId);
                 SearchIndex::decrementDocumentCount($index->handle);
+                SearchIndex::touchLastIndexedDebounced($index->handle);
                 if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
                     SearchManager::$plugin->backend->clearSearchCache($index->handle);
                     SearchManager::$plugin->autocomplete->clearCache($index->handle);

@@ -82,6 +82,13 @@ return [
         // 'batchSize' => 100,
 
         /**
+         * Minimum seconds between automatic lastIndexed metadata updates
+         * Set to 0 to update lastIndexed after every successful auto-sync.
+         * Default: 60
+         */
+        // 'lastIndexedDebounceSeconds' => 60,
+
+        /**
          * Prefix for index names
          * Useful for multi-environment setups
          * Example: 'dev_', 'staging_', 'prod_'

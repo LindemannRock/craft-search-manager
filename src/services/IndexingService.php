@@ -204,6 +204,7 @@ class IndexingService extends Component
                     if ($isNewDocument) {
                         SearchIndex::incrementDocumentCount($indexHandle);
                     }
+                    SearchIndex::touchLastIndexedDebounced($indexHandle);
 
                     // Trigger after event
                     $this->trigger(self::EVENT_AFTER_INDEX, new IndexEvent([
@@ -265,6 +266,7 @@ class IndexingService extends Component
 
                 if (SearchManager::$plugin->backend->delete($index->handle, $element->id, $siteId)) {
                     SearchIndex::decrementDocumentCount($index->handle);
+                    SearchIndex::touchLastIndexedDebounced($index->handle);
                     if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
                         SearchManager::$plugin->backend->clearSearchCache($index->handle);
                         SearchManager::$plugin->autocomplete->clearCache($index->handle);
@@ -341,6 +343,7 @@ class IndexingService extends Component
                     }
 
                     SearchIndex::decrementDocumentCount($index->handle);
+                    SearchIndex::touchLastIndexedDebounced($index->handle);
 
                     $this->logInfo('Element removed from index', [
                         'elementId' => $element->id,

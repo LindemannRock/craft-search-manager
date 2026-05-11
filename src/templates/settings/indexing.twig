@@ -104,6 +104,22 @@
         }) }}
 
 		{{ forms.textField({
+            label: 'Last Indexed Debounce'|t('search-manager'),
+            instructions: 'Minimum seconds between automatic Last Indexed timestamp updates during save and delete syncs. Set to 0 to update after every successful auto-sync.'|t('search-manager'),
+            id: 'lastIndexedDebounceSeconds',
+            name: 'settings[lastIndexedDebounceSeconds]',
+            value: settings.lastIndexedDebounceSeconds,
+            type: 'number',
+            min: 0,
+            max: 3600,
+            required: true,
+            disabled: settings.isOverriddenByConfig('lastIndexedDebounceSeconds'),
+            warning: settings.isOverriddenByConfig('lastIndexedDebounceSeconds') ?
+                "This is being overridden by the <code>lastIndexedDebounceSeconds</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            errors: settings.getErrors('lastIndexedDebounceSeconds')
+        }) }}
+
+		{{ forms.textField({
             label: 'Index Prefix'|t('search-manager'),
             instructions: 'Prefix for index names (useful for multi-environment setups)'|t('search-manager'),
             id: 'indexPrefix',

@@ -262,4 +262,8 @@ Go to Search Manager > Indices and use the rebuild/clear buttons for each index.
 
 When `autoIndex` is enabled (default), elements are automatically indexed when saved and removed when deleted. A status sync job periodically checks for entries that became live (postDate passed) or expired without a save event.
 
+Search Manager debounces automatic `lastIndexed` metadata updates with `lastIndexedDebounceSeconds` (default: 60 seconds). This keeps the "Last Indexed" column current enough for operators while avoiding an extra metadata-table write for every save during imports or busy editing sessions. Set the value to `0` if you want the timestamp updated after every successful auto-sync.
+
+Manual rebuilds, clears, and backend count refreshes still update index stats immediately.
+
 See [Console Commands](../developers/console-commands.md) for all CLI options.
