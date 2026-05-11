@@ -26,6 +26,13 @@ yarn-error.log*
 playwright-report/
 test-results/
 
+# PHPUnit
+/.phpunit.cache/
+/.phpunit.result.cache
+/phpunit.xml
+/coverage/
+/coverage.xml
+
 # Environment files
 .env
 .env.*
