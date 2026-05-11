@@ -28,6 +28,8 @@ class AnalyticsController extends Controller
 {
     use LoggingTrait;
 
+    private const EXPORT_ROW_LIMIT = 100000;
+
     /**
      * @inheritdoc
      */
@@ -173,6 +175,9 @@ class AnalyticsController extends Controller
             $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
 
             $exportData = SearchManager::$plugin->analytics->exportAnalytics($effectiveSiteId, $dateRange);
+            if (($exportData['truncated'] ?? false) === true) {
+                $this->addExportLimitNotice((int)($exportData['limit'] ?? self::EXPORT_ROW_LIMIT));
+            }
             $recentRows = $exportData['rows'] ?? [];
             $recentHeaders = $exportData['headers'] ?? [];
             $recentJson = $exportData['jsonData']['data'] ?? [];
@@ -1009,7 +1014,12 @@ class AnalyticsController extends Controller
 
         SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
 
-        $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
+        $data = $query
+            ->orderBy(['dateCreated' => SORT_DESC])
+            ->limit(self::EXPORT_ROW_LIMIT + 1)
+            ->all();
+
+        $data = $this->truncateExportRows($data);
 
         if (empty($data)) {
             Craft::$app->getSession()->setError(
@@ -1073,7 +1083,12 @@ class AnalyticsController extends Controller
 
         SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
 
-        $data = $query->orderBy(['dateCreated' => SORT_DESC])->all();
+        $data = $query
+            ->orderBy(['dateCreated' => SORT_DESC])
+            ->limit(self::EXPORT_ROW_LIMIT + 1)
+            ->all();
+
+        $data = $this->truncateExportRows($data);
 
         if (empty($data)) {
             Craft::$app->getSession()->setError(
@@ -1272,6 +1287,10 @@ class AnalyticsController extends Controller
         $format = $request->getBodyParam('format', 'csv');
         $type = $request->getBodyParam('type', 'clusters'); // 'clusters' or 'recent'
 
+        if (!in_array($type, ['clusters', 'recent'], true)) {
+            throw new \yii\web\BadRequestHttpException('Invalid type specified.');
+        }
+
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
         }
@@ -1353,5 +1372,29 @@ class AnalyticsController extends Controller
             'excel' => ExportHelper::toExcel($data, $headers, $filename),
             default => ExportHelper::toCsv($data, $headers, $filename),
         };
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<int, array<string, mixed>>
+     */
+    private function truncateExportRows(array $rows): array
+    {
+        if (count($rows) <= self::EXPORT_ROW_LIMIT) {
+            return $rows;
+        }
+
+        $this->addExportLimitNotice(self::EXPORT_ROW_LIMIT);
+
+        return array_slice($rows, 0, self::EXPORT_ROW_LIMIT);
+    }
+
+    private function addExportLimitNotice(int $limit): void
+    {
+        Craft::$app->getSession()->setNotice(
+            Craft::t('search-manager', 'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.', [
+                'limit' => number_format($limit),
+            ])
+        );
     }
 }

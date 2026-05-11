@@ -30,6 +30,8 @@ class AnalyticsExportService
     use AnalyticsQueryTrait;
     use LoggingTrait;
 
+    private const EXPORT_ROW_LIMIT = 100000;
+
     /**
      */
     public function __construct()
@@ -153,9 +155,15 @@ class AnalyticsExportService
             $query->andWhere(['siteId' => $siteId]);
         }
 
-        $results = $query->all();
+        $results = $query
+            ->limit(self::EXPORT_ROW_LIMIT + 1)
+            ->all();
 
         ExportHelper::assertNotEmpty($results);
+        $truncated = count($results) > self::EXPORT_ROW_LIMIT;
+        if ($truncated) {
+            $results = array_slice($results, 0, self::EXPORT_ROW_LIMIT);
+        }
 
         // Check if geo detection is enabled
         $settings = SearchManager::$plugin->getSettings();
@@ -257,6 +265,8 @@ class AnalyticsExportService
             'rows' => $rows,
             'headers' => $headers,
             'jsonData' => $this->_exportAsJson($results, $geoEnabled),
+            'truncated' => $truncated,
+            'limit' => self::EXPORT_ROW_LIMIT,
         ];
     }
 

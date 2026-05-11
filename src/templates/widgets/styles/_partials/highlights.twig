@@ -16,11 +16,11 @@
 	instructions: 'Enable search term highlighting in results'|t('search-manager'),
 	id: 'styles-highlightEnabled',
 	name: namePrefix ~ '[highlightEnabled]',
-	on: styles.highlightEnabled != '0',
+	on: styles.highlightEnabled is not same as(false) and styles.highlightEnabled not in ['0', 0, 'false', 'off', 'no'],
 	toggle: 'styles-highlighting-options',
 }) }}
 
-<div id="styles-highlighting-options"{% if styles.highlightEnabled == '0' %} class="hidden"{% endif %}>
+<div id="styles-highlighting-options"{% if styles.highlightEnabled is same as(false) or styles.highlightEnabled in ['0', 0, 'false', 'off', 'no'] %} class="hidden"{% endif %}>
 
 	{% set highlightTagValue = styles.highlightTag ?? '' %}
 	{{ forms.selectField({

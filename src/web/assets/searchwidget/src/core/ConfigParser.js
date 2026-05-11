@@ -171,7 +171,7 @@ export function getDefaultsForType(widgetType) {
 /**
  * Parse a boolean attribute value
  *
- * @param {string|null} value - Attribute value
+ * @param {string|number|boolean|null} value - Attribute value
  * @param {boolean} defaultValue - Default if not set
  * @returns {boolean} Parsed boolean
  */
@@ -179,11 +179,24 @@ function parseBoolean(value, defaultValue = false) {
     if (value === null || value === undefined) {
         return defaultValue;
     }
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (typeof value === 'number') {
+        return value !== 0;
+    }
     // Attribute present without value means true
     if (value === '') {
         return true;
     }
-    return value !== 'false' && value !== '0';
+    const normalized = String(value).trim().toLowerCase();
+    if (['1', 'true', 'on', 'yes'].includes(normalized)) {
+        return true;
+    }
+    if (['0', 'false', 'off', 'no'].includes(normalized)) {
+        return false;
+    }
+    return defaultValue;
 }
 
 /**

@@ -7,6 +7,7 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
+use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\WidgetConfig;
@@ -80,7 +81,7 @@ class WidgetConfigService extends Component
         $widgetConfig->handle = $handle;
         $widgetConfig->name = $configData['name'] ?? ucfirst($handle);
         $widgetConfig->type = $configData['type'] ?? 'modal';
-        $widgetConfig->enabled = $configData['enabled'] ?? true;
+        $widgetConfig->enabled = BooleanHelper::normalize($configData['enabled'] ?? null, true);
         $widgetConfig->source = 'config';
         $widgetConfig->styleHandle = $configData['styleHandle'] ?? null;
 

@@ -483,11 +483,15 @@ class SettingsController extends Controller
                 $siteStatuses = [];
                 if ($element) {
                     foreach (Craft::$app->getSites()->getAllSites() as $site) {
-                        $siteElement = \craft\elements\Entry::find()
-                            ->id($promotion->elementId)
-                            ->siteId($site->id)
-                            ->status('live')
-                            ->one();
+                        $elementClass = $promotion->elementType ?? get_class($element);
+                        $siteElement = null;
+                        if (is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
+                            $siteElement = $elementClass::find()
+                                ->id($promotion->elementId)
+                                ->siteId($site->id)
+                                ->status('live')
+                                ->one();
+                        }
                         $siteStatuses[] = [
                             'siteId' => $site->id,
                             'siteName' => $site->name,

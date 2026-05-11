@@ -6,6 +6,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\Json;
+use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\WidgetStyle;
@@ -62,7 +63,7 @@ class WidgetStyleService extends Component
         $style->handle = $handle;
         $style->name = $configData['name'] ?? ucfirst($handle);
         $style->type = $configData['type'] ?? 'modal';
-        $style->enabled = $configData['enabled'] ?? true;
+        $style->enabled = BooleanHelper::normalize($configData['enabled'] ?? null, true);
         $style->source = 'config';
         $style->styles = $configData['styles'] ?? [];
 

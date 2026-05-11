@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\db\Query;
 use craft\web\Controller;
+use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -180,7 +181,7 @@ class WidgetsController extends Controller
         $widgetConfig->name = $request->getBodyParam('name');
         $widgetConfig->handle = $request->getBodyParam('handle');
         $widgetConfig->type = (string) $request->getBodyParam('type', 'modal');
-        $widgetConfig->enabled = (bool) $request->getBodyParam('enabled');
+        $widgetConfig->enabled = BooleanHelper::normalize($request->getBodyParam('enabled'), false);
 
         // Get settings from form
         $widgetSettings = $request->getBodyParam('settings', []);
@@ -247,7 +248,7 @@ class WidgetsController extends Controller
         }
 
         // Handle "Set as Default" toggle (only if not set via config)
-        $isDefault = (bool) $request->getBodyParam('isDefault');
+        $isDefault = BooleanHelper::normalize($request->getBodyParam('isDefault'), false);
         if ($isDefault && !$this->isDefaultWidgetFromConfig()) {
             if ($pluginSettings->defaultWidgetHandle !== $widgetConfig->handle) {
                 $pluginSettings->defaultWidgetHandle = $widgetConfig->handle;
@@ -567,7 +568,7 @@ class WidgetsController extends Controller
 
         $widgetStyle->name = (string) $request->getBodyParam('name');
         $widgetStyle->handle = (string) $request->getBodyParam('handle');
-        $widgetStyle->enabled = (bool) $request->getBodyParam('enabled');
+        $widgetStyle->enabled = BooleanHelper::normalize($request->getBodyParam('enabled'), false);
         $widgetStyle->type = (string) $request->getBodyParam('type', 'modal');
         $styles = $request->getBodyParam('styles', []);
 
@@ -700,13 +701,17 @@ class WidgetsController extends Controller
                 'color' => $this->_isValidCssColor($value),
                 'number' => preg_match('/^\d+(\.\d+)?$/', $value) === 1,
                 'shadow' => $this->_isValidCssShadow($value),
-                'boolean' => $value === '0' || $value === '1',
+                'boolean' => BooleanHelper::isBooleanLike($value),
                 'tag' => preg_match('/^[a-z]{1,20}$/', $value) === 1,
                 'class' => preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,50}$/', $value) === 1,
                 default => false,
             };
 
-            $validated[$key] = $valid ? $value : ($defaults[$key] ?? '');
+            $validated[$key] = match (true) {
+                $valid && $type === 'boolean' => BooleanHelper::toStyleValue($value, BooleanHelper::normalize($defaults[$key] ?? false)),
+                $valid => $value,
+                default => (string)($defaults[$key] ?? ''),
+            };
         }
 
         return $validated;

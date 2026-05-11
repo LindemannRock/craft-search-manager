@@ -27,15 +27,14 @@
 #}
 
 {# ============================================================================
-   Boolean normalizer - handles true/false, 'true'/'false', 1/0, 'yes'/'no'
+   Boolean normalizer - handles true/false, 1/0, on/off, yes/no
    ============================================================================ #}
 {% macro toBool(value, default) %}
-    {%- if value is same as(true) or value in ['true', '1', 'yes'] -%}
+    {%- set normalized = value is string ? value|trim|lower : value -%}
+    {%- if value is same as(true) or value is same as(1) or normalized in ['true', '1', 'on', 'yes'] -%}
         true
-    {%- elseif value is same as(false) or value in ['false', '0', 'no'] -%}
+    {%- elseif value is same as(false) or value is same as(0) or normalized in ['false', '0', 'off', 'no'] -%}
         false
-    {%- elseif value -%}
-        true
     {%- else -%}
         {{ default ? 'true' : 'false' }}
     {%- endif -%}

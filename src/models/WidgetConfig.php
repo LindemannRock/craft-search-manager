@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\models;
 
 use craft\base\Model;
 use craft\helpers\Json;
+use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -207,7 +208,7 @@ class WidgetConfig extends Model
     // Behavior
     public function isPreventBodyScrollEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.preventBodyScroll', true);
+        return $this->getBooleanSetting('behavior.preventBodyScroll', true);
     }
 
     public function getDebounce(): int
@@ -237,7 +238,7 @@ class WidgetConfig extends Model
 
     public function isShowRecentEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.showRecent', true);
+        return $this->getBooleanSetting('behavior.showRecent', true);
     }
 
     public function getMaxRecentSearches(): int
@@ -247,7 +248,7 @@ class WidgetConfig extends Model
 
     public function isGroupResultsEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.groupResults', true);
+        return $this->getBooleanSetting('behavior.groupResults', true);
     }
 
     public function getHotkey(): string
@@ -257,7 +258,7 @@ class WidgetConfig extends Model
 
     public function isHideResultsWithoutUrlEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.hideResultsWithoutUrl', false);
+        return $this->getBooleanSetting('behavior.hideResultsWithoutUrl', false);
     }
 
     /**
@@ -313,7 +314,7 @@ class WidgetConfig extends Model
      */
     public function isShowCodeSnippetsEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.showCodeSnippets', false);
+        return $this->getBooleanSetting('behavior.showCodeSnippets', false);
     }
 
     /**
@@ -365,12 +366,12 @@ class WidgetConfig extends Model
      */
     public function isParseMarkdownSnippetsEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.parseMarkdownSnippets', false);
+        return $this->getBooleanSetting('behavior.parseMarkdownSnippets', false);
     }
 
     public function isShowLoadingIndicatorEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.showLoadingIndicator', true);
+        return $this->getBooleanSetting('behavior.showLoadingIndicator', true);
     }
 
     /**
@@ -380,7 +381,7 @@ class WidgetConfig extends Model
      */
     public function isHighlightDestinationPageEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.highlightDestinationPage', true);
+        return $this->getBooleanSetting('behavior.highlightDestinationPage', true);
     }
 
     /**
@@ -390,7 +391,7 @@ class WidgetConfig extends Model
      */
     public function isPersistQueryInUrlEnabled(): bool
     {
-        return (bool) $this->getSetting('behavior.persistQueryInUrl', true);
+        return $this->getBooleanSetting('behavior.persistQueryInUrl', true);
     }
 
     /**
@@ -416,7 +417,7 @@ class WidgetConfig extends Model
     // Trigger
     public function isShowTriggerEnabled(): bool
     {
-        return (bool) $this->getSetting('trigger.showTrigger', true);
+        return $this->getBooleanSetting('trigger.showTrigger', true);
     }
 
     public function getTriggerText(): string
@@ -576,7 +577,7 @@ class WidgetConfig extends Model
         $this->validateIntField($s, 'behavior', 'minChars', 'Minimum Characters', 1, 10);
         $this->validateIntField($s, 'behavior', 'maxResults', 'Maximum Results', 1, 100);
         $this->validateIntField($s, 'behavior', 'maxHeadingsPerResult', 'Max Headings per Result', 1, 50);
-        if ((bool)($s['behavior']['showRecent'] ?? true)) {
+        if (BooleanHelper::normalize($s['behavior']['showRecent'] ?? true, true)) {
             $this->validateIntField($s, 'behavior', 'maxRecentSearches', 'Max Recent Searches', 1, 50);
         }
         $this->validateIntField($s, 'behavior', 'resultTitleLines', 'Result Title Lines', 1, 5);
@@ -588,6 +589,17 @@ class WidgetConfig extends Model
         $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', 'Hierarchy Display', ['individual', 'unified']);
         $this->validateEnumField($s, 'behavior', 'snippetMode', 'Snippet Mode', ['early', 'balanced', 'deep']);
 
+        // Behavior settings — booleans
+        $this->validateBooleanField($s, 'behavior', 'preventBodyScroll', 'Prevent Body Scroll');
+        $this->validateBooleanField($s, 'behavior', 'showRecent', 'Show Recent Searches');
+        $this->validateBooleanField($s, 'behavior', 'groupResults', 'Group Results');
+        $this->validateBooleanField($s, 'behavior', 'hideResultsWithoutUrl', 'Hide Results Without URL');
+        $this->validateBooleanField($s, 'behavior', 'showCodeSnippets', 'Show Code Snippets');
+        $this->validateBooleanField($s, 'behavior', 'parseMarkdownSnippets', 'Parse Markdown Snippets');
+        $this->validateBooleanField($s, 'behavior', 'showLoadingIndicator', 'Show Loading Indicator');
+        $this->validateBooleanField($s, 'behavior', 'highlightDestinationPage', 'Highlight Destination Page');
+        $this->validateBooleanField($s, 'behavior', 'persistQueryInUrl', 'Persist Query in URL');
+
         // Behavior settings — strings
         $this->validateStringField($s, 'behavior', 'hotkey', 'Hotkey', 1);
         $this->validateStringField($s, 'behavior', 'hierarchyGroupBy', 'Group By Field', 64);
@@ -598,6 +610,7 @@ class WidgetConfig extends Model
 
         // Trigger settings
         $this->validateStringField($s, 'trigger', 'triggerText', 'Trigger Text', 255);
+        $this->validateBooleanField($s, 'trigger', 'showTrigger', 'Show Trigger Button');
 
         // Analytics settings
         $this->validateIntField($s, 'analytics', 'idleTimeout', 'Idle Timeout', 0, 10000);
@@ -622,6 +635,25 @@ class WidgetConfig extends Model
         if ($intVal < $min || $intVal > $max) {
             $this->addError("settings.{$group}.{$key}", "{$label} must be between {$min} and {$max}.");
         }
+    }
+
+    /**
+     * Validate a boolean-like field.
+     */
+    private function validateBooleanField(array $settings, string $group, string $key, string $label): void
+    {
+        $value = $settings[$group][$key] ?? null;
+        if ($value === null) {
+            return;
+        }
+        if (!BooleanHelper::isBooleanLike($value)) {
+            $this->addError("settings.{$group}.{$key}", "{$label} must be true or false.");
+        }
+    }
+
+    private function getBooleanSetting(string $key, bool $default): bool
+    {
+        return BooleanHelper::normalize($this->getSetting($key, $default), $default);
     }
 
     /**

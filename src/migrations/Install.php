@@ -476,6 +476,7 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['clientType'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['isRobot'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['dateCreated'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['siteId', 'dateCreated'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['synonymsExpanded'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['wasRedirected'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['sessionId'], false);
