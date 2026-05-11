@@ -209,7 +209,7 @@ class IndexingService extends Component
                     // Trigger after event
                     $this->trigger(self::EVENT_AFTER_INDEX, new IndexEvent([
                         'element' => $element,
-                        'data' => $data,
+                        'document' => $data,
                         'indexHandle' => $indexHandle,
                     ]));
 

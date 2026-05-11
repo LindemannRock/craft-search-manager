@@ -24,11 +24,14 @@ class IndexEvent extends Event
     public ?ElementInterface $element = null;
 
     /**
-     * The transformed data (available in AFTER event)
+     * The transformed document data (populated in EVENT_AFTER_INDEX, null in EVENT_BEFORE_INDEX).
      *
-     * @var array
+     * Named `$document` (not `$data`) because Yii's event system reserves
+     * `Event::$data` for per-listener metadata passed to `Event::on()`, and
+     * overwrites it during dispatch — so a payload set on the event by the
+     * trigger never reaches the listener.
      */
-    public $data = [];
+    public ?array $document = null;
 
     /**
      * The index handle

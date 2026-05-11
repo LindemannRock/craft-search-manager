@@ -210,7 +210,7 @@ class PendingSyncProcessor extends Component
                 foreach ($docRows as $i => $docRow) {
                     $indexing->trigger(IndexingService::EVENT_AFTER_INDEX, new IndexEvent([
                         'element' => $docElements[$i],
-                        'data' => $docs[$i],
+                        'document' => $docs[$i],
                         'indexHandle' => $indexHandle,
                     ]));
                 }
