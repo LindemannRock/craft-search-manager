@@ -1211,7 +1211,6 @@ return [
     '{pluginName}: Rebuilding all indices' => '{pluginName}: Rebuilding all indices',
     '{pluginName}: Cleaning up old analytics' => '{pluginName}: Cleaning up old analytics',
     '{pluginName}: Resolving geo-location {id}' => '{pluginName}: Resolving geo-location {id}',
-    '{pluginName}: Sync element {id} for site {siteId}' => '{pluginName}: Sync element {id} for site {siteId}',
     '{pluginName}: Syncing element status changes' => '{pluginName}: Syncing element status changes',
     '{pluginName}: Processing pending search syncs' => '{pluginName}: Processing pending search syncs',
     'Adding newly live entries to {index}' => 'Adding newly live entries to {index}',
