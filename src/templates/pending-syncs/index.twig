@@ -5,18 +5,15 @@
    etc. via PluginNameHelper. #}
 
 {# Filters from URL (the controller already validates these) #}
-{% set statusFilterRaw = filters.status ?? 'all' %}
-{% set statusFilter = statusFilterRaw is iterable ? 'all' : statusFilterRaw %}
+{% set statusFilter = statusParam ?? 'all' %}
 {% set indexHandleFilter = filters.indexHandle ?? 'all' %}
 {% set opFilter = filters.op ?? 'all' %}
 {% set siteIdFilter = filters.siteId ?? 'all' %}
-{% set stuckOn = filters.stuck is defined and filters.stuck %}
 {% set searchValue = filters.search ?? '' %}
-{% set showingAll = statusGroup == 'all' %}
 
 {# Permissions #}
-{% set canRetry = currentUser.can('searchManager:retrySyncFailures') %}
-{% set canPurge = currentUser.can('searchManager:purgeSyncFailures') %}
+{% set canRetry = currentUser.can('searchManager:retryPendingSyncs') %}
+{% set canPurge = currentUser.can('searchManager:purgePendingSyncs') %}
 
 {# Stats counts indexed by status (used to gate the "Purge abandoned" toolbar
    button so it only renders when there is something to purge). #}
@@ -59,11 +56,11 @@
         name: searchHelper.fullName,
     },
     page: {
-        title: showingAll ? 'Pending Syncs'|t('search-manager') : 'Sync Failures'|t('search-manager'),
+        title: 'Pending Syncs'|t('search-manager'),
         subnav: 'pending-syncs',
         crumbs: [
             { label: searchHelper.fullName, url: url('search-manager') },
-            { label: 'Sync Failures'|t('search-manager'), url: url('search-manager/pending-syncs') },
+            { label: 'Pending Syncs'|t('search-manager'), url: url('search-manager/pending-syncs') },
         ],
     },
     filters: [
@@ -71,43 +68,47 @@
             type: 'status',
             param: 'status',
             current: statusFilter,
-            label: 'All'|t('search-manager'),
+            label: 'All statuses'|t('search-manager'),
             groups: [
                 {
                     param: 'status',
                     current: statusFilter,
                     options: [
-                        {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'all', label: 'All statuses'|t('search-manager'), status: 'all'},
                         {value: 'pending', label: 'Pending'|t('search-manager'), colorKey: 'pending'},
                         {value: 'processing', label: 'Processing'|t('search-manager'), colorKey: 'processing'},
                         {value: 'failed', label: 'Failed'|t('search-manager'), colorKey: 'failed'},
                         {value: 'abandoned', label: 'Abandoned'|t('search-manager'), colorKey: 'abandoned'},
+                        {value: 'failures', label: 'Failed & Abandoned'|t('search-manager'), colorKey: 'abandoned'},
                     ],
                     colorSet: 'pendingSyncStatus',
-                },
-                {
-                    header: 'Index'|t('search-manager'),
-                    param: 'indexHandle',
-                    current: indexHandleFilter,
-                    options: indexOptions,
                 },
                 {
                     header: 'Op'|t('search-manager'),
                     param: 'op',
                     current: opFilter,
+                    colorSet: 'pendingSyncOp',
                     options: [
                         {value: 'all', label: 'All ops'|t('search-manager'), status: 'all'},
-                        {value: 'upsert', label: 'Upsert'|t('search-manager')},
-                        {value: 'delete', label: 'Delete'|t('search-manager')},
+                        {value: 'upsert', label: 'Write'|t('search-manager'), colorKey: 'upsert'},
+                        {value: 'delete', label: 'Delete'|t('search-manager'), colorKey: 'delete'},
                     ],
                 },
-                {
-                    header: 'Site'|t('search-manager'),
-                    param: 'siteId',
-                    current: siteIdFilter,
-                    options: siteOptions,
-                },
             ],
+        },
+        {
+            type: 'dropdown',
+            param: 'indexHandle',
+            current: indexHandleFilter,
+            label: 'All indices'|t('search-manager'),
+            options: indexOptions,
+        },
+        {
+            type: 'dropdown',
+            param: 'siteId',
+            current: siteIdFilter,
+            label: 'All sites'|t('search-manager'),
+            options: siteOptions,
         },
     ],
     search: {
@@ -121,31 +122,39 @@
     table: {
         columns: columns,
         items: rows,
-        emptyMessage: showingAll ? 'No pending syncs.'|t('search-manager') : 'No sync failures.'|t('search-manager'),
+        emptyMessage: 'No pending syncs.'|t('search-manager'),
     },
     pagination: {
         page: page,
         limit: limit,
         totalCount: totalCount,
-        itemLabel: showingAll
-            ? {singular: 'pending sync'|t('search-manager'), plural: 'pending syncs'|t('search-manager')}
-            : {singular: 'sync failure'|t('search-manager'), plural: 'sync failures'|t('search-manager')},
+        itemLabel: {singular: 'pending sync'|t('search-manager'), plural: 'pending syncs'|t('search-manager')},
     },
     checkboxes: canRetry or canPurge,
+    ajax: {
+        enabled: ((countByStatus.pending ?? 0) + (countByStatus.processing ?? 0)) > 0,
+        interval: 5,
+        endpoint: actionUrl('search-manager/pending-syncs/get-data'),
+    },
 } %}
 
+{# Auto-refresh is gated on whether the buffer has live work: pending rows
+   waiting for a worker, or processing rows mid-flight. When the page shows
+   only failures/abandoned (or is empty), polling adds nothing — the
+   `enabled` flag above evaluates to false and the layout skips the poll. #}
+
 {% block toolbarActions %}
-    {# Default view is failures only. Operators rarely care about pending /
-       processing rows — `BatchSyncJob` drains those in the background. The
-       toggle lets a curious operator see the full mid-flight buffer. #}
-    <a href="{{ url('search-manager/pending-syncs', showingAll ? {} : {statusGroup: 'all'}) }}" class="btn{{ showingAll ? ' active' : '' }}">
-        {{ showingAll ? 'Show failures only'|t('search-manager') : 'Show all rows'|t('search-manager') }}
-    </a>
-    {% if canPurge and (countByStatus.abandoned ?? 0) > 0 %}
+    {# Only surface Purge when the current view would actually display abandoned
+       rows. Showing it under e.g. status=pending creates a "where are those
+       abandoned rows?" UX glitch. #}
+    {% set purgeVisible = canPurge
+        and (countByStatus.abandoned ?? 0) > 0
+        and statusFilter in ['all', 'abandoned', 'failures'] %}
+    {% if purgeVisible %}
         <form method="post" accept-charset="UTF-8" style="display:inline;" data-confirm="{{ 'Purge all abandoned rows? This cannot be undone.'|t('search-manager') }}">
             {{ csrfInput() }}
             <input type="hidden" name="action" value="search-manager/pending-syncs/purge-abandoned">
-            <button type="submit" class="btn error">{{ 'Purge abandoned'|t('search-manager') }} ({{ countByStatus.abandoned }})</button>
+            <button type="submit" class="btn">{{ 'Purge abandoned'|t('search-manager') }} ({{ countByStatus.abandoned }})</button>
         </form>
     {% endif %}
 {% endblock %}
@@ -157,7 +166,11 @@
     {% set claimedAtTs = item.claimedAt ? item.claimedAt|lrDatetime('short') : null %}
     {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
 
-    <td data-column="index">
+    {# Row-level metadata for the bulk-count JS. Retry-eligible = failed +
+       abandoned; delete-eligible = anything except fresh-processing. #}
+    <td data-column="index"
+        data-row-status="{{ item.status }}"
+        data-row-fresh-processing="{{ isFreshlyProcessing ? '1' : '0' }}">
         <code>{{ item.indexHandle }}</code>
     </td>
 
@@ -188,8 +201,9 @@
     </td>
 
     <td data-column="op">
+        {% set opLabel = item.op == 'upsert' ? 'Write'|t('search-manager') : 'Delete'|t('search-manager') %}
         {% include 'lindemannrock-base/_components/badge' with {
-            label: item.op|capitalize,
+            label: opLabel,
             value: item.op,
             colorSet: 'pendingSyncOp',
         } only %}
@@ -201,11 +215,6 @@
             value: item.status,
             colorSet: 'pendingSyncStatus',
         } only %}
-        {% if isFreshlyProcessing %}
-            <span class="light" title="{{ 'A worker is processing this row. Wait for it to finish or expire before retrying.'|t('search-manager') }}">
-                ({{ 'active'|t('search-manager') }})
-            </span>
-        {% endif %}
     </td>
 
     <td data-column="attempts">
@@ -233,6 +242,7 @@
 
 {% block rowActions %}
     {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
+    {% set canRetryThisRow = item.status in ['failed', 'abandoned'] %}
     {% set element = elements[item.elementId ~ ':' ~ item.siteId] ?? null %}
 
     {% set actionItems = [] %}
@@ -249,8 +259,8 @@
             label: 'Retry now'|t('search-manager'),
             jsAction: 'retry',
             data: {id: item.id},
-            disabled: isFreshlyProcessing,
-            tooltip: isFreshlyProcessing ? 'Row is currently being processed by a worker.'|t('search-manager') : null,
+            disabled: not canRetryThisRow,
+            tooltip: canRetryThisRow ? null : 'Only failed and abandoned rows can be retried. Pending and processing rows are already in the queue.'|t('search-manager'),
         }]) %}
     {% endif %}
 
@@ -284,12 +294,12 @@
 {% block bulkActions %}
     {% if canRetry %}
         <button type="button" class="btn secondary" id="lr-bulk-retry-btn">
-            {{ 'Retry'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
+            {{ 'Retry'|t('search-manager') }} (<span class="lr-bulk-count-retry">0</span>)
         </button>
     {% endif %}
     {% if canPurge %}
-        <button type="button" class="btn error" id="lr-bulk-delete-btn">
-            {{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
+        <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
+            {{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count-delete">0</span>)
         </button>
     {% endif %}
 {% endblock %}
@@ -298,6 +308,54 @@
 <script>
 (function() {
     if (typeof Craft === 'undefined') return;
+
+    // Auto-refresh: when the cp-table layout's AJAX poll fires (configured
+    // when there is live work in the buffer), it dispatches `lr:refresh`.
+    // We reload the page so every cell — including badges and counts in
+    // beforeTable — reflects the new state. Cheap and reliable; per-row
+    // client-side diffing isn't worth the surface area yet.
+    document.addEventListener('lr:refresh', function() {
+        window.location.reload();
+    });
+
+    // Live-update bulk action counts. The Retry and Delete buttons have
+    // different eligibility rules (see below) — so we count them separately
+    // and write into distinct counters. The base cp-table layout dispatches
+    // `lr:selectionChanged` on every toggle with the full selectedIds set.
+    //
+    //   Retry  → only rows at status=failed or status=abandoned.
+    //   Delete → anything except fresh-processing (worker actively holds it).
+    document.addEventListener('lr:selectionChanged', function(e) {
+        const ids = (e.detail && Array.isArray(e.detail.selectedIds))
+            ? e.detail.selectedIds
+            : [];
+
+        let retryCount = 0;
+        let deleteCount = 0;
+
+        ids.forEach(function(id) {
+            const row = document.querySelector('tr[data-id="' + id + '"]');
+            if (!row) return;
+            const meta = row.querySelector('[data-row-status]');
+            if (!meta) return;
+            const status = meta.dataset.rowStatus;
+            const isFresh = meta.dataset.rowFreshProcessing === '1';
+
+            if (status === 'failed' || status === 'abandoned') {
+                retryCount++;
+            }
+            if (!isFresh) {
+                deleteCount++;
+            }
+        });
+
+        document.querySelectorAll('.lr-bulk-count-retry').forEach(function(el) {
+            el.textContent = retryCount;
+        });
+        document.querySelectorAll('.lr-bulk-count-delete').forEach(function(el) {
+            el.textContent = deleteCount;
+        });
+    });
 
     // Row-action handlers via the cp-table jsAction wiring.
     document.addEventListener('click', function(e) {

@@ -31,25 +31,27 @@ class PendingSyncsController extends Controller
     }
 
     /**
-     * Failure-triage view. By default only surfaces rows that need an
-     * operator's attention — `failed` and `abandoned`. Pending and processing
-     * rows are normal mid-flight state for `BatchSyncJob` and don't belong on
-     * a triage page; the operator can opt into them with `?statusGroup=all`
-     * or an explicit `?status=...`.
+     * Pending Syncs list view. Default shows every row in the buffer; operator
+     * narrows via the Status filter. The dropdown carries individual statuses
+     * plus a combined "Failed & Abandoned" preset (URL value `failures`) for
+     * one-click triage.
      */
     public function actionIndex(): Response
     {
-        $this->requirePermission('searchManager:manageSyncFailures');
+        $this->requirePermission('searchManager:managePendingSyncs');
 
         $request = Craft::$app->getRequest();
-        $statusGroup = (string) $request->getParam('statusGroup', 'failures');
-        $explicitStatus = $request->getParam('status');
+        $statusParam = $request->getParam('status');
 
+        // Status filter rules:
+        //  - 'all' / empty   → no status filter (show every row)
+        //  - 'failures'      → combined preset: failed + abandoned
+        //  - any single name → exact-match that status
         $statusFilter = null;
-        if ($explicitStatus !== null && $explicitStatus !== '' && $explicitStatus !== 'all') {
-            $statusFilter = (string) $explicitStatus;
-        } elseif ($statusGroup === 'failures') {
+        if ($statusParam === 'failures') {
             $statusFilter = [PendingSyncRepository::STATUS_FAILED, PendingSyncRepository::STATUS_ABANDONED];
+        } elseif ($statusParam !== null && $statusParam !== '' && $statusParam !== 'all') {
+            $statusFilter = (string) $statusParam;
         }
 
         $filters = array_filter([
@@ -64,7 +66,9 @@ class PendingSyncsController extends Controller
         $sort = (string) $request->getParam('sort', 'queuedAt');
         $dir = (string) $request->getParam('dir', 'asc');
         $page = max(1, (int) $request->getParam('page', 1));
-        $limit = 50;
+        // Per-CP-page-size pulled from the plugin's `itemsPerPage` setting so
+        // this list paginates the same way as the rest of the plugin's tables.
+        $limit = max(1, (int) SearchManager::$plugin->getSettings()->itemsPerPage);
         $offset = ($page - 1) * $limit;
 
         $repository = SearchManager::$plugin->pendingSyncs;
@@ -79,7 +83,7 @@ class PendingSyncsController extends Controller
             'totalCount' => $result['total'],
             'stats' => $stats,
             'filters' => $filters,
-            'statusGroup' => $statusGroup,
+            'statusParam' => $statusParam ?? 'all',
             'sort' => $sort,
             'dir' => $dir,
             'page' => $page,
@@ -167,6 +171,22 @@ class PendingSyncsController extends Controller
     }
 
     /**
+     * Minimal endpoint backing the cp-table layout's AJAX auto-refresh. The
+     * layout fires `lr:refresh` on the client when this returns success; the
+     * Pending Syncs template handles that event by reloading the page so
+     * every cell (badges, counts, pagination, beforeTable stats) reflects
+     * the new state. We do not bother shipping the table payload back over
+     * the wire — a hard reload is simpler than a full client-side diff and
+     * the auto-refresh only kicks in when there is live work to watch.
+     */
+    public function actionGetData(): Response
+    {
+        $this->requirePermission('searchManager:managePendingSyncs');
+
+        return $this->asJson(['success' => true]);
+    }
+
+    /**
      * Retry one or more rows: reset to pending and force re-claim on the
      * next BatchSyncJob run. Skips rows currently being processed by a
      * non-stale worker.
@@ -174,7 +194,7 @@ class PendingSyncsController extends Controller
     public function actionRetry(): Response
     {
         $this->requirePostRequest();
-        $this->requirePermission('searchManager:retrySyncFailures');
+        $this->requirePermission('searchManager:retryPendingSyncs');
 
         $ids = $this->idsParam();
         $updated = SearchManager::$plugin->pendingSyncs->retry($ids);
@@ -198,7 +218,7 @@ class PendingSyncsController extends Controller
     public function actionDelete(): Response
     {
         $this->requirePostRequest();
-        $this->requirePermission('searchManager:purgeSyncFailures');
+        $this->requirePermission('searchManager:purgePendingSyncs');
 
         $ids = $this->idsParam();
         $deleted = SearchManager::$plugin->pendingSyncs->deleteByIds($ids);
@@ -222,7 +242,7 @@ class PendingSyncsController extends Controller
     public function actionPurgeAbandoned(): Response
     {
         $this->requirePostRequest();
-        $this->requirePermission('searchManager:purgeSyncFailures');
+        $this->requirePermission('searchManager:purgePendingSyncs');
 
         $deleted = SearchManager::$plugin->pendingSyncs->purgeByStatus(PendingSyncRepository::STATUS_ABANDONED);
 

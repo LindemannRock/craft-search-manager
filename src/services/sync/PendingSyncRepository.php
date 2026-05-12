@@ -414,9 +414,13 @@ class PendingSyncRepository extends Component
      * error, and forces nextAttemptAt = now so the next BatchSyncJob picks
      * them up immediately.
      *
-     * Returns the number of rows actually updated (rows already at
-     * `processing` whose `claimedAt` is fresher than the stale cutoff are
-     * skipped so we don't yank a row out from under a running worker).
+     * Only `failed` and `abandoned` rows are valid retry targets:
+     *   - `pending` rows are already in the queue; resetting is a no-op.
+     *   - `processing` rows are in flight (or stale, in which case the next
+     *     `claim()` will re-pick them anyway — retry is meaningless).
+     *
+     * Returns the number of rows actually updated; rows whose status is
+     * outside the eligible set are silently skipped.
      *
      * @param int[] $ids
      */
@@ -428,9 +432,6 @@ class PendingSyncRepository extends Component
 
         $ids = array_map('intval', $ids);
         $nowDb = Db::prepareDateForDb(new \DateTime());
-        $staleCutoffDb = Db::prepareDateForDb(
-            (new \DateTime())->modify('-' . $this->getStaleCutoffSeconds() . ' seconds'),
-        );
 
         return Craft::$app->getDb()
             ->createCommand()
@@ -449,11 +450,7 @@ class PendingSyncRepository extends Component
                 [
                     'and',
                     ['id' => $ids],
-                    [
-                        'or',
-                        ['!=', 'status', self::STATUS_PROCESSING],
-                        ['<', 'claimedAt', $staleCutoffDb],
-                    ],
+                    ['status' => [self::STATUS_FAILED, self::STATUS_ABANDONED]],
                 ],
             )
             ->execute();

@@ -160,14 +160,14 @@ class SearchManager extends Plugin
                         'inline' => ColorHelper::getPaletteColor('rose'),
                     ],
                     'pendingSyncStatus' => [
-                        'pending' => ColorHelper::getPaletteColor('blue'),
-                        'processing' => ColorHelper::getPaletteColor('amber'),
-                        'failed' => ColorHelper::getPaletteColor('orange'),
-                        'abandoned' => ColorHelper::getPaletteColor('red'),
+                        'pending' => ColorHelper::getPaletteColor('amber'),
+                        'processing' => ColorHelper::getPaletteColor('blue'),
+                        'failed' => ColorHelper::getPaletteColor('red'),
+                        'abandoned' => ColorHelper::getPaletteColor('gray'),
                     ],
                     'pendingSyncOp' => [
-                        'upsert' => ColorHelper::getPaletteColor('emerald'),
-                        'delete' => ColorHelper::getPaletteColor('rose'),
+                        'upsert' => ColorHelper::getPaletteColor('teal'),
+                        'delete' => ColorHelper::getPaletteColor('red'),
                     ],
                 ],
                 'installExperience' => [
@@ -423,15 +423,15 @@ class SearchManager extends Plugin
                                 ],
                             ],
                         ],
-                        // Sync Failures - grouped (parent grants page access, destructive actions nested)
-                        'searchManager:manageSyncFailures' => [
-                            'label' => Craft::t('search-manager', 'Manage sync failures'),
+                        // Pending Syncs - grouped (parent grants page access, destructive actions nested)
+                        'searchManager:managePendingSyncs' => [
+                            'label' => Craft::t('search-manager', 'Manage pending syncs'),
                             'nested' => [
-                                'searchManager:retrySyncFailures' => [
-                                    'label' => Craft::t('search-manager', 'Retry sync failures'),
+                                'searchManager:retryPendingSyncs' => [
+                                    'label' => Craft::t('search-manager', 'Retry pending syncs'),
                                 ],
-                                'searchManager:purgeSyncFailures' => [
-                                    'label' => Craft::t('search-manager', 'Purge sync failures'),
+                                'searchManager:purgePendingSyncs' => [
+                                    'label' => Craft::t('search-manager', 'Purge pending syncs'),
                                 ],
                             ],
                         ],
@@ -844,9 +844,9 @@ class SearchManager extends Plugin
 
         $sections[] = [
             'key' => 'pending-syncs',
-            'label' => Craft::t('search-manager', 'Sync Failures'),
+            'label' => Craft::t('search-manager', 'Pending Syncs'),
             'url' => 'search-manager/pending-syncs',
-            'permissionsAll' => ['searchManager:manageSyncFailures'],
+            'permissionsAll' => ['searchManager:managePendingSyncs'],
             'when' => $hasBackends,
         ];
 
