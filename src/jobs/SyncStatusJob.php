@@ -16,6 +16,7 @@ use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use yii\queue\RetryableJobInterface;
 
 /**
@@ -90,6 +91,13 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
 
     /**
      * @inheritdoc
+     *
+     * Finds entries whose status flipped since the last run (became live via
+     * `postDate` passing, or expired via `expiryDate` passing) and queues
+     * them into the L3 pending-sync buffer. The buffer's `BatchSyncJob`
+     * then drains them to the backend on its normal cadence — same pipeline
+     * used by save-driven syncs. We don't talk to the backend directly here,
+     * so every sync in the plugin now flows through one path.
      */
     public function execute($queue): void
     {
@@ -100,20 +108,31 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
             return;
         }
 
-        // Get last sync time from cache, or use a reasonable default (1 hour ago)
+        // Get last sync time from the previous job instance, or use a
+        // reasonable default (1 hour ago) on first run.
         $lastSync = $this->lastSyncTime
             ? new \DateTime($this->lastSyncTime)
             : new \DateTime('-1 hour');
 
         $now = new \DateTime();
 
-        // Get all enabled indices that track Entry elements
-        $indices = SearchIndex::findAll();
-        $entryIndices = array_filter($indices, function($index) {
-            return $index->enabled && $index->elementType === Entry::class;
-        });
+        // Only sites covered by at least one enabled entry index are worth
+        // querying — there's no point detecting a status flip on a site no
+        // index targets, since `queueForElement` would queue zero rows for
+        // it. Collecting the union once means we run two element queries per
+        // relevant site instead of two queries per (index, site) pair.
+        $relevantSiteIds = [];
+        foreach (SearchIndex::findAll() as $index) {
+            if (!$index->enabled || $index->elementType !== Entry::class) {
+                continue;
+            }
+            $siteIds = $index->getSiteIds() ?? Craft::$app->getSites()->getAllSiteIds();
+            foreach ($siteIds as $siteId) {
+                $relevantSiteIds[(int) $siteId] = true;
+            }
+        }
 
-        if (empty($entryIndices)) {
+        if (empty($relevantSiteIds)) {
             $this->logDebug('No entry indices found for status sync');
             if ($this->reschedule) {
                 $this->scheduleNextSync($now);
@@ -121,89 +140,55 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
             return;
         }
 
-        $totalAdded = 0;
-        $totalRemoved = 0;
-        $batchSize = $settings->batchSize;
+        $lastSyncDb = \craft\helpers\Db::prepareDateForDb($lastSync);
+        $nowDb = \craft\helpers\Db::prepareDateForDb($now);
+        $repository = SearchManager::$plugin->pendingSyncs;
 
-        foreach ($entryIndices as $index) {
-            $lastSyncDb = \craft\helpers\Db::prepareDateForDb($lastSync);
-            $nowDb = \craft\helpers\Db::prepareDateForDb($now);
+        $entriesBecameLive = 0;
+        $entriesExpired = 0;
+        $rowsQueued = 0;
 
-            // Determine which sites to process
-            $sitesToProcess = $index->getSiteIds();
-            if ($sitesToProcess === null) {
-                $sitesToProcess = Craft::$app->getSites()->getAllSiteIds();
+        foreach (array_keys($relevantSiteIds) as $siteId) {
+            $newlyLiveIds = Entry::find()
+                ->status('live')
+                ->siteId($siteId)
+                ->andWhere(['>=', 'entries.postDate', $lastSyncDb])
+                ->andWhere(['<=', 'entries.postDate', $nowDb])
+                ->limit(null)
+                ->ids();
+
+            foreach ($newlyLiveIds as $entryId) {
+                $entry = Entry::find()->id((int) $entryId)->siteId($siteId)->status('live')->one();
+                if (!$entry) {
+                    continue;
+                }
+                $rowsQueued += $repository->queueForElement($entry, PendingSyncRepository::OP_UPSERT);
+                $entriesBecameLive++;
             }
 
-            if (empty($sitesToProcess)) {
-                $this->logWarning('No sites to process for status sync', ['index' => $index->handle]);
-                continue;
-            }
+            $newlyExpiredIds = Entry::find()
+                ->status('expired')
+                ->siteId($siteId)
+                ->andWhere(['>=', 'entries.expiryDate', $lastSyncDb])
+                ->andWhere(['<=', 'entries.expiryDate', $nowDb])
+                ->limit(null)
+                ->ids();
 
-            foreach ($sitesToProcess as $siteId) {
-                // Find entries that became live since last sync (postDate between lastSync and now)
-                $newlyLive = Entry::find()
-                    ->status('live')
-                    ->siteId($siteId)
-                    ->andWhere(['>=', 'entries.postDate', $lastSyncDb])
-                    ->andWhere(['<=', 'entries.postDate', $nowDb])
-                    ->limit(null)
-                    ->ids();
-
-                // Find entries that expired since last sync (expiryDate between lastSync and now)
-                $newlyExpired = Entry::find()
-                    ->status('expired')
-                    ->siteId($siteId)
-                    ->andWhere(['>=', 'entries.expiryDate', $lastSyncDb])
-                    ->andWhere(['<=', 'entries.expiryDate', $nowDb])
-                    ->limit(null)
-                    ->ids();
-
-                $this->logDebug('Status sync for index site', [
-                    'index' => $index->handle,
-                    'siteId' => $siteId,
-                    'newlyLive' => count($newlyLive),
-                    'newlyExpired' => count($newlyExpired),
-                ]);
-
-                // Index newly live entries in batches
-                if (!empty($newlyLive)) {
-                    $chunks = array_chunk($newlyLive, $batchSize);
-                    foreach ($chunks as $i => $chunk) {
-                        $this->setProgress($queue, ($i + 1) / count($chunks) * 0.5, Craft::t('search-manager', 'Adding newly live entries to {index}', ['index' => $index->name]));
-
-                        foreach ($chunk as $entryId) {
-                            $entry = Entry::find()->id($entryId)->siteId($siteId)->status('live')->one();
-                            if ($entry) {
-                                SearchManager::$plugin->indexing->indexElement($entry);
-                                $totalAdded++;
-                            }
-                        }
-                    }
+            foreach ($newlyExpiredIds as $entryId) {
+                $entry = Entry::find()->id((int) $entryId)->siteId($siteId)->status(null)->one();
+                if (!$entry) {
+                    continue;
                 }
-
-                // Remove expired entries in batches
-                if (!empty($newlyExpired)) {
-                    $chunks = array_chunk($newlyExpired, $batchSize);
-                    foreach ($chunks as $i => $chunk) {
-                        $this->setProgress($queue, 0.5 + ($i + 1) / count($chunks) * 0.5, Craft::t('search-manager', 'Removing expired entries from {index}', ['index' => $index->name]));
-
-                        foreach ($chunk as $entryId) {
-                            $entry = Entry::find()->id($entryId)->siteId($siteId)->status(null)->one();
-                            if ($entry) {
-                                SearchManager::$plugin->indexing->removeElement($entry);
-                                $totalRemoved++;
-                            }
-                        }
-                    }
-                }
+                $rowsQueued += $repository->queueForElement($entry, PendingSyncRepository::OP_DELETE);
+                $entriesExpired++;
             }
         }
 
-        if ($totalAdded > 0 || $totalRemoved > 0) {
-            $this->logInfo('Status sync completed', [
-                'added' => $totalAdded,
-                'removed' => $totalRemoved,
+        if ($entriesBecameLive > 0 || $entriesExpired > 0) {
+            $this->logInfo('Status sync queued', [
+                'entriesBecameLive' => $entriesBecameLive,
+                'entriesExpired' => $entriesExpired,
+                'rowsQueued' => $rowsQueued,
             ]);
         }
 
