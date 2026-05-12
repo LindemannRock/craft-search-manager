@@ -90,6 +90,8 @@ class PendingSyncRepository extends Component
 
     /**
      * @param array<int, array<string, mixed>> $rows
+     * @return int Number of rows submitted for upsert. This includes both new
+     * inserts and updates to existing pending rows.
      */
     public function upsertRows(array $rows): int
     {
@@ -99,7 +101,7 @@ class PendingSyncRepository extends Component
 
         $db = Craft::$app->getDb();
         $now = Db::prepareDateForDb(new \DateTime());
-        $count = 0;
+        $submitted = 0;
 
         foreach ($rows as $row) {
             $data = [
@@ -140,10 +142,10 @@ class PendingSyncRepository extends Component
                     ]
                 )
                 ->execute();
-            $count++;
+            $submitted++;
         }
 
-        return $count;
+        return $submitted;
     }
 
     /**
@@ -240,7 +242,11 @@ class PendingSyncRepository extends Component
         }
 
         if (!empty($retryIds)) {
-            $attempt = max(array_map(static fn(array $row): int => (int)$row['attemptCount'], $rows));
+            $retryRows = array_filter(
+                $rows,
+                static fn(array $row): bool => in_array((int)$row['id'], $retryIds, true)
+            );
+            $attempt = max(array_map(static fn(array $row): int => (int)$row['attemptCount'], $retryRows));
             $delay = min(300, max(1, $flushInterval) * (2 ** max(0, $attempt - 1)));
             $nextAttemptAt = Db::prepareDateForDb((new \DateTime())->modify("+{$delay} seconds"));
             $nowDb = Db::prepareDateForDb(new \DateTime());

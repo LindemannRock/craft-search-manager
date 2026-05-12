@@ -151,15 +151,15 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                 $this->setProgress($queue, $siteProgress + $batchProgress);
 
                 $elements = [];
-                foreach ($batch as $elementId) {
-                    $element = Craft::$app->elements->getElementById(
-                        $elementId,
-                        $elementType,
-                        $siteId
-                    );
+                $batchElements = $elementType::find()
+                    ->id($batch)
+                    ->siteId($siteId)
+                    ->status(null)
+                    ->all();
 
+                foreach ($batchElements as $element) {
                     // Only index if element exists and is enabled for this site
-                    if ($element && $element->enabled && $element->getEnabledForSite()) {
+                    if ($element->enabled && $element->getEnabledForSite()) {
                         // Skip entries without URL if index is configured to do so
                         if ($index->skipEntriesWithoutUrl && $element->url === null) {
                             continue;
@@ -181,7 +181,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                     $totalIndexed += count($elements);
 
                     // Free memory after each batch to prevent exhaustion
-                    unset($elements);
+                    unset($elements, $batchElements);
                     gc_collect_cycles();
                 }
             }

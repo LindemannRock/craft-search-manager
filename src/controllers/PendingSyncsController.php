@@ -181,6 +181,7 @@ class PendingSyncsController extends Controller
      */
     public function actionGetData(): Response
     {
+        $this->requireAcceptsJson();
         $this->requirePermission('searchManager:managePendingSyncs');
 
         return $this->asJson(['success' => true]);

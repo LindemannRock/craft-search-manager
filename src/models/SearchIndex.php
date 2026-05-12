@@ -28,6 +28,11 @@ class SearchIndex extends Model
     use LoggingTrait;
     use ConfigSourceTrait;
 
+    /**
+     * @var self[]|null Request-scoped index cache.
+     */
+    private static ?array $allCache = null;
+
     // =========================================================================
     // PROPERTIES
     // =========================================================================
@@ -399,6 +404,10 @@ class SearchIndex extends Model
      */
     public static function findAll(): array
     {
+        if (self::$allCache !== null) {
+            return self::$allCache;
+        }
+
         $indices = [];
 
         // 1. Load config file indices first (source of truth)
@@ -429,7 +438,9 @@ class SearchIndex extends Model
             LoggingService::log('Failed to load database indices', 'error', 'search-manager', ['error' => $e->getMessage()]);
         }
 
-        return array_values($indices);
+        self::$allCache = array_values($indices);
+
+        return self::$allCache;
     }
 
     /**
@@ -496,6 +507,17 @@ class SearchIndex extends Model
     public static function clearConfigCache(): void
     {
         ConfigFileHelper::clearCache();
+        self::clearCache();
+    }
+
+    /**
+     * Clear request-scoped index model caches.
+     *
+     * @since 5.45.0
+     */
+    public static function clearCache(): void
+    {
+        self::$allCache = null;
     }
 
     /**
@@ -611,6 +633,7 @@ class SearchIndex extends Model
                     ->execute();
 
                 $this->saveIndexSites($this->getSiteIds());
+                self::clearCache();
                 return true;
             } else {
                 // Insert new
@@ -625,6 +648,7 @@ class SearchIndex extends Model
                 $this->id = (int)Craft::$app->getDb()->getLastInsertID();
 
                 $this->saveIndexSites($this->getSiteIds());
+                self::clearCache();
                 return true;
             }
         } catch (\Throwable $e) {
@@ -666,6 +690,7 @@ class SearchIndex extends Model
 
             if ($result > 0) {
                 $this->clearIndexSites();
+                self::clearCache();
                 $this->logInfo('Index deleted successfully', [
                     'handle' => $this->handle,
                     'name' => $this->name,
@@ -758,6 +783,7 @@ class SearchIndex extends Model
             $this->disableStopWords = (bool)$freshDisableStopWords;
 
             $this->logInfo('Metadata synced successfully', ['handle' => $this->handle]);
+            self::clearCache();
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to sync config metadata', [
@@ -861,6 +887,7 @@ class SearchIndex extends Model
             $this->disableStopWords = (bool)$freshDisableStopWords;
             $this->lastIndexed = new \DateTime();
             $this->documentCount = $documentCount;
+            self::clearCache();
             return true;
         }
 
@@ -881,6 +908,8 @@ class SearchIndex extends Model
                     ['id' => $this->id]
                 )
                 ->execute();
+
+            self::clearCache();
 
             return $result !== false;
         } catch (\Throwable $e) {
@@ -949,6 +978,10 @@ class SearchIndex extends Model
                 )
                 ->execute();
 
+            if ($result > 0) {
+                self::clearCache();
+            }
+
             return $result > 0;
         } catch (\Throwable $e) {
             LoggingService::log('Failed to touch lastIndexed', 'error', 'search-manager', [
@@ -979,6 +1012,10 @@ class SearchIndex extends Model
                     ['handle' => $handle]
                 )
                 ->execute();
+
+            if ($result > 0) {
+                self::clearCache();
+            }
 
             return $result > 0;
         } catch (\Throwable $e) {

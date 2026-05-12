@@ -38,6 +38,7 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+        SearchIndex::clearCache();
         $this->repository = SearchManager::$plugin->pendingSyncs;
         $this->processor = SearchManager::$plugin->pendingSyncProcessor;
         $this->truncateBuffer();
@@ -50,6 +51,7 @@ abstract class TestCase extends BaseTestCase
             $this->originalBackend = null;
         }
         $this->truncateBuffer();
+        SearchIndex::clearCache();
         parent::tearDown();
     }
 

@@ -58,24 +58,19 @@ class IndexBatchJob extends BaseJob implements RetryableJobInterface
             // Update progress
             $this->setProgress($queue, $batchIndex / count($batches));
 
-            // Get elements
-            $elements = [];
-            foreach ($batch as $elementId) {
-                $element = Craft::$app->elements->getElementById(
-                    $elementId,
-                    $this->elementType,
-                    $this->siteId
-                );
-
-                if ($element) {
-                    $elements[] = $element;
-                }
-            }
+            $elements = $this->elementType::find()
+                ->id($batch)
+                ->siteId($this->siteId)
+                ->status(null)
+                ->all();
 
             // Batch index
             if (!empty($elements)) {
                 SearchManager::$plugin->indexing->batchIndex($elements, $this->indexHandle);
             }
+
+            unset($elements);
+            gc_collect_cycles();
         }
 
         $this->logInfo('Batch indexing completed', ['count' => $total]);

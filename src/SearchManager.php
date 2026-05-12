@@ -755,13 +755,13 @@ class SearchManager extends Plugin
      */
     private function queuePendingSync(\craft\base\ElementInterface $element, string $op): void
     {
-        $queued = $this->pendingSyncs->queueForElement($element, $op);
+        $submitted = $this->pendingSyncs->queueForElement($element, $op);
 
-        $this->logDebug('Queued pending sync rows', [
+        $this->logDebug('Submitted pending sync rows', [
             'elementId' => $element->id,
             'elementType' => get_class($element),
             'op' => $op,
-            'queued' => $queued,
+            'submitted' => $submitted,
         ]);
     }
 

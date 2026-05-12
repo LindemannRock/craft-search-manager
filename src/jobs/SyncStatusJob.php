@@ -149,36 +149,28 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
         $rowsQueued = 0;
 
         foreach (array_keys($relevantSiteIds) as $siteId) {
-            $newlyLiveIds = Entry::find()
+            $newlyLiveEntries = Entry::find()
                 ->status('live')
                 ->siteId($siteId)
                 ->andWhere(['>=', 'entries.postDate', $lastSyncDb])
                 ->andWhere(['<=', 'entries.postDate', $nowDb])
                 ->limit(null)
-                ->ids();
+                ->all();
 
-            foreach ($newlyLiveIds as $entryId) {
-                $entry = Entry::find()->id((int) $entryId)->siteId($siteId)->status('live')->one();
-                if (!$entry) {
-                    continue;
-                }
+            foreach ($newlyLiveEntries as $entry) {
                 $rowsQueued += $repository->queueForElement($entry, PendingSyncRepository::OP_UPSERT);
                 $entriesBecameLive++;
             }
 
-            $newlyExpiredIds = Entry::find()
+            $newlyExpiredEntries = Entry::find()
                 ->status('expired')
                 ->siteId($siteId)
                 ->andWhere(['>=', 'entries.expiryDate', $lastSyncDb])
                 ->andWhere(['<=', 'entries.expiryDate', $nowDb])
                 ->limit(null)
-                ->ids();
+                ->all();
 
-            foreach ($newlyExpiredIds as $entryId) {
-                $entry = Entry::find()->id((int) $entryId)->siteId($siteId)->status(null)->one();
-                if (!$entry) {
-                    continue;
-                }
+            foreach ($newlyExpiredEntries as $entry) {
                 $rowsQueued += $repository->queueForElement($entry, PendingSyncRepository::OP_DELETE);
                 $entriesExpired++;
             }
