@@ -581,8 +581,11 @@ class IndexingService extends Component
                 continue;
             }
 
-            // Check criteria match
-            if (!$this->elementMatchesCriteria($element, $index)) {
+            // Check criteria match — delegated to the canonical implementation
+            // on SearchIndex so the direct-sync (this path) and the L3 buffer
+            // path (PendingSyncProcessor) can never disagree about whether an
+            // element belongs in an index.
+            if (!$index->matchesCriteria($element)) {
                 $this->logDebug('Index skipped (criteria mismatch)', [
                     'indexHandle' => $index->handle,
                     'criteria' => is_array($index->criteria) ? $index->criteria : 'Closure',
@@ -607,111 +610,6 @@ class IndexingService extends Component
 
         return $handles;
     }
-
-    /**
-     * Check if an element matches an index's criteria
-     */
-    private function elementMatchesCriteria(ElementInterface $element, $index): bool
-    {
-        if (empty($index->criteria)) {
-            return true; // No criteria = matches all
-        }
-
-        // Handle Closure criteria (config indices)
-        if ($index->criteria instanceof \Closure) {
-            return $this->elementMatchesClosureCriteria($element, $index);
-        }
-
-        // Handle array criteria (database indices)
-        if (is_array($index->criteria)) {
-            // Check sections filter for entries
-            if ($element instanceof \craft\elements\Entry && !empty($index->criteria['sections'])) {
-                $sectionHandle = $element->getSection()?->handle;
-                if ($sectionHandle && !in_array($sectionHandle, $index->criteria['sections'])) {
-                    return false;
-                }
-            }
-
-            // Check volume filter for assets
-            if ($element instanceof \craft\elements\Asset && !empty($index->criteria['volumes'])) {
-                $volumeHandle = $element->getVolume()->handle;
-                if ($volumeHandle && !in_array($volumeHandle, $index->criteria['volumes'])) {
-                    return false;
-                }
-            }
-
-            // Check group filter for categories
-            if ($element instanceof \craft\elements\Category && !empty($index->criteria['groups'])) {
-                $groupHandle = $element->getGroup()->handle;
-                if ($groupHandle && !in_array($groupHandle, $index->criteria['groups'])) {
-                    return false;
-                }
-            }
-
-            // Check source handle filter for doc pages
-            if ($element instanceof \lindemannrock\docsmanager\elements\SourceDoc && !empty($index->criteria['sourceHandles'])) {
-                $pluginHandle = (new \craft\db\Query())
-                    ->select(['handle'])
-                    ->from('{{%docsmanager_sources}}')
-                    ->where(['id' => $element->sourceId])
-                    ->scalar();
-                if ($pluginHandle && !in_array($pluginHandle, $index->criteria['sourceHandles'])) {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * Check if an element matches a Closure-based criteria (config indices)
-     *
-     * This executes the Closure to build the query, then checks if the
-     * specific element ID would be included in the results.
-     *
-     * Note: This only checks structural criteria (section, type, etc.)
-     * Status checks are handled separately by shouldIndexElement()
-     */
-    private function elementMatchesClosureCriteria(ElementInterface $element, $index): bool
-    {
-        try {
-            // Create a fresh query for the element type
-            $elementType = $index->elementType;
-            if (!$this->isElementTypeAvailable($elementType, 'index-criteria')) {
-                return false;
-            }
-            $query = $elementType::find();
-
-            // Set site context - MUST match element's site for proper per-site checks
-            if ($index->siteId !== null) {
-                $query->siteId($element->siteId);
-            }
-
-            // Apply the Closure criteria (section, type filters, etc.)
-            $closure = $index->criteria;
-            $query = $closure($query);
-
-            // Check if this specific element matches the structural criteria
-            // Bypass ALL status/enabled filters - we only care about structure here
-            // Status checks are done separately in shouldIndexElementForSite()
-            return $query
-                ->id($element->id)
-                ->siteId($element->siteId) // Ensure we check the correct site version
-                ->status(null) // Include all statuses
-                ->exists();
-        } catch (\Throwable $e) {
-            $this->logError('Failed to evaluate Closure criteria', [
-                'elementId' => $element->id,
-                'indexHandle' => $index->handle,
-                'error' => $e->getMessage(),
-            ]);
-
-            // On error, assume it doesn't match to avoid indexing incorrectly
-            return false;
-        }
-    }
-
 
     /**
      * Get all indices (database + config)

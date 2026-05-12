@@ -1457,7 +1457,11 @@ class SearchIndex extends Model
     }
 
     /**
-     * Check whether an element matches this index's element type, site, and criteria.
+     * Check whether an element matches this index's element type, site, AND criteria.
+     *
+     * Combines all three checks: structural (enabled / element type / site) and
+     * criteria. The buffer path (`PendingSyncProcessor`) uses this as the
+     * single is-this-row-eligible gate.
      *
      * @since 5.45.0
      */
@@ -1468,38 +1472,81 @@ class SearchIndex extends Model
             return false;
         }
 
-        /** @var \craft\elements\db\ElementQuery $query */
-        $query = $elementType::find()
-            ->id($element->id)
-            ->siteId($element->siteId)
-            ->status(null);
+        return $this->matchesCriteria($element);
+    }
 
-        if (method_exists($query, 'drafts')) {
-            $query->drafts(false);
-        }
-        if (method_exists($query, 'revisions')) {
-            $query->revisions(false);
-        }
-
-        if ($this->criteria instanceof \Closure) {
-            $criteriaCallback = $this->criteria;
-            $query = $criteriaCallback($query);
-        } elseif (is_array($this->criteria) && !empty($this->criteria)) {
-            if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections']) && method_exists($query, 'section')) {
-                $query->section($this->criteria['sections']);
-            }
-            if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes']) && method_exists($query, 'volume')) {
-                $query->volume($this->criteria['volumes']);
-            }
-            if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups']) && method_exists($query, 'group')) {
-                $query->group($this->criteria['groups']);
-            }
-            if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles']) && method_exists($query, 'sourceHandle')) {
-                $query->sourceHandle($this->criteria['sourceHandles']);
-            }
+    /**
+     * Check whether an element passes this index's criteria, regardless of
+     * structural matches (element type, site, enabled). Callers that have
+     * already done structural filtering use this directly to avoid redundant
+     * checks; otherwise use `matchesElement()`.
+     *
+     * Wraps Closure evaluation in try/catch — a misbehaving Closure must not
+     * crash the indexing pipeline, and the safe default on error is "does
+     * not match" so we don't silently include things the criteria meant to
+     * exclude.
+     *
+     * @since 5.46.0
+     */
+    public function matchesCriteria(ElementInterface $element): bool
+    {
+        if (empty($this->criteria)) {
+            return true;
         }
 
-        return (bool)$query->exists();
+        $elementType = get_class($element);
+        if (!class_exists($elementType)) {
+            // Element class isn't loadable (e.g., a plugin that defined it
+            // is uninstalled). Safe default: assume no match — better to
+            // miss than to misindex.
+            return false;
+        }
+
+        try {
+            /** @var \craft\elements\db\ElementQuery $query */
+            $query = $elementType::find()
+                ->id($element->id)
+                ->siteId($element->siteId)
+                ->status(null);
+
+            if (method_exists($query, 'drafts')) {
+                $query->drafts(false);
+            }
+            if (method_exists($query, 'revisions')) {
+                $query->revisions(false);
+            }
+
+            if ($this->criteria instanceof \Closure) {
+                $criteriaCallback = $this->criteria;
+                $query = $criteriaCallback($query);
+            } elseif (is_array($this->criteria)) {
+                if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections']) && method_exists($query, 'section')) {
+                    $query->section($this->criteria['sections']);
+                }
+                if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes']) && method_exists($query, 'volume')) {
+                    $query->volume($this->criteria['volumes']);
+                }
+                if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups']) && method_exists($query, 'group')) {
+                    $query->group($this->criteria['groups']);
+                }
+                if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles']) && method_exists($query, 'sourceHandle')) {
+                    $query->sourceHandle($this->criteria['sourceHandles']);
+                }
+            }
+
+            return (bool)$query->exists();
+        } catch (\Throwable $e) {
+            \Craft::warning(
+                sprintf(
+                    'SearchIndex::matchesCriteria failed for index %s, element #%d: %s',
+                    $this->handle,
+                    (int)$element->id,
+                    $e->getMessage(),
+                ),
+                'search-manager',
+            );
+            return false;
+        }
     }
 
     /**
