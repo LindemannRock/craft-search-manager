@@ -129,20 +129,25 @@ final class PendingSyncsRepositoryQueryTest extends TestCase
         $this->assertSame('live-worker', $row['claimToken']);
     }
 
-    public function testRetryHandlesStaleProcessingRow(): void
+    public function testRetryIgnoresProcessingAndPendingRowsEvenIfStale(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         $this->assertNotNull($pair);
         [$index, $element] = $pair;
 
+        // Stale processing — historically retriable; new semantic says retry
+        // is meaningless because the next `claim()` will re-pick it anyway.
         $staleAgo = $this->repository->getStaleCutoffSeconds() + 60;
-        $id = $this->seedRow($index->handle, (int) $element->id, (int) $element->siteId, 'processing', [
+        $staleId = $this->seedRow($index->handle, (int) $element->id, (int) $element->siteId, 'processing', [
             'claimToken' => 'orphaned-worker',
             'claimedAt' => Db::prepareDateForDb((new \DateTime())->modify("-{$staleAgo} seconds")),
         ]);
 
-        $updated = $this->repository->retry([$id]);
-        $this->assertSame(1, $updated, 'Stale processing rows are fair game for retry — the worker is gone.');
+        // Pending — already queued; retry would be a no-op reset.
+        $pendingId = $this->seedRow($index->handle, (int) $element->id + 1, (int) $element->siteId, 'pending');
+
+        $updated = $this->repository->retry([$staleId, $pendingId]);
+        $this->assertSame(0, $updated, 'Retry must only act on failed/abandoned rows. Processing (any age) and pending are ignored.');
     }
 
     public function testDeleteByIdsRemovesRowsButHonoursFreshProcessingGuard(): void
