@@ -240,7 +240,7 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Query'),
                 Craft::t('search-manager', 'Type'),
                 Craft::t('search-manager', 'Avg Time (ms)'),
-                Craft::t('search-manager', 'Searches'),
+                Craft::t('search-manager', 'Index searches'),
             ];
             $fastQueries = SearchManager::$plugin->analytics->getTopPerformingQueries($effectiveSiteId, $dateRange);
             $slowQueries = SearchManager::$plugin->analytics->getWorstPerformingQueries($effectiveSiteId, $dateRange);
@@ -249,7 +249,7 @@ class AnalyticsController extends Controller
                     'query' => $item['query'],
                     'type' => 'fast',
                     'avg_time_ms' => $item['avgTime'],
-                    'searches' => $item['searches'],
+                    'indexSearches' => $item['indexSearches'],
                 ];
             }
             foreach ($slowQueries as $item) {
@@ -257,7 +257,7 @@ class AnalyticsController extends Controller
                     'query' => $item['query'],
                     'type' => 'slow',
                     'avg_time_ms' => $item['avgTime'],
-                    'searches' => $item['searches'],
+                    'indexSearches' => $item['indexSearches'],
                 ];
             }
 
@@ -1202,7 +1202,7 @@ class AnalyticsController extends Controller
                         'query' => $item['query'],
                         'type' => 'fast',
                         'avg_time_ms' => $item['avgTime'],
-                        'searches' => $item['searches'],
+                        'indexSearches' => $item['indexSearches'],
                     ];
                 }
                 foreach ($slowQueries as $item) {
@@ -1210,7 +1210,7 @@ class AnalyticsController extends Controller
                         'query' => $item['query'],
                         'type' => 'slow',
                         'avg_time_ms' => $item['avgTime'],
-                        'searches' => $item['searches'],
+                        'indexSearches' => $item['indexSearches'],
                     ];
                 }
                 $filenameParts = ['performance', $sitePart, $dateRangeLabel];

@@ -22,7 +22,7 @@
 
     {% include 'lindemannrock-base/_components/cards/unified-card' with {
         value: '—',
-        description: 'Total Searches'|t('search-manager'),
+        description: 'Total Index Searches'|t('search-manager'),
         align: 'center',
         id: 'total-searches-perf',
     } only %}
@@ -49,7 +49,7 @@
                         <th>{{ 'Query'|t('search-manager') }}</th>
                         <th>{{ 'Site'|t('search-manager') }}</th>
                         <th>{{ 'Avg Time'|t('search-manager') }}</th>
-                        <th>{{ 'Searches'|t('search-manager') }}</th>
+                        <th>{{ 'Index searches'|t('search-manager') }}</th>
                     </tr>
                 </thead>
                 <tbody id="top-queries-body">
@@ -68,7 +68,7 @@
                         <th>{{ 'Query'|t('search-manager') }}</th>
                         <th>{{ 'Site'|t('search-manager') }}</th>
                         <th>{{ 'Avg Time'|t('search-manager') }}</th>
-                        <th>{{ 'Searches'|t('search-manager') }}</th>
+                        <th>{{ 'Index searches'|t('search-manager') }}</th>
                     </tr>
                 </thead>
                 <tbody id="worst-queries-body">

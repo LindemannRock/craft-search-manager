@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services\analytics;
 use Craft;
 use craft\db\Query;
 use lindemannrock\base\helpers\DateRangeHelper;
+use lindemannrock\base\helpers\DbHelper;
 
 /**
  * Shared query utilities for analytics sub-services
@@ -32,6 +33,32 @@ trait AnalyticsQueryTrait
     {
         $column = $column ?: 'dateCreated';
         DateRangeHelper::applyToQuery($query, $dateRange, $column);
+    }
+
+    /**
+     * Build the action-identity expression for deduping search-action counts.
+     *
+     * Multi-index searches write one row per (search, index) sharing a common
+     * sessionId UUID. Single-index searches leave sessionId NULL. To count
+     * "search actions" rather than rows, wrap this in COUNT(DISTINCT ...):
+     *
+     *   $expr = $this->actionIdentityExpression();
+     *   $query->select(["COUNT(DISTINCT $expr) as actions"]);
+     *
+     * The id fallback is cast to text via DbHelper::castToText() so COALESCE()
+     * returns a stable type under both MySQL and PostgreSQL.
+     *
+     * Uses unqualified column names — sufficient for queries on
+     * searchmanager_analytics alone. If a future query joins to another table
+     * with an `id` or `sessionId` column, qualify inline at the call site
+     * rather than parameterising this helper.
+     *
+     * @return string Raw SQL expression suitable for COUNT(DISTINCT ...)
+     * @since 5.46.0
+     */
+    public function actionIdentityExpression(): string
+    {
+        return 'COALESCE(sessionId, ' . DbHelper::castToText('id') . ')';
     }
 
     /**

@@ -839,6 +839,8 @@ return [
     'Top Searches' => 'Top Searches',
     'Top Search' => 'Top Search',
     'Total Searches' => 'Total Searches',
+    'Total Index Searches' => 'Total Index Searches',
+    'Index searches' => 'Index searches',
     'Searches Today' => 'Searches Today',
     'Unique Queries' => 'Unique Queries',
     'Unique Visitors' => 'Unique Visitors',

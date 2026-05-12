@@ -15,6 +15,7 @@ use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
+use yii\db\Expression;
 
 /**
  * Analytics Export Service
@@ -55,10 +56,20 @@ class AnalyticsExportService
             $query->andWhere(['siteId' => $siteId]);
         }
 
-        $totalSearches = (int)$query->count();
+        // Search actions: multi-index searches fan out to one row per index sharing a
+        // sessionId; dedupe via COUNT(DISTINCT COALESCE(sessionId, id)) so an N-index
+        // search counts as one action. See AnalyticsQueryTrait::actionIdentityExpression().
+        $identityExpr = $this->actionIdentityExpression();
+        $totalSearches = (int)(clone $query)->count("DISTINCT $identityExpr");
         $uniqueVisitors = (int)(clone $query)->select('COUNT(DISTINCT ip)')->scalar();
-        // Zero results excludes handled searches (redirected or showed promotions)
-        $zeroResults = (int)(clone $query)->andWhere(['isHit' => 0, 'wasRedirected' => 0, 'promotionsShown' => 0])->count();
+        // Zero-result actions: a multi-index action counts as zero-result only when
+        // EVERY row belonging to it had no successful outcome (no hit, no redirect,
+        // no promotion shown) — matches the row-level definition lifted to the action.
+        $zeroResultsSub = (clone $query)
+            ->select(new Expression("$identityExpr AS action"))
+            ->groupBy(new Expression($identityExpr))
+            ->having('MAX(isHit) = 0 AND MAX(wasRedirected) = 0 AND MAX(promotionsShown) = 0');
+        $zeroResults = (int)(new Query())->from(['t' => $zeroResultsSub])->count();
         $zeroResultsRate = $totalSearches > 0 ? round(($zeroResults / $totalSearches) * 100, 1) : 0;
 
         return [
@@ -79,25 +90,40 @@ class AnalyticsExportService
     public function getChartData(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $localDateExpr = DateFormatHelper::localDateExpression('dateCreated');
+        $identityExpr = $this->actionIdentityExpression();
 
-        $query = (new Query())
+        // Inner query: collapse fan-out rows to one row per (day, action), carrying
+        // the action's success flags as MAX over its rows. MAX = 1 means "any row
+        // in this action had this flag set." MAX = 0 means "no row did."
+        $perActionPerDay = (new Query())
             ->select([
                 'date' => $localDateExpr,
-                'COUNT(*) as total',
-                // Count searches with results OR redirected OR showed promotions as successful
-                'SUM(CASE WHEN isHit = 1 OR wasRedirected = 1 OR promotionsShown > 0 THEN 1 ELSE 0 END) as withResults',
-                // Only count as zero results if no hit AND not redirected AND no promotions (true content gaps)
-                'SUM(CASE WHEN isHit = 0 AND wasRedirected = 0 AND promotionsShown = 0 THEN 1 ELSE 0 END) as zeroResults',
+                'MAX(isHit) AS isHit',
+                'MAX(wasRedirected) AS wasRedirected',
+                'MAX(promotionsShown) AS promotionsShown',
             ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy($localDateExpr)
-            ->orderBy(['date' => SORT_ASC]);
+            ->groupBy([$localDateExpr, new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perActionPerDay, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perActionPerDay->andWhere(['siteId' => $siteId]);
         }
+
+        // Outer query: aggregate actions per day. total = action count;
+        // withResults = action had any success outcome; zeroResults = action
+        // had none (matches the row-level definition lifted to action level).
+        $query = (new Query())
+            ->select([
+                'date',
+                'COUNT(*) as total',
+                'SUM(CASE WHEN isHit = 1 OR wasRedirected = 1 OR promotionsShown > 0 THEN 1 ELSE 0 END) as withResults',
+                'SUM(CASE WHEN isHit = 0 AND wasRedirected = 0 AND promotionsShown = 0 THEN 1 ELSE 0 END) as zeroResults',
+            ])
+            ->from(['t' => $perActionPerDay])
+            ->groupBy('date')
+            ->orderBy(['date' => SORT_ASC]);
 
         $results = $query->all();
         return $this->normalizeDailyCounts($results, $dateRange, ['total', 'withResults', 'zeroResults'], true);

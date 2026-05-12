@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services\analytics;
 use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
+use yii\db\Expression;
 
 /**
  * Analytics Query Insights Service
@@ -35,20 +36,45 @@ class AnalyticsQueryInsightsService
      */
     public function getMostCommonSearches(int|array|null $siteId, int $limit = 10, ?string $dateRange = null): array
     {
-        $query = (new Query())
-            ->select(['query', 'siteId', 'COUNT(*) as count', 'SUM(resultsCount) as totalResults', 'MAX(dateCreated) as lastSearched'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        // Inner: collapse fan-out rows to one per (query, siteId, action). Aggregate
+        // resultsCount and dateCreated at the action level so the outer's SUM/MAX
+        // semantics carry through unchanged.
+        $perAction = (new Query())
+            ->select([
+                'query',
+                'siteId',
+                'SUM(resultsCount) AS actionResults',
+                'MAX(dateCreated) AS actionLastSearched',
+            ])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy(['query', 'siteId'])
-            ->orderBy(['count' => SORT_DESC])
-            ->limit($limit);
+            ->groupBy(['query', 'siteId', new Expression($identityExpr)]);
 
         if ($dateRange !== null) {
-            $this->applyDateRangeFilter($query, $dateRange);
+            $this->applyDateRangeFilter($perAction, $dateRange);
         }
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
+
+        // Outer: count actions per query — multi-index repeats of the same query
+        // collapse to one. totalResults still sums across all backends seen for
+        // the query (action-sums summed across actions = row-sum); lastSearched
+        // still MAX(dateCreated) (action-max maxed across actions = row-max).
+        $query = (new Query())
+            ->select([
+                'query',
+                'siteId',
+                'COUNT(*) AS count',
+                'SUM(actionResults) AS totalResults',
+                'MAX(actionLastSearched) AS lastSearched',
+            ])
+            ->from(['t' => $perAction])
+            ->groupBy(['query', 'siteId'])
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit);
 
         $results = $query->all();
 
@@ -161,28 +187,36 @@ class AnalyticsQueryInsightsService
      */
     public function getQueryLengthDistribution(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        // Classify word count in SQL using LIKE space patterns (DB-agnostic)
-        $query = (new Query())
-            ->select([
-                'bucket' => new \yii\db\Expression("CASE
+        $identityExpr = $this->actionIdentityExpression();
+        $bucketCase = new Expression("CASE
                     WHEN [[query]] NOT LIKE '% %' THEN '1 word'
                     WHEN [[query]] NOT LIKE '% % % %' THEN '2-3 words'
                     ELSE '4+ words'
-                END"),
-                'count' => 'COUNT(*)',
-            ])
-            ->from('{{%searchmanager_analytics}}')
-            ->groupBy([new \yii\db\Expression("CASE
-                    WHEN [[query]] NOT LIKE '% %' THEN '1 word'
-                    WHEN [[query]] NOT LIKE '% % % %' THEN '2-3 words'
-                    ELSE '4+ words'
-                END")]);
+                END");
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        // Classify word count in SQL using LIKE space patterns (DB-agnostic).
+        // Inner: bucket each action once — the query string is shared across all
+        // rows in an action, so the CASE result is identical per row and the
+        // (bucket, action) tuple is unique per action.
+        $perAction = (new Query())
+            ->select(['bucket' => $bucketCase])
+            ->from('{{%searchmanager_analytics}}')
+            ->groupBy([$bucketCase, new Expression($identityExpr)]);
+
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
+
+        // Outer: count actions per bucket.
+        $query = (new Query())
+            ->select([
+                'bucket',
+                'count' => 'COUNT(*)',
+            ])
+            ->from(['t' => $perAction])
+            ->groupBy('bucket');
 
         $results = $query->all();
 
@@ -212,20 +246,30 @@ class AnalyticsQueryInsightsService
      */
     public function getWordCloudData(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 50): array
     {
+        $identityExpr = $this->actionIdentityExpression();
+
+        // Inner: one row per (query, action) — multi-index repeats of the same
+        // query collapse so word weights reflect user search actions, not
+        // backend invocations.
+        $perAction = (new Query())
+            ->select(['query'])
+            ->from('{{%searchmanager_analytics}}')
+            ->groupBy(['query', new Expression($identityExpr)]);
+
+        $this->applyDateRangeFilter($perAction, $dateRange);
+
+        if ($siteId) {
+            $perAction->andWhere(['siteId' => $siteId]);
+        }
+
         // Only fetch the top 500 most frequent queries — the long tail contributes
-        // negligible weight and isn't worth loading into memory for tokenization
+        // negligible weight and isn't worth loading into memory for tokenization.
         $query = (new Query())
             ->select(['query', 'COUNT(*) as count'])
-            ->from('{{%searchmanager_analytics}}')
+            ->from(['t' => $perAction])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
             ->limit(500);
-
-        $this->applyDateRangeFilter($query, $dateRange);
-
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
 
         $results = $query->all();
         $words = [];
@@ -276,20 +320,36 @@ class AnalyticsQueryInsightsService
      */
     public function getZeroResultClusters(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 20): array
     {
-        // 1. Get all zero-result queries (excluding handled searches: redirected or showed promotions)
-        $query = (new Query())
-            ->select(['query', 'COUNT(*) as count', 'MAX(dateCreated) as lastSearched'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        // 1. Identify zero-result *actions* (not rows). A multi-index search is
+        // zero-result only when no row in the action had any success outcome.
+        // The per-row WHERE clause would incorrectly include actions where a
+        // sibling index returned hits — HAVING on the action group keeps the
+        // semantic honest, matching the row-level "no success outcome" predicate
+        // lifted via MAX over the action.
+        $perAction = (new Query())
+            ->select([
+                'query',
+                'MAX(dateCreated) AS actionLastSearched',
+            ])
             ->from('{{%searchmanager_analytics}}')
-            ->where(['isHit' => 0, 'wasRedirected' => 0, 'promotionsShown' => 0])
+            ->groupBy(['query', new Expression($identityExpr)])
+            ->having('MAX(isHit) = 0 AND MAX(wasRedirected) = 0 AND MAX(promotionsShown) = 0');
+
+        $this->applyDateRangeFilter($perAction, $dateRange);
+
+        if ($siteId) {
+            $perAction->andWhere(['siteId' => $siteId]);
+        }
+
+        // 2. Cluster candidates: count zero-result actions per query.
+        $query = (new Query())
+            ->select(['query', 'COUNT(*) as count', 'MAX(actionLastSearched) as lastSearched'])
+            ->from(['t' => $perAction])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit * 3); // Get more candidates for clustering
-
-        $this->applyDateRangeFilter($query, $dateRange);
-
-        if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
-        }
 
         $failedQueries = $query->all();
         $clusters = [];
@@ -349,18 +409,29 @@ class AnalyticsQueryInsightsService
      */
     public function getIntentBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        $query = (new Query())
-            ->select(['intent', 'COUNT(*) as count'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        // Inner: bucket each action once by intent. intent is derived from the
+        // query string at write time, so it's identical across all rows in an
+        // action — (intent, action) is unique per action.
+        $perAction = (new Query())
+            ->select(['intent'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['intent' => null]])
-            ->groupBy('intent')
-            ->orderBy(['count' => SORT_DESC]);
+            ->groupBy(['intent', new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
+
+        // Outer: count actions per intent.
+        $query = (new Query())
+            ->select(['intent', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy('intent')
+            ->orderBy(['count' => SORT_DESC]);
 
         $results = $query->all();
         $total = array_sum(array_column($results, 'count'));
@@ -431,33 +502,47 @@ class AnalyticsQueryInsightsService
                 break;
         }
 
-        // Get current period queries
-        $currentQuery = (new Query())
-            ->select(['query', 'COUNT(*) as count'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        // Both periods count user search actions per query, not analytics rows —
+        // otherwise a single multi-index search inflates by N. A query that moved
+        // from single-index to multi-index between periods would show a false
+        // trend at the row level; dedup makes the comparison honest.
+        $currentInner = (new Query())
+            ->select(['query'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['>=', 'dateCreated', Db::prepareDateForDb($currentStart)])
             ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($now)])
+            ->groupBy(['query', new Expression($identityExpr)]);
+
+        if ($siteId) {
+            $currentInner->andWhere(['siteId' => $siteId]);
+        }
+
+        $currentQuery = (new Query())
+            ->select(['query', 'COUNT(*) as count'])
+            ->from(['t' => $currentInner])
             ->groupBy('query')
             ->orderBy(['count' => SORT_DESC])
             ->limit($limit * 2); // Get more to account for filtering
 
-        if ($siteId) {
-            $currentQuery->andWhere(['siteId' => $siteId]);
-        }
-
         $currentResults = $currentQuery->all();
 
-        // Get previous period queries for comparison
-        $previousQuery = (new Query())
-            ->select(['query', 'COUNT(*) as count'])
+        $previousInner = (new Query())
+            ->select(['query'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['>=', 'dateCreated', Db::prepareDateForDb($previousStart)])
             ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($previousEnd)])
-            ->groupBy('query');
+            ->groupBy(['query', new Expression($identityExpr)]);
 
         if ($siteId) {
-            $previousQuery->andWhere(['siteId' => $siteId]);
+            $previousInner->andWhere(['siteId' => $siteId]);
         }
+
+        $previousQuery = (new Query())
+            ->select(['query', 'COUNT(*) as count'])
+            ->from(['t' => $previousInner])
+            ->groupBy('query');
 
         $previousResults = $previousQuery->all();
 

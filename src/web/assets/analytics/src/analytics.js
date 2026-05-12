@@ -832,7 +832,7 @@
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
                 <td><strong>${Number(q.avgTime).toLocaleString()}ms</strong></td>
-                <td>${q.searches.toLocaleString()}</td>
+                <td>${q.indexSearches.toLocaleString()}</td>
             </tr>`);
         });
     }
@@ -851,7 +851,7 @@
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
                 <td><strong class="${q.avgTime > 100 ? 'lr-text-red' : ''}">${Number(q.avgTime).toLocaleString()}ms</strong></td>
-                <td>${q.searches.toLocaleString()}</td>
+                <td>${q.indexSearches.toLocaleString()}</td>
             </tr>`);
         });
     }

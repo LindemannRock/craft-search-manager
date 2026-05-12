@@ -14,6 +14,7 @@ use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\GeoHelper;
 use lindemannrock\base\traits\GeoLookupTrait;
 use lindemannrock\searchmanager\SearchManager;
+use yii\db\Expression;
 
 /**
  * Analytics Breakdown Service
@@ -38,20 +39,29 @@ class AnalyticsBreakdownService
      */
     public function getDeviceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        $query = (new Query())
-            ->select(['deviceType', 'COUNT(*) as count'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        // Dimensions like deviceType are derived from the request once at write
+        // time, so they're identical across all rows in an action. Group inner
+        // by (dimension, action); outer counts actions per dimension.
+        $perAction = (new Query())
+            ->select(['deviceType'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['deviceType' => null]])
-            ->groupBy('deviceType')
-            ->orderBy(['count' => SORT_DESC]);
+            ->groupBy(['deviceType', new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        return $query->all();
+        return (new Query())
+            ->select(['deviceType', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy('deviceType')
+            ->orderBy(['count' => SORT_DESC])
+            ->all();
     }
 
     /**
@@ -63,21 +73,27 @@ class AnalyticsBreakdownService
      */
     public function getBrowserBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        $query = (new Query())
-            ->select(['browser', 'COUNT(*) as count'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        $perAction = (new Query())
+            ->select(['browser'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['browser' => null]])
-            ->groupBy('browser')
-            ->orderBy(['count' => SORT_DESC])
-            ->limit(10);
+            ->groupBy(['browser', new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        return $query->all();
+        return (new Query())
+            ->select(['browser', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy('browser')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit(10)
+            ->all();
     }
 
     /**
@@ -89,20 +105,26 @@ class AnalyticsBreakdownService
      */
     public function getOsBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        $query = (new Query())
-            ->select(['osName', 'COUNT(*) as count'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        $perAction = (new Query())
+            ->select(['osName'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['osName' => null]])
-            ->groupBy('osName')
-            ->orderBy(['count' => SORT_DESC]);
+            ->groupBy(['osName', new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        return $query->all();
+        return (new Query())
+            ->select(['osName', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy('osName')
+            ->orderBy(['count' => SORT_DESC])
+            ->all();
     }
 
     /**
@@ -114,23 +136,40 @@ class AnalyticsBreakdownService
      */
     public function getBotStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        $query = (new Query())
-            ->select(['COUNT(*) as total', 'SUM(CASE WHEN isRobot = 1 THEN 1 ELSE 0 END) as bots'])
-            ->from('{{%searchmanager_analytics}}');
+        $identityExpr = $this->actionIdentityExpression();
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        // Inner: collapse to one row per action, carrying the action's MAX(isRobot)
+        // as actionIsRobot. Bot-ness is per-row (derived from the request UA) and
+        // identical across all rows in an action — so MAX is a safe per-action lift.
+        $perAction = (new Query())
+            ->select(['MAX(isRobot) AS actionIsRobot'])
+            ->from('{{%searchmanager_analytics}}')
+            ->groupBy(new Expression($identityExpr));
+
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        $result = $query->one();
+        // Outer: total = action count; bots = action count where any row was a bot.
+        // Both numerator and denominator dedup consistently, so botPercentage is
+        // unchanged in formula but now correctly counts user search actions.
+        $result = (new Query())
+            ->select([
+                'COUNT(*) as total',
+                'SUM(CASE WHEN actionIsRobot = 1 THEN 1 ELSE 0 END) as bots',
+            ])
+            ->from(['t' => $perAction])
+            ->one();
 
         $total = (int)($result['total'] ?? 0);
         $bots = (int)($result['bots'] ?? 0);
         $humans = $total - $bots;
 
-        // Get top bots
+        // Top bots stays per-row (operational signal: "which bots are hitting
+        // search how often"). A bot firing 3 index searches IS three backend
+        // calls — the operational concern is request volume, not unique sessions.
         $topBotsQuery = (new Query())
             ->select(['botName', 'COUNT(*) as count'])
             ->from('{{%searchmanager_analytics}}')
@@ -168,19 +207,25 @@ class AnalyticsBreakdownService
      */
     public function getSourceBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        $query = (new Query())
-            ->select(['source', 'COUNT(*) as count'])
-            ->from('{{%searchmanager_analytics}}')
-            ->groupBy('source')
-            ->orderBy(['count' => SORT_DESC]);
+        $identityExpr = $this->actionIdentityExpression();
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $perAction = (new Query())
+            ->select(['source'])
+            ->from('{{%searchmanager_analytics}}')
+            ->groupBy(['source', new Expression($identityExpr)]);
+
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        $results = $query->all();
+        $results = (new Query())
+            ->select(['source', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy('source')
+            ->orderBy(['count' => SORT_DESC])
+            ->all();
         $total = array_sum(array_column($results, 'count'));
 
         $data = [];
@@ -219,23 +264,28 @@ class AnalyticsBreakdownService
     public function getPeakUsageHours(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
         $hourExpr = DateFormatHelper::localHourExpression('dateCreated');
+        $identityExpr = $this->actionIdentityExpression();
 
-        $query = (new Query())
-            ->select([
-                'hour' => $hourExpr,
-                'COUNT(*) as count',
-            ])
+        // dateCreated is per-row; all rows in a multi-index action share the
+        // same write timestamp (same search action) so the local-hour bucket is
+        // identical across them — bucket-per-action via GROUP BY (hour, action).
+        $perAction = (new Query())
+            ->select(['hour' => $hourExpr])
             ->from('{{%searchmanager_analytics}}')
-            ->groupBy($hourExpr)
-            ->orderBy(['hour' => SORT_ASC]);
+            ->groupBy([$hourExpr, new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        $results = $query->all();
+        $results = (new Query())
+            ->select(['hour', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy('hour')
+            ->orderBy(['hour' => SORT_ASC])
+            ->all();
 
         // Initialize all 24 hours with 0
         $hourlyData = array_fill(0, 24, 0);
@@ -265,22 +315,28 @@ class AnalyticsBreakdownService
      */
     public function getCountryBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
-        $query = (new Query())
-            ->select(['country', 'COUNT(*) as count'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        $perAction = (new Query())
+            ->select(['country'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['country' => null]])
             ->andWhere(['!=', 'country', ''])
-            ->groupBy('country')
-            ->orderBy(['count' => SORT_DESC])
-            ->limit($limit);
+            ->groupBy(['country', new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        $results = $query->all();
+        $results = (new Query())
+            ->select(['country', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy('country')
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit)
+            ->all();
         $total = array_sum(array_column($results, 'count'));
 
         $data = [];
@@ -307,22 +363,30 @@ class AnalyticsBreakdownService
      */
     public function getCityBreakdown(int|array|null $siteId, string $dateRange = 'last30days', int $limit = 10): array
     {
-        $query = (new Query())
-            ->select(['city', 'country', 'COUNT(*) as count'])
+        $identityExpr = $this->actionIdentityExpression();
+
+        // Two-dimensional dedup: group inner by (city, country, action) so each
+        // action contributes once to its (city, country) bucket.
+        $perAction = (new Query())
+            ->select(['city', 'country'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['not', ['city' => null]])
             ->andWhere(['!=', 'city', ''])
-            ->groupBy(['city', 'country'])
-            ->orderBy(['count' => SORT_DESC])
-            ->limit($limit);
+            ->groupBy(['city', 'country', new Expression($identityExpr)]);
 
-        $this->applyDateRangeFilter($query, $dateRange);
+        $this->applyDateRangeFilter($perAction, $dateRange);
 
         if ($siteId) {
-            $query->andWhere(['siteId' => $siteId]);
+            $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        $results = $query->all();
+        $results = (new Query())
+            ->select(['city', 'country', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy(['city', 'country'])
+            ->orderBy(['count' => SORT_DESC])
+            ->limit($limit)
+            ->all();
         $total = array_sum(array_column($results, 'count'));
 
         $data = [];

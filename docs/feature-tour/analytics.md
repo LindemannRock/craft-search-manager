@@ -21,6 +21,26 @@ Every search records:
 | Referrer | The page that triggered the search |
 | Platform, app version | For mobile app tracking |
 
+## How Searches Are Counted @since(5.46.0)
+
+A single user search may hit one index or several. To preserve per-index detail without inflating totals, Search Manager stores analytics like this:
+
+- A **multi-index search** writes **one row per index**. All those rows share a generated `sessionId` UUID.
+- A **single-index search** writes one row with `sessionId` null.
+
+Dashboards count user search actions where that's the right unit, and per-index calls where that's more useful:
+
+| Surface | Unit | Why |
+|---------|------|-----|
+| **Dashboard totals, charts, breakdowns** (devices, browsers, countries, peak hours, top queries, intent, trending, content gaps, etc.) | **User search actions** | A 3-index search counts as one action — operators see what users did, not how the work was split across backends |
+| **Raw analytics log and CSV exports** | **Per-index rows** | Operators can inspect each index's result separately when debugging |
+| **Performance (response times, cache hit rate, fastest/slowest queries)** | **Per-index search calls** | Each index has its own execution time and cache state — averaging across them would hide the slow index. Labelled "Index searches" in the UI |
+| **Top Bots list** | **Per-index calls** | Operational signal: which bots are hitting search hardest, including bots that fan out across all indices |
+
+This is why the **Total Searches** card may show a smaller number than the row count in the raw analytics log — the card counts user search actions, the log lists individual per-index rows.
+
+A zero-result *action* is one where **every** row in that action returned no hits, no redirect, and no promotion. A multi-index search that succeeded on at least one of its indices is not a content gap.
+
 ## Analytics Tabs
 
 The Analytics dashboard is organized into tabs:

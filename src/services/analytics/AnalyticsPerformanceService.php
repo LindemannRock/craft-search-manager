@@ -43,7 +43,7 @@ class AnalyticsPerformanceService
                 'AVG(executionTime) as avgTime',
                 'MIN(executionTime) as minTime',
                 'MAX(executionTime) as maxTime',
-                'COUNT(*) as searches',
+                'COUNT(*) as indexSearches',
             ])
             ->from('{{%searchmanager_analytics}}')
             ->groupBy($localDate)
@@ -62,7 +62,11 @@ class AnalyticsPerformanceService
             'avgTime' => array_map(fn($r) => round((float)$r['avgTime'], 2), $results),
             'minTime' => array_map(fn($r) => round((float)$r['minTime'], 2), $results),
             'maxTime' => array_map(fn($r) => round((float)$r['maxTime'], 2), $results),
-            'searches' => array_map(fn($r) => (int)$r['searches'], $results),
+            // Raw per-index-call count. See AnalyticsPerformanceService docblock —
+            // performance metrics stay at the index-call granularity since a multi-
+            // index search executes a distinct backend call per index, each with its
+            // own execution time and cache state.
+            'indexSearches' => array_map(fn($r) => (int)$r['indexSearches'], $results),
         ];
     }
 
@@ -76,9 +80,15 @@ class AnalyticsPerformanceService
      */
     public function getCacheStats(int|array|null $siteId, string $dateRange = 'last30days'): array
     {
-        // Total searches
+        // Scope to rows that represent a real backend execution. Widget intent
+        // pings (Enter / click / idle) hit SearchController::actionTrackSearch
+        // and write rows with executionTime = NULL — those are user-intent
+        // signals, not backend calls, and would otherwise inflate the miss
+        // denominator. Cache hits are rows where the backend served from cache,
+        // recorded with executionTime = 0 by BackendService::search().
         $totalQuery = (new Query())
-            ->from('{{%searchmanager_analytics}}');
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['not', ['executionTime' => null]]);
 
         $this->applyDateRangeFilter($totalQuery, $dateRange);
 
@@ -88,10 +98,9 @@ class AnalyticsPerformanceService
 
         $total = (int)$totalQuery->count();
 
-        // Cache hits (executionTime = 0)
         $cacheHitQuery = (new Query())
             ->from('{{%searchmanager_analytics}}')
-            ->andWhere(['executionTime' => 0]);
+            ->where(['executionTime' => 0]);
 
         $this->applyDateRangeFilter($cacheHitQuery, $dateRange);
 
@@ -128,7 +137,7 @@ class AnalyticsPerformanceService
                 'AVG(executionTime) as avgTime',
                 'MIN(executionTime) as minTime',
                 'MAX(executionTime) as maxTime',
-                'COUNT(*) as searches',
+                'COUNT(*) as indexSearches',
                 'AVG(resultsCount) as avgResults',
             ])
             ->from('{{%searchmanager_analytics}}')
@@ -160,7 +169,7 @@ class AnalyticsPerformanceService
                 'avgTime' => round((float)$r['avgTime'], 2),
                 'minTime' => round((float)$r['minTime'], 2),
                 'maxTime' => round((float)$r['maxTime'], 2),
-                'searches' => (int)$r['searches'],
+                'indexSearches' => (int)$r['indexSearches'],
                 'avgResults' => round((float)$r['avgResults'], 1),
             ];
         }, $results);
@@ -183,7 +192,7 @@ class AnalyticsPerformanceService
                 'AVG(executionTime) as avgTime',
                 'MIN(executionTime) as minTime',
                 'MAX(executionTime) as maxTime',
-                'COUNT(*) as searches',
+                'COUNT(*) as indexSearches',
                 'AVG(resultsCount) as avgResults',
             ])
             ->from('{{%searchmanager_analytics}}')
@@ -214,7 +223,7 @@ class AnalyticsPerformanceService
                 'avgTime' => round((float)$r['avgTime'], 2),
                 'minTime' => round((float)$r['minTime'], 2),
                 'maxTime' => round((float)$r['maxTime'], 2),
-                'searches' => (int)$r['searches'],
+                'indexSearches' => (int)$r['indexSearches'],
                 'avgResults' => round((float)$r['avgResults'], 1),
             ];
         }, $results);
