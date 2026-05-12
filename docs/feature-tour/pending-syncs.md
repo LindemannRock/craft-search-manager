@@ -18,6 +18,12 @@ By default, every row in the buffer regardless of status. Each row is one pendin
 
 If you save a few entries and refresh, you'll see rows appear briefly then disappear as the queue drains. The page **auto-refreshes every 5 seconds** while there are rows at `pending` or `processing` so you can watch the drain in real time. When the buffer only has `failed`/`abandoned` rows (or is empty), polling stops.
 
+### What this page does NOT show
+
+Manual index rebuilds bypass the buffer entirely. The Sync button on `/admin/search-manager/indices`, **Rebuild all** in the clear-search-cache utility, and console `php craft search-manager/index/rebuild` all run as `RebuildIndexJob` on Craft's standard queue, writing to the backend directly in chunks. They're operator-initiated full re-indexes and don't benefit from the buffer's per-element coalescing, so they're tracked in the **standard CP queue manager** (top-bar spinner / `/admin/utilities/queue-manager`), not here.
+
+Use this page to monitor delta sync from saves, deletes, and scheduled status changes; use the standard queue for rebuilds.
+
 ## Statuses
 
 - **`pending`** — queued, waiting for the next `BatchSyncJob` claim.
