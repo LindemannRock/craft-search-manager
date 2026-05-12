@@ -29,8 +29,8 @@ Common issues and solutions for Search Manager.
 **Quick checks:**
 
 1. The index is using a `criteria` closure that filters by the field that changed (e.g. `->section(['products'])->status('available')` or a custom query method).
-2. Logs show a `Sync element state` line for the element after the save, but no `Element removed from index` or `Element indexed successfully` line follows.
-3. The element fires `EVENT_AFTER_SAVE_ELEMENT` normally — other edits to the same element do sync.
+2. The element fires `EVENT_AFTER_SAVE_ELEMENT` normally — other edits to the same element do sync.
+3. The Pending Syncs page (`/admin/search-manager/pending-syncs`) shows the element either drained (sync completed) or stuck in `failed` / `abandoned` (sync attempted but couldn't complete).
 
 **Fix:** Upgrade to Search Manager 5.44.0 or later. Earlier versions would silently skip the sync when an element's field change made it no longer match the index criteria — the element would stay in the backend with stale data until a full rebuild. The sync now removes stale documents from any index whose criteria no longer matches, regardless of whether the element is still enabled.
 

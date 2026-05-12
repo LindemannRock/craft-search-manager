@@ -91,10 +91,10 @@ class SearchIndex extends Model
      * @var int Number of documents in the index.
      *
      * **Eventually consistent.** As of 5.45.0, automatic save/delete syncs
-     * (`PendingSyncProcessor`, batch path, `SyncElementJob`) deliberately do
-     * not increment or decrement this counter — doing so would require a
-     * per-row `documentExists` probe to the backend, which would re-introduce
-     * the API amplification L3 set out to eliminate.
+     * (`PendingSyncProcessor`, batch path) deliberately do not increment or
+     * decrement this counter — doing so would require a per-row
+     * `documentExists` probe to the backend, which would re-introduce the
+     * API amplification L3 set out to eliminate.
      *
      * Accurate values come from:
      *   - Full rebuild (`SearchIndex::updateStats()`)
