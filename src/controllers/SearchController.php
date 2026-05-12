@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -30,6 +31,13 @@ class SearchController extends Controller
      * Maximum resultsCount for analytics to prevent pollution
      */
     private const MAX_ANALYTICS_RESULTS_COUNT = 1000;
+
+    /**
+     * Maximum tolerated `took` value for widget-reported execution time, in milliseconds.
+     * Clamps obviously bogus client values (negative, NaN, multi-minute) to null fallback.
+     * 60s is generous — anything above is either a stuck request or a malicious payload.
+     */
+    private const MAX_WIDGET_TOOK_MS = 60000;
 
     /**
      * @inheritdoc
@@ -159,6 +167,16 @@ class SearchController extends Controller
         $source = preg_replace('/[^a-zA-Z0-9_-]/', '', $source);
         $source = substr($source, 0, 64) ?: 'frontend-widget';
 
+        // Widget cache telemetry: the widget knows from the final search response
+        // whether the result was cache-hit (meta.cached) and the backend's reported
+        // execution time (meta.took). Forwarding those into the intent ping makes
+        // dashboard cache stats reflect widget usage. Absent or malformed values
+        // fall back to null so legacy / non-widget callers keep working unchanged.
+        $executionTime = self::parseWidgetCacheTelemetry(
+            $request->getParam('cached'),
+            $request->getParam('took'),
+        );
+
         if (empty(trim($query))) {
             return $this->asJson(['success' => false, 'error' => 'Query is required']);
         }
@@ -214,7 +232,9 @@ class SearchController extends Controller
                     $handle,
                     $query,
                     $resultsCount,
-                    null, // No execution time for explicit tracking
+                    // executionTime: 0 if widget reported cache hit, took ms if widget
+                    // reported miss, null if the widget didn't report cache state.
+                    $executionTime,
                     $backend,
                     $siteId,
                     [
@@ -231,6 +251,7 @@ class SearchController extends Controller
                 'trigger' => $trigger,
                 'source' => $source,
                 'resultsCount' => $resultsCount,
+                'executionTime' => $executionTime,
             ]);
 
             return $this->asJson(['success' => true, 'tracked' => true]);
@@ -242,5 +263,42 @@ class SearchController extends Controller
 
             return $this->asJson(['success' => false, 'error' => 'Tracking failed']);
         }
+    }
+
+    /**
+     * Resolve the analytics `executionTime` value from widget-supplied cache
+     * telemetry. The widget passes `cached` (boolean-like) and optionally
+     * `took` (ms) from its final search response.
+     *
+     * Contract:
+     *  - cached missing or non-boolean-like        → null (legacy / unknown)
+     *  - cached truthy                             → 0.0  (cache hit)
+     *  - cached falsy AND took numeric in [0, max] → took (cache miss)
+     *  - cached falsy AND took missing/invalid     → null (unknown)
+     *
+     * Public + static so it can be unit-tested without controller harness.
+     *
+     * @since 5.46.0
+     */
+    public static function parseWidgetCacheTelemetry(mixed $cachedRaw, mixed $tookRaw): ?float
+    {
+        if ($cachedRaw === null || !BooleanHelper::isBooleanLike($cachedRaw)) {
+            return null;
+        }
+
+        if (BooleanHelper::normalize($cachedRaw)) {
+            return 0.0;
+        }
+
+        if (!is_numeric($tookRaw)) {
+            return null;
+        }
+
+        $tookFloat = (float) $tookRaw;
+        if ($tookFloat < 0 || $tookFloat > self::MAX_WIDGET_TOOK_MS) {
+            return null;
+        }
+
+        return $tookFloat;
     }
 }

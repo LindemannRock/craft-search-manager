@@ -92,6 +92,11 @@ class SearchWidgetBase extends HTMLElement {
         // Last query that was tracked for analytics (prevent double tracking)
         this.lastTrackedQuery = null;
 
+        // Cache state of the most recent search response — forwarded with the
+        // intent ping so the server can record an accurate executionTime for
+        // dashboard cache stats. {cached: bool, took: number} | null
+        this.lastSearchCacheState = null;
+
         // Unique IDs for ARIA accessibility
         this.listboxId = generateId('sm-listbox');
         this.inputId = generateId('sm-input');
@@ -391,6 +396,18 @@ class SearchWidgetBase extends HTMLElement {
                 loading: false,
                 selectedIndex: results.length > 0 ? 0 : -1,
             });
+
+            // Capture cache state for the eventual intent ping. Forwarding this
+            // to /search/track-search lets the server record an accurate
+            // executionTime so dashboard cache stats reflect widget usage.
+            if (meta && typeof meta.cached === 'boolean') {
+                this.lastSearchCacheState = {
+                    cached: meta.cached,
+                    took: typeof meta.took === 'number' ? meta.took : null,
+                };
+            } else {
+                this.lastSearchCacheState = null;
+            }
 
             // Announce results for screen readers
             if (this.liveRegion) {
@@ -1105,6 +1122,8 @@ class SearchWidgetBase extends HTMLElement {
             trigger,
             source: this.config.source,
             siteId: this.config.siteId,
+            cached: this.lastSearchCacheState?.cached,
+            took: this.lastSearchCacheState?.took,
         });
     }
 
@@ -1115,6 +1134,7 @@ class SearchWidgetBase extends HTMLElement {
      */
     resetAnalyticsTracking() {
         this.lastTrackedQuery = null;
+        this.lastSearchCacheState = null;
         if (this.analyticsIdleTimer) {
             clearTimeout(this.analyticsIdleTimer);
             this.analyticsIdleTimer = null;

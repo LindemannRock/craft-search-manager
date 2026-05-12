@@ -94,6 +94,7 @@ The widget tracks searches and clicks to provide meaningful analytics without ke
   - Pressing Enter
   - Stopping typing for the idle timeout (default: 1.5s)
 - **Source identification** — use `source` to distinguish widget placements (e.g., `'header-search'`, `'mobile-nav'`)
+- **Cache telemetry** @since(5.46.0) — the intent ping carries the final search response's `meta.cached` and `meta.took` forward so the recorded row has an accurate `executionTime` (`0` for cache hits, `took` ms for misses). This makes widget activity contribute to the dashboard's Cache Hit Rate, Cache Hits / Misses, and other performance metrics — without resurrecting per-keystroke spam.
 
 ## Next Steps
 

@@ -141,6 +141,11 @@ export function trackClick({ endpoint, elementId, query, index }) {
  * - Presses Enter
  * - Stops typing for idle timeout
  *
+ * Optionally forwards cache telemetry from the final search response so the
+ * server can record an accurate executionTime (0 for cache hit, took ms for
+ * miss). When omitted, the server records executionTime = NULL and the row
+ * is excluded from cache stats — preserving legacy behaviour.
+ *
  * @param {Object} options - Tracking options
  * @param {string} options.endpoint - The track-search endpoint URL
  * @param {string} options.query - The search query
@@ -149,8 +154,10 @@ export function trackClick({ endpoint, elementId, query, index }) {
  * @param {string} options.trigger - What triggered tracking ('click', 'enter', 'idle')
  * @param {string} options.source - Source identifier (e.g., 'header-search')
  * @param {string} options.siteId - Optional site ID
+ * @param {boolean} [options.cached] - Whether the final search response was served from cache
+ * @param {number} [options.took] - Backend execution time in ms (from response meta.took)
  */
-export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, trigger = 'unknown', source = '', siteId = '' }) {
+export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, trigger = 'unknown', source = '', siteId = '', cached, took }) {
     if (!query || !endpoint) return;
 
     try {
@@ -162,6 +169,13 @@ export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, t
         formData.append('source', source || 'frontend-widget');
         if (siteId) {
             formData.append('siteId', siteId);
+        }
+        // Cache telemetry — server clamps and validates; only send when we have it.
+        if (typeof cached === 'boolean') {
+            formData.append('cached', cached ? '1' : '0');
+        }
+        if (typeof took === 'number' && Number.isFinite(took) && took >= 0) {
+            formData.append('took', took.toString());
         }
 
         fetch(endpoint, {

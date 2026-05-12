@@ -41,6 +41,12 @@ This is why the **Total Searches** card may show a smaller number than the row c
 
 A zero-result *action* is one where **every** row in that action returned no hits, no redirect, and no promotion. A multi-index search that succeeded on at least one of its indices is not a content gap.
 
+### Widget Searches and Cache Stats
+
+The frontend widget skips per-keystroke analytics to avoid spam — instead, it writes a single row on user intent (Enter, click, or idle). That intent row carries cache telemetry forward from the final search response (`cached` and `took` from `meta`), so widget activity contributes to the cache hit rate just like server-side callers do.
+
+Legacy widget builds or callers that don't supply telemetry write rows with `executionTime = NULL`, and those are silently excluded from cache stats (they represent user intent, not a backend execution measurement). After upgrading to 5.46.0 and rebuilding the widget bundle, you'll see widget cache hits appear in the Performance tab.
+
 ## Analytics Tabs
 
 The Analytics dashboard is organized into tabs:

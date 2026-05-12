@@ -288,12 +288,16 @@ Records a search query when the user shows intent (clicking a result, pressing E
 | `trigger` | `unknown` | What triggered tracking: `click`, `enter`, `idle`, or `unknown` |
 | `source` | `frontend-widget` | Source identifier (alphanumeric, dash, underscore; max 64 chars) |
 | `siteId` | (none) | Site ID |
+| `cached` @since(5.46.0) | (none) | Boolean-like (`1`/`0`, `true`/`false`, `on`/`off`, `yes`/`no`). Carry forward from the final search response's `meta.cached`. When truthy, the analytics row records `executionTime = 0` (cache hit). |
+| `took` @since(5.46.0) | (none) | Backend execution time in ms from `meta.took`. Used only when `cached` is falsy. Clamped to `[0, 60000]`; negative or non-numeric values are ignored. Recorded as the row's `executionTime` for cache-miss accounting. |
 
 ```json
 {"success": true, "tracked": true}
 ```
 
 Returns `"tracked": false` when analytics is disabled or no valid indices match.
+
+Omitting `cached` / `took` is supported and writes `executionTime = NULL` (legacy behaviour — the row counts as a search action but is excluded from cache hit rate calculations).
 
 ### Track Click
 
