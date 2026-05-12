@@ -1,0 +1,364 @@
+{% extends 'lindemannrock-base/_layouts/cp-table' %}
+
+{# `searchHelper` is a Twig global registered by base/PluginNameExtension — do
+   not shadow it with the plugin instance. It exposes .fullName, .displayName,
+   etc. via PluginNameHelper. #}
+
+{# Filters from URL (the controller already validates these) #}
+{% set statusFilterRaw = filters.status ?? 'all' %}
+{% set statusFilter = statusFilterRaw is iterable ? 'all' : statusFilterRaw %}
+{% set indexHandleFilter = filters.indexHandle ?? 'all' %}
+{% set opFilter = filters.op ?? 'all' %}
+{% set siteIdFilter = filters.siteId ?? 'all' %}
+{% set stuckOn = filters.stuck is defined and filters.stuck %}
+{% set searchValue = filters.search ?? '' %}
+{% set showingAll = statusGroup == 'all' %}
+
+{# Permissions #}
+{% set canRetry = currentUser.can('searchManager:retrySyncFailures') %}
+{% set canPurge = currentUser.can('searchManager:purgeSyncFailures') %}
+
+{# Stats counts indexed by status (used to gate the "Purge abandoned" toolbar
+   button so it only renders when there is something to purge). #}
+{% set countByStatus = {} %}
+{% for entry in stats.counts %}
+    {% set countByStatus = countByStatus|merge({(entry.status): entry.count}) %}
+{% endfor %}
+
+{% set columns = [
+    {key: 'index', label: 'Index'|t('search-manager'), sortable: false},
+    {key: 'element', label: 'Element'|t('search-manager'), sortable: false},
+    {key: 'site', label: 'Site'|t('search-manager'), sortable: false, hideable: true},
+    {key: 'op', label: 'Op'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'status', label: 'Status'|t('search-manager'), sortable: true},
+    {key: 'attempts', label: 'Attempts'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'queuedAt', label: 'Queued'|t('search-manager'), sortable: true},
+    {key: 'nextAttemptAt', label: 'Next attempt'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'lastError', label: 'Last error'|t('search-manager'), sortable: false, hideable: true},
+] %}
+
+{% set indexOptions = [{value: 'all', label: 'All indices'|t('search-manager'), status: 'all'}] %}
+{% for index in indices %}
+    {% set indexOptions = indexOptions|merge([{
+        value: index.handle,
+        label: index.name,
+    }]) %}
+{% endfor %}
+
+{% set siteOptions = [{value: 'all', label: 'All sites'|t('search-manager'), status: 'all'}] %}
+{% for site in sites %}
+    {% set siteOptions = siteOptions|merge([{
+        value: site.id,
+        label: site.name,
+    }]) %}
+{% endfor %}
+
+{% set tableConfig = {
+    plugin: {
+        handle: 'search-manager',
+        name: searchHelper.fullName,
+    },
+    page: {
+        title: showingAll ? 'Pending Syncs'|t('search-manager') : 'Sync Failures'|t('search-manager'),
+        subnav: 'pending-syncs',
+        crumbs: [
+            { label: searchHelper.fullName, url: url('search-manager') },
+            { label: 'Sync Failures'|t('search-manager'), url: url('search-manager/pending-syncs') },
+        ],
+    },
+    filters: [
+        {
+            type: 'status',
+            param: 'status',
+            current: statusFilter,
+            label: 'All'|t('search-manager'),
+            groups: [
+                {
+                    param: 'status',
+                    current: statusFilter,
+                    options: [
+                        {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'pending', label: 'Pending'|t('search-manager'), colorKey: 'pending'},
+                        {value: 'processing', label: 'Processing'|t('search-manager'), colorKey: 'processing'},
+                        {value: 'failed', label: 'Failed'|t('search-manager'), colorKey: 'failed'},
+                        {value: 'abandoned', label: 'Abandoned'|t('search-manager'), colorKey: 'abandoned'},
+                    ],
+                    colorSet: 'pendingSyncStatus',
+                },
+                {
+                    header: 'Index'|t('search-manager'),
+                    param: 'indexHandle',
+                    current: indexHandleFilter,
+                    options: indexOptions,
+                },
+                {
+                    header: 'Op'|t('search-manager'),
+                    param: 'op',
+                    current: opFilter,
+                    options: [
+                        {value: 'all', label: 'All ops'|t('search-manager'), status: 'all'},
+                        {value: 'upsert', label: 'Upsert'|t('search-manager')},
+                        {value: 'delete', label: 'Delete'|t('search-manager')},
+                    ],
+                },
+                {
+                    header: 'Site'|t('search-manager'),
+                    param: 'siteId',
+                    current: siteIdFilter,
+                    options: siteOptions,
+                },
+            ],
+        },
+    ],
+    search: {
+        placeholder: 'Search element ID or error text…'|t('search-manager'),
+        value: searchValue,
+    },
+    sort: {
+        field: sort,
+        direction: dir,
+    },
+    table: {
+        columns: columns,
+        items: rows,
+        emptyMessage: showingAll ? 'No pending syncs.'|t('search-manager') : 'No sync failures.'|t('search-manager'),
+    },
+    pagination: {
+        page: page,
+        limit: limit,
+        totalCount: totalCount,
+        itemLabel: showingAll
+            ? {singular: 'pending sync'|t('search-manager'), plural: 'pending syncs'|t('search-manager')}
+            : {singular: 'sync failure'|t('search-manager'), plural: 'sync failures'|t('search-manager')},
+    },
+    checkboxes: canRetry or canPurge,
+} %}
+
+{% block toolbarActions %}
+    {# Default view is failures only. Operators rarely care about pending /
+       processing rows — `BatchSyncJob` drains those in the background. The
+       toggle lets a curious operator see the full mid-flight buffer. #}
+    <a href="{{ url('search-manager/pending-syncs', showingAll ? {} : {statusGroup: 'all'}) }}" class="btn{{ showingAll ? ' active' : '' }}">
+        {{ showingAll ? 'Show failures only'|t('search-manager') : 'Show all rows'|t('search-manager') }}
+    </a>
+    {% if canPurge and (countByStatus.abandoned ?? 0) > 0 %}
+        <form method="post" accept-charset="UTF-8" style="display:inline;" data-confirm="{{ 'Purge all abandoned rows? This cannot be undone.'|t('search-manager') }}">
+            {{ csrfInput() }}
+            <input type="hidden" name="action" value="search-manager/pending-syncs/purge-abandoned">
+            <button type="submit" class="btn error">{{ 'Purge abandoned'|t('search-manager') }} ({{ countByStatus.abandoned }})</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
+{% block tableRow %}
+    {% set elementKey = item.elementId ~ ':' ~ item.siteId %}
+    {% set element = elements[elementKey] ?? null %}
+    {% set elementTypeShort = item.elementType|split('\\')|last %}
+    {% set claimedAtTs = item.claimedAt ? item.claimedAt|lrDatetime('short') : null %}
+    {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
+
+    <td data-column="index">
+        <code>{{ item.indexHandle }}</code>
+    </td>
+
+    <td data-column="element">
+        {% if element and element.cpEditUrl %}
+            <a href="{{ element.cpEditUrl }}">
+                {{ element.title ?? (elementTypeShort ~ ' #' ~ item.elementId) }}
+            </a>
+        {% elseif element %}
+            {{ element.title ?? (elementTypeShort ~ ' #' ~ item.elementId) }}
+        {% elseif existsAnywhere[item.elementId] is defined %}
+            {# Element exists on at least one site, just not this row's site.
+               Routine — the processor will flip this row to a delete on
+               drain. No alarm. #}
+            <span>{{ elementTypeShort }} #{{ item.elementId }}</span>
+            <span class="light" title="{{ 'Element is not propagated to this site. Row will be cleaned up on drain.'|t('search-manager') }}"> · {{ 'not on this site'|t('search-manager') }}</span>
+        {% else %}
+            {# Element is gone from every site. Still routine (the row will
+               delete the doc) but worth distinguishing from "not propagated". #}
+            <span class="light">{{ elementTypeShort }} #{{ item.elementId }}</span>
+            <span class="lr-text-amber" title="{{ 'Element no longer exists. Row will delete the document on drain.'|t('search-manager') }}"> · {{ 'deleted'|t('search-manager') }}</span>
+        {% endif %}
+    </td>
+
+    <td data-column="site">
+        {% set site = sites|filter(s => s.id == item.siteId)|first %}
+        {{ site ? site.name : ('Site #' ~ item.siteId) }}
+    </td>
+
+    <td data-column="op">
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.op|capitalize,
+            value: item.op,
+            colorSet: 'pendingSyncOp',
+        } only %}
+    </td>
+
+    <td data-column="status">
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.status|capitalize,
+            value: item.status,
+            colorSet: 'pendingSyncStatus',
+        } only %}
+        {% if isFreshlyProcessing %}
+            <span class="light" title="{{ 'A worker is processing this row. Wait for it to finish or expire before retrying.'|t('search-manager') }}">
+                ({{ 'active'|t('search-manager') }})
+            </span>
+        {% endif %}
+    </td>
+
+    <td data-column="attempts">
+        {{ item.attemptCount }}
+    </td>
+
+    <td data-column="queuedAt">
+        {{ item.queuedAt|lrDatetime('short') }}
+    </td>
+
+    <td data-column="nextAttemptAt">
+        {{ item.nextAttemptAt ? item.nextAttemptAt|lrDatetime('short') : '—' }}
+    </td>
+
+    <td data-column="lastError">
+        {% if item.lastError %}
+            <span class="lr-pending-syncs-error" title="{{ item.lastError|e('html_attr') }}">
+                {{ item.lastError|length > 80 ? (item.lastError|slice(0, 80) ~ '…') : item.lastError }}
+            </span>
+        {% else %}
+            <span class="light">—</span>
+        {% endif %}
+    </td>
+{% endblock %}
+
+{% block rowActions %}
+    {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
+    {% set element = elements[item.elementId ~ ':' ~ item.siteId] ?? null %}
+
+    {% set actionItems = [] %}
+
+    {% if element and element.cpEditUrl %}
+        {% set actionItems = actionItems|merge([{
+            label: 'View element'|t('search-manager'),
+            url: element.cpEditUrl,
+        }]) %}
+    {% endif %}
+
+    {% if canRetry %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Retry now'|t('search-manager'),
+            jsAction: 'retry',
+            data: {id: item.id},
+            disabled: isFreshlyProcessing,
+            tooltip: isFreshlyProcessing ? 'Row is currently being processed by a worker.'|t('search-manager') : null,
+        }]) %}
+    {% endif %}
+
+    {% if canPurge %}
+        {% set actionItems = actionItems|merge([
+            {type: 'divider'},
+            {
+                label: 'Delete from buffer'|t('search-manager'),
+                class: 'error',
+                jsAction: 'delete',
+                data: {id: item.id},
+                disabled: isFreshlyProcessing,
+                tooltip: isFreshlyProcessing ? 'Row is currently being processed by a worker.'|t('search-manager') : null,
+            },
+        ]) %}
+    {% endif %}
+
+    {% if actionItems|length %}
+        {% include 'lindemannrock-base/_components/row-actions' with {
+            item: {id: item.id},
+            actions: {
+                type: 'menu',
+                icon: 'settings',
+                title: 'Actions'|t('search-manager'),
+                items: actionItems,
+            },
+        } only %}
+    {% endif %}
+{% endblock %}
+
+{% block bulkActions %}
+    {% if canRetry %}
+        <button type="button" class="btn secondary" id="lr-bulk-retry-btn">
+            {{ 'Retry'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
+        </button>
+    {% endif %}
+    {% if canPurge %}
+        <button type="button" class="btn error" id="lr-bulk-delete-btn">
+            {{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
+        </button>
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    if (typeof Craft === 'undefined') return;
+
+    // Row-action handlers via the cp-table jsAction wiring.
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('[data-js-action]');
+        if (!trigger) return;
+        const action = trigger.dataset.jsAction;
+        const id = parseInt(trigger.dataset.id || '0', 10);
+        if (!id) return;
+
+        if (action === 'retry') {
+            postAction('search-manager/pending-syncs/retry', { ids: [id] });
+        } else if (action === 'delete') {
+            if (!confirm({{ 'Delete this pending sync row?'|t('search-manager')|json_encode|raw }})) return;
+            postAction('search-manager/pending-syncs/delete', { ids: [id] });
+        }
+    });
+
+    document.getElementById('lr-bulk-retry-btn')?.addEventListener('click', function() {
+        const ids = window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+        if (!ids.length) return;
+        postAction('search-manager/pending-syncs/retry', { ids: ids });
+    });
+
+    document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
+        const ids = window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+        if (!ids.length) return;
+        if (!confirm({{ 'Delete the selected pending sync rows?'|t('search-manager')|json_encode|raw }})) return;
+        postAction('search-manager/pending-syncs/delete', { ids: ids });
+    });
+
+    // Confirm helper on toolbar forms.
+    document.querySelectorAll('form[data-confirm]').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            if (!confirm(form.dataset.confirm)) {
+                e.preventDefault();
+            }
+        });
+    });
+
+    function postAction(action, data) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '';
+
+        appendField(form, 'action', action);
+        appendField(form, Craft.csrfTokenName, Craft.csrfTokenValue);
+        (data.ids || []).forEach(function(id) {
+            appendField(form, 'ids[]', String(id));
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function appendField(form, name, value) {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = name;
+        input.value = value;
+        form.appendChild(input);
+    }
+})();
+</script>
+{% endblock %}
