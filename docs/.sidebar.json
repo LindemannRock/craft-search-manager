@@ -11,6 +11,7 @@
 		"children": [
 			"feature-tour/overview",
 			"feature-tour/indices",
+			"feature-tour/pending-syncs",
 			"feature-tour/search-features",
 			"feature-tour/highlighting",
 			"feature-tour/autocomplete",

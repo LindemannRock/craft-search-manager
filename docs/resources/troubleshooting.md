@@ -57,6 +57,8 @@ If saved elements are not appearing in search:
 - **Check `autoIndex`**: When `autoIndex` is disabled, save/delete events do not add pending sync rows.
 - **Check `batchFlushInterval`**: A high value intentionally delays draining so bulk imports can coalesce.
 
+For a triage view with filters, per-row retry, and a "show stuck only" preset, open **Search Manager → Pending Syncs**. See [Pending Syncs](../feature-tour/pending-syncs.md) for the operator runbook.
+
 ## Changing `autoIndex` Has No Effect Until Workers Restart
 
 The `autoIndex` setting is consulted **once** during the plugin's `init()`. When it is enabled, listeners are attached to `Elements::EVENT_AFTER_SAVE_ELEMENT` and `Elements::EVENT_AFTER_DELETE_ELEMENT`. When it is disabled, those listeners are never attached.

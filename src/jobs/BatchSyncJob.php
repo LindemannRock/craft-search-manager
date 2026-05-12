@@ -36,6 +36,20 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         $this->setLoggingHandle('search-manager');
     }
 
+    /**
+     * Time budget per BatchSyncJob run, in seconds. We claim+process buffer
+     * rows in `syncBatchSize` chunks within a single job, looping until the
+     * buffer is empty OR this budget is exhausted (whichever comes first).
+     *
+     * Set well under Craft's default queue TTR (~30s) so the job finishes
+     * cleanly before the queue starts considering it stuck. Operators with
+     * huge backlogs (Feed Me bulk imports, 10k+ rows) will exhaust the budget
+     * on the first pass, drop a continuation job on the queue, and resume.
+     *
+     * @since 5.45.0
+     */
+    private const TIME_BUDGET_SECONDS = 25;
+
     /** @inheritdoc */
     public function execute($queue): void
     {
@@ -45,38 +59,56 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
 
         $repository->purgeOld($settings->pendingMaxAge);
 
-        $claimTtl = max(300, $settings->batchFlushInterval * 6);
-        $rows = $repository->claim($settings->syncBatchSize, $claimTtl);
-        if (empty($rows)) {
-            return;
-        }
-
         $started = microtime(true);
-        $this->logInfo('Batch sync started', [
-            'count' => count($rows),
-        ]);
+        $claimTtl = max(300, $settings->batchFlushInterval * 6);
+        $totalClaimed = 0;
+        $totalSucceeded = 0;
+        $totalFailureGroups = 0;
+        $passes = 0;
 
-        $result = $processor->process($rows);
+        // Drain in `syncBatchSize` chunks within a single job until the buffer
+        // is empty or our time budget runs out. The chunk size still bounds
+        // the SQL UPDATE...WHERE id IN (...) cardinality, but we no longer
+        // require N separate job invocations to drain N×chunk-size rows.
+        while (true) {
+            if ((microtime(true) - $started) > self::TIME_BUDGET_SECONDS) {
+                if ($repository->hasDueRows()) {
+                    $repository->scheduleBatchJob();
+                }
+                break;
+            }
 
-        $repository->markSucceeded($result['success']);
-        foreach ($result['failures'] as $failure) {
-            $repository->markRetry(
-                $failure['ids'],
-                $failure['error'],
-                $settings->batchMaxAttempts,
-                $settings->batchFlushInterval,
-            );
+            $rows = $repository->claim($settings->syncBatchSize, $claimTtl);
+            if (empty($rows)) {
+                break;
+            }
+
+            $passes++;
+            $totalClaimed += count($rows);
+
+            $result = $processor->process($rows);
+            $repository->markSucceeded($result['success']);
+            $totalSucceeded += count($result['success']);
+
+            foreach ($result['failures'] as $failure) {
+                $repository->markRetry(
+                    $failure['ids'],
+                    $failure['error'],
+                    $settings->batchMaxAttempts,
+                    $settings->batchFlushInterval,
+                );
+                $totalFailureGroups++;
+            }
         }
 
-        $this->logInfo('Batch sync completed', [
-            'claimed' => count($rows),
-            'succeeded' => count($result['success']),
-            'failureGroups' => count($result['failures']),
-            'durationMs' => (int)round((microtime(true) - $started) * 1000),
-        ]);
-
-        if ($repository->hasDueRows()) {
-            $repository->scheduleBatchJob();
+        if ($totalClaimed > 0) {
+            $this->logInfo('Batch sync run complete', [
+                'passes' => $passes,
+                'claimed' => $totalClaimed,
+                'succeeded' => $totalSucceeded,
+                'failureGroups' => $totalFailureGroups,
+                'durationMs' => (int) round((microtime(true) - $started) * 1000),
+            ]);
         }
     }
 

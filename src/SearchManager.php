@@ -159,6 +159,16 @@ class SearchManager extends Plugin
                         'page' => ColorHelper::getPaletteColor('sky'),
                         'inline' => ColorHelper::getPaletteColor('rose'),
                     ],
+                    'pendingSyncStatus' => [
+                        'pending' => ColorHelper::getPaletteColor('blue'),
+                        'processing' => ColorHelper::getPaletteColor('amber'),
+                        'failed' => ColorHelper::getPaletteColor('orange'),
+                        'abandoned' => ColorHelper::getPaletteColor('red'),
+                    ],
+                    'pendingSyncOp' => [
+                        'upsert' => ColorHelper::getPaletteColor('emerald'),
+                        'delete' => ColorHelper::getPaletteColor('rose'),
+                    ],
                 ],
                 'installExperience' => [
                     'headline' => Craft::t('search-manager', 'Search Manager'),
@@ -307,6 +317,8 @@ class SearchManager extends Plugin
                     'search-manager/indices/rebuild/<indexId:\d+>' => 'search-manager/indices/rebuild',
                     'search-manager/indices/clear/<indexId:\d+>' => 'search-manager/indices/clear',
                     'search-manager/indices/delete/<indexId:\d+>' => 'search-manager/indices/delete',
+                    // Pending Syncs
+                    'search-manager/pending-syncs' => 'search-manager/pending-syncs/index',
                     // Promotions
                     'search-manager/promotions' => 'search-manager/promotions/index',
                     'search-manager/promotions/create' => 'search-manager/promotions/edit',
@@ -408,6 +420,18 @@ class SearchManager extends Plugin
                                 ],
                                 'searchManager:clearIndices' => [
                                     'label' => Craft::t('search-manager', 'Clear indices'),
+                                ],
+                            ],
+                        ],
+                        // Sync Failures - grouped (parent grants page access, destructive actions nested)
+                        'searchManager:manageSyncFailures' => [
+                            'label' => Craft::t('search-manager', 'Manage sync failures'),
+                            'nested' => [
+                                'searchManager:retrySyncFailures' => [
+                                    'label' => Craft::t('search-manager', 'Retry sync failures'),
+                                ],
+                                'searchManager:purgeSyncFailures' => [
+                                    'label' => Craft::t('search-manager', 'Purge sync failures'),
                                 ],
                             ],
                         ],
@@ -815,6 +839,14 @@ class SearchManager extends Plugin
             'label' => Craft::t('search-manager', 'Indices'),
             'url' => 'search-manager/indices',
             'permissionsAll' => ['searchManager:manageIndices'],
+            'when' => $hasBackends,
+        ];
+
+        $sections[] = [
+            'key' => 'pending-syncs',
+            'label' => Craft::t('search-manager', 'Sync Failures'),
+            'url' => 'search-manager/pending-syncs',
+            'permissionsAll' => ['searchManager:manageSyncFailures'],
             'when' => $hasBackends,
         ];
 
