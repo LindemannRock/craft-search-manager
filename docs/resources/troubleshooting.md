@@ -57,7 +57,7 @@ If saved elements are not appearing in search:
 - **Check `autoIndex`**: When `autoIndex` is disabled, save/delete events do not add pending sync rows.
 - **Check `batchFlushInterval`**: A high value intentionally delays draining so bulk imports can coalesce.
 
-For a triage view with filters and per-row retry, open **Search Manager → Sync Failures**. The page is empty in a healthy system; rows appear only when a backend write actually fails. See [Sync Failures](../feature-tour/sync-failures.md) for the operator runbook.
+For a triage view of the buffer with filters, per-row retry, and a one-click "Failed & Abandoned" preset, open **Search Manager → Pending Syncs**. See [Pending Syncs](../feature-tour/pending-syncs.md) for the operator runbook.
 
 ## Changing `autoIndex` Has No Effect Until Workers Restart
 

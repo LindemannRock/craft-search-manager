@@ -32,7 +32,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **Frontend Widget** — CMD+K search modal (WCAG 2.1 AA, keyboard navigation, theming)
 - **Native Search Replacement** — Optionally replace Craft's built-in search
 - **REST API** — Search and autocomplete endpoints for headless/mobile apps
-- **Sync Failures CP** — Operator surface for the L3 sync buffer: triage failures, retry, purge from the Control Panel
+- **Pending Syncs CP** — Operator surface for the L3 sync buffer: triage failures, retry, purge, and watch the queue drain live from the Control Panel
 - **Privacy-First** — IP hashing, subnet masking, async geo-lookup, GDPR-friendly
 
 ## Requirements
