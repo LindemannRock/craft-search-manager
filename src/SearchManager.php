@@ -30,6 +30,7 @@ use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
 use lindemannrock\searchmanager\jobs\SyncStatusJob;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\services\AnalyticsService;
+use lindemannrock\searchmanager\services\ApiKeyService;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\DeviceDetectionService;
@@ -58,6 +59,7 @@ use yii\base\Event;
  * @property-read IndexingService $indexing
  * @property-read TransformerService $transformers
  * @property-read AnalyticsService $analytics
+ * @property-read ApiKeyService $apiKeys
  * @property-read AutocompleteService $autocomplete
  * @property-read DeviceDetectionService $deviceDetection
  * @property-read EnrichmentService $enrichment
@@ -169,6 +171,13 @@ class SearchManager extends Plugin
                         'upsert' => ColorHelper::getPaletteColor('teal'),
                         'delete' => ColorHelper::getPaletteColor('red'),
                     ],
+                    // Public is browser-embeddable; server is trusted server-side
+                    // only. Blue + pink gives clear visual separation without
+                    // overloading the `status` set's enabled/disabled hues.
+                    'apiKeyType' => [
+                        'public' => ColorHelper::getPaletteColor('blue'),
+                        'server' => ColorHelper::getPaletteColor('pink'),
+                    ],
                 ],
                 'installExperience' => [
                     'headline' => Craft::t('search-manager', 'Search Manager'),
@@ -238,6 +247,7 @@ class SearchManager extends Plugin
     {
         $this->setComponents([
             'analytics' => AnalyticsService::class,
+            'apiKeys' => ApiKeyService::class,
             'autocomplete' => AutocompleteService::class,
             'backend' => BackendService::class,
             'deviceDetection' => DeviceDetectionService::class,
@@ -317,6 +327,14 @@ class SearchManager extends Plugin
                     'search-manager/indices/rebuild/<indexId:\d+>' => 'search-manager/indices/rebuild',
                     'search-manager/indices/clear/<indexId:\d+>' => 'search-manager/indices/clear',
                     'search-manager/indices/delete/<indexId:\d+>' => 'search-manager/indices/delete',
+                    // API Keys
+                    'search-manager/api-keys' => 'search-manager/api-keys/index',
+                    'search-manager/api-keys/create' => 'search-manager/api-keys/edit',
+                    'search-manager/api-keys/edit/<keyId:\d+>' => 'search-manager/api-keys/edit',
+                    'search-manager/api-keys/delete/<keyId:\d+>' => 'search-manager/api-keys/delete',
+                    'search-manager/api-keys/bulk-enable' => 'search-manager/api-keys/bulk-enable',
+                    'search-manager/api-keys/bulk-disable' => 'search-manager/api-keys/bulk-disable',
+                    'search-manager/api-keys/bulk-delete' => 'search-manager/api-keys/bulk-delete',
                     // Pending Syncs
                     'search-manager/pending-syncs' => 'search-manager/pending-syncs/index',
                     // Promotions
@@ -447,6 +465,21 @@ class SearchManager extends Plugin
                                 ],
                                 'searchManager:deletePromotions' => [
                                     'label' => Craft::t('search-manager', 'Delete promotions'),
+                                ],
+                            ],
+                        ],
+                        // API Keys - grouped (parent grants page access + view, destructive actions nested)
+                        'searchManager:manageApiKeys' => [
+                            'label' => Craft::t('search-manager', 'Manage API keys'),
+                            'nested' => [
+                                'searchManager:createApiKeys' => [
+                                    'label' => Craft::t('search-manager', 'Create API keys'),
+                                ],
+                                'searchManager:editApiKeys' => [
+                                    'label' => Craft::t('search-manager', 'Edit API keys'),
+                                ],
+                                'searchManager:revokeApiKeys' => [
+                                    'label' => Craft::t('search-manager', 'Revoke API keys'),
                                 ],
                             ],
                         ],
@@ -871,6 +904,16 @@ class SearchManager extends Plugin
             'label' => Craft::t('search-manager', 'Widgets'),
             'url' => 'search-manager/widgets',
             'permissionsAny' => ['searchManager:manageWidgetConfigs', 'searchManager:manageWidgetStyles'],
+        ];
+
+        // API Keys is visible without `$hasBackends` so operators can provision
+        // keys ahead of the first backend (and so the CI/headless bootstrap
+        // command's CP confirmation is reachable on a fresh install).
+        $sections[] = [
+            'key' => 'api-keys',
+            'label' => Craft::t('search-manager', 'API Keys'),
+            'url' => 'search-manager/api-keys',
+            'permissionsAll' => ['searchManager:manageApiKeys'],
         ];
 
         $sections[] = [

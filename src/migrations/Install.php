@@ -40,6 +40,7 @@ class Install extends Migration
         $this->createPromotionAnalyticsTable();
         $this->createWidgetStylesTable();
         $this->createWidgetConfigsTable();
+        $this->createApiKeysTable();
 
         // Insert default data
         $this->insertDefaultSettings();
@@ -53,6 +54,7 @@ class Install extends Migration
     public function safeDown(): bool
     {
         // Drop tables in reverse order (respecting dependencies)
+        $this->dropTableIfExists('{{%searchmanager_api_keys}}');
         $this->dropTableIfExists('{{%searchmanager_widget_configs}}');
         $this->dropTableIfExists('{{%searchmanager_widget_styles}}');
         $this->dropTableIfExists('{{%searchmanager_promotion_analytics}}');
@@ -887,5 +889,48 @@ class Install extends Migration
             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
             'uid' => StringHelper::UUID(),
         ]);
+    }
+
+    /**
+     * Create API keys table
+     *
+     * Stores hashed API keys that gate access to the public search/autocomplete/
+     * track-* endpoints when `requireApiKey = true`. Each key declares its
+     * restrictions (allowed indices, allowed referrers, max hits per page,
+     * expiry, rate limit). The plaintext key is shown to the operator exactly
+     * once on creation; only the hash + 15-char prefix is persisted.
+     *
+     * @since 5.46.0
+     */
+    private function createApiKeysTable(): void
+    {
+        if ($this->db->tableExists('{{%searchmanager_api_keys}}')) {
+            return;
+        }
+
+        $this->createTable('{{%searchmanager_api_keys}}', [
+            'id' => $this->primaryKey(),
+            'name' => $this->string(255)->notNull(),
+            'type' => $this->enum('type', ['public', 'server'])->notNull()->defaultValue('public'),
+            'enabled' => $this->boolean()->notNull()->defaultValue(true),
+            'keyHash' => $this->string(128)->notNull()->comment('HMAC-SHA256 of plaintext key, keyed by Craft securityKey'),
+            'keyPrefix' => $this->string(32)->notNull()->comment('Unhashed prefix for CP display + lookup (e.g. sm_pub_a1b2c3d4)'),
+            'allowedIndicesJson' => $this->text()->null()->comment('JSON array of index handles, or ["*"] for all indices'),
+            'allowedReferrersJson' => $this->text()->null()->comment('JSON array of domain patterns (example.com, *.example.com)'),
+            'maxHitsPerPage' => $this->integer()->null()->comment('Cap on hitsPerPage; null = use endpoint default'),
+            'validUntil' => $this->dateTime()->null()->comment('Expiry datetime; null = never expires'),
+            'rateLimit' => $this->integer()->null()->comment('Requests per minute; null = no rate limit (slice 3)'),
+            'lastUsedAt' => $this->dateTime()->null()->comment('Updated on successful enforcement (slice 2)'),
+            'dateCreated' => $this->dateTime()->notNull(),
+            'dateUpdated' => $this->dateTime()->notNull(),
+            'uid' => $this->uid(),
+        ]);
+
+        // keyPrefix is the lookup column on the enforcement hot path → unique index
+        $this->createIndex(null, '{{%searchmanager_api_keys}}', ['keyPrefix'], true);
+        // For "show keys expiring soon" CP queries + ad-hoc cleanup
+        $this->createIndex(null, '{{%searchmanager_api_keys}}', ['validUntil'], false);
+        // For type-filtered CP listings (public vs server)
+        $this->createIndex(null, '{{%searchmanager_api_keys}}', ['type'], false);
     }
 }

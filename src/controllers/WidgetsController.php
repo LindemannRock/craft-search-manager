@@ -34,14 +34,21 @@ class WidgetsController extends Controller
     }
 
     /**
-     * List all widget configurations
+     * List all widget configurations.
+     *
+     * Follows the canonical CP table index-page pattern (in-memory variant) —
+     * see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+     * Controller owns query-param parsing, allowlist validation, filter, sort,
+     * and pagination; the Twig template stays presentational.
      */
     public function actionIndex(): Response
     {
         $this->requirePermission('searchManager:manageWidgetConfigs');
 
-        $widgetConfigs = SearchManager::$plugin->widgetConfigs->getAll();
+        $request = Craft::$app->getRequest();
         $settings = SearchManager::$plugin->getSettings();
+
+        $widgetConfigs = array_values(SearchManager::$plugin->widgetConfigs->getAll());
         $configHandles = ConfigFileHelper::getHandles('widgets');
         $databaseHandles = (new Query())
             ->select(['handle'])
@@ -49,24 +56,34 @@ class WidgetsController extends Controller
             ->column();
         $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
-        // Auto-assign default if needed (only if not set via config file)
+        // hasAnyWidgets + hasConfigItems are cached before filter narrows the
+        // collection so beforeTable warnings and the cp-table checkbox-disable
+        // behaviour stay consistent under filtering.
+        $hasAnyWidgets = !empty($widgetConfigs);
+        $hasConfigItems = false;
+        foreach ($widgetConfigs as $widget) {
+            if ($widget->isFromConfig()) {
+                $hasConfigItems = true;
+                break;
+            }
+        }
+
+        // Auto-assign default if needed (only if not set via config file).
+        // Runs against the unfiltered list, not the filtered subset.
         if (!$this->isDefaultWidgetFromConfig()) {
             $defaultHandle = $settings->defaultWidgetHandle;
             $needsReassign = false;
 
             if (empty($defaultHandle)) {
-                // No default set
                 $needsReassign = true;
             } else {
-                // Check if default exists and is enabled
-                $defaultWidget = SearchManager::$plugin->widgetConfigs->getByHandle($defaultHandle);
-                if (!$defaultWidget || !$defaultWidget->enabled) {
+                $existingDefault = SearchManager::$plugin->widgetConfigs->getByHandle($defaultHandle);
+                if (!$existingDefault || !$existingDefault->enabled) {
                     $needsReassign = true;
                 }
             }
 
-            if ($needsReassign && !empty($widgetConfigs)) {
-                // Find first enabled widget
+            if ($needsReassign && $hasAnyWidgets) {
                 foreach ($widgetConfigs as $widget) {
                     if ($widget->enabled) {
                         $settings->defaultWidgetHandle = $widget->handle;
@@ -82,12 +99,130 @@ class WidgetsController extends Controller
             }
         }
 
+        // ---- Param parsing + allowlist validation -------------------------
+
+        $statusFilter = (string) $request->getQueryParam('status', 'all');
+        $validStatuses = ['all', 'enabled', 'disabled'];
+        if (!in_array($statusFilter, $validStatuses, true)) {
+            $statusFilter = 'all';
+        }
+
+        $sourceFilter = (string) $request->getQueryParam('source', 'all');
+        $validSources = ['all', 'config', 'database'];
+        if (!in_array($sourceFilter, $validSources, true)) {
+            $sourceFilter = 'all';
+        }
+
+        $typeFilter = (string) $request->getQueryParam('type', 'all');
+        $validTypes = array_merge(['all'], array_map('strval', WidgetStyle::WIDGET_TYPES));
+        if (!in_array($typeFilter, $validTypes, true)) {
+            $typeFilter = 'all';
+        }
+
+        $search = trim((string) $request->getQueryParam('search', ''));
+        if (mb_strlen($search) > 64) {
+            $search = mb_substr($search, 0, 64);
+        }
+
+        $validSortFields = ['name', 'handle', 'type', 'source', 'enabled', 'isDefault'];
+        $sort = (string) $request->getParam('sort', 'source');
+        if (!in_array($sort, $validSortFields, true)) {
+            $sort = 'source';
+        }
+        $dir = strtolower((string) $request->getParam('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        // ---- Filter -------------------------------------------------------
+
+        if ($statusFilter === 'enabled') {
+            $widgetConfigs = array_values(array_filter($widgetConfigs, fn(WidgetConfig $w): bool => $w->enabled));
+        } elseif ($statusFilter === 'disabled') {
+            $widgetConfigs = array_values(array_filter($widgetConfigs, fn(WidgetConfig $w): bool => !$w->enabled));
+        }
+
+        if ($sourceFilter === 'config') {
+            $widgetConfigs = array_values(array_filter($widgetConfigs, fn(WidgetConfig $w): bool => $w->source === 'config'));
+        } elseif ($sourceFilter === 'database') {
+            $widgetConfigs = array_values(array_filter($widgetConfigs, fn(WidgetConfig $w): bool => $w->source !== 'config'));
+        }
+
+        if ($typeFilter !== 'all') {
+            $widgetConfigs = array_values(array_filter($widgetConfigs, fn(WidgetConfig $w): bool => $w->type === $typeFilter));
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $widgetConfigs = array_values(array_filter($widgetConfigs, function(WidgetConfig $w) use ($needle): bool {
+                return str_contains(mb_strtolower((string) $w->name), $needle)
+                    || str_contains(mb_strtolower((string) $w->handle), $needle);
+            }));
+        }
+
+        // ---- Sort + paginate ----------------------------------------------
+
+        $defaultWidgetHandle = $settings->defaultWidgetHandle;
+        $widgetConfigs = $this->sortWidgetConfigs($widgetConfigs, $sort, $dir, (string) $defaultWidgetHandle);
+
+        $totalCount = count($widgetConfigs);
+        $page = max(1, (int) $request->getParam('page', 1));
+        $limit = max(1, (int) $settings->itemsPerPage);
+        $offset = ($page - 1) * $limit;
+        $widgetConfigs = array_slice($widgetConfigs, $offset, $limit);
+
+        // Resolve default widget against the unfiltered set so the beforeTable
+        // warning logic stays correct under any filter narrowing.
+        $defaultWidget = !empty($defaultWidgetHandle)
+            ? SearchManager::$plugin->widgetConfigs->getByHandle((string) $defaultWidgetHandle)
+            : null;
+
         return $this->renderTemplate('search-manager/widgets/index', [
             'widgetConfigs' => $widgetConfigs,
-            'defaultWidgetHandle' => $settings->defaultWidgetHandle,
+            'defaultWidgetHandle' => $defaultWidgetHandle,
+            'defaultWidget' => $defaultWidget,
+            'hasAnyWidgets' => $hasAnyWidgets,
+            'hasConfigItems' => $hasConfigItems,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
             'collisionHandles' => $collisionHandles,
+            'statusFilter' => $statusFilter,
+            'sourceFilter' => $sourceFilter,
+            'typeFilter' => $typeFilter,
+            'search' => $search,
+            'sort' => $sort,
+            'dir' => $dir,
+            'page' => $page,
+            'limit' => $limit,
+            'totalCount' => $totalCount,
+            'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createWidgetConfigs'),
+            'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editWidgetConfigs'),
+            'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deleteWidgetConfigs'),
         ]);
+    }
+
+    /**
+     * @param WidgetConfig[] $configs
+     * @return WidgetConfig[]
+     */
+    private function sortWidgetConfigs(array $configs, string $sort, string $dir, string $defaultHandle): array
+    {
+        $multiplier = $dir === 'desc' ? -1 : 1;
+
+        usort($configs, function(WidgetConfig $a, WidgetConfig $b) use ($sort, $multiplier, $defaultHandle): int {
+            $cmp = match ($sort) {
+                'handle' => strcasecmp((string) $a->handle, (string) $b->handle),
+                'type' => strcasecmp((string) $a->type, (string) $b->type),
+                'source' => strcmp((string) ($a->source ?? ''), (string) ($b->source ?? '')),
+                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                'isDefault' => ((int) ($a->handle === $defaultHandle)) <=> ((int) ($b->handle === $defaultHandle)),
+                default => strcasecmp((string) $a->name, (string) $b->name),
+            };
+
+            if ($cmp === 0 && $sort !== 'name') {
+                $cmp = strcasecmp((string) $a->name, (string) $b->name);
+            }
+
+            return $cmp * $multiplier;
+        });
+
+        return $configs;
     }
 
     /**
@@ -457,7 +592,12 @@ class WidgetsController extends Controller
     // =========================================================================
 
     /**
-     * List all widget styles
+     * List all widget styles.
+     *
+     * Follows the canonical CP table index-page pattern (in-memory variant) —
+     * see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+     * Controller owns query-param parsing, allowlist validation, filter, sort,
+     * and pagination; the Twig template stays presentational.
      *
      * @since 5.39.0
      */
@@ -465,7 +605,10 @@ class WidgetsController extends Controller
     {
         $this->requirePermission('searchManager:manageWidgetStyles');
 
-        $widgetStyles = SearchManager::$plugin->widgetStyles->getAll();
+        $request = Craft::$app->getRequest();
+        $settings = SearchManager::$plugin->getSettings();
+
+        $widgetStyles = array_values(SearchManager::$plugin->widgetStyles->getAll());
         $styleUsageCounts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
 
         $configHandles = ConfigFileHelper::getHandles('widgetStyles');
@@ -475,11 +618,133 @@ class WidgetsController extends Controller
             ->column();
         $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
+        // `hasConfigItems` controls the cp-table layout's checkbox-disabling for
+        // config-source rows. Cached now from the unfiltered set so it's correct
+        // even when the source filter narrows the visible items to database-only.
+        $hasConfigItems = false;
+        foreach ($widgetStyles as $style) {
+            if ($style->isFromConfig()) {
+                $hasConfigItems = true;
+                break;
+            }
+        }
+
+        // ---- Param parsing + allowlist validation -------------------------
+
+        $statusFilter = (string) $request->getQueryParam('status', 'all');
+        $validStatuses = ['all', 'enabled', 'disabled'];
+        if (!in_array($statusFilter, $validStatuses, true)) {
+            $statusFilter = 'all';
+        }
+
+        $sourceFilter = (string) $request->getQueryParam('source', 'all');
+        $validSources = ['all', 'config', 'database'];
+        if (!in_array($sourceFilter, $validSources, true)) {
+            $sourceFilter = 'all';
+        }
+
+        $typeFilter = (string) $request->getQueryParam('type', 'all');
+        // Widget type allowlist is sourced from the model's WIDGET_TYPES array
+        // plus the explicit 'all' sentinel — keeps the controller honest if a
+        // new widget type is added to the model.
+        $validTypes = array_merge(['all'], array_map('strval', WidgetStyle::WIDGET_TYPES));
+        if (!in_array($typeFilter, $validTypes, true)) {
+            $typeFilter = 'all';
+        }
+
+        $search = trim((string) $request->getQueryParam('search', ''));
+        if (mb_strlen($search) > 64) {
+            $search = mb_substr($search, 0, 64);
+        }
+
+        $validSortFields = ['name', 'handle', 'type', 'source', 'enabled'];
+        $sort = (string) $request->getParam('sort', 'name');
+        if (!in_array($sort, $validSortFields, true)) {
+            $sort = 'name';
+        }
+        $dir = strtolower((string) $request->getParam('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        // ---- Filter -------------------------------------------------------
+
+        if ($statusFilter === 'enabled') {
+            $widgetStyles = array_values(array_filter($widgetStyles, fn(WidgetStyle $s): bool => $s->enabled));
+        } elseif ($statusFilter === 'disabled') {
+            $widgetStyles = array_values(array_filter($widgetStyles, fn(WidgetStyle $s): bool => !$s->enabled));
+        }
+
+        if ($sourceFilter === 'config') {
+            $widgetStyles = array_values(array_filter($widgetStyles, fn(WidgetStyle $s): bool => $s->source === 'config'));
+        } elseif ($sourceFilter === 'database') {
+            $widgetStyles = array_values(array_filter($widgetStyles, fn(WidgetStyle $s): bool => $s->source !== 'config'));
+        }
+
+        if ($typeFilter !== 'all') {
+            $widgetStyles = array_values(array_filter($widgetStyles, fn(WidgetStyle $s): bool => $s->type === $typeFilter));
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $widgetStyles = array_values(array_filter($widgetStyles, function(WidgetStyle $s) use ($needle): bool {
+                return str_contains(mb_strtolower((string) $s->name), $needle)
+                    || str_contains(mb_strtolower((string) $s->handle), $needle);
+            }));
+        }
+
+        // ---- Sort + paginate ----------------------------------------------
+
+        $widgetStyles = $this->sortWidgetStyles($widgetStyles, $sort, $dir);
+
+        $totalCount = count($widgetStyles);
+        $page = max(1, (int) $request->getParam('page', 1));
+        $limit = max(1, (int) $settings->itemsPerPage);
+        $offset = ($page - 1) * $limit;
+        $widgetStyles = array_slice($widgetStyles, $offset, $limit);
+
         return $this->renderTemplate('search-manager/widgets/styles/index', [
             'widgetStyles' => $widgetStyles,
             'styleUsageCounts' => $styleUsageCounts,
             'collisionHandles' => $collisionHandles,
+            'hasConfigItems' => $hasConfigItems,
+            'statusFilter' => $statusFilter,
+            'sourceFilter' => $sourceFilter,
+            'typeFilter' => $typeFilter,
+            'search' => $search,
+            'sort' => $sort,
+            'dir' => $dir,
+            'page' => $page,
+            'limit' => $limit,
+            'totalCount' => $totalCount,
+            'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createWidgetStyles'),
+            'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editWidgetStyles'),
+            'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deleteWidgetStyles'),
         ]);
+    }
+
+    /**
+     * @param WidgetStyle[] $styles
+     * @return WidgetStyle[]
+     */
+    private function sortWidgetStyles(array $styles, string $sort, string $dir): array
+    {
+        $multiplier = $dir === 'desc' ? -1 : 1;
+
+        usort($styles, function(WidgetStyle $a, WidgetStyle $b) use ($sort, $multiplier): int {
+            $cmp = match ($sort) {
+                'handle' => strcasecmp((string) $a->handle, (string) $b->handle),
+                'type' => strcasecmp((string) $a->type, (string) $b->type),
+                'source' => strcmp((string) ($a->source ?? ''), (string) ($b->source ?? '')),
+                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                default => strcasecmp((string) $a->name, (string) $b->name),
+            };
+
+            if ($cmp === 0 && $sort !== 'name') {
+                $cmp = strcasecmp((string) $a->name, (string) $b->name);
+            }
+
+            return $cmp * $multiplier;
+        });
+
+        return $styles;
     }
 
     /**

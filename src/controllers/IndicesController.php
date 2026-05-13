@@ -29,11 +29,19 @@ class IndicesController extends Controller
     }
 
     /**
-     * List all indices
+     * List all indices.
+     *
+     * Follows the canonical CP table index-page pattern (in-memory variant) —
+     * see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+     * Controller owns query-param parsing, allowlist validation, filter, sort,
+     * and pagination; the Twig template stays presentational.
      */
     public function actionIndex(): Response
     {
         $this->requirePermission('searchManager:manageIndices');
+
+        $request = Craft::$app->getRequest();
+        $settings = SearchManager::$plugin->getSettings();
 
         $indices = SearchIndex::findAll();
         $configHandles = ConfigFileHelper::getHandles('indices');
@@ -44,10 +52,120 @@ class IndicesController extends Controller
             ->column();
         $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
+        // ---- Param parsing + allowlist validation -------------------------
+
+        $statusFilter = (string) $request->getQueryParam('status', 'all');
+        $validStatuses = ['all', 'enabled', 'disabled'];
+        if (!in_array($statusFilter, $validStatuses, true)) {
+            $statusFilter = 'all';
+        }
+
+        $sourceFilter = (string) $request->getQueryParam('source', 'all');
+        $validSources = ['all', 'config', 'database'];
+        if (!in_array($sourceFilter, $validSources, true)) {
+            $sourceFilter = 'all';
+        }
+
+        $backendFilter = (string) $request->getQueryParam('backend', 'all');
+        $validBackends = ['all', 'mysql', 'pgsql', 'file', 'redis', 'typesense', 'algolia', 'meilisearch'];
+        if (!in_array($backendFilter, $validBackends, true)) {
+            $backendFilter = 'all';
+        }
+
+        $search = trim((string) $request->getQueryParam('search', ''));
+        if (mb_strlen($search) > 64) {
+            $search = mb_substr($search, 0, 64);
+        }
+
+        $validSortFields = ['name', 'handle', 'elementType', 'source', 'enabled'];
+        $sort = (string) $request->getParam('sort', 'source');
+        if (!in_array($sort, $validSortFields, true)) {
+            $sort = 'source';
+        }
+        $dir = strtolower((string) $request->getParam('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        // ---- Filter -------------------------------------------------------
+
+        if ($statusFilter === 'enabled') {
+            $indices = array_values(array_filter($indices, fn(SearchIndex $i): bool => $i->enabled));
+        } elseif ($statusFilter === 'disabled') {
+            $indices = array_values(array_filter($indices, fn(SearchIndex $i): bool => !$i->enabled));
+        }
+
+        if ($sourceFilter === 'config') {
+            $indices = array_values(array_filter($indices, fn(SearchIndex $i): bool => $i->source === 'config'));
+        } elseif ($sourceFilter === 'database') {
+            $indices = array_values(array_filter($indices, fn(SearchIndex $i): bool => $i->source !== 'config'));
+        }
+
+        if ($backendFilter !== 'all') {
+            $indices = array_values(array_filter($indices, fn(SearchIndex $i): bool => $i->getEffectiveBackendType() === $backendFilter));
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $indices = array_values(array_filter($indices, function(SearchIndex $i) use ($needle): bool {
+                return str_contains(mb_strtolower((string) $i->name), $needle)
+                    || str_contains(mb_strtolower((string) $i->handle), $needle);
+            }));
+        }
+
+        // ---- Sort + paginate ----------------------------------------------
+
+        $indices = $this->sortIndices($indices, $sort, $dir);
+
+        $totalCount = count($indices);
+        $page = max(1, (int) $request->getParam('page', 1));
+        $limit = max(1, (int) $settings->itemsPerPage);
+        $offset = ($page - 1) * $limit;
+        $indices = array_slice($indices, $offset, $limit);
+
         return $this->renderTemplate('search-manager/indices/index', [
             'indices' => $indices,
             'collisionHandles' => $collisionHandles,
+            'statusFilter' => $statusFilter,
+            'sourceFilter' => $sourceFilter,
+            'backendFilter' => $backendFilter,
+            'search' => $search,
+            'sort' => $sort,
+            'dir' => $dir,
+            'page' => $page,
+            'limit' => $limit,
+            'totalCount' => $totalCount,
+            'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createIndices'),
+            'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editIndices'),
+            'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deleteIndices'),
+            'canRebuild' => Craft::$app->getUser()->checkPermission('searchManager:rebuildIndices'),
+            'canClear' => Craft::$app->getUser()->checkPermission('searchManager:clearIndices'),
+            'canClearCache' => Craft::$app->getUser()->checkPermission('searchManager:clearCache'),
         ]);
+    }
+
+    /**
+     * @param SearchIndex[] $indices
+     * @return SearchIndex[]
+     */
+    private function sortIndices(array $indices, string $sort, string $dir): array
+    {
+        $multiplier = $dir === 'desc' ? -1 : 1;
+
+        usort($indices, function(SearchIndex $a, SearchIndex $b) use ($sort, $multiplier): int {
+            $cmp = match ($sort) {
+                'handle' => strcasecmp((string) $a->handle, (string) $b->handle),
+                'elementType' => strcmp((string) $a->elementType, (string) $b->elementType),
+                'source' => strcmp((string) ($a->source ?? ''), (string) ($b->source ?? '')),
+                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                default => strcasecmp((string) $a->name, (string) $b->name),
+            };
+
+            if ($cmp === 0 && $sort !== 'name') {
+                $cmp = strcasecmp((string) $a->name, (string) $b->name);
+            }
+
+            return $cmp * $multiplier;
+        });
+
+        return $indices;
     }
 
     /**
@@ -198,29 +316,40 @@ class IndicesController extends Controller
         $this->requirePermission('searchManager:deleteIndices');
         $this->requirePostRequest();
 
-        $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
+        $request = Craft::$app->getRequest();
+        $acceptsJson = $request->getAcceptsJson();
+        $indexId = $request->getRequiredBodyParam('indexId');
 
         $index = SearchIndex::findByIdOrHandle($indexId);
 
         if (!$index) {
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found.')]);
+            }
             throw new NotFoundHttpException('Index not found');
         }
 
         if (!$index->canEdit()) {
-            Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'This index is defined in config and cannot be deleted.')
-            );
+            $error = Craft::t('search-manager', 'This index is defined in config and cannot be deleted.');
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
             return $this->redirect('search-manager/indices');
         }
 
         if ($index->delete()) {
-            Craft::$app->getSession()->setNotice(
-                Craft::t('search-manager', 'Index deleted.')
-            );
+            $message = Craft::t('search-manager', 'Index deleted.');
+            if ($acceptsJson) {
+                return $this->asJson(['success' => true, 'message' => $message]);
+            }
+            Craft::$app->getSession()->setNotice($message);
         } else {
-            Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Could not delete index.')
-            );
+            $error = Craft::t('search-manager', 'Could not delete index.');
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
         }
 
         return $this->redirect('search-manager/indices');
@@ -234,11 +363,16 @@ class IndicesController extends Controller
         $this->requirePermission('searchManager:clearIndices');
         $this->requirePostRequest();
 
-        $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
+        $request = Craft::$app->getRequest();
+        $acceptsJson = $request->getAcceptsJson();
+        $indexId = $request->getRequiredBodyParam('indexId');
 
         $index = SearchIndex::findByIdOrHandle($indexId);
 
         if (!$index) {
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found.')]);
+            }
             throw new NotFoundHttpException('Index not found');
         }
 
@@ -252,9 +386,11 @@ class IndicesController extends Controller
         SearchManager::$plugin->backend->clearSearchCache($index->handle);
         SearchManager::$plugin->autocomplete->clearCache($index->handle);
 
-        Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Index data cleared.')
-        );
+        $message = Craft::t('search-manager', 'Index data cleared.');
+        if ($acceptsJson) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
+        Craft::$app->getSession()->setNotice($message);
 
         return $this->redirectToPostedUrl(null, 'search-manager/indices');
     }
@@ -428,7 +564,9 @@ class IndicesController extends Controller
         $this->requirePermission('searchManager:rebuildIndices');
         $this->requirePostRequest();
 
-        $indexId = Craft::$app->getRequest()->getRequiredBodyParam('indexId');
+        $request = Craft::$app->getRequest();
+        $acceptsJson = $request->getAcceptsJson();
+        $indexId = $request->getRequiredBodyParam('indexId');
 
         $this->logDebug('Rebuilding index', [
             'indexId' => $indexId,
@@ -443,14 +581,19 @@ class IndicesController extends Controller
                 'indexId' => $indexId,
                 'type' => gettype($indexId),
             ]);
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found.')]);
+            }
             throw new NotFoundHttpException('Index not found');
         }
 
         SearchManager::$plugin->indexing->rebuildIndex($index->handle);
 
-        Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Index rebuild queued.')
-        );
+        $message = Craft::t('search-manager', 'Index rebuild queued.');
+        if ($acceptsJson) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
+        Craft::$app->getSession()->setNotice($message);
 
         return $this->redirectToPostedUrl(null, 'search-manager/indices');
     }

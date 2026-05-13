@@ -1,0 +1,257 @@
+<?php
+/**
+ * Search Manager plugin for Craft CMS 5.x
+ *
+ * @link      https://lindemannrock.com
+ * @copyright Copyright (c) 2026 LindemannRock
+ */
+
+namespace lindemannrock\searchmanager\services;
+
+use Craft;
+use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\models\ApiKey;
+use yii\base\Component;
+
+/**
+ * API Key Service
+ *
+ * Generates, hashes, and verifies API keys. Persistence lives on the
+ * `ApiKey` model itself (matches the plugin's Promotion/QueryRule shape);
+ * this service owns the crypto + lookup contract.
+ *
+ * Key format: `sm_<type>_<32 hex chars>` (40 chars total).
+ * Stored prefix: first 15 chars (`sm_<type>_<8 hex chars>`) — enough for
+ * unambiguous CP identification, indexed UNIQUE for O(1) lookup on the
+ * enforcement hot path (slice 2).
+ *
+ * Hash: HMAC-SHA256 of the full plaintext key, keyed by Craft's
+ * `securityKey`. Chosen over bcrypt because API keys are already 128-bit
+ * CSPRNG random — there's no low-entropy attack surface bcrypt's cost
+ * factor exists to slow down, and HMAC is the right primitive for
+ * fast constant-time-comparable opaque-token verification.
+ *
+ * @since 5.46.0
+ */
+class ApiKeyService extends Component
+{
+    use LoggingTrait;
+
+    /** @var int Number of hex characters in the random body of a key (= 128 bits entropy). */
+    private const RANDOM_HEX_CHARS = 32;
+
+    /** @var int Length of the stored/displayed prefix: `sm_xxx_` + 8 hex chars. */
+    private const PREFIX_LENGTH = 15;
+
+    private const TYPE_PREFIXES = [
+        ApiKey::TYPE_PUBLIC => 'sm_pub_',
+        ApiKey::TYPE_SERVER => 'sm_srv_',
+    ];
+
+    public function init(): void
+    {
+        parent::init();
+        $this->setLoggingHandle('search-manager');
+    }
+
+    // =========================================================================
+    // KEY GENERATION + VERIFICATION
+    // =========================================================================
+
+    /**
+     * Generate a fresh plaintext key for the given type, plus its derived
+     * prefix and hash. The plaintext is the caller's only chance to capture
+     * the full value — only the prefix + hash are persisted.
+     *
+     * @return array{plaintext: string, prefix: string, hash: string}
+     * @throws \InvalidArgumentException if $type isn't a recognised ApiKey type
+     * @throws \Exception if the CSPRNG fails (extremely rare)
+     */
+    public function generateKey(string $type): array
+    {
+        if (!isset(self::TYPE_PREFIXES[$type])) {
+            throw new \InvalidArgumentException("Invalid API key type: '$type'.");
+        }
+
+        $randomHex = bin2hex(random_bytes((int)(self::RANDOM_HEX_CHARS / 2)));
+        $plaintext = self::TYPE_PREFIXES[$type] . $randomHex;
+
+        return [
+            'plaintext' => $plaintext,
+            'prefix' => substr($plaintext, 0, self::PREFIX_LENGTH),
+            'hash' => $this->hashKey($plaintext),
+        ];
+    }
+
+    /**
+     * Compute the HMAC-SHA256 hash for a plaintext key.
+     * Keyed by Craft's `securityKey` so hashes are not portable across installs
+     * (defence in depth against a leaked DB dump replayed on another install).
+     */
+    public function hashKey(string $plaintext): string
+    {
+        $securityKey = Craft::$app->getConfig()->getGeneral()->securityKey;
+        return hash_hmac('sha256', $plaintext, $securityKey);
+    }
+
+    /**
+     * Constant-time check that $plaintext is the original of $key's stored hash.
+     */
+    public function verifyKey(string $plaintext, ApiKey $key): bool
+    {
+        // Prefix mismatch is a cheap pre-check — also catches typos before crypto.
+        if (!str_starts_with($plaintext, $key->keyPrefix)) {
+            return false;
+        }
+        return hash_equals($key->keyHash, $this->hashKey($plaintext));
+    }
+
+    /**
+     * Enforcement hot-path entry point (will be used in slice 2 by the
+     * endpoint guard). Parses a presented plaintext key, looks up the
+     * matching ApiKey row by prefix, and verifies the hash.
+     *
+     * Returns the matching ApiKey on success, or null on any failure
+     * (unknown prefix, hash mismatch, malformed input). Failure is
+     * deliberately undifferentiated to the caller — slice 2 wraps this
+     * in a generic 401 with no leaked detail about why.
+     */
+    public function findByPlaintextKey(string $plaintext): ?ApiKey
+    {
+        if (strlen($plaintext) < self::PREFIX_LENGTH) {
+            return null;
+        }
+
+        $prefix = substr($plaintext, 0, self::PREFIX_LENGTH);
+        $key = ApiKey::findByPrefix($prefix);
+        if ($key === null) {
+            return null;
+        }
+
+        return $this->verifyKey($plaintext, $key) ? $key : null;
+    }
+
+    /**
+     * Cheap "are there any keys at all" check — a single `COUNT(*)` query.
+     * Used by the API Keys CP index to decide whether to show the
+     * "no keys configured yet" banner, without loading every row's data.
+     */
+    public function hasAnyKeys(): bool
+    {
+        return ApiKey::count() > 0;
+    }
+
+    // =========================================================================
+    // BULK OPERATIONS
+    // =========================================================================
+
+    /**
+     * Flip `enabled` on a set of keys in one query. Used by the CP bulk
+     * Enable / Disable actions. Recoverable — operators can flip the bit
+     * back at any time. Touches `dateUpdated` so audit views show the change.
+     *
+     * @param int[] $ids
+     * @return int Number of rows actually updated (excludes rows that already had the target state)
+     */
+    public function bulkSetEnabled(array $ids, bool $enabled): int
+    {
+        $ids = $this->normalizeIds($ids);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $affected = (int) Craft::$app->getDb()->createCommand()
+            ->update(
+                '{{%searchmanager_api_keys}}',
+                [
+                    'enabled' => (int) $enabled,
+                    'dateUpdated' => \craft\helpers\Db::prepareDateForDb(new \DateTime()),
+                ],
+                ['id' => $ids],
+            )
+            ->execute();
+
+        $this->logInfo('Bulk set API key enabled state', [
+            'enabled' => $enabled,
+            'requestedIds' => $ids,
+            'affected' => $affected,
+        ]);
+
+        return $affected;
+    }
+
+    /**
+     * Hard-delete a set of keys by id. Destructive — there is no recovery,
+     * because the plaintext is unrecoverable (only the hash is persisted).
+     *
+     * @param int[] $ids
+     * @return int Number of rows deleted
+     */
+    public function bulkDelete(array $ids): int
+    {
+        $ids = $this->normalizeIds($ids);
+        if ($ids === []) {
+            return 0;
+        }
+
+        $deleted = (int) Craft::$app->getDb()->createCommand()
+            ->delete('{{%searchmanager_api_keys}}', ['id' => $ids])
+            ->execute();
+
+        $this->logInfo('Bulk revoke API keys', [
+            'requestedIds' => $ids,
+            'deleted' => $deleted,
+        ]);
+
+        return $deleted;
+    }
+
+    /**
+     * Filter, coerce, and dedupe an incoming list of ids. Drops anything
+     * non-integer or non-positive so a malformed POST payload can't widen
+     * the affected set or coerce a SQL surprise.
+     *
+     * @param array<mixed> $ids
+     * @return int[]
+     */
+    private function normalizeIds(array $ids): array
+    {
+        $clean = [];
+        foreach ($ids as $raw) {
+            if (!is_numeric($raw)) {
+                continue;
+            }
+            $i = (int) $raw;
+            if ($i > 0) {
+                $clean[$i] = true; // keys for dedupe
+            }
+        }
+        return array_keys($clean);
+    }
+
+    /**
+     * Touch `lastUsedAt` to the current UTC datetime. Called after a
+     * successful enforcement check (slice 2). Wrapped in try/catch so
+     * the bookkeeping write can't fail the request — the worst case is
+     * a stale `lastUsedAt` value in the CP, not a denied legitimate call.
+     */
+    public function recordUsage(ApiKey $key): void
+    {
+        try {
+            $now = new \DateTime('now', new \DateTimeZone('UTC'));
+            Craft::$app->getDb()->createCommand()
+                ->update(
+                    '{{%searchmanager_api_keys}}',
+                    ['lastUsedAt' => \craft\helpers\Db::prepareDateForDb($now)],
+                    ['id' => $key->id],
+                )
+                ->execute();
+            $key->lastUsedAt = $now;
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to record API key usage timestamp', [
+                'keyId' => $key->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+}

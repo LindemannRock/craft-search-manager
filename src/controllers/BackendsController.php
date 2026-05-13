@@ -31,14 +31,25 @@ class BackendsController extends Controller
     }
 
     /**
-     * List all configured backends
+     * List all configured backends.
+     *
+     * Follows the canonical CP table index-page pattern (in-memory variant) —
+     * see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+     * Controller owns query-param parsing, allowlist validation, filter, sort,
+     * and pagination; the Twig template stays presentational.
      */
     public function actionIndex(): Response
     {
         $this->requirePermission('searchManager:manageBackends');
 
-        $backends = ConfiguredBackend::findAll();
+        $request = Craft::$app->getRequest();
         $settings = SearchManager::$plugin->getSettings();
+
+        $backends = ConfiguredBackend::findAll();
+        // Whether the install has any backends at all — referenced by the
+        // template's "no default backend configured" warning, which must
+        // survive a narrowed filter. Cached now before filter shrinks $backends.
+        $hasAnyBackends = !empty($backends);
         $configHandles = ConfigFileHelper::getHandles('backends');
         $databaseHandles = (new Query())
             ->select(['handle'])
@@ -46,16 +57,16 @@ class BackendsController extends Controller
             ->column();
         $collisionHandles = array_values(array_intersect($configHandles, $databaseHandles));
 
-        // Auto-assign default if needed (only if not set via config file)
+        // Auto-assign default if needed (only if not set via config file).
+        // Runs against the full backend list, not the filtered subset, so a
+        // narrowed status/type filter never accidentally promotes a default.
         if (!$this->isDefaultBackendFromConfig()) {
             $defaultHandle = $settings->defaultBackendHandle;
             $needsReassign = false;
 
             if (empty($defaultHandle)) {
-                // No default set
                 $needsReassign = true;
             } else {
-                // Check if default exists and is enabled
                 $defaultBackend = ConfiguredBackend::findByHandle($defaultHandle);
                 if (!$defaultBackend || !$defaultBackend->enabled) {
                     $needsReassign = true;
@@ -63,7 +74,6 @@ class BackendsController extends Controller
             }
 
             if ($needsReassign && !empty($backends)) {
-                // Find first enabled backend
                 foreach ($backends as $backend) {
                     if ($backend->enabled) {
                         $settings->defaultBackendHandle = $backend->handle;
@@ -79,12 +89,140 @@ class BackendsController extends Controller
             }
         }
 
+        // ---- Param parsing + allowlist validation -------------------------
+
+        $statusFilter = (string) $request->getQueryParam('status', 'all');
+        $validStatuses = ['all', 'enabled', 'disabled'];
+        if (!in_array($statusFilter, $validStatuses, true)) {
+            $statusFilter = 'all';
+        }
+
+        $typeFilter = (string) $request->getQueryParam('type', 'all');
+        $validTypes = ['all', 'algolia', 'meilisearch', 'typesense', 'mysql', 'pgsql', 'redis', 'file'];
+        if (!in_array($typeFilter, $validTypes, true)) {
+            $typeFilter = 'all';
+        }
+
+        $sourceFilter = (string) $request->getQueryParam('source', 'all');
+        $validSources = ['all', 'config', 'database'];
+        if (!in_array($sourceFilter, $validSources, true)) {
+            $sourceFilter = 'all';
+        }
+
+        $search = trim((string) $request->getQueryParam('search', ''));
+        if (mb_strlen($search) > 64) {
+            $search = mb_substr($search, 0, 64);
+        }
+
+        $validSortFields = ['name', 'handle', 'type', 'source', 'enabled'];
+        $sort = (string) $request->getParam('sort', 'source');
+        if (!in_array($sort, $validSortFields, true)) {
+            $sort = 'source';
+        }
+        $dir = strtolower((string) $request->getParam('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        // ---- Filter -------------------------------------------------------
+
+        if ($statusFilter === 'enabled') {
+            $backends = array_values(array_filter($backends, fn(ConfiguredBackend $b): bool => $b->enabled));
+        } elseif ($statusFilter === 'disabled') {
+            $backends = array_values(array_filter($backends, fn(ConfiguredBackend $b): bool => !$b->enabled));
+        }
+
+        if ($typeFilter !== 'all') {
+            $backends = array_values(array_filter($backends, fn(ConfiguredBackend $b): bool => $b->backendType === $typeFilter));
+        }
+
+        if ($sourceFilter === 'config') {
+            $backends = array_values(array_filter($backends, fn(ConfiguredBackend $b): bool => $b->source === 'config'));
+        } elseif ($sourceFilter === 'database') {
+            $backends = array_values(array_filter($backends, fn(ConfiguredBackend $b): bool => $b->source !== 'config'));
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $backends = array_values(array_filter($backends, function(ConfiguredBackend $b) use ($needle): bool {
+                return str_contains(mb_strtolower($b->name), $needle)
+                    || str_contains(mb_strtolower($b->handle), $needle)
+                    || str_contains(mb_strtolower($b->backendType), $needle);
+            }));
+        }
+
+        // ---- Sort + paginate ----------------------------------------------
+
+        $backends = $this->sortBackends($backends, $sort, $dir);
+
+        // Total count reflects the filtered subset so the pager matches the
+        // visible list — not the unfiltered ConfiguredBackend::findAll() size.
+        $totalCount = count($backends);
+        $page = max(1, (int) $request->getParam('page', 1));
+        $limit = max(1, (int) $settings->itemsPerPage);
+        $offset = ($page - 1) * $limit;
+        $backends = array_slice($backends, $offset, $limit);
+
+        // Resolve the default backend once (against the full set, not the
+        // filtered/paginated $backends) so beforeTable warnings render
+        // consistently regardless of the current filter state.
+        $defaultBackendHandle = $settings->defaultBackendHandle;
+        $defaultBackend = !empty($defaultBackendHandle)
+            ? ConfiguredBackend::findByHandle($defaultBackendHandle)
+            : null;
+
         return $this->renderTemplate('search-manager/backends/index', [
             'backends' => $backends,
-            'defaultBackendHandle' => $settings->defaultBackendHandle,
+            'hasAnyBackends' => $hasAnyBackends,
+            'defaultBackendHandle' => $defaultBackendHandle,
+            'defaultBackend' => $defaultBackend,
             'isDefaultFromConfig' => $this->isDefaultBackendFromConfig(),
             'collisionHandles' => $collisionHandles,
+            'statusFilter' => $statusFilter,
+            'typeFilter' => $typeFilter,
+            'sourceFilter' => $sourceFilter,
+            'search' => $search,
+            'sort' => $sort,
+            'dir' => $dir,
+            'page' => $page,
+            'limit' => $limit,
+            'totalCount' => $totalCount,
+            'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createBackends'),
+            'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editBackends'),
+            'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deleteBackends'),
         ]);
+    }
+
+    /**
+     * Sort the loaded backends array in PHP. Small dataset → array-side sort
+     * is fine. The sort key allowlist is enforced in actionIndex() before we
+     * land here, so the default branch is reached only on a logic bug.
+     *
+     * @param ConfiguredBackend[] $backends
+     * @return ConfiguredBackend[]
+     */
+    private function sortBackends(array $backends, string $sort, string $dir): array
+    {
+        $multiplier = $dir === 'desc' ? -1 : 1;
+
+        usort($backends, function(ConfiguredBackend $a, ConfiguredBackend $b) use ($sort, $multiplier): int {
+            $cmp = match ($sort) {
+                // Column key 'type' maps to the model's `backendType` property —
+                // the column key is the URL-visible label, not the field name.
+                'type' => strcasecmp((string) $a->backendType, (string) $b->backendType),
+                'handle' => strcasecmp((string) $a->handle, (string) $b->handle),
+                'source' => strcmp((string) ($a->source ?? ''), (string) ($b->source ?? '')),
+                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                default => strcasecmp((string) $a->name, (string) $b->name),
+            };
+
+            // Stable tie-break by name so equal primary keys don't shuffle
+            // between requests — keeps pagination predictable.
+            if ($cmp === 0 && $sort !== 'name') {
+                $cmp = strcasecmp((string) $a->name, (string) $b->name);
+            }
+
+            return $cmp * $multiplier;
+        });
+
+        return $backends;
     }
 
     /**

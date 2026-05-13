@@ -30,25 +30,130 @@ class PromotionsController extends Controller
     }
 
     /**
-     * List all promotions
+     * List all promotions.
+     *
+     * Follows the canonical CP table index-page pattern (in-memory variant) —
+     * see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+     * Controller owns query-param parsing, allowlist validation, filter, sort,
+     * and pagination; the Twig template stays presentational.
      */
     public function actionIndex(): Response
     {
         $this->requirePermission('searchManager:managePromotions');
 
+        $request = Craft::$app->getRequest();
+        $settings = SearchManager::$plugin->getSettings();
+
         $promotions = Promotion::findAll();
         $indices = SearchIndex::findAll();
 
-        // Build index lookup for display
         $indexLookup = [];
         foreach ($indices as $index) {
             $indexLookup[$index->handle] = $index->name;
         }
 
+        // ---- Param parsing + allowlist validation -------------------------
+
+        $statusFilter = (string) $request->getQueryParam('status', 'all');
+        $validStatuses = ['all', 'enabled', 'disabled'];
+        if (!in_array($statusFilter, $validStatuses, true)) {
+            $statusFilter = 'all';
+        }
+
+        $matchTypeFilter = (string) $request->getQueryParam('matchType', 'all');
+        $validMatchTypes = ['all', 'exact', 'contains', 'prefix'];
+        if (!in_array($matchTypeFilter, $validMatchTypes, true)) {
+            $matchTypeFilter = 'all';
+        }
+
+        $search = trim((string) $request->getQueryParam('search', ''));
+        if (mb_strlen($search) > 64) {
+            $search = mb_substr($search, 0, 64);
+        }
+
+        $validSortFields = ['title', 'query', 'matchType', 'position', 'siteId', 'enabled'];
+        $sort = (string) $request->getParam('sort', 'position');
+        if (!in_array($sort, $validSortFields, true)) {
+            $sort = 'position';
+        }
+        $dir = strtolower((string) $request->getParam('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        // ---- Filter -------------------------------------------------------
+
+        if ($statusFilter === 'enabled') {
+            $promotions = array_values(array_filter($promotions, fn(Promotion $p): bool => $p->enabled));
+        } elseif ($statusFilter === 'disabled') {
+            $promotions = array_values(array_filter($promotions, fn(Promotion $p): bool => !$p->enabled));
+        }
+
+        if ($matchTypeFilter !== 'all') {
+            $promotions = array_values(array_filter($promotions, fn(Promotion $p): bool => $p->matchType === $matchTypeFilter));
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $promotions = array_values(array_filter($promotions, function(Promotion $p) use ($needle): bool {
+                return str_contains(mb_strtolower((string) $p->query), $needle)
+                    || ($p->indexHandle !== null && str_contains(mb_strtolower($p->indexHandle), $needle))
+                    || ($p->title !== null && str_contains(mb_strtolower($p->title), $needle));
+            }));
+        }
+
+        // ---- Sort + paginate ----------------------------------------------
+
+        $promotions = $this->sortPromotions($promotions, $sort, $dir);
+
+        $totalCount = count($promotions);
+        $page = max(1, (int) $request->getParam('page', 1));
+        $limit = max(1, (int) $settings->itemsPerPage);
+        $offset = ($page - 1) * $limit;
+        $promotions = array_slice($promotions, $offset, $limit);
+
         return $this->renderTemplate('search-manager/promotions/index', [
             'promotions' => $promotions,
             'indexLookup' => $indexLookup,
+            'statusFilter' => $statusFilter,
+            'matchTypeFilter' => $matchTypeFilter,
+            'search' => $search,
+            'sort' => $sort,
+            'dir' => $dir,
+            'page' => $page,
+            'limit' => $limit,
+            'totalCount' => $totalCount,
+            'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createPromotions'),
+            'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editPromotions'),
+            'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deletePromotions'),
         ]);
+    }
+
+    /**
+     * @param Promotion[] $promotions
+     * @return Promotion[]
+     */
+    private function sortPromotions(array $promotions, string $sort, string $dir): array
+    {
+        $multiplier = $dir === 'desc' ? -1 : 1;
+
+        usort($promotions, function(Promotion $a, Promotion $b) use ($sort, $multiplier): int {
+            $cmp = match ($sort) {
+                'query' => strcasecmp((string) $a->query, (string) $b->query),
+                'matchType' => strcmp((string) $a->matchType, (string) $b->matchType),
+                'position' => ((int) $a->position) <=> ((int) $b->position),
+                // siteId is nullable — null sorts as 0, preserving the prior
+                // Twig coalesce behaviour `(a.siteId ?? 0) <=> (b.siteId ?? 0)`.
+                'siteId' => ((int) ($a->siteId ?? 0)) <=> ((int) ($b->siteId ?? 0)),
+                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                default => strcasecmp((string) ($a->title ?? ''), (string) ($b->title ?? '')),
+            };
+
+            if ($cmp === 0 && $sort !== 'title') {
+                $cmp = strcasecmp((string) ($a->title ?? ''), (string) ($b->title ?? ''));
+            }
+
+            return $cmp * $multiplier;
+        });
+
+        return $promotions;
     }
 
     /**

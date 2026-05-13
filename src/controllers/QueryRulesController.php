@@ -30,25 +30,139 @@ class QueryRulesController extends Controller
     }
 
     /**
-     * List all query rules
+     * List all query rules.
+     *
+     * Follows the canonical CP table index-page pattern (in-memory variant) —
+     * see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+     * Controller owns query-param parsing, allowlist validation, filter, sort,
+     * and pagination; the Twig template stays presentational.
      */
     public function actionIndex(): Response
     {
         $this->requirePermission('searchManager:manageQueryRules');
 
+        $request = Craft::$app->getRequest();
+        $settings = SearchManager::$plugin->getSettings();
+
         $rules = QueryRule::findAll();
         $indices = SearchIndex::findAll();
 
-        // Build index lookup for display
         $indexLookup = [];
         foreach ($indices as $index) {
             $indexLookup[$index->handle] = $index->name;
         }
 
+        // ---- Param parsing + allowlist validation -------------------------
+
+        $statusFilter = (string) $request->getQueryParam('status', 'all');
+        $validStatuses = ['all', 'enabled', 'disabled'];
+        if (!in_array($statusFilter, $validStatuses, true)) {
+            $statusFilter = 'all';
+        }
+
+        $matchTypeFilter = (string) $request->getQueryParam('matchType', 'all');
+        $validMatchTypes = ['all', 'exact', 'contains', 'prefix', 'regex'];
+        if (!in_array($matchTypeFilter, $validMatchTypes, true)) {
+            $matchTypeFilter = 'all';
+        }
+
+        $actionTypeFilter = (string) $request->getQueryParam('actionType', 'all');
+        $validActionTypes = ['all', 'synonym', 'boost_section', 'boost_category', 'boost_element', 'filter', 'redirect'];
+        if (!in_array($actionTypeFilter, $validActionTypes, true)) {
+            $actionTypeFilter = 'all';
+        }
+
+        $search = trim((string) $request->getQueryParam('search', ''));
+        if (mb_strlen($search) > 64) {
+            $search = mb_substr($search, 0, 64);
+        }
+
+        $validSortFields = ['name', 'matchValue', 'matchType', 'actionType', 'priority', 'siteId', 'enabled'];
+        $sort = (string) $request->getParam('sort', 'priority');
+        if (!in_array($sort, $validSortFields, true)) {
+            $sort = 'priority';
+        }
+        $dir = strtolower((string) $request->getParam('dir', 'asc')) === 'desc' ? 'desc' : 'asc';
+
+        // ---- Filter -------------------------------------------------------
+
+        if ($statusFilter === 'enabled') {
+            $rules = array_values(array_filter($rules, fn(QueryRule $r): bool => $r->enabled));
+        } elseif ($statusFilter === 'disabled') {
+            $rules = array_values(array_filter($rules, fn(QueryRule $r): bool => !$r->enabled));
+        }
+
+        if ($matchTypeFilter !== 'all') {
+            $rules = array_values(array_filter($rules, fn(QueryRule $r): bool => $r->matchType === $matchTypeFilter));
+        }
+
+        if ($actionTypeFilter !== 'all') {
+            $rules = array_values(array_filter($rules, fn(QueryRule $r): bool => $r->actionType === $actionTypeFilter));
+        }
+
+        if ($search !== '') {
+            $needle = mb_strtolower($search);
+            $rules = array_values(array_filter($rules, function(QueryRule $r) use ($needle): bool {
+                return str_contains(mb_strtolower((string) $r->name), $needle)
+                    || str_contains(mb_strtolower((string) $r->matchValue), $needle);
+            }));
+        }
+
+        // ---- Sort + paginate ----------------------------------------------
+
+        $rules = $this->sortRules($rules, $sort, $dir);
+
+        $totalCount = count($rules);
+        $page = max(1, (int) $request->getParam('page', 1));
+        $limit = max(1, (int) $settings->itemsPerPage);
+        $offset = ($page - 1) * $limit;
+        $rules = array_slice($rules, $offset, $limit);
+
         return $this->renderTemplate('search-manager/query-rules/index', [
             'rules' => $rules,
             'indexLookup' => $indexLookup,
+            'statusFilter' => $statusFilter,
+            'matchTypeFilter' => $matchTypeFilter,
+            'actionTypeFilter' => $actionTypeFilter,
+            'search' => $search,
+            'sort' => $sort,
+            'dir' => $dir,
+            'page' => $page,
+            'limit' => $limit,
+            'totalCount' => $totalCount,
+            'canCreate' => Craft::$app->getUser()->checkPermission('searchManager:createQueryRules'),
+            'canEdit' => Craft::$app->getUser()->checkPermission('searchManager:editQueryRules'),
+            'canDelete' => Craft::$app->getUser()->checkPermission('searchManager:deleteQueryRules'),
         ]);
+    }
+
+    /**
+     * @param QueryRule[] $rules
+     * @return QueryRule[]
+     */
+    private function sortRules(array $rules, string $sort, string $dir): array
+    {
+        $multiplier = $dir === 'desc' ? -1 : 1;
+
+        usort($rules, function(QueryRule $a, QueryRule $b) use ($sort, $multiplier): int {
+            $cmp = match ($sort) {
+                'matchValue' => strcasecmp((string) $a->matchValue, (string) $b->matchValue),
+                'matchType' => strcmp((string) $a->matchType, (string) $b->matchType),
+                'actionType' => strcmp((string) $a->actionType, (string) $b->actionType),
+                'priority' => ((int) $a->priority) <=> ((int) $b->priority),
+                'siteId' => ((int) ($a->siteId ?? 0)) <=> ((int) ($b->siteId ?? 0)),
+                'enabled' => ((int) $a->enabled) <=> ((int) $b->enabled),
+                default => strcasecmp((string) $a->name, (string) $b->name),
+            };
+
+            if ($cmp === 0 && $sort !== 'name') {
+                $cmp = strcasecmp((string) $a->name, (string) $b->name);
+            }
+
+            return $cmp * $multiplier;
+        });
+
+        return $rules;
     }
 
     /**
