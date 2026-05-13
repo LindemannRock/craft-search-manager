@@ -83,11 +83,10 @@
             plural: 'API keys'|t('search-manager'),
         },
     },
-    newButton: {
+    newButton: canCreate ? {
         url: url('search-manager/api-keys/create'),
         label: 'New API key'|t('search-manager'),
-        permission: 'searchManager:createApiKeys',
-    },
+    } : null,
     checkboxes: canEdit or canRevoke,
     rowActions: canEdit or canRevoke,
 } %}
