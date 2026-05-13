@@ -6,34 +6,33 @@ namespace lindemannrock\searchmanager\tests;
 
 use Craft;
 use craft\base\ElementInterface;
-use craft\db\Query;
+use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
-use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\tests\Stubs\StubBackend;
-use PHPUnit\Framework\TestCase as BaseTestCase;
 
 /**
  * Base test case for search-manager integration tests.
  *
- * Provides shorthand accessors for the plugin's sync services and a clean
- * starting state — every test begins with an empty `searchmanager_pending_syncs`
- * table so backlog from prior runs can't crowd a test's target row out of the
- * BatchSyncJob claim window.
+ * Extends the shared {@see IntegrationTestCase} for component snapshot/restore
+ * and generic Query helpers, and layers plugin-specific shorthand on top:
+ *  - direct accessors for the sync services
+ *  - per-test buffer truncation so prior runs can't crowd a target row out of
+ *    the BatchSyncJob claim window
+ *  - {@see installStubBackend()} convenience wrapper
+ *  - {@see findWorkingIndexAndElement()} live-data discovery helper
  *
  * Subclasses can override `setUp()` for additional fixture work but should
  * call `parent::setUp()` to keep buffer isolation.
  *
  * @since 5.45.0
  */
-abstract class TestCase extends BaseTestCase
+abstract class TestCase extends IntegrationTestCase
 {
     protected PendingSyncRepository $repository;
     protected PendingSyncProcessor $processor;
-
-    private ?BackendService $originalBackend = null;
 
     protected function setUp(): void
     {
@@ -46,34 +45,31 @@ abstract class TestCase extends BaseTestCase
 
     protected function tearDown(): void
     {
-        if ($this->originalBackend !== null) {
-            SearchManager::$plugin->set('backend', $this->originalBackend);
-            $this->originalBackend = null;
-        }
         $this->truncateBuffer();
         SearchIndex::clearCache();
+        // Parent restores swapped components (including any StubBackend) after
+        // our buffer cleanup runs against the real DB.
         parent::tearDown();
     }
 
     /**
-     * Swap `SearchManager::$plugin->backend` for a StubBackend so the test can
-     * observe which operations the processor drove and force partial-failure
-     * paths. The original backend is restored automatically in tearDown().
+     * Swap `SearchManager::$plugin->backend` for a {@see StubBackend} so the
+     * test can observe which operations the processor drove and force partial-
+     * failure paths. Auto-restored in tearDown by the base class.
      */
     protected function installStubBackend(): StubBackend
     {
-        if ($this->originalBackend === null) {
-            $this->originalBackend = SearchManager::$plugin->backend;
-        }
         $stub = new StubBackend();
-        SearchManager::$plugin->set('backend', $stub);
+        $this->swapPluginComponent('search-manager', 'backend', $stub);
 
         return $stub;
     }
 
     /**
-     * Wipe `searchmanager_pending_syncs` to remove any rows left behind by
-     * prior runs or manual testing.
+     * Wipe `searchmanager_pending_syncs` between tests. The buffer is
+     * transient — production rows live there only for the brief window
+     * between a save event and the next BatchSyncJob drain — so a
+     * truncate-all here doesn't risk eating real CP data.
      */
     protected function truncateBuffer(): void
     {
@@ -127,37 +123,28 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
-     * Count rows in `searchmanager_pending_syncs` filtered by the given
-     * condition (Yii Query `where` format).
+     * Thin wrapper over {@see IntegrationTestCase::countRows()} pinned to the
+     * pending_syncs table — every existing test calls into this shape.
      *
-     * @param array<string, mixed>|array $condition
+     * @param array<string, mixed>|array<int, mixed> $condition
      */
     protected function countPendingRows(array $condition = []): int
     {
-        $query = (new Query())->from('{{%searchmanager_pending_syncs}}');
-        if (!empty($condition)) {
-            $query->where($condition);
-        }
-
-        return (int) $query->count();
+        return $this->countRows('{{%searchmanager_pending_syncs}}', $condition);
     }
 
     /**
-     * Fetch a single pending row by composite key, or null.
+     * Thin wrapper over {@see IntegrationTestCase::fetchRow()} for the
+     * composite-key lookup the sync tests use.
      *
      * @return array<string, mixed>|null
      */
     protected function fetchPendingRow(string $indexHandle, int $elementId, int $siteId): ?array
     {
-        $row = (new Query())
-            ->from('{{%searchmanager_pending_syncs}}')
-            ->where([
-                'indexHandle' => $indexHandle,
-                'elementId' => $elementId,
-                'siteId' => $siteId,
-            ])
-            ->one();
-
-        return $row ?: null;
+        return $this->fetchRow('{{%searchmanager_pending_syncs}}', [
+            'indexHandle' => $indexHandle,
+            'elementId' => $elementId,
+            'siteId' => $siteId,
+        ]);
     }
 }

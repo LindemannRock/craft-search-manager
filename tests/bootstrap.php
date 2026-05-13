@@ -3,29 +3,23 @@
 /**
  * PHPUnit bootstrap for the search-manager plugin.
  *
- * Runs inside DDEV. Initialises Craft as a console application so tests can
- * touch the live database, services, and plugins. Tests are responsible for
- * cleaning up any state they create — there is no DB transaction rollback,
- * because Craft's services do their own writes that don't compose well with
- * transactional fixtures.
+ * Delegates to the shared base-plugin bootstrap, which initialises Craft as a
+ * console application. Tests run against the live DDEV database — there is no
+ * transactional rollback. Cleanup is by marker (see `tests/TestCase.php`).
  *
  * @since 5.45.0
  */
 
 declare(strict_types=1);
 
-// Walk up to the project root (the parent that holds composer.json, craft, vendor).
-$projectRoot = dirname(__DIR__, 3);
+$baseBootstrap = dirname(__DIR__, 3) . '/vendor/lindemannrock/craft-plugin-base/src/testing/bootstrap.php';
 
-if (!file_exists($projectRoot . '/bootstrap.php')) {
-    fwrite(STDERR, "Project root bootstrap.php not found at {$projectRoot}/bootstrap.php\n");
-    fwrite(STDERR, "Tests must run inside the DDEV plugins workspace.\n");
+if (!file_exists($baseBootstrap)) {
+    fwrite(STDERR, "Base plugin testing bootstrap not found at {$baseBootstrap}\n");
+    fwrite(STDERR, "Run `composer install` and ensure lindemannrock/craft-plugin-base ^5.25 is present.\n");
     exit(1);
 }
 
-require_once $projectRoot . '/bootstrap.php';
+require_once $baseBootstrap;
 
-// Loading Craft's console.php both initialises Craft::$app and returns the
-// Application instance. We don't need to call ->run() — tests drive the app
-// directly via Craft::$app and SearchManager::$plugin.
-require $projectRoot . '/vendor/craftcms/cms/bootstrap/console.php';
+\lindemannrock\base\testing\bootstrap();
