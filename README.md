@@ -33,6 +33,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **Native Search Replacement** — Optionally replace Craft's built-in search
 - **REST API** — Search and autocomplete endpoints for headless/mobile apps
 - **Pending Syncs CP** — Operator surface for the L3 sync buffer: triage failures, retry, purge, and watch the queue drain live from the Control Panel
+- **API Keys** — Generate scoped keys (per-index, per-referrer, expiry, hit caps) for the public search endpoints. Plaintext shown once; only the HMAC-SHA256 hash is stored. CRUD + console provisioning ship in slice 1; endpoint enforcement lands in a follow-up
 - **Privacy-First** — IP hashing, subnet masking, async geo-lookup, GDPR-friendly
 
 ## Requirements

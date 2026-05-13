@@ -137,6 +137,83 @@ This command:
 
 Run this once after installation. Copy the salt value to your staging and production `.env` files manually. See [Privacy & Security](../feature-tour/privacy-security.md) for details.
 
+## API Keys
+
+### `search-manager/api-keys/create`
+
+Generate a new API key from the command line. Designed for automated provisioning — fresh installs, CI bootstrap, scripted deploys — where the Control Panel isn't available.
+
+```bash title="PHP"
+php craft search-manager/api-keys/create --name="Primary widget key"
+```
+
+```bash title="DDEV"
+ddev craft search-manager/api-keys/create --name="Primary widget key"
+```
+
+Full example with every option:
+
+```bash title="PHP"
+php craft search-manager/api-keys/create \
+  --name="Primary widget key" \
+  --type=public \
+  --indices=docs-en,blog-en \
+  --referrers=example.com,*.example.com \
+  --max-hits=50 \
+  --rate-limit=120 \
+  --valid-until=2027-12-31 \
+  --disabled
+```
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--name` | `string` | *(required)* | Human-readable label shown in the CP listing. |
+| `--type` | `string` | `public` | Key type: `public` (intended for browser embedding, `sm_pub_…` prefix) or `server` (server-side only, `sm_srv_…` prefix). Locked once generated. |
+| `--indices` | `string` | *(none)* | Comma-separated index handles, or `*` for all indices (current and future). An empty value creates a non-functional key — restrictions must be widened from the CP before it can be used. |
+| `--referrers` | `string` | *(none — any referrer allowed)* | Comma-separated allowed referrer patterns. Each entry is either an exact host (`example.com`) or a subdomain wildcard (`*.example.com`, matches any subdomain depth). |
+| `--max-hits` | `int` | *(none)* | Clamp on the `hitsPerPage` request parameter. |
+| `--rate-limit` | `int` | *(none)* | Per-key requests-per-minute cap. Reserved for slice 3 — value is persisted but not enforced yet. |
+| `--valid-until` | `string` | *(never expires)* | Optional expiry datetime in any format `DateTimeHelper::toDateTime` accepts (`2027-12-31`, `2027-12-31 23:59:59`, ISO 8601, etc.). |
+| `--disabled` | `bool` | `false` | Create the key in a paused state. Default is enabled. |
+
+#### Output
+
+On success the command prints the key's metadata followed by the **plaintext value**:
+
+```
+✓ API key created.
+
+  Key ID:           42
+  Name:             Primary widget key
+  Type:             public
+  Prefix:           sm_pub_a1b2c3d4
+  Allowed indices:  docs-en, blog-en
+  Allowed referrers: example.com, *.example.com
+  Max hits per page: 50
+  Rate limit:       120 RPM
+  Valid until:      2027-12-31 00:00
+  Enabled:          yes
+
+🔑 Plaintext key — copy this now, it will never be shown again:
+
+    sm_pub_a1b2c3d4e5f67890abcdef1234567890
+
+Search Manager stores only a hash. If you lose this value you will need to create a new key.
+```
+
+> [!WARNING]
+> **The plaintext is shown once and never again.** Only its HMAC-SHA256 hash and 15-character display prefix are persisted. There is no retrieval path — losing the plaintext means creating a new key and updating every caller.
+>
+> The plaintext is written to **stdout only**. It is never written to the plugin's log channel. If you redirect command output to a file, treat that file as a secret.
+
+#### Behaviour notes
+
+- **Disabled vs revoked.** `--disabled` creates a paused key (config preserved, future enforcement will reject it). To remove a key permanently use the **Revoke** action in the CP — there is no console-side revoke or list/disable command in slice 1; manage existing keys from the CP.
+- **Validation.** The command exercises the same model validation as the CP, including the referrer-pattern allowlist (regex-looking values are rejected). On validation failure the command prints the field errors and exits with `EXIT_DATAERR`.
+- **Slice 1 caveat.** API key enforcement on public search/autocomplete endpoints ships in a later slice. Provisioning a key today is forward-compatible — it will start gating requests as soon as enforcement lands — but the key does not yet block anonymous requests.
+
+See [API Keys](../feature-tour/api-keys.md) for the full feature tour and lifecycle (active / disabled / expired / revoked).
+
 ## Common Workflows
 
 ### Fresh Setup

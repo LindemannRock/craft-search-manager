@@ -42,6 +42,17 @@ Search Manager registers granular permissions that can be assigned to user group
 | └─ `searchManager:editQueryRules` | Edit existing query rules |
 | └─ `searchManager:deleteQueryRules` | Delete query rules |
 
+### API Keys
+
+| Permission | Description |
+|------------|-------------|
+| **`searchManager:manageApiKeys`** | Access the API keys section (view and access) |
+| └─ `searchManager:createApiKeys` | Generate new API keys |
+| └─ `searchManager:editApiKeys` | Edit existing API keys (name, restrictions, enabled state) |
+| └─ `searchManager:revokeApiKeys` | Delete API keys permanently |
+
+`manageApiKeys` is the parent — without it the section is hidden entirely. Grant it on its own for read-only access (view the list and individual key configurations). The three child permissions are independent: a user can have edit without revoke, or revoke without create. See [API Keys](../feature-tour/api-keys.md) for the lifecycle (active / disabled / expired / revoked) and the difference between disabling (pausing) and revoking (deleting).
+
 ### Widget Configs
 
 | Permission | Description |

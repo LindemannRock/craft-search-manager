@@ -20,6 +20,7 @@
 			"feature-tour/analytics",
 			"feature-tour/caching",
 			"feature-tour/multi-language",
+			"feature-tour/api-keys",
 			"feature-tour/privacy-security",
 			"feature-tour/utilities"
 		]
