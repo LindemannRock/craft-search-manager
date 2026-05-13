@@ -1,0 +1,292 @@
+{% extends "_layouts/cp" %}
+{% import "_includes/forms" as forms %}
+
+{% set fullPageForm = true %}
+{% set selectedSubnavItem = 'api-keys' %}
+
+{% set crumbs = [
+    { label: searchHelper.fullName, url: url('search-manager') },
+    { label: 'API Keys'|t('search-manager'), url: url('search-manager/api-keys') },
+    { label: title },
+] %}
+
+{% block actionButton %}
+    <div class="btngroup submit">
+        <button type="submit" class="btn submit">{{ "Save"|t('app') }}</button>
+    </div>
+    {% if not isNew and canRevoke %}
+        <button type="button"
+                id="action-btn"
+                class="btn menubtn action-btn hairline-dark m"
+                title="{{ 'Actions'|t('app') }}"
+                aria-controls="action-menu"
+                aria-label="{{ 'Actions'|t('app') }}"
+                data-disclosure-trigger="true"
+                aria-expanded="false"></button>
+        <div id="action-menu" class="menu menu--disclosure">
+            <ul>
+                <li>
+                    <button class="menu-item error formsubmit"
+                            data-destructive
+                            data-action="search-manager/api-keys/delete"
+                            data-params='{"keyId":{{ apiKey.id }}}'
+                            data-confirm="{{ 'Are you sure you want to revoke this API key? Any callers using it will immediately lose access.'|t('search-manager') }}"
+                            data-redirect="{{ 'search-manager/api-keys'|hash }}">
+                        <span class="icon">{{ svg('@app/icons/trash.svg') }}</span>
+                        <span class="menu-item-label">{{ 'Revoke'|t('search-manager') }}</span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{# Banners rendered ABOVE the form container by the cp layout via `errorSummary`.
+   Both the one-time plaintext reveal (post-create) and the field-error summary
+   funnel into the same variable so they share the same hairline-separated zone
+   above the page — same pattern as the IP-salt warning in `_layouts/settings`. #}
+{% set newPlaintextBanner = '' %}
+{% if newPlaintext %}
+    {% set newPlaintextBanner = include('lindemannrock-base/_components/secret-reveal', {
+        secret: newPlaintext,
+        title: 'Copy this key now — it will never be shown again.'|t('search-manager'),
+        helpText: '{pluginName} stores only a hash. If you lose this value you will need to create a new key.'|t('search-manager', {
+            pluginName: searchHelper.fullName,
+        }),
+        type: 'success',
+        margin: 'bottom',
+    })|trim %}
+{% endif %}
+
+{% set validationSummary = '' %}
+{% if apiKey.hasErrors() %}
+    {% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
+        errors: apiKey.getErrors(),
+        linkMode: 'data-key',
+        translationCategory: 'search-manager',
+    })|trim %}
+{% endif %}
+
+{% set errorSummary = [newPlaintextBanner, validationSummary]|filter(v => v)|join("\n") %}
+
+{% block content %}
+    <input type="hidden" name="action" value="search-manager/api-keys/save">
+    {% if not isNew %}
+        <input type="hidden" name="keyId" value="{{ apiKey.id }}">
+    {% endif %}
+    {{ csrfInput() }}
+
+    {{ forms.textField({
+        first: true,
+        label: 'Name'|t('search-manager'),
+        instructions: 'A descriptive label so you can identify this key in the list. Not exposed to callers.'|t('search-manager'),
+        id: 'name',
+        name: 'name',
+        value: apiKey.name,
+        required: true,
+        errors: apiKey.getErrors('name'),
+        data: {key: 'name'},
+    }) }}
+
+    <hr>
+
+    {# ---------------------------------------------------------------------
+       Allowed indices — "All" toggle XOR explicit list. The two controls
+       are visually exclusive on the client; server-side enforcement of
+       the same in ApiKeysController::populateRestrictionsFromRequest().
+       --------------------------------------------------------------------- #}
+    <h2>{{ 'Allowed indices'|t('search-manager') }}</h2>
+
+    {{ forms.lightswitchField({
+        label: 'All indices (current and future)'|t('search-manager'),
+        instructions: 'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.'|t('search-manager'),
+        id: 'allowAllIndices',
+        name: 'allowAllIndices',
+        on: apiKey.allowsAllIndices(),
+        errors: apiKey.getErrors('allowedIndices'),
+        data: {key: 'allowedIndices'},
+    }) }}
+
+    <div id="allowed-indices-explicit" {% if apiKey.allowsAllIndices() %}style="display:none;"{% endif %}>
+        {% if allIndices|length == 0 %}
+            <p class="light">{{ 'No indices configured yet. Add at least one index before this key can be useful.'|t('search-manager') }}</p>
+        {% else %}
+            {{ forms.checkboxGroupField({
+                label: 'Specific indices'|t('search-manager'),
+                instructions: 'Tick each index this key can query.'|t('search-manager'),
+                name: 'allowedIndices',
+                values: apiKey.allowedIndices,
+                options: allIndices|map(idx => {value: idx.handle, label: idx.name}),
+            }) }}
+        {% endif %}
+    </div>
+
+    <hr>
+
+    {# ---------------------------------------------------------------------
+       Allowed referrers — textarea, one per line. Server normalises
+       (trim, lowercase, dedupe, drop blanks).
+       --------------------------------------------------------------------- #}
+    <h2>{{ 'Allowed referrers'|t('search-manager') }}</h2>
+
+    {{ forms.textareaField({
+        label: 'Allowed referrers'|t('search-manager'),
+        instructions: 'One pattern per line. Use <code>example.com</code> for an exact host or <code>*.example.com</code> for any subdomain depth. Leave empty to allow all referrers.'|t('search-manager'),
+        id: 'allowedReferrers',
+        name: 'allowedReferrers',
+        value: apiKey.allowedReferrers|join("\n"),
+        rows: 4,
+        errors: apiKey.getErrors('allowedReferrers'),
+        data: {key: 'allowedReferrers'},
+    }) }}
+{% endblock %}
+
+{% block details %}
+    <div class="meta">
+        {# Enabled — operator pause/resume without losing config. Distinct
+           from validUntil (auto-expiry) and revoke (delete). #}
+        {{ forms.lightswitchField({
+            label: 'Enabled'|t('search-manager'),
+            instructions: 'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.'|t('search-manager'),
+            id: 'enabled',
+            name: 'enabled',
+            on: apiKey.enabled,
+        }) }}
+
+        {# Type — dropdown on create, locked status pill in the read-only
+           block on edit. keyPrefix encodes the type so changing it on an
+           existing key would create an enforcement mismatch. #}
+        {% if isNew %}
+            {{ forms.selectField({
+                label: 'Type'|t('search-manager'),
+                instructions: 'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.'|t('search-manager'),
+                id: 'type',
+                name: 'type',
+                value: apiKey.type,
+                options: [
+                    {value: 'public', label: 'Public'|t('search-manager')},
+                    {value: 'server', label: 'Server'|t('search-manager')},
+                ],
+                errors: apiKey.getErrors('type'),
+                data: {key: 'type'},
+            }) }}
+        {% endif %}
+
+        {# Optional caps — all nullable. Live in the sidebar alongside the
+           other key-level metadata. #}
+        {{ forms.textField({
+            label: 'Max hits per page'|t('search-manager'),
+            instructions: 'Clamp the per-request hitsPerPage parameter. Leave empty for the endpoint default.'|t('search-manager'),
+            id: 'maxHitsPerPage',
+            name: 'maxHitsPerPage',
+            type: 'number',
+            size: 6,
+            min: 1,
+            value: apiKey.maxHitsPerPage,
+            errors: apiKey.getErrors('maxHitsPerPage'),
+            data: {key: 'maxHitsPerPage'},
+        }) }}
+
+        {{ forms.textField({
+            label: 'Rate limit (requests per minute)'|t('search-manager'),
+            instructions: 'Cap the request rate this key can sustain. Leave empty for no per-key limit. Enforcement ships in a later update.'|t('search-manager'),
+            id: 'rateLimit',
+            name: 'rateLimit',
+            type: 'number',
+            size: 6,
+            min: 1,
+            value: apiKey.rateLimit,
+            errors: apiKey.getErrors('rateLimit'),
+            data: {key: 'rateLimit'},
+        }) }}
+
+        {{ forms.dateTimeField({
+            label: 'Valid until'|t('search-manager'),
+            instructions: 'Optional expiry datetime. Leave empty for no expiry.'|t('search-manager'),
+            id: 'validUntil',
+            name: 'validUntil',
+            value: apiKey.validUntil,
+            errors: apiKey.getErrors('validUntil'),
+            data: {key: 'validUntil'},
+        }) }}
+    </div>
+
+    {% if not isNew %}
+        <fieldset>
+            <dl class="meta read-only">
+                {% set status = apiKey.getStatus() %}
+                {% set statusLabel = {
+                    'active': 'Active'|t('search-manager'),
+                    'disabled': 'Disabled'|t('search-manager'),
+                    'expired': 'Expired'|t('search-manager'),
+                }[status] %}
+                {# Reuse base's `status` colorSet via the same model→colorKey map
+                   as the index column, so badges stay consistent everywhere. #}
+                {% set statusColorKey = {'active': 'enabled', 'disabled': 'disabled', 'expired': 'expired'}[status] %}
+                <div class="data">
+                    <dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
+                    <dd class="value">
+                        {% include 'lindemannrock-base/_components/badge' with {
+                            label: statusLabel,
+                            value: statusColorKey,
+                            colorSet: 'status',
+                        } only %}
+                    </dd>
+                </div>
+
+                {% set typeLabel = apiKey.type == 'public' ? 'Public'|t('search-manager') : 'Server'|t('search-manager') %}
+                <div class="data">
+                    <dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
+                    <dd class="value">
+                        {% include 'lindemannrock-base/_components/badge' with {
+                            label: typeLabel,
+                            value: apiKey.type,
+                            colorSet: 'apiKeyType',
+                        } only %}
+                    </dd>
+                </div>
+
+                <div class="data">
+                    <dt class="heading">{{ 'Prefix'|t('search-manager') }}</dt>
+                    <dd class="value"><code>{{ apiKey.keyPrefix }}</code></dd>
+                </div>
+
+                {% if apiKey.dateCreated %}
+                    <div class="data">
+                        <dt class="heading">{{ 'Created at'|t('search-manager') }}</dt>
+                        <dd class="value">{{ apiKey.dateCreated|lrDatetime('short') }}</dd>
+                    </div>
+                {% endif %}
+
+                <div class="data">
+                    <dt class="heading">{{ 'Last used'|t('search-manager') }}</dt>
+                    <dd class="value">
+                        {% if apiKey.lastUsedAt %}
+                            {{ apiKey.lastUsedAt|lrDatetime('short') }}
+                        {% else %}
+                            <span class="light">{{ 'Never'|t('search-manager') }}</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </dl>
+        </fieldset>
+    {% endif %}
+{% endblock %}
+
+{% js %}
+    // Make the "All indices" toggle mutually exclusive with the explicit
+    // checkbox list. Pure UX — the server enforces the same in the controller.
+    (function() {
+        var toggle = document.getElementById('allowAllIndices');
+        var explicitBlock = document.getElementById('allowed-indices-explicit');
+        if (!toggle || !explicitBlock) return;
+        toggle.addEventListener('click', function() {
+            // Use a microtask delay — Craft's lightswitch toggles `on` state
+            // *after* the click handler runs.
+            setTimeout(function() {
+                var on = toggle.classList.contains('on');
+                explicitBlock.style.display = on ? 'none' : '';
+            }, 0);
+        });
+    })();
+{% endjs %}

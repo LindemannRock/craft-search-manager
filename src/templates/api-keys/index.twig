@@ -1,0 +1,340 @@
+{% extends 'lindemannrock-base/_layouts/cp-table' %}
+
+{# REFERENCE IMPLEMENTATION for the canonical CP table index-page pattern —
+   see plugins/base/docs/template-guides/cp-table-index-pattern.md. All filter
+   / sort / pagination state is computed in ApiKeysController::actionIndex();
+   this template stays presentational and just renders what's handed in. #}
+
+{# `searchHelper` is a Twig global registered by base/PluginNameExtension —
+   exposes .fullName, .displayName, etc. via PluginNameHelper. #}
+
+{% set columns = [
+    {key: 'name', label: 'Name'|t('search-manager'), sortable: true},
+    {key: 'status', label: 'Status'|t('search-manager'), sortable: true},
+    {key: 'type', label: 'Type'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'prefix', label: 'Prefix'|t('search-manager'), sortable: false},
+    {key: 'allowedIndices', label: 'Allowed indices'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'validUntil', label: 'Expires'|t('search-manager'), sortable: true, hideable: true},
+    {key: 'lastUsedAt', label: 'Last used'|t('search-manager'), sortable: true, hideable: true},
+] %}
+
+{% set tableConfig = {
+    plugin: {
+        handle: 'search-manager',
+        name: searchHelper.fullName,
+    },
+    page: {
+        title: 'API Keys'|t('search-manager'),
+        subnav: 'api-keys',
+        crumbs: [
+            { label: searchHelper.fullName, url: url('search-manager') },
+            { label: 'API Keys'|t('search-manager'), url: url('search-manager/api-keys') },
+        ],
+    },
+    filters: [
+        {
+            type: 'status',
+            param: 'status',
+            current: statusFilter,
+            label: 'All'|t('search-manager'),
+            groups: [
+                {
+                    param: 'status',
+                    current: statusFilter,
+                    options: [
+                        {value: 'all', label: 'All'|t('search-manager'), status: 'all'},
+                        {value: 'enabled', label: 'Enabled'|t('search-manager'), status: 'green'},
+                        {value: 'disabled', label: 'Disabled'|t('search-manager'), status: 'disabled'},
+                    ],
+                },
+                {
+                    header: 'Type'|t('search-manager'),
+                    param: 'type',
+                    current: typeFilter,
+                    colorSet: 'apiKeyType',
+                    options: [
+                        {value: 'all', label: 'All types'|t('search-manager'), status: 'all'},
+                        {value: 'public', label: 'Public'|t('search-manager'), colorKey: 'public'},
+                        {value: 'server', label: 'Server'|t('search-manager'), colorKey: 'server'},
+                    ],
+                },
+            ],
+        },
+    ],
+    search: {
+        placeholder: 'Search API keys…'|t('search-manager'),
+        value: search,
+    },
+    sort: {
+        field: sort,
+        direction: dir,
+    },
+    table: {
+        columns: columns,
+        items: keys,
+        emptyMessage: 'No API keys yet.'|t('search-manager'),
+    },
+    pagination: {
+        page: page,
+        limit: limit,
+        totalCount: totalCount,
+        itemLabel: {
+            singular: 'API key'|t('search-manager'),
+            plural: 'API keys'|t('search-manager'),
+        },
+    },
+    newButton: {
+        url: url('search-manager/api-keys/create'),
+        label: 'New API key'|t('search-manager'),
+        permission: 'searchManager:createApiKeys',
+    },
+    checkboxes: canEdit or canRevoke,
+    rowActions: canEdit or canRevoke,
+} %}
+
+{% block beforeTable %}
+    {% if not hasAnyKeys %}
+        {% set warningMessage %}
+        {{ 'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.'|t('search-manager') }}
+        {% endset %}
+        <div class="lr-info-box-table-wrapper">
+            {% include 'lindemannrock-base/_components/info-box' with {
+                message: warningMessage,
+                type: 'info',
+                margin: 'none',
+                stretch: true,
+            } %}
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block tableRow %}
+    <td data-column="name">
+        {% if canEdit %}
+            <a href="{{ url('search-manager/api-keys/edit/' ~ item.id) }}">{{ item.name }}</a>
+        {% else %}
+            {{ item.name }}
+        {% endif %}
+    </td>
+
+    <td data-column="status">
+        {% set status = item.getStatus() %}
+        {% set statusLabel = {
+            'active': 'Active'|t('search-manager'),
+            'disabled': 'Disabled'|t('search-manager'),
+            'expired': 'Expired'|t('search-manager'),
+        }[status] %}
+        {# Map our model statuses to the base `status` colorSet keys: Active
+           reuses the 'enabled' (teal) slot; Disabled and Expired map 1:1. #}
+        {% set statusColorKey = {'active': 'enabled', 'disabled': 'disabled', 'expired': 'expired'}[status] %}
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: statusLabel,
+            value: statusColorKey,
+            colorSet: 'status',
+        } only %}
+    </td>
+
+    <td data-column="type">
+        {% set typeLabel = item.type == 'public' ? 'Public'|t('search-manager') : 'Server'|t('search-manager') %}
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: typeLabel,
+            value: item.type,
+            colorSet: 'apiKeyType',
+        } only %}
+    </td>
+
+    <td data-column="prefix">
+        <code>{{ item.keyPrefix }}…</code>
+    </td>
+
+    <td data-column="allowedIndices">
+        {% if item.allowsAllIndices() %}
+            <span class="light">{{ 'All indices'|t('search-manager') }}</span>
+        {% elseif item.allowedIndices|length == 0 %}
+            <span class="light" title="{{ 'No indices allowed — this key cannot be used until you add some.'|t('search-manager') }}">{{ 'None'|t('search-manager') }}</span>
+        {% else %}
+            {{ item.allowedIndices|length }} {{ item.allowedIndices|length == 1 ? 'index'|t('search-manager') : 'indices'|t('search-manager') }}
+        {% endif %}
+    </td>
+
+    <td data-column="validUntil">
+        {% if item.validUntil %}
+            {% if not item.isStillValid() %}
+                <span class="lr-text-red" title="{{ 'Expired'|t('search-manager') }}">{{ item.validUntil|lrDatetime('short') }}</span>
+            {% else %}
+                {{ item.validUntil|lrDatetime('short') }}
+            {% endif %}
+        {% else %}
+            <span class="light">{{ 'Never'|t('search-manager') }}</span>
+        {% endif %}
+    </td>
+
+    <td data-column="lastUsedAt">
+        {{ item.lastUsedAt ? item.lastUsedAt|lrDatetime('short') : '—' }}
+    </td>
+{% endblock %}
+
+{% block bulkActions %}
+    {% if canEdit %}
+        <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
+            {{ 'Set status'|t('app') }}
+        </button>
+        <div class="menu">
+            <ul>
+                <li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
+                <li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
+            </ul>
+        </div>
+    {% endif %}
+
+    {% if canRevoke %}
+        <button type="button" class="btn secondary" id="lr-bulk-revoke-btn">
+            {{ 'Revoke'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
+        </button>
+    {% endif %}
+{% endblock %}
+
+{% block rowActions %}
+    {% set actionItems = [] %}
+
+    {% if canEdit %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Edit'|t('search-manager'),
+            url: url('search-manager/api-keys/edit/' ~ item.id),
+        }]) %}
+    {% endif %}
+
+    {% if canRevoke %}
+        {% if canEdit %}
+            {% set actionItems = actionItems|merge([{type: 'divider'}]) %}
+        {% endif %}
+        {# No `confirm:` on the action item — confirmation is handled in the
+           JS handler below as the single source of truth. Putting it in both
+           places risks a double prompt if any layer (Craft CP / base
+           component) decides to honour `data-confirm` natively. #}
+        {% set actionItems = actionItems|merge([{
+            label: 'Revoke'|t('search-manager'),
+            class: 'error',
+            jsAction: 'revoke',
+        }]) %}
+    {% endif %}
+
+    {% if actionItems|length %}
+        {% include 'lindemannrock-base/_components/row-actions' with {
+            item: {id: item.id},
+            actions: {
+                type: 'menu',
+                icon: 'settings',
+                title: 'Actions'|t('search-manager'),
+                items: actionItems,
+            },
+        } only %}
+    {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    if (typeof Craft === 'undefined') return;
+
+    // Initialise the "Set status" menubtn — without `new Craft.MenuBtn(...)`,
+    // clicking the button doesn't open its menu, so the Enable/Disable items
+    // inside are unreachable. Matches the pattern in indices/index.twig.
+    const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
+    if (bulkStatusBtn && Craft.MenuBtn) {
+        new Craft.MenuBtn(bulkStatusBtn);
+    }
+
+    // Pre-translated strings: keep |t() in Twig (so they're translatable)
+    // and emit as JSON-encoded JS literals via |json_encode|raw — avoids
+    // the |e('js') trap (produces \uXXXX garbage when re-quoted).
+    const T = {
+        revokeConfirm: {{ 'Are you sure you want to revoke this API key? Any callers using it will immediately lose access.'|t('search-manager')|json_encode|raw }},
+        revokeFailed: {{ 'Couldn’t revoke API key.'|t('search-manager')|json_encode|raw }},
+        bulkEnableFailed: {{ 'Couldn’t enable API keys.'|t('search-manager')|json_encode|raw }},
+        bulkDisableFailed: {{ 'Couldn’t disable API keys.'|t('search-manager')|json_encode|raw }},
+        bulkRevokeFailed: {{ 'Couldn’t revoke API keys.'|t('search-manager')|json_encode|raw }},
+        // Two strings rendered server-side; JS picks by count and substitutes
+        // the placeholder. Avoids ICU-plural syntax in this template entirely.
+        bulkRevokeConfirmSingular: {{ 'Are you sure you want to revoke 1 API key? Any callers using it will immediately lose access. This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        bulkRevokeConfirmPlural: {{ 'Are you sure you want to revoke {count} API keys? Any callers using them will immediately lose access. This cannot be undone.'|t('search-manager')|json_encode|raw }},
+    };
+
+    // ---------------------------------------------------------------------
+    // Per-row action handlers (Revoke). The base row-actions component
+    // renders each action item as `<a data-action="<jsAction>" data-id>`.
+    // Hook `[data-action]` anchors, scope by the action value, do confirm
+    // here (no `confirm:` on the action item — single source of truth).
+    // ---------------------------------------------------------------------
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('a[data-action]');
+        if (!trigger) return;
+        if (trigger.dataset.action !== 'revoke') return;
+        const id = parseInt(trigger.dataset.id || '0', 10);
+        if (!id) return;
+        e.preventDefault();
+
+        if (!confirm(T.revokeConfirm)) return;
+
+        Craft.sendActionRequest('POST', 'search-manager/api-keys/delete', {
+            data: {keyId: id},
+        }).then(function() {
+            window.location.reload();
+        }).catch(function() {
+            Craft.cp.displayError(T.revokeFailed);
+        });
+    });
+
+    // ---------------------------------------------------------------------
+    // Bulk-action button wiring. The cp-table layout dispatches
+    // `lr:selectionChanged` on every checkbox toggle with the full selected
+    // ids; we mirror the count into the button labels so operators see how
+    // many rows the next click will affect.
+    // ---------------------------------------------------------------------
+    document.addEventListener('lr:selectionChanged', function(e) {
+        const ids = (e.detail && Array.isArray(e.detail.selectedIds))
+            ? e.detail.selectedIds
+            : [];
+        document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
+            el.textContent = ids.length;
+        });
+    });
+
+    function selectedIds() {
+        return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+    }
+
+    // Bulk handlers share this helper: same POST shape (`ids: [...]`), same
+    // success behaviour (reload), same failure UX (Craft.cp.displayError).
+    // The errorFallback is the only per-action variant. Mirrors backends'
+    // `runBulkStatus()` shape.
+    function runBulkStatus(endpoint, errorFallback) {
+        const ids = selectedIds();
+        if (!ids.length) return;
+        Craft.sendActionRequest('POST', endpoint, {data: {ids: ids}})
+            .then(function() { window.location.reload(); })
+            .catch(function() { Craft.cp.displayError(errorFallback); });
+    }
+
+    document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        runBulkStatus('search-manager/api-keys/bulk-enable', T.bulkEnableFailed);
+    });
+
+    document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
+        e.preventDefault();
+        runBulkStatus('search-manager/api-keys/bulk-disable', T.bulkDisableFailed);
+    });
+
+    document.getElementById('lr-bulk-revoke-btn')?.addEventListener('click', function() {
+        const ids = selectedIds();
+        if (!ids.length) return;
+        const confirmMessage = ids.length === 1
+            ? T.bulkRevokeConfirmSingular
+            : T.bulkRevokeConfirmPlural.replace('{count}', String(ids.length));
+        if (!confirm(confirmMessage)) return;
+        runBulkStatus('search-manager/api-keys/bulk-delete', T.bulkRevokeFailed);
+    });
+})();
+</script>
+{% endblock %}

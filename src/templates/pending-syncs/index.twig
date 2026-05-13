@@ -260,7 +260,7 @@
             jsAction: 'retry',
             data: {id: item.id},
             disabled: not canRetryThisRow,
-            tooltip: canRetryThisRow ? null : 'Only failed and abandoned rows can be retried. Pending and processing rows are already in the queue.'|t('search-manager'),
+            title: canRetryThisRow ? null : 'Only failed and abandoned rows can be retried. Pending and processing rows are already in the queue.'|t('search-manager'),
         }]) %}
     {% endif %}
 
@@ -273,7 +273,7 @@
                 jsAction: 'delete',
                 data: {id: item.id},
                 disabled: isFreshlyProcessing,
-                tooltip: isFreshlyProcessing ? 'Row is currently being processed by a worker.'|t('search-manager') : null,
+                title: isFreshlyProcessing ? 'Row is currently being processed by a worker.'|t('search-manager') : null,
             },
         ]) %}
     {% endif %}
@@ -357,13 +357,19 @@
         });
     });
 
-    // Row-action handlers via the cp-table jsAction wiring.
+    // Row-action handlers. The base row-actions component emits
+    // `data-action="..."` on each anchor (NOT `data-js-action`); hook the
+    // attribute the component actually renders, or the handler is silently dead.
+    // Scope to our two known actions so we don't accidentally hijack other
+    // `data-action` anchors elsewhere on the page.
     document.addEventListener('click', function(e) {
-        const trigger = e.target.closest('[data-js-action]');
+        const trigger = e.target.closest('a[data-action]');
         if (!trigger) return;
-        const action = trigger.dataset.jsAction;
+        const action = trigger.dataset.action;
+        if (action !== 'retry' && action !== 'delete') return;
         const id = parseInt(trigger.dataset.id || '0', 10);
         if (!id) return;
+        e.preventDefault();
 
         if (action === 'retry') {
             postAction('search-manager/pending-syncs/retry', { ids: [id] });

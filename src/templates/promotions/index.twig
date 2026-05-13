@@ -1,58 +1,13 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
-{% set settings = plugin.getSettings() %}
+{# Follows the canonical CP table index-page pattern (in-memory variant) —
+   see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+   PromotionsController::actionIndex() owns query-param parsing, allowlist
+   validation, filter, sort, and pagination. This template stays
+   presentational and just renders what's handed in. #}
 
-{# Get query parameters #}
-{% set search = craft.app.request.getParam('search', '') %}
-{% set statusFilter = craft.app.request.getParam('status', 'all') %}
-{% set matchTypeFilter = craft.app.request.getParam('matchType', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'position') %}
-{% set dir = craft.app.request.getParam('dir', 'asc') %}
-{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = settings.itemsPerPage %}
-{% set offset = (page - 1) * limit %}
-
-{# Filter promotions based on filters #}
-{% set filteredPromotions = promotions %}
-
-{# Status filter #}
-{% if statusFilter == 'enabled' %}
-    {% set filteredPromotions = filteredPromotions|filter(p => p.enabled) %}
-{% elseif statusFilter == 'disabled' %}
-    {% set filteredPromotions = filteredPromotions|filter(p => not p.enabled) %}
-{% endif %}
-
-{# Match type filter #}
-{% if matchTypeFilter != 'all' %}
-    {% set filteredPromotions = filteredPromotions|filter(p => p.matchType == matchTypeFilter) %}
-{% endif %}
-
-{# Search filter #}
-{% if search %}
-    {% set filteredPromotions = filteredPromotions|filter(p => search|lower in p.query|lower or (p.indexHandle and search|lower in p.indexHandle|lower) or (p.title and search|lower in p.title|lower)) %}
-{% endif %}
-
-{# Sort #}
-{% if sort == 'query' %}
-    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.query|lower <=> b.query|lower) : filteredPromotions|sort((a, b) => b.query|lower <=> a.query|lower) %}
-{% elseif sort == 'matchType' %}
-    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.matchType <=> b.matchType) : filteredPromotions|sort((a, b) => b.matchType <=> a.matchType) %}
-{% elseif sort == 'title' %}
-    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.title ?? '')|lower <=> (b.title ?? '')|lower) : filteredPromotions|sort((a, b) => (b.title ?? '')|lower <=> (a.title ?? '')|lower) %}
-{% elseif sort == 'position' %}
-    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.position <=> b.position) : filteredPromotions|sort((a, b) => b.position <=> a.position) %}
-{% elseif sort == 'enabled' %}
-    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => a.enabled <=> b.enabled) : filteredPromotions|sort((a, b) => b.enabled <=> a.enabled) %}
-{% elseif sort == 'siteId' %}
-    {% set filteredPromotions = dir == 'asc' ? filteredPromotions|sort((a, b) => (a.siteId ?? 0) <=> (b.siteId ?? 0)) : filteredPromotions|sort((a, b) => (b.siteId ?? 0) <=> (a.siteId ?? 0)) %}
-{% endif %}
-
-{# Pagination #}
-{% set totalCount = filteredPromotions|length %}
-{% set paginatedItems = filteredPromotions|slice(offset, limit) %}
-
-{# Match type labels #}
+{# Match type labels — used by both the table row and the filter dropdown,
+   so memoised once at the top of the template. #}
 {% set matchTypeLabels = {
     'exact': 'Exact'|t('search-manager'),
     'contains': 'Contains'|t('search-manager'),
@@ -121,7 +76,7 @@
             {key: 'siteId', label: 'Site'|t('search-manager'), sortable: true, hideable: true},
             {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
         ],
-        items: paginatedItems,
+        items: promotions,
         emptyMessage: 'No promotions found.'|t('search-manager'),
     },
     pagination: {
@@ -130,12 +85,12 @@
         totalCount: totalCount,
         itemLabel: {singular: 'promotion'|t('search-manager'), plural: 'promotions'|t('search-manager')},
     },
-    checkboxes: currentUser.can('searchManager:editPromotions') or currentUser.can('searchManager:deletePromotions'),
-    newButton: {
+    checkboxes: canEdit or canDelete,
+    newButton: canCreate ?? false ? {
         url: url('search-manager/promotions/create'),
         label: 'New Promotion'|t('search-manager'),
         permission: 'searchManager:createPromotions',
-    },
+    } : null,
 } %}
 
 {% block tableRow %}
@@ -211,32 +166,42 @@
 {% endblock %}
 
 {% block rowActions %}
-    {% include 'lindemannrock-base/_components/row-actions' with {
-        item: item,
-        actions: {
-            type: 'menu',
-            icon: 'settings',
-            title: 'Actions'|t('app'),
-            items: [
-                {
-                    label: 'Edit'|t('app'),
-                    url: url('search-manager/promotions/edit/' ~ item.id),
-                    permission: 'searchManager:editPromotions',
-                },
-                {type: 'divider'},
-                {
-                    label: 'Delete'|t('app'),
-                    class: 'error',
-                    permission: 'searchManager:deletePromotions',
-                    jsAction: 'delete',
-                },
-            ],
-        },
-    } only %}
+    {% set actionItems = [] %}
+
+    {% if canEdit %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Edit'|t('app'),
+            url: url('search-manager/promotions/edit/' ~ item.id),
+        }]) %}
+    {% endif %}
+
+    {% if canDelete %}
+        {% if canEdit %}
+            {% set actionItems = actionItems|merge([{type: 'divider'}]) %}
+        {% endif %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Delete'|t('app'),
+            class: 'error',
+            jsAction: 'delete',
+            data: {name: item.title ?: ('#' ~ item.id)},
+        }]) %}
+    {% endif %}
+
+    {% if actionItems|length %}
+        {% include 'lindemannrock-base/_components/row-actions' with {
+            item: {id: item.id},
+            actions: {
+                type: 'menu',
+                icon: 'settings',
+                title: 'Actions'|t('app'),
+                items: actionItems,
+            },
+        } only %}
+    {% endif %}
 {% endblock %}
 
 {% block bulkActions %}
-    {% if currentUser.can('searchManager:editPromotions') %}
+    {% if canEdit %}
         <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
             {{ 'Set status'|t('app') }}
         </button>
@@ -248,9 +213,9 @@
         </div>
     {% endif %}
 
-    {% if currentUser.can('searchManager:deletePromotions') %}
+    {% if canDelete %}
         <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-            {{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+            {{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
         </button>
     {% endif %}
 {% endblock %}
@@ -258,98 +223,94 @@
 {% block scripts %}
 <script>
 (function() {
-    // Initialize bulk status menu
+    if (typeof Craft === 'undefined') return;
+
     const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
-    if (bulkStatusBtn && typeof Craft !== 'undefined' && Craft.MenuBtn) {
+    if (bulkStatusBtn && Craft.MenuBtn) {
         new Craft.MenuBtn(bulkStatusBtn);
     }
 
-    // Bulk enable
+    const T = {
+        deleted: {{ 'Promotion deleted'|t('search-manager')|json_encode|raw }},
+        deleteFailed: {{ 'Failed to delete promotion'|t('search-manager')|json_encode|raw }},
+        deleteConfirm: {{ 'Delete promotion for "{name}"? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        bulkEnabledTemplate: {{ 'Enabled {count} promotions'|t('search-manager')|json_encode|raw }},
+        bulkEnableFailed: {{ 'Failed to enable promotions'|t('search-manager')|json_encode|raw }},
+        bulkDisabledTemplate: {{ 'Disabled {count} promotions'|t('search-manager')|json_encode|raw }},
+        bulkDisableFailed: {{ 'Failed to disable promotions'|t('search-manager')|json_encode|raw }},
+        bulkDeletedTemplate: {{ 'Deleted {count} promotions'|t('search-manager')|json_encode|raw }},
+        bulkDeleteFailed: {{ 'Failed to delete promotions'|t('search-manager')|json_encode|raw }},
+        bulkDeleteConfirmTemplate: {{ 'Delete {count} promotion(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+    };
+
+    document.addEventListener('lr:selectionChanged', function(e) {
+        const ids = (e.detail && Array.isArray(e.detail.selectedIds))
+            ? e.detail.selectedIds
+            : [];
+        document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
+            el.textContent = ids.length;
+        });
+    });
+
+    function selectedIds() {
+        return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+    }
+
+    // Row-action handler — delegated on document, narrowed by anchor +
+    // action name. See cp-table-index-pattern.md.
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('a[data-action]');
+        if (!trigger) return;
+        if (trigger.dataset.action !== 'delete') return;
+
+        const id = parseInt(trigger.dataset.id || '0', 10);
+        if (!id) return;
+        e.preventDefault();
+
+        const name = trigger.dataset.name || '';
+        if (!confirm(T.deleteConfirm.replace('{name}', name))) return;
+
+        Craft.sendActionRequest('POST', 'search-manager/promotions/delete', {
+            data: { promotionId: id },
+        }).then(function() {
+            Craft.cp.displayNotice(T.deleted);
+            setTimeout(function() { window.location.reload(); }, 1000);
+        }).catch(function() {
+            Craft.cp.displayError(T.deleteFailed);
+        });
+    });
+
+    function runBulk(endpoint, successTemplate, errorFallback) {
+        const ids = selectedIds();
+        if (!ids.length) return;
+        Craft.sendActionRequest('POST', endpoint, {
+            data: { promotionIds: ids },
+        }).then(function(response) {
+            const count = response.data.count || 0;
+            if (count > 0) {
+                Craft.cp.displayNotice(successTemplate.replace('{count}', count));
+                setTimeout(function() { window.location.reload(); }, 1000);
+            }
+        }).catch(function() {
+            Craft.cp.displayError(errorFallback);
+        });
+    }
+
     document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-enable', {
-            data: { promotionIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Enabled {count} promotions', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to enable promotions'));
-        });
+        runBulk('search-manager/promotions/bulk-enable', T.bulkEnabledTemplate, T.bulkEnableFailed);
     });
 
-    // Bulk disable
     document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-disable', {
-            data: { promotionIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Disabled {count} promotions', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to disable promotions'));
-        });
+        runBulk('search-manager/promotions/bulk-disable', T.bulkDisabledTemplate, T.bulkDisableFailed);
     });
 
-    // Bulk delete
     document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        if (!confirm(Craft.t('search-manager', 'Delete {count} promotion(s)? This cannot be undone.', {count: ids.length}))) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/promotions/bulk-delete', {
-            data: { promotionIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} promotions', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete promotions'));
-        });
-    });
-
-    // Individual delete action
-    document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const row = this.closest('tr');
-            const id = row?.dataset.id;
-            const name = row?.dataset.name || '';
-
-            if (!id) return;
-
-            if (!confirm(Craft.t('search-manager', 'Delete promotion for "{name}"? This cannot be undone.', {name: name}))) return;
-
-            Craft.sendActionRequest('POST', 'search-manager/promotions/delete', {
-                data: { promotionId: id }
-            }).then(function(response) {
-                if (response.data.success) {
-                    Craft.cp.displayNotice(Craft.t('search-manager', 'Promotion deleted'));
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            }).catch(function(error) {
-                Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete promotion'));
-            });
-        });
-    });
-
-    // Update selected count
-    document.addEventListener('lr:selectionChanged', function(e) {
-        const countSpan = document.getElementById('lr-selected-count');
-        if (countSpan) {
-            countSpan.textContent = e.detail.count;
-        }
+        const ids = selectedIds();
+        if (!ids.length) return;
+        if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
+        runBulk('search-manager/promotions/bulk-delete', T.bulkDeletedTemplate, T.bulkDeleteFailed);
     });
 })();
 </script>

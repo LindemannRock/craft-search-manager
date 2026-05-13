@@ -1,64 +1,10 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
-{% set settings = plugin.getSettings() %}
-
-{# Get query parameters #}
-{% set search = craft.app.request.getParam('search', '') %}
-{% set statusFilter = craft.app.request.getParam('status', 'all') %}
-{% set matchTypeFilter = craft.app.request.getParam('matchType', 'all') %}
-{% set actionTypeFilter = craft.app.request.getParam('actionType', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'priority') %}
-{% set dir = craft.app.request.getParam('dir', 'asc') %}
-{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = settings.itemsPerPage %}
-{% set offset = (page - 1) * limit %}
-
-{# Filter rules based on filters #}
-{% set filteredRules = rules %}
-
-{# Status filter #}
-{% if statusFilter == 'enabled' %}
-    {% set filteredRules = filteredRules|filter(r => r.enabled) %}
-{% elseif statusFilter == 'disabled' %}
-    {% set filteredRules = filteredRules|filter(r => not r.enabled) %}
-{% endif %}
-
-{# Match type filter #}
-{% if matchTypeFilter != 'all' %}
-    {% set filteredRules = filteredRules|filter(r => r.matchType == matchTypeFilter) %}
-{% endif %}
-
-{# Action type filter #}
-{% if actionTypeFilter != 'all' %}
-    {% set filteredRules = filteredRules|filter(r => r.actionType == actionTypeFilter) %}
-{% endif %}
-
-{# Search filter #}
-{% if search %}
-    {% set filteredRules = filteredRules|filter(r => search|lower in r.name|lower or search|lower in r.matchValue|lower) %}
-{% endif %}
-
-{# Sort #}
-{% if sort == 'name' %}
-    {% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.name|lower <=> b.name|lower) : filteredRules|sort((a, b) => b.name|lower <=> a.name|lower) %}
-{% elseif sort == 'matchValue' %}
-    {% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.matchValue|lower <=> b.matchValue|lower) : filteredRules|sort((a, b) => b.matchValue|lower <=> a.matchValue|lower) %}
-{% elseif sort == 'matchType' %}
-    {% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.matchType <=> b.matchType) : filteredRules|sort((a, b) => b.matchType <=> a.matchType) %}
-{% elseif sort == 'actionType' %}
-    {% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.actionType <=> b.actionType) : filteredRules|sort((a, b) => b.actionType <=> a.actionType) %}
-{% elseif sort == 'priority' %}
-    {% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.priority <=> b.priority) : filteredRules|sort((a, b) => b.priority <=> a.priority) %}
-{% elseif sort == 'enabled' %}
-    {% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => a.enabled <=> b.enabled) : filteredRules|sort((a, b) => b.enabled <=> a.enabled) %}
-{% elseif sort == 'siteId' %}
-    {% set filteredRules = dir == 'asc' ? filteredRules|sort((a, b) => (a.siteId ?? 0) <=> (b.siteId ?? 0)) : filteredRules|sort((a, b) => (b.siteId ?? 0) <=> (a.siteId ?? 0)) %}
-{% endif %}
-
-{# Pagination #}
-{% set totalCount = filteredRules|length %}
-{% set paginatedItems = filteredRules|slice(offset, limit) %}
+{# Follows the canonical CP table index-page pattern (in-memory variant) —
+   see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+   QueryRulesController::actionIndex() owns query-param parsing, allowlist
+   validation, filter, sort, and pagination. This template stays
+   presentational and just renders what's handed in. #}
 
 {# Labels for badges #}
 {% set matchTypeLabels = {
@@ -156,7 +102,7 @@
             {key: 'priority', label: 'Priority'|t('search-manager'), sortable: true, hideable: true},
             {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
         ],
-        items: paginatedItems,
+        items: rules,
         emptyMessage: 'No query rules found.'|t('search-manager'),
     },
     pagination: {
@@ -165,12 +111,12 @@
         totalCount: totalCount,
         itemLabel: {singular: 'rule'|t('search-manager'), plural: 'rules'|t('search-manager')},
     },
-    checkboxes: currentUser.can('searchManager:editQueryRules') or currentUser.can('searchManager:deleteQueryRules'),
-    newButton: {
+    checkboxes: canEdit or canDelete,
+    newButton: canCreate ?? false ? {
         url: url('search-manager/query-rules/create'),
         label: 'New Query Rule'|t('search-manager'),
         permission: 'searchManager:createQueryRules',
-    },
+    } : null,
 } %}
 
 {% block tableRow %}
@@ -247,32 +193,42 @@
 {% endblock %}
 
 {% block rowActions %}
-    {% include 'lindemannrock-base/_components/row-actions' with {
-        item: item,
-        actions: {
-            type: 'menu',
-            icon: 'settings',
-            title: 'Actions'|t('app'),
-            items: [
-                {
-                    label: 'Edit'|t('app'),
-                    url: url('search-manager/query-rules/edit/' ~ item.id),
-                    permission: 'searchManager:editQueryRules',
-                },
-                {type: 'divider'},
-                {
-                    label: 'Delete'|t('app'),
-                    class: 'error',
-                    permission: 'searchManager:deleteQueryRules',
-                    jsAction: 'delete',
-                },
-            ],
-        },
-    } only %}
+    {% set actionItems = [] %}
+
+    {% if canEdit %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Edit'|t('app'),
+            url: url('search-manager/query-rules/edit/' ~ item.id),
+        }]) %}
+    {% endif %}
+
+    {% if canDelete %}
+        {% if canEdit %}
+            {% set actionItems = actionItems|merge([{type: 'divider'}]) %}
+        {% endif %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Delete'|t('app'),
+            class: 'error',
+            jsAction: 'delete',
+            data: {name: item.name},
+        }]) %}
+    {% endif %}
+
+    {% if actionItems|length %}
+        {% include 'lindemannrock-base/_components/row-actions' with {
+            item: {id: item.id},
+            actions: {
+                type: 'menu',
+                icon: 'settings',
+                title: 'Actions'|t('app'),
+                items: actionItems,
+            },
+        } only %}
+    {% endif %}
 {% endblock %}
 
 {% block bulkActions %}
-    {% if currentUser.can('searchManager:editQueryRules') %}
+    {% if canEdit %}
         <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
             {{ 'Set status'|t('app') }}
         </button>
@@ -284,9 +240,9 @@
         </div>
     {% endif %}
 
-    {% if currentUser.can('searchManager:deleteQueryRules') %}
+    {% if canDelete %}
         <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-            {{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+            {{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
         </button>
     {% endif %}
 {% endblock %}
@@ -294,98 +250,92 @@
 {% block scripts %}
 <script>
 (function() {
-    // Initialize bulk status menu
+    if (typeof Craft === 'undefined') return;
+
     const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
-    if (bulkStatusBtn && typeof Craft !== 'undefined' && Craft.MenuBtn) {
+    if (bulkStatusBtn && Craft.MenuBtn) {
         new Craft.MenuBtn(bulkStatusBtn);
     }
 
-    // Bulk enable
+    const T = {
+        deleted: {{ 'Query rule deleted'|t('search-manager')|json_encode|raw }},
+        deleteFailed: {{ 'Failed to delete query rule'|t('search-manager')|json_encode|raw }},
+        deleteConfirm: {{ 'Delete query rule "{name}"? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        bulkEnabledTemplate: {{ 'Enabled {count} query rules'|t('search-manager')|json_encode|raw }},
+        bulkEnableFailed: {{ 'Failed to enable query rules'|t('search-manager')|json_encode|raw }},
+        bulkDisabledTemplate: {{ 'Disabled {count} query rules'|t('search-manager')|json_encode|raw }},
+        bulkDisableFailed: {{ 'Failed to disable query rules'|t('search-manager')|json_encode|raw }},
+        bulkDeletedTemplate: {{ 'Deleted {count} query rules'|t('search-manager')|json_encode|raw }},
+        bulkDeleteFailed: {{ 'Failed to delete query rules'|t('search-manager')|json_encode|raw }},
+        bulkDeleteConfirmTemplate: {{ 'Delete {count} query rule(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+    };
+
+    document.addEventListener('lr:selectionChanged', function(e) {
+        const ids = (e.detail && Array.isArray(e.detail.selectedIds))
+            ? e.detail.selectedIds
+            : [];
+        document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
+            el.textContent = ids.length;
+        });
+    });
+
+    function selectedIds() {
+        return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+    }
+
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('a[data-action]');
+        if (!trigger) return;
+        if (trigger.dataset.action !== 'delete') return;
+
+        const id = parseInt(trigger.dataset.id || '0', 10);
+        if (!id) return;
+        e.preventDefault();
+
+        const name = trigger.dataset.name || '';
+        if (!confirm(T.deleteConfirm.replace('{name}', name))) return;
+
+        Craft.sendActionRequest('POST', 'search-manager/query-rules/delete', {
+            data: { ruleId: id },
+        }).then(function() {
+            Craft.cp.displayNotice(T.deleted);
+            setTimeout(function() { window.location.reload(); }, 1000);
+        }).catch(function() {
+            Craft.cp.displayError(T.deleteFailed);
+        });
+    });
+
+    function runBulk(endpoint, successTemplate, errorFallback) {
+        const ids = selectedIds();
+        if (!ids.length) return;
+        Craft.sendActionRequest('POST', endpoint, {
+            data: { ruleIds: ids },
+        }).then(function(response) {
+            const count = response.data.count || 0;
+            if (count > 0) {
+                Craft.cp.displayNotice(successTemplate.replace('{count}', count));
+                setTimeout(function() { window.location.reload(); }, 1000);
+            }
+        }).catch(function() {
+            Craft.cp.displayError(errorFallback);
+        });
+    }
+
     document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/query-rules/bulk-enable', {
-            data: { ruleIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Enabled {count} query rules', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to enable query rules'));
-        });
+        runBulk('search-manager/query-rules/bulk-enable', T.bulkEnabledTemplate, T.bulkEnableFailed);
     });
 
-    // Bulk disable
     document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/query-rules/bulk-disable', {
-            data: { ruleIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Disabled {count} query rules', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to disable query rules'));
-        });
+        runBulk('search-manager/query-rules/bulk-disable', T.bulkDisabledTemplate, T.bulkDisableFailed);
     });
 
-    // Bulk delete
     document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        if (!confirm(Craft.t('search-manager', 'Delete {count} query rule(s)? This cannot be undone.', {count: ids.length}))) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/query-rules/bulk-delete', {
-            data: { ruleIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} query rules', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete query rules'));
-        });
-    });
-
-    // Individual delete action
-    document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            const row = this.closest('tr');
-            const id = row?.dataset.id;
-            const name = row?.dataset.name || '';
-
-            if (!id) return;
-
-            if (!confirm(Craft.t('search-manager', 'Delete query rule "{name}"? This cannot be undone.', {name: name}))) return;
-
-            Craft.sendActionRequest('POST', 'search-manager/query-rules/delete', {
-                data: { ruleId: id }
-            }).then(function(response) {
-                if (response.data.success) {
-                    Craft.cp.displayNotice(Craft.t('search-manager', 'Query rule deleted'));
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            }).catch(function(error) {
-                Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete query rule'));
-            });
-        });
-    });
-
-    // Update selected count
-    document.addEventListener('lr:selectionChanged', function(e) {
-        const countSpan = document.getElementById('lr-selected-count');
-        if (countSpan) {
-            countSpan.textContent = e.detail.count;
-        }
+        const ids = selectedIds();
+        if (!ids.length) return;
+        if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
+        runBulk('search-manager/query-rules/bulk-delete', T.bulkDeletedTemplate, T.bulkDeleteFailed);
     });
 })();
 </script>

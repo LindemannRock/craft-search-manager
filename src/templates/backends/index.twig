@@ -11,73 +11,13 @@
 
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{# ============================================================================
-   PERMISSION CHECKS
-   ============================================================================ #}
-
-{% set canCreate = currentUser.can('searchManager:createBackends') %}
-{% set canEdit = currentUser.can('searchManager:editBackends') %}
-{% set canDelete = currentUser.can('searchManager:deleteBackends') %}
-
-{# ============================================================================
-   GET QUERY PARAMETERS
-   ============================================================================ #}
-
-{% set search = craft.app.request.getParam('search', '') %}
-{% set statusFilter = craft.app.request.getParam('status', 'all') %}
-{% set typeFilter = craft.app.request.getParam('type', 'all') %}
-{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'source') %}
-{% set dir = craft.app.request.getParam('dir', 'asc') %}
-{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = settings.itemsPerPage ?? 50 %}
-{% set offset = (page - 1) * limit %}
-
-{# ============================================================================
-   FILTER BACKENDS
-   ============================================================================ #}
-
-{% set filteredBackends = backends %}
-
-{# Status filter #}
-{% if statusFilter == 'enabled' %}
-    {% set filteredBackends = filteredBackends|filter(b => b.enabled) %}
-{% elseif statusFilter == 'disabled' %}
-    {% set filteredBackends = filteredBackends|filter(b => not b.enabled) %}
-{% endif %}
-
-{# Type filter #}
-{% if typeFilter != 'all' %}
-    {% set filteredBackends = filteredBackends|filter(b => b.backendType == typeFilter) %}
-{% endif %}
-
-{# Source filter #}
-{% if sourceFilter == 'config' %}
-    {% set filteredBackends = filteredBackends|filter(b => b.source == 'config') %}
-{% elseif sourceFilter == 'database' %}
-    {% set filteredBackends = filteredBackends|filter(b => b.source != 'config') %}
-{% endif %}
-
-{# Search filter #}
-{% if search %}
-    {% set filteredBackends = filteredBackends|filter(b => search|lower in b.name|lower or search|lower in b.handle|lower or search|lower in b.backendType|lower) %}
-{% endif %}
-
-{# Sort backends #}
-{% if sort == 'name' %}
-    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.name|lower <=> b.name|lower : b.name|lower <=> a.name|lower) %}
-{% elseif sort == 'handle' %}
-    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.handle|lower <=> b.handle|lower : b.handle|lower <=> a.handle|lower) %}
-{% elseif sort == 'type' %}
-    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.backendType|lower <=> b.backendType|lower : b.backendType|lower <=> a.backendType|lower) %}
-{% elseif sort == 'source' %}
-    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? (a.source ?? '') <=> (b.source ?? '') : (b.source ?? '') <=> (a.source ?? '')) %}
-{% elseif sort == 'enabled' %}
-    {% set filteredBackends = filteredBackends|sort((a, b) => dir == 'asc' ? a.enabled <=> b.enabled : b.enabled <=> a.enabled) %}
-{% endif %}
-
-{% set totalCount = filteredBackends|length %}
-{% set paginatedBackends = filteredBackends|slice(offset, limit) %}
+{# Follows the canonical CP table index-page pattern (in-memory variant) —
+   see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+   BackendsController::actionIndex() owns query-param parsing, allowlist
+   validation, filter, sort, and pagination. This template stays
+   presentational and renders the already-sliced `backends` plus the
+   filter/sort state handed in. Permission booleans (`canCreate`, `canEdit`,
+   `canDelete`) likewise arrive from the controller. #}
 
 
 {# ============================================================================
@@ -161,7 +101,7 @@
             {key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
             {key: 'default', label: 'Default'|t('search-manager'), hideable: true},
         ],
-        items: paginatedBackends,
+        items: backends,
         emptyMessage: 'No backends found.'|t('search-manager'),
         hasConfigItems: true,
     },
@@ -185,9 +125,11 @@
    ============================================================================ #}
 
 {% block beforeTable %}
-    {# Warning if default backend is missing or disabled #}
+    {# Warning if default backend is missing or disabled. The controller
+       resolves `defaultBackend` against the full backend list (not the
+       filtered/paginated `backends`), so these warnings stay consistent
+       regardless of the current filter. #}
     {% if defaultBackendHandle %}
-        {% set defaultBackend = backends|filter(b => b.handle == defaultBackendHandle)|first %}
         {% if not defaultBackend %}
             {# Default backend doesn't exist #}
             {% set warningMessage %}
@@ -227,7 +169,7 @@
                 } %}
             </div>
         {% endif %}
-    {% elseif backends|length > 0 %}
+    {% elseif hasAnyBackends %}
         {# No default handle set but backends exist #}
         {% set warningMessage %}
         <strong>{{ 'Warning'|t('search-manager') }}:</strong>
@@ -432,10 +374,42 @@
 {% block scripts %}
     <script>
     (function() {
-        // Highlight rows with handle collisions
+        if (typeof Craft === 'undefined') return;
+
+        // Initialise the "Set status" menubtn — without `new Craft.MenuBtn(...)`,
+        // clicking the button doesn't open its menu so the Enable/Disable items
+        // inside are unreachable.
+        const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
+        if (bulkStatusBtn && Craft.MenuBtn) {
+            new Craft.MenuBtn(bulkStatusBtn);
+        }
+
+        // Pre-translated strings: keep |t() in Twig (so they're translatable)
+        // and emit as JSON-encoded JS literals via |json_encode|raw — avoids
+        // the |e('js') trap (produces \uXXXX garbage when re-quoted).
+        const T = {
+            connectionSuccessful: {{ 'Connection successful'|t('search-manager')|json_encode|raw }},
+            connectionFailed: {{ 'Connection failed'|t('search-manager')|json_encode|raw }},
+            unknownError: {{ 'Unknown error'|t('search-manager')|json_encode|raw }},
+            connectionTestFailed: {{ 'Connection test failed'|t('search-manager')|json_encode|raw }},
+            defaultUpdated: {{ 'Default backend updated'|t('search-manager')|json_encode|raw }},
+            defaultUpdateFailed: {{ 'Failed to update default backend'|t('search-manager')|json_encode|raw }},
+            backendDeleted: {{ 'Backend deleted'|t('search-manager')|json_encode|raw }},
+            deleteFailed: {{ 'Failed to delete backend'|t('search-manager')|json_encode|raw }},
+            deleteConfirmTemplate: {{ 'Delete backend "{name}"? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+            bulkEnabledTemplate: {{ 'Enabled {count} backends'|t('search-manager')|json_encode|raw }},
+            bulkEnableFailed: {{ 'Failed to enable backends'|t('search-manager')|json_encode|raw }},
+            bulkDisabledTemplate: {{ 'Disabled {count} backends'|t('search-manager')|json_encode|raw }},
+            bulkDisableFailed: {{ 'Failed to disable backends'|t('search-manager')|json_encode|raw }},
+            bulkDeletedTemplate: {{ 'Deleted {count} backends'|t('search-manager')|json_encode|raw }},
+            bulkDeleteFailed: {{ 'Failed to delete backends'|t('search-manager')|json_encode|raw }},
+            bulkDeleteConfirmTemplate: {{ 'Delete {count} backend(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        };
+
+        // Highlight rows with handle collisions between config and database.
         const collisionHandles = {{ collisionHandles|default([])|json_encode|raw }};
         if (collisionHandles.length > 0) {
-            document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
+            document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(function(row) {
                 const handleCell = row.querySelector('td:nth-child(3) code');
                 if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
                     row.classList.add('lr-row--warning');
@@ -443,150 +417,122 @@
             });
         }
 
-        // Update selected count when selection changes
         document.addEventListener('lr:selectionChanged', function(e) {
             const countSpan = document.getElementById('lr-selected-count');
             if (countSpan) {
-                countSpan.textContent = e.detail.count;
+                countSpan.textContent = e.detail && typeof e.detail.count === 'number' ? e.detail.count : 0;
             }
         });
 
-        // Bulk enable
+        function selectedIds() {
+            return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+        }
+
+        // ---------------------------------------------------------------------
+        // Row-action handlers. Delegated listener on `document`, narrowed by
+        // `a[data-action]` + an explicit action-name allowlist. preventDefault
+        // only after the match — leaves unrelated `data-action` elements
+        // (e.g. Craft toolbar forms) alone. See cp-table-index-pattern.md.
+        // Confirmation lives here (single source of truth); do not also set
+        // `confirm:` on the action item.
+        // ---------------------------------------------------------------------
+        document.addEventListener('click', function(e) {
+            const trigger = e.target.closest('a[data-action]');
+            if (!trigger) return;
+
+            const action = trigger.dataset.action;
+            if (action !== 'test' && action !== 'set-default' && action !== 'delete') return;
+
+            const backendId = trigger.dataset.id;
+            const backendName = trigger.dataset.name || '';
+            if (!backendId) return;
+            e.preventDefault();
+
+            if (action === 'test') {
+                Craft.sendActionRequest('POST', 'search-manager/backends/test', {
+                    data: { backendId: backendId },
+                }).then(function(response) {
+                    if (response.data.success) {
+                        Craft.cp.displayNotice(T.connectionSuccessful + ': ' + backendName);
+                    } else {
+                        Craft.cp.displayError(T.connectionFailed + ': ' + (response.data.error || T.unknownError));
+                    }
+                }).catch(function() {
+                    Craft.cp.displayError(T.connectionTestFailed);
+                });
+            } else if (action === 'set-default') {
+                Craft.sendActionRequest('POST', 'search-manager/backends/set-default', {
+                    data: { backendId: backendId },
+                }).then(function(response) {
+                    if (response.data.success) {
+                        Craft.cp.displayNotice(T.defaultUpdated);
+                        setTimeout(function() { window.location.reload(); }, 500);
+                    } else {
+                        Craft.cp.displayError(response.data.error || T.defaultUpdateFailed);
+                    }
+                }).catch(function() {
+                    Craft.cp.displayError(T.defaultUpdateFailed);
+                });
+            } else if (action === 'delete') {
+                const confirmMessage = T.deleteConfirmTemplate.replace('{name}', backendName);
+                if (!confirm(confirmMessage)) return;
+                Craft.sendActionRequest('POST', 'search-manager/backends/delete', {
+                    data: { backendId: backendId },
+                }).then(function(response) {
+                    if (response.data.success) {
+                        Craft.cp.displayNotice(T.backendDeleted);
+                        setTimeout(function() { window.location.reload(); }, 1000);
+                    } else if (response.data.error) {
+                        Craft.cp.displayError(response.data.error);
+                    }
+                }).catch(function() {
+                    Craft.cp.displayError(T.deleteFailed);
+                });
+            }
+        });
+
+        // ---------------------------------------------------------------------
+        // Bulk actions. Each posts the selected IDs to its endpoint; the
+        // controller surfaces per-row errors via `response.data.errors`.
+        // ---------------------------------------------------------------------
+        function runBulkStatus(endpoint, successTemplate, errorFallback) {
+            const ids = selectedIds();
+            if (!ids.length) return;
+            Craft.sendActionRequest('POST', endpoint, {
+                data: { backendIds: ids },
+            }).then(function(response) {
+                const count = response.data.count || 0;
+                if (count > 0) {
+                    Craft.cp.displayNotice(successTemplate.replace('{count}', count));
+                }
+                if (Array.isArray(response.data.errors)) {
+                    response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
+                } else if (response.data.error) {
+                    Craft.cp.displayError(response.data.error);
+                }
+                if (count > 0) {
+                    setTimeout(function() { window.location.reload(); }, 1000);
+                }
+            }).catch(function() {
+                Craft.cp.displayError(errorFallback);
+            });
+        }
+
         document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
             e.preventDefault();
-            if (!window.lrTableSelection) return;
-
-            const ids = window.lrTableSelection.getSelectedIds();
-            if (ids.length === 0) return;
-
-            Craft.sendActionRequest('POST', 'search-manager/backends/bulk-enable', {
-                data: { backendIds: ids }
-            }).then(function(response) {
-                if (response.data.count > 0) {
-                    Craft.cp.displayNotice('{{ "Enabled {count} backends"|t("search-manager")|e("js") }}'.replace('{count}', response.data.count));
-                }
-                if (response.data.errors && response.data.errors.length > 0) {
-                    response.data.errors.forEach(err => Craft.cp.displayError(err));
-                }
-                if (response.data.count > 0) {
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            }).catch(function(error) {
-                Craft.cp.displayError('{{ "Failed to enable backends"|t("search-manager")|e("js") }}');
-            });
+            runBulkStatus('search-manager/backends/bulk-enable', T.bulkEnabledTemplate, T.bulkEnableFailed);
         });
 
-        // Bulk disable
         document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
             e.preventDefault();
-            if (!window.lrTableSelection) return;
-
-            const ids = window.lrTableSelection.getSelectedIds();
-            if (ids.length === 0) return;
-
-            Craft.sendActionRequest('POST', 'search-manager/backends/bulk-disable', {
-                data: { backendIds: ids }
-            }).then(function(response) {
-                if (response.data.count > 0) {
-                    Craft.cp.displayNotice('{{ "Disabled {count} backends"|t("search-manager")|e("js") }}'.replace('{count}', response.data.count));
-                }
-                if (response.data.errors && response.data.errors.length > 0) {
-                    response.data.errors.forEach(err => Craft.cp.displayError(err));
-                } else if (response.data.error) {
-                    Craft.cp.displayError(response.data.error);
-                }
-                if (response.data.count > 0) {
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            }).catch(function(error) {
-                Craft.cp.displayError('{{ "Failed to disable backends"|t("search-manager")|e("js") }}');
-            });
+            runBulkStatus('search-manager/backends/bulk-disable', T.bulkDisabledTemplate, T.bulkDisableFailed);
         });
 
-        // Bulk delete
-        document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (!window.lrTableSelection) return;
-
-            const ids = window.lrTableSelection.getSelectedIds();
-            const count = window.lrTableSelection.getCount();
-
-            if (count === 0) return;
-
-            if (!confirm('{{ "Delete {count} backend(s)? This cannot be undone."|t("search-manager")|e("js") }}'.replace('{count}', count))) {
-                return;
-            }
-
-            Craft.sendActionRequest('POST', 'search-manager/backends/bulk-delete', {
-                data: { backendIds: ids }
-            }).then(function(response) {
-                if (response.data.count > 0) {
-                    Craft.cp.displayNotice('{{ "Deleted {count} backends"|t("search-manager")|e("js") }}'.replace('{count}', response.data.count));
-                }
-                if (response.data.errors && response.data.errors.length > 0) {
-                    response.data.errors.forEach(err => Craft.cp.displayError(err));
-                } else if (response.data.error) {
-                    Craft.cp.displayError(response.data.error);
-                }
-                if (response.data.count > 0) {
-                    setTimeout(() => window.location.reload(), 1000);
-                }
-            }).catch(function(error) {
-                Craft.cp.displayError('{{ "Failed to delete backends"|t("search-manager")|e("js") }}');
-            });
-        });
-
-        // Individual backend action menu clicks
-        document.querySelectorAll('[data-action]').forEach(link => {
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-
-                const action = this.dataset.action;
-                const backendId = this.dataset.id;
-                const backendName = this.dataset.name;
-
-                if (action === 'test') {
-                    Craft.sendActionRequest('POST', 'search-manager/backends/test', {
-                        data: { backendId: backendId }
-                    }).then(function(response) {
-                        if (response.data.success) {
-                            Craft.cp.displayNotice('{{ "Connection successful"|t("search-manager")|e("js") }}: ' + backendName);
-                        } else {
-                            Craft.cp.displayError('{{ "Connection failed"|t("search-manager")|e("js") }}: ' + (response.data.error || '{{ "Unknown error"|t("search-manager")|e("js") }}'));
-                        }
-                    }).catch(function(error) {
-                        Craft.cp.displayError('{{ "Connection test failed"|t("search-manager")|e("js") }}');
-                    });
-                } else if (action === 'set-default') {
-                    Craft.sendActionRequest('POST', 'search-manager/backends/set-default', {
-                        data: { backendId: backendId }
-                    }).then(function(response) {
-                        if (response.data.success) {
-                            Craft.cp.displayNotice('{{ "Default backend updated"|t("search-manager")|e("js") }}');
-                            setTimeout(() => window.location.reload(), 500);
-                        } else {
-                            Craft.cp.displayError(response.data.error || '{{ "Failed to update default backend"|t("search-manager")|e("js") }}');
-                        }
-                    }).catch(function(error) {
-                        Craft.cp.displayError('{{ "Failed to update default backend"|t("search-manager")|e("js") }}');
-                    });
-                } else if (action === 'delete') {
-                    if (confirm('{{ "Delete backend \"{name}\"? This cannot be undone."|t("search-manager")|e("js") }}'.replace('{name}', backendName))) {
-                        Craft.sendActionRequest('POST', 'search-manager/backends/delete', {
-                            data: { backendId: backendId }
-                        }).then(function(response) {
-                            if (response.data.success) {
-                                Craft.cp.displayNotice('{{ "Backend deleted"|t("search-manager")|e("js") }}');
-                                setTimeout(() => window.location.reload(), 1000);
-                            } else if (response.data.error) {
-                                Craft.cp.displayError(response.data.error);
-                            }
-                        }).catch(function(error) {
-                            Craft.cp.displayError('{{ "Failed to delete backend"|t("search-manager")|e("js") }}');
-                        });
-                    }
-                }
-            });
+        document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
+            const ids = selectedIds();
+            if (!ids.length) return;
+            if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
+            runBulkStatus('search-manager/backends/bulk-delete', T.bulkDeletedTemplate, T.bulkDeleteFailed);
         });
     })();
     </script>

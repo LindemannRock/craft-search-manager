@@ -1,70 +1,10 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
-{% set settings = plugin.getSettings() %}
-
-{# Get query parameters #}
-{% set search = craft.app.request.getParam('search', '') %}
-{% set statusFilter = craft.app.request.getParam('status', 'all') %}
-{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set typeFilter = craft.app.request.getParam('type', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'name') %}
-{% set dir = craft.app.request.getParam('dir', 'asc') %}
-{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = settings.itemsPerPage %}
-{% set offset = (page - 1) * limit %}
-
-{# Permission checks #}
-{% set canCreate = currentUser.can('searchManager:createWidgetStyles') %}
-{% set canEdit = currentUser.can('searchManager:editWidgetStyles') %}
-{% set canDelete = currentUser.can('searchManager:deleteWidgetStyles') %}
-
-{# Check if there are any config-based styles #}
-{% set hasConfigItems = widgetStyles|filter(s => s.isFromConfig())|length > 0 %}
-
-{# Filter styles #}
-{% set filteredStyles = widgetStyles|values %}
-
-{# Status filter #}
-{% if statusFilter == 'enabled' %}
-	{% set filteredStyles = filteredStyles|filter(s => s.enabled) %}
-{% elseif statusFilter == 'disabled' %}
-	{% set filteredStyles = filteredStyles|filter(s => not s.enabled) %}
-{% endif %}
-
-{# Source filter #}
-{% if sourceFilter == 'config' %}
-	{% set filteredStyles = filteredStyles|filter(s => s.source == 'config') %}
-{% elseif sourceFilter == 'database' %}
-	{% set filteredStyles = filteredStyles|filter(s => s.source != 'config') %}
-{% endif %}
-
-{# Type filter #}
-{% if typeFilter != 'all' %}
-	{% set filteredStyles = filteredStyles|filter(s => s.type == typeFilter) %}
-{% endif %}
-
-{# Search filter #}
-{% if search %}
-	{% set filteredStyles = filteredStyles|filter(s => search|lower in s.name|lower or search|lower in s.handle|lower) %}
-{% endif %}
-
-{# Sort #}
-{% if sort == 'name' %}
-	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.name|lower <=> b.name|lower) : filteredStyles|sort((a, b) => b.name|lower <=> a.name|lower) %}
-{% elseif sort == 'handle' %}
-	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredStyles|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
-{% elseif sort == 'source' %}
-	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredStyles|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
-{% elseif sort == 'type' %}
-	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.type|lower <=> b.type|lower) : filteredStyles|sort((a, b) => b.type|lower <=> a.type|lower) %}
-{% elseif sort == 'enabled' %}
-	{% set filteredStyles = dir == 'asc' ? filteredStyles|sort((a, b) => a.enabled <=> b.enabled) : filteredStyles|sort((a, b) => b.enabled <=> a.enabled) %}
-{% endif %}
-
-{# Pagination #}
-{% set totalCount = filteredStyles|length %}
-{% set paginatedItems = filteredStyles|slice(offset, limit) %}
+{# Follows the canonical CP table index-page pattern (in-memory variant) —
+   see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+   WidgetsController::actionStylesIndex() owns query-param parsing, allowlist
+   validation, filter, sort, and pagination. This template stays
+   presentational and just renders what's handed in. #}
 
 {% set tableConfig = {
 	plugin: {
@@ -147,7 +87,7 @@
 			{key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
 			{key: 'widgets', label: 'Widgets'|t('search-manager'), hideable: true},
 		],
-		items: paginatedItems,
+		items: widgetStyles,
 		emptyMessage: 'No widget styles found.'|t('search-manager'),
 		hasConfigItems: hasConfigItems,
 	},
@@ -158,11 +98,11 @@
 		itemLabel: {singular: 'style'|t('search-manager'), plural: 'styles'|t('search-manager')},
 	},
 	checkboxes: canDelete,
-	newButton: {
+	newButton: canCreate ?? false ? {
 		url: url('search-manager/widgets/styles/new'),
 		label: 'New Widget Style'|t('search-manager'),
 		permission: 'searchManager:createWidgetStyles',
-	},
+	} : null,
 } %}
 
 {% block beforeTable %}
@@ -264,6 +204,7 @@
 					label: 'Delete'|t('app'),
 					class: 'error',
 					jsAction: 'delete',
+					data: {name: item.name},
 				},
 			]) %}
 		{% endif %}
@@ -276,7 +217,7 @@
 
 	{% if actionItems|length > 0 %}
 		{% include 'lindemannrock-base/_components/row-actions' with {
-			item: item,
+			item: {id: item.id},
 			actions: {
 				type: 'menu',
 				icon: 'settings',
@@ -290,7 +231,7 @@
 {% block bulkActions %}
 	{% if canDelete %}
 		<button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-			{{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+			{{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
 		</button>
 	{% endif %}
 {% endblock %}
@@ -298,82 +239,96 @@
 {% block scripts %}
 <script>
 (function() {
-	// Individual delete action
-	document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
-		btn.addEventListener('click', function(e) {
-			e.preventDefault();
-			const row = this.closest('tr');
-			const id = row?.dataset.id;
-			const name = row?.dataset.name || '';
+	if (typeof Craft === 'undefined') return;
 
-			if (!id) return;
+	const T = {
+		deleted: {{ 'Style deleted'|t('search-manager')|json_encode|raw }},
+		deleteFailed: {{ 'Failed to delete style'|t('search-manager')|json_encode|raw }},
+		deleteConfirm: {{ 'Delete style "{name}"? Widgets using this style will fall back to inline styles.'|t('search-manager')|json_encode|raw }},
+		bulkDeleteConfirmTemplate: {{ 'Delete {count} style(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+		bulkDeletedTemplate: {{ 'Deleted {count} style(s)'|t('search-manager')|json_encode|raw }},
+	};
 
-			if (!confirm(Craft.t('search-manager', 'Delete style "{name}"? Widgets using this style will fall back to inline styles.', {name: name}))) return;
-
-			Craft.sendActionRequest('POST', 'search-manager/widgets/delete-style', {
-				data: { styleId: id }
-			}).then(function(response) {
-				if (response.data.success) {
-					Craft.cp.displayNotice(Craft.t('search-manager', 'Style deleted'));
-					setTimeout(() => window.location.reload(), 500);
-				} else {
-					Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to delete style'));
-				}
-			}).catch(function() {
-				Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete style'));
-			});
+	document.addEventListener('lr:selectionChanged', function(e) {
+		const ids = (e.detail && Array.isArray(e.detail.selectedIds))
+			? e.detail.selectedIds
+			: [];
+		document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
+			el.textContent = ids.length;
 		});
 	});
 
-	// Bulk delete
+	function selectedIds() {
+		return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+	}
+
+	function deleteStyle(id) {
+		return Craft.sendActionRequest('POST', 'search-manager/widgets/delete-style', {
+			data: { styleId: id },
+		});
+	}
+
+	document.addEventListener('click', function(e) {
+		const trigger = e.target.closest('a[data-action]');
+		if (!trigger) return;
+		if (trigger.dataset.action !== 'delete') return;
+
+		const id = parseInt(trigger.dataset.id || '0', 10);
+		if (!id) return;
+		e.preventDefault();
+
+		const name = trigger.dataset.name || '';
+		if (!confirm(T.deleteConfirm.replace('{name}', name))) return;
+
+		deleteStyle(id).then(function(response) {
+			if (response.data.success) {
+				Craft.cp.displayNotice(T.deleted);
+				setTimeout(function() { window.location.reload(); }, 500);
+			} else {
+				Craft.cp.displayError(response.data.error || T.deleteFailed);
+			}
+		}).catch(function() {
+			Craft.cp.displayError(T.deleteFailed);
+		});
+	});
+
 	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
-		const ids = window.lrTableSelection.getSelectedIds();
-		if (ids.length === 0) return;
+		const ids = selectedIds();
+		if (!ids.length) return;
+		if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
 
-		if (!confirm(Craft.t('search-manager', 'Delete {count} style(s)? This cannot be undone.', {count: ids.length}))) return;
-
+		// `delete-style` is a single-row endpoint; for bulk we fan out per id
+		// and aggregate successes/failures client-side. Acceptable today since
+		// the user-controlled selection is bounded by the page-size limit;
+		// promote to a server-side bulk-delete endpoint if that ceiling rises.
 		let deleted = 0;
-		let errors = [];
-		let completed = 0;
-
-		ids.forEach(function(id) {
-			Craft.sendActionRequest('POST', 'search-manager/widgets/delete-style', {
-				data: { styleId: id }
-			}).then(function(response) {
+		const errors = [];
+		const promises = ids.map(function(id) {
+			return deleteStyle(id).then(function(response) {
 				if (response.data.success) {
 					deleted++;
 				} else {
-					errors.push(response.data.error || 'Failed');
+					errors.push(response.data.error || T.deleteFailed);
 				}
 			}).catch(function() {
-				errors.push('Request failed');
-			}).finally(function() {
-				completed++;
-				if (completed === ids.length) {
-					if (deleted > 0) {
-						Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} style(s)', {count: deleted}));
-					}
-					errors.forEach(err => Craft.cp.displayError(err));
-					if (deleted > 0) {
-						setTimeout(() => window.location.reload(), 500);
-					}
-				}
+				errors.push(T.deleteFailed);
 			});
+		});
+
+		Promise.all(promises).then(function() {
+			if (deleted > 0) {
+				Craft.cp.displayNotice(T.bulkDeletedTemplate.replace('{count}', deleted));
+			}
+			errors.forEach(function(err) { Craft.cp.displayError(err); });
+			if (deleted > 0) {
+				setTimeout(function() { window.location.reload(); }, 500);
+			}
 		});
 	});
 
-	// Update selected count
-	document.addEventListener('lr:selectionChanged', function(e) {
-		const countSpan = document.getElementById('lr-selected-count');
-		if (countSpan) {
-			countSpan.textContent = e.detail.count;
-		}
-	});
-
-	// Highlight rows with handle collisions
 	const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};
 	if (collisionHandles.length > 0) {
-		document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
+		document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(function(row) {
 			const handleCell = row.querySelector('td[data-column="handle"] code');
 			if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
 				row.classList.add('lr-row--warning');

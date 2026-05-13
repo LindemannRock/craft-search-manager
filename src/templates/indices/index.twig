@@ -1,73 +1,14 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
-{% set settings = plugin.getSettings() %}
+{# Follows the canonical CP table index-page pattern (in-memory variant) —
+   see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+   IndicesController::actionIndex() owns query-param parsing, allowlist
+   validation, filter, sort, and pagination. This template stays
+   presentational and just renders what's handed in. #}
+
 {% set globalSettings = craft.searchManager.getSettings() %}
 
-{# Get query parameters #}
-{% set search = craft.app.request.getParam('search', '') %}
-{% set statusFilter = craft.app.request.getParam('status', 'all') %}
-{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set backendFilter = craft.app.request.getParam('backend', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'source') %}
-{% set dir = craft.app.request.getParam('dir', 'asc') %}
-{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = 50 %}
-{% set offset = (page - 1) * limit %}
-
-{# Permission checks #}
-{% set canCreate = currentUser.can('searchManager:createIndices') %}
-{% set canEdit = currentUser.can('searchManager:editIndices') %}
-{% set canDelete = currentUser.can('searchManager:deleteIndices') %}
-{% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
-{% set canClear = currentUser.can('searchManager:clearIndices') %}
-{% set canClearCache = currentUser.can('searchManager:clearCache') %}
-
-{# Filter indices based on filters #}
-{% set filteredIndices = indices %}
-
-{# Status filter #}
-{% if statusFilter == 'enabled' %}
-    {% set filteredIndices = filteredIndices|filter(i => i.enabled) %}
-{% elseif statusFilter == 'disabled' %}
-    {% set filteredIndices = filteredIndices|filter(i => not i.enabled) %}
-{% endif %}
-
-{# Source filter #}
-{% if sourceFilter == 'config' %}
-    {% set filteredIndices = filteredIndices|filter(i => i.source == 'config') %}
-{% elseif sourceFilter == 'database' %}
-    {% set filteredIndices = filteredIndices|filter(i => i.source != 'config') %}
-{% endif %}
-
-{# Backend filter #}
-{% if backendFilter != 'all' %}
-    {% set filteredIndices = filteredIndices|filter(i => i.effectiveBackendType == backendFilter) %}
-{% endif %}
-
-{# Search filter #}
-{% if search %}
-    {% set filteredIndices = filteredIndices|filter(i => search|lower in i.name|lower or search|lower in i.handle|lower) %}
-{% endif %}
-
-{# Sort #}
-{% if sort == 'name' %}
-    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.name|lower <=> b.name|lower) : filteredIndices|sort((a, b) => b.name|lower <=> a.name|lower) %}
-{% elseif sort == 'handle' %}
-    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredIndices|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
-{% elseif sort == 'elementType' %}
-    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.elementType <=> b.elementType) : filteredIndices|sort((a, b) => b.elementType <=> a.elementType) %}
-{% elseif sort == 'source' %}
-    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredIndices|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
-{% elseif sort == 'enabled' %}
-    {% set filteredIndices = dir == 'asc' ? filteredIndices|sort((a, b) => a.enabled <=> b.enabled) : filteredIndices|sort((a, b) => b.enabled <=> a.enabled) %}
-{% endif %}
-
-{# Pagination #}
-{% set totalCount = filteredIndices|length %}
-{% set paginatedItems = filteredIndices|slice(offset, limit) %}
-
-{# Build columns array - Analytics column is conditional #}
+{# Build columns array — Analytics column is conditional on the global toggle. #}
 {% set columns = [
     {key: 'name', label: 'Name'|t('search-manager'), sortable: true},
     {key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
@@ -154,7 +95,7 @@
     },
     table: {
         columns: columns,
-        items: paginatedItems,
+        items: indices,
         emptyMessage: 'No indices found.'|t('search-manager'),
         hasConfigItems: true,
     },
@@ -165,11 +106,11 @@
         itemLabel: {singular: 'index'|t('search-manager'), plural: 'indices'|t('search-manager')},
     },
     checkboxes: canEdit or canDelete,
-    newButton: {
+    newButton: canCreate ?? false ? {
         url: url('search-manager/indices/create'),
         label: 'New Index'|t('search-manager'),
         permission: 'searchManager:createIndices',
-    },
+    } : null,
 } %}
 
 {% block beforeTable %}
@@ -196,8 +137,6 @@
 {% endblock %}
 
 {% block tableRow %}
-    {% set isConfig = item.source == 'config' %}
-    {% set hasCollision = collisionHandles is defined and item.handle in collisionHandles %}
     {% set indexBackendType = item.effectiveBackendType %}
     {% set configuredBackend = item.configuredBackend %}
 
@@ -308,7 +247,6 @@
 {% endblock %}
 
 {% block rowActions %}
-    {% set isConfig = item.source == 'config' %}
     {% set indexBackendType = item.effectiveBackendType %}
     {% set itemId = item.id ?: item.handle %}
 
@@ -392,7 +330,7 @@
 
     {% if canDelete %}
         <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-            {{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+            {{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
         </button>
     {% endif %}
 {% endblock %}
@@ -400,165 +338,168 @@
 {% block scripts %}
 <script>
 (function() {
-    // Initialize bulk status menu
+    if (typeof Craft === 'undefined') return;
+
     const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
-    if (bulkStatusBtn && typeof Craft !== 'undefined' && Craft.MenuBtn) {
+    if (bulkStatusBtn && Craft.MenuBtn) {
         new Craft.MenuBtn(bulkStatusBtn);
     }
 
-    // Initialize row action menu buttons
-    document.querySelectorAll('.menubtn').forEach(btn => {
-        if (typeof Craft !== 'undefined' && Craft.MenuBtn) {
-            new Craft.MenuBtn(btn);
+    const T = {
+        rebuildQueued: {{ 'Index rebuild queued.'|t('search-manager')|json_encode|raw }},
+        rebuildFailed: {{ 'Failed to queue index rebuild'|t('search-manager')|json_encode|raw }},
+        cleared: {{ 'Index data cleared.'|t('search-manager')|json_encode|raw }},
+        clearFailed: {{ 'Failed to clear index data'|t('search-manager')|json_encode|raw }},
+        clearConfirm: {{ 'Clear all data from index "{name}"? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        cacheClearConfirm: {{ 'Clear cached search results and autocomplete suggestions for "{name}"?'|t('search-manager')|json_encode|raw }},
+        cacheClearFailedTemplate: {{ 'Failed to clear cache for "{name}"'|t('search-manager')|json_encode|raw }},
+        deleted: {{ 'Index deleted.'|t('search-manager')|json_encode|raw }},
+        deleteFailed: {{ 'Failed to delete index'|t('search-manager')|json_encode|raw }},
+        deleteConfirm: {{ 'Delete index "{name}"? This will remove the index and all its data.'|t('search-manager')|json_encode|raw }},
+        syncFailedTemplate: {{ 'Failed to sync count for "{name}"'|t('search-manager')|json_encode|raw }},
+        bulkEnabledTemplate: {{ 'Enabled {count} indices'|t('search-manager')|json_encode|raw }},
+        bulkEnableFailed: {{ 'Failed to enable indices'|t('search-manager')|json_encode|raw }},
+        bulkDisabledTemplate: {{ 'Disabled {count} indices'|t('search-manager')|json_encode|raw }},
+        bulkDisableFailed: {{ 'Failed to disable indices'|t('search-manager')|json_encode|raw }},
+        bulkDeletedTemplate: {{ 'Deleted {count} indices'|t('search-manager')|json_encode|raw }},
+        bulkDeleteFailed: {{ 'Failed to delete indices'|t('search-manager')|json_encode|raw }},
+        bulkDeleteConfirmTemplate: {{ 'Delete {count} index(es)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+    };
+
+    document.addEventListener('lr:selectionChanged', function(e) {
+        const ids = (e.detail && Array.isArray(e.detail.selectedIds))
+            ? e.detail.selectedIds
+            : [];
+        document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
+            el.textContent = ids.length;
+        });
+    });
+
+    function selectedIds() {
+        return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+    }
+
+    // ---------------------------------------------------------------------
+    // Row-action handler — delegated on document, narrowed by anchor +
+    // action name. preventDefault after match. Replaces the previous
+    // broad-selector (Smell A) implementation. See cp-table-index-pattern.md.
+    // ---------------------------------------------------------------------
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('a[data-action]');
+        if (!trigger) return;
+
+        const action = trigger.dataset.action;
+        if (
+            action !== 'rebuild' &&
+            action !== 'clear' &&
+            action !== 'clear-cache' &&
+            action !== 'delete' &&
+            action !== 'sync-count'
+        ) return;
+
+        const indexId = trigger.dataset.id;
+        const indexName = trigger.dataset.name || '';
+        if (!indexId) return;
+        e.preventDefault();
+
+        if (action === 'rebuild') {
+            Craft.sendActionRequest('POST', 'search-manager/indices/rebuild', {
+                data: { indexId: indexId },
+            }).then(function(response) {
+                Craft.cp.displayNotice(response.data.message || T.rebuildQueued);
+                setTimeout(function() { window.location.reload(); }, 1000);
+            }).catch(function() {
+                Craft.cp.displayError(T.rebuildFailed);
+            });
+        } else if (action === 'clear') {
+            if (!confirm(T.clearConfirm.replace('{name}', indexName))) return;
+            Craft.sendActionRequest('POST', 'search-manager/indices/clear', {
+                data: { indexId: indexId },
+            }).then(function(response) {
+                Craft.cp.displayNotice(response.data.message || T.cleared);
+                setTimeout(function() { window.location.reload(); }, 1000);
+            }).catch(function() {
+                Craft.cp.displayError(T.clearFailed);
+            });
+        } else if (action === 'clear-cache') {
+            if (!confirm(T.cacheClearConfirm.replace('{name}', indexName))) return;
+            Craft.sendActionRequest('POST', 'search-manager/indices/clear-cache', {
+                data: { indexId: indexId },
+            }).then(function(response) {
+                if (response.data.success) {
+                    Craft.cp.displayNotice(response.data.message);
+                } else {
+                    Craft.cp.displayError(response.data.error || T.cacheClearFailedTemplate.replace('{name}', indexName));
+                }
+            }).catch(function() {
+                Craft.cp.displayError(T.cacheClearFailedTemplate.replace('{name}', indexName));
+            });
+        } else if (action === 'delete') {
+            if (!confirm(T.deleteConfirm.replace('{name}', indexName))) return;
+            Craft.sendActionRequest('POST', 'search-manager/indices/delete', {
+                data: { indexId: indexId },
+            }).then(function(response) {
+                if (response.data && response.data.success === false) {
+                    Craft.cp.displayError(response.data.error || T.deleteFailed);
+                    return;
+                }
+                Craft.cp.displayNotice((response.data && response.data.message) || T.deleted);
+                setTimeout(function() { window.location.reload(); }, 1000);
+            }).catch(function() {
+                Craft.cp.displayError(T.deleteFailed);
+            });
+        } else if (action === 'sync-count') {
+            Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
+                data: { indexId: indexId },
+            }).then(function(response) {
+                if (response.data.success) {
+                    Craft.cp.displayNotice(response.data.message);
+                    setTimeout(function() { window.location.reload(); }, 1000);
+                } else {
+                    Craft.cp.displayError(response.data.error || T.syncFailedTemplate.replace('{name}', indexName));
+                }
+            }).catch(function() {
+                Craft.cp.displayError(T.syncFailedTemplate.replace('{name}', indexName));
+            });
         }
     });
 
-    // Bulk enable
+    function runBulk(endpoint, successTemplate, errorFallback) {
+        const ids = selectedIds();
+        if (!ids.length) return;
+        Craft.sendActionRequest('POST', endpoint, {
+            data: { indexIds: ids },
+        }).then(function(response) {
+            const count = response.data.count || 0;
+            if (count > 0) {
+                Craft.cp.displayNotice(successTemplate.replace('{count}', count));
+                setTimeout(function() { window.location.reload(); }, 1000);
+            }
+        }).catch(function() {
+            Craft.cp.displayError(errorFallback);
+        });
+    }
+
     document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-enable', {
-            data: { indexIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Enabled {count} indices', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to enable indices'));
-        });
+        runBulk('search-manager/indices/bulk-enable', T.bulkEnabledTemplate, T.bulkEnableFailed);
     });
 
-    // Bulk disable
     document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
         e.preventDefault();
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-disable', {
-            data: { indexIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Disabled {count} indices', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to disable indices'));
-        });
+        runBulk('search-manager/indices/bulk-disable', T.bulkDisabledTemplate, T.bulkDisableFailed);
     });
 
-    // Bulk delete
     document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
-        const ids = window.lrTableSelection.getSelectedIds();
-        if (ids.length === 0) return;
-
-        if (!confirm(Craft.t('search-manager', 'Delete {count} index(es)? This cannot be undone.', {count: ids.length}))) return;
-
-        Craft.sendActionRequest('POST', 'search-manager/indices/bulk-delete', {
-            data: { indexIds: ids }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} indices', {count: response.data.count}));
-                setTimeout(() => window.location.reload(), 1000);
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete indices'));
-        });
+        const ids = selectedIds();
+        if (!ids.length) return;
+        if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
+        runBulk('search-manager/indices/bulk-delete', T.bulkDeletedTemplate, T.bulkDeleteFailed);
     });
 
-    // Individual index action menu clicks
-    document.querySelectorAll('[data-action]').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const action = this.dataset.action;
-            const indexId = this.dataset.id;
-            const indexName = this.dataset.name;
-
-            if (action === 'rebuild') {
-                submitIndexAction('search-manager/indices/rebuild', indexId);
-            } else if (action === 'clear') {
-                if (confirm(Craft.t('search-manager', 'Clear all data from index "{name}"? This cannot be undone.', {name: indexName}))) {
-                    submitIndexAction('search-manager/indices/clear', indexId);
-                }
-            } else if (action === 'clear-cache') {
-                if (confirm(Craft.t('search-manager', 'Clear cached search results and autocomplete suggestions for "{name}"?', {name: indexName}))) {
-                    submitIndexCacheAction('search-manager/indices/clear-cache', indexId, indexName);
-                }
-            } else if (action === 'delete') {
-                if (confirm(Craft.t('search-manager', 'Delete index "{name}"? This will remove the index and all its data.', {name: indexName}))) {
-                    submitIndexAction('search-manager/indices/delete', indexId);
-                }
-            } else if (action === 'sync-count') {
-                syncCountFromBackend(indexId, indexName);
-            }
-        });
-    });
-
-    function submitIndexAction(action, indexId) {
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = Craft.getActionUrl(action);
-
-        const csrfInput = document.createElement('input');
-        csrfInput.type = 'hidden';
-        csrfInput.name = '{{ craft.app.config.general.csrfTokenName }}';
-        csrfInput.value = '{{ craft.app.request.csrfToken }}';
-        form.appendChild(csrfInput);
-
-        const indexIdInput = document.createElement('input');
-        indexIdInput.type = 'hidden';
-        indexIdInput.name = 'indexId';
-        indexIdInput.value = indexId;
-        form.appendChild(indexIdInput);
-
-        document.body.appendChild(form);
-        form.submit();
-    }
-
-    function submitIndexCacheAction(action, indexId, indexName) {
-        Craft.sendActionRequest('POST', action, {
-            data: { indexId: indexId }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(response.data.message || Craft.t('search-manager', 'Cache cleared for "{name}"', {name: indexName}));
-            } else {
-                Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to clear cache'));
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to clear cache for "{name}"', {name: indexName}));
-        });
-    }
-
-    function syncCountFromBackend(indexId, indexName) {
-        Craft.sendActionRequest('POST', 'search-manager/indices/sync-count', {
-            data: { indexId: indexId }
-        }).then(function(response) {
-            if (response.data.success) {
-                Craft.cp.displayNotice(response.data.message || Craft.t('search-manager', 'Count synced for "{name}"', {name: indexName}));
-                setTimeout(() => window.location.reload(), 1000);
-            } else {
-                Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to sync count'));
-            }
-        }).catch(function(error) {
-            Craft.cp.displayError(Craft.t('search-manager', 'Failed to sync count for "{name}"', {name: indexName}));
-        });
-    }
-
-    // Update selected count
-    document.addEventListener('lr:selectionChanged', function(e) {
-        const countSpan = document.getElementById('lr-selected-count');
-        if (countSpan) {
-            countSpan.textContent = e.detail.count;
-        }
-    });
-
-    // Highlight rows with handle collisions
     const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};
     if (collisionHandles.length > 0) {
-        document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
+        document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(function(row) {
             const handleCell = row.querySelector('td[data-column="handle"] code');
             if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
                 row.classList.add('lr-row--warning');

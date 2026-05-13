@@ -1,72 +1,10 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
-{% set plugin = craft.app.plugins.getPlugin('search-manager') %}
-{% set settings = plugin.getSettings() %}
-
-{# Get query parameters #}
-{% set search = craft.app.request.getParam('search', '') %}
-{% set statusFilter = craft.app.request.getParam('status', 'all') %}
-{% set sourceFilter = craft.app.request.getParam('source', 'all') %}
-{% set typeFilter = craft.app.request.getParam('type', 'all') %}
-{% set sort = craft.app.request.getParam('sort', 'source') %}
-{% set dir = craft.app.request.getParam('dir', 'asc') %}
-{% set page = craft.app.request.getParam('page', 1)|number_format(0, '', '') %}
-{% set limit = settings.itemsPerPage %}
-{% set offset = (page - 1) * limit %}
-
-{# Permission checks #}
-{% set canCreate = currentUser.can('searchManager:createWidgetConfigs') %}
-{% set canEdit = currentUser.can('searchManager:editWidgetConfigs') %}
-{% set canDelete = currentUser.can('searchManager:deleteWidgetConfigs') %}
-
-{# Check if there are any config-based widgets #}
-{% set hasConfigItems = widgetConfigs|filter(c => c.isFromConfig())|length > 0 %}
-
-{# Filter widget configs based on filters #}
-{% set filteredConfigs = widgetConfigs %}
-
-{# Status filter #}
-{% if statusFilter == 'enabled' %}
-	{% set filteredConfigs = filteredConfigs|filter(c => c.enabled) %}
-{% elseif statusFilter == 'disabled' %}
-	{% set filteredConfigs = filteredConfigs|filter(c => not c.enabled) %}
-{% endif %}
-
-{# Source filter #}
-{% if sourceFilter == 'config' %}
-	{% set filteredConfigs = filteredConfigs|filter(c => c.source == 'config') %}
-{% elseif sourceFilter == 'database' %}
-	{% set filteredConfigs = filteredConfigs|filter(c => c.source != 'config') %}
-{% endif %}
-
-{# Type filter #}
-{% if typeFilter != 'all' %}
-	{% set filteredConfigs = filteredConfigs|filter(c => c.type == typeFilter) %}
-{% endif %}
-
-{# Search filter #}
-{% if search %}
-	{% set filteredConfigs = filteredConfigs|filter(c => search|lower in c.name|lower or search|lower in c.handle|lower) %}
-{% endif %}
-
-{# Sort #}
-{% if sort == 'name' %}
-	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.name|lower <=> b.name|lower) : filteredConfigs|sort((a, b) => b.name|lower <=> a.name|lower) %}
-{% elseif sort == 'handle' %}
-	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.handle|lower <=> b.handle|lower) : filteredConfigs|sort((a, b) => b.handle|lower <=> a.handle|lower) %}
-{% elseif sort == 'source' %}
-	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => (a.source ?? '') <=> (b.source ?? '')) : filteredConfigs|sort((a, b) => (b.source ?? '') <=> (a.source ?? '')) %}
-{% elseif sort == 'type' %}
-	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.type|lower <=> b.type|lower) : filteredConfigs|sort((a, b) => b.type|lower <=> a.type|lower) %}
-{% elseif sort == 'enabled' %}
-	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => a.enabled <=> b.enabled) : filteredConfigs|sort((a, b) => b.enabled <=> a.enabled) %}
-{% elseif sort == 'isDefault' %}
-	{% set filteredConfigs = dir == 'asc' ? filteredConfigs|sort((a, b) => (defaultWidgetHandle == a.handle) <=> (defaultWidgetHandle == b.handle)) : filteredConfigs|sort((a, b) => (defaultWidgetHandle == b.handle) <=> (defaultWidgetHandle == a.handle)) %}
-{% endif %}
-
-{# Pagination #}
-{% set totalCount = filteredConfigs|length %}
-{% set paginatedItems = filteredConfigs|slice(offset, limit) %}
+{# Follows the canonical CP table index-page pattern (in-memory variant) —
+   see plugins/base/docs/template-guides/cp-table-index-pattern.md.
+   WidgetsController::actionIndex() owns query-param parsing, allowlist
+   validation, filter, sort, and pagination. This template stays
+   presentational and just renders what's handed in. #}
 
 {% set tableConfig = {
 	plugin: {
@@ -149,7 +87,7 @@
 			{key: 'enabled', label: 'Status'|t('search-manager'), sortable: true, hideable: true},
 			{key: 'isDefault', label: 'Default'|t('search-manager'), sortable: true, hideable: true},
 		],
-		items: paginatedItems,
+		items: widgetConfigs,
 		emptyMessage: 'No widget configurations found.'|t('search-manager'),
 		hasConfigItems: hasConfigItems,
 	},
@@ -160,18 +98,17 @@
 		itemLabel: {singular: 'config'|t('search-manager'), plural: 'configs'|t('search-manager')},
 	},
 	checkboxes: canEdit or canDelete,
-	newButton: {
+	newButton: canCreate ?? false ? {
 		url: url('search-manager/widgets/new'),
 		label: 'New Widget Config'|t('search-manager'),
 		permission: 'searchManager:createWidgetConfigs',
-	},
+	} : null,
 } %}
 
 {% block beforeTable %}
-
-	{# Warning if default widget is missing or disabled #}
+	{# Warning if default widget is missing or disabled. The controller
+	   resolves `defaultWidget` against the unfiltered list. #}
 	{% if defaultWidgetHandle %}
-		{% set defaultWidget = widgetConfigs|filter(w => w.handle == defaultWidgetHandle)|first %}
 		{% if not defaultWidget %}
 			{# Default widget doesn't exist #}
 			{% set warningMessage %}
@@ -211,7 +148,7 @@
 				} %}
 			</div>
 		{% endif %}
-	{% elseif widgetConfigs|length > 0 %}
+	{% elseif hasAnyWidgets %}
 		{# No default handle set but widgets exist #}
 		{% set warningMessage %}
 		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
@@ -226,27 +163,28 @@
 			} %}
 		</div>
 	{% endif %}
-    {# Warning for handle collisions between config and database #}
-    {% if collisionHandles is defined and collisionHandles|length %}
-        {% set boldHandles = [] %}
-        {% for handle in collisionHandles %}
-            {% set boldHandles = boldHandles|merge(['<strong>' ~ handle|e ~ '</strong>']) %}
-        {% endfor %}
-        {% set warningMessage %}
-        <strong>{{ 'Warning'|t('search-manager') }}:</strong>
-        {{ 'These widget handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
-        {{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
-        {{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
-        {% endset %}
-        <div class="lr-info-box-table-wrapper">
-            {% include 'lindemannrock-base/_components/info-box' with {
-                message: warningMessage,
-                type: 'warning',
-                margin: 'none',
-                stretch: true,
-            } %}
-        </div>
-    {% endif %}
+
+	{# Warning for handle collisions between config and database #}
+	{% if collisionHandles is defined and collisionHandles|length %}
+		{% set boldHandles = [] %}
+		{% for handle in collisionHandles %}
+			{% set boldHandles = boldHandles|merge(['<strong>' ~ handle|e ~ '</strong>']) %}
+		{% endfor %}
+		{% set warningMessage %}
+		<strong>{{ 'Warning'|t('search-manager') }}:</strong>
+		{{ 'These widget handles exist in both config/search-manager.php and the database:'|t('search-manager') }} {{ boldHandles|join(', ')|raw }}.
+		{{ 'Config takes precedence; database entries with the same handle are ignored.'|t('search-manager') }}
+		{{ 'Update your config/search-manager.php or remove the database entries to resolve this.'|t('search-manager') }}
+		{% endset %}
+		<div class="lr-info-box-table-wrapper">
+			{% include 'lindemannrock-base/_components/info-box' with {
+				message: warningMessage,
+				type: 'warning',
+				margin: 'none',
+				stretch: true,
+			} %}
+		</div>
+	{% endif %}
 {% endblock %}
 
 {% block tableRow %}
@@ -315,13 +253,10 @@
 {% endblock %}
 
 {% block rowActions %}
-	{% set isConfig = item.isFromConfig() %}
 	{% set isDefault = defaultWidgetHandle == item.handle %}
-
 	{% set actionItems = [] %}
 
 	{% if item.canEdit() %}
-		{# Database widgets - can edit #}
 		{% if canEdit %}
 			{% set actionItems = actionItems|merge([{
 				label: 'Edit'|t('app'),
@@ -331,6 +266,7 @@
 				{% set actionItems = actionItems|merge([{
 					label: 'Set as Default'|t('search-manager'),
 					jsAction: 'set-default',
+					data: {name: item.name},
 				}]) %}
 			{% endif %}
 		{% endif %}
@@ -341,11 +277,11 @@
 					label: 'Delete'|t('app'),
 					class: 'error',
 					jsAction: 'delete',
+					data: {name: item.name},
 				},
 			]) %}
 		{% endif %}
 	{% else %}
-		{# Config file widgets - View only #}
 		{% set actionItems = actionItems|merge([{
 			label: 'View'|t('app'),
 			url: url('search-manager/widgets/view/' ~ item.handle),
@@ -354,13 +290,14 @@
 			{% set actionItems = actionItems|merge([{
 				label: 'Set as Default'|t('search-manager'),
 				jsAction: 'set-default',
+				data: {name: item.name},
 			}]) %}
 		{% endif %}
 	{% endif %}
 
 	{% if actionItems|length > 0 %}
 		{% include 'lindemannrock-base/_components/row-actions' with {
-			item: item,
+			item: {id: item.id},
 			actions: {
 				type: 'menu',
 				icon: 'settings',
@@ -386,7 +323,7 @@
 
 	{% if canDelete %}
 		<button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-			{{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
+			{{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
 		</button>
 	{% endif %}
 {% endblock %}
@@ -394,143 +331,128 @@
 {% block scripts %}
 <script>
 (function() {
-	// Initialize bulk status menu
+	if (typeof Craft === 'undefined') return;
+
 	const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
-	if (bulkStatusBtn && typeof Craft !== 'undefined' && Craft.MenuBtn) {
+	if (bulkStatusBtn && Craft.MenuBtn) {
 		new Craft.MenuBtn(bulkStatusBtn);
 	}
 
-	// Bulk enable
-	document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = window.lrTableSelection.getSelectedIds();
-		if (ids.length === 0) return;
+	const T = {
+		deleted: {{ 'Widget config deleted'|t('search-manager')|json_encode|raw }},
+		deleteFailed: {{ 'Failed to delete config'|t('search-manager')|json_encode|raw }},
+		deleteConfirm: {{ 'Delete widget config "{name}"? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+		defaultUpdated: {{ 'Default config updated'|t('search-manager')|json_encode|raw }},
+		defaultUpdateFailed: {{ 'Failed to update default config'|t('search-manager')|json_encode|raw }},
+		bulkEnabledTemplate: {{ 'Enabled {count} configs'|t('search-manager')|json_encode|raw }},
+		bulkEnableFailed: {{ 'Failed to enable configs'|t('search-manager')|json_encode|raw }},
+		bulkDisabledTemplate: {{ 'Disabled {count} configs'|t('search-manager')|json_encode|raw }},
+		bulkDisableFailed: {{ 'Failed to disable configs'|t('search-manager')|json_encode|raw }},
+		bulkDeletedTemplate: {{ 'Deleted {count} config(s)'|t('search-manager')|json_encode|raw }},
+		bulkDeleteFailed: {{ 'Failed to delete configs'|t('search-manager')|json_encode|raw }},
+		bulkDeleteConfirmTemplate: {{ 'Delete {count} config(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+	};
 
-		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-enable', {
-			data: { configIds: ids }
-		}).then(function(response) {
-			if (response.data.success) {
-				Craft.cp.displayNotice(Craft.t('search-manager', 'Enabled {count} configs', {count: response.data.count}));
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError(Craft.t('search-manager', 'Failed to enable configs'));
-		});
-	});
-
-	// Bulk disable
-	document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
-		e.preventDefault();
-		const ids = window.lrTableSelection.getSelectedIds();
-		if (ids.length === 0) return;
-
-		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-disable', {
-			data: { configIds: ids }
-		}).then(function(response) {
-			if (response.data.count > 0) {
-				Craft.cp.displayNotice(Craft.t('search-manager', 'Disabled {count} configs', {count: response.data.count}));
-			}
-			if (response.data.errors && response.data.errors.length > 0) {
-				response.data.errors.forEach(err => Craft.cp.displayError(err));
-			} else if (response.data.error) {
-				Craft.cp.displayError(response.data.error);
-			}
-			if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError(Craft.t('search-manager', 'Failed to disable configs'));
-		});
-	});
-
-	// Bulk delete
-	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
-		const ids = window.lrTableSelection.getSelectedIds();
-		if (ids.length === 0) return;
-
-		if (!confirm(Craft.t('search-manager', 'Delete {count} config(s)? This cannot be undone.', {count: ids.length}))) return;
-
-		Craft.sendActionRequest('POST', 'search-manager/widgets/bulk-delete', {
-			data: { configIds: ids }
-		}).then(function(response) {
-			if (response.data.count > 0) {
-				Craft.cp.displayNotice(Craft.t('search-manager', 'Deleted {count} config(s)', {count: response.data.count}));
-			}
-			if (response.data.errors && response.data.errors.length > 0) {
-				response.data.errors.forEach(err => Craft.cp.displayError(err));
-			} else if (response.data.error) {
-				Craft.cp.displayError(response.data.error);
-			}
-			if (response.data.count > 0 && (!response.data.errors || response.data.errors.length === 0)) {
-				setTimeout(() => window.location.reload(), 1000);
-			}
-		}).catch(function(error) {
-			Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete configs'));
-		});
-	});
-
-	// Individual delete action
-	document.querySelectorAll('[data-action="delete"]').forEach(function(btn) {
-		btn.addEventListener('click', function(e) {
-			e.preventDefault();
-			const row = this.closest('tr');
-			const id = row?.dataset.id;
-			const name = row?.dataset.name || '';
-
-			if (!id) return;
-
-			if (!confirm(Craft.t('search-manager', 'Delete widget config "{name}"? This cannot be undone.', {name: name}))) return;
-
-			Craft.sendActionRequest('POST', 'search-manager/widgets/delete', {
-				data: { configId: id }
-			}).then(function(response) {
-				if (response.data.success) {
-					Craft.cp.displayNotice(Craft.t('search-manager', 'Widget config deleted'));
-					setTimeout(() => window.location.reload(), 1000);
-				} else {
-					Craft.cp.displayError(response.data.error || Craft.t('search-manager', 'Failed to delete config'));
-				}
-			}).catch(function(error) {
-				Craft.cp.displayError(Craft.t('search-manager', 'Failed to delete config'));
-			});
-		});
-	});
-
-	// Set as default action
-	document.querySelectorAll('[data-action="set-default"]').forEach(function(btn) {
-		btn.addEventListener('click', function(e) {
-			e.preventDefault();
-			const row = this.closest('tr');
-			const id = row?.dataset.id;
-
-			if (!id) return;
-
-			Craft.sendActionRequest('POST', 'search-manager/widgets/set-default', {
-				data: { configId: id }
-			}).then(function(response) {
-				if (response.data.success) {
-					Craft.cp.displayNotice(Craft.t('search-manager', 'Default config updated'));
-					setTimeout(() => window.location.reload(), 1000);
-				}
-			}).catch(function(error) {
-				Craft.cp.displayError(Craft.t('search-manager', 'Failed to update default config'));
-			});
-		});
-	});
-
-	// Update selected count
 	document.addEventListener('lr:selectionChanged', function(e) {
-		const countSpan = document.getElementById('lr-selected-count');
-		if (countSpan) {
-			countSpan.textContent = e.detail.count;
+		const ids = (e.detail && Array.isArray(e.detail.selectedIds))
+			? e.detail.selectedIds
+			: [];
+		document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
+			el.textContent = ids.length;
+		});
+	});
+
+	function selectedIds() {
+		return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
+	}
+
+	// Row-action handler — delegated, anchor-scoped, action-name-allowlisted.
+	document.addEventListener('click', function(e) {
+		const trigger = e.target.closest('a[data-action]');
+		if (!trigger) return;
+
+		const action = trigger.dataset.action;
+		if (action !== 'delete' && action !== 'set-default') return;
+
+		const id = parseInt(trigger.dataset.id || '0', 10);
+		const name = trigger.dataset.name || '';
+		if (!id) return;
+		e.preventDefault();
+
+		if (action === 'delete') {
+			if (!confirm(T.deleteConfirm.replace('{name}', name))) return;
+			Craft.sendActionRequest('POST', 'search-manager/widgets/delete', {
+				data: { configId: id },
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(T.deleted);
+					setTimeout(function() { window.location.reload(); }, 1000);
+				} else {
+					Craft.cp.displayError(response.data.error || T.deleteFailed);
+				}
+			}).catch(function() {
+				Craft.cp.displayError(T.deleteFailed);
+			});
+		} else if (action === 'set-default') {
+			Craft.sendActionRequest('POST', 'search-manager/widgets/set-default', {
+				data: { configId: id },
+			}).then(function(response) {
+				if (response.data.success) {
+					Craft.cp.displayNotice(T.defaultUpdated);
+					setTimeout(function() { window.location.reload(); }, 1000);
+				} else {
+					Craft.cp.displayError(response.data.error || T.defaultUpdateFailed);
+				}
+			}).catch(function() {
+				Craft.cp.displayError(T.defaultUpdateFailed);
+			});
 		}
 	});
 
-	// Highlight rows with handle collisions
+	function runBulk(endpoint, successTemplate, errorFallback) {
+		const ids = selectedIds();
+		if (!ids.length) return;
+		Craft.sendActionRequest('POST', endpoint, {
+			data: { configIds: ids },
+		}).then(function(response) {
+			const count = response.data.count || 0;
+			if (count > 0) {
+				Craft.cp.displayNotice(successTemplate.replace('{count}', count));
+			}
+			if (Array.isArray(response.data.errors)) {
+				response.data.errors.forEach(function(err) { Craft.cp.displayError(err); });
+			} else if (response.data.error) {
+				Craft.cp.displayError(response.data.error);
+			}
+			if (count > 0) {
+				setTimeout(function() { window.location.reload(); }, 1000);
+			}
+		}).catch(function() {
+			Craft.cp.displayError(errorFallback);
+		});
+	}
+
+	document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
+		e.preventDefault();
+		runBulk('search-manager/widgets/bulk-enable', T.bulkEnabledTemplate, T.bulkEnableFailed);
+	});
+
+	document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
+		e.preventDefault();
+		runBulk('search-manager/widgets/bulk-disable', T.bulkDisabledTemplate, T.bulkDisableFailed);
+	});
+
+	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
+		const ids = selectedIds();
+		if (!ids.length) return;
+		if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
+		runBulk('search-manager/widgets/bulk-delete', T.bulkDeletedTemplate, T.bulkDeleteFailed);
+	});
+
 	const collisionHandles = {{ collisionHandles is defined ? collisionHandles|json_encode|raw : '[]' }};
 	if (collisionHandles.length > 0) {
-		document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(row => {
-			const handleCell = row.querySelector('td[data-column=\"handle\"] code');
+		document.querySelectorAll('#lr-data-table tbody tr.lr-data-row').forEach(function(row) {
+			const handleCell = row.querySelector('td[data-column="handle"] code');
 			if (handleCell && collisionHandles.includes(handleCell.textContent.trim())) {
 				row.classList.add('lr-row--warning');
 			}
