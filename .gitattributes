@@ -1,29 +1,31 @@
 # Exclude dev/build files from Packagist distribution
-ecs.php                                             export-ignore
-phpstan.neon                                        export-ignore
+ecs.php export-ignore
+phpstan.neon export-ignore
+phpunit.xml.dist export-ignore
+tests/ export-ignore
 
 # Widget: only dist/ is needed — exclude source, tests, and build tooling
-src/web/assets/searchwidget/node_modules/           export-ignore
-src/web/assets/searchwidget/src/                    export-ignore
-src/web/assets/searchwidget/tests/                  export-ignore
-src/web/assets/searchwidget/playwright-report/      export-ignore
-src/web/assets/searchwidget/test-results/           export-ignore
-src/web/assets/searchwidget/build.js                export-ignore
-src/web/assets/searchwidget/package.json            export-ignore
-src/web/assets/searchwidget/package-lock.json       export-ignore
-src/web/assets/searchwidget/test-modal.html         export-ignore
-src/web/assets/searchwidget/test.js                 export-ignore
+src/web/assets/searchwidget/node_modules/ export-ignore
+src/web/assets/searchwidget/src/ export-ignore
+src/web/assets/searchwidget/tests/ export-ignore
+src/web/assets/searchwidget/playwright-report/ export-ignore
+src/web/assets/searchwidget/test-results/ export-ignore
+src/web/assets/searchwidget/build.js export-ignore
+src/web/assets/searchwidget/package.json export-ignore
+src/web/assets/searchwidget/package-lock.json export-ignore
+src/web/assets/searchwidget/test-modal.html export-ignore
+src/web/assets/searchwidget/test.js export-ignore
 
 # Shared asset tooling: analytics/widgetpreview build package
-src/web/assets/node_modules/                        export-ignore
-src/web/assets/package.json                         export-ignore
-src/web/assets/package-lock.json                    export-ignore
+src/web/assets/node_modules/ export-ignore
+src/web/assets/package.json export-ignore
+src/web/assets/package-lock.json export-ignore
 
 # Analytics: only dist/ is needed
-src/web/assets/analytics/src/                       export-ignore
+src/web/assets/analytics/src/ export-ignore
 
 # Widget preview: only dist/ is needed
-src/web/assets/widgetpreview/src/                   export-ignore
+src/web/assets/widgetpreview/src/ export-ignore
 
 # Docs are available on the website
-docs/                                               export-ignore
+docs/ export-ignore
