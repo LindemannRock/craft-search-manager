@@ -7,7 +7,7 @@
  * console application. Tests run against the live DDEV database — there is no
  * transactional rollback. Cleanup is by marker (see `tests/TestCase.php`).
  *
- * @since 5.45.0
+ * @since 5.46.0
  */
 
 declare(strict_types=1);
