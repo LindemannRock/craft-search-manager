@@ -4,6 +4,12 @@ namespace lindemannrock\searchmanager\models;
 
 use Craft;
 use craft\base\Model;
+use lindemannrock\base\traits\DateFormatSettingsTrait;
+use lindemannrock\base\traits\DateRangeSettingsTrait;
+use lindemannrock\base\traits\ExportFormatSettingsTrait;
+use lindemannrock\base\traits\ItemsPerPageSettingsTrait;
+use lindemannrock\base\traits\LogLevelSettingsTrait;
+use lindemannrock\base\traits\PluginNameSettingsTrait;
 use lindemannrock\base\traits\SettingsConfigTrait;
 use lindemannrock\base\traits\SettingsDisplayNameTrait;
 use lindemannrock\base\traits\SettingsPersistenceTrait;
@@ -23,7 +29,13 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class Settings extends Model
 {
+    use DateFormatSettingsTrait;
+    use DateRangeSettingsTrait;
+    use ExportFormatSettingsTrait;
+    use ItemsPerPageSettingsTrait;
+    use LogLevelSettingsTrait;
     use LoggingTrait;
+    use PluginNameSettingsTrait;
     use SettingsConfigTrait;
     use SettingsDisplayNameTrait;
     use SettingsPersistenceTrait;
@@ -36,16 +48,6 @@ class Settings extends Model
      * @var string Plugin name displayed in the control panel
      */
     public string $pluginName = 'Search Manager';
-
-    /**
-     * @var string Log level for plugin operations
-     */
-    public string $logLevel = 'error';
-
-    /**
-     * @var int Number of items per page in CP listings
-     */
-    public int $itemsPerPage = 100;
 
     /**
      * @var bool Automatically index elements when saved
@@ -387,6 +389,10 @@ class Settings extends Model
             'autocompleteFuzzy',
             'enableAutocompleteCache',
             'enableCacheWarming',
+            'showSeconds',
+            'exportsCsv',
+            'exportsJson',
+            'exportsExcel',
         ];
     }
 
@@ -443,9 +449,7 @@ class Settings extends Model
     /** @inheritdoc */
     public function rules(): array
     {
-        return [
-            [['pluginName', 'logLevel'], 'required'],
-            [['pluginName'], 'string', 'max' => 255],
+        return array_merge([
             [['indexPrefix'], 'string', 'max' => 50],
             [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
@@ -453,14 +457,13 @@ class Settings extends Model
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
             [['geoProvider'], 'in', 'range' => ['ip-api.com', 'ipapi.co', 'ipinfo.io']],
             [['geoApiKey'], 'string', 'max' => 255, 'skipOnEmpty' => true],
-            [['itemsPerPage', 'batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
+            [['batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
             [['lastIndexedDebounceSeconds'], 'integer', 'min' => 0, 'max' => 3600],
             [['syncBatchSize'], 'integer', 'min' => 1, 'max' => 1000],
             [['batchFlushInterval'], 'integer', 'min' => 0, 'max' => 300],
             [['pendingMaxAge'], 'integer', 'min' => 60, 'max' => 604800],
             [['batchMaxAttempts'], 'integer', 'min' => 1, 'max' => 20],
             [['analyticsRetention'], 'integer', 'min' => 0, 'max' => 3650],
-            [['itemsPerPage'], 'integer', 'max' => 500],
             [['batchSize'], 'integer', 'max' => 1000],
             [['maxFuzzyCandidates'], 'integer', 'min' => 10, 'max' => 1000],
             [['snippetLength'], 'integer', 'min' => 50, 'max' => 1000],
@@ -477,12 +480,24 @@ class Settings extends Model
             [['titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor'], 'number', 'min' => 1.0, 'max' => 20.0],
             [['ngramSizes', 'highlightTag'], 'string'],
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
-            [['logLevel'], 'in', 'range' => ['debug', 'info', 'warning', 'error']],
             [['defaultBackendHandle', 'defaultWidgetHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
             [['defaultBackendHandle'], 'validateDefaultBackendHandle'],
             [['defaultWidgetHandle'], 'validateDefaultWidgetHandle'],
             [['ngramSizes'], 'validateNgramSizes'],
-        ];
+        ], $this->pluginNameSettingsRules(), $this->logLevelSettingsRules(), $this->dateFormatSettingsRules(), $this->dateRangeSettingsRules(), $this->exportFormatSettingsRules(), $this->itemsPerPageSettingsRules());
+    }
+
+    /** @inheritdoc */
+    public function attributeLabels(): array
+    {
+        return array_merge(
+            $this->pluginNameSettingsLabel(),
+            $this->logLevelSettingsLabel(),
+            $this->dateFormatSettingsLabels(),
+            $this->dateRangeSettingsLabel(),
+            $this->exportFormatSettingsLabels(),
+            $this->itemsPerPageSettingsLabel(),
+        );
     }
 
     /**
