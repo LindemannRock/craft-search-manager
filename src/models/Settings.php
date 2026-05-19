@@ -7,6 +7,7 @@ use craft\base\Model;
 use lindemannrock\base\traits\DateFormatSettingsTrait;
 use lindemannrock\base\traits\DateRangeSettingsTrait;
 use lindemannrock\base\traits\ExportFormatSettingsTrait;
+use lindemannrock\base\traits\GeoSettingsTrait;
 use lindemannrock\base\traits\ItemsPerPageSettingsTrait;
 use lindemannrock\base\traits\LogLevelSettingsTrait;
 use lindemannrock\base\traits\PluginNameSettingsTrait;
@@ -32,6 +33,7 @@ class Settings extends Model
     use DateFormatSettingsTrait;
     use DateRangeSettingsTrait;
     use ExportFormatSettingsTrait;
+    use GeoSettingsTrait;
     use ItemsPerPageSettingsTrait;
     use LogLevelSettingsTrait;
     use LoggingTrait;
@@ -455,8 +457,6 @@ class Settings extends Model
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
-            [['geoProvider'], 'in', 'range' => ['ip-api.com', 'ipapi.co', 'ipinfo.io']],
-            [['geoApiKey'], 'string', 'max' => 255, 'skipOnEmpty' => true],
             [['batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
             [['lastIndexedDebounceSeconds'], 'integer', 'min' => 0, 'max' => 3600],
             [['syncBatchSize'], 'integer', 'min' => 1, 'max' => 1000],
@@ -484,7 +484,7 @@ class Settings extends Model
             [['defaultBackendHandle'], 'validateDefaultBackendHandle'],
             [['defaultWidgetHandle'], 'validateDefaultWidgetHandle'],
             [['ngramSizes'], 'validateNgramSizes'],
-        ], $this->pluginNameSettingsRules(), $this->logLevelSettingsRules(), $this->dateFormatSettingsRules(), $this->dateRangeSettingsRules(), $this->exportFormatSettingsRules(), $this->itemsPerPageSettingsRules());
+        ], $this->pluginNameSettingsRules(), $this->logLevelSettingsRules(), $this->dateFormatSettingsRules(), $this->dateRangeSettingsRules(), $this->exportFormatSettingsRules(), $this->geoSettingsRules(), $this->itemsPerPageSettingsRules());
     }
 
     /** @inheritdoc */
@@ -496,6 +496,7 @@ class Settings extends Model
             $this->dateFormatSettingsLabels(),
             $this->dateRangeSettingsLabel(),
             $this->exportFormatSettingsLabels(),
+            $this->geoSettingsLabel(),
             $this->itemsPerPageSettingsLabel(),
         );
     }
