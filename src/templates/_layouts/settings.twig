@@ -6,7 +6,7 @@
 {% set selectedSubnavItem = 'settings' %}
 
 {% set ipSaltSummary = include('lindemannrock-base/_partials/ip-salt-error', {
-    translationCategory: 'search-manager'
+    pluginHandle: 'search-manager'
 })|trim %}
 {% set validationSummary = '' %}
 {% if settings is defined and settings.hasErrors() %}
