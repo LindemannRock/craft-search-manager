@@ -31,18 +31,10 @@
 
 		<h2 class="first">{{ "General Settings"|t('search-manager') }}</h2>
 
-        {{ forms.textField({
-            label: "Plugin Name"|t('search-manager'),
-            instructions: "The name of the plugin as it appears in the Control Panel menu"|t('search-manager'),
-            id: 'pluginName',
-            name: 'settings[pluginName]',
-            value: settings.pluginName,
-            required: true,
-            errors: settings.getErrors('pluginName'),
-            disabled: settings.isOverriddenByConfig('pluginName'),
-            warning: settings.isOverriddenByConfig('pluginName') ?
-                "This is being overridden by the <code>pluginName</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-        }) }}
+        {% include 'lindemannrock-base/_partials/field-plugin-name' with {
+            settings: settings,
+            pluginHandle: 'search-manager',
+        } only %}
 
 		{% if enabledBackends|length == 0 %}
 			{% include 'lindemannrock-base/_components/info-box' with {
@@ -104,30 +96,10 @@
 
 		<h2>{{ "Logging Settings"|t('search-manager') }}</h2>
 
-		{% set logOptions = [
-            {value: 'error', label: 'Error (Critical errors only)'|t('search-manager')},
-            {value: 'warning', label: 'Warning (Errors and warnings)'|t('search-manager')},
-            {value: 'info', label: 'Info (General information)'|t('search-manager')},
-        ] %}
-
-		{% if craft.app.config.general.devMode %}
-			{% set logOptions = logOptions|merge([
-                {value: 'debug', label: 'Debug (Detailed debugging)'|t('search-manager')}
-            ]) %}
-		{% endif %}
-
-        {{ forms.selectField({
-            label: 'Log Level'|t('search-manager'),
-            instructions: 'Choose what types of messages to log. Debug level requires devMode to be enabled.'|t('search-manager'),
-            id: 'logLevel',
-            name: 'settings[logLevel]',
-            value: settings.logLevel,
-            options: logOptions,
-            errors: settings.getErrors('logLevel'),
-            disabled: settings.isOverriddenByConfig('logLevel'),
-            warning: settings.isOverriddenByConfig('logLevel') ?
-                "This is being overridden by the <code>logLevel</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-        }) }}
+		{% include 'lindemannrock-base/_partials/field-log-level' with {
+		    settings: settings,
+		    pluginHandle: 'search-manager',
+		} only %}
 
 	{% include 'lindemannrock-base/_components/plugin-credit' %}
 {% endblock %}
