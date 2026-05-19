@@ -649,6 +649,18 @@ class SettingsController extends Controller
             }
         }
 
+        // Multi-state selects (e.g. "Use global default" = '') need '' → null
+        // so nullable properties hold null, not a coerced false / 0 / ''.
+        foreach ($postedSettings as $key => $value) {
+            if ($value !== '' || !property_exists($settings, $key)) {
+                continue;
+            }
+            $type = (new \ReflectionProperty($settings, $key))->getType();
+            if ($type instanceof \ReflectionNamedType && $type->allowsNull()) {
+                $postedSettings[$key] = null;
+            }
+        }
+
         $settings->setAttributes($postedSettings);
 
         // Skip validation for fields overridden by config.
@@ -697,7 +709,7 @@ class SettingsController extends Controller
             'language' => ['defaultLanguage', 'enableStopWords'],
             'highlighting' => ['enableHighlighting', 'highlightTag', 'highlightClass', 'snippetLength', 'maxSnippets', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit', 'autocompleteFuzzy'],
             'cache' => ['cacheStorageMethod', 'enableCache', 'cacheDuration', 'cachePopularQueriesOnly', 'popularQueryThreshold', 'enableAutocompleteCache', 'autocompleteCacheDuration', 'clearCacheOnSave', 'statusSyncInterval', 'enableCacheWarming', 'cacheWarmingQueryCount', 'cacheDeviceDetection', 'deviceDetectionCacheDuration'],
-            'interface' => ['itemsPerPage'],
+            'interface' => ['itemsPerPage', 'timeFormat', 'monthFormat', 'dateOrder', 'dateSeparator', 'showSeconds', 'defaultDateRange', 'exportsCsv', 'exportsJson', 'exportsExcel'],
             default => [],
         };
     }
