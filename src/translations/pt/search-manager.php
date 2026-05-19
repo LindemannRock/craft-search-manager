@@ -276,7 +276,6 @@ return [
     'Interface Settings' => 'Definições da interface',
     'Default Widget' => 'Widget predefinido',
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'A configuração de widget que será utilizada ao renderizar o widget de pesquisa sem especificar um handle.',
-    'Number of {pluginName} to show per page' => 'Número de {pluginName} a mostrar por página',
 
     // Override warnings
     'This is being overridden by config file.' => 'Isto está a ser substituído pelo ficheiro de configuração.',

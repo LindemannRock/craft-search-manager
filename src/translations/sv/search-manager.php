@@ -276,7 +276,6 @@ return [
     'Interface Settings' => 'Gränssnittsinställningar',
     'Default Widget' => 'Standardwidget',
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'Widgetkonfigurationen som kommer att användas vid rendering av sökwidgeten utan att ange ett handle.',
-    'Number of {pluginName} to show per page' => 'Antal {pluginName} att visa per sida',
 
     // Override warnings
     'This is being overridden by config file.' => 'Detta åsidosätts av konfigurationsfilen.',

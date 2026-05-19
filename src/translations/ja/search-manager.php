@@ -276,7 +276,6 @@ return [
     'Interface Settings' => 'インターフェース設定',
     'Default Widget' => 'デフォルトウィジェット',
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'ハンドルを指定せずに検索ウィジェットをレンダリングする際に使用されるウィジェット設定。',
-    'Number of {pluginName} to show per page' => 'ページあたりに表示する {pluginName} の数',
 
     // Override warnings
     'This is being overridden by config file.' => '設定ファイルによりオーバーライドされています。',

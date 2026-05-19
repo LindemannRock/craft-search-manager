@@ -276,7 +276,6 @@ return [
     'Interface Settings' => 'Interface-instellingen',
     'Default Widget' => 'Standaardwidget',
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'De widgetconfiguratie die wordt gebruikt bij het renderen van de zoekwidget zonder een handle op te geven.',
-    'Number of {pluginName} to show per page' => 'Aantal {pluginName} om per pagina te tonen',
 
     // Override warnings
     'This is being overridden by config file.' => 'Dit wordt overschreven door het configuratiebestand.',
