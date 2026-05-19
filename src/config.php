@@ -51,6 +51,43 @@ return [
         // 'itemsPerPage' => 100,
 
         // ========================================
+        // BASE PLUGIN OVERRIDES
+        // ========================================
+        // These settings override lindemannrock-base defaults for this plugin only.
+        // Global defaults: vendor/lindemannrock/craft-plugin-base/src/config.php
+        // To customize globally: copy to config/lindemannrock-base.php
+
+        /**
+         * Date/time formatting overrides
+         * Override base plugin date/time display settings for this plugin
+         * Defaults: from config/lindemannrock-base.php
+         */
+        // 'timeFormat' => '24',      // '12' (AM/PM) or '24' (military)
+        // 'monthFormat' => 'short',  // 'numeric' (01), 'short' (Jan), 'long' (January)
+        // 'dateOrder' => 'dmy',      // 'dmy', 'mdy', 'ymd'
+        // 'dateSeparator' => '/',    // '/', '-', '.'
+        // 'showSeconds' => false,    // Show seconds in time display
+
+        /**
+         * Default date range for analytics and dashboard pages
+         * Options: 'today', 'yesterday', 'last7days', 'last30days', 'last90days',
+         *          'thisMonth', 'lastMonth', 'thisYear', 'lastYear', 'all'
+         * Default: 'last30days' (from base plugin)
+         */
+        // 'defaultDateRange' => 'last7days',
+
+        /**
+         * Export format overrides
+         * Enable/disable specific export formats for this plugin
+         * Default: csv + excel enabled, json disabled (from base plugin)
+         */
+        // 'exports' => [
+        //     'csv' => true,
+        //     'json' => true,
+        //     'excel' => true,
+        // ],
+
+        // ========================================
         // INDEXING SETTINGS
         // ========================================
 
