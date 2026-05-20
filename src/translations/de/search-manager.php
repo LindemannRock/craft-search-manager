@@ -372,7 +372,7 @@ return [
     'Last used' => 'Zuletzt verwendet',
     'Expired' => 'Abgelaufen',
     'No API keys yet.' => 'Noch keine API-Schlüssel.',
-    'Search API keys…' => 'API-Schlüssel durchsuchen…',
+    'Search API keys...' => 'API-Schlüssel durchsuchen...',
     'New API key' => 'Neuer API-Schlüssel',
     'API key' => 'API-Schlüssel',
     'API keys' => 'API-Schlüssel',
@@ -437,7 +437,7 @@ return [
     'No pending syncs.' => 'Keine ausstehenden Synchronisierungen.',
     'pending sync' => 'ausstehende Synchronisierung',
     'pending syncs' => 'ausstehende Synchronisierungen',
-    'Search element ID or error text…' => 'Element-ID oder Fehlertext suchen…',
+    'Search element ID or error text...' => 'Element-ID oder Fehlertext suchen...',
     'Purge abandoned' => 'Abgebrochene bereinigen',
     'Purge all abandoned rows? This cannot be undone.' => 'Alle abgebrochenen Zeilen bereinigen? Dies kann nicht rückgängig gemacht werden.',
     'Element is not propagated to this site. Row will be cleaned up on drain.' => 'Das Element wird nicht auf diese Site propagiert. Die Zeile wird beim Leeren bereinigt.',
@@ -1421,7 +1421,7 @@ return [
     'View Settings' => 'Einstellungen anzeigen',
 
     // Backend type configurations
-    'Select a backend type...' => 'Backendtyp auswählen…',
+    'Select a backend type...' => 'Backendtyp auswählen...',
     'Craft Database (MySQL)' => 'Craft-Datenbank (MySQL)',
     'Craft Database (MySQL) - Not available (Craft uses PostgreSQL)' => 'Craft-Datenbank (MySQL) – Nicht verfügbar (Craft verwendet PostgreSQL)',
     'Craft Database (PostgreSQL)' => 'Craft-Datenbank (PostgreSQL)',
