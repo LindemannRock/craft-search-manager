@@ -1462,7 +1462,7 @@ return [
     'Redis password (leave empty if no password required)' => 'Redis-passord (la stå tom hvis ikke passord kreves)',
     'Redis database number. When using Craft\'s Redis settings, defaults to Craft database + 1 to isolate search data.' => 'Redis-databasenummer. Ved bruk av Crafts Redis-innstillinger, standard Craft-database + 1 for å isolere søkedata.',
     'Custom storage path (leave empty for @storage/runtime/search-manager/indices/)' => 'Tilpasset lagringssti (la stå tom for @storage/runtime/search-manager/indices/)',
-    'API Key' => 'API Key',
+    'API Key' => 'API-nøkkel',
     'Use Craft path aliases: <code>@storage/search-manager/indices</code> (recommended) or <code>@root/search-indices</code>. Paths must be outside webroot for security. Environment variables like <code>$ENV_VAR</code> are supported.' => 'Bruk Craft-stialiaser: <code>@storage/search-manager/indices</code> (anbefalt) eller <code>@root/search-indices</code>. Stier må være utenfor webroot av sikkerhetshensyn. Miljøvariabler som <code>$ENV_VAR</code> støttes.',
 
     // Backend info-box messages

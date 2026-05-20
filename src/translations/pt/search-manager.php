@@ -1462,7 +1462,7 @@ return [
     'Redis password (leave empty if no password required)' => 'Palavra-passe Redis (deixe vazio se não for necessária palavra-passe)',
     'Redis database number. When using Craft\'s Redis settings, defaults to Craft database + 1 to isolate search data.' => 'Número da base de dados Redis. Ao usar as definições Redis do Craft, o predefinido é base de dados Craft + 1 para isolar os dados de pesquisa.',
     'Custom storage path (leave empty for @storage/runtime/search-manager/indices/)' => 'Caminho de armazenamento personalizado (deixe vazio para @storage/runtime/search-manager/indices/)',
-    'API Key' => 'API Key',
+    'API Key' => 'Chave de API',
     'Use Craft path aliases: <code>@storage/search-manager/indices</code> (recommended) or <code>@root/search-indices</code>. Paths must be outside webroot for security. Environment variables like <code>$ENV_VAR</code> are supported.' => 'Utilize aliases de caminho do Craft: <code>@storage/search-manager/indices</code> (recomendado) ou <code>@root/search-indices</code>. Os caminhos devem estar fora do webroot por motivos de segurança. Variáveis de ambiente como <code>$ENV_VAR</code> são suportadas.',
 
     // Backend info-box messages

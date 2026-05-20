@@ -1568,7 +1568,7 @@ return [
 
     // Settings: Cache
     '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Cache-Speicherort:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cache-Speicherort:</strong> Es wird der konfigurierte Redis-Cache von Craft aus <code>config/app.php</code> verwendet.',
+    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Cache-Speicherort:</strong> Es wird der konfigurierte Redis-Cache von Craft aus <code>config/app.php</code> verwendet',
     '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis nicht konfiguriert:</strong> Um Redis-Caching zu verwenden, installieren Sie <code>yiisoft/yii2-redis</code> und konfigurieren Sie es in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Mehr erfahren</a>',
     'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Cache-Dauer in Sekunden. Aktuell: <strong id="cacheDuration-human"></strong>',
     'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Cache-Dauer in Sekunden. Aktuell: <strong id="autocompleteCacheDuration-human"></strong>',
