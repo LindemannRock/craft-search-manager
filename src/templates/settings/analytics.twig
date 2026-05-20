@@ -69,7 +69,7 @@
         }) }}
 
         <div id="geo-provider-settings" class="{{ not (settings.enableGeoDetection ?? false) ? 'hidden' }}" style="margin-top: 24px;">
-            {% include 'lindemannrock-base/_partials/geo-settings' with {
+            {% include 'lindemannrock-base/_partials/cascade-geo-settings' with {
                 settings: settings,
                 pluginHandle: 'search-manager'
             } %}
