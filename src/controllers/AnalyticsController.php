@@ -351,7 +351,7 @@ class AnalyticsController extends Controller
                 + count($performanceRows) + count($trafficRows) + count($geoRows) + count($clusterRows) + count($recentGapsRows);
             if ($totalRows === 0) {
                 Craft::$app->getSession()->setError(
-                    Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+                    Craft::t('search-manager', 'No analytics data to export for the selected date range')
                 );
                 return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
             }
@@ -1023,7 +1023,7 @@ class AnalyticsController extends Controller
 
         if (empty($data)) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+                Craft::t('search-manager', 'No analytics data to export for the selected date range')
             );
             return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
@@ -1092,7 +1092,7 @@ class AnalyticsController extends Controller
 
         if (empty($data)) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+                Craft::t('search-manager', 'No analytics data to export for the selected date range')
             );
             return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
@@ -1253,7 +1253,7 @@ class AnalyticsController extends Controller
 
         if (empty($data)) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+                Craft::t('search-manager', 'No analytics data to export for the selected date range')
             );
             return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
@@ -1356,7 +1356,7 @@ class AnalyticsController extends Controller
 
         if (empty($data)) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'No analytics data to export for the selected date range.')
+                Craft::t('search-manager', 'No analytics data to export for the selected date range')
             );
             return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }

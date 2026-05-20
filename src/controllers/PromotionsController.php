@@ -268,7 +268,7 @@ class PromotionsController extends Controller
 
         if (!$promotion->validate() || !$promotion->save()) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Could not save promotion.')
+                Craft::t('search-manager', 'Could not save promotion')
             );
 
             // Return with errors
@@ -285,7 +285,7 @@ class PromotionsController extends Controller
         }
 
         Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Promotion saved.')
+            Craft::t('search-manager', 'Promotion saved')
         );
 
         return $this->redirectToPostedUrl($promotion);
@@ -320,7 +320,7 @@ class PromotionsController extends Controller
             }
 
             Craft::$app->getSession()->setNotice(
-                Craft::t('search-manager', 'Promotion deleted.')
+                Craft::t('search-manager', 'Promotion deleted')
             );
         } else {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
@@ -328,7 +328,7 @@ class PromotionsController extends Controller
             }
 
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Could not delete promotion.')
+                Craft::t('search-manager', 'Could not delete promotion')
             );
         }
 

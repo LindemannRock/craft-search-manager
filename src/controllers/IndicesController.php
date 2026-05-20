@@ -291,7 +291,7 @@ class IndicesController extends Controller
 
         if (!$index->validate() || !$index->save()) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Could not save index.')
+                Craft::t('search-manager', 'Could not save index')
             );
 
             Craft::$app->getUrlManager()->setRouteParams([
@@ -302,7 +302,7 @@ class IndicesController extends Controller
         }
 
         Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Index saved.')
+            Craft::t('search-manager', 'Index saved')
         );
 
         return $this->redirectToPostedUrl($index);
@@ -324,7 +324,7 @@ class IndicesController extends Controller
 
         if (!$index) {
             if ($acceptsJson) {
-                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found.')]);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found')]);
             }
             throw new NotFoundHttpException('Index not found');
         }
@@ -339,13 +339,13 @@ class IndicesController extends Controller
         }
 
         if ($index->delete()) {
-            $message = Craft::t('search-manager', 'Index deleted.');
+            $message = Craft::t('search-manager', 'Index deleted');
             if ($acceptsJson) {
                 return $this->asJson(['success' => true, 'message' => $message]);
             }
             Craft::$app->getSession()->setNotice($message);
         } else {
-            $error = Craft::t('search-manager', 'Could not delete index.');
+            $error = Craft::t('search-manager', 'Could not delete index');
             if ($acceptsJson) {
                 return $this->asJson(['success' => false, 'error' => $error]);
             }
@@ -371,7 +371,7 @@ class IndicesController extends Controller
 
         if (!$index) {
             if ($acceptsJson) {
-                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found.')]);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found')]);
             }
             throw new NotFoundHttpException('Index not found');
         }
@@ -386,7 +386,7 @@ class IndicesController extends Controller
         SearchManager::$plugin->backend->clearSearchCache($index->handle);
         SearchManager::$plugin->autocomplete->clearCache($index->handle);
 
-        $message = Craft::t('search-manager', 'Index data cleared.');
+        $message = Craft::t('search-manager', 'Index data cleared');
         if ($acceptsJson) {
             return $this->asJson(['success' => true, 'message' => $message]);
         }
@@ -411,7 +411,7 @@ class IndicesController extends Controller
         if (!$index) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Index not found.'),
+                'error' => Craft::t('search-manager', 'Index not found'),
             ]);
         }
 
@@ -428,7 +428,7 @@ class IndicesController extends Controller
 
             return $this->asJson([
                 'success' => true,
-                'message' => Craft::t('search-manager', 'Cache cleared for "{name}".', [
+                'message' => Craft::t('search-manager', 'Cache cleared for "{name}"', [
                     'name' => $index->name,
                 ]),
             ]);
@@ -440,7 +440,7 @@ class IndicesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear cache.'),
+                'error' => Craft::t('search-manager', 'Failed to clear cache'),
             ]);
         }
     }
@@ -466,7 +466,7 @@ class IndicesController extends Controller
         if (!$index) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Index not found.'),
+                'error' => Craft::t('search-manager', 'Index not found'),
             ]);
         }
 
@@ -477,7 +477,7 @@ class IndicesController extends Controller
             if (!$backend) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => Craft::t('search-manager', 'No backend configured for this index.'),
+                    'error' => Craft::t('search-manager', 'No backend configured for this index'),
                 ]);
             }
 
@@ -506,7 +506,7 @@ class IndicesController extends Controller
             if (!$indexFound) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => Craft::t('search-manager', 'Index "{name}" not found on backend.', [
+                    'error' => Craft::t('search-manager', 'Index "{name}" not found on backend', [
                         'name' => $fullIndexName,
                     ]),
                 ]);
@@ -516,7 +516,7 @@ class IndicesController extends Controller
             if ($entriesAvailable === false) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => Craft::t('search-manager', 'Could not retrieve document count from backend (permission issue).'),
+                    'error' => Craft::t('search-manager', 'Could not retrieve document count from backend (permission issue)'),
                 ]);
             }
 
@@ -524,7 +524,7 @@ class IndicesController extends Controller
             if (!$index->updateStats($backendCount)) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => Craft::t('search-manager', 'Failed to update index stats.'),
+                    'error' => Craft::t('search-manager', 'Failed to update index stats'),
                 ]);
             }
 
@@ -535,7 +535,7 @@ class IndicesController extends Controller
 
             return $this->asJson([
                 'success' => true,
-                'message' => Craft::t('search-manager', 'Count synced for "{name}": {count} documents.', [
+                'message' => Craft::t('search-manager', 'Count synced for "{name}": {count} documents', [
                     'name' => $index->name,
                     'count' => number_format($backendCount),
                 ]),
@@ -582,14 +582,14 @@ class IndicesController extends Controller
                 'type' => gettype($indexId),
             ]);
             if ($acceptsJson) {
-                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found.')]);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found')]);
             }
             throw new NotFoundHttpException('Index not found');
         }
 
         SearchManager::$plugin->indexing->rebuildIndex($index->handle);
 
-        $message = Craft::t('search-manager', 'Index rebuild queued.');
+        $message = Craft::t('search-manager', 'Index rebuild queued');
         if ($acceptsJson) {
             return $this->asJson(['success' => true, 'message' => $message]);
         }

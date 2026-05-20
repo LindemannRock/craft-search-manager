@@ -206,7 +206,7 @@ class PendingSyncsController extends Controller
             'user' => Craft::$app->getUser()->getId(),
         ]);
 
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', '{count} pending sync(s) queued for retry.', [
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', '{count} pending sync(s) queued for retry', [
             'count' => $updated,
         ]));
 
@@ -230,7 +230,7 @@ class PendingSyncsController extends Controller
             'user' => Craft::$app->getUser()->getId(),
         ]);
 
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', '{count} pending sync(s) deleted.', [
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', '{count} pending sync(s) deleted', [
             'count' => $deleted,
         ]));
 
@@ -252,7 +252,7 @@ class PendingSyncsController extends Controller
             'user' => Craft::$app->getUser()->getId(),
         ]);
 
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', '{count} abandoned pending sync(s) purged.', [
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', '{count} abandoned pending sync(s) purged', [
             'count' => $deleted,
         ]));
 

@@ -374,7 +374,7 @@ class QueryRulesController extends Controller
 
         if (!$rule->validate() || !$rule->save()) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Could not save query rule.')
+                Craft::t('search-manager', 'Could not save query rule')
             );
 
             // Return with errors
@@ -389,7 +389,7 @@ class QueryRulesController extends Controller
         SearchManager::$plugin->backend->clearAllSearchCache();
 
         Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Query rule saved.')
+            Craft::t('search-manager', 'Query rule saved')
         );
 
         return $this->redirectToPostedUrl($rule);
@@ -422,7 +422,7 @@ class QueryRulesController extends Controller
             }
 
             Craft::$app->getSession()->setNotice(
-                Craft::t('search-manager', 'Query rule deleted.')
+                Craft::t('search-manager', 'Query rule deleted')
             );
         } else {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
@@ -430,7 +430,7 @@ class QueryRulesController extends Controller
             }
 
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Could not delete query rule.')
+                Craft::t('search-manager', 'Could not delete query rule')
             );
         }
 

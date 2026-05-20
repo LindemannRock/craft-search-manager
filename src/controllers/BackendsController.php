@@ -329,7 +329,7 @@ class BackendsController extends Controller
 
         if (!$backend->save()) {
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Could not save backend.')
+                Craft::t('search-manager', 'Could not save backend')
             );
 
             $pluginSettings = SearchManager::$plugin->getSettings();
@@ -376,7 +376,7 @@ class BackendsController extends Controller
         }
 
         Craft::$app->getSession()->setNotice(
-            Craft::t('search-manager', 'Backend saved.')
+            Craft::t('search-manager', 'Backend saved')
         );
 
         return $this->redirectToPostedUrl($backend);
@@ -395,7 +395,7 @@ class BackendsController extends Controller
 
         if (!$backend) {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
-                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Backend not found.')]);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Backend not found')]);
             }
             throw new NotFoundHttpException('Backend not found');
         }
@@ -416,11 +416,11 @@ class BackendsController extends Controller
                 return $this->asJson(['success' => true]);
             }
             Craft::$app->getSession()->setNotice(
-                Craft::t('search-manager', 'Backend deleted.')
+                Craft::t('search-manager', 'Backend deleted')
             );
         } else {
             $errors = $backend->getErrors();
-            $errorMessage = !empty($errors['handle']) ? $errors['handle'][0] : 'Could not delete backend.';
+            $errorMessage = !empty($errors['handle']) ? $errors['handle'][0] : 'Could not delete backend';
             if (Craft::$app->getRequest()->getAcceptsJson()) {
                 return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', $errorMessage)]);
             }
@@ -639,7 +639,7 @@ class BackendsController extends Controller
             if ($backend) {
                 // Cannot disable default backend
                 if ($settings->defaultBackendHandle === $backend->handle) {
-                    $errors[] = Craft::t('search-manager', 'Cannot disable default backend "{name}".', ['name' => $backend->name]);
+                    $errors[] = Craft::t('search-manager', 'Cannot disable default backend "{name}"', ['name' => $backend->name]);
                     continue;
                 }
                 $backend->enabled = false;
@@ -731,7 +731,7 @@ class BackendsController extends Controller
         if (!$backend) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Backend not found.'),
+                'error' => Craft::t('search-manager', 'Backend not found'),
             ]);
         }
 
@@ -742,7 +742,7 @@ class BackendsController extends Controller
         if (!$settings->saveToDatabase()) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to save settings.'),
+                'error' => Craft::t('search-manager', 'Failed to save settings'),
             ]);
         }
 
@@ -753,7 +753,7 @@ class BackendsController extends Controller
 
         return $this->asJson([
             'success' => true,
-            'message' => Craft::t('search-manager', 'Default backend updated.'),
+            'message' => Craft::t('search-manager', 'Default backend updated'),
         ]);
     }
 

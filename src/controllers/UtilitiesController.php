@@ -90,7 +90,7 @@ class UtilitiesController extends Controller
             ]);
 
             Craft::$app->getSession()->setError(
-                Craft::t('search-manager', 'Failed to queue index rebuild.')
+                Craft::t('search-manager', 'Failed to queue index rebuild')
             );
         }
 
@@ -130,7 +130,7 @@ class UtilitiesController extends Controller
                 // Clear the tracking set
                 $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'device')]);
 
-                $message = Craft::t('search-manager', 'Device cache cleared successfully.');
+                $message = Craft::t('search-manager', 'Device cache cleared successfully');
             } else {
                 $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'device');
                 $fileCount = 0;
@@ -141,7 +141,7 @@ class UtilitiesController extends Controller
                     FileHelper::clearDirectory($cachePath);
                 }
 
-                $message = Craft::t('search-manager', 'Device cache cleared successfully ({count} files).', ['count' => $fileCount]);
+                $message = Craft::t('search-manager', 'Device cache cleared successfully ({count} files)', ['count' => $fileCount]);
             }
 
             $this->logInfo('Device cache cleared via utility');
@@ -157,7 +157,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear device cache.'),
+                'error' => Craft::t('search-manager', 'Failed to clear device cache'),
             ]);
         }
     }
@@ -175,7 +175,7 @@ class UtilitiesController extends Controller
 
             if ($settings->cacheStorageMethod === 'redis') {
                 SearchManager::$plugin->backend->clearAllSearchCache();
-                $message = Craft::t('search-manager', 'Search cache cleared successfully.');
+                $message = Craft::t('search-manager', 'Search cache cleared successfully');
             } else {
                 $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'search');
                 $fileCount = 0;
@@ -186,7 +186,7 @@ class UtilitiesController extends Controller
                     FileHelper::clearDirectory($cachePath);
                 }
 
-                $message = Craft::t('search-manager', 'Search cache cleared successfully ({count} files).', ['count' => $fileCount]);
+                $message = Craft::t('search-manager', 'Search cache cleared successfully ({count} files)', ['count' => $fileCount]);
             }
 
             $this->logInfo('Search cache cleared via utility');
@@ -202,7 +202,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear search cache.'),
+                'error' => Craft::t('search-manager', 'Failed to clear search cache'),
             ]);
         }
     }
@@ -229,7 +229,7 @@ class UtilitiesController extends Controller
             }
 
             if ($useRedis) {
-                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully.');
+                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully');
             } else {
                 $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
                 $fileCount = 0;
@@ -237,7 +237,7 @@ class UtilitiesController extends Controller
                     $files = glob($cachePath . '/*.cache');
                     $fileCount = count($files ?: []);
                 }
-                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully ({count} files).', ['count' => $fileCount]);
+                $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully ({count} files)', ['count' => $fileCount]);
             }
 
             $this->logInfo('Autocomplete cache cleared via utility');
@@ -253,7 +253,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear autocomplete cache.'),
+                'error' => Craft::t('search-manager', 'Failed to clear autocomplete cache'),
             ]);
         }
     }
@@ -306,7 +306,7 @@ class UtilitiesController extends Controller
                 $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'device')]);
                 $redis->executeCommand('DEL', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
 
-                $message = Craft::t('search-manager', 'All caches cleared successfully.');
+                $message = Craft::t('search-manager', 'All caches cleared successfully');
             } else {
                 $totalFiles = 0;
 
@@ -334,7 +334,7 @@ class UtilitiesController extends Controller
                     FileHelper::clearDirectory($autocompleteCachePath);
                 }
 
-                $message = Craft::t('search-manager', 'All caches cleared successfully ({count} files).', ['count' => $totalFiles]);
+                $message = Craft::t('search-manager', 'All caches cleared successfully ({count} files)', ['count' => $totalFiles]);
             }
 
             $this->logInfo('All caches cleared via utility');
@@ -350,7 +350,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear all caches.'),
+                'error' => Craft::t('search-manager', 'Failed to clear all caches'),
             ]);
         }
     }
@@ -376,7 +376,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => true,
-                'message' => Craft::t('search-manager', 'All analytics data cleared successfully ({count} records deleted).', [
+                'message' => Craft::t('search-manager', 'All analytics data cleared successfully ({count} records deleted)', [
                     'count' => $rowCount,
                 ]),
             ]);
@@ -387,7 +387,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear analytics data.'),
+                'error' => Craft::t('search-manager', 'Failed to clear analytics data'),
             ]);
         }
     }
@@ -455,7 +455,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to clear {type} storage.', ['type' => $type]),
+                'error' => Craft::t('search-manager', 'Failed to clear {type} storage', ['type' => $type]),
             ]);
         }
     }
@@ -486,7 +486,7 @@ class UtilitiesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to get storage statistics.'),
+                'error' => Craft::t('search-manager', 'Failed to get storage statistics'),
             ]);
         }
     }

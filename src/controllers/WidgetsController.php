@@ -358,8 +358,8 @@ class WidgetsController extends Controller
         if ($styleHandle) {
             $existingStyle = SearchManager::$plugin->widgetStyles->getByHandle($styleHandle);
             if ($existingStyle === null) {
-                $widgetConfig->addError('styleHandle', Craft::t('search-manager', 'Selected style preset not found.'));
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected style preset not found.'));
+                $widgetConfig->addError('styleHandle', Craft::t('search-manager', 'Selected style preset not found'));
+                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected style preset not found'));
                 Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
                 return null;
             }
@@ -370,14 +370,14 @@ class WidgetsController extends Controller
 
         // Validate
         if (!$widgetConfig->validate()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config'));
             Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
             return null;
         }
 
         // Save widget config
         if (!SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget config'));
             Craft::$app->getUrlManager()->setRouteParams($errorRouteParams);
             return null;
         }
@@ -409,7 +409,7 @@ class WidgetsController extends Controller
             }
         }
 
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget config saved.'));
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget config saved'));
 
         return $this->redirectToPostedUrl($widgetConfig);
     }
@@ -427,7 +427,7 @@ class WidgetsController extends Controller
 
         $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
         if (!$widgetConfig) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Widget config not found.')]);
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Widget config not found')]);
         }
 
         // Prevent deleting the default widget
@@ -437,7 +437,7 @@ class WidgetsController extends Controller
         }
 
         if (!SearchManager::$plugin->widgetConfigs->delete($configId)) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete widget config.')]);
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete widget config')]);
         }
 
         return $this->asJson(['success' => true]);
@@ -470,7 +470,7 @@ class WidgetsController extends Controller
         }
 
         if (!$widgetConfig) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Widget config not found.')]);
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Widget config not found')]);
         }
 
         // Update the default widget handle in plugin settings
@@ -480,7 +480,7 @@ class WidgetsController extends Controller
         if (!$settings->saveToDatabase()) {
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to save settings.'),
+                'error' => Craft::t('search-manager', 'Failed to save settings'),
             ]);
         }
 
@@ -491,7 +491,7 @@ class WidgetsController extends Controller
 
         return $this->asJson([
             'success' => true,
-            'message' => Craft::t('search-manager', 'Default widget updated.'),
+            'message' => Craft::t('search-manager', 'Default widget updated'),
         ]);
     }
 
@@ -847,7 +847,7 @@ class WidgetsController extends Controller
         $defaultStyles = WidgetConfig::defaultStyleValues();
 
         if (!$widgetStyle->validate()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style'));
             Craft::$app->getUrlManager()->setRouteParams([
                 'widgetStyle' => $widgetStyle,
                 'isNew' => !$styleId,
@@ -857,7 +857,7 @@ class WidgetsController extends Controller
         }
 
         if (!SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save widget style'));
             Craft::$app->getUrlManager()->setRouteParams([
                 'widgetStyle' => $widgetStyle,
                 'isNew' => !$styleId,
@@ -866,7 +866,7 @@ class WidgetsController extends Controller
             return null;
         }
 
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget style saved.'));
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget style saved'));
 
         return $this->redirectToPostedUrl($widgetStyle);
     }
@@ -885,7 +885,7 @@ class WidgetsController extends Controller
         $styleId = Craft::$app->getRequest()->getRequiredBodyParam('styleId');
 
         if (!SearchManager::$plugin->widgetStyles->delete((int) $styleId)) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete widget style.')]);
+            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete widget style')]);
         }
 
         return $this->asJson(['success' => true]);

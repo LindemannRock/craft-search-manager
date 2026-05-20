@@ -237,7 +237,7 @@ class ApiKeysController extends Controller
         $this->populateRestrictionsFromRequest($apiKey, $request);
 
         if (!$apiKey->save()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Couldn’t save API key.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Couldn’t save API key'));
             // Re-render the form with the unsaved model so errors surface
             // beside their fields. Craft's runAction routes to the same view.
             Craft::$app->getUrlManager()->setRouteParams([
@@ -249,9 +249,9 @@ class ApiKeysController extends Controller
 
         if ($isNew) {
             Craft::$app->getSession()->setFlash(self::FLASH_NEW_PLAINTEXT, $generated['plaintext']);
-            Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'API key created.'));
+            Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'API key created'));
         } else {
-            Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'API key saved.'));
+            Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'API key saved'));
         }
 
         // Redirect to the edit page so the reveal banner can render (on new)
@@ -282,7 +282,7 @@ class ApiKeysController extends Controller
         }
 
         if (!$apiKey->delete()) {
-            $errorMessage = Craft::t('search-manager', 'Couldn’t revoke API key.');
+            $errorMessage = Craft::t('search-manager', 'Couldn’t revoke API key');
             if ($acceptsJson) {
                 return $this->asJson(['success' => false, 'error' => $errorMessage]);
             }
@@ -290,7 +290,7 @@ class ApiKeysController extends Controller
             return $this->redirect('search-manager/api-keys');
         }
 
-        $successMessage = Craft::t('search-manager', 'API key revoked.');
+        $successMessage = Craft::t('search-manager', 'API key revoked');
         if ($acceptsJson) {
             // Caller (e.g. row-action JS using Craft.sendActionRequest) handles
             // its own reload; returning a redirect would force the AJAX client
@@ -325,8 +325,8 @@ class ApiKeysController extends Controller
 
         return $this->respondToBulkResult(
             $deleted,
-            Craft::t('search-manager', '{count, plural, =1{1 API key revoked.} other{# API keys revoked.}}', ['count' => $deleted]),
-            Craft::t('search-manager', 'Couldn’t revoke API keys.'),
+            Craft::t('search-manager', '{count, plural, =1{1 API key revoked} other{# API keys revoked}}', ['count' => $deleted]),
+            Craft::t('search-manager', 'Couldn’t revoke API keys'),
         );
     }
 
@@ -339,15 +339,15 @@ class ApiKeysController extends Controller
         $affected = SearchManager::$plugin->apiKeys->bulkSetEnabled($ids, $enabled);
 
         $message = $enabled
-            ? Craft::t('search-manager', '{count, plural, =1{1 API key enabled.} other{# API keys enabled.}}', ['count' => $affected])
-            : Craft::t('search-manager', '{count, plural, =1{1 API key disabled.} other{# API keys disabled.}}', ['count' => $affected]);
+            ? Craft::t('search-manager', '{count, plural, =1{1 API key enabled} other{# API keys enabled}}', ['count' => $affected])
+            : Craft::t('search-manager', '{count, plural, =1{1 API key disabled} other{# API keys disabled}}', ['count' => $affected]);
 
         return $this->respondToBulkResult(
             $affected,
             $message,
             $enabled
-                ? Craft::t('search-manager', 'Couldn’t enable API keys.')
-                : Craft::t('search-manager', 'Couldn’t disable API keys.'),
+                ? Craft::t('search-manager', 'Couldn’t enable API keys')
+                : Craft::t('search-manager', 'Couldn’t disable API keys'),
         );
     }
 

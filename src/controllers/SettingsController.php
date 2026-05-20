@@ -171,12 +171,12 @@ class SettingsController extends Controller
         $settings->defaultWidgetHandle = $newWidgetHandle;
 
         if (!$settings->saveToDatabase()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
             return $this->redirect('search-manager/settings/general');
         }
 
         $this->logInfo('Default widget setting saved', ['handle' => $newWidgetHandle]);
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));
 
         return $this->redirect('search-manager/settings/general');
     }
@@ -671,17 +671,17 @@ class SettingsController extends Controller
 
         if (!$settings->validate($attributesToValidate)) {
             $this->logError('Settings validation failed', ['errors' => $settings->getErrors()]);
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
             return $this->_renderSettingsTemplate($section, $settings);
         }
 
         if (!$settings->saveToDatabase($attributesToValidate)) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
             return $this->_renderSettingsTemplate($section, $settings);
         }
 
         $this->logInfo('Settings saved successfully');
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));
 
         return $this->redirectToPostedUrl();
     }
@@ -780,7 +780,7 @@ class SettingsController extends Controller
         $settings->defaultBackendHandle = $newBackendHandle;
 
         if (!$settings->saveToDatabase()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings.'));
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
             return $this->redirect('search-manager/settings/general');
         }
 
@@ -793,7 +793,7 @@ class SettingsController extends Controller
                 ['name' => $configuredBackend->name]
             ));
         } else {
-            Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved.'));
+            Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));
         }
 
         return $this->redirect('search-manager/settings/general');
@@ -827,7 +827,7 @@ class SettingsController extends Controller
 
             return $this->asJson([
                 'success' => true,
-                'message' => Craft::t('search-manager', 'Deleted {count} old analytics records.', ['count' => $deleted]),
+                'message' => Craft::t('search-manager', 'Deleted {count} old analytics records', ['count' => $deleted]),
             ]);
         } catch (\Throwable $e) {
             $this->logError('Failed to cleanup analytics', ['error' => $e->getMessage()]);
