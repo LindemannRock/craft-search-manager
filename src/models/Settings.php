@@ -490,7 +490,64 @@ class Settings extends Model
     /** @inheritdoc */
     public function attributeLabels(): array
     {
-        return array_merge(
+        return array_merge([
+            // Indexing
+            'autoIndex' => Craft::t('search-manager', 'Auto-Index Elements'),
+            'defaultBackendHandle' => Craft::t('search-manager', 'Default Backend'),
+            'defaultWidgetHandle' => Craft::t('search-manager', 'Default Widget'),
+            'batchSize' => Craft::t('search-manager', 'Batch Size'),
+            'lastIndexedDebounceSeconds' => Craft::t('search-manager', 'Last Indexed Debounce'),
+            'syncBatchSize' => Craft::t('search-manager', 'Sync Batch Size'),
+            'batchFlushInterval' => Craft::t('search-manager', 'Batch Flush Interval'),
+            'pendingMaxAge' => Craft::t('search-manager', 'Pending Max Age'),
+            'batchMaxAttempts' => Craft::t('search-manager', 'Batch Max Attempts'),
+            'queueEnabled' => Craft::t('search-manager', 'Queue Enabled'),
+            'replaceNativeSearch' => Craft::t('search-manager', 'Replace Native Search'),
+            'statusSyncInterval' => Craft::t('search-manager', 'Status Sync Interval'),
+            'indexPrefix' => Craft::t('search-manager', 'Index Prefix'),
+            // Analytics + Geo (geoProvider/geoApiKey live on GeoSettingsTrait)
+            'enableAnalytics' => Craft::t('search-manager', 'Enable Analytics'),
+            'analyticsRetention' => Craft::t('search-manager', 'Analytics Retention'),
+            'anonymizeIpAddress' => Craft::t('search-manager', 'Anonymize IP Addresses'),
+            'enableGeoDetection' => Craft::t('search-manager', 'Enable Geographic Detection'),
+            'cacheDeviceDetection' => Craft::t('search-manager', 'Cache Device Detection'),
+            'deviceDetectionCacheDuration' => Craft::t('search-manager', 'Device Detection Cache Duration'),
+            // Ranking (BM25 + boost factors)
+            'bm25K1' => Craft::t('search-manager', 'Term Frequency Weight (K1)'),
+            'bm25B' => Craft::t('search-manager', 'Document Length Impact (B)'),
+            'titleBoostFactor' => Craft::t('search-manager', 'Title Boost'),
+            'exactMatchBoostFactor' => Craft::t('search-manager', 'Exact Match Boost'),
+            'phraseBoostFactor' => Craft::t('search-manager', 'Phrase Boost'),
+            // Fuzzy matching
+            'ngramSizes' => Craft::t('search-manager', 'Fuzzy Match Precision'),
+            'similarityThreshold' => Craft::t('search-manager', 'Fuzzy Match Threshold'),
+            'maxFuzzyCandidates' => Craft::t('search-manager', 'Fuzzy Candidate Limit'),
+            // Cache (search results)
+            'enableCache' => Craft::t('search-manager', 'Cache Search Results'),
+            'cacheDuration' => Craft::t('search-manager', 'Search Results Cache Duration'),
+            'cacheStorageMethod' => Craft::t('search-manager', 'Cache Storage Method'),
+            'cachePopularQueriesOnly' => Craft::t('search-manager', 'Cache Popular Queries Only'),
+            'popularQueryThreshold' => Craft::t('search-manager', 'Popular Query Threshold'),
+            'clearCacheOnSave' => Craft::t('search-manager', 'Clear Cache on Element Save'),
+            'enableCacheWarming' => Craft::t('search-manager', 'Enable Cache Warming'),
+            'cacheWarmingQueryCount' => Craft::t('search-manager', 'Popular Queries to Warm'),
+            // Stop words + language
+            'enableStopWords' => Craft::t('search-manager', 'Enable Stop Words'),
+            'defaultLanguage' => Craft::t('search-manager', 'Default Language'),
+            // Highlighting + snippets
+            'enableHighlighting' => Craft::t('search-manager', 'Enable Highlighting'),
+            'highlightTag' => Craft::t('search-manager', 'HTML Tag'),
+            'highlightClass' => Craft::t('search-manager', 'CSS Class'),
+            'snippetLength' => Craft::t('search-manager', 'Snippet Length'),
+            'maxSnippets' => Craft::t('search-manager', 'Max Snippets'),
+            // Autocomplete
+            'enableAutocomplete' => Craft::t('search-manager', 'Enable Autocomplete'),
+            'autocompleteMinLength' => Craft::t('search-manager', 'Minimum Length'),
+            'autocompleteLimit' => Craft::t('search-manager', 'Suggestion Limit'),
+            'autocompleteFuzzy' => Craft::t('search-manager', 'Fuzzy Autocomplete'),
+            'enableAutocompleteCache' => Craft::t('search-manager', 'Cache Autocomplete Results'),
+            'autocompleteCacheDuration' => Craft::t('search-manager', 'Autocomplete Cache Duration'),
+        ],
             $this->pluginNameSettingsLabel(),
             $this->logLevelSettingsLabel(),
             $this->dateFormatSettingsLabels(),
