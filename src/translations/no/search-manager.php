@@ -929,8 +929,8 @@ return [
     'Search Activity' => 'Søkeaktivitet',
     'Search Breakdown' => 'Søkefordeling',
     'Search Trend' => 'Søketrend',
-    'Top Searches' => 'Toppsøk',
-    'Top Search' => 'Toppsøk',
+    'Top Searches' => 'Vanligste søk',
+    'Top Search' => 'Vanligste søk',
     'Total Searches' => 'Totalt søk',
     'Total Index Searches' => 'Totalt indekssøk',
     'Index searches' => 'Indekssøk',
@@ -1092,7 +1092,7 @@ return [
     'You don\'t have permission to view analytics.' => 'Du har ikke tillatelse til å vise analyse.',
     '{pluginName} - Analytics' => '{pluginName} — Analyser',
     '{pluginName} - Content Gaps' => '{pluginName} — Innholdshull',
-    '{pluginName} - Top Searches' => '{pluginName} — Toppsøk',
+    '{pluginName} - Top Searches' => '{pluginName} — Vanligste søk',
     '{pluginName} - Trending' => '{pluginName} — Trender',
 
     // Export

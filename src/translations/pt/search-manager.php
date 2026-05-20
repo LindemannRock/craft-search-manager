@@ -113,17 +113,17 @@ return [
     'Autocomplete / Suggestions' => 'Completação automática / Sugestões',
     'Autocomplete Suggestions' => 'Sugestões de completação automática',
     'Enable Autocomplete' => 'Ativar completação automática',
-    'Autocomplete Caching' => 'Cache da completação automática',
-    'Autocomplete Cache Duration' => 'Duração da Cache de completação automática',
+    'Autocomplete Caching' => 'Caching de completação automática',
+    'Autocomplete Cache Duration' => 'Duração da cache de completação automática',
     'Suggestion Limit' => 'Limite de sugestões',
     'Minimum Length' => 'Comprimento mínimo',
     'Minimum characters before showing suggestions. Range: 1 - 5. Lower = more suggestions but slower performance.' => 'Caracteres mínimos antes de mostrar sugestões. Intervalo: 1 - 5. Inferior = mais sugestões mas desempenho mais lento.',
     'Maximum suggestions to return. Range: 1 - 50. More = more choice, but can overwhelm users.' => 'Número máximo de sugestões a retornar. Intervalo: 1 - 50. Mais = mais escolhas, mas pode sobrecarregar os utilizadores.',
-    'Cache autocomplete suggestions separately from search results. Uses a shorter TTL since autocomplete is called more frequently.' => 'Armazenar as sugestões de completação automática em Cache separadamente dos resultados de pesquisa. Utiliza um TTL mais curto porque a completação automática é chamada com mais frequência.',
+    'Cache autocomplete suggestions separately from search results. Uses a shorter TTL since autocomplete is called more frequently.' => 'Armazenar as sugestões de completação automática em cache separadamente dos resultados de pesquisa. Utiliza um TTL mais curto porque a completação automática é chamada com mais frequência.',
     'Default: 10 suggestions. Returns top 10 most frequent/relevant terms.' => 'Predefinido: 10 sugestões. Retorna os 10 termos mais frequentes/relevantes.',
     'Default: 2 characters. User types "te" → shows "test", "testing".' => 'Predefinido: 2 caracteres. O utilizador digita "te" → mostra "test", "testing".',
     'Type at least {minLength} characters above to see suggestions' => 'Digite pelo menos {minLength} caracteres acima para ver sugestões',
-    'Cache Autocomplete Results' => 'Armazenar na Cache os resultados de completação automática',
+    'Cache Autocomplete Results' => 'Armazenar na cache os resultados de completação automática',
     'Test Autocomplete' => 'Testar completação automática',
     'Autocomplete' => 'Completação automática',
     'Available Languages' => 'Idiomas disponíveis',
@@ -131,35 +131,35 @@ return [
     // Cache settings
     'Cache Settings' => 'Definições de cache',
     'Cache Storage Settings' => 'Definições de armazenamento de cache',
-    'Enable Cache Warming' => 'Ativar pré-aquecimento de Cache',
-    'Cache Search Results' => 'Armazenar resultados de pesquisa na Cache',
-    'Cache Popular Queries Only' => 'Armazenar apenas consultas populares na Cache',
+    'Enable Cache Warming' => 'Ativar pré-aquecimento de cache',
+    'Cache Search Results' => 'Armazenar resultados de pesquisa na cache',
+    'Cache Popular Queries Only' => 'Armazenar apenas consultas populares na cache',
     'Cache Storage Method' => 'Método de armazenamento de cache',
-    'Cache Invalidation' => 'Invalidação de Cache',
+    'Cache Invalidation' => 'Invalidação de cache',
     'Cache Device Detection' => 'Cache de deteção de dispositivos',
-    'Search Results Cache Duration' => 'Duração da Cache dos resultados de pesquisa',
-    'Cache Warming' => 'Pré-aquecimento de Cache',
+    'Search Results Cache Duration' => 'Duração da cache dos resultados de pesquisa',
+    'Cache Warming' => 'Pré-aquecimento de cache',
     'Popular Queries to Warm' => 'Consultas populares para pré-aquecer',
     'Popular Query Threshold' => 'Limite de consulta popular',
-    'Cache search results to improve performance and reduce backend load' => 'Armazenar resultados de pesquisa na Cache para melhorar o desempenho e reduzir a carga do backend',
+    'Cache search results to improve performance and reduce backend load' => 'Armazenar resultados de pesquisa na cache para melhorar o desempenho e reduzir a carga do backend',
     'Cache device detection results for better performance' => 'Guardar em cache os resultados de deteção de dispositivos para melhor desempenho',
-    'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.' => 'Pré-aquecer automaticamente a Cache com consultas populares após uma reconstrução do índice. Isso garante que os primeiros visitantes obtenham resultados rápidos e em Cache.',
-    'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Número de consultas populares para pré-armazenar na Cache após reconstrução do índice. As consultas são extraídas dos dados analíticos.',
-    'Number of times a query must be searched before it gets cached' => 'Número de vezes que uma consulta deve ser pesquisada antes de ser armazenada na Cache',
-    'Only cache queries that have been searched multiple times' => 'Armazenar na Cache apenas consultas pesquisadas várias vezes',
-    'Saves cache space by only caching frequently-used queries' => 'Economiza espaço de Cache armazenando apenas consultas usadas frequentemente',
-    'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'Limpar automaticamente a Cache de pesquisa quando as entradas são guardadas ou eliminadas. Desative para sites de alto tráfego para reduzir a instabilidade da Cache.',
-    'Higher values warm more cache but take longer to complete' => 'Valores mais altos pré-aquecem mais Cache mas demoram mais a completar',
+    'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.' => 'Pré-aquecer automaticamente a cache com consultas populares após uma reconstrução do índice. Isso garante que os primeiros visitantes obtenham resultados rápidos e em cache.',
+    'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Número de consultas populares para pré-armazenar na cache após reconstrução do índice. As consultas são extraídas dos dados de análise.',
+    'Number of times a query must be searched before it gets cached' => 'Número de vezes que uma consulta deve ser pesquisada antes de ser armazenada na cache',
+    'Only cache queries that have been searched multiple times' => 'Armazenar na cache apenas consultas pesquisadas várias vezes',
+    'Saves cache space by only caching frequently-used queries' => 'Economiza espaço de cache armazenando apenas consultas usadas frequentemente',
+    'Automatically clear search cache when entries are saved or deleted. Disable for high-traffic sites to reduce cache thrashing.' => 'Limpar automaticamente a cache de pesquisa quando as entradas são guardadas ou eliminadas. Desative para sites de alto tráfego para reduzir a instabilidade da cache.',
+    'Higher values warm more cache but take longer to complete' => 'Valores mais altos pré-aquecem mais cache mas demoram mais a completar',
     'How to store cache data. Use Redis/Database for load-balanced or multi-server environments.' => 'Como armazenar dados de cache. Use Redis/Base de dados para ambientes com balanceamento de carga ou multi-servidor.',
-    'When disabled, cache expires naturally based on Cache Duration setting' => 'Quando desativado, a Cache expira naturalmente com base na definição de duração de Cache',
+    'When disabled, cache expires naturally based on Cache Duration setting' => 'Quando desativado, a cache expira naturalmente com base na definição de Duração da cache',
     'Redis/Database (load-balanced, multi-server, cloud hosting)' => 'Redis/Base de dados (balanceamento de carga, multi-servidor, cloud hosting)',
-    'Cache Hit Rate' => 'Taxa de acerto de Cache',
-    'Cache Hits' => 'Acertos de Cache',
-    'Cache Misses' => 'Falhas de Cache',
+    'Cache Hit Rate' => 'Taxa de acertos de cache',
+    'Cache Hits' => 'Acessos de cache',
+    'Cache Misses' => 'Falhas de cache',
     'Cache Status' => 'Estado da cache',
     'Cache Management' => 'Gestão de cache',
     'Total cached entries' => 'Total de entradas em cache',
-    'Clear Cache on Element Save' => 'Limpar Cache ao guardar elemento',
+    'Clear Cache on Element Save' => 'Limpar cache ao guardar elemento',
     '10 queries (Light)' => '10 consultas (Leve)',
     '25 queries (Moderate)' => '25 consultas (Moderado)',
     '50 queries (Recommended)' => '50 consultas (Recomendado)',
@@ -553,14 +553,14 @@ return [
     'Rebuild index? This will re-index all elements.' => 'Reconstruir o índice? Isto irá reindexar todos os elementos.',
     'Rebuild All Indices' => 'Reconstruir todos os índices',
     'Rebuild indices or clear storage data.' => 'Reconstruir índices ou limpar dados de armazenamento.',
-    'Clear Index Cache' => 'Limpar Cache do índice',
+    'Clear Index Cache' => 'Limpar cache do índice',
     'Clear Index' => 'Limpar índice',
     'Clear Index Data' => 'Limpar dados do índice',
-    'Clear Search Cache' => 'Limpar Cache de pesquisa',
-    'Clear Autocomplete Cache' => 'Limpar Cache de completação automática',
+    'Clear Search Cache' => 'Limpar cache de pesquisa',
+    'Clear Autocomplete Cache' => 'Limpar cache de completação automática',
     'Sync Count from Backend' => 'Sincronizar contagem do backend',
     'Clear all data from this index? This cannot be undone.' => 'Limpar todos os dados deste índice? Esta ação não pode ser revertida.',
-    'Clear cached search results and autocomplete suggestions for this index?' => 'Limpar os resultados de pesquisa em Cache e as sugestões de completação automática para este índice?',
+    'Clear cached search results and autocomplete suggestions for this index?' => 'Limpar os resultados de pesquisa em cache e as sugestões de completação automática para este índice?',
     'This will remove all documents from the index. Continue?' => 'Isto irá remover todos os documentos do índice. Continuar?',
     'Last indexed' => 'Última indexação',
     'Last Indexed' => 'Última indexação',
@@ -575,11 +575,11 @@ return [
     'documents indexed' => 'documentos indexados',
     'Plugins' => 'Plugins',
     'Failed to clear index data' => 'Falha ao limpar os dados do índice',
-    'Failed to clear cache for "{name}"' => 'Falha ao limpar a Cache para «{name}»',
+    'Failed to clear cache for "{name}"' => 'Falha ao limpar a cache para «{name}»',
     'Failed to sync count for "{name}"' => 'Falha ao sincronizar a contagem para «{name}»',
     'Failed to delete index' => 'Falha ao eliminar o índice',
     'Clear all data from index "{name}"? This cannot be undone.' => 'Limpar todos os dados do índice «{name}»? Esta ação não pode ser revertida.',
-    'Clear cached search results and autocomplete suggestions for "{name}"?' => 'Limpar os resultados de pesquisa em Cache e as sugestões de completação automática para «{name}»?',
+    'Clear cached search results and autocomplete suggestions for "{name}"?' => 'Limpar os resultados de pesquisa em cache e as sugestões de completação automática para «{name}»?',
     'Delete index "{name}"? This will remove the index and all its data.' => 'Eliminar o índice «{name}»? Isto irá remover o índice e todos os seus dados.',
     'Enabled {count} indices' => '{count} índices ativados',
     'Disabled {count} indices' => '{count} índices desativados',
@@ -1096,17 +1096,17 @@ return [
     '{pluginName} - Trending' => '{pluginName} — Tendências',
 
     // Export
-    'Export failed. Check logs for details.' => 'A exportação falhou. Verifique os registos para detalhes.',
+    'Export failed. Check logs for details.' => 'A exportação falhou. Verifique os logs para detalhes.',
 
     // Utilities / diagnostics
-    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitorize os índices de pesquisa, limpe a Cache de ficheiros e gerencie a sua infraestrutura de pesquisa.',
+    'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitorize os índices de pesquisa, limpe a cache de ficheiros e faça a gestão da sua infraestrutura de pesquisa.',
     'Clear Storage' => 'Limpar armazenamento',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'Limpar TODOS os dados de índice de um tipo de armazenamento. Isto remove os dados de cada índice que utiliza esse armazenamento — incluindo dados órfãos de índices que já não existem. Utilize ao trocar de backends ou ao resolver problemas.',
-    'Clear temporary cached data to improve performance and free up storage space.' => 'Limpar dados temporários em Cache para melhorar o desempenho e libertar espaço de armazenamento.',
+    'Clear temporary cached data to improve performance and free up storage space.' => 'Limpar dados temporários em cache para melhorar o desempenho e libertar espaço de armazenamento.',
     'Clear All Caches' => 'Limpar todas as caches',
     'Clear Device Cache' => 'Limpar cache de dispositivos',
     'Clear All Analytics' => 'Limpar todas as análises',
-    'Are you sure you want to clear all caches?' => 'Tem a certeza de que deseja limpar todas as Caches?',
+    'Are you sure you want to clear all caches?' => 'Limpar todas as caches?',
     'Are you sure you want to clear ALL data from' => 'Tem a certeza de que deseja limpar TODOS os dados de',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Eliminar permanentemente todos os dados de rastreamento de análise. Esta ação não pode ser anulada!',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'Isto irá eliminar todos os dados de monitorização de pesquisa e repor todas as estatísticas. Tem a certeza absoluta?',
@@ -1160,7 +1160,7 @@ return [
     'Redis is not configured.' => 'O Redis não está configurado.',
     'Redis connection failed: {error}' => 'Ligação ao Redis falhada: {error}',
     'No backend configured for this index' => 'Nenhum backend configurado para este índice',
-    'Could not replace native search service. Check logs for details.' => 'Não foi possível substituir o serviço de pesquisa nativo. Verifique os registos para detalhes.',
+    'Could not replace native search service. Check logs for details.' => 'Não foi possível substituir o serviço de pesquisa nativo. Verifique os logs para detalhes.',
     'Could not retrieve document count from backend (permission issue)' => 'Não foi possível obter a contagem de documentos do backend (problema de permissão)',
     'Warning' => 'Aviso',
     'Unknown error' => 'Erro desconhecido',
@@ -1226,35 +1226,35 @@ return [
     'Default backend changed to "{name}". Rebuild indices in Utilities to migrate data.' => 'Backend predefinido alterado para «{name}». Reconstrua os índices nos utilitários para migrar os dados.',
 
     // Test result messages
-    'Connection test failed. Check logs for details.' => 'O teste de ligação falhou. Verifique os registos para detalhes.',
-    'Search test failed. Check logs for details.' => 'O teste de pesquisa falhou. Verifique os registos para detalhes.',
-    'Promotions test failed. Check logs for details.' => 'O teste de promoções falhou. Verifique os registos para detalhes.',
-    'Query rules test failed. Check logs for details.' => 'O teste de regras de consulta falhou. Verifique os registos para detalhes.',
-    'Autocomplete test failed. Check logs for details.' => 'O teste de completação automática falhou. Verifique os registos para detalhes.',
-    'Failed to load backend info. Check logs for details.' => 'Falha ao carregar informações do backend. Verifique os registos para detalhes.',
+    'Connection test failed. Check logs for details.' => 'O teste de ligação falhou. Verifique os logs para detalhes.',
+    'Search test failed. Check logs for details.' => 'O teste de pesquisa falhou. Verifique os logs para detalhes.',
+    'Promotions test failed. Check logs for details.' => 'O teste de promoções falhou. Verifique os logs para detalhes.',
+    'Query rules test failed. Check logs for details.' => 'O teste de regras de consulta falhou. Verifique os logs para detalhes.',
+    'Autocomplete test failed. Check logs for details.' => 'O teste de completação automática falhou. Verifique os logs para detalhes.',
+    'Failed to load backend info. Check logs for details.' => 'Falha ao carregar informações do backend. Verifique os logs para detalhes.',
 
     // Cache action messages
     'Cache cleared for "{name}"' => 'Cache limpa para «{name}»',
     'Search cache cleared for index: {handle}' => 'Cache de pesquisa limpa para o índice: {handle}',
     'Search cache cleared successfully ({count} files)' => 'Cache de pesquisa limpa com sucesso ({count} ficheiros)',
     'Search cache cleared successfully' => 'Cache de pesquisa limpa com sucesso',
-    'All search caches cleared' => 'Todas as Caches de pesquisa limpas',
+    'All search caches cleared' => 'Todas as caches de pesquisa limpas',
     'Autocomplete cache cleared successfully ({count} files)' => 'Cache de completação automática limpa com sucesso ({count} ficheiros)',
     'Autocomplete cache cleared successfully' => 'Cache de completação automática limpa com sucesso',
     'Device cache cleared successfully ({count} files)' => 'Cache do dispositivo limpa com sucesso ({count} ficheiros)',
     'Device cache cleared successfully' => 'Cache do dispositivo limpa com sucesso',
-    'All caches cleared successfully ({count} files)' => 'Todas as Caches limpas com sucesso ({count} ficheiros)',
-    'All caches cleared successfully' => 'Todas as Caches limpas com sucesso',
+    'All caches cleared successfully ({count} files)' => 'Todas as caches limpas com sucesso ({count} ficheiros)',
+    'All caches cleared successfully' => 'Todas as caches limpas com sucesso',
     'File storage cleared successfully ({count} files deleted). Rebuild affected indices to re-index your content.' => 'Armazenamento de ficheiros limpo com sucesso ({count} ficheiros eliminados). Reconstrua os índices afetados para reindexar o conteúdo.',
     'File storage is already empty.' => 'O armazenamento de ficheiros já está vazio.',
     'Redis storage cleared successfully ({count} keys deleted). Rebuild affected indices to re-index your content.' => 'Armazenamento Redis limpo com sucesso ({count} chaves eliminadas). Reconstrua os índices afetados para reindexar o conteúdo.',
     '{driver} storage cleared successfully ({count} rows deleted). Rebuild affected indices to re-index your content.' => 'Armazenamento {driver} limpo com sucesso ({count} linhas eliminadas). Reconstrua os índices afetados para reindexar o conteúdo.',
-    'Failed to clear cache' => 'Falha ao limpar a Cache',
-    'Failed to clear cache. Check logs for details.' => 'Falha ao limpar a Cache. Verifique os registos para detalhes.',
-    'Failed to clear search cache' => 'Falha ao limpar a Cache de pesquisa',
-    'Failed to clear autocomplete cache' => 'Falha ao limpar a Cache de completação automática',
-    'Failed to clear device cache' => 'Falha ao limpar a Cache do dispositivo',
-    'Failed to clear all caches' => 'Falha ao limpar todas as Caches',
+    'Failed to clear cache' => 'Falha ao limpar a cache',
+    'Failed to clear cache. Check logs for details.' => 'Falha ao limpar a cache. Verifique os logs para detalhes.',
+    'Failed to clear search cache' => 'Falha ao limpar a cache de pesquisa',
+    'Failed to clear autocomplete cache' => 'Falha ao limpar a cache de completação automática',
+    'Failed to clear device cache' => 'Falha ao limpar a cache do dispositivo',
+    'Failed to clear all caches' => 'Falha ao limpar todas as caches',
     'Failed to clear {type} storage' => 'Falha ao limpar o armazenamento {type}',
     'Failed to get storage statistics' => 'Falha ao obter as estatísticas de armazenamento',
     '{displayName} caches' => 'Caches de {displayName}',
@@ -1264,7 +1264,7 @@ return [
     'Deleted {count} old analytics records' => '{count} registos analíticos antigos eliminados',
     '{count} analytics cleared' => '{count} análises eliminadas',
     'Failed to clear analytics data' => 'Falha ao limpar os dados analíticos',
-    'Failed to cleanup analytics. Check logs for details.' => 'Falha ao limpar as análises. Verifique os registos para detalhes.',
+    'Failed to cleanup analytics. Check logs for details.' => 'Falha ao limpar as análises. Verifique os logs para detalhes.',
     'Analytics retention must be greater than 0 to perform cleanup.' => 'A retenção de análises deve ser superior a 0 para efetuar a limpeza.',
     'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.' => 'A exportação ficou limitada às primeiras {limit} linhas. Reduza o intervalo de datas para exportar um conjunto de dados mais pequeno.',
 
@@ -1298,8 +1298,8 @@ return [
     '{pluginName}: Resolving geo-location {id}' => '{pluginName}: A resolver geolocalização {id}',
     '{pluginName}: Syncing element status changes' => '{pluginName}: A sincronizar alterações de estado dos elementos',
     '{pluginName}: Processing pending search syncs' => '{pluginName}: A processar sincronizações de pesquisa pendentes',
-    'Warming cache for index: {index}' => 'A pré-aquecer Cache para o índice: {index}',
-    'Warming cache: {query}' => 'A pré-aquecer Cache: {query}',
+    'Warming cache for index: {index}' => 'A pré-aquecer cache para o índice: {index}',
+    'Warming cache: {query}' => 'A pré-aquecer cache: {query}',
 
     // Cache clearing (Craft utilities panel)
     'All Indexes' => 'Todos os índices',
@@ -1387,7 +1387,7 @@ return [
     'Examples: en, ar, de, fr, es, ar-sa (regional variant)' => 'Exemplos: en, ar, de, fr, es, ar-sa (variante regional)',
     'Failed' => 'Falhados',
     'Failed to clear analytics' => 'Não foi possível limpar as análises',
-    'Failed to clear caches' => 'Falha ao limpar as Caches',
+    'Failed to clear caches' => 'Falha ao limpar as caches',
     'Failed to sync count' => 'Falha ao sincronizar a contagem',
     'Fallback language when auto-detection fails (leave empty to use "en")' => 'Idioma de reserva quando a deteção automática falha (deixe vazio para usar "en")',
     'Field Handle' => 'Handle do campo',
@@ -1411,7 +1411,7 @@ return [
     'New query' => 'Nova consulta',
     'Results' => 'Resultados',
     'Rules' => 'Regras',
-    'Search Results Caching' => 'Cache dos resultados de pesquisa',
+    'Search Results Caching' => 'Caching dos resultados de pesquisa',
     'Search...' => 'Pesquisar...',
     'Section' => 'Secção',
     'Show Highlighting' => 'Mostrar destaque',
@@ -1457,7 +1457,7 @@ return [
     'Typesense server host' => 'Host do servidor Typesense',
     'Typesense server port (default: 8108)' => 'Porta do servidor Typesense (predefinida: 8108)',
     'Typesense API Key' => 'API Key Typesense',
-    'Redis server host. Leave empty to use Craft\'s Redis cache settings.' => 'Host do servidor Redis. Deixe vazio para usar as definições de Cache Redis do Craft.',
+    'Redis server host. Leave empty to use Craft\'s Redis cache settings.' => 'Host do servidor Redis. Deixe vazio para usar as definições de cache Redis do Craft.',
     'Redis server port. Leave empty to use Craft\'s Redis settings or default (6379).' => 'Porta do servidor Redis. Deixe vazio para usar as definições Redis do Craft ou o predefinido (6379).',
     'Redis password (leave empty if no password required)' => 'Palavra-passe Redis (deixe vazio se não for necessária palavra-passe)',
     'Redis database number. When using Craft\'s Redis settings, defaults to Craft database + 1 to isolate search data.' => 'Número da base de dados Redis. Ao usar as definições Redis do Craft, o predefinido é base de dados Craft + 1 para isolar os dados de pesquisa.',
@@ -1469,10 +1469,10 @@ return [
     'Get your API keys from your <a href="https://www.algolia.com/dashboard" target="_blank" rel="noopener">Algolia Dashboard</a>' => 'Obtenha as suas API Keys no seu <a href="https://www.algolia.com/dashboard" target="_blank" rel="noopener">painel Algolia</a>',
     '<strong>Quick Start:</strong> <code>docker run -d -p 7700:7700 getmeili/meilisearch:latest</code>' => '<strong>Início rápido:</strong> <code>docker run -d -p 7700:7700 getmeili/meilisearch:latest</code>',
     '<strong>Quick Start:</strong> <code>docker run -d -p 8108:8108 typesense/typesense:latest</code>' => '<strong>Início rápido:</strong> <code>docker run -d -p 8108:8108 typesense/typesense:latest</code>',
-    '<strong>Important:</strong> When no host is configured, Search Manager uses Craft\'s Redis cache settings but stores data in a separate database (Craft database + 1) to prevent data loss when Craft cache is cleared.' => '<strong>Importante:</strong> Quando nenhum host está configurado, o Search Manager usa as definições de Cache Redis do Craft mas armazena os dados numa base de dados separada (base de dados Craft + 1) para evitar perda de dados quando a Cache do Craft é limpa.',
+    '<strong>Important:</strong> When no host is configured, Search Manager uses Craft\'s Redis cache settings but stores data in a separate database (Craft database + 1) to prevent data loss when Craft cache is cleared.' => '<strong>Importante:</strong> Quando nenhum host está configurado, o Search Manager usa as definições de cache Redis do Craft mas armazena os dados numa base de dados separada (base de dados Craft + 1) para evitar perda de dados quando a cache do Craft é limpa.',
     '<strong>Default Storage:</strong> <code>@storage/runtime/search-manager/indices/</code>' => '<strong>Armazenamento predefinido:</strong> <code>@storage/runtime/search-manager/indices/</code>',
-    'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.' => 'Redis detetado: o Craft usa Redis em {host}:{port} na DB {db}. Se não forem fornecidas definições abaixo, o Search Manager reutilizará esta ligação e armazenará os seus dados na DB {fallbackDb} — isolados da Cache do Craft para que sobrevivam a limpezas de Cache. Se a DB {fallbackDb} já é usada para sessões ou fila, defina a base de dados explicitamente abaixo.',
-    'Redis not detected in Craft. Redis caching is not configured in config/app.php. You must provide connection settings below, or configure Redis in Craft first.' => 'Redis não detetado no Craft. A Cache Redis não está configurada em config/app.php. Deve fornecer as definições de ligação abaixo, ou configurar o Redis no Craft primeiro.',
+    'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.' => 'Redis detetado: o Craft usa Redis em {host}:{port} na DB {db}. Se não forem fornecidas definições abaixo, o Search Manager reutilizará esta ligação e armazenará os seus dados na DB {fallbackDb} — isolados da cache do Craft para que sobrevivam a limpezas de cache. Se a DB {fallbackDb} já é usada para sessões ou fila, defina a base de dados explicitamente abaixo.',
+    'Redis not detected in Craft. Redis caching is not configured in config/app.php. You must provide connection settings below, or configure Redis in Craft first.' => 'Redis não detetado no Craft. A cache Redis não está configurada em config/app.php. Deve fornecer as definições de ligação abaixo, ou configurar o Redis no Craft primeiro.',
     'On managed platforms such as Servd, Fortrabbit, or Platform.sh, Redis should be configured explicitly via their environment variables (for example, REDIS_HOST, REDIS_PORT).' => 'Em plataformas geridas como Servd, Fortrabbit ou Platform.sh, o Redis deve ser configurado explicitamente através das suas variáveis de ambiente (por exemplo, REDIS_HOST, REDIS_PORT).',
 
     // Transformer help text
@@ -1567,48 +1567,48 @@ return [
 • <strong>Ativado</strong>: Subnet mascarada + hash com salt (privacidade máxima, menos preciso)',
 
     // Settings: Cache
-    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Localização da Cache:</strong> <code>{path}</code>',
-    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Localização da Cache:</strong> A usar a Cache Redis configurada do Craft em <code>config/app.php</code>',
-    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis não configurado:</strong> Para usar Cache Redis, instale <code>yiisoft/yii2-redis</code> e configure-o em <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Saiba mais</a>',
-    'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Duração da Cache em segundos. Atual: <strong id="cacheDuration-human"></strong>',
-    'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Duração da Cache em segundos. Atual: <strong id="autocompleteCacheDuration-human"></strong>',
-    'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Duração da Cache em segundos. Atual: <strong id="deviceDetectionCacheDuration-human"></strong>',
+    '<strong>Cache Location:</strong> <code>{path}</code>' => '<strong>Localização da cache:</strong> <code>{path}</code>',
+    '<strong>Cache Location:</strong> Using Craft\'s configured Redis cache from <code>config/app.php</code>' => '<strong>Localização da cache:</strong> A usar a cache Redis configurada do Craft em <code>config/app.php</code>',
+    '<strong>Redis Not Configured:</strong> To use Redis caching, install <code>yiisoft/yii2-redis</code> and configure it in <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Learn more</a>' => '<strong>Redis não configurado:</strong> Para usar cache Redis, instale <code>yiisoft/yii2-redis</code> e configure-o em <code>config/app.php</code>. <a href="https://craftcms.com/docs/5.x/reference/config/app.html#cache" target="_blank" rel="noopener">Saiba mais</a>',
+    'Cache duration in seconds. Current: <strong id="cacheDuration-human"></strong>' => 'Duração da cache em segundos. Atual: <strong id="cacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="autocompleteCacheDuration-human"></strong>' => 'Duração da cache em segundos. Atual: <strong id="autocompleteCacheDuration-human"></strong>',
+    'Cache duration in seconds. Current: <strong id="deviceDetectionCacheDuration-human"></strong>' => 'Duração da cache em segundos. Atual: <strong id="deviceDetectionCacheDuration-human"></strong>',
     '<strong>How it works:</strong><br>
 • Search results are cached per query, index, site, and search options<br>
 • Cached results are returned instantly without hitting the backend<br>
 • Cache is automatically cleared when content changes (if enabled below)' => '<strong>Como funciona:</strong><br>
-• Os resultados de pesquisa são armazenados em Cache por consulta, índice, site e opções de pesquisa<br>
-• Os resultados em Cache são devolvidos instantaneamente sem aceder ao backend<br>
-• A Cache é limpa automaticamente quando o conteúdo é alterado (se ativado abaixo)',
+• Os resultados de pesquisa são armazenados em cache por consulta, índice, site e opções de pesquisa<br>
+• Os resultados em cache são devolvidos instantaneamente sem aceder ao backend<br>
+• A cache é limpa automaticamente quando o conteúdo é alterado (se ativado abaixo)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
 • Uses the same storage method as search results (file or Redis)<br>
 • Cache is cleared when content is re-indexed' => '<strong>Como funciona:</strong><br>
-• As sugestões de autocomplete são armazenadas em Cache por prefixo de consulta, índice e idioma<br>
+• As sugestões de autocomplete são armazenadas em cache por prefixo de consulta, índice e idioma<br>
 • Usa o mesmo método de armazenamento que os resultados de pesquisa (ficheiro ou Redis)<br>
-• A Cache é limpa quando o conteúdo é re-indexado',
+• A cache é limpa quando o conteúdo é re-indexado',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
 • Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
 • Both search cache and autocomplete cache are cleared together per index' => '<strong>Como funciona:</strong><br>
-• Quando ativado, a Cache é limpa automaticamente quando os elementos são guardados ou eliminados<br>
+• Quando ativado, a cache é limpa automaticamente quando os elementos são guardados ou eliminados<br>
 • O Status Sync gere as entradas agendadas (postDate/expiryDate) que alteram o estado sem eventos de gravação<br>
-• Tanto a Cache de pesquisa como a Cache de autocomplete são limpas em conjunto por índice',
+• Tanto a cache de pesquisa como a cache de autocomplete são limpas em conjunto por índice',
     '<strong>How it works:</strong><br>
 • After index rebuild completes, a background job warms the cache<br>
 • Popular queries are pulled from search analytics (most searched terms)<br>
 • Both search results and autocomplete suggestions are pre-cached<br>
 • Requires analytics to be enabled for query data' => '<strong>Como funciona:</strong><br>
-• Após a reconstrução do índice, uma tarefa em segundo plano aquece a Cache<br>
+• Após a reconstrução do índice, uma tarefa em segundo plano aquece a cache<br>
 • As consultas populares são obtidas a partir da análise de pesquisa (termos mais pesquisados)<br>
-• Tanto os resultados de pesquisa como as sugestões de autocomplete são pré-armazenados em Cache<br>
+• Tanto os resultados de pesquisa como as sugestões de autocomplete são pré-armazenados em cache<br>
 • Requer que a análise esteja ativada para os dados de consulta',
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>Como funciona:</strong><br>
 • A deteção de dispositivos analisa as strings user-agent para identificar dispositivos, navegadores e sistemas operativos<br>
-• Os resultados são armazenados em Cache para evitar re-analisar o mesmo user-agent repetidamente<br>
+• Os resultados são armazenados em cache para evitar re-analisar o mesmo user-agent repetidamente<br>
 • Recomendado manter ativado em sites de produção',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync ativo:</strong> Uma tarefa de sincronização está agendada e será executada a cada {minutes} minutos.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync não está em execução:</strong> Guarde as definições para iniciar a tarefa de sincronização, ou será iniciada automaticamente no próximo carregamento de página.',
