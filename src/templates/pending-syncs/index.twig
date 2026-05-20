@@ -112,7 +112,7 @@
         },
     ],
     search: {
-        placeholder: 'Search element ID or error text…'|t('search-manager'),
+        placeholder: 'Search element ID or error text...'|t('search-manager'),
         value: searchValue,
     },
     sort: {
@@ -232,7 +232,7 @@
     <td data-column="lastError">
         {% if item.lastError %}
             <span class="lr-pending-syncs-error" title="{{ item.lastError|e('html_attr') }}">
-                {{ item.lastError|length > 80 ? (item.lastError|slice(0, 80) ~ '…') : item.lastError }}
+                {{ item.lastError|length > 80 ? (item.lastError|slice(0, 80) ~ '...') : item.lastError }}
             </span>
         {% else %}
             <span class="light">—</span>
