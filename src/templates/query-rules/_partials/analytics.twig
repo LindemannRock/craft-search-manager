@@ -29,26 +29,26 @@
             </div>
         {% else %}
             <div class="lr-unified-cards">
-                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                {% include 'lindemannrock-base/_components/unified-card' with {
                     value: analytics.totalTriggers|number,
                     description: 'Times Triggered'|t('search-manager'),
                     align: 'center',
                 } only %}
 
-                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                {% include 'lindemannrock-base/_components/unified-card' with {
                     value: analytics.uniqueQueries|number,
                     description: 'Unique Queries'|t('search-manager'),
                     align: 'center',
                 } only %}
 
-                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                {% include 'lindemannrock-base/_components/unified-card' with {
                     value: analytics.avgResultsAfter|number(1),
                     description: 'Avg Results After'|t('search-manager'),
                     align: 'center',
                 } only %}
 
                 {% if rule.actionType == 'redirect' %}
-                    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                    {% include 'lindemannrock-base/_components/unified-card' with {
                         value: analytics.totalTriggers|number,
                         description: 'Redirects'|t('search-manager'),
                         align: 'center',

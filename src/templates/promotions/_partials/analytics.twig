@@ -29,19 +29,19 @@
             </div>
         {% else %}
             <div class="lr-unified-cards">
-                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                {% include 'lindemannrock-base/_components/unified-card' with {
                     value: analytics.totalImpressions|number,
                     description: 'Impressions'|t('search-manager'),
                     align: 'center',
                 } only %}
 
-                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                {% include 'lindemannrock-base/_components/unified-card' with {
                     value: analytics.uniqueQueries|number,
                     description: 'Unique Queries'|t('search-manager'),
                     align: 'center',
                 } only %}
 
-                {% include 'lindemannrock-base/_components/cards/unified-card' with {
+                {% include 'lindemannrock-base/_components/unified-card' with {
                     value: analytics.avgPosition|number(1),
                     description: 'Avg Position'|t('search-manager'),
                     align: 'center',

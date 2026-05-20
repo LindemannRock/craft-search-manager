@@ -40,7 +40,7 @@
 
 {% block overview %}
     {# Search Indices Card #}
-    {% include 'lindemannrock-base/_components/cards/unified-card' with {
+    {% include 'lindemannrock-base/_components/unified-card' with {
         title: 'Search Indices'|t('search-manager'),
         color: lrPaletteColor('emerald').color,
         value: indexCount,
@@ -65,7 +65,7 @@
             {% set backendDescription = backendDescription ~ ' (' ~ 'Default: {name}'|t('search-manager', {name: defaultBackendName}) ~ ')' %}
         {% endif %}
 
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Backend Distribution'|t('search-manager'),
             color: lrPaletteColor('sky').color,
             value: backendDistribution|length,
@@ -73,7 +73,7 @@
             subBoxes: backendSubBoxes,
         } only %}
     {% else %}
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Backend Distribution'|t('search-manager'),
             color: lrPaletteColor('sky').color,
             value: 0,
@@ -95,7 +95,7 @@
             {% set cacheSubBoxes = cacheSubBoxes|merge([{value: '✓', label: 'Devices'|t('search-manager')}]) %}
         {% endif %}
 
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Cache Status'|t('search-manager') ~ ' (Redis)',
             color: lrPaletteColor('emerald').color,
             value: 'Active'|t('search-manager'),
@@ -113,7 +113,7 @@
             {% set cacheSubBoxes = cacheSubBoxes|merge([{value: deviceCacheFiles, label: 'Devices'|t('search-manager')}]) %}
         {% endif %}
 
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Cache Status'|t('search-manager') ~ ' (File)',
             color: lrPaletteColor('emerald').color,
             value: searchCacheFiles + autocompleteCacheFiles + deviceCacheFiles,

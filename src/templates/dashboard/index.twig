@@ -54,7 +54,7 @@
 <div class="lr-unified-cards" style="margin-bottom: 32px;">
     {# Indices Card #}
     {% if canManageIndices %}
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Search Indices'|t('search-manager'),
             color: '#059669',
             value: enabledIndices,
@@ -66,7 +66,7 @@
 
     {# Promotions Card #}
     {% if canManagePromotions %}
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Promotions'|t('search-manager'),
             color: '#f59e0b',
             value: enabledPromotions,
@@ -78,7 +78,7 @@
 
     {# Query Rules Card #}
     {% if canManageQueryRules %}
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Query Rules'|t('search-manager'),
             color: '#8b5cf6',
             value: enabledQueryRules,
@@ -90,7 +90,7 @@
 
     {# Searches Today Card #}
     {% if settings.enableAnalytics and canViewAnalytics %}
-        {% include 'lindemannrock-base/_components/cards/unified-card' with {
+        {% include 'lindemannrock-base/_components/unified-card' with {
             title: 'Searches Today'|t('search-manager'),
             color: '#0ea5e9',
             value: searchesToday,
