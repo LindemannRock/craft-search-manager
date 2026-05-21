@@ -1,0 +1,59 @@
+#!/bin/bash
+#
+# Pre-commit hook: runs ECS + PHPStan before allowing the commit.
+#
+# Auto-installed via composer post-install/post-update — those scripts run
+# `git config core.hooksPath .githooks` so this file is what git invokes.
+#
+# Falls back to the workspace's shared vendor/ when the plugin is checked out
+# inside the LindemannRock workspace; otherwise uses the plugin's own vendor/
+# (e.g. for external contributors who clone the plugin standalone and ran
+# `composer install` here).
+
+set -e
+
+PHPSTAN=""
+ECS=""
+for path in "../../vendor/bin" "vendor/bin"; do
+  [ -x "$path/phpstan" ] && [ -z "$PHPSTAN" ] && PHPSTAN="$path/phpstan"
+  [ -x "$path/ecs" ] && [ -z "$ECS" ] && ECS="$path/ecs"
+done
+
+if [ -z "$PHPSTAN" ] || [ -z "$ECS" ]; then
+    echo "PHPStan or ECS not found. Run 'composer install' in the workspace or this plugin first."
+    exit 1
+fi
+
+echo "Running code quality checks..."
+
+PHPSTAN_OUTPUT=$(mktemp "${TMPDIR:-/tmp}/phpstan-output.XXXXXX")
+trap 'rm -f "$PHPSTAN_OUTPUT"' EXIT
+
+# ECS — auto-fix and ask for re-stage if anything was modified
+echo "Checking code style with ECS..."
+if ! "$ECS" check --ansi 2>&1 | grep -q "No errors found"; then
+    echo "Code style issues found. Running auto-fix..."
+    "$ECS" check --fix --ansi
+    if [ $? -eq 0 ]; then
+        echo "Code style issues fixed automatically"
+        echo "Files were modified. Please stage changes and commit again."
+        exit 1
+    else
+        echo "Some issues were fixed. Please review changes."
+        exit 1
+    fi
+fi
+
+# PHPStan — block commit on any error
+echo "Running PHPStan analysis..."
+"$PHPSTAN" analyse --configuration=phpstan.neon --memory-limit=1G --no-progress --error-format=table > "$PHPSTAN_OUTPUT" 2>&1
+if ! grep -q "\[OK\] No errors" "$PHPSTAN_OUTPUT"; then
+    cat "$PHPSTAN_OUTPUT"
+    echo ""
+    echo "PHPStan found issues. Please fix them before committing."
+    echo "Run: composer phpstan"
+    exit 1
+fi
+
+echo "All checks passed! Proceeding with commit..."
+exit 0
