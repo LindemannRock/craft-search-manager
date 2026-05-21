@@ -45,7 +45,8 @@
     "require-dev": {
         "craftcms/ecs": "dev-main",
         "craftcms/phpstan": "dev-main",
-        "phpunit/phpunit": "^11.0"
+        "phpunit/phpunit": "^11.0",
+        "yiisoft/yii2-redis": "^2.0"
     },
     "autoload": {
         "psr-4": {
@@ -57,7 +58,10 @@
         "phpstan": "phpstan --ansi --memory-limit=1G",
         "check-cs": "ecs check --ansi",
         "fix-cs": "ecs check --fix --ansi",
-        "test": "phpunit --colors=always"
+        "test": "phpunit --colors=always",
+        "install-hooks": "git config core.hooksPath .githooks 2>/dev/null || true",
+        "post-install-cmd": "@install-hooks",
+        "post-update-cmd": "@install-hooks"
     },
     "extra": {
         "name": "Search Manager",
@@ -72,7 +76,8 @@
         "sort-packages": true,
         "allow-plugins": {
             "yiisoft/yii2-composer": true,
-            "craftcms/plugin-installer": true
+            "craftcms/plugin-installer": true,
+            "php-http/discovery": true
         }
     }
 }
