@@ -33,3 +33,7 @@ docs/ export-ignore
 # Release automation (CI-only)
 release-please-config.json export-ignore
 .release-please-manifest.json export-ignore
+
+# GitHub/dev tooling
+.github/ export-ignore
+.githooks/ export-ignore
