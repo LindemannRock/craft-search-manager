@@ -29,3 +29,7 @@ src/web/assets/widgetpreview/src/ export-ignore
 
 # Docs are available on the website
 docs/ export-ignore
+
+# Release automation (CI-only)
+release-please-config.json export-ignore
+.release-please-manifest.json export-ignore
