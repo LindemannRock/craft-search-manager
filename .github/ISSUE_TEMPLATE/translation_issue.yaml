@@ -1,0 +1,116 @@
+name: Translation Issue
+description: Report a missing, wrong, or broken translation.
+labels: 'translation'
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for translation issues only — missing/wrong/awkward translations, untranslated strings, or layout problems in a specific language.
+
+        For other bugs (broken features, errors, crashes), use **Bug Report** instead.
+
+        Before submitting, please check:
+
+          - I've searched [open and closed issues](https://github.com/LindemannRock/craft-search-manager/issues?q=is%3Aissue+label%3Atranslation).
+
+  - type: dropdown
+    id: language
+    attributes:
+      label: Language affected
+      description: Which language has the issue?
+      options:
+        - Arabic (ar)
+        - Danish (da)
+        - Dutch (nl)
+        - English (en)
+        - French (fr)
+        - German (de)
+        - Italian (it)
+        - Japanese (ja)
+        - Norwegian (no)
+        - Portuguese (pt)
+        - Spanish (es)
+        - Swedish (sv)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Type of issue
+      options:
+        - Missing translation (string still in English)
+        - Wrong translation (incorrect meaning)
+        - Awkward translation (correct but unnatural)
+        - Typo or grammar error
+        - Untranslated exception or error message
+        - Layout broken (RTL, overflow, line wrap)
+        - Inconsistent term across plugins
+    validations:
+      required: true
+
+  - type: dropdown
+    id: location
+    attributes:
+      label: Where does it appear?
+      options:
+        - Control Panel — page or setting
+        - Control Panel — validation error
+        - Frontend — rendered template or widget
+        - Email
+        - Console / CLI output
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-text
+    attributes:
+      label: Current text shown
+      description: Paste the exact string you see in the UI.
+      placeholder: e.g. "Save settings"
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggested-correction
+    attributes:
+      label: Suggested correction
+      description: |
+        Optional — what should it say? A few notes for contributors:
+          - German, Japanese, and Arabic follow suite-wide conventions (compound rules, polite form, MSA + formal register). See the per-language convention sheets in the repo.
+          - Acronyms (URL, API, JSON, HTTP, etc.) and brand/product names stay in Latin script in every language.
+          - All languages use formal register (Sie/vous/usted/u/Lei/você/etc.).
+      placeholder: e.g. "Einstellungen speichern"
+    validations:
+      required: false
+
+  - type: input
+    id: translation-key
+    attributes:
+      label: Translation key (if known)
+      description: The English source string used as the lookup key in `translations/{lang}/{handle}.php`. Helps maintainers find it instantly.
+      placeholder: e.g. "Save settings"
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Screenshots (especially helpful for layout/RTL issues), surrounding UI text, or anything else that helps locate the string.
+
+  - type: dropdown
+    id: craft-major
+    attributes:
+      label: Craft CMS major version
+      options:
+        - "Craft 5"
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: "Search Manager version"
+      description: Check in Settings → Plugins.
+    validations:
+      required: true
