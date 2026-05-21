@@ -46,7 +46,8 @@
         "craftcms/ecs": "dev-main",
         "craftcms/phpstan": "dev-main",
         "phpunit/phpunit": "^11.0",
-        "yiisoft/yii2-redis": "^2.0"
+        "yiisoft/yii2-redis": "^2.0",
+        "lindemannrock/craft-docs-manager": "^5.0"
     },
     "autoload": {
         "psr-4": {
