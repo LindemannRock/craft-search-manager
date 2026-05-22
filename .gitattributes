@@ -37,3 +37,4 @@ release-please-config.json export-ignore
 # GitHub/dev tooling
 .github/ export-ignore
 .githooks/ export-ignore
+scripts/ export-ignore
