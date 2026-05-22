@@ -1,6 +1,50 @@
 # Changelog
 
-## [5.45.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.1...v5.45.0) (2026-05-06)
+## [5.46.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.45.0...v5.46.0) - 2026-05-22
+
+
+### Added
+
+* add attribute labels for various settings in Search Manager ([438082e](https://github.com/LindemannRock/craft-search-manager/commit/438082e01b8341cac55811d56cedf6ffca61898e))
+* add pre-commit hook for ECS and PHPStan code quality checks ([95ec7aa](https://github.com/LindemannRock/craft-search-manager/commit/95ec7aa4a60c0ed823fb1150c46520d886ea0c43))
+* **analytics:** add log category to analytics settings ([99bf488](https://github.com/LindemannRock/craft-search-manager/commit/99bf4886a38d162b81def411d900b109fb490352))
+* **analytics:** add log category to geo configuration ([fcf5777](https://github.com/LindemannRock/craft-search-manager/commit/fcf577760af49465e0f0a866fe3a49a6be8373de))
+* **analytics:** update search analytics to use indexSearches instead of searches ([6798586](https://github.com/LindemannRock/craft-search-manager/commit/67985865140c0fa8390bcba4c8a6de86912bf7a6))
+* **api-keys:** add API key management functionality ([546edab](https://github.com/LindemannRock/craft-search-manager/commit/546edab75539e1b3508213cfb8822ccdb24144ef))
+* **criteria:** consolidate criteria matching in SearchIndex model ([68088b3](https://github.com/LindemannRock/craft-search-manager/commit/68088b34e04f5fb1417505f279e7728ae40e8fef))
+* **i18n:** add API key management strings to translation file ([d7f281b](https://github.com/LindemannRock/craft-search-manager/commit/d7f281b9325a5bdd61732251158e90c8775d6dfd))
+* **i18n:** add new keys for index searches in multiple languages ([30fbc5b](https://github.com/LindemannRock/craft-search-manager/commit/30fbc5b5469a20ed45a48347ae8b280df1a87307))
+* **i18n:** add new keys for sync management in multiple languages ([7defc3d](https://github.com/LindemannRock/craft-search-manager/commit/7defc3ddcac80bbdf68313819e965409bf704ca4))
+* **i18n:** add translation issue template for reporting translations ([b5cba94](https://github.com/LindemannRock/craft-search-manager/commit/b5cba94edd941aaf9592007ad3f2fff99e834f06))
+* **i18n:** translate batch sync, last-indexed debounce, and export-limit strings ([5532194](https://github.com/LindemannRock/craft-search-manager/commit/553219490c8191fa6cfccfab24e0fa8735bd0ce0))
+* **i18n:** update sync failure messages to pending syncs in multiple languages ([50a2262](https://github.com/LindemannRock/craft-search-manager/commit/50a22624964a284cc284c9421b881051ae4b8ef6))
+* **indexing:** add lastIndexedDebounceSeconds setting for automatic metadata updates ([6d05743](https://github.com/LindemannRock/craft-search-manager/commit/6d0574306da4c297446840297008fe384a220ba5))
+* **pending-syncs:** add Pending Syncs management interface and functionality ([f1a532d](https://github.com/LindemannRock/craft-search-manager/commit/f1a532dcd9b61c322e786a6915c5c4b4f851b9b6))
+* **pending-syncs:** add Pending Syncs management template and functionality ([e0ee614](https://github.com/LindemannRock/craft-search-manager/commit/e0ee6140d55352f98be9d7da39b8f8139a574aa3))
+* **pending-syncs:** update Pending Syncs management and UI elements ([908bdf0](https://github.com/LindemannRock/craft-search-manager/commit/908bdf08e6efd79a920be97cfbc35d67e161406b))
+* **search:** add cache telemetry to search tracking for analytics ([2334f9e](https://github.com/LindemannRock/craft-search-manager/commit/2334f9e7e8da96e401ebf56cc260c2fe898dca3d))
+* **sync-status:** implement L3 buffer for status sync job and queue entries ([669bf72](https://github.com/LindemannRock/craft-search-manager/commit/669bf72c97692587a536f05c4c1c154c948ad88a))
+* **sync:** add integration tests for pending sync pipeline ([f0375f4](https://github.com/LindemannRock/craft-search-manager/commit/f0375f4054ec945200bbca0a0d7460720794016a))
+* **sync:** enhance pending sync processing and indexing efficiency ([5a8f64c](https://github.com/LindemannRock/craft-search-manager/commit/5a8f64c20070f7a0fbacb17cc258750955c14183))
+* **sync:** implement batch processing for pending sync rows ([651a7ac](https://github.com/LindemannRock/craft-search-manager/commit/651a7aca42b0558ae330ac95054ea1082c84df42))
+* **widgets:** implement in-memory filtering, sorting, and pagination for widget configurations and styles ([af17842](https://github.com/LindemannRock/craft-search-manager/commit/af178423cc9cdf711da6e9722b3d2401dc6cd4df))
+
+
+### Fixed
+
+* **core:** enhance boolean parsing in ConfigParser ([dc18bb8](https://github.com/LindemannRock/craft-search-manager/commit/dc18bb894a431ce013964b1b4bb5a0dd3c2ab655))
+* correct error messages for various actions in controllers ([026c06b](https://github.com/LindemannRock/craft-search-manager/commit/026c06b0e72cd607be0d110e5efa772ee42bfd8e))
+* **i18n:** align 3-plugin shared translations + clean up orphan/period/convention drift ([2a26c46](https://github.com/LindemannRock/craft-search-manager/commit/2a26c463a3726ba7f913f3c8bcfc793946f2d665))
+* **i18n:** correct API Key translations in multiple languages ([c7a369e](https://github.com/LindemannRock/craft-search-manager/commit/c7a369e624b830f89212947ae26ead487805e436))
+* **i18n:** correct ellipsis in search placeholders and error messages ([67ac36a](https://github.com/LindemannRock/craft-search-manager/commit/67ac36a1aeee529bc7087ac1df2136239e16a262))
+* **i18n:** correct index rebuild and deletion messages for consistency ([664ef04](https://github.com/LindemannRock/craft-search-manager/commit/664ef0465ac4aa116d8aef8f2fe129385dcb332a))
+* **i18n:** correct Swedish translations for cache and search terms ([9bfcb39](https://github.com/LindemannRock/craft-search-manager/commit/9bfcb39959080866a2a5bbc20f707a6a0e4272f8))
+* **i18n:** remove deprecated plugin settings from translations ([82b5ffd](https://github.com/LindemannRock/craft-search-manager/commit/82b5ffd10f8f543bb5706c04829096a66fc43e69))
+* **i18n:** remove deprecated translation for number of items per page ([2ee28c4](https://github.com/LindemannRock/craft-search-manager/commit/2ee28c4f93a8f4cba469c5afd1e5cdca98b48809))
+* **i18n:** translate API Keys feature, clean up orphan/period drift across 12 languages ([69c4fe7](https://github.com/LindemannRock/craft-search-manager/commit/69c4fe7a050caacf1b41959c16490e68387212f1))
+* **i18n:** translate API Keys feature, clean up orphan/period drift across 12 languages ([0726808](https://github.com/LindemannRock/craft-search-manager/commit/0726808b76734437b784bda83bf06d696ec67cd2))
+
+## [5.45.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.1...v5.45.0) - 2026-05-06
 
 
 ### Features
@@ -20,14 +64,14 @@
 
 * update version annotations across multiple files ([0f59020](https://github.com/LindemannRock/craft-search-manager/commit/0f59020ea77bd757d76073983cb5e0fb12c454d7))
 
-## [5.44.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.0...v5.44.1) (2026-04-18)
+## [5.44.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.0...v5.44.1) - 2026-04-18
 
 
 ### Bug Fixes
 
 * **IndexingService:** run stale-doc cleanup when element matches zero indices ([35a0845](https://github.com/LindemannRock/craft-search-manager/commit/35a0845df892069a2b6ca79df8b1a087d816cc30))
 
-## [5.44.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.1...v5.44.0) (2026-04-17)
+## [5.44.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.1...v5.44.0) - 2026-04-17
 
 
 ### Features
@@ -45,7 +89,7 @@
 * **templates:** translate hardcoded strings in CP editors ([d33ef5e](https://github.com/LindemannRock/craft-search-manager/commit/d33ef5ecb9dd7034a3da94245ab96264042c8adb))
 * **TermNormalizer:** improve diacritic handling and recomposition ([2a22f7c](https://github.com/LindemannRock/craft-search-manager/commit/2a22f7c2439c6552729e000cba6ee2a0de21adbc))
 
-## [5.43.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.0...v5.43.1) (2026-04-05)
+## [5.43.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.43.0...v5.43.1) - 2026-04-05
 
 
 ### Bug Fixes
@@ -54,14 +98,14 @@
 * read-only settings page for admin changes ([84e748f](https://github.com/LindemannRock/craft-search-manager/commit/84e748f7f736c4c1adf8290e8cb656b97ac5ab8e))
 * update install experience text to use Craft translation ([90706dd](https://github.com/LindemannRock/craft-search-manager/commit/90706dd2bec29aca1991bb439a7989aeb4519b06))
 
-## [5.43.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.42.0...v5.43.0) (2026-03-17)
+## [5.43.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.42.0...v5.43.0) - 2026-03-17
 
 
 ### Features
 
 * **analytics:** streamline IP processing using AnalyticsIpHelper ([956795a](https://github.com/LindemannRock/craft-search-manager/commit/956795a77710b29559eb90d5ce3bde9c4dc93632))
 
-## [5.42.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.41.0...v5.42.0) (2026-03-17)
+## [5.42.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.41.0...v5.42.0) - 2026-03-17
 
 
 ### Features
@@ -80,7 +124,7 @@
 
 * **searchwidget:** update dependencies in package.json and package-lock.json ([9a48204](https://github.com/LindemannRock/craft-search-manager/commit/9a482041bf836f25f19cc937f223e82546b3dd56))
 
-## [5.41.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.2...v5.41.0) (2026-03-04)
+## [5.41.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.2...v5.41.0) - 2026-03-04
 
 
 ### Features
@@ -105,28 +149,28 @@
 
 * **gitignore:** update node_modules entry to exclude root directory ([e12a6bf](https://github.com/LindemannRock/craft-search-manager/commit/e12a6bfb325956b2527127e8460e854565b0a3ce))
 
-## [5.40.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.1...v5.40.2) (2026-02-24)
+## [5.40.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.1...v5.40.2) - 2026-02-24
 
 
 ### Bug Fixes
 
 * **RebuildIndexJob:** implement canRetry method for job retries ([f42b6e9](https://github.com/LindemannRock/craft-search-manager/commit/f42b6e9c6f40c6ae239fe8066fed374b63a93d63))
 
-## [5.40.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.0...v5.40.1) (2026-02-24)
+## [5.40.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.40.0...v5.40.1) - 2026-02-24
 
 
 ### Bug Fixes
 
 * **RebuildIndexJob:** update getTtr method documentation for clarity ([a4949f9](https://github.com/LindemannRock/craft-search-manager/commit/a4949f9f21d1b94b07d1ce44514f4360737bcb22))
 
-## [5.40.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.1...v5.40.0) (2026-02-24)
+## [5.40.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.1...v5.40.0) - 2026-02-24
 
 
 ### Features
 
 * **TermNormalizer:** add shared Unicode-aware text normalization ([bc4798d](https://github.com/LindemannRock/craft-search-manager/commit/bc4798d822b534929d2a13b76a8d3c4e233ce264))
 
-## [5.39.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.0...v5.39.1) (2026-02-24)
+## [5.39.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.39.0...v5.39.1) - 2026-02-24
 
 
 ### Bug Fixes
@@ -135,7 +179,7 @@
 * **SettingsController:** respect configured siteId for search options ([518022f](https://github.com/LindemannRock/craft-search-manager/commit/518022f0a3e233858134287d209e7a15edab9825))
 * **Tokenizer:** normalize text processing for consistent indexing ([c59dd54](https://github.com/LindemannRock/craft-search-manager/commit/c59dd54311a5abc0a3fb0dfa079be2f063253ab8))
 
-## [5.39.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.38.0...v5.39.0) (2026-02-22)
+## [5.39.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.38.0...v5.39.0) - 2026-02-22
 
 
 ### Features
@@ -165,7 +209,7 @@
 * add .gitattributes with export-ignore for Packagist distribution ([ab013e6](https://github.com/LindemannRock/craft-search-manager/commit/ab013e689924dd8c0ee0769d4c5b68ded92d7b69))
 * Update license information in LICENSE.md and composer.json ([d224ab4](https://github.com/LindemannRock/craft-search-manager/commit/d224ab4a0feda8097b9194e86b82b2681e95c0df))
 
-## [5.38.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.37.0...v5.38.0) (2026-02-07)
+## [5.38.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.37.0...v5.38.0) - 2026-02-07
 
 
 ### Features
@@ -177,7 +221,7 @@
 
 * **AnalyticsService:** replace local date and hour expressions with DateFormatHelper methods ([5907b02](https://github.com/LindemannRock/craft-search-manager/commit/5907b02721d1a348281a89028f9f6ea5fad3ed6a))
 
-## [5.37.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.36.0...v5.37.0) (2026-02-05)
+## [5.37.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.36.0...v5.37.0) - 2026-02-05
 
 
 ### Features
@@ -199,7 +243,7 @@
 * **dependencies:** Remove matomo/device-detector from composer.json ([c1c70eb](https://github.com/LindemannRock/craft-search-manager/commit/c1c70eb446158799c33e941be405ca63f6a6786e))
 * **package:** update package metadata and versioning ([f7a4dfb](https://github.com/LindemannRock/craft-search-manager/commit/f7a4dfb602247ba6ae742c68ad5cac16ac085f07))
 
-## [5.36.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.2...v5.36.0) (2026-01-28)
+## [5.36.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.2...v5.36.0) - 2026-01-28
 
 
 ### Features
@@ -212,35 +256,35 @@
 
 * **backends:** add entriesAvailable flag to index responses ([e7def18](https://github.com/LindemannRock/craft-search-manager/commit/e7def18ad908fc9a72a3771c2ce1de48bc1d01f4))
 
-## [5.35.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.1...v5.35.2) (2026-01-26)
+## [5.35.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.1...v5.35.2) - 2026-01-26
 
 
 ### Bug Fixes
 
 * **models:** ensure type-safe handling of siteId in SearchIndex model ([1256089](https://github.com/LindemannRock/craft-search-manager/commit/12560891b988b432b8ce2a877d83d3499b6b2727))
 
-## [5.35.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.0...v5.35.1) (2026-01-26)
+## [5.35.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.35.0...v5.35.1) - 2026-01-26
 
 
 ### Bug Fixes
 
 * **backends:** enhance document preparation for multi-site support ([ef4287b](https://github.com/LindemannRock/craft-search-manager/commit/ef4287b34e43df5fa5f51740f94c72e86b74cd7c))
 
-## [5.35.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.1...v5.35.0) (2026-01-26)
+## [5.35.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.1...v5.35.0) - 2026-01-26
 
 
 ### Features
 
 * **indices:** add sync count functionality for backend indices ([981b015](https://github.com/LindemannRock/craft-search-manager/commit/981b015d7f92543d30cd85603273bdd5df0b021a))
 
-## [5.34.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.0...v5.34.1) (2026-01-26)
+## [5.34.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.34.0...v5.34.1) - 2026-01-26
 
 
 ### Miscellaneous Chores
 
 * remove unused document ([7d9d063](https://github.com/LindemannRock/craft-search-manager/commit/7d9d063845c6ff61b94ee738a131f50b6832f89e))
 
-## [5.34.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.33.0...v5.34.0) (2026-01-26)
+## [5.34.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.33.0...v5.34.0) - 2026-01-26
 
 
 ### Features
@@ -253,7 +297,7 @@
 * **cache:** correct popular query threshold check and remove legacy widget template ([4325d48](https://github.com/LindemannRock/craft-search-manager/commit/4325d48369a51122fae302d21532c86d0f19d24b))
 * **security:** replace unserialize with JSON and strip API meta exposure ([da51780](https://github.com/LindemannRock/craft-search-manager/commit/da517805f37831ec43e313f4c6d9a89587be900d))
 
-## [5.33.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.32.0...v5.33.0) (2026-01-21)
+## [5.33.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.32.0...v5.33.0) - 2026-01-21
 
 
 ### Features
@@ -271,7 +315,7 @@
 * swap cache and interface links in settings layout ([1f88238](https://github.com/LindemannRock/craft-search-manager/commit/1f8823897c3a9edd7ab2f631ecfc5de6d709e5c9))
 * update Redis configuration info box to include important notes on database isolation and managed hosting platforms ([c647a02](https://github.com/LindemannRock/craft-search-manager/commit/c647a02d0c59871d126536454c41bfe11fba7f44))
 
-## [5.32.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.31.0...v5.32.0) (2026-01-20)
+## [5.32.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.31.0...v5.32.0) - 2026-01-20
 
 
 ### Features
@@ -281,7 +325,7 @@
 * Add SearchModalWidget with modular architecture and debug toolbar ([853d607](https://github.com/LindemannRock/craft-search-manager/commit/853d607e0cd910ae2a16456b2218554855a78866))
 * add skipEntriesWithoutUrl, hideResultsWithoutUrl, and external backend improvements ([1c88bab](https://github.com/LindemannRock/craft-search-manager/commit/1c88bab5af66d1122188d931776f6b7a96177820))
 
-## [5.31.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.30.0...v5.31.0) (2026-01-19)
+## [5.31.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.30.0...v5.31.0) - 2026-01-19
 
 
 ### Features
@@ -289,7 +333,7 @@
 * Add maxRecentSearches configuration for recent searches functionality ([a36ab2f](https://github.com/LindemannRock/craft-search-manager/commit/a36ab2f082d16f7be55d8956c59044e1223a12dd))
 * Refactor highlighting settings to group fields within a toggleable section ([9a872e6](https://github.com/LindemannRock/craft-search-manager/commit/9a872e60f886a8902952f1d2dd9b36cfd3640da4))
 
-## [5.30.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.29.0...v5.30.0) (2026-01-19)
+## [5.30.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.29.0...v5.30.0) - 2026-01-19
 
 
 ### Features
@@ -323,7 +367,7 @@
 
 * Add optional widget configuration section to README ([b736491](https://github.com/LindemannRock/craft-search-manager/commit/b7364916cbf83da444e4968b8ae696c0b30c254e))
 
-## [5.29.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.2...v5.29.0) (2026-01-16)
+## [5.29.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.2...v5.29.0) - 2026-01-16
 
 
 ### Features
@@ -360,21 +404,21 @@
 
 * update autocomplete cache path for consistency in README ([bb6b301](https://github.com/LindemannRock/craft-search-manager/commit/bb6b30178ba02444d48636afb9e341e2362eed41))
 
-## [5.28.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.1...v5.28.2) (2026-01-13)
+## [5.28.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.1...v5.28.2) - 2026-01-13
 
 
 ### Bug Fixes
 
 * backend handling to use defaultBackendHandle and improve compatibility checks ([daee11e](https://github.com/LindemannRock/craft-search-manager/commit/daee11e9aab9517cb8b7a64ae9cdd96328107300))
 
-## [5.28.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.0...v5.28.1) (2026-01-13)
+## [5.28.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.28.0...v5.28.1) - 2026-01-13
 
 
 ### Bug Fixes
 
 * backend creation logic to use defaultBackendHandle and improve fallback handling ([d40af39](https://github.com/LindemannRock/craft-search-manager/commit/d40af399029ff1bd40c37b42e0294dd8f8a70d30))
 
-## [5.28.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.27.0...v5.28.0) (2026-01-13)
+## [5.28.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.27.0...v5.28.0) - 2026-01-13
 
 
 ### Features
@@ -382,7 +426,7 @@
 * Add configuredBackends system with granular permissions and per-index backend support ([c5104db](https://github.com/LindemannRock/craft-search-manager/commit/c5104db074c47e013a6de701add89406c4d93211))
 * add cross-backend methods for Algolia, Meilisearch, and Typesense, including browse, multiple queries, and filter parsing ([c47bf42](https://github.com/LindemannRock/craft-search-manager/commit/c47bf4205b5507a6c19c06df28e6eb447ed464bc))
 
-## [5.27.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.1...v5.27.0) (2026-01-12)
+## [5.27.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.1...v5.27.0) - 2026-01-12
 
 
 ### Features
@@ -390,21 +434,21 @@
 * add analytics count to cache clearing buttons and format displayed numbers ([fd2791a](https://github.com/LindemannRock/craft-search-manager/commit/fd2791a74d5a4e00aae75b4f369f051e973de629))
 * add analytics summary, content gaps, top searches, and trending searches widgets ([403ba22](https://github.com/LindemannRock/craft-search-manager/commit/403ba22de3eedddec12092a666be64aa207c42b7))
 
-## [5.26.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.0...v5.26.1) (2026-01-11)
+## [5.26.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.26.0...v5.26.1) - 2026-01-11
 
 
 ### Bug Fixes
 
 * plugin name retrieval to use getFullName method ([da20354](https://github.com/LindemannRock/craft-search-manager/commit/da2035446a9ab38005e55aad9476bfb06860747f))
 
-## [5.26.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.25.0...v5.26.0) (2026-01-10)
+## [5.26.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.25.0...v5.26.0) - 2026-01-10
 
 
 ### Features
 
 * Replace custom country name retrieval with GeoHelper utility ([c6e49fc](https://github.com/LindemannRock/craft-search-manager/commit/c6e49fc2f88e4249f21fdda76a7e023e0ee5e8a1))
 
-## [5.25.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.24.0...v5.25.0) (2026-01-09)
+## [5.25.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.24.0...v5.25.0) - 2026-01-09
 
 
 ### Features
@@ -422,21 +466,21 @@
 
 * update filename generation to use 'alltime' instead of 'all' for clarity ([cc1982c](https://github.com/LindemannRock/craft-search-manager/commit/cc1982ce429dcf0aed770f45edce8498225121f8))
 
-## [5.24.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.23.0...v5.24.0) (2026-01-08)
+## [5.24.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.23.0...v5.24.0) - 2026-01-08
 
 
 ### Features
 
 * refactor permissions to use grouped nested structure with granular access control ([3774d8c](https://github.com/LindemannRock/craft-search-manager/commit/3774d8c123a43f8bc38c74710807d66368d24115))
 
-## [5.23.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.22.0...v5.23.0) (2026-01-06)
+## [5.23.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.22.0...v5.23.0) - 2026-01-06
 
 
 ### Features
 
 * migrate to shared base plugin ([125dfff](https://github.com/LindemannRock/craft-search-manager/commit/125dfff6b442221498f28085af0a3ef16b0943a8))
 
-## [5.22.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.2...v5.22.0) (2026-01-05)
+## [5.22.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.2...v5.22.0) - 2026-01-05
 
 
 ### Features
@@ -450,70 +494,70 @@
 
 * backend filter logic and prepare for per-index backend overrides ([e5f5faf](https://github.com/LindemannRock/craft-search-manager/commit/e5f5faf97fadee2a4c7aab373603c09d863594b0))
 
-## [5.21.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.1...v5.21.2) (2026-01-05)
+## [5.21.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.1...v5.21.2) - 2026-01-05
 
 
 ### Bug Fixes
 
 * add tab-content class to analytics sections for improved styling ([a6df207](https://github.com/LindemannRock/craft-search-manager/commit/a6df207e1860f9860838cc508fac9acf30729baa))
 
-## [5.21.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.0...v5.21.1) (2026-01-04)
+## [5.21.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.21.0...v5.21.1) - 2026-01-04
 
 
 ### Bug Fixes
 
 * auto-indexing for config indices and add real-time document count tracking ([de90fa8](https://github.com/LindemannRock/craft-search-manager/commit/de90fa8e47b780a37a466ff215923e0f75079111))
 
-## [5.21.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.2...v5.21.0) (2026-01-04)
+## [5.21.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.2...v5.21.0) - 2026-01-04
 
 
 ### Features
 
 * enhance indexing service to support Closure-based criteria for config indices ([b078f49](https://github.com/LindemannRock/craft-search-manager/commit/b078f496e2e19a9b7f348de9585064b396d63ca0))
 
-## [5.20.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.1...v5.20.2) (2025-12-20)
+## [5.20.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.1...v5.20.2) - 2025-12-20
 
 
 ### Bug Fixes
 
 * format numerical values in dashboard for improved readability ([5759a85](https://github.com/LindemannRock/craft-search-manager/commit/5759a855108af7dc975cf78d84ce3a262444b681))
 
-## [5.20.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.0...v5.20.1) (2025-12-20)
+## [5.20.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.20.0...v5.20.1) - 2025-12-20
 
 
 ### Bug Fixes
 
 * query rules table to rename 'Match Type' to 'Query Pattern' and add a new 'Match' column with color indicators ([3bbaa96](https://github.com/LindemannRock/craft-search-manager/commit/3bbaa96954573aa26dd1748b5cabd43865367e28))
 
-## [5.20.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.19.0...v5.20.0) (2025-12-20)
+## [5.20.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.19.0...v5.20.0) - 2025-12-20
 
 
 ### Features
 
 * enhance promotions and query rules to support multi-pattern matching with commas ([c841691](https://github.com/LindemannRock/craft-search-manager/commit/c8416913a2b042edfe1fc84a79ba25e3cb74c374))
 
-## [5.19.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.18.0...v5.19.0) (2025-12-20)
+## [5.19.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.18.0...v5.19.0) - 2025-12-20
 
 
 ### Features
 
 * update promotions handling to support null indexHandle for global promotions and improve UI placeholders ([a866fd2](https://github.com/LindemannRock/craft-search-manager/commit/a866fd2459012de42ebd3a7316a045af64dbe2a6))
 
-## [5.18.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.17.0...v5.18.0) (2025-12-20)
+## [5.18.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.17.0...v5.18.0) - 2025-12-20
 
 
 ### Features
 
 * add title attribute to promotions and update related templates for better identification ([e2e2a8a](https://github.com/LindemannRock/craft-search-manager/commit/e2e2a8a9a43b365be2fd6f0ec33de4f38073fe5b))
 
-## [5.17.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.16.0...v5.17.0) (2025-12-20)
+## [5.17.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.16.0...v5.17.0) - 2025-12-20
 
 
 ### Features
 
 * enhance Arabic language support with spelling variations for boolean operators ([8d8fa83](https://github.com/LindemannRock/craft-search-manager/commit/8d8fa83a8241b8edf6a663a1e2251536cff79330))
 
-## [5.16.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.15.0...v5.16.0) (2025-12-20)
+## [5.16.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.15.0...v5.16.0) - 2025-12-20
 
 
 ### Features
@@ -525,49 +569,49 @@
 
 * objectID/elementId mismatch in promotions, query rules, and synonym handling ([014a9cd](https://github.com/LindemannRock/craft-search-manager/commit/014a9cd6bb7635ee9887947798826d1f140c9c90))
 
-## [5.15.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.1...v5.15.0) (2025-12-19)
+## [5.15.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.1...v5.15.0) - 2025-12-19
 
 
 ### Features
 
 * Enhance language support in search storage and autocomplete services ([ea78e60](https://github.com/LindemannRock/craft-search-manager/commit/ea78e6089488abccc7b7d3f79b366aff4695fbbf))
 
-## [5.14.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.0...v5.14.1) (2025-12-19)
+## [5.14.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.14.0...v5.14.1) - 2025-12-19
 
 
 ### Bug Fixes
 
 * move index retrieval logic to a separate section in test.twig ([48ae33a](https://github.com/LindemannRock/craft-search-manager/commit/48ae33ade32e0b06fde5cabd0296a74474bc71e7))
 
-## [5.14.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.13.0...v5.14.0) (2025-12-19)
+## [5.14.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.13.0...v5.14.0) - 2025-12-19
 
 
 ### Features
 
 * Add 'pgsql' to searchBackend options in Settings model ([7191b1b](https://github.com/LindemannRock/craft-search-manager/commit/7191b1bab2091ecee3d7ea6cbec6b1aa5def3ba9))
 
-## [5.13.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.12.0...v5.13.0) (2025-12-19)
+## [5.13.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.12.0...v5.13.0) - 2025-12-19
 
 
 ### Features
 
 * Enhance test settings template to include siteId mapping for indices ([ce02eaf](https://github.com/LindemannRock/craft-search-manager/commit/ce02eafaeb36630e4e353a07d8debb02f506e242))
 
-## [5.12.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.11.0...v5.12.0) (2025-12-19)
+## [5.12.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.11.0...v5.12.0) - 2025-12-19
 
 
 ### Features
 
 * Enhance autocomplete functionality with siteId parameter and update test template ([f9d8a8d](https://github.com/LindemannRock/craft-search-manager/commit/f9d8a8d610265a57af32bb9a68df134632fba73f))
 
-## [5.11.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.10.0...v5.11.0) (2025-12-19)
+## [5.11.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.10.0...v5.11.0) - 2025-12-19
 
 
 ### Features
 
 * Add promotion and query rule testing actions to settings controller and update test template ([d8c4b57](https://github.com/LindemannRock/craft-search-manager/commit/d8c4b57c4356ae33c43701d96bee5c4d671e3c07))
 
-## [5.10.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.9.0...v5.10.0) (2025-12-19)
+## [5.10.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.9.0...v5.10.0) - 2025-12-19
 
 
 ### Features
@@ -581,7 +625,7 @@
 
 * **ui:** boost multiplier spacing ([e347acb](https://github.com/LindemannRock/craft-search-manager/commit/e347acb48e57c403cc9904c90fb7fa3cb309302e))
 
-## [5.9.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.8.0...v5.9.0) (2025-12-18)
+## [5.9.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.8.0...v5.9.0) - 2025-12-18
 
 
 ### Features
@@ -590,14 +634,14 @@
 * Add localized boolean operators for 5 languages ([ac6fe32](https://github.com/LindemannRock/craft-search-manager/commit/ac6fe3205fefad91b99ba6d2dbbc4e17ca7941e9))
 * Add source detection, performance tab, and analytics improvements ([efd0d49](https://github.com/LindemannRock/craft-search-manager/commit/efd0d491d19348d29bfb94cf9db43b3438929da0))
 
-## [5.8.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.7.0...v5.8.0) (2025-12-18)
+## [5.8.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.7.0...v5.8.0) - 2025-12-18
 
 
 ### Features
 
 * add unified autocomplete endpoint with suggestions and results ([35e7ddb](https://github.com/LindemannRock/craft-search-manager/commit/35e7ddbecee80e373f189631a0e9782fac2d4741))
 
-## [5.7.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.6.0...v5.7.0) (2025-12-18)
+## [5.7.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.6.0...v5.7.0) - 2025-12-18
 
 
 ### Features
@@ -605,77 +649,77 @@
 * add type filtering and enrichment to search API ([85f8fc3](https://github.com/LindemannRock/craft-search-manager/commit/85f8fc316c7d4d09e81248eb2dee7f7bc5229cd2))
 * derive element type from section handle in AutoTransformer ([8a26963](https://github.com/LindemannRock/craft-search-manager/commit/8a269630b6269d3781475aba855fd4463dde64ac))
 
-## [5.6.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.9...v5.6.0) (2025-12-18)
+## [5.6.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.9...v5.6.0) - 2025-12-18
 
 
 ### Features
 
 * add rich autocomplete with element type detection ([1be13b5](https://github.com/LindemannRock/craft-search-manager/commit/1be13b563c2468dfae6a163d64462d8f8af1c9ee))
 
-## [5.5.9](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.8...v5.5.9) (2025-12-17)
+## [5.5.9](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.8...v5.5.9) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Enable plugin name setting in configuration ([a24c9fa](https://github.com/LindemannRock/craft-search-manager/commit/a24c9fae0086b076280ba1c4b4b47f9730a9baa6))
 
-## [5.5.8](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.7...v5.5.8) (2025-12-17)
+## [5.5.8](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.7...v5.5.8) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Update similarity threshold to improve fuzzy matching accuracy ([e473f01](https://github.com/LindemannRock/craft-search-manager/commit/e473f014aceee2d916af506a26d5304a131952dc))
 
-## [5.5.7](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.6...v5.5.7) (2025-12-17)
+## [5.5.7](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.6...v5.5.7) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Enhance search functionality by using index's configured siteId and adding wildcard support ([5c9851e](https://github.com/LindemannRock/craft-search-manager/commit/5c9851e6452da3176dbc3709090b345763d9e72b))
 
-## [5.5.6](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.5...v5.5.6) (2025-12-17)
+## [5.5.6](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.5...v5.5.6) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Make fuzzy matching limit configurable and fix n-gram settings save bug ([872cf0a](https://github.com/LindemannRock/craft-search-manager/commit/872cf0ab85d83da2956b7814c2e66ee44a6842f5))
 
-## [5.5.5](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.4...v5.5.5) (2025-12-17)
+## [5.5.5](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.4...v5.5.5) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Limit results in similarity query to improve performance ([dc3572a](https://github.com/LindemannRock/craft-search-manager/commit/dc3572a79bc9b6ee9298ab67b9bd953c061fa47e))
 
-## [5.5.4](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.3...v5.5.4) (2025-12-17)
+## [5.5.4](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.3...v5.5.4) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Use REPLACE INTO for document storage to handle duplicates and improve data integrity ([ffe33c4](https://github.com/LindemannRock/craft-search-manager/commit/ffe33c4ee4f23fa211884b81427d7468fccc3d7a))
 
-## [5.5.3](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.2...v5.5.3) (2025-12-17)
+## [5.5.3](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.2...v5.5.3) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Prevent duplicate key errors and add comprehensive cleanup across all storage backends ([7a4fe0a](https://github.com/LindemannRock/craft-search-manager/commit/7a4fe0a2f1b6b4670c9c5acf0a40e777c11096ee))
 
-## [5.5.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.1...v5.5.2) (2025-12-17)
+## [5.5.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.1...v5.5.2) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Clear storage now handles orphaned indices and resets metadata ([7050d63](https://github.com/LindemannRock/craft-search-manager/commit/7050d63b29b51d5d93c99156268d3632e011c8ff))
 
-## [5.5.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.0...v5.5.1) (2025-12-17)
+## [5.5.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.5.0...v5.5.1) - 2025-12-17
 
 
 ### Bug Fixes
 
 * Implement proper wildcard search and fix fuzzy matching across all backends ([07ccbad](https://github.com/LindemannRock/craft-search-manager/commit/07ccbad063fc50f6fdea0c6574717ab5ca166e7a))
 
-## [5.5.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.4.0...v5.5.0) (2025-12-17)
+## [5.5.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.4.0...v5.5.0) - 2025-12-17
 
 
 ### Features
@@ -683,14 +727,14 @@
 * Enhance AutoTransformer to automatically handle all field types ([b09a4e5](https://github.com/LindemannRock/craft-search-manager/commit/b09a4e5b3d4bd37c2afa14eb81ab6435bbb1cb0a))
 * Update transformer class instructions and examples in edit template; remove unused index copy template ([e3fddcc](https://github.com/LindemannRock/craft-search-manager/commit/e3fddcc75891fb1a9d14b28d6973f760749d79d1))
 
-## [5.4.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.3.0...v5.4.0) (2025-12-17)
+## [5.4.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.3.0...v5.4.0) - 2025-12-17
 
 
 ### Features
 
 * Fix config index metadata sync and optimize SearchIndex model ([94dce2d](https://github.com/LindemannRock/craft-search-manager/commit/94dce2d347188e25dfa466c6370d1d10cb965f65))
 
-## [5.3.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.2...v5.3.0) (2025-12-16)
+## [5.3.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.2...v5.3.0) - 2025-12-16
 
 
 ### Features
@@ -702,21 +746,21 @@
 
 * improve transformer selection logic to handle empty string cases ([9d31c48](https://github.com/LindemannRock/craft-search-manager/commit/9d31c48f5d59469a9efb0e3b75e418ea06ba5177))
 
-## [5.2.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.1...v5.2.2) (2025-12-16)
+## [5.2.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.1...v5.2.2) - 2025-12-16
 
 
 ### Bug Fixes
 
 * critical backend bugs and add PostgreSQL support ([e1e81fa](https://github.com/LindemannRock/craft-search-manager/commit/e1e81fa5b4b061db9d6cfc2780898a20db4360dc))
 
-## [5.2.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.0...v5.2.1) (2025-12-16)
+## [5.2.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.2.0...v5.2.1) - 2025-12-16
 
 
 ### Bug Fixes
 
 * improve analytics display and error handling for Chart.js loading ([9210a33](https://github.com/LindemannRock/craft-search-manager/commit/9210a3330b37f2ea68a597178436c8724f56b39f))
 
-## [5.2.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.1.0...v5.2.0) (2025-12-16)
+## [5.2.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.1.0...v5.2.0) - 2025-12-16
 
 
 ### Features
@@ -725,14 +769,14 @@
 * add cache storage method option to settings table ([b80d75e](https://github.com/LindemannRock/craft-search-manager/commit/b80d75e48e83c1283f9160e769e9ab9d74844b21))
 * implement cache storage method selection and handling for Redis and file systems ([62c29b4](https://github.com/LindemannRock/craft-search-manager/commit/62c29b4ff650b45da468163339f44102f94632c0))
 
-## [5.1.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.0.0...v5.1.0) (2025-12-16)
+## [5.1.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.0.0...v5.1.0) - 2025-12-16
 
 
 ### Features
 
 * update backend support in search functionality to include PostgreSQL ([2e7a467](https://github.com/LindemannRock/craft-search-manager/commit/2e7a46773c2668ca39360928ef4c8833de1cc90a))
 
-## 5.0.0 (2025-12-16)
+## 5.0.0 - 2025-12-16
 
 
 ### Features
