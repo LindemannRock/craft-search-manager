@@ -60,6 +60,14 @@
         "check-cs": "ecs check --ansi",
         "fix-cs": "ecs check --fix --ansi",
         "test": "phpunit --colors=always",
+        "ci": [
+            "@phpstan",
+            "@check-cs"
+        ],
+        "ci:full": [
+            "@ci",
+            "@test"
+        ],
         "install-hooks": "git config core.hooksPath .githooks 2>/dev/null || true",
         "post-install-cmd": "@install-hooks",
         "post-update-cmd": "@install-hooks"
