@@ -1,5 +1,49 @@
 # Changelog
 
+## [5.46.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.45.0...v5.46.0) (2026-05-22)
+
+
+### Added
+
+* add attribute labels for various settings in Search Manager ([438082e](https://github.com/LindemannRock/craft-search-manager/commit/438082e01b8341cac55811d56cedf6ffca61898e))
+* add pre-commit hook for ECS and PHPStan code quality checks ([95ec7aa](https://github.com/LindemannRock/craft-search-manager/commit/95ec7aa4a60c0ed823fb1150c46520d886ea0c43))
+* **analytics:** add log category to analytics settings ([99bf488](https://github.com/LindemannRock/craft-search-manager/commit/99bf4886a38d162b81def411d900b109fb490352))
+* **analytics:** add log category to geo configuration ([fcf5777](https://github.com/LindemannRock/craft-search-manager/commit/fcf577760af49465e0f0a866fe3a49a6be8373de))
+* **analytics:** update search analytics to use indexSearches instead of searches ([6798586](https://github.com/LindemannRock/craft-search-manager/commit/67985865140c0fa8390bcba4c8a6de86912bf7a6))
+* **api-keys:** add API key management functionality ([546edab](https://github.com/LindemannRock/craft-search-manager/commit/546edab75539e1b3508213cfb8822ccdb24144ef))
+* **criteria:** consolidate criteria matching in SearchIndex model ([68088b3](https://github.com/LindemannRock/craft-search-manager/commit/68088b34e04f5fb1417505f279e7728ae40e8fef))
+* **i18n:** add API key management strings to translation file ([d7f281b](https://github.com/LindemannRock/craft-search-manager/commit/d7f281b9325a5bdd61732251158e90c8775d6dfd))
+* **i18n:** add new keys for index searches in multiple languages ([30fbc5b](https://github.com/LindemannRock/craft-search-manager/commit/30fbc5b5469a20ed45a48347ae8b280df1a87307))
+* **i18n:** add new keys for sync management in multiple languages ([7defc3d](https://github.com/LindemannRock/craft-search-manager/commit/7defc3ddcac80bbdf68313819e965409bf704ca4))
+* **i18n:** add translation issue template for reporting translations ([b5cba94](https://github.com/LindemannRock/craft-search-manager/commit/b5cba94edd941aaf9592007ad3f2fff99e834f06))
+* **i18n:** translate batch sync, last-indexed debounce, and export-limit strings ([5532194](https://github.com/LindemannRock/craft-search-manager/commit/553219490c8191fa6cfccfab24e0fa8735bd0ce0))
+* **i18n:** update sync failure messages to pending syncs in multiple languages ([50a2262](https://github.com/LindemannRock/craft-search-manager/commit/50a22624964a284cc284c9421b881051ae4b8ef6))
+* **indexing:** add lastIndexedDebounceSeconds setting for automatic metadata updates ([6d05743](https://github.com/LindemannRock/craft-search-manager/commit/6d0574306da4c297446840297008fe384a220ba5))
+* **pending-syncs:** add Pending Syncs management interface and functionality ([f1a532d](https://github.com/LindemannRock/craft-search-manager/commit/f1a532dcd9b61c322e786a6915c5c4b4f851b9b6))
+* **pending-syncs:** add Pending Syncs management template and functionality ([e0ee614](https://github.com/LindemannRock/craft-search-manager/commit/e0ee6140d55352f98be9d7da39b8f8139a574aa3))
+* **pending-syncs:** update Pending Syncs management and UI elements ([908bdf0](https://github.com/LindemannRock/craft-search-manager/commit/908bdf08e6efd79a920be97cfbc35d67e161406b))
+* **search:** add cache telemetry to search tracking for analytics ([2334f9e](https://github.com/LindemannRock/craft-search-manager/commit/2334f9e7e8da96e401ebf56cc260c2fe898dca3d))
+* **sync-status:** implement L3 buffer for status sync job and queue entries ([669bf72](https://github.com/LindemannRock/craft-search-manager/commit/669bf72c97692587a536f05c4c1c154c948ad88a))
+* **sync:** add integration tests for pending sync pipeline ([f0375f4](https://github.com/LindemannRock/craft-search-manager/commit/f0375f4054ec945200bbca0a0d7460720794016a))
+* **sync:** enhance pending sync processing and indexing efficiency ([5a8f64c](https://github.com/LindemannRock/craft-search-manager/commit/5a8f64c20070f7a0fbacb17cc258750955c14183))
+* **sync:** implement batch processing for pending sync rows ([651a7ac](https://github.com/LindemannRock/craft-search-manager/commit/651a7aca42b0558ae330ac95054ea1082c84df42))
+* **widgets:** implement in-memory filtering, sorting, and pagination for widget configurations and styles ([af17842](https://github.com/LindemannRock/craft-search-manager/commit/af178423cc9cdf711da6e9722b3d2401dc6cd4df))
+
+
+### Fixed
+
+* **core:** enhance boolean parsing in ConfigParser ([dc18bb8](https://github.com/LindemannRock/craft-search-manager/commit/dc18bb894a431ce013964b1b4bb5a0dd3c2ab655))
+* correct error messages for various actions in controllers ([026c06b](https://github.com/LindemannRock/craft-search-manager/commit/026c06b0e72cd607be0d110e5efa772ee42bfd8e))
+* **i18n:** align 3-plugin shared translations + clean up orphan/period/convention drift ([2a26c46](https://github.com/LindemannRock/craft-search-manager/commit/2a26c463a3726ba7f913f3c8bcfc793946f2d665))
+* **i18n:** correct API Key translations in multiple languages ([c7a369e](https://github.com/LindemannRock/craft-search-manager/commit/c7a369e624b830f89212947ae26ead487805e436))
+* **i18n:** correct ellipsis in search placeholders and error messages ([67ac36a](https://github.com/LindemannRock/craft-search-manager/commit/67ac36a1aeee529bc7087ac1df2136239e16a262))
+* **i18n:** correct index rebuild and deletion messages for consistency ([664ef04](https://github.com/LindemannRock/craft-search-manager/commit/664ef0465ac4aa116d8aef8f2fe129385dcb332a))
+* **i18n:** correct Swedish translations for cache and search terms ([9bfcb39](https://github.com/LindemannRock/craft-search-manager/commit/9bfcb39959080866a2a5bbc20f707a6a0e4272f8))
+* **i18n:** remove deprecated plugin settings from translations ([82b5ffd](https://github.com/LindemannRock/craft-search-manager/commit/82b5ffd10f8f543bb5706c04829096a66fc43e69))
+* **i18n:** remove deprecated translation for number of items per page ([2ee28c4](https://github.com/LindemannRock/craft-search-manager/commit/2ee28c4f93a8f4cba469c5afd1e5cdca98b48809))
+* **i18n:** translate API Keys feature, clean up orphan/period drift across 12 languages ([69c4fe7](https://github.com/LindemannRock/craft-search-manager/commit/69c4fe7a050caacf1b41959c16490e68387212f1))
+* **i18n:** translate API Keys feature, clean up orphan/period drift across 12 languages ([0726808](https://github.com/LindemannRock/craft-search-manager/commit/0726808b76734437b784bda83bf06d696ec67cd2))
+
 ## [5.45.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.44.1...v5.45.0) (2026-05-06)
 
 
