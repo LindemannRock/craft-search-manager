@@ -19,9 +19,6 @@ use lindemannrock\searchmanager\tests\TestCase;
 /**
  * Happy-path coverage for the L3 pending-sync pipeline.
  *
- * These scenarios are the PHPUnit port of `.internal/scripts/verify-l3-happy-path.php`.
- * That script will eventually be removed once these tests are running in CI.
- *
  * @since 5.45.0
  */
 final class SyncBufferHappyPathTest extends TestCase
