@@ -60,6 +60,52 @@ class AnalyticsController extends Controller
     }
 
     /**
+     * Format a local analytics datetime for API/export payloads.
+     *
+     * Analytics query-insight services return DateTime objects already set to
+     * Craft's timezone. String fallback is treated as local for compatibility.
+     *
+     * @param \DateTime|string|null $date
+     * @return string|null
+     */
+    private function formatLocalAnalyticsDatetime(\DateTime|string|null $date): ?string
+    {
+        return DateFormatHelper::formatDatetime($date, 'cascade', null, true, false);
+    }
+
+    /**
+     * Format most-common query rows for JSON responses.
+     *
+     * @param array $rows
+     * @return array
+     */
+    private function formatMostCommonSearchRows(array $rows): array
+    {
+        foreach ($rows as &$row) {
+            $row['lastSearched'] = $this->formatLocalAnalyticsDatetime($row['lastSearched'] ?? null);
+        }
+        unset($row);
+
+        return $rows;
+    }
+
+    /**
+     * Format zero-result cluster rows for JSON/export responses.
+     *
+     * @param array $clusters
+     * @return array
+     */
+    private function formatZeroResultClusterRows(array $clusters): array
+    {
+        foreach ($clusters as &$cluster) {
+            $cluster['lastSearched'] = $this->formatLocalAnalyticsDatetime($cluster['lastSearched'] ?? null);
+        }
+        unset($cluster);
+
+        return $clusters;
+    }
+
+    /**
      * Analytics index - Charts and analytics
      *
      * @return Response
@@ -303,7 +349,9 @@ class AnalyticsController extends Controller
                 Craft::t('search-manager', 'Related Queries'),
                 Craft::t('search-manager', 'Last Searched'),
             ];
-            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange);
+            $clusters = $this->formatZeroResultClusterRows(
+                SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange)
+            );
             foreach ($clusters as $cluster) {
                 $clusterRows[] = [
                     'main_term' => $cluster['representative'],
@@ -504,7 +552,9 @@ class AnalyticsController extends Controller
                 $totalCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, null, $dateRange);
                 $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
                 $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
-                $mostCommon = SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 15, $dateRange);
+                $mostCommon = $this->formatMostCommonSearchRows(
+                    SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 15, $dateRange)
+                );
                 $recentUnhandled = SearchManager::$plugin->analytics->getRecentSearches($effectiveSiteId, 15, false, $dateRange);
 
                 $data['summary'] = [
@@ -532,7 +582,9 @@ class AnalyticsController extends Controller
             // Content Gaps Tab
             if ($type === 'all' || $type === 'content-gaps') {
                 $data['contentGaps'] = [
-                    'clusters' => SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange, 15),
+                    'clusters' => $this->formatZeroResultClusterRows(
+                        SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange, 15)
+                    ),
                 ];
             }
 
@@ -1309,7 +1361,9 @@ class AnalyticsController extends Controller
 
         if ($type === 'clusters') {
             // Get content gaps clusters
-            $clusters = SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange);
+            $clusters = $this->formatZeroResultClusterRows(
+                SearchManager::$plugin->analytics->getZeroResultClusters($effectiveSiteId, $dateRange)
+            );
             $data = [];
 
             foreach ($clusters as $cluster) {
