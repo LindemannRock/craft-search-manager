@@ -70,8 +70,10 @@ return [
 
         /**
          * Default date range for analytics and dashboard pages
-         * Options: 'today', 'yesterday', 'last7days', 'last30days', 'last90days',
-         *          'thisMonth', 'lastMonth', 'thisYear', 'lastYear', 'all'
+         * Options: 'today', 'yesterday', 'thisWeek', 'lastWeek', 'last7days',
+         *          'last14days', 'last30days', 'last90days', 'thisMonth',
+         *          'lastMonth', 'thisQuarter', 'lastQuarter', 'thisYear',
+         *          'lastYear', 'last12months', 'all'
          * Default: 'last30days' (from base plugin)
          */
         // 'defaultDateRange' => 'last7days',
