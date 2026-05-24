@@ -767,8 +767,8 @@ class AnalyticsController extends Controller
                 $siteNames = [];
                 foreach ($recentSearches as &$row) {
                     if ($row['dateCreated'] instanceof \DateTime) {
-                        $row['date'] = DateFormatHelper::formatDate($row['dateCreated'], 'short', true, false);
-                        $row['time'] = DateFormatHelper::formatTime($row['dateCreated'], 'short', null, false);
+                        $row['date'] = DateFormatHelper::formatDate($row['dateCreated'], 'cascade', true, false);
+                        $row['time'] = DateFormatHelper::formatTime($row['dateCreated'], 'cascade', null, false);
                     }
                     if (!empty($row['siteId']) && !isset($siteNames[$row['siteId']])) {
                         $site = Craft::$app->getSites()->getSiteById((int)$row['siteId']);
@@ -792,8 +792,8 @@ class AnalyticsController extends Controller
                 $siteNames = [];
                 foreach ($recentUnhandled as &$row) {
                     if ($row['dateCreated'] instanceof \DateTime) {
-                        $row['date'] = DateFormatHelper::formatDate($row['dateCreated'], 'short', true, false);
-                        $row['time'] = DateFormatHelper::formatTime($row['dateCreated'], 'short', null, false);
+                        $row['date'] = DateFormatHelper::formatDate($row['dateCreated'], 'cascade', true, false);
+                        $row['time'] = DateFormatHelper::formatTime($row['dateCreated'], 'cascade', null, false);
                     }
                     if (!empty($row['siteId']) && !isset($siteNames[$row['siteId']])) {
                         $site = Craft::$app->getSites()->getSiteById((int)$row['siteId']);
