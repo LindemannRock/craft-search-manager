@@ -515,6 +515,16 @@ setTimeout(updateActionButton, 10);
 						<dt class="heading">{{ 'Multi-Query'|t('search-manager') }}</dt>
 						<dd id="cap-multi" class="value">—</dd>
 					</div>
+					{% if backend.source != 'config' %}
+						<div class="data">
+							<dt class="heading">{{ 'Created at'|t('app') }}</dt>
+							<dd class="value">{{ backend.dateCreated|lrDatetime }}</dd>
+						</div>
+						<div class="data">
+							<dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+							<dd class="value">{{ backend.dateUpdated|lrDatetime }}</dd>
+						</div>
+					{% endif %}
 				</dl>
 			</fieldset>
 		{% endif %}

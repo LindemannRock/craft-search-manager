@@ -251,22 +251,24 @@
                     <dd class="value"><code>{{ apiKey.keyPrefix }}</code></dd>
                 </div>
 
-                {% if apiKey.dateCreated %}
-                    <div class="data">
-                        <dt class="heading">{{ 'Created at'|t('search-manager') }}</dt>
-                        <dd class="value">{{ apiKey.dateCreated|lrDatetime('short') }}</dd>
-                    </div>
-                {% endif %}
-
                 <div class="data">
                     <dt class="heading">{{ 'Last used'|t('search-manager') }}</dt>
                     <dd class="value">
                         {% if apiKey.lastUsedAt %}
-                            {{ apiKey.lastUsedAt|lrDatetime('short') }}
+                            {{ apiKey.lastUsedAt|lrDatetime }}
                         {% else %}
                             <span class="light">{{ 'Never'|t('search-manager') }}</span>
                         {% endif %}
                     </dd>
+                </div>
+
+                <div class="data">
+                    <dt class="heading">{{ 'Created at'|t('app') }}</dt>
+                    <dd class="value">{{ apiKey.dateCreated|lrDatetime }}</dd>
+                </div>
+                <div class="data">
+                    <dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+                    <dd class="value">{{ apiKey.dateUpdated|lrDatetime }}</dd>
                 </div>
             </dl>
         </fieldset>

@@ -552,8 +552,16 @@
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
 						<span class="status {{ rule.enabled ? 'live' : 'disabled' }}"></span>
-						<span>{{ rule.enabled ? 'Live'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+						<span>{{ rule.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 					</dd>
+				</div>
+				<div class="data">
+					<dt class="heading">{{ 'Created at'|t('app') }}</dt>
+					<dd class="value">{{ rule.dateCreated|lrDatetime }}</dd>
+				</div>
+				<div class="data">
+					<dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+					<dd class="value">{{ rule.dateUpdated|lrDatetime }}</dd>
 				</div>
 			</dl>
 		</fieldset>

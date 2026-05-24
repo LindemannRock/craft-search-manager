@@ -163,7 +163,7 @@
     {% set elementKey = item.elementId ~ ':' ~ item.siteId %}
     {% set element = elements[elementKey] ?? null %}
     {% set elementTypeShort = item.elementType|split('\\')|last %}
-    {% set claimedAtTs = item.claimedAt ? item.claimedAt|lrDatetime('short') : null %}
+    {% set claimedAtTs = item.claimedAt ? item.claimedAt|lrDatetime : null %}
     {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
 
     {# Row-level metadata for the bulk-count JS. Retry-eligible = failed +
@@ -222,11 +222,11 @@
     </td>
 
     <td data-column="queuedAt">
-        {{ item.queuedAt|lrDatetime('short') }}
+        {{ item.queuedAt|lrDatetime }}
     </td>
 
     <td data-column="nextAttemptAt">
-        {{ item.nextAttemptAt ? item.nextAttemptAt|lrDatetime('short') : '—' }}
+        {{ item.nextAttemptAt ? item.nextAttemptAt|lrDatetime : '—' }}
     </td>
 
     <td data-column="lastError">

@@ -159,9 +159,9 @@
     <td data-column="validUntil">
         {% if item.validUntil %}
             {% if not item.isStillValid() %}
-                <span class="lr-text-red" title="{{ 'Expired'|t('search-manager') }}">{{ item.validUntil|lrDatetime('short') }}</span>
+                <span class="lr-text-red" title="{{ 'Expired'|t('search-manager') }}">{{ item.validUntil|lrDatetime }}</span>
             {% else %}
-                {{ item.validUntil|lrDatetime('short') }}
+                {{ item.validUntil|lrDatetime }}
             {% endif %}
         {% else %}
             <span class="light">{{ 'Never'|t('search-manager') }}</span>
@@ -169,7 +169,7 @@
     </td>
 
     <td data-column="lastUsedAt">
-        {{ item.lastUsedAt ? item.lastUsedAt|lrDatetime('short') : '—' }}
+        {{ item.lastUsedAt ? item.lastUsedAt|lrDatetime : '—' }}
     </td>
 {% endblock %}
 

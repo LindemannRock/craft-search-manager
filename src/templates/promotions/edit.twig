@@ -267,8 +267,16 @@
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
 						<span class="status {{ promotion.enabled ? 'live' : 'disabled' }}"></span>
-						<span>{{ promotion.enabled ? 'Live'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+						<span>{{ promotion.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 					</dd>
+				</div>
+				<div class="data">
+					<dt class="heading">{{ 'Created at'|t('app') }}</dt>
+					<dd class="value">{{ promotion.dateCreated|lrDatetime }}</dd>
+				</div>
+				<div class="data">
+					<dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+					<dd class="value">{{ promotion.dateUpdated|lrDatetime }}</dd>
 				</div>
 			</dl>
 		</fieldset>

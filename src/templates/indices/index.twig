@@ -209,7 +209,7 @@
     {# Last Indexed #}
     <td data-column="lastIndexed">
         {% if item.lastIndexed %}
-            {{ item.lastIndexed|lrDatetime('short') }}
+            {{ item.lastIndexed|lrDatetime }}
         {% else %}
             <span class="light">{{ "Never"|t('search-manager') }}</span>
         {% endif %}

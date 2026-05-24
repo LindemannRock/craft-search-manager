@@ -163,7 +163,7 @@
 				<dt class="heading">{{ 'Last Indexed'|t('search-manager') }}</dt>
 				<dd class="value">
 					{% if index.lastIndexed %}
-						{{ index.lastIndexed|lrDatetime('short') }}
+						{{ index.lastIndexed|lrDatetime }}
 					{% else %}
 						<span class="light">{{ 'Never'|t('search-manager') }}</span>
 					{% endif %}

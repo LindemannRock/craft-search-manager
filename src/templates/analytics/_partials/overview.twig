@@ -133,8 +133,8 @@
                             <td>
                                 {{ (stat.totalResults / stat.count)|round(1)|number }}
                             </td>
-                            <td>{{ stat.lastSearched|lrDate('short') }}</td>
-                            <td>{{ stat.lastSearched|lrTime('short') }}</td>
+                            <td>{{ stat.lastSearched|lrDate }}</td>
+                            <td>{{ stat.lastSearched|lrTime }}</td>
                         </tr>
                     {% else %}
                         <tr>

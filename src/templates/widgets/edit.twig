@@ -296,6 +296,16 @@
 						<dd class="value">{{ 'Yes'|t('search-manager') }}</dd>
 					</div>
 				{% endif %}
+				{% if not widgetConfig.isFromConfig() %}
+					<div class="data">
+						<dt class="heading">{{ 'Created at'|t('app') }}</dt>
+						<dd class="value">{{ widgetConfig.dateCreated|lrDatetime }}</dd>
+					</div>
+					<div class="data">
+						<dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+						<dd class="value">{{ widgetConfig.dateUpdated|lrDatetime }}</dd>
+					</div>
+				{% endif %}
 			</dl>
 		</fieldset>
 	{% endif %}

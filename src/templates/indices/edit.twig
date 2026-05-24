@@ -695,7 +695,7 @@ document.addEventListener('DOMContentLoaded', function() {
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
 						<span class="status {{ index.enabled ? 'live' : 'disabled' }}"></span>
-						<span>{{ index.enabled ? 'Live'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+						<span>{{ index.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 					</dd>
 				</div>
 				<div class="data">
@@ -750,7 +750,17 @@ document.addEventListener('DOMContentLoaded', function() {
 				{% if index.lastIndexed %}
 					<div class="data">
 						<dt class="heading">{{ 'Last indexed'|t('search-manager') }}</dt>
-						<dd class="value">{{ index.lastIndexed|lrDatetime('short') }}</dd>
+						<dd class="value">{{ index.lastIndexed|lrDatetime }}</dd>
+					</div>
+				{% endif %}
+				{% if index.source != 'config' %}
+					<div class="data">
+						<dt class="heading">{{ 'Created at'|t('app') }}</dt>
+						<dd class="value">{{ index.dateCreated|lrDatetime }}</dd>
+					</div>
+					<div class="data">
+						<dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+						<dd class="value">{{ index.dateUpdated|lrDatetime }}</dd>
 					</div>
 				{% endif %}
 			</dl>
