@@ -406,7 +406,6 @@ return [
     'Valid until' => 'Válida até',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Data/hora de expiração opcional. Deixe vazio para sem expiração.',
     'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'As chaves desativadas são imediatamente rejeitadas em todos os endpoints quando a aplicação estiver disponível. Revogar (eliminar) remove a chave permanentemente.',
-    'Created at' => 'Criada em',
     'Copy this key now — it will never be shown again.' => 'Copie esta chave agora — não voltará a ser apresentada.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => 'O {pluginName} armazena apenas um hash. Se perder este valor terá de criar uma nova chave.',
 
@@ -1339,7 +1338,6 @@ return [
     'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'Máx: 64 caracteres. Aparece nas análises para distinguir o tráfego de diferentes colocações de widgets.',
     'Max: 64 characters. Must match a field name in your indexed documents.' => 'Máx: 64 caracteres. Deve corresponder a um nome de campo nos documentos indexados.',
     'Indexed' => 'Indexado',
-    'Live' => 'Live',
     'Select a category' => 'Selecionar uma categoria',
     'Muted' => 'Silenciado',
     'Text' => 'Texto',

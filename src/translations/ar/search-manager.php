@@ -406,7 +406,6 @@ return [
     'Valid until' => 'صالح حتى',
     'Optional expiry datetime. Leave empty for no expiry.' => 'تاريخ ووقت انتهاء صلاحية اختياري. اترك فارغاً لعدم وجود انتهاء صلاحية.',
     'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'يتم رفض المفاتيح المعطلة فوراً على جميع نقاط النهاية عند توفر التنفيذ. الإبطال (الحذف) يزيل المفتاح نهائياً.',
-    'Created at' => 'تم الإنشاء في',
     'Copy this key now — it will never be shown again.' => 'انسخ هذا المفتاح الآن — لن يتم عرضه مرة أخرى أبداً.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => 'يخزن {pluginName} hash فقط. إذا فقدت هذه القيمة فستحتاج إلى إنشاء مفتاح جديد.',
 
@@ -1339,7 +1338,6 @@ return [
     'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'الحد الأقصى: 64 حرف. يظهر في التحليلات للتمييز بين حركة المرور من مواضع الأدوات المختلفة.',
     'Max: 64 characters. Must match a field name in your indexed documents.' => 'الحد الأقصى: 64 حرف. يجب أن يتطابق مع اسم حقل في مستنداتك المفهرسة.',
     'Indexed' => 'مفهرس',
-    'Live' => 'مباشر',
     'Select a category' => 'تحديد فئة',
     'Muted' => 'مكتوم',
     'Text' => 'نص',

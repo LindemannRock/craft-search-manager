@@ -406,7 +406,6 @@ return [
     'Valid until' => 'Gyldig indtil',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Valgfri udløbsdato og -tid. Lad stå tom for ingen udløb.',
     'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Deaktiverede nøgler afvises øjeblikkeligt på alle slutpunkter, når håndhævelse lanceres. Tilbagekald (slet) fjerner nøglen permanent.',
-    'Created at' => 'Oprettet',
     'Copy this key now — it will never be shown again.' => 'Kopiér denne nøgle nu — den vises aldrig igen.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} gemmer kun et hash. Hvis du mister denne værdi, skal du oprette en ny nøgle.',
 
@@ -1339,7 +1338,6 @@ return [
     'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'Maks: 64 tegn. Vises i analyser for at skelne trafik fra forskellige widgetplaceringer.',
     'Max: 64 characters. Must match a field name in your indexed documents.' => 'Maks: 64 tegn. Skal matche et feltnavn i dine indekserede dokumenter.',
     'Indexed' => 'Indekseret',
-    'Live' => 'Live',
     'Select a category' => 'Vælg en kategori',
     'Muted' => 'Dæmpet',
     'Text' => 'Tekst',

@@ -404,7 +404,6 @@ return [
     'Valid until' => 'Valid until',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Optional expiry datetime. Leave empty for no expiry.',
     'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.',
-    'Created at' => 'Created at',
     'Copy this key now — it will never be shown again.' => 'Copy this key now — it will never be shown again.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} stores only a hash. If you lose this value you will need to create a new key.',
     // Controller flashes
@@ -1332,7 +1331,6 @@ return [
     'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.',
     'Max: 64 characters. Must match a field name in your indexed documents.' => 'Max: 64 characters. Must match a field name in your indexed documents.',
     'Indexed' => 'Indexed',
-    'Live' => 'Live',
     'Select a category' => 'Select a category',
     'Muted' => 'Muted',
     'Text' => 'Text',

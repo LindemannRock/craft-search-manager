@@ -406,7 +406,6 @@ return [
     'Valid until' => 'Giltig till',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Valfritt utgångsdatum och tid. Lämna tomt för ingen utgång.',
     'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Inaktiverade nycklar avvisas omedelbart på alla slutpunkter när tvingande verkställighet lanseras. Återkalla (radera) tar bort nyckeln permanent.',
-    'Created at' => 'Skapad',
     'Copy this key now — it will never be shown again.' => 'Kopiera denna nyckel nu — den kommer aldrig att visas igen.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} lagrar endast en hash. Om du förlorar detta värde måste du skapa en ny nyckel.',
 
@@ -1339,7 +1338,6 @@ return [
     'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'Max: 64 tecken. Visas i analyser för att skilja trafik från olika widgetplaceringar.',
     'Max: 64 characters. Must match a field name in your indexed documents.' => 'Max: 64 tecken. Måste matcha ett fältnamn i dina indexerade dokument.',
     'Indexed' => 'Indexerad',
-    'Live' => 'Live',
     'Select a category' => 'Välj en kategori',
     'Muted' => 'Dämpad',
     'Text' => 'Text',

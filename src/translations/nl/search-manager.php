@@ -406,7 +406,6 @@ return [
     'Valid until' => 'Geldig tot',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Optionele vervaldatum en -tijd. Laat leeg voor geen vervaldatum.',
     'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Uitgeschakelde sleutels worden onmiddellijk afgewezen op alle eindpunten zodra handhaving wordt uitgerold. Intrekken (verwijderen) verwijdert de sleutel permanent.',
-    'Created at' => 'Aangemaakt op',
     'Copy this key now — it will never be shown again.' => 'Kopieer deze sleutel nu — deze wordt nooit meer getoond.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} bewaart alleen een hash. Als u deze waarde kwijtraakt, moet u een nieuwe sleutel aanmaken.',
 
@@ -1339,7 +1338,6 @@ return [
     'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'Max: 64 tekens. Verschijnt in analyses om verkeer van verschillende widgetplaatsingen te onderscheiden.',
     'Max: 64 characters. Must match a field name in your indexed documents.' => 'Max: 64 tekens. Moet overeenkomen met een veldnaam in uw geïndexeerde documenten.',
     'Indexed' => 'Geïndexeerd',
-    'Live' => 'Live',
     'Select a category' => 'Selecteer een categorie',
     'Muted' => 'Gedempt',
     'Text' => 'Tekst',

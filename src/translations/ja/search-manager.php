@@ -406,7 +406,6 @@ return [
     'Valid until' => '有効期限',
     'Optional expiry datetime. Leave empty for no expiry.' => 'オプションの有効期限の日時。有効期限を設定しない場合は空白のままにしてください。',
     'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => '無効化されたキーは、強制が適用されるとすべてのエンドポイントでただちに拒否されます。失効（削除）はキーを完全に削除します。',
-    'Created at' => '作成日時',
     'Copy this key now — it will never be shown again.' => 'このキーを今すぐコピーしてください — このキーは二度と表示されません。',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} はハッシュのみを保存します。この値を失うと、新しいキーを作成する必要があります。',
 
@@ -1339,7 +1338,6 @@ return [
     'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => '最大: 64 文字。異なるウィジェット配置からのトラフィックを区別するためにアナリティクスに表示されます。',
     'Max: 64 characters. Must match a field name in your indexed documents.' => '最大: 64 文字。インデックスされたドキュメントのフィールド名と一致する必要があります。',
     'Indexed' => 'インデックス済み',
-    'Live' => 'ライブ',
     'Select a category' => 'カテゴリを選択',
     'Muted' => 'ミュート',
     'Text' => 'テキスト',
