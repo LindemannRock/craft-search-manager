@@ -78,13 +78,16 @@ class AnalyticsQueryInsightsService
 
         $results = $query->all();
 
-        // Convert lastSearched dates from UTC to user's timezone
+        // Convert lastSearched dates from UTC to user's timezone.
+        // Returning the DateTime object (not a formatted string) lets the
+        // |lrDate / |lrTime Twig filters handle it without re-applying
+        // a UTC→local conversion (which would double-shift the time).
         $userTz = new \DateTimeZone(Craft::$app->getTimeZone());
         foreach ($results as &$result) {
             if (!empty($result['lastSearched'])) {
                 $utcDate = new \DateTime($result['lastSearched'], new \DateTimeZone('UTC'));
                 $utcDate->setTimezone($userTz);
-                $result['lastSearched'] = $utcDate->format('Y-m-d H:i:s');
+                $result['lastSearched'] = $utcDate;
             }
         }
 
@@ -386,14 +389,15 @@ class AnalyticsQueryInsightsService
         // Sort clusters by count
         usort($clusters, fn($a, $b) => $b['count'] <=> $a['count']);
 
-        // Convert lastSearched from UTC to user's timezone for display
+        // Convert lastSearched from UTC to user's timezone for display.
+        // Keep as a DateTime object — see comment in getMostCommonSearches().
         $userTz = new \DateTimeZone(Craft::$app->getTimeZone());
         $result = array_slice($clusters, 0, $limit);
         foreach ($result as &$cluster) {
             if (!empty($cluster['lastSearched'])) {
                 $utcDate = new \DateTime($cluster['lastSearched'], new \DateTimeZone('UTC'));
                 $utcDate->setTimezone($userTz);
-                $cluster['lastSearched'] = $utcDate->format('Y-m-d H:i:s');
+                $cluster['lastSearched'] = $utcDate;
             }
         }
 
