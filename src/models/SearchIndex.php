@@ -87,6 +87,10 @@ class SearchIndex extends Model
 
     public ?\DateTime $lastIndexed = null;
 
+    public ?\DateTime $dateCreated = null;
+
+    public ?\DateTime $dateUpdated = null;
+
     /**
      * @var int Number of documents in the index.
      *
@@ -577,6 +581,8 @@ class SearchIndex extends Model
         $model->skipEntriesWithoutUrl = (bool)($row['skipEntriesWithoutUrl'] ?? false);
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
+        $model->dateCreated = !empty($row['dateCreated']) ? new \DateTime($row['dateCreated']) : null;
+        $model->dateUpdated = !empty($row['dateUpdated']) ? new \DateTime($row['dateUpdated']) : null;
         $model->documentCount = (int)$row['documentCount'];
 
         return $model;
