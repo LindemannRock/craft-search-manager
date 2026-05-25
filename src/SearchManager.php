@@ -710,12 +710,12 @@ class SearchManager extends Plugin
             ]);
 
             // Add to queue with a small initial delay (5 minutes)
-            // The job will re-queue itself to run every 24 hours
+            // The job will re-queue itself to the next fixed daily slot.
             Craft::$app->queue->delay(5 * 60)->push($job);
 
             $this->logInfo('Scheduled initial analytics cleanup job', [
                 'retention' => $settings->analyticsRetention . ' days',
-                'interval' => '24 hours',
+                'schedule' => 'daily',
             ]);
         }
     }
