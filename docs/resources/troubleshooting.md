@@ -59,6 +59,19 @@ If saved elements are not appearing in search:
 
 For a triage view of the buffer with filters, per-row retry, and a one-click "Failed & Abandoned" preset, open **Search Manager → Pending Syncs**. See [Pending Syncs](../feature-tour/pending-syncs.md) for the operator runbook.
 
+## Scheduled Cleanup or Status Sync Does Not Reappear
+
+Search Manager schedules recurring queue jobs for analytics cleanup and entry status syncs. If the queue is empty after one of those jobs runs, the next occurrence was not scheduled correctly.
+
+Recurring jobs should always push the next occurrence from inside the running job. Duplicate guards belong in the bootstrap path only. Logs such as `Skipping reschedule - cleanup job already exists` or `Skipping reschedule - sync job already exists` after a job runs usually mean the running queue row matched itself and prevented the next run from being queued.
+
+If the job is still missing:
+
+- Confirm the queue worker is running.
+- Visit any CP page to let Search Manager bootstrap initial jobs.
+- Check that `analyticsRetention` is greater than `0` for cleanup jobs.
+- Check that `statusSyncInterval` is greater than `0` for status sync jobs.
+
 ## Changing `autoIndex` Has No Effect Until Workers Restart
 
 The `autoIndex` setting is consulted **once** during the plugin's `init()`. When it is enabled, listeners are attached to `Elements::EVENT_AFTER_SAVE_ELEMENT` and `Elements::EVENT_AFTER_DELETE_ELEMENT`. When it is disabled, those listeners are never attached.
