@@ -12,6 +12,7 @@ namespace lindemannrock\searchmanager\jobs;
 use Craft;
 use craft\elements\Entry;
 use craft\queue\BaseJob;
+use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -55,14 +56,6 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
-
-        // Calculate and set next run time if not already set
-        if ($this->reschedule && !$this->nextRunTime) {
-            $delay = $this->calculateNextRunDelay();
-            if ($delay > 0) {
-                $this->nextRunTime = date('M j, g:ia', time() + $delay);
-            }
-        }
     }
 
     /**
@@ -82,8 +75,18 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
         $pluginName = $settings->getDisplayName();
         $description = Craft::t('search-manager', '{pluginName}: Syncing element status changes', ['pluginName' => $pluginName]);
 
-        if ($this->nextRunTime) {
-            $description .= " ({$this->nextRunTime})";
+        $nextRunTime = $this->nextRunTime;
+        if ($nextRunTime === null && $this->reschedule) {
+            $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
+                $this->calculateNextRun(),
+                $settings,
+                false,
+                false,
+            );
+        }
+
+        if ($nextRunTime) {
+            $description .= " ({$nextRunTime})";
         }
 
         return $description;
@@ -112,9 +115,9 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
         // reasonable default (1 hour ago) on first run.
         $lastSync = $this->lastSyncTime
             ? new \DateTime($this->lastSyncTime)
-            : new \DateTime('-1 hour');
+            : (clone DateFormatHelper::now())->modify('-1 hour');
 
-        $now = new \DateTime();
+        $now = DateFormatHelper::now();
 
         // Only sites covered by at least one enabled entry index are worth
         // querying — there's no point detecting a status flip on a site no
@@ -202,23 +205,16 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
             return;
         }
 
-        // Prevent duplicate scheduling - check if another sync job already exists
-        // This prevents fan-out if multiple jobs end up in the queue (manual runs, retries, etc.)
-        $existingJob = (new \craft\db\Query())
-            ->from('{{%queue}}')
-            ->where(['like', 'job', 'searchmanager'])
-            ->andWhere(['like', 'job', 'SyncStatusJob'])
-            ->exists();
-
-        if ($existingJob) {
-            $this->logDebug('Skipping reschedule - sync job already exists');
-            return;
-        }
-
-        $delay = $this->calculateNextRunDelay();
+        $nextRun = $this->calculateNextRun();
+        $delay = $this->calculateNextRunDelay($nextRun);
 
         if ($delay > 0) {
-            $nextRunTime = date('M j, g:ia', time() + $delay);
+            $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
+                $nextRun,
+                $settings,
+                false,
+                false,
+            );
 
             $job = new self([
                 'reschedule' => true,
@@ -236,11 +232,21 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
     }
 
     /**
-     * Calculate the delay in seconds for the next sync
+     * Calculate the next sync run.
      */
-    private function calculateNextRunDelay(): int
+    private function calculateNextRun(?\DateTime $from = null): \DateTime
     {
         $settings = SearchManager::$plugin->getSettings();
-        return $settings->statusSyncInterval * 60; // Convert minutes to seconds
+        $from ??= DateFormatHelper::now();
+        return (clone $from)->modify("+{$settings->statusSyncInterval} minutes");
+    }
+
+    /**
+     * Calculate the delay in seconds for the next sync.
+     */
+    private function calculateNextRunDelay(?\DateTime $nextRun = null): int
+    {
+        $nextRun ??= $this->calculateNextRun();
+        return max(0, $nextRun->getTimestamp() - DateFormatHelper::now()->getTimestamp());
     }
 }
