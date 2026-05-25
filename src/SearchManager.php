@@ -23,6 +23,7 @@ use craft\web\UrlManager;
 use craft\web\View;
 use lindemannrock\base\helpers\ColorHelper;
 use lindemannrock\base\helpers\CpNavHelper;
+use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -655,13 +656,22 @@ class SearchManager extends Plugin
             ->exists();
 
         if (!$existingJob) {
+            $initialDelay = 5 * 60;
+            $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
+
             // Create sync job with reschedule enabled
             $job = new SyncStatusJob([
                 'reschedule' => true,
+                'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
+                    $initialRun,
+                    $settings,
+                    false,
+                    false,
+                ),
             ]);
 
             // Add to queue with a small initial delay (5 minutes)
-            Craft::$app->queue->delay(5 * 60)->push($job);
+            Craft::$app->queue->delay($initialDelay)->push($job);
 
             $this->logInfo('Scheduled initial status sync job', [
                 'interval' => $settings->statusSyncInterval . ' minutes',
@@ -705,13 +715,22 @@ class SearchManager extends Plugin
             ->exists();
 
         if (!$existingJob) {
+            $initialDelay = 5 * 60;
+            $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
+
             $job = new CleanupAnalyticsJob([
                 'reschedule' => true,
+                'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
+                    $initialRun,
+                    $settings,
+                    false,
+                    false,
+                ),
             ]);
 
             // Add to queue with a small initial delay (5 minutes)
             // The job will re-queue itself to the next fixed daily slot.
-            Craft::$app->queue->delay(5 * 60)->push($job);
+            Craft::$app->queue->delay($initialDelay)->push($job);
 
             $this->logInfo('Scheduled initial analytics cleanup job', [
                 'retention' => $settings->analyticsRetention . ' days',
