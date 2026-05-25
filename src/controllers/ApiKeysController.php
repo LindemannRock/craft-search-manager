@@ -254,9 +254,15 @@ class ApiKeysController extends Controller
             Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'API key saved'));
         }
 
-        // Redirect to the edit page so the reveal banner can render (on new)
-        // and so save-and-continue stays on the same key (on edit).
-        return $this->redirect('search-manager/api-keys/edit/' . $apiKey->id);
+        // New keys always land back on the edit page so the one-time
+        // plaintext reveal banner has somewhere to render. Existing keys
+        // honour the posted redirect so the Save / Save-and-continue
+        // dropdown in the template controls the destination.
+        if ($isNew) {
+            return $this->redirect('search-manager/api-keys/edit/' . $apiKey->id);
+        }
+
+        return $this->redirectToPostedUrl($apiKey);
     }
 
     // =========================================================================
