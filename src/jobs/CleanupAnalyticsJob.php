@@ -11,6 +11,8 @@ namespace lindemannrock\searchmanager\jobs;
 
 use Craft;
 use craft\queue\BaseJob;
+use lindemannrock\base\helpers\DateFormatHelper;
+use lindemannrock\base\helpers\ScheduleHelper;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\SearchManager;
@@ -54,15 +56,6 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
     {
         parent::init();
         $this->setLoggingHandle('search-manager');
-
-        // Calculate and set next run time if not already set
-        if ($this->reschedule && !$this->nextRunTime) {
-            $delay = $this->calculateNextRunDelay();
-            if ($delay > 0) {
-                // Short format: "Nov 8, 12:00am"
-                $this->nextRunTime = date('M j, g:ia', time() + $delay);
-            }
-        }
     }
 
     /**
@@ -107,15 +100,28 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
             'pluginName' => $pluginName,
         ]);
 
-        if ($this->nextRunTime) {
-            $description .= " ({$this->nextRunTime})";
+        $nextRunTime = $this->nextRunTime;
+        if ($nextRunTime === null && $this->reschedule) {
+            $nextRun = $this->calculateNextRun();
+            if ($nextRun !== null) {
+                $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
+                    $nextRun,
+                    $settings,
+                    false,
+                    false,
+                );
+            }
+        }
+
+        if ($nextRunTime) {
+            $description .= " ({$nextRunTime})";
         }
 
         return $description;
     }
 
     /**
-     * Schedule the next cleanup (runs every 24 hours)
+     * Schedule the next cleanup run.
      */
     private function scheduleNextCleanup(): void
     {
@@ -126,24 +132,20 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
             return;
         }
 
-        // Prevent duplicate scheduling - check if another cleanup job already exists
-        // This prevents fan-out if multiple jobs end up in the queue (manual runs, retries, etc.)
-        $existingJob = (new \craft\db\Query())
-            ->from('{{%queue}}')
-            ->where(['like', 'job', 'searchmanager'])
-            ->andWhere(['like', 'job', 'CleanupAnalyticsJob'])
-            ->exists();
-
-        if ($existingJob) {
-            $this->logDebug('Skipping reschedule - cleanup job already exists');
+        $nextRun = $this->calculateNextRun();
+        if ($nextRun === null) {
             return;
         }
 
-        $delay = $this->calculateNextRunDelay();
+        $delay = $this->calculateNextRunDelay($nextRun);
 
         if ($delay > 0) {
-            // Calculate next run time for display
-            $nextRunTime = date('M j, g:ia', time() + $delay);
+            $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
+                $nextRun,
+                $settings,
+                false,
+                false,
+            );
 
             $job = new self([
                 'reschedule' => true,
@@ -160,10 +162,23 @@ class CleanupAnalyticsJob extends BaseJob implements RetryableJobInterface
     }
 
     /**
-     * Calculate the delay in seconds for the next cleanup (24 hours)
+     * Calculate the next cleanup run.
      */
-    private function calculateNextRunDelay(): int
+    private function calculateNextRun(): ?\DateTime
     {
-        return 86400; // 24 hours
+        return ScheduleHelper::calculateNext('daily');
+    }
+
+    /**
+     * Calculate the delay in seconds for the next cleanup.
+     */
+    private function calculateNextRunDelay(?\DateTime $nextRun = null): int
+    {
+        $nextRun ??= $this->calculateNextRun();
+        if ($nextRun === null) {
+            return 0;
+        }
+
+        return max(0, $nextRun->getTimestamp() - DateFormatHelper::now()->getTimestamp());
     }
 }
