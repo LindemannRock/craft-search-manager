@@ -259,7 +259,7 @@
         }]) %}
     {% else %}
         {% set actionItems = actionItems|merge([{
-            label: 'View'|t('app'),
+            label: 'View'|t('search-manager'),
             url: url('search-manager/indices/view/' ~ item.handle),
         }]) %}
     {% endif %}
@@ -317,7 +317,7 @@
 {% block bulkActions %}
     {% if canEdit %}
         <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
-            {{ 'Set status'|t('app') }}
+            {{ 'Set status'|t('search-manager') }}
         </button>
         <div class="menu">
             <ul>

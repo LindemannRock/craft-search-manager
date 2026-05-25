@@ -12,15 +12,15 @@
 
 {% block actionButton %}
     <div class="btngroup submit">
-        <button type="submit" class="btn submit">{{ "Save"|t('app') }}</button>
+        <button type="submit" class="btn submit">{{ "Save"|t('search-manager') }}</button>
     </div>
     {% if not isNew and canRevoke %}
         <button type="button"
                 id="action-btn"
                 class="btn menubtn action-btn hairline-dark m"
-                title="{{ 'Actions'|t('app') }}"
+                title="{{ 'Actions'|t('search-manager') }}"
                 aria-controls="action-menu"
-                aria-label="{{ 'Actions'|t('app') }}"
+                aria-label="{{ 'Actions'|t('search-manager') }}"
                 data-disclosure-trigger="true"
                 aria-expanded="false"></button>
         <div id="action-menu" class="menu menu--disclosure">
@@ -263,11 +263,11 @@
                 </div>
 
                 <div class="data">
-                    <dt class="heading">{{ 'Created at'|t('app') }}</dt>
+                    <dt class="heading">{{ 'Created at'|t('search-manager') }}</dt>
                     <dd class="value">{{ apiKey.dateCreated|lrDatetime }}</dd>
                 </div>
                 <div class="data">
-                    <dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+                    <dt class="heading">{{ 'Updated at'|t('search-manager') }}</dt>
                     <dd class="value">{{ apiKey.dateUpdated|lrDatetime }}</dd>
                 </div>
             </dl>

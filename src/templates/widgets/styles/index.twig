@@ -192,7 +192,7 @@
 	{% if item.canEdit() %}
 		{% if canEdit %}
 			{% set actionItems = actionItems|merge([{
-				label: 'Edit'|t('app'),
+				label: 'Edit'|t('search-manager'),
 				url: url('search-manager/widgets/styles/edit/' ~ item.id),
 			}]) %}
 		{% endif %}
@@ -200,7 +200,7 @@
 			{% set actionItems = actionItems|merge([
 				{type: 'divider'},
 				{
-					label: 'Delete'|t('app'),
+					label: 'Delete'|t('search-manager'),
 					class: 'error',
 					jsAction: 'delete',
 					data: {name: item.name},
@@ -209,7 +209,7 @@
 		{% endif %}
 	{% else %}
 		{% set actionItems = actionItems|merge([{
-			label: 'View'|t('app'),
+			label: 'View'|t('search-manager'),
 			url: url('search-manager/widgets/styles/view/' ~ item.handle),
 		}]) %}
 	{% endif %}
@@ -220,7 +220,7 @@
 			actions: {
 				type: 'menu',
 				icon: 'settings',
-				title: 'Actions'|t('app'),
+				title: 'Actions'|t('search-manager'),
 				items: actionItems,
 			},
 		} only %}

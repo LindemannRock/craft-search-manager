@@ -258,7 +258,7 @@
 	{% if item.canEdit() %}
 		{% if canEdit %}
 			{% set actionItems = actionItems|merge([{
-				label: 'Edit'|t('app'),
+				label: 'Edit'|t('search-manager'),
 				url: url('search-manager/widgets/edit/' ~ item.id),
 			}]) %}
 			{% if not isDefault and not isDefaultFromConfig %}
@@ -273,7 +273,7 @@
 			{% set actionItems = actionItems|merge([
 				{type: 'divider'},
 				{
-					label: 'Delete'|t('app'),
+					label: 'Delete'|t('search-manager'),
 					class: 'error',
 					jsAction: 'delete',
 					data: {name: item.name},
@@ -282,7 +282,7 @@
 		{% endif %}
 	{% else %}
 		{% set actionItems = actionItems|merge([{
-			label: 'View'|t('app'),
+			label: 'View'|t('search-manager'),
 			url: url('search-manager/widgets/view/' ~ item.handle),
 		}]) %}
 		{% if canEdit and not isDefault and not isDefaultFromConfig %}
@@ -300,7 +300,7 @@
 			actions: {
 				type: 'menu',
 				icon: 'settings',
-				title: 'Actions'|t('app'),
+				title: 'Actions'|t('search-manager'),
 				items: actionItems,
 			},
 		} only %}
@@ -310,7 +310,7 @@
 {% block bulkActions %}
 	{% if canEdit %}
 		<button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
-			{{ 'Set status'|t('app') }}
+			{{ 'Set status'|t('search-manager') }}
 		</button>
 		<div class="menu">
 			<ul>

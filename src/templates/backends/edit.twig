@@ -35,13 +35,13 @@
 	{% if canEdit %}
 		<div id="save-button-container">
 			<div class="btngroup submit">
-				<button type="submit" class="btn submit">{{ 'Save'|t('app') }}</button>
+				<button type="submit" class="btn submit">{{ 'Save'|t('search-manager') }}</button>
 				<button type="button" class="btn submit menubtn"></button>
 				<div class="menu">
 					<ul role="listbox">
 						<li>
 							<a class="formsubmit" role="option" tabindex="0" data-redirect="{{ cpUrl('search-manager/backends/{id}')|hash }}">
-								<span class="label">{{ 'Save and continue editing'|t('app') }}</span>
+								<span class="label">{{ 'Save and continue editing'|t('search-manager') }}</span>
 								<span class="shortcut" id="save-shortcut"></span>
 							</a>
 						</li>
@@ -50,13 +50,13 @@
 			</div>
 		</div>
 		{% if not isNew and currentUser.can('searchManager:deleteBackends') and defaultBackendHandle != backend.handle %}
-			<button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('app') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('app') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
+			<button type="button" id="action-btn" class="btn menubtn action-btn hairline-dark m" title="{{ 'Actions'|t('search-manager') }}" aria-controls="action-menu" aria-label="{{ 'Actions'|t('search-manager') }}" data-disclosure-trigger="true" aria-expanded="false"></button>
 			<div id="action-menu" class="menu menu--disclosure">
 				<ul>
 					<li>
 						<button class="menu-item error formsubmit" data-destructive data-action="search-manager/backends/delete" data-params='{"backendId":{{ backend.id }}}' data-confirm="{{ 'Are you sure you want to delete this backend? Indices using it will fall back to the default.'|t('search-manager') }}" data-redirect="{{ 'search-manager/backends'|hash }}" data-headers='{"Accept":"application/json"}'>
 							<span class="icon">{{ svg('@app/icons/trash.svg') }}</span>
-							<span class="menu-item-label">{{ 'Delete'|t('app') }}</span>
+							<span class="menu-item-label">{{ 'Delete'|t('search-manager') }}</span>
 						</button>
 					</li>
 				</ul>
@@ -517,11 +517,11 @@ setTimeout(updateActionButton, 10);
 					</div>
 					{% if backend.source != 'config' %}
 						<div class="data">
-							<dt class="heading">{{ 'Created at'|t('app') }}</dt>
+							<dt class="heading">{{ 'Created at'|t('search-manager') }}</dt>
 							<dd class="value">{{ backend.dateCreated|lrDatetime }}</dd>
 						</div>
 						<div class="data">
-							<dt class="heading">{{ 'Updated at'|t('app') }}</dt>
+							<dt class="heading">{{ 'Updated at'|t('search-manager') }}</dt>
 							<dd class="value">{{ backend.dateUpdated|lrDatetime }}</dd>
 						</div>
 					{% endif %}
