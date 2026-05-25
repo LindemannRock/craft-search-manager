@@ -3,6 +3,8 @@
 
 {% set fullPageForm = true %}
 {% set selectedSubnavItem = 'api-keys' %}
+{% set saveShortcutRedirect = cpUrl('search-manager/api-keys/edit/{id}') %}
+{% set retainScrollOnSaveShortcut = true %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -13,6 +15,17 @@
 {% block actionButton %}
     <div class="btngroup submit">
         <button type="submit" class="btn submit">{{ "Save"|t('search-manager') }}</button>
+        <button type="button" class="btn submit menubtn"></button>
+        <div class="menu">
+            <ul role="listbox">
+                <li>
+                    <a class="formsubmit" role="option" tabindex="0" data-redirect="{{ cpUrl('search-manager/api-keys/edit/{id}')|hash }}">
+                        <span class="label">{{ 'Save and continue editing'|t('search-manager') }}</span>
+                        <span class="shortcut" id="save-shortcut"></span>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
     {% if not isNew and canRevoke %}
         <button type="button"
@@ -71,6 +84,7 @@
 
 {% block content %}
     <input type="hidden" name="action" value="search-manager/api-keys/save">
+    <input type="hidden" name="redirect" value="{{ 'search-manager/api-keys'|hash }}">
     {% if not isNew %}
         <input type="hidden" name="keyId" value="{{ apiKey.id }}">
     {% endif %}
