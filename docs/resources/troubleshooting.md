@@ -210,6 +210,7 @@ ddev craft search-manager/security/generate-salt
 2. **Is "Popular Queries Only" enabled?** If `cachePopularQueriesOnly` is `true`, queries must be searched `popularQueryThreshold` times before caching kicks in.
 3. **Is "Clear on Save" wiping your cache?** If `clearCacheOnSave` is `true` (default) and content is saved frequently, the cache may be clearing faster than it fills.
 4. **Check storage permissions**: For file-based caching, ensure `@storage/runtime/search-manager/cache/` is writable.
+5. **If Redis cache storage is enabled, check the logs**: When `cacheStorageMethod` is `redis` but Craft's `cache` component is not Redis-backed, Search Manager logs a cache-component warning and skips Redis-specific cache operations until the component is fixed.
 
 ## Widget Not Appearing
 

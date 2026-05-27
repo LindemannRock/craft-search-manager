@@ -57,6 +57,8 @@ Uses Craft's Redis cache connection:
 
 Good for: multi-server setups, edge networks (Servd, Platform.sh), sites handling 10+ searches per second.
 
+If Redis cache storage is selected but Craft's `cache` component is not Redis-backed, Search Manager logs a cache-component warning and falls back to file-based cache clearing where possible. Configure Redis in `config/app.php`, or switch `cacheStorageMethod` back to `file`.
+
 ## Popular Queries Only
 
 By default, every unique query is cached. For sites with many unique searches, you can limit caching to frequently-searched queries:
