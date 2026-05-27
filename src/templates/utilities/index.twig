@@ -141,11 +141,11 @@
             {% if canManageIndices %}
                 {% set navButtons = navButtons|merge([{type: 'link', label: 'Manage Indices'|t('search-manager'), url: url('search-manager/indices')}]) %}
             {% endif %}
+            {% if canManageSettings %}
+                {% set navButtons = navButtons|merge([{type: 'link', label: 'Manage settings'|t('search-manager'), url: url('search-manager/settings')}]) %}
+            {% endif %}
             {% if settings.enableAnalytics and canViewAnalytics %}
                 {% set navButtons = navButtons|merge([{type: 'link', label: 'View Analytics'|t('search-manager'), url: url('search-manager/analytics')}]) %}
-            {% endif %}
-            {% if canManageSettings %}
-                {% set navButtons = navButtons|merge([{type: 'link', label: 'View Settings'|t('search-manager'), url: url('search-manager/settings')}]) %}
             {% endif %}
 
             {% include 'lindemannrock-base/_layouts/cp-utilities/_action-section' with {
