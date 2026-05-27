@@ -153,14 +153,14 @@
     <h3 class="first">{{ "Quick Operator Tests"|t('search-manager') }}</h3>
     <p class="light">{{ "Click to test different search operators"|t('search-manager') }}</p>
     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-        <button type="button" class="btn small quick-test" data-query="test">Basic</button>
-        <button type="button" class="btn small quick-test" data-query='"test entry"'>Phrase</button>
+        <button type="button" class="btn small quick-test" data-query="test">{{ "Basic"|t('search-manager') }}</button>
+        <button type="button" class="btn small quick-test" data-query='"test entry"'>{{ "Phrase"|t('search-manager') }}</button>
         <button type="button" class="btn small quick-test" data-query="test NOT spam">NOT</button>
-        <button type="button" class="btn small quick-test" data-query="title:test">Field</button>
-        <button type="button" class="btn small quick-test" data-query="test*">Wildcard</button>
-        <button type="button" class="btn small quick-test" data-query="test^2 entry">Boost</button>
+        <button type="button" class="btn small quick-test" data-query="title:test">{{ "Field"|t('search-manager') }}</button>
+        <button type="button" class="btn small quick-test" data-query="test*">{{ "Wildcard"|t('search-manager') }}</button>
+        <button type="button" class="btn small quick-test" data-query="test^2 entry">{{ "Boost"|t('search-manager') }}</button>
         <button type="button" class="btn small quick-test" data-query="test OR entry">OR</button>
-        <button type="button" class="btn small quick-test" data-query='test* OR entry title:blog NOT spam'>Combined</button>
+        <button type="button" class="btn small quick-test" data-query='test* OR entry title:blog NOT spam'>{{ "Combined"|t('search-manager') }}</button>
     </div>
 </div>
 
@@ -580,11 +580,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 <table class="data fullwidth" style="margin: 0;">
                     <thead>
                         <tr>
-                            <th>Position</th>
-                            <th>Element</th>
-                            <th>Match Type</th>
-                            <th>Pattern</th>
-                            <th>Live on Sites</th>
+                            <th>{{ "Position"|t('search-manager') }}</th>
+                            <th>{{ "Element"|t('search-manager') }}</th>
+                            <th>{{ "Match Type"|t('search-manager') }}</th>
+                            <th>{{ "Pattern"|t('search-manager') }}</th>
+                            <th>{{ "Live on Sites"|t('search-manager') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -663,10 +663,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 <table class="data fullwidth" style="margin: 0;">
                     <thead>
                         <tr>
-                            <th>Rule Name</th>
-                            <th>Action</th>
-                            <th>Match</th>
-                            <th>Effect</th>
+                            <th>{{ "Rule Name"|t('search-manager') }}</th>
+                            <th>{{ "Action"|t('search-manager') }}</th>
+                            <th>{{ "Match"|t('search-manager') }}</th>
+                            <th>{{ "Effect"|t('search-manager') }}</th>
                         </tr>
                     </thead>
                     <tbody>
