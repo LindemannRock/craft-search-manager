@@ -53,13 +53,15 @@ class ClearSearchCache extends Utility
         $settings = SearchManager::getInstance()->getSettings();
         $user = Craft::$app->getUser();
 
-        // Get index data only if user can manage indices
         $indices = [];
         $totalDocuments = 0;
         $backendDistribution = [];
         $defaultBackendName = null;
 
-        if ($user->getIdentity() && $user->checkPermission('searchManager:manageIndices')) {
+        if ($user->getIdentity() && (
+            $user->checkPermission('searchManager:manageIndices') ||
+            $user->checkPermission('searchManager:manageBackends')
+        )) {
             $indices = SearchIndex::findAll();
 
             // Count indices per backend type
@@ -100,7 +102,7 @@ class ClearSearchCache extends Utility
         $autocompleteCacheFiles = 0;
 
         // Only count files when using file storage (Redis counts are not displayed)
-        if ($settings->cacheStorageMethod === 'file') {
+        if ($user->getIdentity() && $user->checkPermission('searchManager:clearCache') && $settings->cacheStorageMethod === 'file') {
             $deviceCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'device'));
             $searchCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'search'));
             $autocompleteCacheFiles = self::countCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete'));
