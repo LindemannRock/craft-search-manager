@@ -107,16 +107,11 @@ class UtilitiesController extends Controller
 
         try {
             $settings = SearchManager::$plugin->getSettings();
-            $cache = Craft::$app->cache;
-            $useRedis = $settings->cacheStorageMethod === 'redis' && $cache instanceof \yii\redis\Cache;
+            $cache = $settings->cacheStorageMethod === 'redis'
+                ? PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id)
+                : null;
 
-            if ($settings->cacheStorageMethod === 'redis' && !$useRedis) {
-                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
-                    'cacheClass' => get_class($cache),
-                ]);
-            }
-
-            if ($useRedis) {
+            if ($cache !== null) {
                 $redis = $cache->redis;
 
                 // Get all device cache keys from tracking set
@@ -219,16 +214,11 @@ class UtilitiesController extends Controller
             SearchManager::$plugin->autocomplete->clearCache();
 
             $settings = SearchManager::$plugin->getSettings();
-            $cache = Craft::$app->cache;
-            $useRedis = $settings->cacheStorageMethod === 'redis' && $cache instanceof \yii\redis\Cache;
+            $cache = $settings->cacheStorageMethod === 'redis'
+                ? PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id)
+                : null;
 
-            if ($settings->cacheStorageMethod === 'redis' && !$useRedis) {
-                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
-                    'cacheClass' => get_class($cache),
-                ]);
-            }
-
-            if ($useRedis) {
+            if ($cache !== null) {
                 $message = Craft::t('search-manager', 'Autocomplete cache cleared successfully');
             } else {
                 $cachePath = PluginHelper::getCachePath(SearchManager::$plugin, 'autocomplete');
@@ -269,16 +259,11 @@ class UtilitiesController extends Controller
         try {
             $settings = SearchManager::$plugin->getSettings();
 
-            $cache = Craft::$app->cache;
-            $useRedis = $settings->cacheStorageMethod === 'redis' && $cache instanceof \yii\redis\Cache;
+            $cache = $settings->cacheStorageMethod === 'redis'
+                ? PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id)
+                : null;
 
-            if ($settings->cacheStorageMethod === 'redis' && !$useRedis) {
-                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
-                    'cacheClass' => get_class($cache),
-                ]);
-            }
-
-            if ($useRedis) {
+            if ($cache !== null) {
                 $redis = $cache->redis;
 
                 // Get all cache keys from tracking sets
