@@ -1151,8 +1151,9 @@ class BackendService extends Component
             $cache->set($fullCacheKey, $results, $settings->cacheDuration);
 
             // Track key in set for selective deletion
-            if ($cache instanceof \yii\redis\Cache) {
-                $redis = $cache->redis;
+            $redisCache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
+            if ($redisCache !== null) {
+                $redis = $redisCache->redis;
                 $redis->executeCommand('SADD', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'search'), $fullCacheKey]);
             }
 
@@ -1206,8 +1207,8 @@ class BackendService extends Component
 
         if ($settings->cacheStorageMethod === 'redis') {
             // Clear Redis cache for specific index
-            $cache = Craft::$app->cache;
-            if ($cache instanceof \yii\redis\Cache) {
+            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
+            if ($cache !== null) {
                 $redis = $cache->redis;
 
                 // Get all search cache keys from tracking set
@@ -1228,11 +1229,6 @@ class BackendService extends Component
                 $this->logInfo('Cleared search cache for index (Redis)', ['index' => $indexName]);
                 return;
             }
-
-            $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
-                'index' => $indexName,
-                'cacheClass' => get_class($cache),
-            ]);
         }
 
         // Clear file cache (fallback/default)
@@ -1255,8 +1251,8 @@ class BackendService extends Component
 
         if ($settings->cacheStorageMethod === 'redis') {
             // Clear Redis cache
-            $cache = Craft::$app->cache;
-            if ($cache instanceof \yii\redis\Cache) {
+            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
+            if ($cache !== null) {
                 $redis = $cache->redis;
 
                 // Get all search cache keys from tracking set
@@ -1273,10 +1269,6 @@ class BackendService extends Component
                 $this->logInfo('Cleared all search cache (Redis)');
                 return;
             }
-
-            $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file clear', [
-                'cacheClass' => get_class($cache),
-            ]);
         }
 
         // Clear file cache (fallback/default)
