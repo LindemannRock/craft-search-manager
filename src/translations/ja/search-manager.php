@@ -1432,7 +1432,6 @@ return [
     'Styles' => 'スタイル',
     'Test' => 'テスト',
     'Used for:' => '用途:',
-    'View Settings' => '設定を表示する',
 
     // Backend type configurations
     'Select a backend type...' => 'バックエンドタイプを選択...',

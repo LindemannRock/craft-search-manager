@@ -1432,7 +1432,6 @@ return [
     'Styles' => 'Stile',
     'Test' => 'Test',
     'Used for:' => 'Bruges til:',
-    'View Settings' => 'Vis indstillinger',
 
     // Backend type configurations
     'Select a backend type...' => 'Vælg en backendtype...',

@@ -1432,7 +1432,6 @@ return [
     'Styles' => 'Styles',
     'Test' => 'Test',
     'Used for:' => 'Utilisé pour :',
-    'View Settings' => 'Afficher les paramètres',
 
     // Backend type configurations
     'Select a backend type...' => 'Sélectionner un type de backend...',

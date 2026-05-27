@@ -1432,7 +1432,6 @@ return [
     'Styles' => 'الأنماط',
     'Test' => 'اختبار',
     'Used for:' => 'يُستخدم لـ:',
-    'View Settings' => 'عرض الإعدادات',
 
     // Backend type configurations
     'Select a backend type...' => 'اختر نوع الواجهة الخلفية...',
