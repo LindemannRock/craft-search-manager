@@ -4,13 +4,14 @@
 
 {# Permission checks #}
 {% set canManageIndices = currentUser.can('searchManager:manageIndices') %}
+{% set canManageBackends = currentUser.can('searchManager:manageBackends') %}
 {% set canRebuildIndices = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClearCache = currentUser.can('searchManager:clearCache') %}
 {% set canClearAnalytics = currentUser.can('searchManager:clearAnalytics') %}
 {% set canViewAnalytics = currentUser.can('searchManager:viewAnalytics') %}
 {% set canManageSettings = currentUser.can('searchManager:manageSettings') %}
 
-{% set hasNavigation = canManageIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
+{% set hasNavigation = canManageBackends or canManageIndices or (settings.enableAnalytics and canViewAnalytics) or canManageSettings %}
 {% set hasIndexManagement = canRebuildIndices %}
 {% set hasCacheManagement = canClearCache and (settings.cacheDeviceDetection or settings.enableCache or settings.enableAutocompleteCache) %}
 {% set hasAnalyticsManagement = canClearAnalytics and settings.enableAnalytics %}
@@ -40,6 +41,7 @@
 
 {% block overview %}
     {# Search Indices Card #}
+    {% if canManageIndices %}
     {% include 'lindemannrock-base/_components/unified-card' with {
         title: 'Search Indices'|t('search-manager'),
         color: lrPaletteColor('emerald').color,
@@ -49,8 +51,10 @@
             {value: totalDocuments, label: 'Total Documents'|t('search-manager')},
         ],
     } only %}
+    {% endif %}
 
     {# Backend Distribution Card #}
+    {% if canManageBackends %}
     {% if backendDistribution|length > 0 %}
         {% set backendSubBoxes = [] %}
         {% for backendType, stats in backendDistribution %}
@@ -81,8 +85,10 @@
             description: 'No indices configured'|t('search-manager'),
         } only %}
     {% endif %}
+    {% endif %}
 
     {# Cache Status Card #}
+    {% if canClearCache %}
     {% if storageMethod == 'redis' %}
         {% set cacheSubBoxes = [] %}
         {% if settings.enableCache %}
@@ -121,6 +127,7 @@
             subBoxes: cacheSubBoxes,
         } only %}
     {% endif %}
+    {% endif %}
 {% endblock %}
 
 {% block quickActions %}
@@ -128,6 +135,9 @@
         {# Navigation Section #}
         {% if hasNavigation %}
             {% set navButtons = [] %}
+            {% if canManageBackends %}
+                {% set navButtons = navButtons|merge([{type: 'link', label: 'Manage Backends'|t('search-manager'), url: url('search-manager/backends')}]) %}
+            {% endif %}
             {% if canManageIndices %}
                 {% set navButtons = navButtons|merge([{type: 'link', label: 'Manage Indices'|t('search-manager'), url: url('search-manager/indices')}]) %}
             {% endif %}
@@ -245,6 +255,7 @@
 
 {% block scripts %}
 {% js %}
+{% if hasIndexManagement %}
 // Load storage stats and update dropdown options
 function loadStorageStats() {
     $.ajax({
@@ -332,8 +343,9 @@ $('#clear-storage-by-type').on('click', function() {
         }
     });
 });
+{% endif %}
 
-{% if settings.cacheDeviceDetection %}
+{% if hasCacheManagement and settings.cacheDeviceDetection %}
 {% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
     id: 'clear-device-cache',
     action: actionUrl('search-manager/utilities/clear-device-cache'),
@@ -341,7 +353,7 @@ $('#clear-storage-by-type').on('click', function() {
 } only %}
 {% endif %}
 
-{% if settings.enableCache %}
+{% if hasCacheManagement and settings.enableCache %}
 {% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
     id: 'clear-search-cache',
     action: actionUrl('search-manager/utilities/clear-search-cache'),
@@ -349,7 +361,7 @@ $('#clear-storage-by-type').on('click', function() {
 } only %}
 {% endif %}
 
-{% if settings.enableAutocompleteCache %}
+{% if hasCacheManagement and settings.enableAutocompleteCache %}
 {% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
     id: 'clear-autocomplete-cache',
     action: actionUrl('search-manager/utilities/clear-autocomplete-cache'),
@@ -357,14 +369,16 @@ $('#clear-storage-by-type').on('click', function() {
 } only %}
 {% endif %}
 
+{% if hasCacheManagement %}
 {% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
     id: 'clear-all-caches',
     action: actionUrl('search-manager/utilities/clear-all-caches'),
     confirm: 'Are you sure you want to clear all caches?'|t('search-manager'),
     errorMessage: 'Failed to clear caches'|t('search-manager'),
 } only %}
+{% endif %}
 
-{% if settings.enableAnalytics %}
+{% if hasAnalyticsManagement %}
 {% include 'lindemannrock-base/_layouts/cp-utilities/_ajax-button' with {
     id: 'clear-all-analytics',
     action: actionUrl('search-manager/utilities/clear-all-analytics'),
