@@ -51,11 +51,18 @@ return [
         // 'itemsPerPage' => 100,
 
         // ========================================
-        // BASE PLUGIN OVERRIDES
+        // BASE SETTINGS OVERRIDES
         // ========================================
-        // These settings override lindemannrock-base defaults for this plugin only.
-        // Global defaults: vendor/lindemannrock/craft-plugin-base/src/config.php
-        // To customize globally: copy to config/lindemannrock-base.php
+        // Optional per-plugin overrides for settings that normally cascade from
+        // the plugin Settings UI. When the UI value is "Use global default",
+        // the value cascades from config/lindemannrock-base.php.
+        //
+        // To customize globally, copy:
+        // vendor/lindemannrock/craft-plugin-base/src/config.php
+        // to:
+        // config/lindemannrock-base.php
+        //
+        // Uncomment a key here only when this plugin should override the global base value.
 
         /**
          * Date/time formatting overrides
