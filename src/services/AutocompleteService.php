@@ -630,8 +630,8 @@ class AutocompleteService extends Component
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
-            $cache = \Craft::$app->cache;
-            if ($cache instanceof \yii\redis\Cache) {
+            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
+            if ($cache !== null) {
                 try {
                     $cache->set($fullCacheKey, $data, $settings->autocompleteCacheDuration);
 
@@ -648,13 +648,6 @@ class AutocompleteService extends Component
                 }
 
                 return;
-            }
-
-            if (!self::$redisFallbackLogged) {
-                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
-                    'cacheClass' => get_class($cache),
-                ]);
-                self::$redisFallbackLogged = true;
             }
         }
 
@@ -749,8 +742,8 @@ class AutocompleteService extends Component
         }
 
         if ($settings->cacheStorageMethod === 'redis') {
-            $cache = \Craft::$app->cache;
-            if ($cache instanceof \yii\redis\Cache) {
+            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
+            if ($cache !== null) {
                 $redis = $cache->redis;
                 $keys = $redis->executeCommand('SMEMBERS', [PluginHelper::getCacheKeySet(SearchManager::$plugin->id, 'autocomplete')]);
 
@@ -766,14 +759,6 @@ class AutocompleteService extends Component
 
                 $this->logInfo('Cleared autocomplete cache (Redis)', ['index' => $indexHandle]);
                 return;
-            }
-
-            if (!self::$redisFallbackLogged) {
-                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
-                    'index' => $indexHandle,
-                    'cacheClass' => get_class($cache),
-                ]);
-                self::$redisFallbackLogged = true;
             }
         }
 
