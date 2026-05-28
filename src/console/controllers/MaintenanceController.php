@@ -7,6 +7,7 @@ use craft\console\Controller;
 use craft\helpers\Console;
 use craft\helpers\FileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\SearchManager;
 use yii\console\ExitCode;
 
@@ -408,29 +409,9 @@ class MaintenanceController extends Controller
      */
     private function clearFileStorage(): array
     {
-        $configuredBackends = \lindemannrock\searchmanager\models\ConfiguredBackend::findAll();
-        $fileBackends = array_values(array_filter($configuredBackends, fn($b) => $b->backendType === 'file'));
-
-        if (empty($fileBackends)) {
-            return [
-                'success' => true,
-                'message' => 'File storage is already empty (no file backends configured)',
-                'deletedFiles' => 0,
-            ];
-        }
-
         $deletedFilesTotal = 0;
-        $seenPaths = [];
 
-        foreach ($fileBackends as $backend) {
-            $stats = $this->getFileStatsForBackend($backend);
-            $indicesPath = $stats['path'];
-
-            if (isset($seenPaths[$indicesPath])) {
-                continue;
-            }
-            $seenPaths[$indicesPath] = true;
-
+        foreach (FileBackendStoragePathHelper::configuredBasePaths() as $indicesPath) {
             if (!is_dir($indicesPath)) {
                 $this->stdout("  {$indicesPath} (missing)\n");
                 continue;
@@ -513,12 +494,7 @@ class MaintenanceController extends Controller
         $settings = $backend->settings ?? [];
         $customPath = $settings['storagePath'] ?? null;
 
-        if ($customPath !== null && $customPath !== '') {
-            $indicesPath = rtrim(\craft\helpers\App::parseEnv($customPath), '/');
-        } else {
-            $runtimePath = Craft::$app->getPath()->getRuntimePath();
-            $indicesPath = $runtimePath . '/search-manager/indices';
-        }
+        $indicesPath = FileBackendStoragePathHelper::resolve($customPath);
 
         if (!is_dir($indicesPath)) {
             return [
