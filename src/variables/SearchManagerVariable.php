@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\variables;
 
 use Craft;
+use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
 
@@ -47,6 +48,24 @@ class SearchManagerVariable
     public function registerHighlighter(): void
     {
         Craft::$app->getView()->registerAssetBundle(SearchHighlighterAsset::class);
+    }
+
+    /**
+     * Return the File backend storage path display value for CP settings.
+     *
+     * @since 5.47.0
+     */
+    public function getFileBackendStoragePathDisplay(?string $path = null): ?string
+    {
+        if (trim((string)$path) === '') {
+            return '@storage/runtime/search-manager/indices/';
+        }
+
+        try {
+            return FileBackendStoragePathHelper::resolve($path);
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
