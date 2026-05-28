@@ -9,6 +9,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
+use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -186,7 +187,7 @@ class ConfiguredBackend extends Model
                 'instructions' => 'Custom storage path (leave empty for @storage/runtime/search-manager/indices/)',
                 'placeholder' => 'Leave empty for default',
                 'required' => false,
-                'tip' => 'Use Craft path aliases: <code>@storage/search-manager/indices</code> (recommended) or <code>@root/search-indices</code>. Paths must be outside webroot for security. Environment variables like <code>$ENV_VAR</code> are supported.',
+                'tip' => 'Use Craft path aliases: <code>@storage/search-manager/indices</code> (recommended) or <code>@root/search-indices</code>. Paths must be outside webroot for security. Environment variables like <code>$ENV_VAR</code> are supported when they resolve inside those roots.',
             ],
         ],
     ];
@@ -229,7 +230,7 @@ class ConfiguredBackend extends Model
         'file' => [
             'title' => 'File Backend Configuration',
             'description' => 'File backend stores search indices as JSON files. Ideal for simple setups or development.',
-            'infoBox' => '<strong>Default Storage:</strong> <code>@storage/runtime/search-manager/indices/</code>',
+            'infoBox' => null,
         ],
     ];
 
@@ -321,9 +322,9 @@ class ConfiguredBackend extends Model
     /**
      * Validate storagePath setting against directory traversal and allowed locations
      *
-     * @param string $attribute
+     * @param string $_attribute
      */
-    public function validateStoragePath(string $attribute): void
+    public function validateStoragePath(string $_attribute): void
     {
         $storagePath = $this->settings['storagePath'] ?? null;
 
@@ -336,38 +337,8 @@ class ConfiguredBackend extends Model
             return;
         }
 
-        // Check for directory traversal
-        if (str_contains($storagePath, '..')) {
-            $this->addError($attribute, Craft::t('search-manager', 'Storage path cannot contain directory traversal sequences (..).'));
-            return;
-        }
-
-        // Must start with an allowed alias or env variable
-        $allowedPrefixes = ['@root', '@storage', '$'];
-        $isValid = false;
-        foreach ($allowedPrefixes as $prefix) {
-            if (str_starts_with($storagePath, $prefix)) {
-                $isValid = true;
-                break;
-            }
-        }
-
-        if (!$isValid) {
-            $this->addError($attribute, Craft::t('search-manager', 'Storage path must start with @root, @storage, or an environment variable ($). Example: @storage/search-manager/indices'));
-            return;
-        }
-
-        // Resolve and validate the path
-        try {
-            $resolvedPath = Craft::getAlias($storagePath);
-            $webroot = Craft::getAlias('@webroot');
-
-            // Prevent storage in web-accessible directory
-            if (str_starts_with($resolvedPath, $webroot)) {
-                $this->addError($attribute, Craft::t('search-manager', 'Storage path cannot be in a web-accessible directory (@webroot).'));
-            }
-        } catch (\Exception $e) {
-            $this->addError($attribute, Craft::t('search-manager', 'Invalid storage path: {error}', ['error' => $e->getMessage()]));
+        foreach (FileBackendStoragePathHelper::validate((string)$storagePath) as $error) {
+            $this->addError('settings.storagePath', $error);
         }
     }
 
