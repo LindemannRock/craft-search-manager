@@ -8,6 +8,7 @@ use craft\helpers\FileHelper;
 use craft\web\Controller;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
 
@@ -588,10 +589,20 @@ class UtilitiesController extends Controller
      */
     private function clearFileStorage(): array
     {
-        $runtimePath = Craft::$app->getPath()->getRuntimePath();
-        $indicesPath = $runtimePath . '/search-manager/indices';
+        $deletedFilesTotal = 0;
 
-        if (!is_dir($indicesPath)) {
+        foreach (FileBackendStoragePathHelper::configuredBasePaths() as $indicesPath) {
+            if (!is_dir($indicesPath)) {
+                continue;
+            }
+
+            $fileCount = $this->countFilesInDirectory($indicesPath);
+            FileHelper::removeDirectory($indicesPath);
+
+            $deletedFilesTotal += $fileCount;
+        }
+
+        if ($deletedFilesTotal === 0) {
             return [
                 'success' => true,
                 'message' => Craft::t('search-manager', 'File storage is already empty.'),
@@ -599,19 +610,15 @@ class UtilitiesController extends Controller
             ];
         }
 
-        $fileCount = $this->countFilesInDirectory($indicesPath);
-
-        FileHelper::removeDirectory($indicesPath);
-
         // Reset documentCount for all File-backed indices
         $this->resetIndexDocumentCounts('file');
 
         return [
             'success' => true,
             'message' => Craft::t('search-manager', 'File storage cleared successfully ({count} files deleted). Rebuild affected indices to re-index your content.', [
-                'count' => number_format($fileCount),
+                'count' => number_format($deletedFilesTotal),
             ]),
-            'deletedFiles' => $fileCount,
+            'deletedFiles' => $deletedFilesTotal,
         ];
     }
 
@@ -713,20 +720,18 @@ class UtilitiesController extends Controller
      */
     private function getFileStats(): array
     {
-        $runtimePath = Craft::$app->getPath()->getRuntimePath();
-        $indicesPath = $runtimePath . '/search-manager/indices';
+        $indexCount = 0;
+        $fileCount = 0;
 
-        if (!is_dir($indicesPath)) {
-            return [
-                'available' => true,
-                'indexCount' => 0,
-                'fileCount' => 0,
-            ];
+        foreach (FileBackendStoragePathHelper::configuredBasePaths() as $indicesPath) {
+            if (!is_dir($indicesPath)) {
+                continue;
+            }
+
+            $indexDirs = glob($indicesPath . '/*', GLOB_ONLYDIR);
+            $indexCount += count($indexDirs ?: []);
+            $fileCount += $this->countFilesInDirectory($indicesPath);
         }
-
-        $indexDirs = glob($indicesPath . '/*', GLOB_ONLYDIR);
-        $indexCount = count($indexDirs ?: []);
-        $fileCount = $this->countFilesInDirectory($indicesPath);
 
         return [
             'available' => true,
