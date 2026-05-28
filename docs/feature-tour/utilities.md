@@ -24,7 +24,7 @@ Clear ALL search index data from a specific storage type. The dropdown shows thr
 |---|---|
 | **Database** (MySQL/PostgreSQL) | All rows from search tables (`search_documents`, `search_terms`, `search_titles`, `search_ngrams`, etc.) |
 | **Redis** | All Search Manager keys (`sm:idx:*`) from the configured Redis database |
-| **File** | All index files from `@storage/runtime/search-manager/indices/` |
+| **File** | All index files from the default runtime path and configured File backend storage paths |
 
 Each option shows a live count (rows, keys, or files) loaded via AJAX.
 

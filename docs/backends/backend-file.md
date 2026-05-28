@@ -68,7 +68,7 @@ You can specify a custom directory for index storage:
 ],
 ```
 
-The path supports Craft aliases (`@storage`, `@root`) and environment variables (`$ENV_VAR`) via `App::parseEnv()`. Path traversal (`..`) is not allowed — the path must start with an allowed prefix (`@root`, `@storage`, or `$`).
+The path supports Craft aliases (`@storage`, `@root`), absolute paths inside those roots, and environment variables (`$ENV_VAR`) when they resolve inside those roots. Path traversal (`..`) is not allowed, and file indices cannot be stored in `@webroot`.
 
 ## Limitations
 
