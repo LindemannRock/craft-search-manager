@@ -2,8 +2,8 @@
 
 namespace lindemannrock\searchmanager\search\storage;
 
-use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 
 /**
  * FileStorage
@@ -54,11 +54,9 @@ class FileStorage implements StorageInterface
 
         // Use custom base path if provided, otherwise default to runtime path
         if ($customBasePath !== null && $customBasePath !== '') {
-            $resolvedBase = \craft\helpers\App::parseEnv($customBasePath);
-            $this->basePath = rtrim($resolvedBase, '/') . '/' . $indexHandle;
+            $this->basePath = FileBackendStoragePathHelper::resolve($customBasePath) . '/' . $indexHandle;
         } else {
-            $runtimePath = Craft::$app->getPath()->getRuntimePath();
-            $this->basePath = $runtimePath . '/search-manager/indices/' . $indexHandle;
+            $this->basePath = FileBackendStoragePathHelper::defaultBasePath() . '/' . $indexHandle;
         }
 
         // Create directory structure
