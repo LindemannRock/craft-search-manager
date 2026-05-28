@@ -2,7 +2,7 @@
 
 namespace lindemannrock\searchmanager\backends;
 
-use Craft;
+use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\search\storage\FileStorage;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 
@@ -31,11 +31,7 @@ class FileBackend extends AbstractSearchEngineBackend
         $settings = $this->getBackendSettings();
         $customPath = $settings['storagePath'] ?? null;
 
-        if ($customPath !== null && $customPath !== '') {
-            $this->_basePath = rtrim(\craft\helpers\App::parseEnv($customPath), '/');
-        } else {
-            $this->_basePath = Craft::$app->getPath()->getRuntimePath() . '/search-manager/indices';
-        }
+        $this->_basePath = FileBackendStoragePathHelper::resolve($customPath);
 
         // Ensure directory exists
         if (!is_dir($this->_basePath)) {
