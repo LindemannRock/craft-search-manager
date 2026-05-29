@@ -1086,14 +1086,10 @@ class AnalyticsController extends Controller
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
 
         $headers = array_keys($data[0]);
-        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $extension = ExportHelper::extensionForFormat($format);
         $filename = ExportHelper::filename($settings, ['query-rule', $ruleName, $dateRangeLabel], $extension);
 
-        return match ($format) {
-            'json' => ExportHelper::toJson($data, $filename),
-            'excel' => ExportHelper::toExcel($data, $headers, $filename),
-            default => ExportHelper::toCsv($data, $headers, $filename),
-        };
+        return ExportHelper::dispatchTable($data, $headers, $format, $filename);
     }
 
     /**
@@ -1155,14 +1151,10 @@ class AnalyticsController extends Controller
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
 
         $headers = array_keys($data[0]);
-        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $extension = ExportHelper::extensionForFormat($format);
         $filename = ExportHelper::filename($settings, ['promotion', $promotionTitle, $dateRangeLabel], $extension);
 
-        return match ($format) {
-            'json' => ExportHelper::toJson($data, $filename),
-            'excel' => ExportHelper::toExcel($data, $headers, $filename),
-            default => ExportHelper::toCsv($data, $headers, $filename),
-        };
+        return ExportHelper::dispatchTable($data, $headers, $format, $filename);
     }
 
     /**
@@ -1310,16 +1302,12 @@ class AnalyticsController extends Controller
             return $this->redirect($request->getReferrer() ?? 'search-manager/analytics');
         }
 
-        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $extension = ExportHelper::extensionForFormat($format);
         $filename = ExportHelper::filename($settings, $filenameParts, $extension);
 
         $headers = array_keys($data[0]);
 
-        return match ($format) {
-            'json' => ExportHelper::toJson($data, $filename),
-            'excel' => ExportHelper::toExcel($data, $headers, $filename),
-            default => ExportHelper::toCsv($data, $headers, $filename),
-        };
+        return ExportHelper::dispatchTable($data, $headers, $format, $filename);
     }
 
     /**
@@ -1416,16 +1404,12 @@ class AnalyticsController extends Controller
         }
 
         $headers = array_keys($data[0]);
-        $extension = $format === 'excel' ? 'xlsx' : $format;
+        $extension = ExportHelper::extensionForFormat($format);
         $filename = $type === 'clusters'
             ? ExportHelper::filename($settings, ['content-gaps-clusters', $sitePart, $dateRangeLabel], $extension)
             : ExportHelper::filename($settings, ['content-gaps-recent', $sitePart, $dateRangeLabel], $extension);
 
-        return match ($format) {
-            'json' => ExportHelper::toJson($data, $filename),
-            'excel' => ExportHelper::toExcel($data, $headers, $filename),
-            default => ExportHelper::toCsv($data, $headers, $filename),
-        };
+        return ExportHelper::dispatchTable($data, $headers, $format, $filename);
     }
 
     /**
