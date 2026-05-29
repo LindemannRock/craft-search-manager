@@ -415,94 +415,93 @@ class AnalyticsController extends Controller
             }
             $filename = ExportHelper::filename($settings, $parts, $extension);
 
-            if ($format === 'excel') {
-                $sheets = [
-                    [
-                        'title' => Craft::t('search-manager', 'Recent Searches'),
-                        'headers' => $recentHeaders,
-                        'rows' => $recentRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Trending'),
-                        'headers' => $trendingHeaders,
-                        'rows' => $trendingRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Query Rules'),
-                        'headers' => $ruleHeaders,
-                        'rows' => $ruleRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Promotions'),
-                        'headers' => $promoHeaders,
-                        'rows' => $promoRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Performance'),
-                        'headers' => $performanceHeaders,
-                        'rows' => $performanceRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Traffic & Devices'),
-                        'headers' => $trafficHeaders,
-                        'rows' => $trafficRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Geographic'),
-                        'headers' => $geoHeaders,
-                        'rows' => $geoRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Content Gaps: Clusters'),
-                        'headers' => $clusterHeaders,
-                        'rows' => $clusterRows,
-                    ],
-                    [
-                        'title' => Craft::t('search-manager', 'Content Gaps: Recent'),
-                        'headers' => $recentGapsHeaders,
-                        'rows' => $recentGapsRows,
-                    ],
-                ];
-
-                return ExportHelper::toExcelMulti($sheets, $filename);
-            }
-
-            if ($format === 'json') {
-                $payload = [
-                    'exported' => date('c'),
-                    'dateRange' => $dateRange,
-                    'siteId' => $siteId,
-                    'siteName' => $siteName,
-                    'data' => [
-                        'recentSearches' => $recentJson,
-                        'trending' => $trendingRows,
-                        'queryRules' => $ruleRows,
-                        'promotions' => $promoRows,
-                        'performance' => $performanceRows,
-                        'trafficDevices' => $trafficRows,
-                        'geographic' => $geoRows,
-                        'contentGapsClusters' => $clusterRows,
-                        'contentGapsRecent' => $recentGapsRows,
-                    ],
-                ];
-
-                return ExportHelper::toJson($payload, $filename);
-            }
-
             $suffix = $sitePart . '-' . $dateRangeLabel;
-            $files = [
-                "recent-searches-{$suffix}.csv" => ExportHelper::csvContent($recentRows, $recentHeaders),
-                "trending-{$suffix}.csv" => ExportHelper::csvContent($trendingRows, $trendingHeaders),
-                "query-rules-{$suffix}.csv" => ExportHelper::csvContent($ruleRows, $ruleHeaders),
-                "promotions-{$suffix}.csv" => ExportHelper::csvContent($promoRows, $promoHeaders),
-                "performance-{$suffix}.csv" => ExportHelper::csvContent($performanceRows, $performanceHeaders),
-                "traffic-devices-{$suffix}.csv" => ExportHelper::csvContent($trafficRows, $trafficHeaders),
-                "geographic-{$suffix}.csv" => ExportHelper::csvContent($geoRows, $geoHeaders),
-                "content-gaps-clusters-{$suffix}.csv" => ExportHelper::csvContent($clusterRows, $clusterHeaders),
-                "content-gaps-recent-{$suffix}.csv" => ExportHelper::csvContent($recentGapsRows, $recentGapsHeaders),
+
+            $sections = [
+                [
+                    'title' => Craft::t('search-manager', 'Recent Searches'),
+                    'key' => 'recentSearches',
+                    'filename' => "recent-searches-{$suffix}.csv",
+                    'headers' => $recentHeaders,
+                    'rows' => $recentRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Trending'),
+                    'key' => 'trending',
+                    'filename' => "trending-{$suffix}.csv",
+                    'headers' => $trendingHeaders,
+                    'rows' => $trendingRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Query Rules'),
+                    'key' => 'queryRules',
+                    'filename' => "query-rules-{$suffix}.csv",
+                    'headers' => $ruleHeaders,
+                    'rows' => $ruleRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Promotions'),
+                    'key' => 'promotions',
+                    'filename' => "promotions-{$suffix}.csv",
+                    'headers' => $promoHeaders,
+                    'rows' => $promoRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Performance'),
+                    'key' => 'performance',
+                    'filename' => "performance-{$suffix}.csv",
+                    'headers' => $performanceHeaders,
+                    'rows' => $performanceRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Traffic & Devices'),
+                    'key' => 'trafficDevices',
+                    'filename' => "traffic-devices-{$suffix}.csv",
+                    'headers' => $trafficHeaders,
+                    'rows' => $trafficRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Geographic'),
+                    'key' => 'geographic',
+                    'filename' => "geographic-{$suffix}.csv",
+                    'headers' => $geoHeaders,
+                    'rows' => $geoRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Content Gaps: Clusters'),
+                    'key' => 'contentGapsClusters',
+                    'filename' => "content-gaps-clusters-{$suffix}.csv",
+                    'headers' => $clusterHeaders,
+                    'rows' => $clusterRows,
+                ],
+                [
+                    'title' => Craft::t('search-manager', 'Content Gaps: Recent'),
+                    'key' => 'contentGapsRecent',
+                    'filename' => "content-gaps-recent-{$suffix}.csv",
+                    'headers' => $recentGapsHeaders,
+                    'rows' => $recentGapsRows,
+                ],
             ];
 
-            return ExportHelper::toZip($files, $filename);
+            $payload = [
+                'exported' => date('c'),
+                'dateRange' => $dateRange,
+                'siteId' => $siteId,
+                'siteName' => $siteName,
+                'data' => [
+                    'recentSearches' => $recentJson,
+                    'trending' => $trendingRows,
+                    'queryRules' => $ruleRows,
+                    'promotions' => $promoRows,
+                    'performance' => $performanceRows,
+                    'trafficDevices' => $trafficRows,
+                    'geographic' => $geoRows,
+                    'contentGapsClusters' => $clusterRows,
+                    'contentGapsRecent' => $recentGapsRows,
+                ],
+            ];
+
+            return ExportHelper::dispatchSections($sections, $format, $filename, $payload);
         } catch (\Exception $e) {
             $this->logError('Analytics export failed', ['error' => $e->getMessage()]);
 
