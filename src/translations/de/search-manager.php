@@ -22,7 +22,7 @@ return [
     'Query Rules' => 'Query-Regeln',
     'Widgets' => 'Widgets',
     'API Keys' => 'API-Schlüssel',
-    'Analytics' => 'Analytik',
+    'Analytics' => 'Analytics',
     'Settings' => 'Einstellungen',
     'Logs' => 'Protokolle',
     'Overview' => 'Übersicht',
@@ -238,12 +238,12 @@ return [
     'stop words, query operators, and internal autocomplete language.' => 'Stoppwörter, Query-Operatoren und interne Autocomplete-Sprache.',
 
     // Analytics settings
-    'Analytics Settings' => 'Analytik-Einstellungen',
-    'Enable Analytics' => 'Analytik aktivieren',
-    'Track Analytics' => 'Analytik erfassen',
+    'Analytics Settings' => 'Analytics-Einstellungen',
+    'Enable Analytics' => 'Analytics aktivieren',
+    'Track Analytics' => 'Analytics erfassen',
     'Track search queries, results, and performance metrics' => 'Suchanfragen, Ergebnisse und Performance-Metriken erfassen',
     'When enabled, Search Manager will track search queries, device types, geographic data, and performance metrics.' => 'Wenn aktiviert, erfasst Search Manager Suchanfragen, Gerätetypen, geografische Daten und Performance-Metriken.',
-    'Analytics Retention' => 'Analytik-Aufbewahrung',
+    'Analytics Retention' => 'Analysedaten-Aufbewahrung',
     'Data Retention' => 'Datenaufbewahrung',
     'How many days to keep analytics data (0 for unlimited, max 3650)' => 'Wie viele Tage Analysedaten aufbewahrt werden (0 für unbegrenzt, max. 3650)',
     'Analytics data older than {days} days will be automatically cleaned up daily.' => 'Analysedaten älter als {days} Tage werden täglich automatisch bereinigt.',
@@ -251,7 +251,7 @@ return [
     'Anonymize IP Addresses' => 'IP-Adressen anonymisieren',
     'IP Address Privacy' => 'IP-Adress-Datenschutz',
     'Mask IP addresses before storage for maximum privacy. <strong>IPv4</strong>: masks last octet (192.168.1.123 → 192.168.1.0). <strong>IPv6</strong>: masks last 80 bits. <strong>Trade-off</strong>: Reduces unique visitor accuracy (users on same subnet counted as one visitor). Geo-location still works normally.' => 'IP-Adressen vor der Speicherung für maximalen Datenschutz maskieren. <strong>IPv4</strong>: Letztes Oktett maskieren (192.168.1.123 → 192.168.1.0). <strong>IPv6</strong>: Letzte 80 Bits maskieren. <strong>Kompromiss</strong>: Reduziert die Genauigkeit eindeutiger Besucher (Benutzer im selben Subnetz werden als ein Besucher gezählt). Die Geolokalisierung funktioniert weiterhin normal.',
-    'Analytics Cleanup' => 'Analytik-Bereinigung',
+    'Analytics Cleanup' => 'Analysedaten-Bereinigung',
     'Are you sure you want to clean up old analytics data now?' => 'Möchten Sie alte Analysedaten jetzt wirklich bereinigen?',
     'Clean Up Now' => 'Jetzt bereinigen',
 
@@ -260,11 +260,11 @@ return [
     'Enable Geographic Detection' => 'Geografische Erkennung aktivieren',
     'Geographic Distribution' => 'Geografische Verteilung',
     'Geographic detection is disabled.' => 'Geografische Erkennung ist deaktiviert.',
-    'Detect user location for analytics' => 'Benutzerstandort für Analytik erkennen',
+    'Detect user location for analytics' => 'Benutzerstandort für Analytics erkennen',
     'Device Detection Caching' => 'Caching der Geräteerkennung',
     'Device Detection Cache Duration' => 'Cache-Dauer der Geräteerkennung',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'Das Caching der Geräteerkennung ist nur verfügbar, wenn Analytik aktiviert ist. Gehen Sie zu',
-    'to enable analytics.' => 'um Analytik zu aktivieren.',
+    'Device detection caching is only available when Analytics is enabled. Go to' => 'Das Caching der Geräteerkennung ist nur verfügbar, wenn Analytics aktiviert ist. Gehen Sie zu',
+    'to enable analytics.' => 'um Analytics zu aktivieren.',
 
     // Interface settings
     'Interface Settings' => 'Oberflächen-Einstellungen',
@@ -350,8 +350,8 @@ return [
     'Edit widget styles' => 'Widget-Stile bearbeiten',
     'Delete widget styles' => 'Widget-Stile löschen',
     'Manage widget styles' => 'Widget-Stile verwalten',
-    'View analytics' => 'Analytik anzeigen',
-    'Export analytics' => 'Analytik exportieren',
+    'View analytics' => 'Analytics anzeigen',
+    'Export analytics' => 'Analysedaten exportieren',
     'Manage pending syncs' => 'Ausstehende Synchronisierungen verwalten',
     'Retry pending syncs' => 'Ausstehende Synchronisierungen wiederholen',
     'Purge pending syncs' => 'Ausstehende Synchronisierungen bereinigen',
@@ -639,7 +639,7 @@ return [
     'Top Queries Triggering Promotions' => 'Top-Suchanfragen, die Promotions auslösen',
     'No promotions have been shown yet' => 'Es wurden noch keine Promotions angezeigt',
     'No queries have triggered promotions yet' => 'Es haben noch keine Suchanfragen Promotions ausgelöst',
-    'Analytics will appear here once this promotion starts being shown in search results.' => 'Analytik erscheint hier, sobald diese Promotion in Suchergebnissen angezeigt wird.',
+    'Analytics will appear here once this promotion starts being shown in search results.' => 'Analytics wird hier angezeigt, sobald diese Promotion in Suchergebnissen angezeigt wird.',
     'Tip: Promotions in position #1 get the most visibility. Consider which products or content deserve top placement.' => 'Tipp: Promotions an Position #1 erhalten die meiste Sichtbarkeit. Überlegen Sie, welche Produkte oder Inhalte die oberste Platzierung verdienen.',
     'Run a search to see which promotions match' => 'Eine Suche durchführen, um zu sehen, welche Promotions übereinstimmen',
     'Test Promotions' => 'Promotions testen',
@@ -734,7 +734,7 @@ return [
     'Top Triggered Rules' => 'Meistausgelöste Regeln',
     'No query rules have been triggered yet' => 'Es wurden noch keine Query-Regeln ausgelöst',
     'No queries have triggered rules yet' => 'Es haben noch keine Suchanfragen Regeln ausgelöst',
-    'Analytics will appear here once this rule starts being triggered by searches.' => 'Analytik erscheint hier, sobald diese Regel durch Suchen ausgelöst wird.',
+    'Analytics will appear here once this rule starts being triggered by searches.' => 'Analytics wird hier angezeigt, sobald diese Regel durch Suchen ausgelöst wird.',
     'Tip: Rules with low hit counts may have patterns that don\'t match common searches. Consider adjusting the match type or pattern.' => 'Tipp: Regeln mit niedrigen Zugriffszahlen haben möglicherweise Muster, die nicht zu häufigen Suchen passen. Den Abgleichtyp oder das Muster anpassen.',
     'Matched Query Rules' => 'Übereinstimmende Query-Regeln',
     'Run a search to see which query rules apply' => 'Eine Suche durchführen, um zu sehen, welche Query-Regeln gelten',
@@ -786,7 +786,7 @@ return [
     'Update your config/search-manager.php to point to a valid widget handle.' => 'Aktualisieren Sie config/search-manager.php, um auf ein gültiges Widget-Handle zu verweisen.',
     'Human-readable name for this configuration' => 'Lesbarer Name für diese Konfiguration',
     "Unique identifier used in templates (e.g., `config: 'homepage'`)" => "Eindeutiger Bezeichner, der in Templates verwendet wird (z. B. `config: 'homepage'`)",
-    'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Benutzerdefinierter Bezeichner für dieses Widget in der Analytik (z. B. „header-search", „mobile-nav"). Leer lassen für Standard.',
+    'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Benutzerdefinierter Bezeichner für dieses Widget in Analytics (z. B. „header-search", „mobile-nav"). Leer lassen für Standard.',
     'Select which index to search' => 'Zu durchsuchenden Index auswählen',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Auswählen, welche Indizes dieses Widget durchsucht. Alle deaktiviert lassen, um alle Indizes zu durchsuchen.',
     'Themes' => 'Themes',
@@ -951,7 +951,7 @@ return [
     'No analytics data yet' => 'Noch keine Analysedaten',
     'No searches recorded yet' => 'Noch keine Suchen aufgezeichnet',
     'No searches yet' => 'Noch keine Suchen',
-    'Search analytics will appear here once users start searching.' => 'Such-Analytik erscheint hier, sobald Benutzer beginnen zu suchen.',
+    'Search analytics will appear here once users start searching.' => 'Such-Analytics erscheint hier, sobald Benutzer beginnen zu suchen.',
     'Compared to previous period (e.g., last 7 days vs. prior 7 days)' => 'Im Vergleich zum vorherigen Zeitraum (z. B. letzte 7 Tage vs. vorige 7 Tage)',
     'Hits' => 'Zugriffe',
     'Avg Hits' => 'Durchschn. Zugriffe',
@@ -1028,7 +1028,7 @@ return [
     'View content gaps' => 'Content Gaps anzeigen',
 
     // Device / traffic analytics
-    'Device Analytics' => 'Geräte-Analytik',
+    'Device Analytics' => 'Geräte-Analytics',
     'Device Types' => 'Gerätetypen',
     'Device Type' => 'Gerätetyp',
     'Device Brand' => 'Gerätemarke',
@@ -1086,14 +1086,14 @@ return [
     'Never' => 'Nie',
     'An error occurred while loading analytics data.' => 'Beim Laden der Analysedaten ist ein Fehler aufgetreten.',
     'No analytics data to export for the selected date range' => 'Keine Analysedaten für den ausgewählten Datumsbereich zum Exportieren',
-    'View all analytics' => 'Alle Analytik anzeigen',
-    'View Analytics' => 'Analytik anzeigen',
-    'View full analytics' => 'Vollständige Analytik anzeigen',
+    'View all analytics' => 'Alle Analytics anzeigen',
+    'View Analytics' => 'Analytics anzeigen',
+    'View full analytics' => 'Vollständige Analytics anzeigen',
     'View all searches' => 'Alle Suchen anzeigen',
     'Enable in Settings' => 'In den Einstellungen aktivieren',
-    'Analytics are disabled in plugin settings.' => 'Analytik ist in den Plugin-Einstellungen deaktiviert.',
-    'You don\'t have permission to view analytics.' => 'Sie haben keine Berechtigung, die Analytik anzuzeigen.',
-    '{pluginName} - Analytics' => '{pluginName} – Analytik',
+    'Analytics are disabled in plugin settings.' => 'Analytics ist in den Plugin-Einstellungen deaktiviert.',
+    'You don\'t have permission to view analytics.' => 'Sie haben keine Berechtigung, Analytics anzuzeigen.',
+    '{pluginName} - Analytics' => '{pluginName} – Analytics',
     '{pluginName} - Content Gaps' => '{pluginName} – Content Gaps',
     '{pluginName} - Top Searches' => '{pluginName} – Top-Suchen',
     '{pluginName} - Trending' => '{pluginName} – Trending',
@@ -1111,14 +1111,14 @@ return [
     'Clear All Analytics' => 'Alle Analysedaten löschen',
     'Are you sure you want to clear all caches?' => 'Möchten Sie wirklich alle Caches leeren?',
     'Are you sure you want to clear ALL data from' => 'Möchten Sie wirklich ALLE Daten aus',
-    'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Alle Analytik-Tracking-Daten dauerhaft löschen. Diese Aktion kann nicht rückgängig gemacht werden!',
+    'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Alle Analysedaten dauerhaft löschen. Diese Aktion kann nicht rückgängig gemacht werden!',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'Dadurch werden alle Such-Tracking-Daten gelöscht und alle Statistiken zurückgesetzt. Sind Sie absolut sicher?',
     'Are you sure you want to permanently delete ALL analytics data? This action cannot be undone!' => 'Möchten Sie wirklich ALLE Analysedaten dauerhaft löschen? Diese Aktion kann nicht rückgängig gemacht werden!',
     'Analytics Data Management' => 'Verwaltung von Analysedaten',
     'Unlimited Retention Warning' => 'Warnung: Unbegrenzte Aufbewahrung',
     'Data Size' => 'Datengröße',
     'Failed to queue cleanup job' => 'Bereinigungsauftrag konnte nicht in die Warteschlange gestellt werden',
-    'Analytics cleanup job queued' => 'Analytik-Bereinigungsauftrag in die Warteschlange gestellt',
+    'Analytics cleanup job queued' => 'Analysedaten-Bereinigungsauftrag in die Warteschlange gestellt',
     'Failed to clear storage' => 'Speicher konnte nicht geleert werden',
     'Count synced' => 'Anzahl synchronisiert',
     'Count synced successfully' => 'Anzahl erfolgreich synchronisiert',
@@ -1282,7 +1282,7 @@ return [
     '{count} analytics cleared' => '{count} Analysedatensätze gelöscht',
     'Failed to clear analytics data' => 'Analysedaten konnten nicht gelöscht werden',
     'Failed to cleanup analytics. Check logs for details.' => 'Analysedaten konnten nicht bereinigt werden. Details in den Protokollen.',
-    'Analytics retention must be greater than 0 to perform cleanup.' => 'Analytik-Aufbewahrung muss größer als 0 sein, um eine Bereinigung durchzuführen.',
+    'Analytics retention must be greater than 0 to perform cleanup.' => 'Analysedaten-Aufbewahrung muss größer als 0 sein, um eine Bereinigung durchzuführen.',
     'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.' => 'Der Export war auf die ersten {limit} Zeilen begrenzt. Wählen Sie einen kleineren Datumsbereich, um einen kleineren Datensatz zu exportieren.',
 
     // Count sync messages
@@ -1359,7 +1359,7 @@ return [
     'match' => 'Übereinstimmung',
     'To change, set another backend as default first.' => 'Zum Ändern zuerst ein anderes Backend als Standard festlegen.',
     'Use as the default for new indices' => 'Als Standard für neue Indizes verwenden',
-    'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'Max: 64 Zeichen. Erscheint in der Analytik, um Traffic von verschiedenen Widget-Platzierungen zu unterscheiden.',
+    'Max: 64 characters. Appears in analytics to distinguish traffic from different widget placements.' => 'Max: 64 Zeichen. Erscheint in Analytics, um Traffic von verschiedenen Widget-Platzierungen zu unterscheiden.',
     'Max: 64 characters. Must match a field name in your indexed documents.' => 'Max: 64 Zeichen. Muss einem Feldnamen in Ihren indexierten Dokumenten entsprechen.',
     'Indexed' => 'Indexiert',
     'Select a category' => 'Kategorie auswählen',
@@ -1561,7 +1561,7 @@ return [
 • You can override language per-index in config file' => '<strong>Wie die Spracherkennung funktioniert:</strong><br>
 • Die Sprache wird beim Indexieren automatisch aus der Site-Sprache jedes Elements erkannt<br>
 • Beispiel: en-US → en, ar-SA → ar, fr-FR → fr<br>
-• Dokumente werden mit ihrer Sprache für Filterung und Analysen gespeichert<br>
+• Dokumente werden mit ihrer Sprache für Filterung und Analytics gespeichert<br>
 • Die Sprache kann pro Index in der Konfigurationsdatei überschrieben werden',
     'Stop words are common words (the, a, is, etc.) filtered out during indexing to improve search relevance. Search Manager includes stop words for: English, Arabic, German, French, Spanish.' => 'Stoppwörter sind häufige Wörter (the, a, is usw.), die beim Indexieren herausgefiltert werden, um die Suchrelevanz zu verbessern. Search Manager enthält Stoppwörter für: Englisch, Arabisch, Deutsch, Französisch, Spanisch.',
     'Stop words are automatically loaded based on language:' => 'Stoppwörter werden automatisch basierend auf der Sprache geladen:',
@@ -1623,9 +1623,9 @@ return [
 • Both search results and autocomplete suggestions are pre-cached<br>
 • Requires analytics to be enabled for query data' => '<strong>So funktioniert es:</strong><br>
 • Nach Abschluss des Index-Neuaufbaus wärmt ein Hintergrundjob den Cache vor<br>
-• Beliebte Abfragen werden aus den Such-Analysen abgerufen (meistgesuchte Begriffe)<br>
+• Beliebte Abfragen werden aus Such-Analytics abgerufen (meistgesuchte Begriffe)<br>
 • Sowohl Suchergebnisse als auch Autovervollständigungs-Vorschläge werden vorab gecacht<br>
-• Erfordert aktivierte Analysen für Abfragedaten',
+• Erfordert aktiviertes Analytics für Abfragedaten',
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
