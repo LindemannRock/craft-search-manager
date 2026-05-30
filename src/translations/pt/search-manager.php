@@ -24,7 +24,7 @@ return [
     'API Keys' => 'Chaves API',
     'Analytics' => 'Análises',
     'Settings' => 'Definições',
-    'Logs' => 'Logs',
+    'Logs' => 'Registos',
     'Overview' => 'Visão geral',
     'Performance' => 'Desempenho',
     'Traffic & Devices' => 'Tráfego e dispositivos',
@@ -326,9 +326,9 @@ return [
     'Edit indices' => 'Editar índices',
     'Delete indices' => 'Eliminar índices',
     'Rebuild indices' => 'Reconstruir índices',
-    'View logs' => 'Ver logs',
-    'View system logs' => 'Ver logs do sistema',
-    'Download system logs' => 'Transferir logs do sistema',
+    'View logs' => 'Ver registos',
+    'View system logs' => 'Ver registos do sistema',
+    'Download system logs' => 'Descarregar registos do sistema',
     'Manage settings' => 'Gerir definições',
     'Create backends' => 'Criar backends',
     'Edit backends' => 'Editar backends',
@@ -1099,7 +1099,7 @@ return [
     '{pluginName} - Trending' => '{pluginName} — Tendências',
 
     // Export
-    'Export failed. Check logs for details.' => 'A exportação falhou. Verifique os logs para detalhes.',
+    'Export failed. Check logs for details.' => 'A exportação falhou. Verifique os registos para detalhes.',
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitorize os índices de pesquisa, limpe a cache de ficheiros e faça a gestão da sua infraestrutura de pesquisa.',
@@ -1177,7 +1177,7 @@ return [
     'Redis is not configured.' => 'O Redis não está configurado.',
     'Redis connection failed: {error}' => 'Ligação ao Redis falhada: {error}',
     'No backend configured for this index' => 'Nenhum backend configurado para este índice',
-    'Could not replace native search service. Check logs for details.' => 'Não foi possível substituir o serviço de pesquisa nativo. Verifique os logs para detalhes.',
+    'Could not replace native search service. Check logs for details.' => 'Não foi possível substituir o serviço de pesquisa nativo. Verifique os registos para detalhes.',
     'Could not retrieve document count from backend (permission issue)' => 'Não foi possível obter a contagem de documentos do backend (problema de permissão)',
     'Warning' => 'Aviso',
     'Unknown error' => 'Erro desconhecido',
@@ -1243,12 +1243,12 @@ return [
     'Default backend changed to "{name}". Rebuild indices in Utilities to migrate data.' => 'Backend predefinido alterado para «{name}». Reconstrua os índices nos utilitários para migrar os dados.',
 
     // Test result messages
-    'Connection test failed. Check logs for details.' => 'O teste de ligação falhou. Verifique os logs para detalhes.',
-    'Search test failed. Check logs for details.' => 'O teste de pesquisa falhou. Verifique os logs para detalhes.',
-    'Promotions test failed. Check logs for details.' => 'O teste de promoções falhou. Verifique os logs para detalhes.',
-    'Query rules test failed. Check logs for details.' => 'O teste de regras de consulta falhou. Verifique os logs para detalhes.',
-    'Autocomplete test failed. Check logs for details.' => 'O teste de completação automática falhou. Verifique os logs para detalhes.',
-    'Failed to load backend info. Check logs for details.' => 'Falha ao carregar informações do backend. Verifique os logs para detalhes.',
+    'Connection test failed. Check logs for details.' => 'O teste de ligação falhou. Verifique os registos para detalhes.',
+    'Search test failed. Check logs for details.' => 'O teste de pesquisa falhou. Verifique os registos para detalhes.',
+    'Promotions test failed. Check logs for details.' => 'O teste de promoções falhou. Verifique os registos para detalhes.',
+    'Query rules test failed. Check logs for details.' => 'O teste de regras de consulta falhou. Verifique os registos para detalhes.',
+    'Autocomplete test failed. Check logs for details.' => 'O teste de completação automática falhou. Verifique os registos para detalhes.',
+    'Failed to load backend info. Check logs for details.' => 'Falha ao carregar informações do backend. Verifique os registos para detalhes.',
 
     // Cache action messages
     'Cache cleared for "{name}"' => 'Cache limpa para «{name}»',
@@ -1267,7 +1267,7 @@ return [
     'Redis storage cleared successfully ({count} keys deleted). Rebuild affected indices to re-index your content.' => 'Armazenamento Redis limpo com sucesso ({count} chaves eliminadas). Reconstrua os índices afetados para reindexar o conteúdo.',
     '{driver} storage cleared successfully ({count} rows deleted). Rebuild affected indices to re-index your content.' => 'Armazenamento {driver} limpo com sucesso ({count} linhas eliminadas). Reconstrua os índices afetados para reindexar o conteúdo.',
     'Failed to clear cache' => 'Falha ao limpar a cache',
-    'Failed to clear cache. Check logs for details.' => 'Falha ao limpar a cache. Verifique os logs para detalhes.',
+    'Failed to clear cache. Check logs for details.' => 'Falha ao limpar a cache. Verifique os registos para detalhes.',
     'Failed to clear search cache' => 'Falha ao limpar a cache de pesquisa',
     'Failed to clear autocomplete cache' => 'Falha ao limpar a cache de completação automática',
     'Failed to clear device cache' => 'Falha ao limpar a cache do dispositivo',
@@ -1281,7 +1281,7 @@ return [
     'Deleted {count} old analytics records' => '{count} registos analíticos antigos eliminados',
     '{count} analytics cleared' => '{count} análises eliminadas',
     'Failed to clear analytics data' => 'Falha ao limpar os dados analíticos',
-    'Failed to cleanup analytics. Check logs for details.' => 'Falha ao limpar as análises. Verifique os logs para detalhes.',
+    'Failed to cleanup analytics. Check logs for details.' => 'Falha ao limpar as análises. Verifique os registos para detalhes.',
     'Analytics retention must be greater than 0 to perform cleanup.' => 'A retenção de análises deve ser superior a 0 para efetuar a limpeza.',
     'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.' => 'A exportação ficou limitada às primeiras {limit} linhas. Reduza o intervalo de datas para exportar um conjunto de dados mais pequeno.',
 
