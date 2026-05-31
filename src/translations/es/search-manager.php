@@ -616,38 +616,38 @@ return [
 • Search results are cached per query, index, site, and search options<br>
 • Cached results are returned instantly without hitting the backend<br>
 • Cache is automatically cleared when content changes (if enabled below)' => '<strong>Cómo funciona:</strong><br>
-• Los resultados de búsqueda se almacenan en Caché por consulta, índice, sitio y opciones de búsqueda<br>
-• Los resultados en Caché se devuelven al instante sin consultar el backend<br>
-• El Caché se borra automáticamente cuando cambia el contenido (si está habilitado abajo)',
+• Los resultados de búsqueda se almacenan en caché por consulta, índice, sitio y opciones de búsqueda<br>
+• Los resultados en caché se devuelven al instante sin consultar el backend<br>
+• La caché se borra automáticamente cuando cambia el contenido (si está habilitado abajo)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
 • Uses the same storage method as search results (file or Redis)<br>
 • Cache is cleared when content is re-indexed' => '<strong>Cómo funciona:</strong><br>
-• Las sugerencias de autocompletado se almacenan en Caché por prefijo de consulta, índice e idioma<br>
+• Las sugerencias de autocompletado se almacenan en caché por prefijo de consulta, índice e idioma<br>
 • Usa el mismo método de almacenamiento que los resultados de búsqueda (File o Redis)<br>
-• El Caché se borra cuando el contenido es reindexado',
+• La caché se borra cuando el contenido es reindexado',
     '<strong>How it works:</strong><br>
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
 • Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
 • Both search cache and autocomplete cache are cleared together per index' => '<strong>Cómo funciona:</strong><br>
-• Cuando está habilitado, el Caché se borra automáticamente cuando los elementos se guardan o eliminan<br>
+• Cuando está habilitado, la caché se borra automáticamente cuando los elementos se guardan o eliminan<br>
 • Status Sync gestiona las entradas programadas (postDate/expiryDate) que cambian de estado sin eventos de guardado<br>
-• Tanto el Caché de búsqueda como el Caché de autocompletado se borran juntos por índice',
+• Tanto la caché de búsqueda como la caché de autocompletado se borran juntos por índice',
     '<strong>How it works:</strong><br>
 • After index rebuild completes, a background job warms the cache<br>
 • Popular queries are pulled from search analytics (most searched terms)<br>
 • Both search results and autocomplete suggestions are pre-cached<br>
 • Requires analytics to be enabled for query data' => '<strong>Cómo funciona:</strong><br>
-• Después de que se completa la reconstrucción del índice, una tarea en segundo plano calienta el Caché<br>
+• Después de que se completa la reconstrucción del índice, una tarea en segundo plano precalienta la caché<br>
 • Las consultas populares se obtienen de las analíticas de búsqueda (términos más buscados)<br>
-• Tanto los resultados de búsqueda como las sugerencias de autocompletado se almacenan en Caché previamente<br>
+• Tanto los resultados de búsqueda como las sugerencias de autocompletado se almacenan en caché previamente<br>
 • Requiere que las analíticas estén habilitadas para los datos de consulta',
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>Cómo funciona:</strong><br>
 • La detección de dispositivos analiza las cadenas user-agent para identificar dispositivos, navegadores y sistemas operativos<br>
-• Los resultados se almacenan en Caché para evitar reanálisis del mismo user-agent repetidamente<br>
+• Los resultados se almacenan en caché para evitar reanálisis del mismo user-agent repetidamente<br>
 • Se recomienda mantenerlo habilitado en sitios de producción',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync activo:</strong> Hay una tarea de sincronización programada que se ejecutará cada {minutes} minutos.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync no está en ejecución:</strong> Guarde la Configuración para iniciar la tarea de sincronización, o se iniciará automáticamente en la próxima carga de página.',
