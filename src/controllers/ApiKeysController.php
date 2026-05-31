@@ -174,7 +174,7 @@ class ApiKeysController extends Controller
             } else {
                 $apiKey = ApiKey::findById($keyId);
                 if ($apiKey === null) {
-                    throw new NotFoundHttpException('API key not found.');
+                    throw new NotFoundHttpException(Craft::t('search-manager', 'API key not found'));
                 }
             }
         }
@@ -227,7 +227,7 @@ class ApiKeysController extends Controller
         } else {
             $apiKey = ApiKey::findById($keyId);
             if ($apiKey === null) {
-                throw new NotFoundHttpException('API key not found.');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'API key not found'));
             }
             // Type is locked once generated — it's encoded in the keyPrefix and
             // changing it here would create a mismatch the next time a request
@@ -279,12 +279,12 @@ class ApiKeysController extends Controller
 
         $keyId ??= (int)$request->getBodyParam('keyId');
         if (!$keyId) {
-            throw new NotFoundHttpException('API key not found.');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'API key not found'));
         }
 
         $apiKey = ApiKey::findById($keyId);
         if ($apiKey === null) {
-            throw new NotFoundHttpException('API key not found.');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'API key not found'));
         }
 
         if (!$apiKey->delete()) {

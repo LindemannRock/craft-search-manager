@@ -235,13 +235,13 @@ class WidgetsController extends Controller
         $this->requirePermission('searchManager:manageWidgetConfigs');
 
         if (!$handle) {
-            throw new NotFoundHttpException('Widget handle required');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Widget handle required'));
         }
 
         $widgetConfig = SearchManager::$plugin->widgetConfigs->getByHandle($handle);
 
         if (!$widgetConfig) {
-            throw new NotFoundHttpException('Widget config not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Widget config not found'));
         }
 
         // Get indices for display
@@ -266,7 +266,7 @@ class WidgetsController extends Controller
                 $this->requirePermission('searchManager:editWidgetConfigs');
                 $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
                 if (!$widgetConfig) {
-                    throw new NotFoundHttpException('Widget config not found');
+                    throw new NotFoundHttpException(Craft::t('search-manager', 'Widget config not found'));
                 }
             } else {
                 $this->requirePermission('searchManager:createWidgetConfigs');
@@ -305,7 +305,7 @@ class WidgetsController extends Controller
             $this->requirePermission('searchManager:editWidgetConfigs');
             $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
             if (!$widgetConfig) {
-                throw new NotFoundHttpException('Widget config not found');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'Widget config not found'));
             }
         } else {
             $this->requirePermission('searchManager:createWidgetConfigs');
@@ -757,13 +757,13 @@ class WidgetsController extends Controller
         $this->requirePermission('searchManager:manageWidgetStyles');
 
         if (!$handle) {
-            throw new NotFoundHttpException('Widget style handle required');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Widget style handle required'));
         }
 
         $widgetStyle = SearchManager::$plugin->widgetStyles->getByHandle($handle);
 
         if (!$widgetStyle) {
-            throw new NotFoundHttpException('Widget style not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Widget style not found'));
         }
 
         $defaultStyles = WidgetConfig::defaultStyleValues();
@@ -789,7 +789,7 @@ class WidgetsController extends Controller
                 $this->requirePermission('searchManager:editWidgetStyles');
                 $widgetStyle = SearchManager::$plugin->widgetStyles->getById($styleId);
                 if (!$widgetStyle) {
-                    throw new NotFoundHttpException('Widget style not found');
+                    throw new NotFoundHttpException(Craft::t('search-manager', 'Widget style not found'));
                 }
             } else {
                 $this->requirePermission('searchManager:createWidgetStyles');
@@ -824,7 +824,7 @@ class WidgetsController extends Controller
             $this->requirePermission('searchManager:editWidgetStyles');
             $widgetStyle = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
             if (!$widgetStyle) {
-                throw new NotFoundHttpException('Widget style not found');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'Widget style not found'));
             }
         } else {
             $this->requirePermission('searchManager:createWidgetStyles');

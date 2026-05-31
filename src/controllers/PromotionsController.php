@@ -172,7 +172,7 @@ class PromotionsController extends Controller
             if ($promotionId) {
                 $promotion = Promotion::findById($promotionId);
                 if (!$promotion) {
-                    throw new NotFoundHttpException('Promotion not found');
+                    throw new NotFoundHttpException(Craft::t('search-manager', 'Promotion not found'));
                 }
             } else {
                 $promotion = new Promotion();
@@ -240,7 +240,7 @@ class PromotionsController extends Controller
         if ($promotionId) {
             $promotion = Promotion::findById($promotionId);
             if (!$promotion) {
-                throw new NotFoundHttpException('Promotion not found');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'Promotion not found'));
             }
         } else {
             $promotion = new Promotion();
@@ -304,9 +304,9 @@ class PromotionsController extends Controller
 
         if (!$promotion) {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
-                return $this->asJson(['success' => false, 'error' => 'Promotion not found']);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Promotion not found')]);
             }
-            throw new NotFoundHttpException('Promotion not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Promotion not found'));
         }
 
         $indexHandle = $promotion->indexHandle;

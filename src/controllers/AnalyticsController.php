@@ -53,7 +53,7 @@ class AnalyticsController extends Controller
         $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
 
         if ($siteId !== null && !in_array($siteId, $editableSiteIds, true)) {
-            throw new \yii\web\ForbiddenHttpException('You do not have permission to access analytics for this site.');
+            throw new \yii\web\ForbiddenHttpException(Craft::t('search-manager', 'User does not have permission to view analytics for this site.'));
         }
 
         return $siteId ?? $editableSiteIds;
@@ -937,7 +937,7 @@ class AnalyticsController extends Controller
             if (!$rule) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => 'Rule not found',
+                    'error' => Craft::t('search-manager', 'Rule not found'),
                 ]);
             }
 
@@ -995,7 +995,7 @@ class AnalyticsController extends Controller
             if (!$promotion) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => 'Promotion not found',
+                    'error' => Craft::t('search-manager', 'Promotion not found'),
                 ]);
             }
 
@@ -1055,7 +1055,7 @@ class AnalyticsController extends Controller
         // Get the rule
         $rule = \lindemannrock\searchmanager\models\QueryRule::findById($ruleId);
         if (!$rule) {
-            throw new \yii\web\NotFoundHttpException('Rule not found');
+            throw new \yii\web\NotFoundHttpException(Craft::t('search-manager', 'Rule not found'));
         }
 
         // Get raw analytics data for export
@@ -1120,7 +1120,7 @@ class AnalyticsController extends Controller
         // Get the promotion
         $promotion = \lindemannrock\searchmanager\models\Promotion::findById($promotionId);
         if (!$promotion) {
-            throw new \yii\web\NotFoundHttpException('Promotion not found');
+            throw new \yii\web\NotFoundHttpException(Craft::t('search-manager', 'Promotion not found'));
         }
 
         // Get raw analytics data for export

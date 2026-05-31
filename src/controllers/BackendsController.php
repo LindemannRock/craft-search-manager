@@ -235,13 +235,13 @@ class BackendsController extends Controller
         $this->requirePermission('searchManager:manageBackends');
 
         if (!$backendId) {
-            throw new NotFoundHttpException('Backend ID or handle required');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Backend ID or handle required'));
         }
 
         $backend = ConfiguredBackend::findByIdOrHandle($backendId);
 
         if (!$backend) {
-            throw new NotFoundHttpException('Backend not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Backend not found'));
         }
 
         // Get database driver for mysql/pgsql availability checks
@@ -269,7 +269,7 @@ class BackendsController extends Controller
             $this->requirePermission('searchManager:editBackends');
             $backend = ConfiguredBackend::findById($backendId);
             if (!$backend) {
-                throw new NotFoundHttpException('Backend not found');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'Backend not found'));
             }
         } else {
             $this->requirePermission('searchManager:createBackends');
@@ -311,7 +311,7 @@ class BackendsController extends Controller
         if ($backendId) {
             $backend = ConfiguredBackend::findById($backendId);
             if (!$backend) {
-                throw new NotFoundHttpException('Backend not found');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'Backend not found'));
             }
         } else {
             $backend = new ConfiguredBackend();
@@ -397,7 +397,7 @@ class BackendsController extends Controller
             if (Craft::$app->getRequest()->getAcceptsJson()) {
                 return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Backend not found')]);
             }
-            throw new NotFoundHttpException('Backend not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Backend not found'));
         }
 
         // Check if this is the default backend
@@ -451,7 +451,7 @@ class BackendsController extends Controller
                 if (!$configuredBackend) {
                     return $this->asJson([
                         'success' => false,
-                        'error' => 'Backend not found',
+                        'error' => Craft::t('search-manager', 'Backend not found'),
                     ]);
                 }
 
@@ -540,7 +540,7 @@ class BackendsController extends Controller
             if (!$configuredBackend) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => 'Backend not found',
+                    'error' => Craft::t('search-manager', 'Backend not found'),
                 ]);
             }
 

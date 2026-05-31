@@ -181,7 +181,7 @@ class QueryRulesController extends Controller
             if ($ruleId) {
                 $rule = QueryRule::findById($ruleId);
                 if (!$rule) {
-                    throw new NotFoundHttpException('Query rule not found');
+                    throw new NotFoundHttpException(Craft::t('search-manager', 'Query rule not found'));
                 }
             } else {
                 $rule = new QueryRule();
@@ -281,7 +281,7 @@ class QueryRulesController extends Controller
         if ($ruleId) {
             $rule = QueryRule::findById($ruleId);
             if (!$rule) {
-                throw new NotFoundHttpException('Query rule not found');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'Query rule not found'));
             }
         } else {
             $rule = new QueryRule();
@@ -408,9 +408,9 @@ class QueryRulesController extends Controller
 
         if (!$rule) {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
-                return $this->asJson(['success' => false, 'error' => 'Query rule not found']);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Query rule not found')]);
             }
-            throw new NotFoundHttpException('Query rule not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Query rule not found'));
         }
 
         if ($rule->delete()) {

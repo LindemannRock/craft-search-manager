@@ -176,13 +176,13 @@ class IndicesController extends Controller
         $this->requirePermission('searchManager:manageIndices');
 
         if (!$handle) {
-            throw new NotFoundHttpException('Index handle required');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Index handle required'));
         }
 
         $index = SearchIndex::findByHandle($handle);
 
         if (!$index) {
-            throw new NotFoundHttpException('Index not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
         }
 
         // If the index is editable (database), redirect to edit page
@@ -211,7 +211,7 @@ class IndicesController extends Controller
             if ($indexId) {
                 $index = SearchIndex::findById($indexId);
                 if (!$index) {
-                    throw new NotFoundHttpException('Index not found');
+                    throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
                 }
 
                 if (!$index->canEdit()) {
@@ -251,7 +251,7 @@ class IndicesController extends Controller
         if ($indexId) {
             $index = SearchIndex::findById($indexId);
             if (!$index) {
-                throw new NotFoundHttpException('Index not found');
+                throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
             }
         } else {
             $index = new SearchIndex();
@@ -326,7 +326,7 @@ class IndicesController extends Controller
             if ($acceptsJson) {
                 return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found')]);
             }
-            throw new NotFoundHttpException('Index not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
         }
 
         if (!$index->canEdit()) {
@@ -373,7 +373,7 @@ class IndicesController extends Controller
             if ($acceptsJson) {
                 return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found')]);
             }
-            throw new NotFoundHttpException('Index not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
         }
 
         // Clear backend storage
@@ -584,7 +584,7 @@ class IndicesController extends Controller
             if ($acceptsJson) {
                 return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Index not found')]);
             }
-            throw new NotFoundHttpException('Index not found');
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Index not found'));
         }
 
         SearchManager::$plugin->indexing->rebuildIndex($index->handle);
