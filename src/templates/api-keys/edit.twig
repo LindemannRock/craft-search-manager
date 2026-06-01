@@ -234,29 +234,30 @@
                     'disabled': 'Disabled'|t('search-manager'),
                     'expired': 'Expired'|t('search-manager'),
                 }[status] %}
-                {# Reuse base's `status` colorSet via the same model→colorKey map
-                   as the index column, so badges stay consistent everywhere. #}
+                {# Read-only meta: status dot + plain label, reusing the SAME
+                   colorSets the index table uses (`status`, `apiKeyType`) so
+                   colours stay consistent across the listing and this page. Dot
+                   rather than badge to match the other edit-page sidebars. #}
                 {% set statusColorKey = {'active': 'enabled', 'disabled': 'disabled', 'expired': 'expired'}[status] %}
                 <div class="data">
                     <dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
                     <dd class="value">
-                        {% include 'lindemannrock-base/_components/badge' with {
-                            label: statusLabel,
+                        {% include 'lindemannrock-base/_components/status-dot' with {
                             value: statusColorKey,
                             colorSet: 'status',
                         } only %}
+                        <span>{{ statusLabel }}</span>
                     </dd>
                 </div>
 
-                {% set typeLabel = apiKey.type == 'public' ? 'Public'|t('search-manager') : 'Server'|t('search-manager') %}
                 <div class="data">
                     <dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
                     <dd class="value">
-                        {% include 'lindemannrock-base/_components/badge' with {
-                            label: typeLabel,
+                        {% include 'lindemannrock-base/_components/status-dot' with {
                             value: apiKey.type,
                             colorSet: 'apiKeyType',
                         } only %}
+                        <span>{{ apiKey.type == 'public' ? 'Public'|t('search-manager') : 'Server'|t('search-manager') }}</span>
                     </dd>
                 </div>
 
