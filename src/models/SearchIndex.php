@@ -8,6 +8,7 @@ use craft\base\Model;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
@@ -131,6 +132,7 @@ class SearchIndex extends Model
             [['name', 'handle', 'elementType'], 'required'],
             [['name', 'handle', 'elementType', 'transformerClass'], 'string', 'max' => 255],
             [['handle'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/'],
+            [['handle'], 'validateUniqueHandle'],
             [['language'], 'string', 'max' => 10],
             [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => 'Language must be a valid language code (e.g., en, ar, fr-ca)'],
             [['backend'], 'string', 'max' => 255],
@@ -143,6 +145,18 @@ class SearchIndex extends Model
             [['headingLevels'], 'validateHeadingLevels'],
             [['transformerClass'], 'validateTransformerClass'],
         ];
+    }
+
+    /**
+     * Validate handle is unique among database-backed indices.
+     */
+    public function validateUniqueHandle(string $attribute): void
+    {
+        if (SlugHandleHelper::exists('{{%searchmanager_indices}}', 'handle', $this->handle, [
+            'excludeId' => $this->id,
+        ])) {
+            $this->addError($attribute, Craft::t('search-manager', 'Handle must be unique.'));
+        }
     }
 
     /**
