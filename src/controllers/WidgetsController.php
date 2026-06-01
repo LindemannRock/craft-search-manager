@@ -6,6 +6,7 @@ use Craft;
 use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\base\helpers\BooleanHelper;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -314,7 +315,13 @@ class WidgetsController extends Controller
 
         // Set basic attributes
         $widgetConfig->name = $request->getBodyParam('name');
-        $widgetConfig->handle = $request->getBodyParam('handle');
+        $widgetConfig->handle = SlugHandleHelper::normalizeSlug(
+            (string)$request->getBodyParam('handle'),
+            (string)$widgetConfig->name,
+        );
+        if (!$configId) {
+            $widgetConfig->handle = SlugHandleHelper::makeUnique('{{%searchmanager_widget_configs}}', 'handle', $widgetConfig->handle);
+        }
         $widgetConfig->type = (string) $request->getBodyParam('type', 'modal');
         $widgetConfig->enabled = BooleanHelper::normalize($request->getBodyParam('enabled'), false);
 
@@ -832,7 +839,13 @@ class WidgetsController extends Controller
         }
 
         $widgetStyle->name = (string) $request->getBodyParam('name');
-        $widgetStyle->handle = (string) $request->getBodyParam('handle');
+        $widgetStyle->handle = SlugHandleHelper::normalizeSlug(
+            (string)$request->getBodyParam('handle'),
+            $widgetStyle->name,
+        );
+        if (!$styleId) {
+            $widgetStyle->handle = SlugHandleHelper::makeUnique('{{%searchmanager_widget_styles}}', 'handle', $widgetStyle->handle);
+        }
         $widgetStyle->enabled = BooleanHelper::normalize($request->getBodyParam('enabled'), false);
         $widgetStyle->type = (string) $request->getBodyParam('type', 'modal');
         $styles = $request->getBodyParam('styles', []);

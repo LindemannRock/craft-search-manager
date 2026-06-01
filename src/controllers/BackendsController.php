@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\db\Query;
 use craft\web\Controller;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
@@ -319,7 +320,13 @@ class BackendsController extends Controller
 
         // Set attributes
         $backend->name = $request->getBodyParam('name');
-        $backend->handle = $request->getBodyParam('handle');
+        $backend->handle = SlugHandleHelper::normalizeSlug(
+            (string)$request->getBodyParam('handle'),
+            (string)$backend->name,
+        );
+        if (!$backendId) {
+            $backend->handle = SlugHandleHelper::makeUnique('{{%searchmanager_backends}}', 'handle', $backend->handle);
+        }
         $backend->backendType = $request->getBodyParam('backendType');
         $backend->enabled = (bool)$request->getBodyParam('enabled');
 

@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\db\Query;
 use craft\web\Controller;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -259,7 +260,13 @@ class IndicesController extends Controller
 
         // Set attributes
         $index->name = $request->getBodyParam('name');
-        $index->handle = $request->getBodyParam('handle');
+        $index->handle = SlugHandleHelper::normalizeSlug(
+            (string)$request->getBodyParam('handle'),
+            (string)$index->name,
+        );
+        if (!$indexId) {
+            $index->handle = SlugHandleHelper::makeUnique('{{%searchmanager_indices}}', 'handle', $index->handle);
+        }
         $index->elementType = $request->getBodyParam('elementType');
         $siteIdParam = $request->getBodyParam('siteId');
         if (is_array($siteIdParam)) {
