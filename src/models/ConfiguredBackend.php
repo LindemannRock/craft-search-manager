@@ -7,6 +7,7 @@ use craft\base\Model;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
@@ -388,16 +389,10 @@ class ConfiguredBackend extends Model
      */
     public function validateUniqueHandle(string $attribute): void
     {
-        $query = (new Query())
-            ->from('{{%searchmanager_backends}}')
-            ->where(['handle' => $this->handle]);
-
-        if ($this->id) {
-            $query->andWhere(['not', ['id' => $this->id]]);
-        }
-
-        if ($query->exists()) {
-            $this->addError($attribute, 'Handle must be unique.');
+        if (SlugHandleHelper::exists('{{%searchmanager_backends}}', 'handle', $this->handle, [
+            'excludeId' => $this->id,
+        ])) {
+            $this->addError($attribute, Craft::t('search-manager', 'Handle must be unique.'));
         }
     }
 
