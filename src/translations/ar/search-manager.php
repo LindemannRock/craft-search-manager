@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'جارٍ التحميل...',
     'Warning' => 'تحذير',
+    'Handle must be unique.' => 'يجب أن يكون المعرّف فريدًا.',
     'Unknown error' => 'خطأ غير معروف',
     '? This cannot be undone!' => '؟ لا يمكن التراجع عن هذا الإجراء!',
     'Name' => 'الاسم',

@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'Loading...',
     'Warning' => 'Warning',
+    'Handle must be unique.' => 'Handle must be unique.',
     'Unknown error' => 'Unknown error',
     '? This cannot be undone!' => '? This cannot be undone!',
     'Name' => 'Name',

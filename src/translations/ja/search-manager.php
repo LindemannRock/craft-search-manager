@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => '読み込み中...',
     'Warning' => '警告',
+    'Handle must be unique.' => 'ハンドルは一意である必要があります。',
     'Unknown error' => '不明なエラー',
     '? This cannot be undone!' => '？この操作は元に戻せません！',
     'Name' => '名前',

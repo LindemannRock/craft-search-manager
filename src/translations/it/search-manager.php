@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'Caricamento...',
     'Warning' => 'Avviso',
+    'Handle must be unique.' => 'L’handle deve essere univoco.',
     'Unknown error' => 'Errore sconosciuto',
     '? This cannot be undone!' => '? Questa azione non può essere annullata!',
     'Name' => 'Nome',

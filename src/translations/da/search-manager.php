@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'Indlæser...',
     'Warning' => 'Advarsel',
+    'Handle must be unique.' => 'Handle skal være unikt.',
     'Unknown error' => 'Ukendt fejl',
     '? This cannot be undone!' => '? Dette kan ikke fortrydes!',
     'Name' => 'Navn',

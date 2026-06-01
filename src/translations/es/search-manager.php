@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'Cargando...',
     'Warning' => 'Advertencia',
+    'Handle must be unique.' => 'El handle debe ser único.',
     'Unknown error' => 'Error desconocido',
     '? This cannot be undone!' => '? ¡Esta acción no se puede deshacer!',
     'Name' => 'Nombre',

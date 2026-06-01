@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'Laden...',
     'Warning' => 'Waarschuwing',
+    'Handle must be unique.' => 'De handle moet uniek zijn.',
     'Unknown error' => 'Onbekende fout',
     '? This cannot be undone!' => '? Dit kan niet ongedaan worden gemaakt!',
     'Name' => 'Naam',

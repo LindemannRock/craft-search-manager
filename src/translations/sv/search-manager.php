@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'Laddar...',
     'Warning' => 'Varning',
+    'Handle must be unique.' => 'Handle måste vara unikt.',
     'Unknown error' => 'Okänt fel',
     '? This cannot be undone!' => '? Detta kan inte ångras!',
     'Name' => 'Namn',

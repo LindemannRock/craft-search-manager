@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'Chargement...',
     'Warning' => 'Avertissement',
+    'Handle must be unique.' => 'Le handle doit être unique.',
     'Unknown error' => 'Erreur inconnue',
     '? This cannot be undone!' => '? Cette action est irréversible !',
     'Name' => 'Nom',

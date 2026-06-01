@@ -78,6 +78,7 @@ return [
     // Common
     'Loading...' => 'A carregar...',
     'Warning' => 'Aviso',
+    'Handle must be unique.' => 'O identificador deve ser único.',
     'Unknown error' => 'Erro desconhecido',
     '? This cannot be undone!' => '? Esta ação não pode ser anulada!',
     'Name' => 'Nome',
