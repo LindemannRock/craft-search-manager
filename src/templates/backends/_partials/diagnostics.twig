@@ -19,6 +19,11 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const backendId = '{{ backend.id ?: backend.handle }}';
+    const statusDots = {
+        enabled: {{ include('lindemannrock-base/_components/status-dot', { value: 'enabled', colorSet: 'status' }, false)|json_encode|raw }},
+        disabled: {{ include('lindemannrock-base/_components/status-dot', { value: 'disabled', colorSet: 'status' }, false)|json_encode|raw }},
+        off: {{ include('lindemannrock-base/_components/status-dot', { value: 'off', colorSet: 'status' }, false)|json_encode|raw }},
+    };
 
     function testConnection() {
         const connectionResult = document.getElementById('connection-result');
@@ -44,16 +49,16 @@ document.addEventListener('DOMContentLoaded', function() {
             if (retestBtn) retestBtn.disabled = false;
 
             if (response.data.success) {
-                if (connectionResult) connectionResult.innerHTML = '<span class="status live"></span> {{ 'Connected'|t('search-manager') }}';
+                if (connectionResult) connectionResult.innerHTML = statusDots.enabled + ' {{ 'Connected'|t('search-manager') }}';
                 if (responseTime) responseTime.textContent = elapsed + 'ms';
                 fetchBackendInfo();
             } else {
-                if (connectionResult) connectionResult.innerHTML = '<span class="status off"></span> {{ 'Failed'|t('search-manager') }}';
+                if (connectionResult) connectionResult.innerHTML = statusDots.off + ' {{ 'Failed'|t('search-manager') }}';
                 if (indicesList) indicesList.innerHTML = '<p class="light error">{{ 'Cannot load indices - connection failed'|t('search-manager') }}</p>';
             }
         }).catch(function(error) {
             if (retestBtn) retestBtn.disabled = false;
-            if (connectionResult) connectionResult.innerHTML = '<span class="status off"></span> {{ 'Error'|t('search-manager') }}';
+            if (connectionResult) connectionResult.innerHTML = statusDots.off + ' {{ 'Error'|t('search-manager') }}';
         });
     }
 
@@ -67,11 +72,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }).then(function(response) {
             if (response.data.success) {
                 if (capBrowse) capBrowse.innerHTML = response.data.supportsBrowse
-                    ? '<span class="status live"></span> {{ 'Yes'|t('search-manager') }}'
-                    : '<span class="status disabled"></span> {{ 'No'|t('search-manager') }}';
+                    ? statusDots.enabled + ' {{ 'Yes'|t('search-manager') }}'
+                    : statusDots.disabled + ' {{ 'No'|t('search-manager') }}';
                 if (capMulti) capMulti.innerHTML = response.data.supportsMultipleQueries
-                    ? '<span class="status live"></span> {{ 'Yes'|t('search-manager') }}'
-                    : '<span class="status disabled"></span> {{ 'No'|t('search-manager') }}';
+                    ? statusDots.enabled + ' {{ 'Yes'|t('search-manager') }}'
+                    : statusDots.disabled + ' {{ 'No'|t('search-manager') }}';
 
                 const indices = response.data.indices || [];
                 updateIndicesList(indices);

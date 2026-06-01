@@ -105,7 +105,10 @@
 			<div class="data">
 				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 				<dd class="value">
-					<span class="status {{ index.enabled ? 'live' : 'disabled' }}"></span>
+					{% include 'lindemannrock-base/_components/status-dot' with {
+						value: index.enabled ? 'enabled' : 'disabled',
+						colorSet: 'status',
+					} only %}
 					<span>{{ index.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 				</dd>
 			</div>
@@ -125,7 +128,6 @@
 			<div class="data">
 				<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
 				<dd class="value">
-					{% set configuredBackend = index.configuredBackend %}
 					{% if configuredBackend %}
 						{% if configuredBackend.source == 'config' %}
 							<a href="{{ url('search-manager/backends/view/' ~ configuredBackend.handle) }}">{{ configuredBackend.name }}</a>
@@ -135,16 +137,21 @@
 					{% elseif not index.effectiveBackendType %}
 						<span class="light">{{ 'Default'|t('search-manager') }}</span>
 					{% endif %}
-					{% set backendType = index.effectiveBackendType %}
-					{% if backendType %}
-						&nbsp;{% include 'lindemannrock-base/_components/badge' with {
-							label: configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize),
+				</dd>
+			</div>
+			{% set backendType = index.effectiveBackendType %}
+			{% if backendType %}
+				<div class="data">
+					<dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
+					<dd class="value">
+						{% include 'lindemannrock-base/_components/status-dot' with {
 							value: backendType,
 							colorSet: 'backendType',
 						} only %}
-					{% endif %}
-				</dd>
-			</div>
+						<span>{{ configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize) }}</span>
+					</dd>
+				</div>
+			{% endif %}
 				<div class="data">
 					<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
 					<dd class="value">

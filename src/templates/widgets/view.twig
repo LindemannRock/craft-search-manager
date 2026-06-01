@@ -100,7 +100,10 @@
 			<div class="data">
 				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 				<dd class="value">
-					<span class="status {{ widgetConfig.enabled ? 'live' : 'disabled' }}"></span>
+					{% include 'lindemannrock-base/_components/status-dot' with {
+						value: widgetConfig.enabled ? 'enabled' : 'disabled',
+						colorSet: 'status',
+					} only %}
 					<span>{{ widgetConfig.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 				</dd>
 			</div>

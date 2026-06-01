@@ -179,7 +179,10 @@
 				<div class="data">
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
-						<span class="status {{ widgetStyle.enabled ? 'live' : 'disabled' }}"></span>
+						{% include 'lindemannrock-base/_components/status-dot' with {
+							value: widgetStyle.enabled ? 'enabled' : 'disabled',
+							colorSet: 'status',
+						} only %}
 						<span>{{ widgetStyle.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 					</dd>
 				</div>

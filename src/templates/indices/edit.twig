@@ -691,14 +691,17 @@ document.addEventListener('DOMContentLoaded', function() {
 	{% if not isNew %}
 		<hr>
 		<dl class="meta read-only">
-				<div class="data">
-					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
-					<dd class="value">
-						<span class="status {{ index.enabled ? 'live' : 'disabled' }}"></span>
-						<span>{{ index.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
-					</dd>
-				</div>
-				<div class="data">
+			<div class="data">
+				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% include 'lindemannrock-base/_components/status-dot' with {
+						value: index.enabled ? 'enabled' : 'disabled',
+						colorSet: 'status',
+					} only %}
+					<span>{{ index.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
+				</dd>
+			</div>
+			<div class="data">
 				<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>
 				<dd class="value">
 					{% set configuredBackend = index.configuredBackend %}
@@ -723,49 +726,54 @@ document.addEventListener('DOMContentLoaded', function() {
 							<span class="light">{{ 'No default backend'|t('search-manager') }}</span>
 						{% endif %}
 					{% endif %}
-					{% set backendType = index.effectiveBackendType %}
-					{% if backendType %}
-						&nbsp;{% include 'lindemannrock-base/_components/badge' with {
-							label: configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize),
+				</dd>
+			</div>
+			{% set backendType = index.effectiveBackendType %}
+			{% if backendType %}
+				<div class="data">
+					<dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
+					<dd class="value">
+						{% include 'lindemannrock-base/_components/status-dot' with {
 							value: backendType,
 							colorSet: 'backendType',
 						} only %}
+						<span>{{ configuredBackend ? configuredBackend.getTypeLabel() : (backendType|capitalize) }}</span>
+					</dd>
+				</div>
+			{% endif %}
+			<div class="data">
+				<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% set expected = index.expectedCount %}
+					{% if index.documentCount == expected %}
+						{% include 'lindemannrock-base/_components/status-dot' with { value: 'ok', colorSet: 'healthStatus' } only %}
+					{% elseif index.documentCount < expected %}
+						{% include 'lindemannrock-base/_components/status-dot' with { value: 'low', colorSet: 'healthStatus' } only %}
+					{% else %}
+						{% include 'lindemannrock-base/_components/status-dot' with { value: 'high', colorSet: 'healthStatus' } only %}
 					{% endif %}
+					{{ index.documentCount }}&nbsp;/&nbsp;{{ expected }}
 				</dd>
 			</div>
-					<div class="data">
-						<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
-						<dd class="value">
-							{% set expected = index.expectedCount %}
-							{% if index.documentCount == expected %}
-								{% include 'lindemannrock-base/_components/status-dot' with { value: 'ok', colorSet: 'healthStatus' } only %}
-							{% elseif index.documentCount < expected %}
-								{% include 'lindemannrock-base/_components/status-dot' with { value: 'low', colorSet: 'healthStatus' } only %}
-							{% else %}
-								{% include 'lindemannrock-base/_components/status-dot' with { value: 'high', colorSet: 'healthStatus' } only %}
-							{% endif %}
-							{{ index.documentCount }}&nbsp;/&nbsp;{{ expected }}
-						</dd>
-					</div>
-				{% if index.lastIndexed %}
-					<div class="data">
-						<dt class="heading">{{ 'Last indexed'|t('search-manager') }}</dt>
-						<dd class="value">{{ index.lastIndexed|lrDatetime }}</dd>
-					</div>
-				{% endif %}
-				{% if index.source != 'config' %}
-					<div class="data">
-						<dt class="heading">{{ 'Created at'|t('search-manager') }}</dt>
-						<dd class="value">{{ index.dateCreated|lrDatetime }}</dd>
-					</div>
-					<div class="data">
-						<dt class="heading">{{ 'Updated at'|t('search-manager') }}</dt>
-						<dd class="value">{{ index.dateUpdated|lrDatetime }}</dd>
-					</div>
-				{% endif %}
-			</dl>
-		</fieldset>
-	{% endif %}
+			{% if index.lastIndexed %}
+				<div class="data">
+					<dt class="heading">{{ 'Last indexed'|t('search-manager') }}</dt>
+					<dd class="value">{{ index.lastIndexed|lrDatetime }}</dd>
+				</div>
+			{% endif %}
+			{% if index.source != 'config' %}
+				<div class="data">
+					<dt class="heading">{{ 'Created at'|t('search-manager') }}</dt>
+					<dd class="value">{{ index.dateCreated|lrDatetime }}</dd>
+				</div>
+				<div class="data">
+					<dt class="heading">{{ 'Updated at'|t('search-manager') }}</dt>
+					<dd class="value">{{ index.dateUpdated|lrDatetime }}</dd>
+				</div>
+			{% endif %}
+		</dl>
+	</fieldset>
+{% endif %}
 {% endblock %}
 
 {% js %}

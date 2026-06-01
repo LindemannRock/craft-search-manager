@@ -476,7 +476,10 @@ setTimeout(updateActionButton, 10);
 					<div class="data">
 						<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 						<dd class="value">
-							<span class="status {{ backend.enabled ? 'live' : 'disabled' }}"></span>
+							{% include 'lindemannrock-base/_components/status-dot' with {
+								value: backend.enabled ? 'enabled' : 'disabled',
+								colorSet: 'status',
+							} only %}
 							<span>{{ backend.enabled ? 'Enabled'|t('search-manager') : 'Disabled'|t('search-manager') }}</span>
 						</dd>
 					</div>
@@ -488,7 +491,13 @@ setTimeout(updateActionButton, 10);
 					</div>
 					<div class="data">
 						<dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
-						<dd class="value">{{ backend.getTypeLabel() }}</dd>
+						<dd class="value">
+							{% include 'lindemannrock-base/_components/status-dot' with {
+								value: backend.backendType,
+								colorSet: 'backendType',
+							} only %}
+							<span>{{ backend.getTypeLabel() }}</span>
+						</dd>
 					</div>
 					<div class="data">
 						<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
