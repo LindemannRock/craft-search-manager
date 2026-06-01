@@ -2,8 +2,10 @@
 
 namespace lindemannrock\searchmanager\models;
 
+use Craft;
 use craft\base\Model;
 use craft\helpers\Json;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -65,9 +67,22 @@ class WidgetStyle extends Model
             [['name'], 'string', 'max' => 255],
             [['type'], 'in', 'range' => self::WIDGET_TYPES],
             [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.'],
+            [['handle'], 'validateUniqueHandle'],
             [['enabled'], 'boolean'],
             [['styles'], 'validateStyles'],
         ];
+    }
+
+    /**
+     * Validate handle is unique among database-backed widget styles.
+     */
+    public function validateUniqueHandle(string $attribute): void
+    {
+        if (SlugHandleHelper::exists('{{%searchmanager_widget_styles}}', 'handle', $this->handle, [
+            'excludeId' => $this->id,
+        ])) {
+            $this->addError($attribute, Craft::t('search-manager', 'Handle must be unique.'));
+        }
     }
 
     /**

@@ -7,6 +7,7 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\Json;
 use lindemannrock\base\helpers\BooleanHelper;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\WidgetStyle;
@@ -163,12 +164,15 @@ class WidgetStyleService extends Component
             return false;
         }
 
+        if (!$style->id) {
+            // New styles auto-suffix duplicate handles. Existing styles reject
+            // duplicate handle edits via WidgetStyle::validateUniqueHandle().
+            $style->handle = $this->ensureUniqueHandle($style->handle);
+        }
+
         if (!$style->validate()) {
             return false;
         }
-
-        // Ensure unique handle (append -1, -2, etc. on new styles or handle changes)
-        $style->handle = $this->ensureUniqueHandle($style->handle, $style->id);
 
         $now = Db::prepareDateForDb(new \DateTime());
         $data = $style->prepareForDb();
@@ -193,27 +197,9 @@ class WidgetStyleService extends Component
     /**
      * Ensure a handle is unique by appending -1, -2, etc. if needed
      */
-    private function ensureUniqueHandle(string $handle, ?int $excludeId = null): string
+    private function ensureUniqueHandle(string $handle): string
     {
-        $candidate = $handle;
-        $suffix = 0;
-
-        while (true) {
-            $query = (new Query())
-                ->from(self::TABLE)
-                ->where(['handle' => $candidate]);
-
-            if ($excludeId) {
-                $query->andWhere(['not', ['id' => $excludeId]]);
-            }
-
-            if (!$query->exists()) {
-                return $candidate;
-            }
-
-            $suffix++;
-            $candidate = $handle . '-' . $suffix;
-        }
+        return SlugHandleHelper::makeUnique(self::TABLE, 'handle', $handle);
     }
 
     /**
