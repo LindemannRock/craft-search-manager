@@ -1,4 +1,5 @@
 {% extends "_layouts/cp" %}
+{% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
 {% set title = isNew ? "Create Index"|t('search-manager') : "Edit Index: {name}"|t('search-manager', { name: index.name }) %}
 {% set selectedSubnavItem = 'indices' %}
 {% set crumbs = [
@@ -421,7 +422,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const stopwordsFileSpan = document.getElementById('stopwords-file');
     const multiSiteNote = document.getElementById('multi-site-note');
     const isNew = {{ isNew ? 'true' : 'false' }};
-    let handleModifiedManually = !isNew; // Don't auto-update existing handles
 
     // Site ID to language mapping
     const siteLanguages = {
@@ -434,14 +434,6 @@ document.addEventListener('DOMContentLoaded', function() {
         '{{ site.id }}': '{{ site.name|e('js') }}',
         {% endfor %}
     };
-
-    // Convert name to handle format
-    function nameToHandle(name) {
-        return name
-            .toLowerCase()
-            .replace(/[^a-z0-9]+/g, '-')
-            .replace(/^-+|-+$/g, '');
-    }
 
     // Update language preview based on selected site
     function getSelectedSiteIds() {
@@ -519,19 +511,7 @@ document.addEventListener('DOMContentLoaded', function() {
         input.addEventListener('change', updateLanguagePreview);
     });
 
-    // Only auto-generate handle for new indices
-    if (isNew && nameInput && handleInput) {
-        nameInput.addEventListener('input', function() {
-            if (!handleModifiedManually) {
-                handleInput.value = nameToHandle(this.value);
-            }
-        });
-
-        // If user manually edits handle, stop auto-generation
-        handleInput.addEventListener('input', function() {
-            handleModifiedManually = true;
-        });
-    }
+    window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });
 
     // Show/hide criteria based on element type
     const docPageCriteria = document.getElementById('docpage-criteria');

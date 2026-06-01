@@ -1,5 +1,6 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
+{% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
 
 {% set title = isNew ? "New Widget Config"|t('search-manager') : widgetConfig.name %}
 {% set fullPageForm = true %}
@@ -329,29 +330,7 @@ if (saveShortcut) {
 	const nameInput = document.getElementById('name');
 	const handleInput = document.getElementById('handle');
 	const isNew = {{ isNew ? 'true' : 'false' }};
-	let handleModifiedManually = !isNew; // Don't auto-update existing handles
-
-	// Convert name to handle format
-	function nameToHandle(name) {
-		return name
-			.toLowerCase()
-			.replace(/[^a-z0-9]+/g, '-')
-			.replace(/^-+|-+$/g, '');
-	}
-
-	// Only auto-generate handle for new configs
-	if (isNew && nameInput && handleInput) {
-		nameInput.addEventListener('input', function() {
-			if (!handleModifiedManually) {
-				handleInput.value = nameToHandle(this.value);
-			}
-		});
-
-		// If user manually edits handle, stop auto-generation
-		handleInput.addEventListener('input', function() {
-			handleModifiedManually = true;
-		});
-	}
+	window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });
 })();
 
 // Sidebar style preset → update preview

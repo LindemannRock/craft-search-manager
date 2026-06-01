@@ -1,5 +1,6 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
+{% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
 
 {% set canEdit = backend.canEdit() ?? true %}
 {% set title = isNew ? 'New Backend'|t('search-manager') : backend.name %}
@@ -307,25 +308,10 @@ const backendTypeSelect = document.getElementById('backendType');
 const noSettingsMessage = document.getElementById('no-settings-message');
 const allSettingsDivs = document.querySelectorAll('.backend-type-settings');
 const isNew = {{ isNew ? 'true' : 'false' }};
-let handleModifiedManually = ! isNew;
 
-// Convert name to handle format
-function nameToHandle(name) {
-return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-}
-
-// Auto-generate handle for new backends
-if (isNew && nameInput && handleInput) {
-nameInput.addEventListener('input', function () {
-if (! handleModifiedManually) {
-handleInput.value = nameToHandle(this.value);
-}
+window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, {
+isNew: isNew,
 });
-
-handleInput.addEventListener('input', function () {
-handleModifiedManually = true;
-});
-}
 
 // Show/hide settings based on backend type
 function updateSettingsVisibility() {
