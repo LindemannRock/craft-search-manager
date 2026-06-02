@@ -241,7 +241,7 @@
 	if (typeof Craft === 'undefined') return;
 
 	const T = {
-		deleted: {{ 'Style deleted'|t('search-manager')|json_encode|raw }},
+		deleted: {{ 'Widget style deleted'|t('search-manager')|json_encode|raw }},
 		deleteFailed: {{ 'Failed to delete style'|t('search-manager')|json_encode|raw }},
 		deleteConfirm: {{ 'Delete style "{name}"? Widgets using this style will fall back to inline styles.'|t('search-manager')|json_encode|raw }},
 		bulkDeleteConfirmTemplate: {{ 'Delete {count} style(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
