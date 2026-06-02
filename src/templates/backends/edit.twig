@@ -459,6 +459,12 @@ setTimeout(updateActionButton, 10);
 		{% if not isNew %}
 			<fieldset>
 				<dl class="meta read-only">
+					{% if backend.id %}
+						<div class="data">
+							<dt class="heading">{{ 'ID'|t('search-manager') }}</dt>
+							<dd class="value">{{ backend.id }}</dd>
+						</div>
+					{% endif %}
 					<div class="data">
 						<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 						<dd class="value">
@@ -488,17 +494,23 @@ setTimeout(updateActionButton, 10);
 					<div class="data">
 						<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
 						<dd class="value">
-							{% if backend.source == 'config' %}
-								{{ 'Config File'|t('search-manager') }}
-							{% else %}
-								{{ 'Database'|t('search-manager') }}
-							{% endif %}
+							{% include 'lindemannrock-base/_components/status-dot' with {
+								value: backend.source,
+								colorSet: 'configSource',
+							} only %}
+							<span>{{ backend.source == 'config' ? 'Config File'|t('search-manager') : 'Database'|t('search-manager') }}</span>
 						</dd>
 					</div>
 					{% if isDefault %}
 						<div class="data">
 							<dt class="heading">{{ 'Default'|t('search-manager') }}</dt>
-							<dd class="value">{{ 'Yes'|t('search-manager') }}</dd>
+							<dd class="value">
+								{% include 'lindemannrock-base/_components/status-dot' with {
+									value: 'yes',
+									colorSet: 'yesNo',
+								} only %}
+								<span>{{ 'Yes'|t('search-manager') }}</span>
+							</dd>
 						</div>
 					{% endif %}
 					<div class="data">

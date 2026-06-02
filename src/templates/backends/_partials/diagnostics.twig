@@ -21,8 +21,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const backendId = '{{ backend.id ?: backend.handle }}';
     const statusDots = {
         enabled: {{ include('lindemannrock-base/_components/status-dot', { value: 'enabled', colorSet: 'status' }, false)|json_encode|raw }},
+        connected: {{ include('lindemannrock-base/_components/status-dot', { value: 'on', colorSet: 'status' }, false)|json_encode|raw }},
         disabled: {{ include('lindemannrock-base/_components/status-dot', { value: 'disabled', colorSet: 'status' }, false)|json_encode|raw }},
         off: {{ include('lindemannrock-base/_components/status-dot', { value: 'off', colorSet: 'status' }, false)|json_encode|raw }},
+        yes: {{ include('lindemannrock-base/_components/status-dot', { value: 'yes', colorSet: 'yesNo' }, false)|json_encode|raw }},
+        no: {{ include('lindemannrock-base/_components/status-dot', { value: 'no', colorSet: 'yesNo' }, false)|json_encode|raw }},
     };
 
     function testConnection() {
@@ -49,7 +52,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (retestBtn) retestBtn.disabled = false;
 
             if (response.data.success) {
-                if (connectionResult) connectionResult.innerHTML = statusDots.enabled + ' {{ 'Connected'|t('search-manager') }}';
+                if (connectionResult) connectionResult.innerHTML = statusDots.connected + ' {{ 'Connected'|t('search-manager') }}';
                 if (responseTime) responseTime.textContent = elapsed + 'ms';
                 fetchBackendInfo();
             } else {
@@ -72,11 +75,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }).then(function(response) {
             if (response.data.success) {
                 if (capBrowse) capBrowse.innerHTML = response.data.supportsBrowse
-                    ? statusDots.enabled + ' {{ 'Yes'|t('search-manager') }}'
-                    : statusDots.disabled + ' {{ 'No'|t('search-manager') }}';
+                    ? statusDots.yes + ' {{ 'Yes'|t('search-manager') }}'
+                    : statusDots.no + ' {{ 'No'|t('search-manager') }}';
                 if (capMulti) capMulti.innerHTML = response.data.supportsMultipleQueries
-                    ? statusDots.enabled + ' {{ 'Yes'|t('search-manager') }}'
-                    : statusDots.disabled + ' {{ 'No'|t('search-manager') }}';
+                    ? statusDots.yes + ' {{ 'Yes'|t('search-manager') }}'
+                    : statusDots.no + ' {{ 'No'|t('search-manager') }}';
 
                 const indices = response.data.indices || [];
                 updateIndicesList(indices);
