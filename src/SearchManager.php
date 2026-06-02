@@ -135,10 +135,10 @@ class SearchManager extends Plugin
             [
                 'colorSets' => [
                     'backendType' => [
-                        'mysql' => ColorHelper::getPaletteColor('amber'),
-                        'pgsql' => ColorHelper::getPaletteColor('blue'),
+                        'mysql' => ColorHelper::getPaletteColor('lime'),
+                        'pgsql' => ColorHelper::getPaletteColor('sky'),
                         'file' => ColorHelper::getPaletteColor('gray'),
-                        'redis' => ColorHelper::getPaletteColor('red'),
+                        'redis' => ColorHelper::getPaletteColor('fuchsia'),
                         'typesense' => ColorHelper::getPaletteColor('violet'),
                         'algolia' => ColorHelper::getPaletteColor('cyan'),
                         'meilisearch' => ColorHelper::getPaletteColor('pink'),
