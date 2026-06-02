@@ -427,27 +427,45 @@ class WidgetsController extends Controller
     public function actionDelete(): Response
     {
         $this->requirePostRequest();
-        $this->requireAcceptsJson();
         $this->requirePermission('searchManager:deleteWidgetConfigs');
 
+        $acceptsJson = Craft::$app->getRequest()->getAcceptsJson();
         $configId = Craft::$app->getRequest()->getRequiredBodyParam('configId');
 
         $widgetConfig = SearchManager::$plugin->widgetConfigs->getById($configId);
         if (!$widgetConfig) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Widget config not found')]);
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Widget config not found')]);
+            }
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Widget config not found'));
         }
 
         // Prevent deleting the default widget
         $settings = SearchManager::$plugin->getSettings();
         if ($settings->defaultWidgetHandle === $widgetConfig->handle) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Cannot delete the default widget. Set another widget as default first.')]);
+            $error = Craft::t('search-manager', 'Cannot delete the default widget. Set another widget as default first.');
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/widgets');
         }
 
-        if (!SearchManager::$plugin->widgetConfigs->delete($configId)) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete widget config')]);
+        if (!SearchManager::$plugin->widgetConfigs->delete($widgetConfig)) {
+            $error = Craft::t('search-manager', 'Could not delete widget config');
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/widgets');
         }
 
-        return $this->asJson(['success' => true]);
+        if ($acceptsJson) {
+            return $this->asJson(['success' => true]);
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget config deleted'));
+        return $this->redirect('search-manager/widgets');
     }
 
     /**
@@ -892,16 +910,26 @@ class WidgetsController extends Controller
     public function actionDeleteStyle(): Response
     {
         $this->requirePostRequest();
-        $this->requireAcceptsJson();
         $this->requirePermission('searchManager:deleteWidgetStyles');
 
+        $acceptsJson = Craft::$app->getRequest()->getAcceptsJson();
         $styleId = Craft::$app->getRequest()->getRequiredBodyParam('styleId');
 
         if (!SearchManager::$plugin->widgetStyles->delete((int) $styleId)) {
-            return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete widget style')]);
+            $error = Craft::t('search-manager', 'Could not delete widget style');
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/widgets/styles');
         }
 
-        return $this->asJson(['success' => true]);
+        if ($acceptsJson) {
+            return $this->asJson(['success' => true]);
+        }
+
+        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Widget style deleted'));
+        return $this->redirect('search-manager/widgets/styles');
     }
 
     /**
