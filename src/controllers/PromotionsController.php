@@ -312,8 +312,12 @@ class PromotionsController extends Controller
         $indexHandle = $promotion->indexHandle;
 
         if ($promotion->delete()) {
-            // Clear search cache for this index
-            SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+            // Clear search cache — global promotions (null handle) affect all indices
+            if ($indexHandle) {
+                SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+            } else {
+                SearchManager::$plugin->backend->clearAllSearchCache();
+            }
 
             if (Craft::$app->getRequest()->getAcceptsJson()) {
                 return $this->asJson(['success' => true]);
