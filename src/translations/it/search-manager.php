@@ -1198,7 +1198,7 @@ return [
     'Failed to disable configs' => 'Impossibile disabilitare le configurazioni',
     'Failed to delete configs' => 'Impossibile eliminare le configurazioni',
     'Delete {count} config(s)? This cannot be undone.' => 'Eliminare {count} configurazione/i? Questa azione non può essere annullata.',
-    'Style deleted' => 'Stile eliminato',
+    'Widget style deleted' => 'Stile widget eliminato',
     'Failed to delete style' => 'Impossibile eliminare lo stile',
     'Delete style "{name}"? Widgets using this style will fall back to inline styles.' => 'Eliminare lo stile «{name}»? I widget che utilizzano questo stile torneranno agli stili inline.',
     'Delete {count} style(s)? This cannot be undone.' => 'Eliminare {count} stile/i? Questa azione non può essere annullata.',

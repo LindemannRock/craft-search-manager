@@ -1198,7 +1198,7 @@ return [
     'Failed to disable configs' => 'Kunde inte inaktivera konfigurationer',
     'Failed to delete configs' => 'Kunde inte radera konfigurationer',
     'Delete {count} config(s)? This cannot be undone.' => 'Radera {count} konfiguration(er)? Detta kan inte ångras.',
-    'Style deleted' => 'Stil raderad',
+    'Widget style deleted' => 'Widgetstil raderad',
     'Failed to delete style' => 'Kunde inte radera stil',
     'Delete style "{name}"? Widgets using this style will fall back to inline styles.' => 'Radera stil "{name}"? Widgetar som använder denna stil återgår till inline-stilar.',
     'Delete {count} style(s)? This cannot be undone.' => 'Radera {count} stil(ar)? Detta kan inte ångras.',

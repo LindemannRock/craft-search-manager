@@ -1198,7 +1198,7 @@ return [
     'Failed to disable configs' => 'فشل في تعطيل التكوينات',
     'Failed to delete configs' => 'فشل في حذف التكوينات',
     'Delete {count} config(s)? This cannot be undone.' => 'حذف {count} تكوينات؟ لا يمكن التراجع عن هذا الإجراء.',
-    'Style deleted' => 'تم حذف النمط',
+    'Widget style deleted' => 'تم حذف نمط الأداة',
     'Failed to delete style' => 'فشل في حذف النمط',
     'Delete style "{name}"? Widgets using this style will fall back to inline styles.' => 'حذف النمط "{name}"؟ ستعود الأدوات التي تستخدم هذا النمط إلى الأنماط المضمنة.',
     'Delete {count} style(s)? This cannot be undone.' => 'حذف {count} أنماط؟ لا يمكن التراجع عن هذا الإجراء.',

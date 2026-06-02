@@ -1198,7 +1198,7 @@ return [
     'Failed to disable configs' => '設定の無効化に失敗しました',
     'Failed to delete configs' => '設定の削除に失敗しました',
     'Delete {count} config(s)? This cannot be undone.' => '{count} 件の設定を削除しますか？この操作は元に戻せません。',
-    'Style deleted' => 'スタイルを削除しました',
+    'Widget style deleted' => 'ウィジェットスタイルを削除しました',
     'Failed to delete style' => 'スタイルの削除に失敗しました',
     'Delete style "{name}"? Widgets using this style will fall back to inline styles.' => 'スタイル「{name}」を削除しますか？このスタイルを使用しているウィジェットはインラインスタイルにフォールバックします。',
     'Delete {count} style(s)? This cannot be undone.' => '{count} 件のスタイルを削除しますか？この操作は元に戻せません。',

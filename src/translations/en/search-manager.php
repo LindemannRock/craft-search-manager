@@ -1198,7 +1198,7 @@ return [
     'Failed to disable configs' => 'Failed to disable configs',
     'Failed to delete configs' => 'Failed to delete configs',
     'Delete {count} config(s)? This cannot be undone.' => 'Delete {count} config(s)? This cannot be undone.',
-    'Style deleted' => 'Style deleted',
+    'Widget style deleted' => 'Widget style deleted',
     'Failed to delete style' => 'Failed to delete style',
     'Delete style "{name}"? Widgets using this style will fall back to inline styles.' => 'Delete style "{name}"? Widgets using this style will fall back to inline styles.',
     'Delete {count} style(s)? This cannot be undone.' => 'Delete {count} style(s)? This cannot be undone.',

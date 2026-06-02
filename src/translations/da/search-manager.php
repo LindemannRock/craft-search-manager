@@ -1198,7 +1198,7 @@ return [
     'Failed to disable configs' => 'Kunne ikke deaktivere konfigurationer',
     'Failed to delete configs' => 'Kunne ikke slette konfigurationer',
     'Delete {count} config(s)? This cannot be undone.' => 'Slet {count} konfiguration(er)? Dette kan ikke fortrydes.',
-    'Style deleted' => 'Stil slettet',
+    'Widget style deleted' => 'Widgetstil slettet',
     'Failed to delete style' => 'Kunne ikke slette stil',
     'Delete style "{name}"? Widgets using this style will fall back to inline styles.' => 'Slet stil "{name}"? Widgets der bruger denne stil falder tilbage til inline-stile.',
     'Delete {count} style(s)? This cannot be undone.' => 'Slet {count} stil(e)? Dette kan ikke fortrydes.',
