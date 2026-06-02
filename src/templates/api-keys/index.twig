@@ -119,7 +119,7 @@
     <td data-column="status">
         {% set status = item.getStatus() %}
         {% set statusLabel = {
-            'active': 'Active'|t('search-manager'),
+            'active': 'Enabled'|t('search-manager'),
             'disabled': 'Disabled'|t('search-manager'),
             'expired': 'Expired'|t('search-manager'),
         }[status] %}
