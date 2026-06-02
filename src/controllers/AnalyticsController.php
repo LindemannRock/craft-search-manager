@@ -215,7 +215,7 @@ class AnalyticsController extends Controller
                 $site = Craft::$app->getSites()->getSiteById($siteId);
                 if ($site) {
                     $siteName = $site->name;
-                    $sitePart = strtolower(preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $site->name)));
+                    $sitePart = $site->name;
                 }
             }
             $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
@@ -1081,7 +1081,7 @@ class AnalyticsController extends Controller
 
         // Generate filename
         $settings = SearchManager::$plugin->getSettings();
-        $ruleName = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $rule->name));
+        $ruleName = $rule->name;
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
 
         $headers = array_keys($data[0]);
@@ -1146,7 +1146,7 @@ class AnalyticsController extends Controller
 
         // Generate filename
         $settings = SearchManager::$plugin->getSettings();
-        $promotionTitle = preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $promotion->title));
+        $promotionTitle = $promotion->title;
         $dateRangeLabel = $dateRange === 'all' ? 'alltime' : $dateRange;
 
         $headers = array_keys($data[0]);
@@ -1190,7 +1190,7 @@ class AnalyticsController extends Controller
         if ($siteId) {
             $site = Craft::$app->getSites()->getSiteById($siteId);
             if ($site) {
-                $sitePart = strtolower(preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $site->name)));
+                $sitePart = $site->name;
             }
         }
         $data = [];
@@ -1342,7 +1342,7 @@ class AnalyticsController extends Controller
         if ($siteId) {
             $site = Craft::$app->getSites()->getSiteById($siteId);
             if ($site) {
-                $sitePart = strtolower(preg_replace('/[^a-zA-Z0-9-_]/', '', str_replace(' ', '-', $site->name)));
+                $sitePart = $site->name;
             }
         }
 
