@@ -548,6 +548,12 @@
 	{% if not isNew %}
 		<fieldset>
 			<dl class="meta read-only">
+				{% if rule.id %}
+					<div class="data">
+						<dt class="heading">{{ 'ID'|t('search-manager') }}</dt>
+						<dd class="value">{{ rule.id }}</dd>
+					</div>
+				{% endif %}
 				<div class="data">
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
