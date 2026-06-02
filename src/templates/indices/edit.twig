@@ -671,6 +671,12 @@ document.addEventListener('DOMContentLoaded', function() {
 	{% if not isNew %}
 		<hr>
 		<dl class="meta read-only">
+			{% if index.id %}
+				<div class="data">
+					<dt class="heading">{{ 'ID'|t('search-manager') }}</dt>
+					<dd class="value">{{ index.id }}</dd>
+				</div>
+			{% endif %}
 			<div class="data">
 				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 				<dd class="value">
@@ -721,6 +727,16 @@ document.addEventListener('DOMContentLoaded', function() {
 					</dd>
 				</div>
 			{% endif %}
+			<div class="data">
+				<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% include 'lindemannrock-base/_components/status-dot' with {
+						value: index.source,
+						colorSet: 'configSource',
+					} only %}
+					<span>{{ index.source == 'config' ? 'Config File'|t('search-manager') : 'Database'|t('search-manager') }}</span>
+				</dd>
+			</div>
 			<div class="data">
 				<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
 				<dd class="value">
