@@ -276,6 +276,12 @@
 	{% if not isNew %}
 		<fieldset>
 			<dl class="meta read-only">
+				{% if widgetConfig.id %}
+					<div class="data">
+						<dt class="heading">{{ 'ID'|t('search-manager') }}</dt>
+						<dd class="value">{{ widgetConfig.id }}</dd>
+					</div>
+				{% endif %}
 				<div class="data">
 					<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 					<dd class="value">
@@ -291,13 +297,36 @@
 					<dd class="value"><code>{{ widgetConfig.handle }}</code></dd>
 				</div>
 				<div class="data">
+					{% set typeLabels = {modal: 'Modal', page: 'Search Page', inline: 'Inline Search'} %}
+					<dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
+					<dd class="value">
+						{% include 'lindemannrock-base/_components/status-dot' with {
+							value: widgetConfig.type,
+							colorSet: 'widgetType',
+						} only %}
+						<span>{{ typeLabels[widgetConfig.type] ?? widgetConfig.type|capitalize }}</span>
+					</dd>
+				</div>
+				<div class="data">
 					<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
-					<dd class="value">{{ 'Database'|t('search-manager') }}</dd>
+					<dd class="value">
+						{% include 'lindemannrock-base/_components/status-dot' with {
+							value: widgetConfig.isFromConfig() ? 'config' : 'database',
+							colorSet: 'configSource',
+						} only %}
+						<span>{{ widgetConfig.isFromConfig() ? 'Config File'|t('search-manager') : 'Database'|t('search-manager') }}</span>
+					</dd>
 				</div>
 				{% if isDefault %}
 					<div class="data">
 						<dt class="heading">{{ 'Default'|t('search-manager') }}</dt>
-						<dd class="value">{{ 'Yes'|t('search-manager') }}</dd>
+						<dd class="value">
+							{% include 'lindemannrock-base/_components/status-dot' with {
+								value: 'yes',
+								colorSet: 'yesNo',
+							} only %}
+							<span>{{ 'Yes'|t('search-manager') }}</span>
+						</dd>
 					</div>
 				{% endif %}
 				{% if not widgetConfig.isFromConfig() %}

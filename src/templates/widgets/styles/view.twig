@@ -42,6 +42,12 @@
 	{# Style Info #}
 	<fieldset>
 		<dl class="meta read-only">
+			{% if widgetStyle.id %}
+				<div class="data">
+					<dt class="heading">{{ 'ID'|t('search-manager') }}</dt>
+					<dd class="value">{{ widgetStyle.id }}</dd>
+				</div>
+			{% endif %}
 			<div class="data">
 				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 				<dd class="value">
@@ -59,11 +65,23 @@
 			<div class="data">
 				{% set typeLabels = {modal: 'Modal', page: 'Search Page', inline: 'Inline Search'} %}
 				<dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
-				<dd class="value">{{ typeLabels[widgetStyle.type] ?? widgetStyle.type|capitalize }}</dd>
+				<dd class="value">
+					{% include 'lindemannrock-base/_components/status-dot' with {
+						value: widgetStyle.type,
+						colorSet: 'widgetType',
+					} only %}
+					<span>{{ typeLabels[widgetStyle.type] ?? widgetStyle.type|capitalize }}</span>
+				</dd>
 			</div>
 			<div class="data">
 				<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
-				<dd class="value">{{ 'Config File'|t('search-manager') }}</dd>
+				<dd class="value">
+					{% include 'lindemannrock-base/_components/status-dot' with {
+						value: widgetStyle.isFromConfig() ? 'config' : 'database',
+						colorSet: 'configSource',
+					} only %}
+					<span>{{ widgetStyle.isFromConfig() ? 'Config File'|t('search-manager') : 'Database'|t('search-manager') }}</span>
+				</dd>
 			</div>
 			{% if usageCount is defined and usageCount > 0 %}
 				<div class="data">
