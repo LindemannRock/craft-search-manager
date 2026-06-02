@@ -102,6 +102,12 @@
 	{# Index Info #}
 	<fieldset>
 		<dl class="meta read-only">
+			{% if index.id %}
+				<div class="data">
+					<dt class="heading">{{ 'ID'|t('search-manager') }}</dt>
+					<dd class="value">{{ index.id }}</dd>
+				</div>
+			{% endif %}
 			<div class="data">
 				<dt class="heading">{{ 'Status'|t('search-manager') }}</dt>
 				<dd class="value">
@@ -118,7 +124,13 @@
 			</div>
 			<div class="data">
 				<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
-				<dd class="value">{{ 'Config File'|t('search-manager') }}</dd>
+				<dd class="value">
+					{% include 'lindemannrock-base/_components/status-dot' with {
+						value: index.source,
+						colorSet: 'configSource',
+					} only %}
+					<span>{{ index.source == 'config' ? 'Config File'|t('search-manager') : 'Database'|t('search-manager') }}</span>
+				</dd>
 			</div>
 			<div class="data">
 				<dt class="heading">{{ 'Element Type'|t('search-manager') }}</dt>
