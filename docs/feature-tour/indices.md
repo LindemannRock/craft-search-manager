@@ -268,6 +268,8 @@ A status sync job periodically checks for entries that became live (postDate pas
 
 Search Manager debounces automatic `lastIndexed` metadata updates with `lastIndexedDebounceSeconds` (default: 60 seconds). This keeps the "Last Indexed" column current enough for operators while avoiding an extra metadata-table write for every save during imports or busy editing sessions. Set the value to `0` if you want the timestamp updated after every successful auto-sync.
 
+When a batch sync drain completes, Search Manager refreshes the affected index counts from the matching Craft element query so the Control Panel count reflects the synced source content without requiring a manual rebuild.
+
 Manual rebuilds, clears, and backend count refreshes still update index stats immediately.
 
 #### Document Count Is Eventually Consistent

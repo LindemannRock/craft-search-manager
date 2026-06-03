@@ -32,12 +32,13 @@ class PendingSyncProcessor extends Component
 
     /**
      * @param array<int, array<string, mixed>> $rows
-     * @return array{success: int[], failures: array<int, array{ids: int[], error: string}>}
+     * @return array{success: int[], failures: array<int, array{ids: int[], error: string}>, syncedIndexHandles: string[]}
      */
     public function process(array $rows): array
     {
         $successIds = [];
         $failures = [];
+        $syncedIndexHandles = [];
 
         // Shared cache of EVENT_BEFORE_INDEX results across all indices in this
         // batch. Keyed by "elementId:siteId". Pre-L3 fired BEFORE_INDEX once per
@@ -52,6 +53,9 @@ class PendingSyncProcessor extends Component
                 $result = $this->processIndexRows($indexHandle, $indexRows, $beforeIndexResults);
                 $successIds = array_merge($successIds, $result['success']);
                 $failures = array_merge($failures, $result['failures']);
+                if (!empty($result['synced'])) {
+                    $syncedIndexHandles[$indexHandle] = true;
+                }
             } catch (\Throwable $e) {
                 $failures[] = [
                     'ids' => $this->rowIds($indexRows),
@@ -63,6 +67,7 @@ class PendingSyncProcessor extends Component
         return [
             'success' => array_values(array_unique($successIds)),
             'failures' => $failures,
+            'syncedIndexHandles' => array_keys($syncedIndexHandles),
         ];
     }
 
@@ -72,7 +77,7 @@ class PendingSyncProcessor extends Component
      *     EVENT_BEFORE_INDEX outcomes, keyed by "elementId:siteId". Shared across
      *     all indices in a single process() run so the event fires at most once
      *     per (element, site) pair — matching the pre-L3 indexElementNow contract.
-     * @return array{success: int[], failures: array<int, array{ids: int[], error: string}>}
+     * @return array{success: int[], failures: array<int, array{ids: int[], error: string}>, synced: bool}
      */
     private function processIndexRows(string $indexHandle, array $rows, array &$beforeIndexResults): array
     {
@@ -81,6 +86,7 @@ class PendingSyncProcessor extends Component
             return [
                 'success' => $this->rowIds($rows),
                 'failures' => [],
+                'synced' => false,
             ];
         }
 
@@ -116,6 +122,7 @@ class PendingSyncProcessor extends Component
         $deleteRows = [];
         $successIds = [];
         $failures = [];
+        $synced = false;
 
         $indexing = SearchManager::$plugin->indexing;
 
@@ -203,6 +210,7 @@ class PendingSyncProcessor extends Component
         if (!empty($docs)) {
             if (SearchManager::$plugin->backend->batchIndex($indexHandle, $docs)) {
                 SearchIndex::touchLastIndexedDebounced($indexHandle);
+                $synced = true;
 
                 // EVENT_AFTER_INDEX — fired once per successfully-indexed row,
                 // matching pre-L3 behaviour where indexElementNow fired AFTER
@@ -227,6 +235,7 @@ class PendingSyncProcessor extends Component
         if (!empty($deleteItems)) {
             if (SearchManager::$plugin->backend->batchDelete($indexHandle, $deleteItems)) {
                 SearchIndex::touchLastIndexedDebounced($indexHandle);
+                $synced = true;
                 if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
                     SearchManager::$plugin->backend->clearSearchCache($indexHandle);
                     SearchManager::$plugin->autocomplete->clearCache($indexHandle);
@@ -243,6 +252,7 @@ class PendingSyncProcessor extends Component
         return [
             'success' => $successIds,
             'failures' => $failures,
+            'synced' => $synced,
         ];
     }
 

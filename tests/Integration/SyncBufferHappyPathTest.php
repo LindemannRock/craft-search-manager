@@ -86,4 +86,31 @@ final class SyncBufferHappyPathTest extends TestCase
         ]);
         $this->assertSame(1, $count, 'Composite UPSERT key should collapse rapid same-target queue calls into a single row.');
     }
+
+    public function testBatchSyncJobRefreshesDocumentCountAfterCompletedDrain(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [$index, $element] = $pair;
+        $originalCount = $index->documentCount;
+        $expectedCount = $index->getExpectedCount();
+
+        try {
+            $index->updateStats(0);
+            $this->repository->queueForElement($element, PendingSyncRepository::OP_UPSERT);
+
+            (new BatchSyncJob())->execute(Craft::$app->queue);
+
+            $refreshed = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($index->handle);
+            $this->assertNotNull($refreshed);
+            $this->assertSame(
+                $expectedCount,
+                $refreshed->documentCount,
+                'Completed BatchSyncJob drains must refresh documentCount metadata.',
+            );
+        } finally {
+            $index->updateStats($originalCount);
+        }
+    }
 }

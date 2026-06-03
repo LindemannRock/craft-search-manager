@@ -6,6 +6,7 @@ use Craft;
 use craft\queue\BaseJob;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\queue\RetryableJobInterface;
 
@@ -65,6 +66,8 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         $totalSucceeded = 0;
         $totalFailureGroups = 0;
         $passes = 0;
+        $syncedIndexHandles = [];
+        $deferred = false;
 
         // Drain in `syncBatchSize` chunks within a single job until the buffer
         // is empty or our time budget runs out. The chunk size still bounds
@@ -73,6 +76,7 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         while (true) {
             if ((microtime(true) - $started) > self::TIME_BUDGET_SECONDS) {
                 if ($repository->hasDueRows()) {
+                    $deferred = true;
                     $repository->scheduleBatchJob(true);
                 }
                 break;
@@ -88,6 +92,9 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
 
             $result = $processor->process($rows);
             $repository->markSucceeded($result['success']);
+            foreach ($result['syncedIndexHandles'] as $indexHandle) {
+                $syncedIndexHandles[$indexHandle] = true;
+            }
             $totalSucceeded += count($result['success']);
 
             foreach ($result['failures'] as $failure) {
@@ -102,6 +109,10 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         }
 
         if ($totalClaimed > 0) {
+            if (!$deferred && !empty($syncedIndexHandles)) {
+                $this->refreshSyncedIndexCounts(array_keys($syncedIndexHandles));
+            }
+
             $this->logInfo('Batch sync run complete', [
                 'passes' => $passes,
                 'claimed' => $totalClaimed,
@@ -118,5 +129,20 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         return Craft::t('search-manager', '{pluginName}: Processing pending search syncs', [
             'pluginName' => $settings->getDisplayName(),
         ]);
+    }
+
+    /**
+     * @param string[] $indexHandles
+     */
+    private function refreshSyncedIndexCounts(array $indexHandles): void
+    {
+        foreach ($indexHandles as $indexHandle) {
+            $index = SearchIndex::findByHandle($indexHandle);
+            if (!$index) {
+                continue;
+            }
+
+            $index->updateStats($index->getExpectedCount());
+        }
     }
 }
