@@ -189,7 +189,7 @@
         {# Optional caps — all nullable. Live in the sidebar alongside the
            other key-level metadata. #}
         {{ forms.textField({
-            label: 'Max hits per page'|t('search-manager'),
+            label: 'Max hits'|t('search-manager'),
             instructions: 'Clamp the per-request hitsPerPage parameter. Leave empty for the endpoint default.'|t('search-manager'),
             id: 'maxHitsPerPage',
             name: 'maxHitsPerPage',
@@ -202,8 +202,8 @@
         }) }}
 
         {{ forms.textField({
-            label: 'Rate limit (requests per minute)'|t('search-manager'),
-            instructions: 'Cap the request rate this key can sustain. Leave empty for no per-key limit. Enforcement ships in a later update.'|t('search-manager'),
+            label: 'Rate limit'|t('search-manager'),
+            instructions: 'Cap the request rate in requests per minute. Leave empty for no per-key limit.'|t('search-manager'),
             id: 'rateLimit',
             name: 'rateLimit',
             type: 'number',
