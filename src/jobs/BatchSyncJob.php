@@ -73,7 +73,7 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
         while (true) {
             if ((microtime(true) - $started) > self::TIME_BUDGET_SECONDS) {
                 if ($repository->hasDueRows()) {
-                    $repository->scheduleBatchJob();
+                    $repository->scheduleBatchJob(true);
                 }
                 break;
             }

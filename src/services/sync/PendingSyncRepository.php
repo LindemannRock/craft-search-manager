@@ -324,16 +324,18 @@ class PendingSyncRepository extends Component
             ->exists();
     }
 
-    public function scheduleBatchJob(): void
+    public function scheduleBatchJob(bool $force = false): void
     {
-        $existingJob = (new Query())
-            ->from('{{%queue}}')
-            ->where(['like', 'job', 'BatchSyncJob'])
-            ->andWhere(['like', 'job', 'searchmanager'])
-            ->exists();
+        if (!$force) {
+            $existingJob = (new Query())
+                ->from('{{%queue}}')
+                ->where(['like', 'job', 'BatchSyncJob'])
+                ->andWhere(['like', 'job', 'searchmanager'])
+                ->exists();
 
-        if ($existingJob) {
-            return;
+            if ($existingJob) {
+                return;
+            }
         }
 
         $delay = max(0, SearchManager::$plugin->getSettings()->batchFlushInterval);

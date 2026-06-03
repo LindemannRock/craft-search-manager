@@ -72,19 +72,18 @@ If the job is still missing:
 - Check that `analyticsRetention` is greater than `0` for cleanup jobs.
 - Check that `statusSyncInterval` is greater than `0` for status sync jobs.
 
-## Changing `autoIndex` Has No Effect Until Workers Restart
+## `autoIndex` Is Off but Rows Still Appear
 
-The `autoIndex` setting is consulted **once** during the plugin's `init()`. When it is enabled, listeners are attached to `Elements::EVENT_AFTER_SAVE_ELEMENT` and `Elements::EVENT_AFTER_DELETE_ELEMENT`. When it is disabled, those listeners are never attached.
+Search Manager checks the current `autoIndex` setting each time Craft fires `Elements::EVENT_AFTER_SAVE_ELEMENT` or `Elements::EVENT_AFTER_DELETE_ELEMENT`. Turning `autoIndex` off stops new save/delete events from adding pending sync rows.
 
-Toggling the setting mid-process **does not detach already-attached listeners** and does not retroactively attach them — Yii has no public API for either operation.
+If rows still appear after disabling `autoIndex`:
 
-After changing `autoIndex`, restart every long-running PHP process so the plugin re-bootstraps with the new value:
+- Confirm the setting was saved and is not overridden by `config/search-manager.php`.
+- Confirm the rows are new by checking `queuedAt` on the Pending Syncs page.
+- Check whether another process is queueing rows directly through `SearchManager::$plugin->pendingSyncs->queueForElement()`.
+- Check whether the status sync job queued rows for entries that became live or expired without a save event. That job is controlled by `statusSyncInterval`, not `autoIndex`.
 
-- **Queue workers**: `php craft queue/listen` processes — `daemon`/`supervisor` reload, or kill the worker so the supervisor respawns it.
-- **PHP-FPM / web workers**: `sudo service php8.x-fpm reload` (or platform equivalent).
-- **DDEV / local**: `ddev restart` is sufficient.
-
-Web requests served after the reload pick up the new behaviour immediately; any request still being served by a pre-reload worker will continue to use the old value until that worker recycles.
+Rows already in the buffer before `autoIndex` was disabled will still drain normally through `BatchSyncJob`.
 
 ## Last Indexed Does Not Update After Every Save
 

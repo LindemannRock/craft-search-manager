@@ -12,8 +12,10 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use lindemannrock\base\helpers\DateFormatHelper;
+use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
 use lindemannrock\searchmanager\jobs\SyncStatusJob;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 use ReflectionMethod;
 
@@ -65,6 +67,26 @@ final class RecurringJobsRescheduleTest extends TestCase
         ]), DateFormatHelper::now());
 
         $this->assertSame(2, $this->countQueueRows('SyncStatusJob'));
+    }
+
+    public function testBatchSyncContinuationSchedulesWhenExistingBatchRowExists(): void
+    {
+        Craft::$app->getQueue()->delay(300)->push(new BatchSyncJob());
+        $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
+
+        SearchManager::$plugin->pendingSyncs->scheduleBatchJob(true);
+
+        $this->assertSame(2, $this->countQueueRows('BatchSyncJob'));
+    }
+
+    public function testBatchSyncDebounceKeepsSingleBatchRowByDefault(): void
+    {
+        Craft::$app->getQueue()->delay(300)->push(new BatchSyncJob());
+        $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
+
+        SearchManager::$plugin->pendingSyncs->scheduleBatchJob();
+
+        $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
     }
 
     private function countQueueRows(string $jobClass): int

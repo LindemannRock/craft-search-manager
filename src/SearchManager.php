@@ -219,9 +219,7 @@ class SearchManager extends Plugin
         }
 
         // Install event listeners (auto-indexing, etc.)
-        if ($this->getSettings()->autoIndex) {
-            $this->installEventListeners();
-        }
+        $this->installEventListeners();
 
         // Schedule status sync job (for pending→live and live→expired)
         $this->scheduleStatusSync();
@@ -764,6 +762,10 @@ class SearchManager extends Plugin
             Elements::class,
             Elements::EVENT_AFTER_SAVE_ELEMENT,
             function(ElementEvent $event) {
+                if (!$this->getSettings()->autoIndex) {
+                    return;
+                }
+
                 // Skip if element is currently propagating to other sites
                 // We only want to process once after propagation is complete
                 if ($event->element->propagating) {
@@ -790,6 +792,10 @@ class SearchManager extends Plugin
             Elements::class,
             Elements::EVENT_AFTER_DELETE_ELEMENT,
             function(ElementEvent $event) {
+                if (!$this->getSettings()->autoIndex) {
+                    return;
+                }
+
                 $element = $event->element;
                 if ($element->getIsDraft() || $element->getIsRevision()) {
                     return;
