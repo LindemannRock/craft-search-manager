@@ -554,8 +554,7 @@ return [
     'Detect user location for analytics' => 'Identifiera användarens plats för analyser',
     'Device Detection Caching' => 'Caching för enhetsidentifiering',
     'Device Detection Cache Duration' => 'Cacheduration för enhetsidentifiering',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'Caching för enhetsidentifiering är bara tillgängligt när Analys är aktiverat. Gå till',
-    'to enable analytics.' => 'för att aktivera analys.',
+    'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'Caching för enhetsidentifiering är bara tillgängligt när Analys är aktiverat. Gå till {link} för att aktivera analys.',
     '<strong>Privacy Levels:</strong><br>
 • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
 • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Integritetsnivåer:</strong><br>
@@ -682,7 +681,6 @@ return [
     'Expired' => 'Upphörd',
     'No API keys yet.' => 'Inga API-nycklar ännu.',
     'Search API keys...' => 'Sök API-nycklar...',
-    'New API key' => 'Ny API-nyckel',
     'API key' => 'API-nyckel',
     'API keys' => 'API-nycklar',
     'No indices allowed — this key cannot be used until you add some.' => 'Inga index tillåtna — denna nyckel kan inte användas förrän du lägger till några.',

@@ -554,8 +554,7 @@ return [
     'Detect user location for analytics' => 'Registrér brugerens placering til analyser',
     'Device Detection Caching' => 'Caching til enhedsregistrering',
     'Device Detection Cache Duration' => 'Cache-varighed for enhedsregistrering',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'Caching til enhedsregistrering er kun tilgængeligt, når Analyser er aktiveret. Gå til',
-    'to enable analytics.' => 'for at aktivere analyser.',
+    'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'Caching til enhedsregistrering er kun tilgængeligt, når Analyser er aktiveret. Gå til {link} for at aktivere analyser.',
     '<strong>Privacy Levels:</strong><br>
 • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
 • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Privatlivsniveauer:</strong><br>
@@ -682,7 +681,6 @@ return [
     'Expired' => 'Udløbet',
     'No API keys yet.' => 'Ingen API-nøgler endnu.',
     'Search API keys...' => 'Søg API-nøgler...',
-    'New API key' => 'Ny API-nøgle',
     'API key' => 'API-nøgle',
     'API keys' => 'API-nøgler',
     'No indices allowed — this key cannot be used until you add some.' => 'Ingen indekser tilladt — denne nøgle kan ikke bruges, før du tilføjer nogle.',

@@ -554,8 +554,7 @@ return [
     'Detect user location for analytics' => 'Gebruikerslocatie detecteren voor analyses',
     'Device Detection Caching' => 'Caching van apparaatdetectie',
     'Device Detection Cache Duration' => 'Cacheduur van apparaatdetectie',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'Caching van apparaatdetectie is alleen beschikbaar wanneer Analyses zijn ingeschakeld. Ga naar',
-    'to enable analytics.' => 'om analyses in te schakelen.',
+    'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'Caching van apparaatdetectie is alleen beschikbaar wanneer Analyses zijn ingeschakeld. Ga naar {link} om analyses in te schakelen.',
     '<strong>Privacy Levels:</strong><br>
 • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
 • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Privacyniveaus:</strong><br>
@@ -682,7 +681,6 @@ return [
     'Expired' => 'Verlopen',
     'No API keys yet.' => 'Nog geen API-sleutels.',
     'Search API keys...' => 'API-sleutels zoeken...',
-    'New API key' => 'Nieuwe API-sleutel',
     'API key' => 'API-sleutel',
     'API keys' => 'API-sleutels',
     'No indices allowed — this key cannot be used until you add some.' => 'Geen indexen toegestaan — deze sleutel kan niet worden gebruikt totdat u er enkele toevoegt.',

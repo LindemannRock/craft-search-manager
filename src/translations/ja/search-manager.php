@@ -554,8 +554,7 @@ return [
     'Detect user location for analytics' => 'アナリティクスのためにユーザーの位置を検出',
     'Device Detection Caching' => 'デバイス検出のキャッシュ',
     'Device Detection Cache Duration' => 'デバイス検出キャッシュの期間',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'デバイス検出のキャッシュはアナリティクスが有効な場合のみ利用できます',
-    'to enable analytics.' => 'でアナリティクスを有効にしてください。',
+    'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'デバイス検出のキャッシュはアナリティクスが有効な場合のみ利用できます。アナリティクスを有効にするには {link} に移動してください。',
     '<strong>Privacy Levels:</strong><br>
 • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
 • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>プライバシーレベル:</strong><br>
@@ -682,7 +681,6 @@ return [
     'Expired' => '期限切れ',
     'No API keys yet.' => 'API キーはまだありません。',
     'Search API keys...' => 'API キーを検索...',
-    'New API key' => '新規 API キー',
     'API key' => 'API キー',
     'API keys' => 'API キー',
     'No indices allowed — this key cannot be used until you add some.' => '許可されたインデックスがありません — インデックスを追加するまでこのキーは使用できません。',

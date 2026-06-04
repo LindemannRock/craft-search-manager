@@ -554,8 +554,7 @@ return [
     'Detect user location for analytics' => 'اكتشاف موقع المستخدم للتحليلات',
     'Device Detection Caching' => 'تخزين كشف الأجهزة مؤقتاً',
     'Device Detection Cache Duration' => 'مدة Cache كشف الأجهزة',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'تخزين كشف الأجهزة مؤقتاً متاح فقط عند تفعيل التحليلات. انتقل إلى',
-    'to enable analytics.' => 'لتفعيل التحليلات.',
+    'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'تخزين كشف الأجهزة مؤقتاً متاح فقط عند تفعيل التحليلات. انتقل إلى {link} لتفعيل التحليلات.',
     '<strong>Privacy Levels:</strong><br>
 • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
 • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>مستويات الخصوصية:</strong><br>
@@ -682,7 +681,6 @@ return [
     'Expired' => 'منتهي الصلاحية',
     'No API keys yet.' => 'لا توجد مفاتيح API بعد.',
     'Search API keys...' => 'البحث في مفاتيح API...',
-    'New API key' => 'مفتاح API جديد',
     'API key' => 'مفتاح API',
     'API keys' => 'مفاتيح API',
     'No indices allowed — this key cannot be used until you add some.' => 'لا توجد فهارس مسموح بها — لا يمكن استخدام هذا المفتاح حتى تضيف بعضاً منها.',

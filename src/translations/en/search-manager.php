@@ -554,8 +554,7 @@ return [
     'Detect user location for analytics' => 'Detect user location for analytics',
     'Device Detection Caching' => 'Device Detection Caching',
     'Device Detection Cache Duration' => 'Device Detection Cache Duration',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'Device detection caching is only available when Analytics is enabled. Go to',
-    'to enable analytics.' => 'to enable analytics.',
+    'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.',
     '<strong>Privacy Levels:</strong><br>
 • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
 • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Privacy Levels:</strong><br>
@@ -682,7 +681,6 @@ return [
     'Expired' => 'Expired',
     'No API keys yet.' => 'No API keys yet.',
     'Search API keys...' => 'Search API keys...',
-    'New API key' => 'New API key',
     'API key' => 'API key',
     'API keys' => 'API keys',
     'No indices allowed — this key cannot be used until you add some.' => 'No indices allowed — this key cannot be used until you add some.',

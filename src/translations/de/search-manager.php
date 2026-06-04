@@ -554,8 +554,7 @@ return [
     'Detect user location for analytics' => 'Benutzerstandort für Analytics erkennen',
     'Device Detection Caching' => 'Caching der Geräteerkennung',
     'Device Detection Cache Duration' => 'Cache-Dauer der Geräteerkennung',
-    'Device detection caching is only available when Analytics is enabled. Go to' => 'Das Caching der Geräteerkennung ist nur verfügbar, wenn Analytics aktiviert ist. Gehen Sie zu',
-    'to enable analytics.' => 'um Analytics zu aktivieren.',
+    'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'Das Caching der Geräteerkennung ist nur verfügbar, wenn Analytics aktiviert ist. Gehen Sie zu {link}, um Analytics zu aktivieren.',
     '<strong>Privacy Levels:</strong><br>
 • <strong>Disabled</strong> (default): Full IP hashed with salt (accurate unique visitors)<br>
 • <strong>Enabled</strong>: Subnet masked + hashed with salt (maximum privacy, less accurate)' => '<strong>Datenschutzstufen:</strong><br>
@@ -682,7 +681,6 @@ return [
     'Expired' => 'Abgelaufen',
     'No API keys yet.' => 'Noch keine API-Schlüssel.',
     'Search API keys...' => 'API-Schlüssel durchsuchen...',
-    'New API key' => 'Neuer API-Schlüssel',
     'API key' => 'API-Schlüssel',
     'API keys' => 'API-Schlüssel',
     'No indices allowed — this key cannot be used until you add some.' => 'Keine Indizes erlaubt – dieser Schlüssel kann erst verwendet werden, wenn Sie welche hinzufügen.',
