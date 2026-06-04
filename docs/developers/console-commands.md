@@ -2,6 +2,30 @@
 
 Search Manager provides CLI commands for index management, maintenance, and security operations.
 
+## Command Help
+
+Use the plugin help command when you need to discover available commands or confirm the correct command group.
+
+```bash title="PHP"
+php craft search-manager/help
+php craft search-manager/help maintenance/clear-storage
+```
+
+```bash title="DDEV"
+ddev craft search-manager/help
+ddev craft search-manager/help maintenance/clear-storage
+```
+
+Craft's native help also works when you already know the exact command:
+
+```bash title="PHP"
+php craft help search-manager/maintenance/clear-storage
+```
+
+```bash title="DDEV"
+ddev craft help search-manager/maintenance/clear-storage
+```
+
 ## Index Commands
 
 ### `search-manager/index/list`
