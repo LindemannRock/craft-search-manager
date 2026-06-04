@@ -4,8 +4,10 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use yii\web\ForbiddenHttpException;
 use yii\web\Response;
 
 /**
@@ -27,9 +29,62 @@ class ApiController extends Controller
     private const MAX_INDICES_COUNT = 5;
 
     /**
+     * Request header that carries the API key on enforced endpoints.
+     */
+    private const API_KEY_HEADER = 'X-Search-Manager-Key';
+
+    /**
      * @inheritdoc
      */
     protected array|bool|int $allowAnonymous = true;
+
+    /**
+     * The API key authenticated for this request, or null when enforcement is
+     * off. Set in {@see beforeAction()}; consumed by the action methods to scope
+     * indices and clamp hitsPerPage.
+     */
+    private ?ApiKey $authenticatedKey = null;
+
+    /**
+     * @inheritdoc
+     *
+     * Slice 2 enforcement gate: when the operator enables `requireApiKey`, every
+     * action on this controller requires a valid, active key in the
+     * `X-Search-Manager-Key` header (401 missing/invalid, 403 disabled/expired).
+     * Public keys are additionally referrer-restricted; server keys are not.
+     * When disabled (default), the endpoints stay anonymous — backward
+     * compatible. `$allowAnonymous` stays true so the action is reachable; this
+     * gate is the real access control (audit #16).
+     *
+     * @since 5.47.0
+     */
+    public function beforeAction($action): bool
+    {
+        if (!parent::beforeAction($action)) {
+            return false;
+        }
+
+        if (SearchManager::$plugin->getSettings()->requireApiKey) {
+            $request = Craft::$app->getRequest();
+            $header = $request->getHeaders()->get(self::API_KEY_HEADER);
+            $key = SearchManager::$plugin->apiKeys->authenticate(is_string($header) ? $header : null);
+
+            // Public keys are referrer-restricted (read the Referer header
+            // directly rather than getReferrer() so console/test requests work);
+            // server keys are trusted backend-to-backend and skip the check.
+            if ($key->type === ApiKey::TYPE_PUBLIC) {
+                $referer = $request->getHeaders()->get('Referer');
+                if (!$key->allowsReferrer(is_string($referer) ? $referer : null)) {
+                    // Raw English — JSON API response (see exception-messages.md).
+                    throw new ForbiddenHttpException('Referrer not allowed for this API key.');
+                }
+            }
+
+            $this->authenticatedKey = $key;
+        }
+
+        return true;
+    }
 
     /**
      * Get autocomplete suggestions and/or element results
@@ -70,6 +125,10 @@ class ApiController extends Controller
             $limit = 10;
         }
         $limit = min(100, $limit);
+        // Clamp to the key's per-page cap (2b).
+        if ($this->authenticatedKey !== null) {
+            $limit = SearchManager::$plugin->apiKeys->clampHitsPerPage($this->authenticatedKey, $limit);
+        }
         $only = Craft::$app->getRequest()->getParam('only', null);
         $typeFilter = Craft::$app->getRequest()->getParam('type', null);
         $siteId = Craft::$app->getRequest()->getParam('siteId');
@@ -98,6 +157,27 @@ class ApiController extends Controller
             Craft::$app->getRequest()->getParam('index', ''),
             self::MAX_INDICES_COUNT,
         );
+
+        // Apply the API key's index permission boundary (2b).
+        if ($this->authenticatedKey !== null) {
+            [$indexHandles, $indicesProvided] = SearchManager::$plugin->apiKeys->scopeIndices(
+                $this->authenticatedKey,
+                $indexHandles,
+                $indicesProvided,
+            );
+
+            // Validate a requested siteId against the selected indices' scope (2c).
+            if ($siteId !== null) {
+                $selectedIndices = [];
+                foreach ($indexHandles as $handle) {
+                    $index = SearchIndex::findByHandle($handle);
+                    if ($index !== null) {
+                        $selectedIndices[] = $index;
+                    }
+                }
+                SearchManager::$plugin->apiKeys->assertSiteInScope($siteId, ...$selectedIndices);
+            }
+        }
 
         // If indices were explicitly provided but none are valid/enabled, return empty
         // Don't fall back to "all enabled" - that would expose unintended results
@@ -266,6 +346,10 @@ class ApiController extends Controller
             $limit = 20;
         }
         $limit = min(200, $limit);
+        // Clamp to the key's per-page cap (2b) before deriving the offset.
+        if ($this->authenticatedKey !== null) {
+            $limit = SearchManager::$plugin->apiKeys->clampHitsPerPage($this->authenticatedKey, $limit);
+        }
         $page = (int) $request->getParam('page', 0);
         if ($page < 0) {
             $page = 0;
@@ -297,6 +381,30 @@ class ApiController extends Controller
             $request->getParam('index', ''),
             self::MAX_INDICES_COUNT,
         );
+
+        // Apply the API key's index permission boundary (2b): rejects an
+        // out-of-scope explicit index (403), or scopes an unscoped request to
+        // the key's own allowed indices.
+        if ($this->authenticatedKey !== null) {
+            [$indexHandles, $indicesProvided] = SearchManager::$plugin->apiKeys->scopeIndices(
+                $this->authenticatedKey,
+                $indexHandles,
+                $indicesProvided,
+            );
+
+            // Validate a requested siteId against the selected indices' scope (2c).
+            // Keyed requests only; siteId stays a filter, never a permission widener.
+            if ($siteId !== null) {
+                $selectedIndices = [];
+                foreach ($indexHandles as $handle) {
+                    $index = SearchIndex::findByHandle($handle);
+                    if ($index !== null) {
+                        $selectedIndices[] = $index;
+                    }
+                }
+                SearchManager::$plugin->apiKeys->assertSiteInScope($siteId, ...$selectedIndices);
+            }
+        }
 
         // If indices were explicitly provided but none are valid/enabled, return empty
         // Don't fall back to "all enabled" - that would expose unintended results
