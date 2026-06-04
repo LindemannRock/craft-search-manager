@@ -319,7 +319,7 @@ class WidgetsController extends Controller
             (string)$request->getBodyParam('handle'),
             (string)$widgetConfig->name,
         );
-        if (!$configId) {
+        if (!$configId && $widgetConfig->handle !== '') {
             $widgetConfig->handle = SlugHandleHelper::makeUnique('{{%searchmanager_widget_configs}}', 'handle', $widgetConfig->handle);
         }
         $widgetConfig->type = (string) $request->getBodyParam('type', 'modal');
@@ -861,7 +861,7 @@ class WidgetsController extends Controller
             (string)$request->getBodyParam('handle'),
             $widgetStyle->name,
         );
-        if (!$styleId) {
+        if (!$styleId && $widgetStyle->handle !== '') {
             $widgetStyle->handle = SlugHandleHelper::makeUnique('{{%searchmanager_widget_styles}}', 'handle', $widgetStyle->handle);
         }
         $widgetStyle->enabled = BooleanHelper::normalize($request->getBodyParam('enabled'), false);

@@ -324,7 +324,7 @@ class BackendsController extends Controller
             (string)$request->getBodyParam('handle'),
             (string)$backend->name,
         );
-        if (!$backendId) {
+        if (!$backendId && $backend->handle !== '') {
             $backend->handle = SlugHandleHelper::makeUnique('{{%searchmanager_backends}}', 'handle', $backend->handle);
         }
         $backend->backendType = $request->getBodyParam('backendType');

@@ -164,7 +164,7 @@ class WidgetStyleService extends Component
             return false;
         }
 
-        if (!$style->id) {
+        if (!$style->id && $style->handle !== '') {
             // New styles auto-suffix duplicate handles. Existing styles reject
             // duplicate handle edits via WidgetStyle::validateUniqueHandle().
             $style->handle = $this->ensureUniqueHandle($style->handle);

@@ -264,7 +264,7 @@ class IndicesController extends Controller
             (string)$request->getBodyParam('handle'),
             (string)$index->name,
         );
-        if (!$indexId) {
+        if (!$indexId && $index->handle !== '') {
             $index->handle = SlugHandleHelper::makeUnique('{{%searchmanager_indices}}', 'handle', $index->handle);
         }
         $index->elementType = $request->getBodyParam('elementType');
