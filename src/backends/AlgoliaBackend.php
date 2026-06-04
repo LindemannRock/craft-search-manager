@@ -145,6 +145,29 @@ class AlgoliaBackend extends BaseBackend
         }
     }
 
+    /**
+     * Build the Algolia `filters` expression that scopes results to a single
+     * site, merging with any caller-supplied filter rather than replacing it.
+     *
+     * - All-sites (`*` / null): returns `$existing` unchanged (no site filter).
+     * - Single site, no existing filter: `siteId:N`.
+     * - Single site + existing filter: `({existing}) AND siteId:N`.
+     *
+     * @since 5.47.0
+     */
+    public static function siteIdFilter(int|string|null $siteId, ?string $existing = null): ?string
+    {
+        $existing = ($existing === null || $existing === '') ? null : $existing;
+
+        if ($siteId === null || $siteId === '*') {
+            return $existing;
+        }
+
+        $site = 'siteId:' . (int)$siteId;
+
+        return $existing === null ? $site : '(' . $existing . ') AND ' . $site;
+    }
+
     /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
@@ -156,6 +179,17 @@ class AlgoliaBackend extends BaseBackend
             $internalOptions = ['siteId', 'source', 'platform', 'appVersion'];
             $searchParams = array_diff_key($options, array_flip($internalOptions));
             $searchParams['query'] = $query;
+
+            // Scope to a single site when requested (main search previously
+            // dropped siteId). Merge with any caller-supplied filters instead of
+            // overwriting them.
+            $existingFilters = isset($searchParams['filters']) && is_string($searchParams['filters'])
+                ? $searchParams['filters']
+                : null;
+            $siteFilter = self::siteIdFilter($options['siteId'] ?? null, $existingFilters);
+            if ($siteFilter !== null) {
+                $searchParams['filters'] = $siteFilter;
+            }
 
             $limit = $options['limit'] ?? null;
             $offset = $options['offset'] ?? null;
