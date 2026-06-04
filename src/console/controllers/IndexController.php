@@ -18,6 +18,26 @@ class IndexController extends Controller
     public $defaultAction = 'list';
 
     /**
+     * @var string|null Index handle for scoped rebuild and clear operations.
+     * @since 5.47.0
+     */
+    public ?string $handle = null;
+
+    /**
+     * @inheritdoc
+     */
+    public function options($actionID): array
+    {
+        $options = parent::options($actionID);
+
+        if (in_array($actionID, ['rebuild', 'clear'], true)) {
+            $options[] = 'handle';
+        }
+
+        return $options;
+    }
+
+    /**
      * List all search indices
      */
     public function actionList(): int
@@ -50,20 +70,20 @@ class IndexController extends Controller
     /**
      * Rebuild all indices or a specific index
      */
-    public function actionRebuild(?string $handle = null): int
+    public function actionRebuild(): int
     {
         $this->stdout("Search Manager - Rebuild Indices\n", Console::FG_CYAN);
         $this->stdout(str_repeat('=', 60) . "\n\n");
 
-        if ($handle) {
-            $index = SearchIndex::findByHandle($handle);
+        if ($this->handle) {
+            $index = SearchIndex::findByHandle($this->handle);
             if (!$index) {
-                $this->stderr("Index not found: {$handle}\n", Console::FG_RED);
+                $this->stderr("Index not found: {$this->handle}\n", Console::FG_RED);
                 return ExitCode::UNSPECIFIED_ERROR;
             }
 
             $this->stdout("Rebuilding index: {$index->name}...\n", Console::FG_GREEN);
-            SearchManager::$plugin->indexing->rebuildIndex($handle);
+            SearchManager::$plugin->indexing->rebuildIndex($this->handle);
         } else {
             if (!$this->confirm('This will rebuild all indices. Continue?')) {
                 $this->stdout("Operation cancelled.\n", Console::FG_YELLOW);
@@ -81,15 +101,15 @@ class IndexController extends Controller
     /**
      * Clear all indices or a specific index
      */
-    public function actionClear(?string $handle = null): int
+    public function actionClear(): int
     {
         $this->stdout("Search Manager - Clear Indices\n", Console::FG_CYAN);
         $this->stdout(str_repeat('=', 60) . "\n\n");
 
-        if ($handle) {
-            $index = SearchIndex::findByHandle($handle);
+        if ($this->handle) {
+            $index = SearchIndex::findByHandle($this->handle);
             if (!$index) {
-                $this->stderr("Index not found: {$handle}\n", Console::FG_RED);
+                $this->stderr("Index not found: {$this->handle}\n", Console::FG_RED);
                 return ExitCode::UNSPECIFIED_ERROR;
             }
 
@@ -98,7 +118,7 @@ class IndexController extends Controller
                 return ExitCode::OK;
             }
 
-            SearchManager::$plugin->backend->clearIndex($handle);
+            SearchManager::$plugin->backend->clearIndex($this->handle);
             $this->stdout("\n✓ Index cleared: {$index->name}\n", Console::FG_GREEN);
         } else {
             if (!$this->confirm('This will clear all indices. Continue?')) {
