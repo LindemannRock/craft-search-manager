@@ -112,6 +112,14 @@ class Settings extends Model
     public bool $replaceNativeSearch = false;
 
     /**
+     * @var bool Require a valid API key on the public search/autocomplete
+     *           endpoints. When false (default), those endpoints stay anonymous
+     *           — backward compatible. Enforcement lands in slice 2.
+     * @since 5.47.0
+     */
+    public bool $requireApiKey = false;
+
+    /**
      * @var bool Enable search analytics tracking
      */
     public bool $enableAnalytics = true;
@@ -378,6 +386,7 @@ class Settings extends Model
             'autoIndex',
             'queueEnabled',
             'replaceNativeSearch',
+            'requireApiKey',
             'enableAnalytics',
             'anonymizeIpAddress',
             'enableGeoDetection',
@@ -453,7 +462,7 @@ class Settings extends Model
     {
         return array_merge([
             [['indexPrefix'], 'string', 'max' => 50],
-            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
+            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
@@ -503,6 +512,7 @@ class Settings extends Model
             'batchMaxAttempts' => Craft::t('search-manager', 'Batch Max Attempts'),
             'queueEnabled' => Craft::t('search-manager', 'Queue Enabled'),
             'replaceNativeSearch' => Craft::t('search-manager', 'Replace Native Search'),
+            'requireApiKey' => Craft::t('search-manager', 'Require API Key'),
             'statusSyncInterval' => Craft::t('search-manager', 'Status Sync Interval'),
             'indexPrefix' => Craft::t('search-manager', 'Index Prefix'),
             // Analytics + Geo (geoProvider/geoApiKey live on GeoSettingsTrait)

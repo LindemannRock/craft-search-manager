@@ -11,7 +11,11 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\ApiKey;
+use lindemannrock\searchmanager\models\SearchIndex;
 use yii\base\Component;
+use yii\web\BadRequestHttpException;
+use yii\web\ForbiddenHttpException;
+use yii\web\UnauthorizedHttpException;
 
 /**
  * API Key Service
@@ -129,6 +133,146 @@ class ApiKeyService extends Component
         }
 
         return $this->verifyKey($plaintext, $key) ? $key : null;
+    }
+
+    /**
+     * Authenticate a presented plaintext key for an enforced endpoint.
+     *
+     * Slice 2 enforcement entry point: resolves the key, confirms it is
+     * currently usable (enabled + not expired), records usage, and returns it.
+     * Per-request restriction checks (allowed indices, referrer, maxHitsPerPage,
+     * siteId) are layered on in later checkpoints — this only proves the key
+     * exists and is active.
+     *
+     * Status codes follow the locked design: 401 when no key is presented or it
+     * fails resolution/verification (undifferentiated, so we don't leak which
+     * prefixes exist); 403 when a *known* key is disabled or expired.
+     *
+     * @throws UnauthorizedHttpException 401 — missing, unknown, or invalid key.
+     * @throws ForbiddenHttpException 403 — known key that is disabled or expired.
+     * @since 5.47.0
+     */
+    public function authenticate(?string $plaintext): ApiKey
+    {
+        // Enforcement messages are returned as JSON to API clients, so they
+        // stay raw English (not Craft::t) per the suite's exception-message
+        // convention for REST endpoints. See exception-messages.md.
+        $plaintext = is_string($plaintext) ? trim($plaintext) : '';
+        if ($plaintext === '') {
+            throw new UnauthorizedHttpException('API key required.');
+        }
+
+        $key = $this->findByPlaintextKey($plaintext);
+        if ($key === null) {
+            throw new UnauthorizedHttpException('Invalid API key.');
+        }
+
+        // Known key but not active → 403 with the specific reason.
+        $status = $key->getStatus();
+        if ($status === ApiKey::STATUS_DISABLED) {
+            throw new ForbiddenHttpException('This API key is disabled.');
+        }
+        if ($status === ApiKey::STATUS_EXPIRED) {
+            throw new ForbiddenHttpException('This API key has expired.');
+        }
+
+        $this->recordUsage($key);
+
+        return $key;
+    }
+
+    /**
+     * Apply a key's index permission boundary to the resolved request indices.
+     *
+     * - A `*` (all-indices) key is transparent — the request's own index scope
+     *   is returned unchanged.
+     * - When the request explicitly named indices, every one must be within the
+     *   key's allowlist or the whole request is rejected (403).
+     * - When the request named no indices, the key's own allowed indices become
+     *   the explicit scope (validated against currently-enabled indices), so a
+     *   restricted key never falls back to "all enabled".
+     *
+     * Returns `[handles, indicesProvided]`. The caller treats an empty
+     * `handles` with `indicesProvided === true` as "search nothing" (empty
+     * response) rather than a fall-back to all.
+     *
+     * @param list<string> $requestedHandles enabled-validated handles from the request
+     * @return array{0: list<string>, 1: bool}
+     * @throws ForbiddenHttpException 403 — a requested index is outside the allowlist.
+     * @since 5.47.0
+     */
+    public function scopeIndices(ApiKey $key, array $requestedHandles, bool $indicesProvided): array
+    {
+        if ($key->allowsAllIndices()) {
+            return [$requestedHandles, $indicesProvided];
+        }
+
+        if ($indicesProvided) {
+            foreach ($requestedHandles as $handle) {
+                if (!$key->allowsIndex($handle)) {
+                    // Raw English — JSON API response (see exception-messages.md).
+                    throw new ForbiddenHttpException('API key not permitted for the requested index: ' . $handle);
+                }
+            }
+
+            return [$requestedHandles, true];
+        }
+
+        // No indices requested → default scope is the key's own allowlist,
+        // validated against enabled indices (drops stale/disabled handles).
+        [$scoped] = SearchIndex::resolveRequestedIndices(
+            implode(',', $key->allowedIndices),
+            '',
+            max(1, count($key->allowedIndices)),
+        );
+
+        return [$scoped, true];
+    }
+
+    /**
+     * Clamp a requested `hitsPerPage` to the key's `maxHitsPerPage` cap.
+     * A null cap leaves the request value untouched.
+     *
+     * @since 5.47.0
+     */
+    public function clampHitsPerPage(ApiKey $key, int $requested): int
+    {
+        if ($key->maxHitsPerPage === null) {
+            return $requested;
+        }
+
+        return min($requested, $key->maxHitsPerPage);
+    }
+
+    /**
+     * Assert a requested siteId is usable for the selected indices (2c).
+     *
+     * The site must be a real Craft site, and every concretely-selected index
+     * must apply to it (an all-sites index applies to any valid site; a
+     * site-limited index must include it). An out-of-scope site is rejected
+     * rather than silently returning empty, so keyed callers get a clear error.
+     *
+     * Called only when a siteId is provided. An empty `$indices` list (the
+     * all-enabled fan-out, where there is no concrete selection) still validates
+     * that the site exists. siteId stays a filter — this never widens or
+     * replaces the `allowedIndices` permission boundary (2b).
+     *
+     * @throws BadRequestHttpException 400 — the siteId is not a real Craft site.
+     * @throws ForbiddenHttpException 403 — a selected index does not cover the site.
+     * @since 5.47.0
+     */
+    public function assertSiteInScope(int $siteId, SearchIndex ...$indices): void
+    {
+        // Raw English — JSON API responses (see exception-messages.md).
+        if (Craft::$app->getSites()->getSiteById($siteId) === null) {
+            throw new BadRequestHttpException('Unknown site requested.');
+        }
+
+        foreach ($indices as $index) {
+            if (!$index->appliesToSiteId($siteId)) {
+                throw new ForbiddenHttpException('The requested site is outside the scope of index "' . $index->handle . '".');
+            }
+        }
     }
 
     /**

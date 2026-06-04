@@ -182,6 +182,50 @@ class ApiKey extends Model
         return in_array($indexHandle, $this->allowedIndices, true);
     }
 
+    /**
+     * True if the request's `Referer` is allowed by this key's referrer
+     * patterns. An empty pattern list means "no referrer restriction" → always
+     * allowed. With patterns set, a missing/unparseable referrer is rejected.
+     *
+     * Patterns match against the referrer's host: `example.com` (exact) or
+     * `*.example.com` (the base domain or any subdomain). Case-insensitive.
+     * Referrer enforcement applies to public keys only (server keys skip it).
+     *
+     * @since 5.47.0
+     */
+    public function allowsReferrer(?string $referer): bool
+    {
+        if (empty($this->allowedReferrers)) {
+            return true;
+        }
+        if ($referer === null || trim($referer) === '') {
+            return false;
+        }
+
+        $host = parse_url(trim($referer), PHP_URL_HOST);
+        if (!is_string($host) || $host === '') {
+            return false;
+        }
+        $host = strtolower($host);
+
+        foreach ($this->allowedReferrers as $pattern) {
+            $pattern = strtolower(trim((string)$pattern));
+            if ($pattern === '') {
+                continue;
+            }
+            if (str_starts_with($pattern, '*.')) {
+                $base = substr($pattern, 2);
+                if ($host === $base || str_ends_with($host, '.' . $base)) {
+                    return true;
+                }
+            } elseif ($host === $pattern) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public const STATUS_ACTIVE = 'active';
     public const STATUS_DISABLED = 'disabled';
     public const STATUS_EXPIRED = 'expired';
