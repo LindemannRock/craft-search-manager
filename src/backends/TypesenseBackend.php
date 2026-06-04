@@ -159,6 +159,30 @@ class TypesenseBackend extends BaseBackend
         }
     }
 
+    /**
+     * Build the Typesense `filter_by` expression that scopes results to a
+     * single site, merging with any caller-supplied filter rather than
+     * replacing it.
+     *
+     * - All-sites (`*` / null): returns `$existing` unchanged (no site filter).
+     * - Single site, no existing filter: `siteId:=N`.
+     * - Single site + existing filter: `({existing}) && siteId:=N`.
+     *
+     * @since 5.47.0
+     */
+    public static function siteIdFilter(int|string|null $siteId, ?string $existing = null): ?string
+    {
+        $existing = ($existing === null || $existing === '') ? null : $existing;
+
+        if ($siteId === null || $siteId === '*') {
+            return $existing;
+        }
+
+        $site = 'siteId:=' . (int)$siteId;
+
+        return $existing === null ? $site : '(' . $existing . ') && ' . $site;
+    }
+
     /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
@@ -172,6 +196,17 @@ class TypesenseBackend extends BaseBackend
             $searchParams['q'] = $query;
             // Search all common string fields for consistency with other backends
             $searchParams['query_by'] = $searchParams['query_by'] ?? 'title,content,url';
+
+            // Scope to a single site when requested (main search previously
+            // dropped siteId). Merge with any caller-supplied filter_by instead
+            // of overwriting it.
+            $existingFilter = isset($searchParams['filter_by']) && is_string($searchParams['filter_by'])
+                ? $searchParams['filter_by']
+                : null;
+            $siteFilter = self::siteIdFilter($options['siteId'] ?? null, $existingFilter);
+            if ($siteFilter !== null) {
+                $searchParams['filter_by'] = $siteFilter;
+            }
 
             $limit = $options['limit'] ?? null;
             $offset = $options['offset'] ?? null;
