@@ -309,6 +309,9 @@ return [
     'Select a default backend...' => 'Selecteer een standaardbackend...',
     'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'Geen ingeschakelde widgets. <a href="{url}">Maak een widget aan</a> om als standaard te gebruiken.',
     'Select a default widget...' => 'Selecteer een standaardwidget...',
+    'API Access' => 'API-toegang',
+    'Require API Key' => 'API-sleutel vereisen',
+    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Wanneer ingeschakeld, vereisen de openbare zoek- en autocomplete-eindpunten een geldige API-sleutel in de header X-Search-Manager-Key. Wanneer uitgeschakeld, blijven deze eindpunten anoniem toegankelijk.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Elementen automatisch indexeren',
@@ -667,7 +670,7 @@ return [
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'De widgetconfiguratie die wordt gebruikt bij het renderen van de zoekwidget zonder een handle op te geven.',
 
     // API Keys
-    'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.' => 'Er zijn nog geen API-sleutels aangemaakt. Gebruik deze pagina om sleutels aan te maken die publieke zoekeindpunten zullen afschermen zodra handhaving in een toekomstige update wordt uitgerold. Bestaande publieke eindpunten blijven voorlopig werken zonder sleutels.',
+    'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Er zijn nog geen API-sleutels aangemaakt. Maak hier sleutels aan om de toegang tot de openbare zoek- en autocomplete-eindpunten te beheren. Sleutels worden alleen van kracht wanneer "API-sleutel vereisen" is ingeschakeld in de instellingen; tot die tijd blijven deze eindpunten openbaar toegankelijk.',
 
     // Index page
     'All types' => 'Alle typen',
@@ -711,7 +714,7 @@ return [
     'Cap the request rate in requests per minute. Leave empty for no per-key limit.' => 'Beperk de verzoekssnelheid in verzoeken per minuut. Laat leeg voor geen limiet per sleutel.',
     'Valid until' => 'Geldig tot',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Optionele vervaldatum en -tijd. Laat leeg voor geen vervaldatum.',
-    'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Uitgeschakelde sleutels worden onmiddellijk afgewezen op alle eindpunten zodra handhaving wordt uitgerold. Intrekken (verwijderen) verwijdert de sleutel permanent.',
+    'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'Uitschakelen deactiveert de sleutel zonder deze te verwijderen. Intrekken (verwijderen) verwijdert de sleutel permanent.',
     'Copy this key now — it will never be shown again.' => 'Kopieer deze sleutel nu — deze wordt nooit meer getoond.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} bewaart alleen een hash. Als u deze waarde kwijtraakt, moet u een nieuwe sleutel aanmaken.',
 
@@ -1608,6 +1611,7 @@ return [
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>phraseBoostFactor</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>queueEnabled</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>replaceNativeSearch</code> in <code>config/search-manager.php</code>.',
+    'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>requireApiKey</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>similarityThreshold</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>snippetLength</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>syncBatchSize</code> setting in <code>config/search-manager.php</code>.' => 'Dit wordt overschreven door de instelling <code>syncBatchSize</code> in <code>config/search-manager.php</code>.',

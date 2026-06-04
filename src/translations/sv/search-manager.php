@@ -309,6 +309,9 @@ return [
     'Select a default backend...' => 'Välj en standard-backend...',
     'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'Inga aktiverade widgetar. <a href="{url}">Skapa en widget</a> att använda som standard.',
     'Select a default widget...' => 'Välj en standardwidget...',
+    'API Access' => 'API-åtkomst',
+    'Require API Key' => 'Kräv API-nyckel',
+    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'När aktiverat kräver de publika sök- och autokompletteringsslutpunkterna en giltig API-nyckel i rubriken X-Search-Manager-Key. När inaktiverat förblir dessa slutpunkter anonyma.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Automatisk indexering av element',
@@ -667,7 +670,7 @@ return [
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'Widgetkonfigurationen som kommer att användas vid rendering av sökwidgeten utan att ange ett handle.',
 
     // API Keys
-    'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.' => 'Inga API-nycklar har skapats ännu. Använd denna sida för att skapa nycklar som ska skydda publika sök-slutpunkter när tvingande verkställighet lanseras i en framtida uppdatering. Befintliga publika slutpunkter fortsätter att fungera utan nycklar tills vidare.',
+    'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Inga API-nycklar har skapats ännu. Skapa nycklar här för att styra åtkomsten till de publika sök- och autokompletteringsslutpunkterna. Nycklar träder i kraft bara när "Kräv API-nyckel" är aktiverat i inställningarna; tills dess förblir dessa slutpunkter offentligt tillgängliga.',
 
     // Index page
     'All types' => 'Alla typer',
@@ -711,7 +714,7 @@ return [
     'Cap the request rate in requests per minute. Leave empty for no per-key limit.' => 'Begränsa förfrågningshastigheten i förfrågningar per minut. Lämna tomt för ingen gräns per nyckel.',
     'Valid until' => 'Giltig till',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Valfritt utgångsdatum och tid. Lämna tomt för ingen utgång.',
-    'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Inaktiverade nycklar avvisas omedelbart på alla slutpunkter när tvingande verkställighet lanseras. Återkalla (radera) tar bort nyckeln permanent.',
+    'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'Att inaktivera avaktiverar nyckeln utan att ta bort den. Återkalla (radera) tar bort nyckeln permanent.',
     'Copy this key now — it will never be shown again.' => 'Kopiera denna nyckel nu — den kommer aldrig att visas igen.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} lagrar endast en hash. Om du förlorar detta värde måste du skapa en ny nyckel.',
 
@@ -1608,6 +1611,7 @@ return [
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>phraseBoostFactor</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>queueEnabled</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>replaceNativeSearch</code> i <code>config/search-manager.php</code>.',
+    'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>requireApiKey</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>similarityThreshold</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>snippetLength</code> i <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>syncBatchSize</code> setting in <code>config/search-manager.php</code>.' => 'Detta åsidosätts av inställningen <code>syncBatchSize</code> i <code>config/search-manager.php</code>.',

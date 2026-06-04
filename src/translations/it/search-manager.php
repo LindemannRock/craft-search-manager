@@ -309,6 +309,9 @@ return [
     'Select a default backend...' => 'Seleziona un backend predefinito...',
     'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'Nessun widget abilitato. <a href="{url}">Crea un widget</a> da usare come predefinito.',
     'Select a default widget...' => 'Seleziona un widget predefinito...',
+    'API Access' => 'Accesso API',
+    'Require API Key' => 'Richiedi chiave API',
+    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Se abilitato, gli endpoint pubblici di ricerca e completamento automatico richiedono una chiave API valida nell\'intestazione X-Search-Manager-Key. Se disabilitato, questi endpoint rimangono anonimi.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Indicizzazione automatica degli elementi',
@@ -667,7 +670,7 @@ return [
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'La configurazione del widget che verrà utilizzata durante il rendering del widget di ricerca senza specificare un handle.',
 
     // API Keys
-    'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.' => 'Non è stata ancora creata alcuna chiave API. Utilizza questa pagina per creare chiavi che proteggeranno gli endpoint di ricerca pubblici una volta che l\'applicazione sarà rilasciata in un aggiornamento futuro. Gli endpoint pubblici esistenti continuano a funzionare senza chiavi per ora.',
+    'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Non è ancora stata creata alcuna chiave API. Crea le chiavi qui per controllare l\'accesso agli endpoint pubblici di ricerca e completamento automatico. Le chiavi hanno effetto solo quando "Richiedi chiave API" è abilitato nelle impostazioni; fino ad allora, questi endpoint rimangono accessibili pubblicamente.',
 
     // Index page
     'All types' => 'Tutti i tipi',
@@ -711,7 +714,7 @@ return [
     'Cap the request rate in requests per minute. Leave empty for no per-key limit.' => 'Limita la frequenza di richieste in richieste al minuto. Lascia vuoto per nessun limite per chiave.',
     'Valid until' => 'Valida fino a',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Data e ora di scadenza opzionale. Lascia vuoto per nessuna scadenza.',
-    'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Le chiavi disabilitate vengono immediatamente rifiutate su tutti gli endpoint quando l\'applicazione sarà rilasciata. La revoca (eliminazione) rimuove la chiave in modo permanente.',
+    'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'La disabilitazione disattiva la chiave senza eliminarla. La revoca (eliminazione) rimuove la chiave in modo permanente.',
     'Copy this key now — it will never be shown again.' => 'Copia questa chiave ora — non verrà mai più mostrata.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} memorizza solo un hash. Se perde questo valore, dovrà creare una nuova chiave.',
 
@@ -1608,6 +1611,7 @@ return [
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>phraseBoostFactor</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>queueEnabled</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>replaceNativeSearch</code> in <code>config/search-manager.php</code>.',
+    'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>requireApiKey</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>similarityThreshold</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>snippetLength</code> in <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>syncBatchSize</code> setting in <code>config/search-manager.php</code>.' => 'Questo viene sovrascritto dall\'impostazione <code>syncBatchSize</code> in <code>config/search-manager.php</code>.',

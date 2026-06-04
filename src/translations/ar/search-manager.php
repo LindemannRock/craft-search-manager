@@ -309,6 +309,9 @@ return [
     'Select a default backend...' => 'اختر واجهة خلفية افتراضية...',
     'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'لا توجد ودجات مفعّلة. <a href="{url}">أنشئ ودجة</a> لاستخدامها افتراضياً.',
     'Select a default widget...' => 'اختر ودجة افتراضية...',
+    'API Access' => 'وصول API',
+    'Require API Key' => 'طلب مفتاح API',
+    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'عند التفعيل، تتطلب نقاط نهاية البحث والإكمال التلقائي العامة مفتاح API صالحاً في الترويسة X-Search-Manager-Key. عند التعطيل، تظل هذه النقاط مجهولة الهوية.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'فهرسة العناصر تلقائياً',
@@ -667,7 +670,7 @@ return [
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'تكوين الأداة الذي سيتم استخدامه عند عرض أداة البحث بدون تحديد handle.',
 
     // API Keys
-    'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.' => 'لم يتم إنشاء أي مفاتيح API بعد. استخدم هذه الصفحة لإنشاء مفاتيح ستتحكم بنقاط نهاية البحث العامة بمجرد توفر التنفيذ في تحديث مستقبلي. تستمر نقاط النهاية العامة الحالية في العمل بدون مفاتيح في الوقت الحالي.',
+    'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'لم يتم إنشاء أي مفاتيح API بعد. أنشئ المفاتيح هنا للتحكم في الوصول إلى نقاط نهاية البحث والإكمال التلقائي العامة. لا تسري المفاتيح إلا عند تفعيل "طلب مفتاح API" في الإعدادات؛ وحتى ذلك الحين تظل نقاط النهاية هذه متاحة للعموم.',
 
     // Index page
     'All types' => 'كل الأنواع',
@@ -711,7 +714,7 @@ return [
     'Cap the request rate in requests per minute. Leave empty for no per-key limit.' => 'تقييد معدل الطلبات بالطلبات في الدقيقة. اترك فارغاً لعدم وجود حد لكل مفتاح.',
     'Valid until' => 'صالح حتى',
     'Optional expiry datetime. Leave empty for no expiry.' => 'تاريخ ووقت انتهاء صلاحية اختياري. اترك فارغاً لعدم وجود انتهاء صلاحية.',
-    'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'يتم رفض المفاتيح المعطلة فوراً على جميع نقاط النهاية عند توفر التنفيذ. الإبطال (الحذف) يزيل المفتاح نهائياً.',
+    'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'التعطيل يوقف المفتاح دون حذفه. الإبطال (الحذف) يزيل المفتاح نهائياً.',
     'Copy this key now — it will never be shown again.' => 'انسخ هذا المفتاح الآن — لن يتم عرضه مرة أخرى أبداً.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => 'يخزن {pluginName} hash فقط. إذا فقدت هذه القيمة فستحتاج إلى إنشاء مفتاح جديد.',
 
@@ -1608,6 +1611,7 @@ return [
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>phraseBoostFactor</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>queueEnabled</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>replaceNativeSearch</code> في <code>config/search-manager.php</code>.',
+    'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>requireApiKey</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>similarityThreshold</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>snippetLength</code> في <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>syncBatchSize</code> setting in <code>config/search-manager.php</code>.' => 'يتم تجاوز هذا بواسطة إعداد <code>syncBatchSize</code> في <code>config/search-manager.php</code>.',

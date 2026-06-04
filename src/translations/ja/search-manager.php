@@ -309,6 +309,9 @@ return [
     'Select a default backend...' => 'デフォルトのバックエンドを選択...',
     'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => '有効なウィジェットがありません。<a href="{url}">ウィジェットを作成</a> してデフォルトとして使用してください。',
     'Select a default widget...' => 'デフォルトのウィジェットを選択...',
+    'API Access' => 'API アクセス',
+    'Require API Key' => 'API キーを要求する',
+    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => '有効にすると、公開検索およびオートコンプリートエンドポイントは X-Search-Manager-Key ヘッダーに有効な API キーが必要です。無効にすると、これらのエンドポイントは匿名のままです。',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'エレメントの自動インデックス',
@@ -667,7 +670,7 @@ return [
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'ハンドルを指定せずに検索ウィジェットをレンダリングする際に使用されるウィジェット設定。',
 
     // API Keys
-    'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.' => 'API キーはまだ作成されていません。このページでキーを作成すると、今後のアップデートで強制が適用された際に公開検索エンドポイントを保護できます。既存の公開エンドポイントは現時点ではキーなしで引き続き動作します。',
+    'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'API キーはまだ作成されていません。ここでキーを作成して、公開検索およびオートコンプリートエンドポイントへのアクセスを管理してください。キーは設定で「API キーを要求する」が有効になっている場合のみ有効になります。それまでは、これらのエンドポイントは公開アクセス可能なままです。',
 
     // Index page
     'All types' => 'すべてのタイプ',
@@ -711,7 +714,7 @@ return [
     'Cap the request rate in requests per minute. Leave empty for no per-key limit.' => 'リクエストレートを 1 分あたりのリクエスト数で制限します。キーごとの制限を設けない場合は空白のままにしてください。',
     'Valid until' => '有効期限',
     'Optional expiry datetime. Leave empty for no expiry.' => 'オプションの有効期限の日時。有効期限を設定しない場合は空白のままにしてください。',
-    'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => '無効化されたキーは、強制が適用されるとすべてのエンドポイントでただちに拒否されます。失効（削除）はキーを完全に削除します。',
+    'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => '無効化するとキーは削除せずに停止します。失効（削除）するとキーは完全に削除されます。',
     'Copy this key now — it will never be shown again.' => 'このキーを今すぐコピーしてください — このキーは二度と表示されません。',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} はハッシュのみを保存します。この値を失うと、新しいキーを作成する必要があります。',
 
@@ -1608,6 +1611,7 @@ return [
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>phraseBoostFactor</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>queueEnabled</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>replaceNativeSearch</code> 設定によりオーバーライドされています。',
+    'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>requireApiKey</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>similarityThreshold</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>snippetLength</code> 設定によりオーバーライドされています。',
     'This is being overridden by the <code>syncBatchSize</code> setting in <code>config/search-manager.php</code>.' => '<code>config/search-manager.php</code> の <code>syncBatchSize</code> 設定によりオーバーライドされています。',

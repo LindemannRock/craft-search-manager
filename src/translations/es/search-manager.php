@@ -309,6 +309,9 @@ return [
     'Select a default backend...' => 'Seleccionar un backend predeterminado...',
     'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'No hay widgets habilitados. <a href="{url}">Cree un widget</a> para usar como predeterminado.',
     'Select a default widget...' => 'Seleccionar un widget predeterminado...',
+    'API Access' => 'Acceso API',
+    'Require API Key' => 'Requerir API Key',
+    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Cuando está activado, los endpoints públicos de búsqueda y autocompletado requieren una API Key válida en el encabezado X-Search-Manager-Key. Cuando está desactivado, esos endpoints permanecen anónimos.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Auto-indexar elementos',
@@ -667,7 +670,7 @@ return [
     'The widget configuration that will be used when rendering the search widget without specifying a handle.' => 'La configuración de widget que se usará al renderizar el widget de búsqueda sin especificar un handle.',
 
     // API Keys
-    'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.' => 'Aún no se ha creado ninguna clave API. Use esta página para crear claves que protegerán los endpoints públicos de búsqueda cuando la aplicación de claves se incluya en una actualización futura. Los endpoints públicos existentes continúan funcionando sin claves por ahora.',
+    'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Aún no se ha creado ninguna API Key. Cree claves aquí para controlar el acceso a los endpoints públicos de búsqueda y autocompletado. Las claves solo tienen efecto cuando "Requerir API Key" está activado en la configuración; hasta entonces, esos endpoints permanecen accesibles públicamente.',
 
     // Index page
     'All types' => 'Todos los tipos',
@@ -711,7 +714,7 @@ return [
     'Cap the request rate in requests per minute. Leave empty for no per-key limit.' => 'Limite la tasa de solicitudes en solicitudes por minuto. Deje vacío para no aplicar límite por clave.',
     'Valid until' => 'Válida hasta',
     'Optional expiry datetime. Leave empty for no expiry.' => 'Fecha y hora de caducidad opcional. Deje vacío para no aplicar caducidad.',
-    'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.' => 'Las claves desactivadas se rechazan inmediatamente en todos los endpoints cuando se aplique la aplicación. Revocar (eliminar) elimina la clave de forma permanente.',
+    'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'Desactivar desactiva la clave sin eliminarla. Revocar (eliminar) elimina la clave de forma permanente.',
     'Copy this key now — it will never be shown again.' => 'Copie esta clave ahora — no se mostrará nunca más.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} solo almacena un hash. Si pierde este valor, deberá crear una nueva clave.',
 
@@ -1608,6 +1611,7 @@ return [
     'This is being overridden by the <code>phraseBoostFactor</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>phraseBoostFactor</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>queueEnabled</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>queueEnabled</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>replaceNativeSearch</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>replaceNativeSearch</code> en <code>config/search-manager.php</code>.',
+    'This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>requireApiKey</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>similarityThreshold</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>similarityThreshold</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>snippetLength</code> en <code>config/search-manager.php</code>.',
     'This is being overridden by the <code>syncBatchSize</code> setting in <code>config/search-manager.php</code>.' => 'Esto está siendo anulado por el ajuste <code>syncBatchSize</code> en <code>config/search-manager.php</code>.',
