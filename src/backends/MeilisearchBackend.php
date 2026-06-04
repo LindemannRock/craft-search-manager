@@ -177,15 +177,35 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /**
+     * Build the Meilisearch `filter` expression that scopes results to a single
+     * site, merging with any caller-supplied filter rather than replacing it.
+     *
+     * - All-sites (`*` / null): returns `$existing` unchanged (no site filter).
+     * - Single site, no existing filter: `siteId = N`.
+     * - Single site + existing filter: `({existing}) AND siteId = N`.
+     *
+     * @since 5.47.0
+     */
+    public static function siteIdFilter(int|string|null $siteId, ?string $existing = null): ?string
+    {
+        $existing = ($existing === null || $existing === '') ? null : $existing;
+
+        if ($siteId === null || $siteId === '*') {
+            return $existing;
+        }
+
+        $site = 'siteId = ' . (int)$siteId;
+
+        return $existing === null ? $site : '(' . $existing . ') AND ' . $site;
+    }
+
     /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
             $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
-
-            // Extract siteId for filtering (internal option, not Meilisearch param)
-            $siteId = $options['siteId'] ?? null;
 
             // Build Meilisearch-compatible search options
             $searchParams = [
@@ -204,9 +224,13 @@ class MeilisearchBackend extends BaseBackend
                 $searchParams['attributesToRetrieve'] = $options['attributesToRetrieve'];
             }
 
-            // Apply siteId filter if specified (not '*' or null for all sites)
-            if ($siteId !== null && $siteId !== '*') {
-                $searchParams['filter'] = 'siteId = ' . (int)$siteId;
+            // Apply siteId filter if specified (not '*' or null for all sites).
+            // Meilisearch builds $searchParams from scratch and never passes
+            // through a caller filter here, so there's nothing to merge; the
+            // helper's merge support is exercised by its unit tests.
+            $siteFilter = self::siteIdFilter($options['siteId'] ?? null);
+            if ($siteFilter !== null) {
+                $searchParams['filter'] = $siteFilter;
             }
 
             $index = $client->index($fullIndexName);
