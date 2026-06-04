@@ -94,7 +94,7 @@
 {% block beforeTable %}
     {% if not hasAnyKeys %}
         {% set warningMessage %}
-        {{ 'No API keys have been created yet. Use this page to create keys that will gate public search endpoints once enforcement ships in a future update. Existing public endpoints continue to work without keys for now.'|t('search-manager') }}
+        {{ 'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.'|t('search-manager') }}
         {% endset %}
         <div class="lr-info-box-table-wrapper">
             {% include 'lindemannrock-base/_components/info-box' with {

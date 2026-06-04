@@ -161,7 +161,7 @@
            from validUntil (auto-expiry) and revoke (delete). #}
         {{ forms.lightswitchField({
             label: 'Enabled'|t('search-manager'),
-            instructions: 'Disabled keys are immediately rejected on all endpoints when enforcement ships. Revoke (delete) removes the key permanently.'|t('search-manager'),
+            instructions: 'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.'|t('search-manager'),
             id: 'enabled',
             name: 'enabled',
             on: apiKey.enabled,

@@ -94,6 +94,22 @@
 
 		<hr>
 
+		<h2>{{ "API Access"|t('search-manager') }}</h2>
+
+		{{ forms.lightswitchField({
+			label: 'Require API Key'|t('search-manager'),
+			instructions: 'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.'|t('search-manager'),
+			id: 'requireApiKey',
+			name: 'settings[requireApiKey]',
+			on: settings.requireApiKey,
+			errors: settings.getErrors('requireApiKey'),
+			disabled: settings.isOverriddenByConfig('requireApiKey'),
+			warning: settings.isOverriddenByConfig('requireApiKey') ?
+				"This is being overridden by the <code>requireApiKey</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+		}) }}
+
+		<hr>
+
 		<h2>{{ "Logging Settings"|t('search-manager') }}</h2>
 
 		{% include 'lindemannrock-base/_partials/field-log-level' with {
