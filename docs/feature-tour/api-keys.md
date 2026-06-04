@@ -2,10 +2,12 @@
 
 **CP:** Search Manager → API Keys
 
-A CRUD surface for generating, scoping, and revoking API keys that will gate access to the public search and autocomplete endpoints.
+A CRUD surface for generating, scoping, and revoking API keys that gate access to the public search and autocomplete endpoints.
 
 > [!IMPORTANT]
-> **Slice 1 ships the foundation only.** This release adds the data model, CRUD UI, console-create command, and permission gating around managing keys. **Endpoint enforcement is a separate, later slice.** A configured key does not yet block unauthenticated requests to `/actions/search-manager/api/...` — that enforcement layer is tracked separately and will ship before public release. Provision keys in advance so callers and integrators are ready when enforcement lands.
+> **What keys gate.** When **Require API Key** is enabled (Settings → General → API Access), the public **search** and **autocomplete** endpoints require a valid key in the `X-Search-Manager-Key` header — requests without a valid, active, in-scope key are rejected (`401` for a missing/invalid key, `403` for a disabled or expired key). When the setting is disabled (the default), those endpoints stay anonymous and behave exactly as before.
+>
+> Two endpoints are **not** gated yet: the `track-search` / `track-click` analytics endpoints stay anonymous (planned for the widget/tracking slice), and per-key **rate limiting** is stored but **not yet enforced** (planned for a later slice).
 
 ## What a key is
 
@@ -37,7 +39,7 @@ Both types accept the same restrictions. The distinction exists so operators (an
 
 ## Restrictions
 
-Every key is scoped by a small set of restrictions. Restrictions are stored per-key and (once enforcement ships) checked on every request.
+Every key is scoped by a small set of restrictions. Restrictions are stored per-key and, when **Require API Key** is enabled, checked on every request.
 
 ### Allowed indices
 
@@ -45,7 +47,7 @@ Which search indices the key may query.
 
 - **`*` (all indices)** — wildcard. Grants access to every currently enabled index, **plus any indices added later**. Use this for trusted server keys; avoid it for public widget keys.
 - **Explicit handles** — a list of specific index handles (e.g. `docs-en`, `blog-en`). Adding a new index does **not** automatically extend the key — you must edit it.
-- **Empty list** — the key is non-functional. The UI surfaces a warning, and once enforcement ships, the endpoint will reject the key.
+- **Empty list** — the key is non-functional. The UI surfaces a warning, and with enforcement enabled the endpoint rejects the key.
 
 > [!TIP]
 > Pick the narrowest list that satisfies the caller. The `*` wildcard is a convenience for trusted server-side integrations; it is rarely the right choice for keys embedded in browsers.
@@ -77,7 +79,7 @@ Useful for public keys to bound bandwidth and result-set size without hard-codin
 
 ### Valid until
 
-Optional expiry datetime. After it passes, the key's status flips to **Expired** and (once enforcement ships) requests will be rejected. Leave it empty for a key that never expires.
+Optional expiry datetime. After it passes, the key's status flips to **Expired** and, with enforcement enabled, requests are rejected (`403`). Leave it empty for a key that never expires.
 
 ### Rate limit *(slice 3)*
 
@@ -89,14 +91,14 @@ A key moves through three operator-controlled states:
 
 ### Active
 
-Default after creation. Once enforcement ships, the key is accepted on every request that matches its restrictions.
+Default after creation. With enforcement enabled, the key is accepted on every request that matches its restrictions.
 
 ### Disabled (paused)
 
 The **Enabled** lightswitch on the edit page. Toggling it off **pauses** the key:
 
 - The row, hash, prefix, and all restrictions are kept.
-- Once enforcement ships, every request presenting this key is rejected immediately.
+- With enforcement enabled, every request presenting this key is rejected immediately (`403`).
 - Re-enable it later by toggling the switch back on — no new key needed.
 
 Use Disable when you want to temporarily block a caller (e.g. a third-party integration is misbehaving) without losing the configuration or forcing the caller to rotate.
@@ -107,7 +109,7 @@ The **Revoke** action on the index page or the **Delete** button on the edit pag
 
 - The hash, prefix, and all configuration are removed from the database.
 - There is no undo. Recovery requires creating a new key and updating every caller.
-- A future request presenting the old plaintext will be a lookup miss (no row with that prefix) and will be rejected exactly the same way an unknown key is rejected.
+- A request presenting the old plaintext is a lookup miss (no row with that prefix) and is rejected exactly the same way an unknown key is — `401`.
 
 Use Revoke when the key is leaked, the integration is decommissioned, or the configuration is wrong enough that re-issuing is simpler than fixing.
 

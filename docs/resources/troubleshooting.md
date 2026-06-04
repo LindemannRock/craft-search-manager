@@ -99,7 +99,7 @@ This is by design, not a bug. Search results themselves are correct (the underly
 
 **To force an accurate count:**
 
-- Rebuild the index: `php craft search-manager/index/rebuild <handle>`
+- Rebuild the index: `php craft search-manager/index/rebuild --handle=entries-en`
 - Use the count refresh action on the index detail page (where exposed)
 
 If you regularly need real-time counts (e.g. for editor-facing dashboards), schedule a periodic rebuild for that index rather than relying on the live counter.
@@ -131,7 +131,7 @@ The rebuild job has a 30-minute TTR (time to reserve) by default. If your index 
 Other tips for large rebuilds:
 
 - **Lower `batchSize`** to `25`–`50` — smaller batches mean more progress checkpoints
-- **Rebuild individual indices** instead of all at once: `php craft search-manager/index/rebuild my-index`
+- **Rebuild individual indices** instead of all at once: `php craft search-manager/index/rebuild --handle=my-index`
 - **Check your transformer** — slow transformers (heavy relation queries, API calls) multiply rebuild time
 
 ## Duplicate Key Errors During Indexing (MySQL)
@@ -252,6 +252,17 @@ The heading description is static — it always shows the same text regardless o
 
 > [!WARNING]
 > `replaceNativeSearch` only works with built-in backends (MySQL, PostgreSQL, Redis, File). It does not work with Algolia, Meilisearch, or Typesense.
+
+## Search Returns 401 / 403 After Enabling "Require API Key"
+
+**Symptom:** After turning on **Require API Key** (Settings → General → API Access), the search and autocomplete endpoints return `401` ("API key required" / "Invalid API key") or `403` — including your own site's search widget.
+
+**Cause:** With the setting enabled, both endpoints require a valid key in the `X-Search-Manager-Key` header. Any caller that doesn't send a valid, active, in-scope key is rejected. The bundled search widget does **not** send a key yet (widget key-passing is a planned slice), so enabling enforcement will break the bundled widget's own requests.
+
+**Fix:**
+- For headless / mobile / custom callers: send a valid key in the `X-Search-Manager-Key` header. Check the key is enabled, not expired, and that its allowed indices cover the index you're querying. Public keys must also match their allowed referrers.
+- `403` on a `siteId` request means the requested site is outside the selected index's site scope; a `400` means the `siteId` isn't a real site.
+- If you only need the bundled widget (same-site) and aren't ready to wire keys into it, leave **Require API Key** off — those endpoints stay anonymous and the widget keeps working. See [API Keys](../feature-tour/api-keys.md) and [API Endpoints → Authentication](../template-guides/api-endpoints.md#authentication).
 
 ## Getting Help
 

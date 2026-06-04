@@ -235,21 +235,21 @@ ddev craft search-manager/index/rebuild
 Rebuild a specific index:
 
 ```bash title="PHP"
-php craft search-manager/index/rebuild entries-en
+php craft search-manager/index/rebuild --handle=entries-en
 ```
 
 ```bash title="DDEV"
-ddev craft search-manager/index/rebuild entries-en
+ddev craft search-manager/index/rebuild --handle=entries-en
 ```
 
 Clear an index:
 
 ```bash title="PHP"
-php craft search-manager/index/clear entries-en
+php craft search-manager/index/clear --handle=entries-en
 ```
 
 ```bash title="DDEV"
-ddev craft search-manager/index/clear entries-en
+ddev craft search-manager/index/clear --handle=entries-en
 ```
 
 See [Console Commands](../developers/console-commands.md) for the full CLI reference.
@@ -280,7 +280,7 @@ Expect the count to drift slightly during high-volume activity (large Feed Me ru
 
 To force the count to refresh:
 
-- Run a rebuild: `php craft search-manager/index/rebuild <handle>`
+- Run a rebuild: `php craft search-manager/index/rebuild --handle=entries-en`
 - Use the refresh action on the index detail page (where exposed)
 
 This is a deliberate trade-off against the API amplification that real-time counting would require; if your workflow depends on real-time document counts, prefer a periodic rebuild over relying on the live counter.

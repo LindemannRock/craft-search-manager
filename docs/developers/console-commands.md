@@ -35,16 +35,16 @@ ddev craft search-manager/index/rebuild
 Rebuild a specific index:
 
 ```bash title="PHP"
-php craft search-manager/index/rebuild entries-en
+php craft search-manager/index/rebuild --handle=entries-en
 ```
 
 ```bash title="DDEV"
-ddev craft search-manager/index/rebuild entries-en
+ddev craft search-manager/index/rebuild --handle=entries-en
 ```
 
-| Argument | Type | Description |
-|----------|------|-------------|
-| `handle` | `string` (optional) | Index handle to rebuild. Omit to rebuild all. |
+| Option | Type | Description |
+|--------|------|-------------|
+| `--handle` | `string` | Optional index handle to rebuild. Omit to rebuild all. |
 
 After rebuilding, cache warming runs automatically if enabled (see [Caching](../feature-tour/caching.md)).
 
@@ -68,16 +68,16 @@ ddev craft search-manager/index/clear
 Clear a specific index:
 
 ```bash title="PHP"
-php craft search-manager/index/clear entries-en
+php craft search-manager/index/clear --handle=entries-en
 ```
 
 ```bash title="DDEV"
-ddev craft search-manager/index/clear entries-en
+ddev craft search-manager/index/clear --handle=entries-en
 ```
 
-| Argument | Type | Description |
-|----------|------|-------------|
-| `handle` | `string` (optional) | Index handle to clear. Omit to clear all. |
+| Option | Type | Description |
+|--------|------|-------------|
+| `--handle` | `string` | Optional index handle to clear. Omit to clear all. |
 
 ## Maintenance Commands
 
@@ -208,9 +208,9 @@ Search Manager stores only a hash. If you lose this value you will need to creat
 
 #### Behaviour notes
 
-- **Disabled vs revoked.** `--disabled` creates a paused key (config preserved, future enforcement will reject it). To remove a key permanently use the **Revoke** action in the CP — there is no console-side revoke or list/disable command in slice 1; manage existing keys from the CP.
+- **Disabled vs revoked.** `--disabled` creates a paused key (config preserved; with **Require API Key** enabled, a disabled key is rejected). To remove a key permanently use the **Revoke** action in the CP — there is no console-side revoke or list/disable command; manage existing keys from the CP.
 - **Validation.** The command exercises the same model validation as the CP, including the referrer-pattern allowlist (regex-looking values are rejected). On validation failure the command prints the field errors and exits with `EXIT_DATAERR`.
-- **Slice 1 caveat.** API key enforcement on public search/autocomplete endpoints ships in a later slice. Provisioning a key today is forward-compatible — it will start gating requests as soon as enforcement lands — but the key does not yet block anonymous requests.
+- **Enforcement.** Keys gate the public search and autocomplete endpoints when **Require API Key** is enabled (Settings → General → API Access); otherwise those endpoints stay anonymous. Per-key rate limiting is stored but not yet enforced.
 
 See [API Keys](../feature-tour/api-keys.md) for the full feature tour and lifecycle (active / disabled / expired / revoked).
 
@@ -263,11 +263,11 @@ ddev craft search-manager/index/rebuild
 After changing index configuration or transformers, rebuild the affected index:
 
 ```bash title="PHP"
-php craft search-manager/index/rebuild entries-en
+php craft search-manager/index/rebuild --handle=entries-en
 ```
 
 ```bash title="DDEV"
-ddev craft search-manager/index/rebuild entries-en
+ddev craft search-manager/index/rebuild --handle=entries-en
 ```
 
 Or rebuild all indices:

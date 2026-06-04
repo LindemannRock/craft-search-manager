@@ -86,7 +86,7 @@ All utility actions are also available as console commands:
 php craft search-manager/index/rebuild
 
 # Rebuild a specific index
-php craft search-manager/index/rebuild entries-en
+php craft search-manager/index/rebuild --handle=entries-en
 
 # Clear search cache
 php craft search-manager/maintenance/clear-storage --type=database

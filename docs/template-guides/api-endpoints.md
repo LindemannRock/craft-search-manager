@@ -2,6 +2,28 @@
 
 Search Manager provides REST API endpoints for building instant search interfaces, mobile app integrations, and headless search.
 
+## Authentication
+
+By default the **search** and **autocomplete** endpoints are anonymous — no key required. When **Require API Key** is enabled (Settings → General → API Access), both endpoints require a valid [API key](../feature-tour/api-keys.md) sent in the `X-Search-Manager-Key` request header:
+
+```text
+X-Search-Manager-Key: sm_pub_a1b2c3d4e5f6...
+```
+
+Rejections (returned as the endpoint's JSON error, in English):
+
+| Status | When |
+|--------|------|
+| `401` | No key presented, or the key is unknown / fails verification |
+| `403` | Key is disabled or expired; the request's `Referer` is outside a public key's allowed referrers; or a requested index is outside the key's allowed indices |
+| `400` | A requested `siteId` is not a real site |
+
+**Index scope.** A key authorizes a set of indices (its *allowed indices*). A request that names indices must stay within that set; a request that names none is scoped to the key's allowed indices (a `*` key searches all enabled indices).
+
+**Site scope.** `siteId` is only a filter — site visibility is controlled by each index, not by the key. With no `siteId`, results span all sites the selected indices cover. For a keyed request, a `siteId` outside the scope of a selected index is rejected with `403`; an unknown `siteId` is rejected with `400`. Anonymous requests keep their existing behaviour (the `siteId` is applied as a plain filter).
+
+The `track-search` / `track-click` analytics endpoints are **not** gated and remain anonymous regardless of this setting.
+
 ## Search API
 
 ```text
