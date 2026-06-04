@@ -87,24 +87,24 @@ class BackendSettings extends Model
     {
         if ($this->backend === 'algolia') {
             if (empty($this->config['applicationId'])) {
-                $this->addError('applicationId', 'Application ID cannot be blank');
+                $this->addError('applicationId', $this->_fieldCannotBeBlankMessage('Application ID'));
             }
             if (empty($this->config['adminApiKey'])) {
-                $this->addError('apiKey', 'Admin API Key cannot be blank');
+                $this->addError('apiKey', $this->_fieldCannotBeBlankMessage('Admin API Key'));
             }
         } elseif ($this->backend === 'meilisearch') {
             if (empty($this->config['host'])) {
-                $this->addError('host', 'Host cannot be blank');
+                $this->addError('host', $this->_fieldCannotBeBlankMessage('Host'));
             }
             if (empty($this->config['apiKey'])) {
-                $this->addError('apiKey', 'API Key cannot be blank');
+                $this->addError('apiKey', $this->_fieldCannotBeBlankMessage('API Key'));
             }
         } elseif ($this->backend === 'typesense') {
             if (empty($this->config['host'])) {
-                $this->addError('host', 'Host is required');
+                $this->addError('host', $this->_fieldCannotBeBlankMessage('Host'));
             }
             if (empty($this->config['apiKey'])) {
-                $this->addError('apiKey', 'API Key is required');
+                $this->addError('apiKey', $this->_fieldCannotBeBlankMessage('API Key'));
             }
         } elseif ($this->backend === 'redis') {
             $craftUsesRedis = Craft::$app->cache instanceof \yii\redis\Cache;
@@ -116,28 +116,49 @@ class BackendSettings extends Model
             if (!$craftUsesRedis) {
                 // No Craft Redis - dedicated connection required, all fields must be filled
                 if (!$hasHost) {
-                    $this->addError('host', 'Host is required (or configure Craft to use Redis cache)');
+                    $this->addError('host', $this->_redisCraftRequiredMessage('Host'));
                 }
                 if (!$hasPort) {
-                    $this->addError('port', 'Port is required (or configure Craft to use Redis cache)');
+                    $this->addError('port', $this->_redisCraftRequiredMessage('Port'));
                 }
                 if (!$hasDatabase) {
-                    $this->addError('database', 'Database is required (or configure Craft to use Redis cache)');
+                    $this->addError('database', $this->_redisCraftRequiredMessage('Database'));
                 }
             } elseif ($hasHost || $hasPort || $hasDatabase) {
                 // Craft Redis available but user filled some fields - all must be filled for dedicated connection
                 if (!$hasHost) {
-                    $this->addError('host', 'Host is required when using dedicated Redis connection');
+                    $this->addError('host', $this->_redisDedicatedRequiredMessage('Host'));
                 }
                 if (!$hasPort) {
-                    $this->addError('port', 'Port is required when using dedicated Redis connection');
+                    $this->addError('port', $this->_redisDedicatedRequiredMessage('Port'));
                 }
                 if (!$hasDatabase) {
-                    $this->addError('database', 'Database is required when using dedicated Redis connection');
+                    $this->addError('database', $this->_redisDedicatedRequiredMessage('Database'));
                 }
             }
             // Password is always optional (can be empty/null)
         }
+    }
+
+    private function _fieldCannotBeBlankMessage(string $field): string
+    {
+        return Craft::t('search-manager', '{field} cannot be blank.', [
+            'field' => Craft::t('search-manager', $field),
+        ]);
+    }
+
+    private function _redisCraftRequiredMessage(string $field): string
+    {
+        return Craft::t('search-manager', '{field} is required (or configure Craft to use Redis cache).', [
+            'field' => Craft::t('search-manager', $field),
+        ]);
+    }
+
+    private function _redisDedicatedRequiredMessage(string $field): string
+    {
+        return Craft::t('search-manager', '{field} is required when using a dedicated Redis connection.', [
+            'field' => Craft::t('search-manager', $field),
+        ]);
     }
 
     // =========================================================================

@@ -263,6 +263,8 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => 'لا يمكن أن يكون {field} فارغاً.',
+    '{field} is required (or configure Craft to use Redis cache).' => '{field} مطلوب (أو قم بتهيئة Craft لاستخدام Cache Redis).',
+    '{field} is required when using a dedicated Redis connection.' => '{field} مطلوب عند استخدام اتصال Redis مخصص.',
     '{field} has an invalid value.' => '{field} يحتوي على قيمة غير صالحة.',
     '{field} must be a valid number.' => 'يجب أن يكون {field} رقماً صالحاً.',
     'A synonym rule can have a maximum of 10 terms. You have {count}.' => 'يمكن أن تحتوي قاعدة المرادفات على حد أقصى 10 مصطلحات. لديك {count}.',

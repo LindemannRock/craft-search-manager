@@ -263,6 +263,8 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} kan ikke være tom.',
+    '{field} is required (or configure Craft to use Redis cache).' => '{field} er påkrevd (eller konfigurer Craft til å bruke Redis-cache).',
+    '{field} is required when using a dedicated Redis connection.' => '{field} er påkrevd når en dedikert Redis-tilkobling brukes.',
     '{field} has an invalid value.' => '{field} har en ugyldig verdi.',
     '{field} must be a valid number.' => '{field} må være et gyldig tall.',
     'A synonym rule can have a maximum of 10 terms. You have {count}.' => 'En synonymregel kan ha maksimalt 10 termer. Du har {count}.',

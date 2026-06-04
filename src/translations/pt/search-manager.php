@@ -263,6 +263,8 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} não pode estar vazio.',
+    '{field} is required (or configure Craft to use Redis cache).' => '{field} é obrigatório (ou configure o Craft para usar cache Redis).',
+    '{field} is required when using a dedicated Redis connection.' => '{field} é obrigatório ao usar uma ligação Redis dedicada.',
     '{field} has an invalid value.' => '{field} tem um valor inválido.',
     '{field} must be a valid number.' => '{field} deve ser um número válido.',
     'A synonym rule can have a maximum of 10 terms. You have {count}.' => 'Uma regra de sinónimos pode ter no máximo 10 termos. Tem {count}.',

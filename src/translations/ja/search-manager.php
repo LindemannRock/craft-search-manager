@@ -263,6 +263,8 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} は空にできません。',
+    '{field} is required (or configure Craft to use Redis cache).' => '{field} は必須です（または Craft が Redis キャッシュを使用するように設定してください）。',
+    '{field} is required when using a dedicated Redis connection.' => '{field} は専用 Redis 接続を使用する場合に必須です。',
     '{field} has an invalid value.' => '{field} の値が無効です。',
     '{field} must be a valid number.' => '{field} は有効な数値である必要があります。',
     'A synonym rule can have a maximum of 10 terms. You have {count}.' => '同義語ルールは最大 10 用語です。{count} 用語あります。',
