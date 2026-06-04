@@ -342,11 +342,15 @@
 
             <h2>{{ "Device Detection Caching"|t('search-manager') }}</h2>
 
+            {% set analyticsSettingsLink %}
+                <a href="{{ url('search-manager/settings/analytics') }}">{{ "Analytics Settings"|t('search-manager') }}</a>
+            {% endset %}
+
             <div class="field">
                 <p class="light" style="color: #999;">
-                    {{ "Device detection caching is only available when Analytics is enabled. Go to"|t('search-manager') }}
-                    <a href="{{ url('search-manager/settings/analytics') }}">{{ "Analytics Settings"|t('search-manager') }}</a>
-                    {{ "to enable analytics."|t('search-manager') }}
+                    {{ "Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics."|t('search-manager', {
+                        link: analyticsSettingsLink|trim,
+                    })|raw }}
                 </p>
             </div>
         {% endif %}
@@ -356,16 +360,21 @@
 
 {% js %}
 // Toggle cache location info boxes based on storage method selection
-$('#cacheStorageMethod').on('change', function() {
-	const value = $(this).val();
-	if (value === 'redis') {
-		$('#cache-location-file').addClass('hidden');
-		$('#cache-location-redis').removeClass('hidden');
-	} else {
-		$('#cache-location-redis').addClass('hidden');
-		$('#cache-location-file').removeClass('hidden');
-	}
-});
+const cacheStorageMethod = document.getElementById('cacheStorageMethod');
+const cacheLocationFile = document.getElementById('cache-location-file');
+const cacheLocationRedis = document.getElementById('cache-location-redis');
+
+if (cacheStorageMethod && cacheLocationFile && cacheLocationRedis) {
+	cacheStorageMethod.addEventListener('change', function() {
+		if (cacheStorageMethod.value === 'redis') {
+			cacheLocationFile.classList.add('hidden');
+			cacheLocationRedis.classList.remove('hidden');
+		} else {
+			cacheLocationRedis.classList.add('hidden');
+			cacheLocationFile.classList.remove('hidden');
+		}
+	});
+}
 
 // Convert seconds to human-readable duration
 const secondsToHumanI18n = {
@@ -395,21 +404,24 @@ function secondsToHuman(seconds) {
 	}
 }
 
-// Update human-readable duration on input change
-$('#cacheDuration').on('input', function() {
-	$('#cacheDuration-human').text(secondsToHuman($(this).val()));
-});
+function updateDurationDisplay(inputId, displayId) {
+	const input = document.getElementById(inputId);
+	const display = document.getElementById(displayId);
 
-$('#deviceDetectionCacheDuration').on('input', function() {
-	$('#deviceDetectionCacheDuration-human').text(secondsToHuman($(this).val()));
-});
+	if (!input || !display) {
+		return;
+	}
 
-$('#autocompleteCacheDuration').on('input', function() {
-	$('#autocompleteCacheDuration-human').text(secondsToHuman($(this).val()));
-});
+	const updateDisplay = function() {
+		display.textContent = secondsToHuman(input.value);
+	};
+
+	input.addEventListener('input', updateDisplay);
+	updateDisplay();
+}
 
 // Initialize on page load
-$('#cacheDuration-human').text(secondsToHuman($('#cacheDuration').val()));
-$('#deviceDetectionCacheDuration-human').text(secondsToHuman($('#deviceDetectionCacheDuration').val()));
-$('#autocompleteCacheDuration-human').text(secondsToHuman($('#autocompleteCacheDuration').val()));
+updateDurationDisplay('cacheDuration', 'cacheDuration-human');
+updateDurationDisplay('deviceDetectionCacheDuration', 'deviceDetectionCacheDuration-human');
+updateDurationDisplay('autocompleteCacheDuration', 'autocompleteCacheDuration-human');
 {% endjs %}
