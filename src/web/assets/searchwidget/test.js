@@ -50,6 +50,8 @@ if (fs.existsSync(mainFile)) {
     test('Contains customElements.define', content.includes('customElements.define'));
     test('Contains search-modal registration', content.includes('search-modal'));
     test('Contains SearchModalWidget class', content.includes('SearchModalWidget'));
+    test('Blocks scriptable result URL schemes', content.includes('javascript|data|vbscript'));
+    test('Does not render non-JSON error bodies', !content.includes('.text()'));
 }
 
 // Summary
