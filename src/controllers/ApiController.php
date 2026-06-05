@@ -80,6 +80,9 @@ class ApiController extends Controller
                 }
             }
 
+            // Per-key request cap (slice 3): 429 when the per-minute limit is hit.
+            SearchManager::$plugin->apiKeys->enforceRateLimit($key);
+
             $this->authenticatedKey = $key;
         }
 

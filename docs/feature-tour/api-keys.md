@@ -7,7 +7,7 @@ A CRUD surface for generating, scoping, and revoking API keys that gate access t
 > [!IMPORTANT]
 > **What keys gate.** When **Require API Key** is enabled (Settings → General → API Access), the public **search** and **autocomplete** endpoints require a valid key in the `X-Search-Manager-Key` header — requests without a valid, active, in-scope key are rejected (`401` for a missing/invalid key, `403` for a disabled or expired key). When the setting is disabled (the default), those endpoints stay anonymous and behave exactly as before.
 >
-> Two endpoints are **not** gated yet: the `track-search` / `track-click` analytics endpoints stay anonymous (planned for the widget/tracking slice), and per-key **rate limiting** is stored but **not yet enforced** (planned for a later slice).
+> The `track-search` / `track-click` analytics endpoints are **not** gated yet — they stay anonymous (planned for the widget/tracking slice).
 
 ## What a key is
 
@@ -81,9 +81,11 @@ Useful for public keys to bound bandwidth and result-set size without hard-codin
 
 Optional expiry datetime. After it passes, the key's status flips to **Expired** and, with enforcement enabled, requests are rejected (`403`). Leave it empty for a key that never expires.
 
-### Rate limit *(slice 3)*
+### Rate limit
 
-Per-key requests-per-minute cap. The field exists in slice 1 so operators can provision values in advance, but **rate-limit enforcement is a later slice** and the value is currently unused at request time.
+Optional per-key cap on requests **per minute**. When set, requests beyond the cap are rejected with `429 Too Many Requests`, counted in a fixed one-minute window per key (across both the search and autocomplete endpoints combined). Leave it empty for no limit.
+
+Only enforced on authenticated requests — i.e. when **Require API Key** is enabled and a valid key is presented. Anonymous traffic (when the setting is off) is never rate-limited.
 
 ## Lifecycle
 

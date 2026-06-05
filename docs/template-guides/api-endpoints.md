@@ -17,6 +17,9 @@ Rejections (returned as the endpoint's JSON error, in English):
 | `401` | No key presented, or the key is unknown / fails verification |
 | `403` | Key is disabled or expired; the request's `Referer` is outside a public key's allowed referrers; or a requested index is outside the key's allowed indices |
 | `400` | A requested `siteId` is not a real site |
+| `429` | The key's per-minute rate limit was exceeded |
+
+**Rate limit.** A key may set a `rateLimit` (requests per minute). When exceeded, requests are rejected with `429` until the next one-minute window. The cap is per key (counted across search + autocomplete) and applies only to authenticated requests; a key with no `rateLimit` is unlimited.
 
 **Index scope.** A key authorizes a set of indices (its *allowed indices*). A request that names indices must stay within that set; a request that names none is scoped to the key's allowed indices (a `*` key searches all enabled indices).
 

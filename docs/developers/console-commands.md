@@ -196,7 +196,7 @@ php craft search-manager/api-keys/create \
 | `--indices` | `string` | *(none)* | Comma-separated index handles, or `*` for all indices (current and future). An empty value creates a non-functional key — restrictions must be widened from the CP before it can be used. |
 | `--referrers` | `string` | *(none — any referrer allowed)* | Comma-separated allowed referrer patterns. Each entry is either an exact host (`example.com`) or a subdomain wildcard (`*.example.com`, matches any subdomain depth). |
 | `--max-hits` | `int` | *(none)* | Clamp on the `hitsPerPage` request parameter. |
-| `--rate-limit` | `int` | *(none)* | Per-key requests-per-minute cap. Reserved for slice 3 — value is persisted but not enforced yet. |
+| `--rate-limit` | `int` | *(none)* | Per-key requests-per-minute cap. Requests beyond the cap are rejected with `429`. Omit for no limit. |
 | `--valid-until` | `string` | *(never expires)* | Optional expiry datetime in any format `DateTimeHelper::toDateTime` accepts (`2027-12-31`, `2027-12-31 23:59:59`, ISO 8601, etc.). |
 | `--disabled` | `bool` | `false` | Create the key in a paused state. Default is enabled. |
 
@@ -234,7 +234,7 @@ Search Manager stores only a hash. If you lose this value you will need to creat
 
 - **Disabled vs revoked.** `--disabled` creates a paused key (config preserved; with **Require API Key** enabled, a disabled key is rejected). To remove a key permanently use the **Revoke** action in the CP — there is no console-side revoke or list/disable command; manage existing keys from the CP.
 - **Validation.** The command exercises the same model validation as the CP, including the referrer-pattern allowlist (regex-looking values are rejected). On validation failure the command prints the field errors and exits with `EXIT_DATAERR`.
-- **Enforcement.** Keys gate the public search and autocomplete endpoints when **Require API Key** is enabled (Settings → General → API Access); otherwise those endpoints stay anonymous. Per-key rate limiting is stored but not yet enforced.
+- **Enforcement.** Keys gate the public search and autocomplete endpoints when **Require API Key** is enabled (Settings → General → API Access); otherwise those endpoints stay anonymous. A key's `--rate-limit` (if set) caps requests per minute and returns `429` when exceeded.
 
 See [API Keys](../feature-tour/api-keys.md) for the full feature tour and lifecycle (active / disabled / expired / revoked).
 

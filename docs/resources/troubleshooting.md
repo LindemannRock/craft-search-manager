@@ -268,6 +268,7 @@ The heading description is static — it always shows the same text regardless o
 **Fix:**
 - For headless / mobile / custom callers: send a valid key in the `X-Search-Manager-Key` header. Check the key is enabled, not expired, and that its allowed indices cover the index you're querying. Public keys must also match their allowed referrers.
 - `403` on a `siteId` request means the requested site is outside the selected index's site scope; a `400` means the `siteId` isn't a real site.
+- A `429` ("API rate limit exceeded") means the key hit its per-minute `rateLimit`. Raise the key's rate limit, spread requests out, or clear it for no cap. The window resets each minute.
 - If you only need the bundled widget (same-site) and aren't ready to wire keys into it, leave **Require API Key** off — those endpoints stay anonymous and the widget keeps working. See [API Keys](../feature-tour/api-keys.md) and [API Endpoints → Authentication](../template-guides/api-endpoints.md#authentication).
 
 ## Getting Help

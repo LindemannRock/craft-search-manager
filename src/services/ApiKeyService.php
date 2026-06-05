@@ -15,6 +15,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
 use yii\base\Component;
 use yii\web\BadRequestHttpException;
 use yii\web\ForbiddenHttpException;
+use yii\web\TooManyRequestsHttpException;
 use yii\web\UnauthorizedHttpException;
 
 /**
@@ -46,6 +47,12 @@ class ApiKeyService extends Component
 
     /** @var int Length of the stored/displayed prefix: `sm_xxx_` + 8 hex chars. */
     private const PREFIX_LENGTH = 15;
+
+    /** @var string Cache-key prefix for per-key, per-minute rate-limit counters. */
+    private const RATE_LIMIT_CACHE_PREFIX = 'searchmanager:apikey:ratelimit:';
+
+    /** @var int Rate-limit window length in seconds (fixed one-minute window). */
+    private const RATE_LIMIT_WINDOW = 60;
 
     private const TYPE_PREFIXES = [
         ApiKey::TYPE_PUBLIC => 'sm_pub_',
@@ -273,6 +280,41 @@ class ApiKeyService extends Component
                 throw new ForbiddenHttpException('The requested site is outside the scope of index "' . $index->handle . '".');
             }
         }
+    }
+
+    /**
+     * Enforce the key's per-minute request cap (slice 3 — closes audit #23).
+     *
+     * Counts requests in a fixed one-minute window via a cache-backed counter
+     * keyed per API key (`{id}:{minute}`). When the count reaches `rateLimit`,
+     * the next request is rejected with `429`. A null `rateLimit` means no cap.
+     * Only authenticated requests reach here (the controller calls this after
+     * {@see authenticate()}), so this never applies to anonymous traffic.
+     *
+     * Uses Craft's cache (the same primitive the search-result cache uses). The
+     * read-then-write is not atomic, so a burst at the exact window boundary may
+     * allow a couple extra requests — acceptable for a coarse per-minute cap.
+     *
+     * @throws TooManyRequestsHttpException 429 — the per-minute cap is exceeded.
+     * @since 5.47.0
+     */
+    public function enforceRateLimit(ApiKey $key): void
+    {
+        if ($key->rateLimit === null || $key->id === null) {
+            return;
+        }
+
+        $cache = Craft::$app->getCache();
+        $window = (int) floor(time() / self::RATE_LIMIT_WINDOW);
+        $cacheKey = self::RATE_LIMIT_CACHE_PREFIX . $key->id . ':' . $window;
+
+        $count = (int) $cache->get($cacheKey);
+        if ($count >= $key->rateLimit) {
+            // Raw English — JSON API response (see exception-messages.md).
+            throw new TooManyRequestsHttpException('API rate limit exceeded. Try again in a moment.');
+        }
+
+        $cache->set($cacheKey, $count + 1, self::RATE_LIMIT_WINDOW);
     }
 
     /**
