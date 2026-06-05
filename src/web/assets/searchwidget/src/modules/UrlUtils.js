@@ -25,6 +25,10 @@ export function appendQueryParam(url, query, paramName = 'smq') {
         return url;
     }
 
+    if (isUnsafeNavigationUrl(url)) {
+        return '#';
+    }
+
     const trimmedQuery = (query || '').trim();
     if (!trimmedQuery) {
         return url;
@@ -34,7 +38,7 @@ export function appendQueryParam(url, query, paramName = 'smq') {
     }
 
     // Don't mutate non-http navigations
-    if (/^(mailto:|tel:|javascript:)/i.test(url)) {
+    if (/^(mailto:|tel:)/i.test(url)) {
         return url;
     }
 
@@ -47,4 +51,8 @@ export function appendQueryParam(url, query, paramName = 'smq') {
     const hash = hashFragment ? `#${hashFragment}` : '';
 
     return `${path}${queryString ? `?${queryString}` : ''}${hash}`;
+}
+
+function isUnsafeNavigationUrl(url) {
+    return /^\s*(javascript|data|vbscript):/i.test(url);
 }

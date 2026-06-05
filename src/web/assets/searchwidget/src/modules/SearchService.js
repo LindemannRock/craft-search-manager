@@ -131,7 +131,10 @@ async function getSearchErrorMessage(response) {
 }
 
 /**
- * Read a JSON/text error body without making error handling depend on it.
+ * Read a JSON error body without making error handling depend on it.
+ *
+ * Non-JSON responses are intentionally ignored so public widgets do not render
+ * framework HTML error pages or proxy text bodies as user-facing messages.
  *
  * @param {Response} response - Fetch response object
  * @returns {Promise<string>} Server-provided error message, if available
@@ -141,13 +144,14 @@ async function readServerError(response) {
         const contentType = response.headers.get('content-type') || '';
         if (contentType.includes('application/json')) {
             const data = await response.json();
-            return data.error || data.message || '';
+            const message = data.error || data.message || '';
+            return typeof message === 'string' ? message.slice(0, 240) : '';
         }
-
-        return (await response.text()).trim();
     } catch (e) {
         return '';
     }
+
+    return '';
 }
 
 /**
