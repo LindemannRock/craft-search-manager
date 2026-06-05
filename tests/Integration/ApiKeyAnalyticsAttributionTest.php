@@ -14,10 +14,13 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\searchmanager\controllers\SearchController;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
+use yii\base\Action;
+use yii\web\HeaderCollection;
 
 /**
  * Slice 5 — analytics key attribution.
@@ -50,11 +53,13 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
     private const TEST_KEY_NAME_PREFIX = '__sm_attr_test__';
 
     private ?object $originalRequest = null;
+    private ?object $originalResponse = null;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->originalRequest = Craft::$app->getRequest();
+        $this->originalResponse = Craft::$app->getResponse();
         $this->truncateAnalytics();
         $this->purgeTestKeys();
     }
@@ -63,6 +68,9 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
     {
         if ($this->originalRequest !== null) {
             Craft::$app->set('request', $this->originalRequest);
+        }
+        if ($this->originalResponse !== null) {
+            Craft::$app->set('response', $this->originalResponse);
         }
         $this->truncateAnalytics();
         $this->purgeTestKeys();
@@ -153,6 +161,84 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $this->assertNull($row['apiKeyId']);
         $this->assertNull($row['apiKeyPrefix']);
         $this->assertNull($row['apiKeyType']);
+    }
+
+    public function testTrackSearchControllerPersistsAuthenticatedKeyAttribution(): void
+    {
+        $handle = $this->resolveAnalyticsIndexHandle();
+        [$key, $plaintext] = $this->seedKeyWithPlaintext(ApiKey::TYPE_PUBLIC);
+        $this->installTrackingRequest($plaintext, [
+            'q' => '__sm_attr_controller',
+            'indices' => $handle,
+            'resultsCount' => '3',
+            'trigger' => 'enter',
+            'source' => 'test-widget',
+            'siteId' => (string) self::TEST_SITE_ID,
+        ]);
+
+        $originalRequireApiKey = SearchManager::$plugin->getSettings()->requireApiKey;
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+
+        try {
+            $controller = new SearchController('search', Craft::$app);
+            $action = new Action('track-search', $controller);
+            $this->assertTrue($controller->beforeAction($action));
+
+            $response = $controller->actionTrackSearch();
+        } finally {
+            SearchManager::$plugin->getSettings()->requireApiKey = $originalRequireApiKey;
+        }
+
+        $this->assertSame(['success' => true, 'tracked' => true], $response->data);
+
+        $row = (new Query())
+            ->from('{{%searchmanager_analytics}}')
+            ->where([
+                'siteId' => self::TEST_SITE_ID,
+                'query' => '__sm_attr_controller',
+                'source' => 'test-widget',
+            ])
+            ->one();
+
+        $this->assertNotNull($row, 'track-search controller should persist an analytics row.');
+        $this->assertSame($key->id, (int) $row['apiKeyId']);
+        $this->assertSame($key->keyPrefix, $row['apiKeyPrefix']);
+        $this->assertSame(ApiKey::TYPE_PUBLIC, $row['apiKeyType']);
+    }
+
+    public function testTrackClickControllerDoesNotPersistAnalyticsRow(): void
+    {
+        $handle = $this->resolveAnalyticsIndexHandle();
+        [, $plaintext] = $this->seedKeyWithPlaintext(ApiKey::TYPE_PUBLIC);
+        $this->installTrackingRequest($plaintext, [
+            'elementId' => '12345',
+            'query' => '__sm_attr_click',
+            'index' => $handle,
+            'position' => '1',
+        ]);
+
+        $originalRequireApiKey = SearchManager::$plugin->getSettings()->requireApiKey;
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+
+        try {
+            $controller = new SearchController('search', Craft::$app);
+            $action = new Action('track-click', $controller);
+            $this->assertTrue($controller->beforeAction($action));
+
+            $response = $controller->actionTrackClick();
+        } finally {
+            SearchManager::$plugin->getSettings()->requireApiKey = $originalRequireApiKey;
+        }
+
+        $this->assertSame(['success' => true], $response->data);
+        $this->assertSame(
+            0,
+            (int) (new Query())
+                ->from('{{%searchmanager_analytics}}')
+                ->where(['query' => '__sm_attr_click'])
+                ->count(),
+            'track-click is still log-only and must not create a search analytics row.',
+        );
     }
 
     // ---- getApiKeyBreakdown() — keyed-only, grouped, snapshot-durable -------
@@ -257,6 +343,14 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
 
     private function seedKey(string $type): ApiKey
     {
+        return $this->seedKeyWithPlaintext($type)[0];
+    }
+
+    /**
+     * @return array{0: ApiKey, 1: string}
+     */
+    private function seedKeyWithPlaintext(string $type): array
+    {
         $generated = SearchManager::$plugin->apiKeys->generateKey($type);
         $key = new ApiKey();
         $key->name = self::TEST_KEY_NAME_PREFIX . StringHelper::UUID();
@@ -267,7 +361,87 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $key->allowedReferrers = [];
         $this->assertTrue($key->save(), 'Seeded key save() must succeed: ' . implode(', ', $key->getFirstErrors()));
 
-        return $key;
+        return [$key, $generated['plaintext']];
+    }
+
+    /**
+     * @param array<string,string> $params
+     */
+    private function installTrackingRequest(string $apiKey, array $params): void
+    {
+        Craft::$app->set('response', new \craft\web\Response());
+        Craft::$app->set('request', new class($apiKey, $params) extends \craft\console\Request {
+            private HeaderCollection $headers;
+
+            /** @param array<string,string> $params */
+            public function __construct(string $apiKey, private array $params)
+            {
+                parent::__construct();
+                $this->headers = new HeaderCollection();
+                $this->headers->set('X-Search-Manager-Key', $apiKey);
+                $this->headers->set('Referer', 'https://example.com/search');
+            }
+
+            public function getHeaders(): HeaderCollection
+            {
+                return $this->headers;
+            }
+
+            public function getParam($name, $defaultValue = null)
+            {
+                return $this->params[$name] ?? $defaultValue;
+            }
+
+            public function getQueryParam($name, $defaultValue = null)
+            {
+                return $defaultValue;
+            }
+
+            public function getQueryParams(): array
+            {
+                return [];
+            }
+
+            public function getIsPost(): bool
+            {
+                return true;
+            }
+
+            public function getAcceptsJson(): bool
+            {
+                return true;
+            }
+
+            public function getIsOptions(): bool
+            {
+                return false;
+            }
+
+            public function getReferrer(): ?string
+            {
+                return $this->headers->get('Referer');
+            }
+
+            public function getUserAgent(): string
+            {
+                return 'SearchManagerApiKeyAttributionTest/1.0';
+            }
+
+            public function getUserIP(): string
+            {
+                return '127.0.0.1';
+            }
+
+            public function validateCsrfToken($clientSuppliedToken = null): bool
+            {
+                return true;
+            }
+
+            public function hasValidSiteToken(): bool
+            {
+                return false;
+            }
+        });
     }
 
     /**
@@ -291,7 +465,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
     {
         Craft::$app->getDb()
             ->createCommand()
-            ->delete('{{%searchmanager_analytics}}', ['siteId' => self::TEST_SITE_ID, 'backend' => 'test'])
+            ->delete('{{%searchmanager_analytics}}', ['siteId' => self::TEST_SITE_ID])
             ->execute();
     }
 
