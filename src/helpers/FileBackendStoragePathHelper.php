@@ -24,7 +24,7 @@ class FileBackendStoragePathHelper
      */
     public static function defaultBasePath(): string
     {
-        return Craft::$app->getPath()->getRuntimePath() . '/search-manager/indices';
+        return Craft::$app->getRuntimePath() . '/search-manager/indices';
     }
 
     /**
