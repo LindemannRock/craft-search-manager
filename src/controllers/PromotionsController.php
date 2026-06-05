@@ -279,10 +279,8 @@ class PromotionsController extends Controller
             return null;
         }
 
-        // Clear search cache for this index (or all if global promotion)
-        if ($promotion->indexHandle) {
-            SearchManager::$plugin->backend->clearSearchCache($promotion->indexHandle);
-        }
+        // Promotions can be global, so clear all search caches like query rules do.
+        SearchManager::$plugin->backend->clearAllSearchCache();
 
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', 'Promotion saved')
@@ -309,15 +307,8 @@ class PromotionsController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'Promotion not found'));
         }
 
-        $indexHandle = $promotion->indexHandle;
-
         if ($promotion->delete()) {
-            // Clear search cache — global promotions (null handle) affect all indices
-            if ($indexHandle) {
-                SearchManager::$plugin->backend->clearSearchCache($indexHandle);
-            } else {
-                SearchManager::$plugin->backend->clearAllSearchCache();
-            }
+            SearchManager::$plugin->backend->clearAllSearchCache();
 
             if (Craft::$app->getRequest()->getAcceptsJson()) {
                 return $this->asJson(['success' => true]);
@@ -350,7 +341,6 @@ class PromotionsController extends Controller
 
         $promotionIds = Craft::$app->getRequest()->getRequiredBodyParam('promotionIds');
         $count = 0;
-        $affectedIndices = [];
 
         foreach ($promotionIds as $id) {
             $promotion = Promotion::findById((int)$id);
@@ -358,14 +348,12 @@ class PromotionsController extends Controller
                 $promotion->enabled = true;
                 if ($promotion->save()) {
                     $count++;
-                    $affectedIndices[$promotion->indexHandle] = true;
                 }
             }
         }
 
-        // Clear cache for affected indices
-        foreach (array_keys($affectedIndices) as $indexHandle) {
-            SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+        if ($count > 0) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([
@@ -385,7 +373,6 @@ class PromotionsController extends Controller
 
         $promotionIds = Craft::$app->getRequest()->getRequiredBodyParam('promotionIds');
         $count = 0;
-        $affectedIndices = [];
 
         foreach ($promotionIds as $id) {
             $promotion = Promotion::findById((int)$id);
@@ -393,14 +380,12 @@ class PromotionsController extends Controller
                 $promotion->enabled = false;
                 if ($promotion->save()) {
                     $count++;
-                    $affectedIndices[$promotion->indexHandle] = true;
                 }
             }
         }
 
-        // Clear cache for affected indices
-        foreach (array_keys($affectedIndices) as $indexHandle) {
-            SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+        if ($count > 0) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([
@@ -420,21 +405,18 @@ class PromotionsController extends Controller
 
         $promotionIds = Craft::$app->getRequest()->getRequiredBodyParam('promotionIds');
         $count = 0;
-        $affectedIndices = [];
 
         foreach ($promotionIds as $id) {
             $promotion = Promotion::findById((int)$id);
             if ($promotion) {
-                $affectedIndices[$promotion->indexHandle] = true;
                 if ($promotion->delete()) {
                     $count++;
                 }
             }
         }
 
-        // Clear cache for affected indices
-        foreach (array_keys($affectedIndices) as $indexHandle) {
-            SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+        if ($count > 0) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([
