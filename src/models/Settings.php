@@ -112,9 +112,10 @@ class Settings extends Model
     public bool $replaceNativeSearch = false;
 
     /**
-     * @var bool Require a valid API key on the public search/autocomplete
+     * @var bool Require a valid API key on the public search + autocomplete
      *           endpoints. When false (default), those endpoints stay anonymous
-     *           — backward compatible. Enforcement lands in slice 2.
+     *           — backward compatible. The analytics tracking endpoints
+     *           (track-search / track-click) are not gated by this setting.
      * @since 5.47.0
      */
     public bool $requireApiKey = false;

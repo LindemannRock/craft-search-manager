@@ -916,11 +916,13 @@ class Install extends Migration
     /**
      * Create API keys table
      *
-     * Stores hashed API keys that gate access to the public search/autocomplete/
-     * track-* endpoints when `requireApiKey = true`. Each key declares its
-     * restrictions (allowed indices, allowed referrers, max hits per page,
-     * expiry, rate limit). The plaintext key is shown to the operator exactly
-     * once on creation; only the hash + 15-char prefix is persisted.
+     * Stores hashed API keys that gate access to the public search and
+     * autocomplete endpoints when `requireApiKey = true`. (The track-search /
+     * track-click analytics endpoints are not gated yet — that's deferred to
+     * the widget-integration slice.) Each key declares its restrictions
+     * (allowed indices, allowed referrers, max hits per page, expiry, rate
+     * limit). The plaintext key is shown to the operator exactly once on
+     * creation; only the hash + 15-char prefix is persisted.
      *
      * @since 5.46.0
      */
