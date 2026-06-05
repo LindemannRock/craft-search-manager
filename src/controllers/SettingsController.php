@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\helpers\Db;
 use craft\web\Controller;
+use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
@@ -153,7 +154,7 @@ class SettingsController extends Controller
         $this->requirePostRequest();
 
         $settings = SearchManager::$plugin->getSettings();
-        $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
+        $postedSettings = (array)Craft::$app->getRequest()->getBodyParam('settings', []);
         $newWidgetHandle = $postedSettings['defaultWidgetHandle'] ?? null;
 
         if ($newWidgetHandle) {
@@ -649,27 +650,15 @@ class SettingsController extends Controller
             }
         }
 
-        // Multi-state selects (e.g. "Use global default" = '') need '' → null
-        // so nullable properties hold null, not a coerced false / 0 / ''.
-        foreach ($postedSettings as $key => $value) {
-            if ($value !== '' || !property_exists($settings, $key)) {
-                continue;
-            }
-            $type = (new \ReflectionProperty($settings, $key))->getType();
-            if ($type instanceof \ReflectionNamedType && $type->allowsNull()) {
-                $postedSettings[$key] = null;
-            }
-        }
+        $result = SettingsPostHelper::apply(
+            model: $settings,
+            postedValues: $postedSettings,
+            allowedAttributes: $attributesToValidate,
+            isOverridden: fn(string $attribute): bool => $settings->isOverriddenByConfig($attribute),
+        );
+        $attributesToValidate = $result->attributesToValidate;
 
-        $settings->setAttributes($postedSettings);
-
-        // Skip validation for fields overridden by config.
-        $attributesToValidate = array_values(array_filter(
-            $attributesToValidate,
-            static fn(string $attribute): bool => !$settings->isOverriddenByConfig($attribute),
-        ));
-
-        if (!$settings->validate($attributesToValidate)) {
+        if ($result->hasErrors || !$settings->validate($attributesToValidate)) {
             $this->logError('Settings validation failed', ['errors' => $settings->getErrors()]);
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
             return $this->_renderSettingsTemplate($section, $settings);
@@ -702,7 +691,7 @@ class SettingsController extends Controller
     private function _validationAttributesForSection(string $section): array
     {
         return match ($section) {
-            'general' => ['pluginName', 'defaultBackendHandle', 'defaultWidgetHandle', 'logLevel'],
+            'general' => ['pluginName', 'defaultBackendHandle', 'defaultWidgetHandle', 'requireApiKey', 'logLevel'],
             'indexing' => ['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'batchSize', 'lastIndexedDebounceSeconds', 'syncBatchSize', 'batchFlushInterval', 'pendingMaxAge', 'batchMaxAttempts', 'indexPrefix'],
             'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
             'search' => ['bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],

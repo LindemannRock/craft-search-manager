@@ -85,6 +85,12 @@ If rows still appear after disabling `autoIndex`:
 
 Rows already in the buffer before `autoIndex` was disabled will still drain normally through `BatchSyncJob`.
 
+## Settings Save Shows Numeric Field Errors
+
+Numeric settings such as cache duration, autocomplete cache duration, batch size, analytics retention, scoring boosts, and highlighting limits must use values within the range shown in the field instructions.
+
+If a settings save fails, keep the submitted form open and check the inline field errors. Search Manager validates posted values before saving and does not partially save invalid settings.
+
 ## Last Indexed Does Not Update After Every Save
 
 Automatic save/delete syncs debounce `lastIndexed` updates for 60 seconds by default. This is expected: the element is still indexed, but the metadata timestamp is only touched once per debounce window to avoid extra database writes during imports or rapid editing.
