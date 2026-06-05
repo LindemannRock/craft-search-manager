@@ -144,44 +144,6 @@ class SettingsController extends Controller
         return $this->redirect('search-manager/settings/general');
     }
 
-    /**
-     * @deprecated Use actionSave() instead. Widget settings consolidated into general.
-     * @since 5.30.0
-     */
-    public function actionSaveWidget(): ?Response
-    {
-        $this->requirePermission('searchManager:manageSettings');
-        $this->requirePostRequest();
-
-        $settings = SearchManager::$plugin->getSettings();
-        $postedSettings = (array)Craft::$app->getRequest()->getBodyParam('settings', []);
-        $newWidgetHandle = $postedSettings['defaultWidgetHandle'] ?? null;
-
-        if ($newWidgetHandle) {
-            $configuredWidget = SearchManager::$plugin->widgetConfigs->getByHandle($newWidgetHandle);
-            if (!$configuredWidget) {
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected widget does not exist.'));
-                return $this->redirect('search-manager/settings/general');
-            }
-            if (!$configuredWidget->enabled) {
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected widget is disabled.'));
-                return $this->redirect('search-manager/settings/general');
-            }
-        }
-
-        $settings->defaultWidgetHandle = $newWidgetHandle;
-
-        if (!$settings->saveToDatabase()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
-            return $this->redirect('search-manager/settings/general');
-        }
-
-        $this->logInfo('Default widget setting saved', ['handle' => $newWidgetHandle]);
-        Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));
-
-        return $this->redirect('search-manager/settings/general');
-    }
-
     public function actionTest(): Response
     {
         $this->requirePermission('searchManager:manageSettings');
@@ -738,54 +700,6 @@ class SettingsController extends Controller
         return $this->renderTemplate($template, [
             'settings' => $settings,
         ]);
-    }
-
-    /**
-     * @deprecated Use actionSave() instead. Backend settings consolidated into general.
-     * @since 5.28.0
-     */
-    public function actionSaveBackend(): ?Response
-    {
-        $this->requirePermission('searchManager:manageSettings');
-        $this->requirePostRequest();
-
-        $settings = SearchManager::$plugin->getSettings();
-        $oldBackend = $settings->defaultBackendHandle ?? null;
-        $postedSettings = Craft::$app->getRequest()->getBodyParam('settings', []);
-        $newBackendHandle = $postedSettings['defaultBackendHandle'] ?? null;
-
-        if ($newBackendHandle) {
-            $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($newBackendHandle);
-            if (!$configuredBackend) {
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend does not exist.'));
-                return $this->redirect('search-manager/settings/general');
-            }
-            if (!$configuredBackend->enabled) {
-                Craft::$app->getSession()->setError(Craft::t('search-manager', 'Selected backend is disabled.'));
-                return $this->redirect('search-manager/settings/general');
-            }
-        }
-
-        $settings->defaultBackendHandle = $newBackendHandle;
-
-        if (!$settings->saveToDatabase()) {
-            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Could not save settings'));
-            return $this->redirect('search-manager/settings/general');
-        }
-
-        $this->logInfo('Default backend setting saved', ['handle' => $newBackendHandle]);
-
-        $backendChanged = $oldBackend !== $newBackendHandle;
-        if ($backendChanged && $newBackendHandle) {
-            Craft::$app->getSession()->setNotice(Craft::t('search-manager',
-                'Default backend changed to "{name}". Rebuild indices in Utilities to migrate data.',
-                ['name' => $configuredBackend->name]
-            ));
-        } else {
-            Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));
-        }
-
-        return $this->redirect('search-manager/settings/general');
     }
 
     public function actionCleanupAnalytics(): Response
