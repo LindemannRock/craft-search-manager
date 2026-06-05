@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => 'Ugyldig Regex-mønster: {error}',
     'Invalid storage path: {error}' => 'Ugyldig lagringssti: {error}',
     'Invalid storage type: {type}' => 'Ugyldig lagringstype: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'Indeksprefikset kan bare inneholde bokstaver, tall, understreker og bindestreker.',
     'Environment variables are not allowed for this path.' => 'Miljøvariabler er ikke tillatt for denne banen.',
     'Invalid path: {error}' => 'Ugyldig bane: {error}',
     'Invalid path.' => 'Ugyldig bane.',

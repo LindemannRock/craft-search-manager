@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => 'Pattern Regex non valido: {error}',
     'Invalid storage path: {error}' => 'Percorso di archiviazione non valido: {error}',
     'Invalid storage type: {type}' => 'Tipo di archiviazione non valido: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'Il prefisso dell\'indice può contenere solo lettere, numeri, trattini bassi e trattini.',
     'Environment variables are not allowed for this path.' => 'Le variabili d\'ambiente non sono consentite per questo percorso.',
     'Invalid path: {error}' => 'Percorso non valido: {error}',
     'Invalid path.' => 'Percorso non valido.',

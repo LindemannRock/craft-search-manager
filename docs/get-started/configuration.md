@@ -77,7 +77,7 @@ These settings control how content gets indexed.
 | `batchMaxAttempts` | `int` | `5` | Failed processing attempts before a pending sync row is abandoned |
 | `queueEnabled` | `bool` | `true` | Use queue for indexing (recommended for indices with 1,000+ elements) |
 | `replaceNativeSearch` | `bool` | `false` | Replace Craft's built-in search with your backend |
-| `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups) |
+| `indexPrefix` | `?string` | `null` | Prefix for index names (useful for multi-environment setups). Use only letters, numbers, underscores, and hyphens |
 
 > [!NOTE]
 > Search Manager registers its save/delete listeners at plugin bootstrap, then checks the current `autoIndex` value each time an element event fires. Turning `autoIndex` off stops new save/delete events from adding pending sync rows; turning it back on resumes queueing on the next event.

@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => '無効な Regex パターン: {error}',
     'Invalid storage path: {error}' => '無効なストレージパス: {error}',
     'Invalid storage type: {type}' => '無効なストレージタイプ: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'インデックスプレフィックスには、英字、数字、アンダースコア、ハイフンのみを使用できます。',
     'Environment variables are not allowed for this path.' => 'このパスでは環境変数を使用できません。',
     'Invalid path: {error}' => '無効なパスです: {error}',
     'Invalid path.' => '無効なパスです。',

@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => 'Padrão Regex inválido: {error}',
     'Invalid storage path: {error}' => 'Caminho de armazenamento inválido: {error}',
     'Invalid storage type: {type}' => 'Tipo de armazenamento inválido: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'O prefixo do índice só pode conter letras, números, caracteres de sublinhado e hífenes.',
     'Environment variables are not allowed for this path.' => 'As variáveis de ambiente não são permitidas para este caminho.',
     'Invalid path: {error}' => 'Caminho inválido: {error}',
     'Invalid path.' => 'Caminho inválido.',

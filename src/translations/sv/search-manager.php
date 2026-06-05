@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => 'Ogiltigt Regex-mönster: {error}',
     'Invalid storage path: {error}' => 'Ogiltig lagringssökväg: {error}',
     'Invalid storage type: {type}' => 'Ogiltig lagringstyp: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'Indexprefix får endast innehålla bokstäver, siffror, understreck och bindestreck.',
     'Environment variables are not allowed for this path.' => 'Miljövariabler är inte tillåtna för den här sökvägen.',
     'Invalid path: {error}' => 'Ogiltig sökväg: {error}',
     'Invalid path.' => 'Ogiltig sökväg.',

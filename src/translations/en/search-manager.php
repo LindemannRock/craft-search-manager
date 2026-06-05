@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => 'Invalid regex pattern: {error}',
     'Invalid storage path: {error}' => 'Invalid storage path: {error}',
     'Invalid storage type: {type}' => 'Invalid storage type: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'Index Prefix may contain only letters, numbers, underscores, and hyphens.',
     'Environment variables are not allowed for this path.' => 'Environment variables are not allowed for this path.',
     'Invalid path: {error}' => 'Invalid path: {error}',
     'Invalid path.' => 'Invalid path.',

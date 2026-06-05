@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => 'Ongeldig Regex-patroon: {error}',
     'Invalid storage path: {error}' => 'Ongeldig opslagpad: {error}',
     'Invalid storage type: {type}' => 'Ongeldig opslagtype: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'Indexprefix mag alleen letters, cijfers, underscores en koppeltekens bevatten.',
     'Environment variables are not allowed for this path.' => 'Omgevingsvariabelen zijn niet toegestaan voor dit pad.',
     'Invalid path: {error}' => 'Ongeldig pad: {error}',
     'Invalid path.' => 'Ongeldig pad.',

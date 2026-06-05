@@ -276,6 +276,7 @@ return [
     'Invalid regex pattern: {error}' => 'نمط Regex غير صالح: {error}',
     'Invalid storage path: {error}' => 'مسار تخزين غير صالح: {error}',
     'Invalid storage type: {type}' => 'نوع تخزين غير صالح: {type}',
+    'Index Prefix may contain only letters, numbers, underscores, and hyphens.' => 'يجب أن تحتوي بادئة الفهرس على أحرف وأرقام وشرطات سفلية وشرطات فقط.',
     'Environment variables are not allowed for this path.' => 'متغيرات البيئة غير مسموحة لهذا المسار.',
     'Invalid path: {error}' => 'مسار غير صالح: {error}',
     'Invalid path.' => 'مسار غير صالح.',

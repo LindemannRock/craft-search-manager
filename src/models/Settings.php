@@ -462,6 +462,7 @@ class Settings extends Model
     {
         return array_merge([
             [['indexPrefix'], 'string', 'max' => 50],
+            [['indexPrefix'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Index Prefix may contain only letters, numbers, underscores, and hyphens.')],
             [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
