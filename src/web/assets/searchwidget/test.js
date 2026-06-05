@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 
 const DIST_DIR = path.join(__dirname, 'dist');
+const SRC_DIR = path.join(__dirname, 'src');
 const REQUIRED_FILES = ['SearchModalWidget.js'];
 const MIN_FILE_SIZE = 10000; // At least 10KB
 
@@ -51,7 +52,26 @@ if (fs.existsSync(mainFile)) {
     test('Contains search-modal registration', content.includes('search-modal'));
     test('Contains SearchModalWidget class', content.includes('SearchModalWidget'));
     test('Blocks scriptable result URL schemes', content.includes('javascript|data|vbscript'));
+    test('Normalizes control characters before URL scheme checks', content.includes('[\\t\\n\\r]'));
+    test('Escapes double quotes in rendered HTML', content.includes('&quot;'));
+    test('Escapes single quotes in rendered HTML', content.includes('&#39;'));
     test('Does not render non-JSON error bodies', !content.includes('.text()'));
+}
+
+// Test 5: Source hardening remains explicit and reviewable
+const highlighterFile = path.join(SRC_DIR, 'modules', 'Highlighter.js');
+if (fs.existsSync(highlighterFile)) {
+    const source = fs.readFileSync(highlighterFile, 'utf8');
+    test('Source escapeHtml encodes double quotes', source.includes('.replace(/"/g, \'&quot;\')'));
+    test('Source escapeHtml encodes single quotes', source.includes(".replace(/'/g, '&#39;')"));
+    test('Source escapeHtml avoids DOM serialization', !source.includes('document.createElement'));
+}
+
+const urlUtilsFile = path.join(SRC_DIR, 'modules', 'UrlUtils.js');
+if (fs.existsSync(urlUtilsFile)) {
+    const source = fs.readFileSync(urlUtilsFile, 'utf8');
+    test('Source URL guard strips tab/newline/carriage return', source.includes('replace(/[\\t\\n\\r]/g, \'\')'));
+    test('Source URL guard strips leading C0 controls and space', source.includes('replace(/^[\\u0000-\\u0020]+/, \'\')'));
 }
 
 // Summary

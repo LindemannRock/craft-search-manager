@@ -156,7 +156,7 @@ export function renderResultItem(result, index, query, options = {}) {
     // When debug is enabled, wrap main content so debug-info can be full-width sibling
     if (debug) {
         return `
-            <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(title)}">
+            <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
                     ${promotedBadge}
                     <div class="sm-result-content">
@@ -172,7 +172,7 @@ export function renderResultItem(result, index, query, options = {}) {
     }
 
     return `
-        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(title)}">
+        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
             ${promotedBadge}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
@@ -503,7 +503,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
 
     if (debug) {
         return `
-            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(title)}">
+            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
                     ${icon}
                     <div class="sm-result-content">
@@ -518,7 +518,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
     }
 
     return `
-        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(title)}">
+        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
             ${icon}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
@@ -600,7 +600,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         return `
             <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
                 ${guidesHtml}
-                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(text)}">
+                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
                     <div class="sm-result-main">
                         ${hashIcon()}
                         <div class="sm-result-content">
@@ -618,7 +618,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     return `
         <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
             ${guidesHtml}
-            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${result.id || ''}" data-title="${escapeHtml(text)}">
+            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
                 ${hashIcon()}
                 <div class="sm-result-content">
                     <span class="sm-result-title">${highlightedText}</span>
@@ -667,7 +667,7 @@ export function renderRecentSearches(recentSearches, listboxId) {
                 <button class="sm-clear-recent" part="clear-recent">Clear</button>
             </div>
             ${recentSearches.map((item, i) => `
-                <div class="sm-result-item sm-recent-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${item.url || ''}" data-query="${escapeHtml(item.query)}">
+                <div class="sm-result-item sm-recent-item" id="${getOptionId(listboxId, i)}" role="option" aria-selected="false" data-index="${i}" data-url="${escapeHtml(item.url || '')}" data-query="${escapeHtml(item.query)}">
                     <svg class="sm-result-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                         <circle cx="12" cy="12" r="10"/>
                         <polyline points="12 6 12 12 16 14"/>

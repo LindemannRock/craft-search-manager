@@ -54,5 +54,9 @@ export function appendQueryParam(url, query, paramName = 'smq') {
 }
 
 function isUnsafeNavigationUrl(url) {
-    return /^\s*(javascript|data|vbscript):/i.test(url);
+    const normalized = String(url)
+        .replace(/[\t\n\r]/g, '')
+        .replace(/^[\u0000-\u0020]+/, '');
+
+    return /^(javascript|data|vbscript):/i.test(normalized);
 }
