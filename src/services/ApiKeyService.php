@@ -346,6 +346,33 @@ class ApiKeyService extends Component
     }
 
     /**
+     * Build the analytics attribution options for a request's authenticated key
+     * (slice 5). Returns an empty array for anonymous / unkeyed requests so the
+     * analytics row records null attribution columns and stays backward
+     * compatible.
+     *
+     * `apiKeyId` is stored as a plain int with no foreign key and is retained
+     * after the key is revoked, so historical analytics rows keep their
+     * correlation id. `apiKeyPrefix` / `apiKeyType` are snapshots that stay
+     * readable once the key row is gone.
+     *
+     * @return array{apiKeyId?: int|null, apiKeyPrefix?: string, apiKeyType?: string}
+     * @since 5.47.0
+     */
+    public function attributionOptions(?ApiKey $key): array
+    {
+        if ($key === null) {
+            return [];
+        }
+
+        return [
+            'apiKeyId' => $key->id,
+            'apiKeyPrefix' => $key->keyPrefix,
+            'apiKeyType' => $key->type,
+        ];
+    }
+
+    /**
      * Cheap "are there any keys at all" check — a single `COUNT(*)` query.
      * Used by the API Keys CP index to decide whether to show the
      * "no keys configured yet" banner, without loading every row's data.

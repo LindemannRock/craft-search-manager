@@ -132,6 +132,12 @@ class AnalyticsTrackingService
         $platform = $analyticsOptions['platform'] ?? null;
         $appVersion = $analyticsOptions['appVersion'] ?? null;
 
+        // API key attribution (slice 5). Null/absent for anonymous / unkeyed
+        // requests — the columns stay null and behaviour is unchanged.
+        $apiKeyId = $analyticsOptions['apiKeyId'] ?? null;
+        $apiKeyPrefix = $analyticsOptions['apiKeyPrefix'] ?? null;
+        $apiKeyType = $analyticsOptions['apiKeyType'] ?? null;
+
         // Extract query rules & promotions tracking options
         $synonymsExpanded = $analyticsOptions['synonymsExpanded'] ?? false;
         $rulesMatched = $analyticsOptions['rulesMatched'] ?? 0;
@@ -192,6 +198,9 @@ class AnalyticsTrackingService
                     'ip' => $ip,
                     'userAgent' => $userAgent,
                     'referer' => $referer,
+                    'apiKeyId' => $apiKeyId,
+                    'apiKeyPrefix' => $apiKeyPrefix,
+                    'apiKeyType' => $apiKeyType,
                     'isHit' => $isHit,
                     // Query rules & promotions tracking
                     'synonymsExpanded' => $synonymsExpanded,

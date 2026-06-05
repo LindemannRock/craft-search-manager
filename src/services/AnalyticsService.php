@@ -188,6 +188,14 @@ class AnalyticsService extends Component
     }
 
     /**
+     * @since 5.47.0
+     */
+    public function getApiKeyBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
+    {
+        return $this->_breakdown->getApiKeyBreakdown($siteId, $dateRange);
+    }
+
+    /**
      */
     public function getPeakUsageHours(int|array|null $siteId, string $dateRange = 'last30days'): array
     {

@@ -1329,6 +1329,7 @@ return [
     // Analytics pages
     'Search Activity' => 'Søkeaktivitet',
     'Search Breakdown' => 'Søkefordeling',
+    'API Key Usage' => 'API-nøkkelbruk',
     'Search Trend' => 'Søketrend',
     'Top Searches' => 'Vanligste søk',
     'Top Search' => 'Vanligste søk',
@@ -1477,6 +1478,8 @@ return [
     'Searches' => 'Søk',
     'Count' => 'Antall',
     'Change %' => 'Endring %',
+    'Share' => 'Andel',
+    'API Key Type' => 'API-nøkkeltype',
     'Previous Period' => 'Forrige periode',
     'All time' => 'Hele perioden',
     'Today' => 'I dag',

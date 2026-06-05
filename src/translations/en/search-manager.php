@@ -1329,6 +1329,7 @@ return [
     // Analytics pages
     'Search Activity' => 'Search Activity',
     'Search Breakdown' => 'Search Breakdown',
+    'API Key Usage' => 'API Key Usage',
     'Search Trend' => 'Search Trend',
     'Top Searches' => 'Top Searches',
     'Top Search' => 'Top Search',
@@ -1477,6 +1478,8 @@ return [
     'Searches' => 'Searches',
     'Count' => 'Count',
     'Change %' => 'Change %',
+    'Share' => 'Share',
+    'API Key Type' => 'API Key Type',
     'Previous Period' => 'Previous Period',
     'All time' => 'All time',
     'Today' => 'Today',

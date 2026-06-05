@@ -503,6 +503,13 @@ class Install extends Migration
             'ip' => $this->string(64)->null(),
             'userAgent' => $this->text()->null(),
             'referer' => $this->string()->null(),
+            // API key attribution (null = anonymous / unkeyed request). apiKeyId is
+            // a plain nullable int with no foreign key: it is retained after a key
+            // is revoked so historical rows stay correlatable, while prefix/type are
+            // snapshots that stay readable once the key row is gone.
+            'apiKeyId' => $this->integer()->null(),
+            'apiKeyPrefix' => $this->string(32)->null(),
+            'apiKeyType' => $this->string(16)->null(),
             'isHit' => $this->boolean()->notNull()->defaultValue(true),
             // Query rules & promotions tracking
             'synonymsExpanded' => $this->boolean()->notNull()->defaultValue(false)->comment('Was query expanded with synonyms'),
@@ -553,6 +560,7 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['synonymsExpanded'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['wasRedirected'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['sessionId'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['apiKeyId'], false);
     }
 
     /**

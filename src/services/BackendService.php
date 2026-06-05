@@ -413,6 +413,11 @@ class BackendService extends Component
             'source' => $options['source'] ?? null,
             'platform' => $options['platform'] ?? null,
             'appVersion' => $options['appVersion'] ?? null,
+            // API key attribution (slice 5) — set by ApiController for keyed
+            // requests, absent for anonymous traffic.
+            'apiKeyId' => $options['apiKeyId'] ?? null,
+            'apiKeyPrefix' => $options['apiKeyPrefix'] ?? null,
+            'apiKeyType' => $options['apiKeyType'] ?? null,
         ];
 
         // =====================================================================
@@ -1057,7 +1062,7 @@ class BackendService extends Component
 
         // Remove analytics-only options that don't affect results
         $cacheOptions = $options;
-        foreach (['source', 'platform', 'appVersion', 'skipAnalytics', 'sessionId'] as $key) {
+        foreach (['source', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType'] as $key) {
             unset($cacheOptions[$key]);
         }
 

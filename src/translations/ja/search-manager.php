@@ -1329,6 +1329,7 @@ return [
     // Analytics pages
     'Search Activity' => '検索アクティビティ',
     'Search Breakdown' => '検索内訳',
+    'API Key Usage' => 'API キー使用状況',
     'Search Trend' => '検索トレンド',
     'Top Searches' => 'トップ検索',
     'Top Search' => 'トップ検索',
@@ -1477,6 +1478,8 @@ return [
     'Searches' => '検索',
     'Count' => '件数',
     'Change %' => '変化率 %',
+    'Share' => '割合',
+    'API Key Type' => 'API キータイプ',
     'Previous Period' => '前の期間',
     'All time' => '全期間',
     'Today' => '今日',

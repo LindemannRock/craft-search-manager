@@ -1329,6 +1329,7 @@ return [
     // Analytics pages
     'Search Activity' => 'Zoekactiviteit',
     'Search Breakdown' => 'Zoekverdeling',
+    'API Key Usage' => 'API-sleutelgebruik',
     'Search Trend' => 'Zoektrend',
     'Top Searches' => 'Belangrijkste zoekopdrachten',
     'Top Search' => 'Belangrijkste zoekopdracht',
@@ -1477,6 +1478,8 @@ return [
     'Searches' => 'Zoekopdrachten',
     'Count' => 'Aantal',
     'Change %' => 'Wijziging %',
+    'Share' => 'Aandeel',
+    'API Key Type' => 'API-sleuteltype',
     'Previous Period' => 'Vorige periode',
     'All time' => 'Alle tijd',
     'Today' => 'Vandaag',

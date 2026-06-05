@@ -255,6 +255,58 @@ class AnalyticsBreakdownService
     }
 
     /**
+     * Get API key attribution breakdown — searches grouped by the API key that
+     * made them (slice 5). Only keyed rows are counted (`apiKeyId IS NOT NULL`),
+     * so this returns an empty data set on installs that never enable
+     * `requireApiKey`. The label is the key's prefix snapshot, so rows stay
+     * readable after a key is revoked or deleted.
+     *
+     * @since 5.47.0
+     */
+    public function getApiKeyBreakdown(int|array|null $siteId, string $dateRange = 'last30days'): array
+    {
+        $identityExpr = $this->actionIdentityExpression();
+
+        $perAction = (new Query())
+            ->select(['apiKeyPrefix', 'apiKeyType'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['not', ['apiKeyId' => null]])
+            ->groupBy(['apiKeyPrefix', 'apiKeyType', new Expression($identityExpr)]);
+
+        $this->applyDateRangeFilter($perAction, $dateRange);
+
+        if ($siteId) {
+            $perAction->andWhere(['siteId' => $siteId]);
+        }
+
+        $results = (new Query())
+            ->select(['apiKeyPrefix', 'apiKeyType', 'COUNT(*) as count'])
+            ->from(['t' => $perAction])
+            ->groupBy(['apiKeyPrefix', 'apiKeyType'])
+            ->orderBy(['count' => SORT_DESC])
+            ->all();
+        $total = array_sum(array_column($results, 'count'));
+
+        $data = [];
+        foreach ($results as $row) {
+            $data[] = [
+                'apiKeyPrefix' => $row['apiKeyPrefix'],
+                'apiKeyType' => $row['apiKeyType'],
+                'label' => $row['apiKeyPrefix'] ?: '—',
+                'count' => (int)$row['count'],
+                'percentage' => $total > 0 ? round(($row['count'] / $total) * 100, 1) : 0,
+            ];
+        }
+
+        return [
+            'data' => $data,
+            'labels' => array_column($data, 'label'),
+            'values' => array_column($data, 'count'),
+            'percentages' => array_column($data, 'percentage'),
+        ];
+    }
+
+    /**
      * Get peak usage hours
      *
      * @param int|array|null $siteId

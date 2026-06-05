@@ -439,6 +439,13 @@ class ApiController extends Controller
             $options['appVersion'] = $appVersion;
         }
 
+        // Attribute the analytics row to the authenticated key (slice 5).
+        // No-op for anonymous requests (returns an empty array).
+        $options = array_merge(
+            $options,
+            SearchManager::$plugin->apiKeys->attributionOptions($this->authenticatedKey),
+        );
+
         // Run search (single, multi, or all enabled indices)
         if (count($indexHandles) === 1) {
             $results = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);

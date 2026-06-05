@@ -126,6 +126,11 @@ class AnalyticsController extends Controller
         $handledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, true, $dateRange);
         $unhandledCount = SearchManager::$plugin->analytics->getAnalyticsCount($effectiveSiteId, false, $dateRange);
 
+        // API key attribution breakdown (slice 5). Empty data set on installs
+        // that never enable requireApiKey — the overview only renders the table
+        // when there is keyed traffic.
+        $apiKeyBreakdown = SearchManager::$plugin->analytics->getApiKeyBreakdown($effectiveSiteId, $dateRange);
+
         // Get editable sites for dropdown
         $sites = Craft::$app->getSites()->getEditableSites();
         $settings = SearchManager::$plugin->getSettings();
@@ -135,6 +140,7 @@ class AnalyticsController extends Controller
             'totalCount' => $totalCount,
             'handledCount' => $handledCount,
             'unhandledCount' => $unhandledCount,
+            'apiKeyBreakdown' => $apiKeyBreakdown,
             'dateRange' => $dateRange,
             'siteId' => $siteId,
             'sites' => $sites,

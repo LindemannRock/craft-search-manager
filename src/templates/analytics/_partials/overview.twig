@@ -46,6 +46,45 @@
     </div>
 </div>
 
+{% if apiKeyBreakdown is defined and apiKeyBreakdown.data is not empty %}
+    <h2 class="lr-section-heading">{{ "API Key Usage"|t('search-manager') }}</h2>
+
+    <div class="lr-analytics-charts">
+        <div class="lr-chart-container full-width">
+            <div class="lr-table-scroll">
+                <table class="data fullwidth">
+                    <thead>
+                        <tr>
+                            <th>{{ 'API Key'|t('search-manager') }}</th>
+                            <th>{{ 'Type'|t('search-manager') }}</th>
+                            <th class="lr-text-end">{{ 'Searches'|t('search-manager') }}</th>
+                            <th class="lr-text-end">{{ 'Share'|t('search-manager') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in apiKeyBreakdown.data %}
+                            <tr>
+                                <td><code>{{ row.label }}</code></td>
+                                <td>
+                                    {% if row.apiKeyType == 'public' %}
+                                        {{ 'Public'|t('search-manager') }}
+                                    {% elseif row.apiKeyType == 'server' %}
+                                        {{ 'Server'|t('search-manager') }}
+                                    {% else %}
+                                        —
+                                    {% endif %}
+                                </td>
+                                <td class="lr-text-end"><strong>{{ row.count|number }}</strong></td>
+                                <td class="lr-text-end">{{ row.percentage }}%</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
 <h2 class="lr-section-heading">{{ "Query Analysis"|t('search-manager') }}</h2>
 
 <div class="lr-analytics-charts two-columns">

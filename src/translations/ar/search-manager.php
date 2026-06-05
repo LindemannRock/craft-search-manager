@@ -1329,6 +1329,7 @@ return [
     // Analytics pages
     'Search Activity' => 'نشاط البحث',
     'Search Breakdown' => 'تفصيل البحث',
+    'API Key Usage' => 'استخدام مفاتيح API',
     'Search Trend' => 'اتجاه البحث',
     'Top Searches' => 'أبرز عمليات البحث',
     'Top Search' => 'أبرز عملية بحث',
@@ -1477,6 +1478,8 @@ return [
     'Searches' => 'عمليات البحث',
     'Count' => 'العدد',
     'Change %' => 'التغيير %',
+    'Share' => 'النسبة',
+    'API Key Type' => 'نوع مفتاح API',
     'Previous Period' => 'الفترة السابقة',
     'All time' => 'كل الوقت',
     'Today' => 'اليوم',

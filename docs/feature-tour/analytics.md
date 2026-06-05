@@ -20,6 +20,7 @@ Every search records:
 | Promotions matched | Which promotions were shown |
 | Referrer | The page that triggered the search |
 | Platform, app version | For mobile app tracking |
+| API key | The key that made the request, when [API key enforcement](api-keys.md) is enabled (anonymous otherwise) |
 
 ## How Searches Are Counted @since(5.46.0)
 
@@ -58,6 +59,7 @@ Summary statistics and trends:
 - Search trends over time
 - Intent and source breakdown charts
 - Top queries
+- **API Key Usage** — searches grouped by the API key that made them, with each key's share of traffic. Only shown when there is keyed traffic (see [API key attribution](#api-key-attribution) below)
 
 ### Recent Searches
 
@@ -148,9 +150,23 @@ Or via the REST API:
 GET /actions/search-manager/api/search?q=shoes&source=ios-app&platform=iOS%2017.2&appVersion=2.1.0
 ```
 
+## API Key Attribution
+
+When [API key enforcement](api-keys.md) is enabled, each search and `track-search` analytics row is attributed to the API key that made the request. Three columns are recorded:
+
+- **API Key** — the key's prefix snapshot (e.g. `sm_pub_a1b2c3d4`)
+- **API Key Type** — `public` or `server`
+- (an internal key id, for correlation)
+
+The prefix and type are **snapshots**, so historical rows stay readable even after a key is revoked or deleted. Anonymous traffic — when enforcement is off, or no key was sent — records empty attribution and is excluded from the API Key Usage breakdown.
+
+Attribution covers the endpoints that record analytics: `/api/search` and the widget's `track-search` intent ping. Autocomplete records no analytics, and `track-click` is log-only, so neither carries attribution.
+
+The **API Key Usage** table on the Overview tab groups keyed searches by key, with each key's share of traffic, and only appears when keyed traffic exists.
+
 ## Export
 
-Analytics can be exported as CSV, JSON, or Excel from the Recent Searches tab. Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected).
+Analytics can be exported as CSV, JSON, or Excel from the Recent Searches tab. Exports include all columns with clean headers (Hits, Synonyms, Rules, Promotions, Redirected, and — when keyed traffic exists — API Key and API Key Type).
 
 ## Retention
 

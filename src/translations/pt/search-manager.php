@@ -1329,6 +1329,7 @@ return [
     // Analytics pages
     'Search Activity' => 'Atividade de pesquisa',
     'Search Breakdown' => 'Distribuição de pesquisa',
+    'API Key Usage' => 'Utilização de chaves de API',
     'Search Trend' => 'Tendência de pesquisa',
     'Top Searches' => 'Pesquisas principais',
     'Top Search' => 'Pesquisa principal',
@@ -1477,6 +1478,8 @@ return [
     'Searches' => 'Pesquisas',
     'Count' => 'Contagem',
     'Change %' => 'Variação %',
+    'Share' => 'Proporção',
+    'API Key Type' => 'Tipo de chave de API',
     'Previous Period' => 'Período anterior',
     'All time' => 'Todo o período',
     'Today' => 'Hoje',

@@ -6,6 +6,7 @@ use Craft;
 use craft\web\Controller;
 use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\ApiKeyService;
@@ -39,6 +40,15 @@ class SearchController extends Controller
      * 60s is generous — anything above is either a stuck request or a malicious payload.
      */
     private const MAX_WIDGET_TOOK_MS = 60000;
+
+    /**
+     * The API key authenticated for a tracking request, or null when enforcement
+     * is off / the request is anonymous. Set in {@see beforeAction()}; consumed by
+     * {@see actionTrackSearch()} to attribute the analytics row (slice 5).
+     *
+     * @since 5.47.0
+     */
+    private ?ApiKey $authenticatedKey = null;
 
     /**
      * @inheritdoc
@@ -83,6 +93,9 @@ class SearchController extends Controller
                 is_string($header) ? $header : null,
                 is_string($referer) ? $referer : null,
             );
+
+            // Retain for analytics attribution (slice 5) on track-search.
+            $this->authenticatedKey = $key;
 
             // Enforce the key's allowed indices only when the ping names them
             // (track-click sends `index`, track-search sends `indices`). 403 on
@@ -262,6 +275,16 @@ class SearchController extends Controller
             $backend = SearchManager::$plugin->getSettings()->defaultBackendHandle ?? 'unknown';
         }
 
+        // Attribute the analytics row to the authenticated key (slice 5).
+        // Empty for anonymous requests (requireApiKey off or no key).
+        $analyticsOptions = array_merge(
+            [
+                'source' => $source,
+                'trigger' => $trigger,
+            ],
+            SearchManager::$plugin->apiKeys->attributionOptions($this->authenticatedKey),
+        );
+
         try {
             // Track per index with shared session ID for accurate per-index aggregation
             $sessionId = count($handlesToTrack) > 1 ? \craft\helpers\StringHelper::UUID() : null;
@@ -275,10 +298,7 @@ class SearchController extends Controller
                     $executionTime,
                     $backend,
                     $siteId,
-                    [
-                        'source' => $source,
-                        'trigger' => $trigger,
-                    ],
+                    $analyticsOptions,
                     $sessionId,
                 );
             }

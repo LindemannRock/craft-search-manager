@@ -127,6 +127,8 @@ The **Revoke** action on the index page or the **Delete** button on the edit pag
 
 Use Revoke when the key is leaked, the integration is decommissioned, or the configuration is wrong enough that re-issuing is simpler than fixing.
 
+> Past [analytics](analytics.md#api-key-attribution) rows that were attributed to a revoked key stay readable: they keep a snapshot of the key's prefix and type, so historical traffic remains correlatable after the key row is gone.
+
 | Status | What it means | Triggered by |
 |--------|---------------|--------------|
 | **Active** | In service | Default state after create |
