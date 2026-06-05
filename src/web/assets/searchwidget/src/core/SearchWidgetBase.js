@@ -287,7 +287,7 @@ class SearchWidgetBase extends HTMLElement {
      */
     handleStateChange(newState, changedKeys) {
         // Update results display when results, query, or recent searches changes
-        if (changedKeys.includes('results') || changedKeys.includes('query') || changedKeys.includes('recentSearches')) {
+        if (changedKeys.includes('results') || changedKeys.includes('query') || changedKeys.includes('recentSearches') || changedKeys.includes('error')) {
             this.renderResultsContent();
         }
 
@@ -463,6 +463,7 @@ class SearchWidgetBase extends HTMLElement {
                 results: state.results,
                 recentSearches: state.recentSearches,
                 loading: state.loading,
+                error: state.error,
                 showRecent,
             },
             {

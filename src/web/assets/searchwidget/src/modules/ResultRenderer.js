@@ -737,6 +737,25 @@ export function renderLoadingState() {
 }
 
 /**
+ * Render search error state.
+ *
+ * @param {string} message - Error message to show
+ * @returns {string} HTML string of error state
+ */
+export function renderErrorState(message) {
+    return `
+        <div class="sm-empty sm-error" part="error">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <p>${escapeHtml(message || 'Search failed.')}</p>
+        </div>
+    `;
+}
+
+/**
  * Determine what content to render based on state
  *
  * Helper function that decides which render function to call
@@ -761,7 +780,7 @@ export function renderLoadingState() {
  * }, options);
  */
 export function getContentToRender(state, options) {
-    const { query, results, recentSearches, loading, showRecent } = state;
+    const { query, results, recentSearches, loading, showRecent, error } = state;
     const { showLoadingIndicator = true } = options;
     const hasQuery = query && query.trim();
 
@@ -769,6 +788,14 @@ export function getContentToRender(state, options) {
     if (loading && showLoadingIndicator) {
         return {
             html: renderLoadingState(),
+            hasResults: false,
+            showListbox: false,
+        };
+    }
+
+    if (error) {
+        return {
+            html: renderErrorState(error),
             hasResults: false,
             showListbox: false,
         };

@@ -89,7 +89,7 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
     });
 
     if (!response.ok) {
-        throw new Error('Search failed');
+        throw new Error(await getSearchErrorMessage(response));
     }
 
     const data = await response.json();
@@ -106,6 +106,48 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
         meta: data.meta || null,
         error: data.error || null,
     };
+}
+
+/**
+ * Convert an API error response into a useful widget-facing message.
+ *
+ * @param {Response} response - Fetch response object
+ * @returns {Promise<string>} Error message
+ */
+async function getSearchErrorMessage(response) {
+    const serverMessage = await readServerError(response);
+
+    if (response.status === 401) {
+        return serverMessage || 'Search requires an API key.';
+    }
+    if (response.status === 403) {
+        return serverMessage || 'This API key cannot access this search.';
+    }
+    if (response.status === 429) {
+        return serverMessage || 'Search rate limit exceeded. Try again in a moment.';
+    }
+
+    return serverMessage || 'Search failed.';
+}
+
+/**
+ * Read a JSON/text error body without making error handling depend on it.
+ *
+ * @param {Response} response - Fetch response object
+ * @returns {Promise<string>} Server-provided error message, if available
+ */
+async function readServerError(response) {
+    try {
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+            const data = await response.json();
+            return data.error || data.message || '';
+        }
+
+        return (await response.text()).trim();
+    } catch (e) {
+        return '';
+    }
 }
 
 /**
