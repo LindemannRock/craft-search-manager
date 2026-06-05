@@ -69,6 +69,36 @@ final class RecurringJobsRescheduleTest extends TestCase
         $this->assertSame(2, $this->countQueueRows('SyncStatusJob'));
     }
 
+    public function testCleanupBootstrapDoesNotDuplicateExistingDelayedCleanupRow(): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->enableAnalytics = true;
+        $settings->analyticsRetention = 30;
+
+        Craft::$app->getQueue()->delay(300)->push(new CleanupAnalyticsJob([
+            'reschedule' => true,
+        ]));
+        $this->assertSame(1, $this->countQueueRows('CleanupAnalyticsJob'));
+
+        $this->invokePrivate(SearchManager::$plugin, 'scheduleAnalyticsCleanup');
+
+        $this->assertSame(1, $this->countQueueRows('CleanupAnalyticsJob'));
+    }
+
+    public function testSyncBootstrapDoesNotDuplicateExistingDelayedSyncRow(): void
+    {
+        SearchManager::$plugin->getSettings()->statusSyncInterval = 5;
+
+        Craft::$app->getQueue()->delay(300)->push(new SyncStatusJob([
+            'reschedule' => true,
+        ]));
+        $this->assertSame(1, $this->countQueueRows('SyncStatusJob'));
+
+        $this->invokePrivate(SearchManager::$plugin, 'scheduleStatusSync');
+
+        $this->assertSame(1, $this->countQueueRows('SyncStatusJob'));
+    }
+
     public function testBatchSyncContinuationSchedulesWhenExistingBatchRowExists(): void
     {
         Craft::$app->getQueue()->delay(300)->push(new BatchSyncJob());
@@ -87,6 +117,30 @@ final class RecurringJobsRescheduleTest extends TestCase
         SearchManager::$plugin->pendingSyncs->scheduleBatchJob();
 
         $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
+    }
+
+    public function testBatchSyncDebounceIgnoresFailedExistingBatchRow(): void
+    {
+        Craft::$app->getQueue()->delay(300)->push(new BatchSyncJob());
+        $this->assertSame(1, $this->countQueueRows('BatchSyncJob'));
+
+        Craft::$app->getDb()->createCommand()
+            ->update('{{%queue}}', ['fail' => true], [
+                'and',
+                ['like', 'job', 'searchmanager'],
+                ['like', 'job', 'BatchSyncJob'],
+            ])
+            ->execute();
+
+        SearchManager::$plugin->pendingSyncs->scheduleBatchJob();
+
+        $this->assertSame(2, $this->countQueueRows('BatchSyncJob'));
+    }
+
+    private function invokePrivate(object $object, string $method): void
+    {
+        $reflection = new ReflectionMethod($object, $method);
+        $reflection->invoke($object);
     }
 
     private function countQueueRows(string $jobClass): int

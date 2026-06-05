@@ -331,6 +331,8 @@ class PendingSyncRepository extends Component
                 ->from('{{%queue}}')
                 ->where(['like', 'job', 'BatchSyncJob'])
                 ->andWhere(['like', 'job', 'searchmanager'])
+                ->andWhere(['fail' => false])
+                ->andWhere(['timeUpdated' => null])
                 ->exists();
 
             if ($existingJob) {

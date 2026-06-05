@@ -646,35 +646,30 @@ class SearchManager extends Plugin
             return;
         }
 
-        // Check if a sync job is already scheduled
-        $existingJob = (new \craft\db\Query())
-            ->from('{{%queue}}')
-            ->where(['like', 'job', 'searchmanager'])
-            ->andWhere(['like', 'job', 'SyncStatusJob'])
-            ->exists();
-
-        if (!$existingJob) {
-            $initialDelay = 5 * 60;
-            $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
-
-            // Create sync job with reschedule enabled
-            $job = new SyncStatusJob([
-                'reschedule' => true,
-                'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
-                    $initialRun,
-                    $settings,
-                    false,
-                    false,
-                ),
-            ]);
-
-            // Add to queue with a small initial delay (5 minutes)
-            Craft::$app->queue->delay($initialDelay)->push($job);
-
-            $this->logInfo('Scheduled initial status sync job', [
-                'interval' => $settings->statusSyncInterval . ' minutes',
-            ]);
+        if ($this->hasPendingQueueJob('SyncStatusJob')) {
+            return;
         }
+
+        $initialDelay = 5 * 60;
+        $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
+
+        // Create sync job with reschedule enabled
+        $job = new SyncStatusJob([
+            'reschedule' => true,
+            'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
+                $initialRun,
+                $settings,
+                false,
+                false,
+            ),
+        ]);
+
+        // Add to queue with a small initial delay (5 minutes)
+        Craft::$app->queue->delay($initialDelay)->push($job);
+
+        $this->logInfo('Scheduled initial status sync job', [
+            'interval' => $settings->statusSyncInterval . ' minutes',
+        ]);
     }
 
     /**
@@ -705,36 +700,45 @@ class SearchManager extends Plugin
             return;
         }
 
-        // Check if a cleanup job is already scheduled
-        $existingJob = (new \craft\db\Query())
+        if ($this->hasPendingQueueJob('CleanupAnalyticsJob')) {
+            return;
+        }
+
+        $initialDelay = 5 * 60;
+        $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
+
+        $job = new CleanupAnalyticsJob([
+            'reschedule' => true,
+            'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
+                $initialRun,
+                $settings,
+                false,
+                false,
+            ),
+        ]);
+
+        // Add to queue with a small initial delay (5 minutes)
+        // The job will re-queue itself to the next fixed daily slot.
+        Craft::$app->queue->delay($initialDelay)->push($job);
+
+        $this->logInfo('Scheduled initial analytics cleanup job', [
+            'retention' => $settings->analyticsRetention . ' days',
+            'schedule' => 'daily',
+        ]);
+    }
+
+    /**
+     * Check whether a queue job is already pending for this plugin.
+     */
+    private function hasPendingQueueJob(string $jobClass): bool
+    {
+        return (new \craft\db\Query())
             ->from('{{%queue}}')
             ->where(['like', 'job', 'searchmanager'])
-            ->andWhere(['like', 'job', 'CleanupAnalyticsJob'])
+            ->andWhere(['like', 'job', $jobClass])
+            ->andWhere(['fail' => false])
+            ->andWhere(['timeUpdated' => null])
             ->exists();
-
-        if (!$existingJob) {
-            $initialDelay = 5 * 60;
-            $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
-
-            $job = new CleanupAnalyticsJob([
-                'reschedule' => true,
-                'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
-                    $initialRun,
-                    $settings,
-                    false,
-                    false,
-                ),
-            ]);
-
-            // Add to queue with a small initial delay (5 minutes)
-            // The job will re-queue itself to the next fixed daily slot.
-            Craft::$app->queue->delay($initialDelay)->push($job);
-
-            $this->logInfo('Scheduled initial analytics cleanup job', [
-                'retention' => $settings->analyticsRetention . ' days',
-                'schedule' => 'daily',
-            ]);
-        }
     }
 
     /**
