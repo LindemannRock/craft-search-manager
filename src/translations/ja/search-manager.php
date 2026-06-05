@@ -263,6 +263,7 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} は空にできません。',
+    'Enabled keys must allow all indices or at least one specific index.' => '有効なキーは、すべてのインデックスまたは少なくとも 1 つの特定のインデックスを許可する必要があります。',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} は必須です（または Craft が Redis キャッシュを使用するように設定してください）。',
     '{field} is required when using a dedicated Redis connection.' => '{field} は専用 Redis 接続を使用する場合に必須です。',
     '{field} has an invalid value.' => '{field} の値が無効です。',
@@ -314,7 +315,7 @@ return [
     'Select a default widget...' => 'デフォルトのウィジェットを選択...',
     'API Access' => 'API アクセス',
     'Require API Key' => 'API キーを要求する',
-    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => '有効にすると、公開検索およびオートコンプリートエンドポイントは X-Search-Manager-Key ヘッダーに有効な API キーが必要です。無効にすると、これらのエンドポイントは匿名のままです。',
+    'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => '有効にすると、公開検索、オートコンプリート、およびアナリティクストラッキング（track-search / track-click）エンドポイントは X-Search-Manager-Key ヘッダーに有効な API キーが必要です。無効にすると、これらのエンドポイントは匿名のままです。',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'エレメントの自動インデックス',
@@ -702,6 +703,8 @@ return [
     'Edit API Key' => 'API キーを編集',
     'A descriptive label so you can identify this key in the list. Not exposed to callers.' => 'リストでこのキーを識別するための説明的なラベルです。呼び出し元には公開されません。',
     'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.' => 'パブリックキーはブラウザコード（ウィジェット、オートコンプリート）に埋め込んでも安全です。サーバーキーは信頼されたサーバーサイド統合専用です。タイプは作成後に変更できません。',
+    'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => '公開キーは、ウィジェットやカスタム JavaScript 検索ページなど、ブラウザー向けの用途を想定しています。リファラーと必要なインデックスに制限してください。キーの作成後にタイプは変更できません。',
+    'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'サーバーキーは、バックエンド間の連携を想定しています。ブラウザー HTML、JavaScript、モバイルアプリのバイナリには含めないでください。キーの作成後にタイプは変更できません。',
     'All indices (current and future)' => 'すべてのインデックス（現在および今後のもの）',
     'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'オンの場合、このキーは有効なすべてのインデックス（このキーの作成後に作成されたインデックスを含む）に対して有効です。オフの場合、以下で特定のインデックスを選択してください。',
     'Specific indices' => '特定のインデックス',
@@ -1173,6 +1176,7 @@ return [
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'アナリティクスでのこのウィジェットのカスタム識別子（例: "header-search"、"mobile-nav"）。デフォルトの場合は空白。',
     'Select which index to search' => '検索するインデックスを選択',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'このウィジェットが検索するインデックスを選択。すべてのインデックスを検索する場合はすべてチェックを外す。',
+    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.' => '設定で「API キーを要求する」が有効な場合に、このウィジェットが X-Search-Manager-Key ヘッダーとして送信する公開 API キーです。**パブリック**キーのみを使用してください — サーバーキーは絶対に使用しないでください — また、リファラーおよびこのウィジェットのインデックスに限定して制限してください。「API キーを要求する」が無効な場合は空のままにしてください。レンダリング時の `apiKey` による上書きは、この値より優先されます。',
     'Themes' => 'テーマ',
     'Light' => 'ライト',
     'Light Mode' => 'ライトモード',

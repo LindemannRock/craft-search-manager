@@ -80,6 +80,8 @@ export const BASE_DEFAULTS = {
     maxRecentSearches: 5,
     groupResults: true,
     siteId: '',
+    // Public API key, sent as X-Search-Manager-Key (required when requireApiKey is on)
+    apiKey: '',
     // Internal endpoints (not user-configurable)
     searchEndpoint: '/actions/search-manager/api/search',
     trackClickEndpoint: '/actions/search-manager/search/track-click',
@@ -283,6 +285,7 @@ export function parseConfig(element, widgetType = 'modal') {
         placeholder: element.getAttribute('placeholder') || defaults.placeholder,
         theme: element.getAttribute('theme') || defaults.theme,
         siteId: element.getAttribute('site-id') || defaults.siteId,
+        apiKey: element.getAttribute('api-key') || defaults.apiKey,
         source: element.getAttribute('source') || defaults.source,
         highlightTag: element.getAttribute('highlight-tag') || defaults.highlightTag,
         highlightClass: element.getAttribute('highlight-class') || defaults.highlightClass,

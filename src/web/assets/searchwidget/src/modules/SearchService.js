@@ -24,10 +24,11 @@
  * @param {number} options.snippetLength - Max snippet length
  * @param {boolean} options.parseMarkdownSnippets - Parse markdown before snippets
  * @param {boolean} options.debug - Request debug metadata (overrides devMode default)
+ * @param {string} options.apiKey - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  * @param {AbortSignal} options.signal - AbortController signal
  * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
-export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = 'balanced', snippetLength = 150, parseMarkdownSnippets = false, debug = false, signal }) {
+export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = 'balanced', snippetLength = 150, parseMarkdownSnippets = false, debug = false, apiKey = '', signal }) {
     const params = new URLSearchParams({
         q: query,
         hitsPerPage: maxResults.toString(),
@@ -77,11 +78,14 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
     // Check if endpoint already has query params (Craft's actionUrl includes ?p=...)
     const separator = endpoint.includes('?') ? '&' : '?';
 
+    const headers = { 'Accept': 'application/json' };
+    if (apiKey) {
+        headers['X-Search-Manager-Key'] = apiKey;
+    }
+
     const response = await fetch(`${endpoint}${separator}${params}`, {
         signal,
-        headers: {
-            'Accept': 'application/json',
-        },
+        headers,
     });
 
     if (!response.ok) {
@@ -111,8 +115,9 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
  * @param {string} options.elementId - The clicked element ID
  * @param {string} options.query - The search query
  * @param {string} options.index - The search index
+ * @param {string} options.apiKey - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  */
-export function trackClick({ endpoint, elementId, query, index }) {
+export function trackClick({ endpoint, elementId, query, index, apiKey = '' }) {
     if (!elementId || !endpoint) return;
 
     try {
@@ -121,10 +126,15 @@ export function trackClick({ endpoint, elementId, query, index }) {
         formData.append('query', query);
         formData.append('index', index);
 
+        const headers = { 'Accept': 'application/json' };
+        if (apiKey) {
+            headers['X-Search-Manager-Key'] = apiKey;
+        }
+
         fetch(endpoint, {
             method: 'POST',
             body: formData,
-            headers: { 'Accept': 'application/json' },
+            headers,
         }).catch(() => {
             // Silently fail analytics
         });
@@ -156,8 +166,9 @@ export function trackClick({ endpoint, elementId, query, index }) {
  * @param {string} options.siteId - Optional site ID
  * @param {boolean} [options.cached] - Whether the final search response was served from cache
  * @param {number} [options.took] - Backend execution time in ms (from response meta.took)
+ * @param {string} [options.apiKey] - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  */
-export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, trigger = 'unknown', source = '', siteId = '', cached, took }) {
+export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, trigger = 'unknown', source = '', siteId = '', cached, took, apiKey = '' }) {
     if (!query || !endpoint) return;
 
     try {
@@ -178,10 +189,15 @@ export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, t
             formData.append('took', took.toString());
         }
 
+        const headers = { 'Accept': 'application/json' };
+        if (apiKey) {
+            headers['X-Search-Manager-Key'] = apiKey;
+        }
+
         fetch(endpoint, {
             method: 'POST',
             body: formData,
-            headers: { 'Accept': 'application/json' },
+            headers,
         }).catch(() => {
             // Silently fail analytics
         });

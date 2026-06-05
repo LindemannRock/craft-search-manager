@@ -386,6 +386,7 @@ class SearchWidgetBase extends HTMLElement {
                 snippetLength: this.config.snippetLength,
                 parseMarkdownSnippets: this.config.parseMarkdownSnippets,
                 debug: this.config.debug,
+                apiKey: this.config.apiKey,
                 signal: this.abortController.signal,
             });
 
@@ -673,6 +674,7 @@ class SearchWidgetBase extends HTMLElement {
                 elementId: id,
                 query,
                 index: this.config.index,
+                apiKey: this.config.apiKey,
             });
         }
 
@@ -1124,6 +1126,7 @@ class SearchWidgetBase extends HTMLElement {
             siteId: this.config.siteId,
             cached: this.lastSearchCacheState?.cached,
             took: this.lastSearchCacheState?.took,
+            apiKey: this.config.apiKey,
         });
     }
 

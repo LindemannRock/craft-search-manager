@@ -7,7 +7,7 @@ use craft\web\Controller;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
-use yii\web\ForbiddenHttpException;
+use lindemannrock\searchmanager\services\ApiKeyService;
 use yii\web\Response;
 
 /**
@@ -27,11 +27,6 @@ class ApiController extends Controller
      * Maximum number of indices allowed per request
      */
     private const MAX_INDICES_COUNT = 5;
-
-    /**
-     * Request header that carries the API key on enforced endpoints.
-     */
-    private const API_KEY_HEADER = 'X-Search-Manager-Key';
 
     /**
      * @inheritdoc
@@ -65,20 +60,17 @@ class ApiController extends Controller
         }
 
         if (SearchManager::$plugin->getSettings()->requireApiKey) {
-            $request = Craft::$app->getRequest();
-            $header = $request->getHeaders()->get(self::API_KEY_HEADER);
-            $key = SearchManager::$plugin->apiKeys->authenticate(is_string($header) ? $header : null);
+            $headers = Craft::$app->getRequest()->getHeaders();
+            $header = $headers->get(ApiKeyService::REQUEST_HEADER);
+            $referer = $headers->get('Referer');
 
-            // Public keys are referrer-restricted (read the Referer header
-            // directly rather than getReferrer() so console/test requests work);
-            // server keys are trusted backend-to-backend and skip the check.
-            if ($key->type === ApiKey::TYPE_PUBLIC) {
-                $referer = $request->getHeaders()->get('Referer');
-                if (!$key->allowsReferrer(is_string($referer) ? $referer : null)) {
-                    // Raw English — JSON API response (see exception-messages.md).
-                    throw new ForbiddenHttpException('Referrer not allowed for this API key.');
-                }
-            }
+            // Authenticate + public-key referrer check (shared with the tracking
+            // gate). Read the Referer header directly rather than getReferrer()
+            // so console/test requests work.
+            $key = SearchManager::$plugin->apiKeys->authenticateRequest(
+                is_string($header) ? $header : null,
+                is_string($referer) ? $referer : null,
+            );
 
             // Per-key request cap (slice 3): 429 when the per-minute limit is hit.
             SearchManager::$plugin->apiKeys->enforceRateLimit($key);

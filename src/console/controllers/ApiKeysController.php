@@ -52,8 +52,8 @@ class ApiKeysController extends Controller
 
     /**
      * @var string Comma-separated index handles. Use `*` for "all indices".
-     *   Empty string is treated as "no indices" and the key cannot be used
-     *   until restrictions are widened via the CP.
+     *   Empty string is valid only with `--disabled`, creating an incomplete
+     *   draft key whose restrictions must be widened before it can be enabled.
      */
     public string $indices = '';
 

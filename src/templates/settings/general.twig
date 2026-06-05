@@ -98,7 +98,7 @@
 
 		{{ forms.lightswitchField({
 			label: 'Require API Key'|t('search-manager'),
-			instructions: 'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.'|t('search-manager'),
+			instructions: 'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.'|t('search-manager'),
 			id: 'requireApiKey',
 			name: 'settings[requireApiKey]',
 			on: settings.requireApiKey,

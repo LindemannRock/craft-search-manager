@@ -284,6 +284,25 @@ final class ApiKeyServiceTest extends TestCase
         $this->assertTrue($key->validate());
     }
 
+    public function testEnabledKeyValidationRejectsEmptyAllowedIndices(): void
+    {
+        $key = $this->makeTestKey();
+        $key->enabled = true;
+        $key->allowedIndices = [];
+
+        $this->assertFalse($key->validate());
+        $this->assertArrayHasKey('allowedIndices', $key->getErrors());
+    }
+
+    public function testDisabledKeyValidationAllowsEmptyAllowedIndices(): void
+    {
+        $key = $this->makeTestKey();
+        $key->enabled = false;
+        $key->allowedIndices = [];
+
+        $this->assertTrue($key->validate());
+    }
+
     public function testFindAllReturnsAllRowsAndFiltersByType(): void
     {
         $this->seedKey(ApiKey::TYPE_PUBLIC);
@@ -441,6 +460,7 @@ final class ApiKeyServiceTest extends TestCase
         $key->type = ApiKey::TYPE_PUBLIC;
         $key->keyHash = $generated['hash'];
         $key->keyPrefix = $generated['prefix'];
+        $key->allowedIndices = [ApiKey::ALL_INDICES];
         return $key;
     }
 

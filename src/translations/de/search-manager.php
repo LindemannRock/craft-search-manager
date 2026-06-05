@@ -263,6 +263,7 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} darf nicht leer sein.',
+    'Enabled keys must allow all indices or at least one specific index.' => 'Aktivierte Schlüssel müssen alle Indizes oder mindestens einen bestimmten Index erlauben.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} ist erforderlich (oder konfigurieren Sie Craft für die Verwendung des Redis-Cache).',
     '{field} is required when using a dedicated Redis connection.' => '{field} ist erforderlich, wenn eine dedizierte Redis-Verbindung verwendet wird.',
     '{field} has an invalid value.' => '{field} hat einen ungültigen Wert.',
@@ -314,7 +315,7 @@ return [
     'Select a default widget...' => 'Standard-Widget auswählen...',
     'API Access' => 'API-Zugang',
     'Require API Key' => 'API-Schlüssel erforderlich',
-    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Wenn aktiviert, erfordern die öffentlichen Such- und Autocomplete-Endpunkte einen gültigen API-Schlüssel im Header X-Search-Manager-Key. Wenn deaktiviert, bleiben diese Endpunkte anonym zugänglich.',
+    'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Wenn aktiviert, erfordern die öffentlichen Such-, Autocomplete- und Analytics-Tracking-Endpunkte (track-search / track-click) einen gültigen API-Schlüssel im Header X-Search-Manager-Key. Wenn deaktiviert, bleiben diese Endpunkte anonym zugänglich.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Elemente automatisch indexieren',
@@ -702,6 +703,8 @@ return [
     'Edit API Key' => 'API-Schlüssel bearbeiten',
     'A descriptive label so you can identify this key in the list. Not exposed to callers.' => 'Eine beschreibende Bezeichnung, damit Sie diesen Schlüssel in der Liste identifizieren können. Wird Aufrufern nicht offengelegt.',
     'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.' => 'Öffentliche Schlüssel können sicher in Browser-Code eingebettet werden (Widget, Autocomplete). Server-Schlüssel sind nur für vertrauenswürdige serverseitige Integrationen vorgesehen. Der Typ kann nach der Erstellung nicht geändert werden.',
+    'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => 'Öffentliche Schlüssel sind für browserseitige Nutzung wie Widgets und eigene JavaScript-Suchseiten vorgesehen. Beschränken Sie sie nach Referrer und auf die benötigten Indizes. Der Typ kann nach dem Erstellen des Schlüssels nicht mehr geändert werden.',
+    'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'Server-Schlüssel sind für Backend-zu-Backend-Integrationen vorgesehen. Verwahren Sie sie nicht in Browser-HTML, JavaScript oder Mobile-App-Binärdateien. Der Typ kann nach dem Erstellen des Schlüssels nicht mehr geändert werden.',
     'All indices (current and future)' => 'Alle Indizes (aktuelle und zukünftige)',
     'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'Wenn aktiviert, ist dieser Schlüssel für jeden aktivierten Index gültig – einschließlich Indizes, die nach dem Schlüssel erstellt werden. Wenn deaktiviert, wählen Sie unten bestimmte Indizes aus.',
     'Specific indices' => 'Bestimmte Indizes',
@@ -1173,6 +1176,7 @@ return [
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Benutzerdefinierter Bezeichner für dieses Widget in Analytics (z. B. „header-search", „mobile-nav"). Leer lassen für Standard.',
     'Select which index to search' => 'Zu durchsuchenden Index auswählen',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Auswählen, welche Indizes dieses Widget durchsucht. Alle deaktiviert lassen, um alle Indizes zu durchsuchen.',
+    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.' => 'Der öffentliche API-Schlüssel, den dieses Widget sendet (als X-Search-Manager-Key-Header), wenn „API-Schlüssel erforderlich“ in den Einstellungen aktiviert ist. Verwenden Sie ausschließlich einen **öffentlichen** Schlüssel — niemals einen Server-Schlüssel — und beschränken Sie ihn auf bestimmte Referrer sowie auf die Indizes dieses Widgets. Leer lassen, wenn „API-Schlüssel erforderlich“ deaktiviert ist. Eine `apiKey`-Überschreibung zur Render-Zeit hat Vorrang vor diesem Wert.',
     'Themes' => 'Themes',
     'Light' => 'Hell',
     'Light Mode' => 'Hellmodus',

@@ -263,13 +263,16 @@ The heading description is static — it always shows the same text regardless o
 
 **Symptom:** After turning on **Require API Key** (Settings → General → API Access), the search and autocomplete endpoints return `401` ("API key required" / "Invalid API key") or `403` — including your own site's search widget.
 
-**Cause:** With the setting enabled, both endpoints require a valid key in the `X-Search-Manager-Key` header. Any caller that doesn't send a valid, active, in-scope key is rejected. The bundled search widget does **not** send a key yet (widget key-passing is a planned slice), so enabling enforcement will break the bundled widget's own requests.
+**Symptom (also):** The widget's `track-search` / `track-click` pings return `401`/`403`.
+
+**Cause:** With the setting enabled, the search, autocomplete, **and** tracking endpoints require a valid key in the `X-Search-Manager-Key` header. Any caller that doesn't send a valid, active, in-scope key is rejected. The bundled widget sends its configured key automatically — but only if you've set one: give the widget a **public** API key via its **API Key** config field (Search Manager → Widgets → your widget) or a render-time `apiKey` override. Without one, the widget's own requests are rejected.
 
 **Fix:**
+- **Bundled widget:** set a **public** API key on the widget — the **API Key** field in the widget config, or an inline `apiKey` override on the include tag. Use a public key (referrer-restricted, scoped to the widget's indices), never a server key.
 - For headless / mobile / custom callers: send a valid key in the `X-Search-Manager-Key` header. Check the key is enabled, not expired, and that its allowed indices cover the index you're querying. Public keys must also match their allowed referrers.
 - `403` on a `siteId` request means the requested site is outside the selected index's site scope; a `400` means the `siteId` isn't a real site.
-- A `429` ("API rate limit exceeded") means the key hit its per-minute `rateLimit`. Raise the key's rate limit, spread requests out, or clear it for no cap. The window resets each minute.
-- If you only need the bundled widget (same-site) and aren't ready to wire keys into it, leave **Require API Key** off — those endpoints stay anonymous and the widget keeps working. See [API Keys](../feature-tour/api-keys.md) and [API Endpoints → Authentication](../template-guides/api-endpoints.md#authentication).
+- A `429` ("API rate limit exceeded") means the key hit its per-minute `rateLimit`. Raise the key's rate limit, spread requests out, or clear it for no cap. The window resets each minute. (Tracking pings are not rate-limited.)
+- If you don't need enforcement, leave **Require API Key** off — all four endpoints stay anonymous and the widget keeps working without a key. See [API Keys](../feature-tour/api-keys.md) and [API Endpoints → Authentication](../template-guides/api-endpoints.md#authentication).
 
 ## Getting Help
 

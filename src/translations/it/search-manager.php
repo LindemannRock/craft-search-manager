@@ -263,6 +263,7 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} non può essere vuoto.',
+    'Enabled keys must allow all indices or at least one specific index.' => 'Le chiavi abilitate devono consentire tutti gli indici o almeno un indice specifico.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} è obbligatorio (oppure configura Craft per utilizzare la cache Redis).',
     '{field} is required when using a dedicated Redis connection.' => '{field} è obbligatorio quando si utilizza una connessione Redis dedicata.',
     '{field} has an invalid value.' => '{field} ha un valore non valido.',
@@ -314,7 +315,7 @@ return [
     'Select a default widget...' => 'Seleziona un widget predefinito...',
     'API Access' => 'Accesso API',
     'Require API Key' => 'Richiedi chiave API',
-    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Se abilitato, gli endpoint pubblici di ricerca e completamento automatico richiedono una chiave API valida nell\'intestazione X-Search-Manager-Key. Se disabilitato, questi endpoint rimangono anonimi.',
+    'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Se abilitato, gli endpoint pubblici di ricerca, completamento automatico e tracciamento delle analisi (track-search / track-click) richiedono una chiave API valida nell\'intestazione X-Search-Manager-Key. Se disabilitato, questi endpoint rimangono anonimi.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Indicizzazione automatica degli elementi',
@@ -702,6 +703,8 @@ return [
     'Edit API Key' => 'Modifica chiave API',
     'A descriptive label so you can identify this key in the list. Not exposed to callers.' => 'Un\'etichetta descrittiva per identificare questa chiave nell\'elenco. Non esposta ai chiamanti.',
     'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.' => 'Le chiavi pubbliche possono essere incorporate in sicurezza nel codice del browser (widget, completamento automatico). Le chiavi server sono destinate solo a integrazioni server-side attendibili. Il tipo non può essere modificato dopo la creazione.',
+    'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => 'Le chiavi pubbliche sono pensate per l’uso nel browser, come widget e pagine di ricerca JavaScript personalizzate. Limitarle per referrer e agli indici necessari. Il tipo non può essere modificato dopo la creazione della chiave.',
+    'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'Le chiavi server sono pensate per integrazioni da backend a backend. Non inserirle in HTML del browser, JavaScript o binari di app mobili. Il tipo non può essere modificato dopo la creazione della chiave.',
     'All indices (current and future)' => 'Tutti gli indici (attuali e futuri)',
     'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'Quando attivo, questa chiave è valida per ogni indice abilitato — inclusi gli indici creati dopo la chiave. Quando disattivato, scegli indici specifici di seguito.',
     'Specific indices' => 'Indici specifici',
@@ -1173,6 +1176,7 @@ return [
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Identificatore personalizzato per questo widget nelle analisi (ad es. "header-search", "mobile-nav"). Lascia vuoto per il predefinito.',
     'Select which index to search' => 'Seleziona quale indice cercare',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Seleziona quali indici cerca questo widget. Lascia tutto deselezionato per cercare in tutti gli indici.',
+    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.' => 'La chiave API pubblica che questo widget invia (come intestazione X-Search-Manager-Key) quando "Richiedi chiave API" è abilitato nelle impostazioni. Utilizzare esclusivamente una chiave **pubblica** — mai una chiave server — e limitarla per referrer e agli indici di questo widget. Lasciare vuoto se "Richiedi chiave API" è disabilitato. Una sostituzione `apiKey` in fase di rendering ha la precedenza su questo valore.',
     'Themes' => 'Temi',
     'Light' => 'Chiaro',
     'Light Mode' => 'Modalità chiara',

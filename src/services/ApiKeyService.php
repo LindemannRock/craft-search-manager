@@ -48,6 +48,9 @@ class ApiKeyService extends Component
     /** @var int Length of the stored/displayed prefix: `sm_xxx_` + 8 hex chars. */
     private const PREFIX_LENGTH = 15;
 
+    /** @var string HTTP header that carries the API key on enforced endpoints. */
+    public const REQUEST_HEADER = 'X-Search-Manager-Key';
+
     /** @var string Cache-key prefix for per-key, per-minute rate-limit counters. */
     private const RATE_LIMIT_CACHE_PREFIX = 'searchmanager:apikey:ratelimit:';
 
@@ -184,6 +187,31 @@ class ApiKeyService extends Component
         }
 
         $this->recordUsage($key);
+
+        return $key;
+    }
+
+    /**
+     * Authenticate a presented key and apply the public-key referrer check —
+     * the gate shared by the search/autocomplete (ApiController) and tracking
+     * (SearchController) endpoints. Index / siteId / rate-limit checks are NOT
+     * here; they differ per endpoint group and are applied by the caller.
+     *
+     * @throws UnauthorizedHttpException 401 — missing, unknown, or invalid key.
+     * @throws ForbiddenHttpException 403 — disabled/expired key, or a public
+     *   key whose referrer is outside its allowed referrers.
+     * @since 5.47.0
+     */
+    public function authenticateRequest(?string $plaintext, ?string $referer): ApiKey
+    {
+        $key = $this->authenticate($plaintext);
+
+        // Public keys are referrer-restricted; server keys are trusted
+        // backend-to-backend and skip the check.
+        if ($key->type === ApiKey::TYPE_PUBLIC && !$key->allowsReferrer($referer)) {
+            // Raw English — JSON API response (see exception-messages.md).
+            throw new ForbiddenHttpException('Referrer not allowed for this API key.');
+        }
 
         return $key;
     }

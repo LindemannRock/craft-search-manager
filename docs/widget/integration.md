@@ -22,6 +22,19 @@ Create a widget configuration in the CP (Search Manager > Widgets) or config fil
 } %}
 ```
 
+## API Key (when Require API Key is on)
+
+If [**Require API Key**](../feature-tour/api-keys.md) is enabled, the widget must send a valid **public** API key — on search, autocomplete, **and** the analytics tracking pings. Set it once on the widget config's **API Key** field (Search Manager → Widgets → your widget), or pass it at render time:
+
+```twig
+{% include 'search-manager/_widget/search-modal' with {
+    config: 'main-search',
+    apiKey: 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+} %}
+```
+
+A render-time `apiKey` overrides the saved config value. Use a **public** key only — referrer-restricted and scoped to the widget's indices. Never put a server key in a widget; the value is emitted into the page HTML. When **Require API Key** is off, no key is needed.
+
 ## Overriding Styles Inline
 
 Override specific visual styles at render time. These merge on top of the widget config's [style preset](styles.md):

@@ -193,7 +193,7 @@ php craft search-manager/api-keys/create \
 |--------|------|---------|-------------|
 | `--name` | `string` | *(required)* | Human-readable label shown in the CP listing. |
 | `--type` | `string` | `public` | Key type: `public` (intended for browser embedding, `sm_pub_…` prefix) or `server` (server-side only, `sm_srv_…` prefix). Locked once generated. |
-| `--indices` | `string` | *(none)* | Comma-separated index handles, or `*` for all indices (current and future). An empty value creates a non-functional key — restrictions must be widened from the CP before it can be used. |
+| `--indices` | `string` | *(none)* | Comma-separated index handles, or `*` for all indices (current and future). Empty is only valid with `--disabled`, creating an incomplete draft key that must be widened before it can be enabled. |
 | `--referrers` | `string` | *(none — any referrer allowed)* | Comma-separated allowed referrer patterns. Each entry is either an exact host (`example.com`) or a subdomain wildcard (`*.example.com`, matches any subdomain depth). |
 | `--max-hits` | `int` | *(none)* | Clamp on the `hitsPerPage` request parameter. |
 | `--rate-limit` | `int` | *(none)* | Per-key requests-per-minute cap. Requests beyond the cap are rejected with `429`. Omit for no limit. |

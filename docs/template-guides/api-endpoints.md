@@ -4,7 +4,7 @@ Search Manager provides REST API endpoints for building instant search interface
 
 ## Authentication
 
-By default the **search** and **autocomplete** endpoints are anonymous — no key required. When **Require API Key** is enabled (Settings → General → API Access), both endpoints require a valid [API key](../feature-tour/api-keys.md) sent in the `X-Search-Manager-Key` request header:
+By default the public API endpoints are anonymous — no key required. When **Require API Key** is enabled (Settings → General → API Access), the **search**, **autocomplete**, **track-search**, and **track-click** endpoints require a valid [API key](../feature-tour/api-keys.md) sent in the `X-Search-Manager-Key` request header:
 
 ```text
 X-Search-Manager-Key: sm_pub_a1b2c3d4e5f6...
@@ -21,11 +21,13 @@ Rejections (returned as the endpoint's JSON error, in English):
 
 **Rate limit.** A key may set a `rateLimit` (requests per minute). When exceeded, requests are rejected with `429` until the next one-minute window. The cap is per key (counted across search + autocomplete) and applies only to authenticated requests; a key with no `rateLimit` is unlimited.
 
+**Public vs server keys.** Use a public key for browser-side callers such as the bundled widget or a custom JavaScript search page, and restrict it by referrer. Use a server key for backend-to-backend callers, including the backend for a mobile app. Server keys skip the referrer check, but still respect enabled/disabled state, expiry, allowed indices, max hits per page, and rate limits.
+
 **Index scope.** A key authorizes a set of indices (its *allowed indices*). A request that names indices must stay within that set; a request that names none is scoped to the key's allowed indices (a `*` key searches all enabled indices).
 
 **Site scope.** `siteId` is only a filter — site visibility is controlled by each index, not by the key. With no `siteId`, results span all sites the selected indices cover. For a keyed request, a `siteId` outside the scope of a selected index is rejected with `403`; an unknown `siteId` is rejected with `400`. Anonymous requests keep their existing behaviour (the `siteId` is applied as a plain filter).
 
-The `track-search` / `track-click` analytics endpoints are **not** gated and remain anonymous regardless of this setting.
+The `track-search` / `track-click` analytics endpoints are gated the same way when **Require API Key** is on (authenticate + public-key referrer, plus the allowed-indices check when the ping includes `index`/`indices`). They are **not** rate-limited. When the setting is off, they stay anonymous. The bundled widget sends its configured key on these pings automatically.
 
 ## Search API
 

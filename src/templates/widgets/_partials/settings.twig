@@ -42,3 +42,12 @@
 	options: indexOptions,
 	errors: widgetConfig.getErrors('settings.search.indexHandles'),
 }) }}
+
+{{ forms.textField({
+	label: 'API Key'|t('search-manager'),
+	instructions: 'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.'|t('search-manager'),
+	id: 'settings-apiKey',
+	name: 'settings[apiKey]',
+	value: widgetConfig.getApiKey(),
+	errors: widgetConfig.getErrors('settings.apiKey'),
+}) }}

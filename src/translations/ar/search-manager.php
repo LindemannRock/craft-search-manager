@@ -263,6 +263,7 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => 'لا يمكن أن يكون {field} فارغاً.',
+    'Enabled keys must allow all indices or at least one specific index.' => 'يجب أن تسمح المفاتيح المفعّلة بكل الفهارس أو بفهرس محدد واحد على الأقل.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} مطلوب (أو قم بتهيئة Craft لاستخدام Cache Redis).',
     '{field} is required when using a dedicated Redis connection.' => '{field} مطلوب عند استخدام اتصال Redis مخصص.',
     '{field} has an invalid value.' => '{field} يحتوي على قيمة غير صالحة.',
@@ -314,7 +315,7 @@ return [
     'Select a default widget...' => 'اختر ودجة افتراضية...',
     'API Access' => 'وصول API',
     'Require API Key' => 'طلب مفتاح API',
-    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'عند التفعيل، تتطلب نقاط نهاية البحث والإكمال التلقائي العامة مفتاح API صالحاً في الترويسة X-Search-Manager-Key. عند التعطيل، تظل هذه النقاط مجهولة الهوية.',
+    'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'عند التفعيل، تتطلب نقاط نهاية البحث والإكمال التلقائي وتتبع التحليلات (track-search / track-click) العامة مفتاح API صالحاً في الترويسة X-Search-Manager-Key. عند التعطيل، تظل هذه النقاط مجهولة الهوية.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'فهرسة العناصر تلقائياً',
@@ -702,6 +703,8 @@ return [
     'Edit API Key' => 'تحرير مفتاح API',
     'A descriptive label so you can identify this key in the list. Not exposed to callers.' => 'تسمية وصفية لتتمكن من تحديد هذا المفتاح في القائمة. غير معروضة للمستدعين.',
     'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.' => 'المفاتيح العامة آمنة لتضمينها في كود المتصفح (الأداة، الإكمال التلقائي). مفاتيح الخادم مخصصة للتكاملات الموثوقة من جانب الخادم فقط. لا يمكن تغيير النوع بعد الإنشاء.',
+    'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => 'المفاتيح العامة مخصصة للاستخدام المواجه للمتصفح مثل الودجات وصفحات البحث المخصصة باستخدام JavaScript. قيّدها حسب المرجع وبالفهارس التي تحتاجها فقط. لا يمكن تغيير النوع بعد إنشاء المفتاح.',
+    'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'مفاتيح الخادم مخصصة للتكاملات من Backend إلى Backend. لا تضعها في HTML المتصفح أو JavaScript أو ملفات تطبيقات الجوال الثنائية. لا يمكن تغيير النوع بعد إنشاء المفتاح.',
     'All indices (current and future)' => 'جميع الفهارس (الحالية والمستقبلية)',
     'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'عند التفعيل، يكون هذا المفتاح صالحاً لكل فهرس مفعّل — بما في ذلك الفهارس التي تُنشأ بعد المفتاح. عند التعطيل، اختر فهارس محددة أدناه.',
     'Specific indices' => 'فهارس محددة',
@@ -1173,6 +1176,7 @@ return [
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'معرف مخصص لهذه الأداة في التحليلات (مثل "header-search"، "mobile-nav"). اترك فارغاً للافتراضي.',
     'Select which index to search' => 'حدد الفهرس المراد البحث فيه',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'حدد الفهارس التي تبحث فيها هذه الأداة. اترك الكل بدون تحديد للبحث في جميع الفهارس.',
+    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.' => 'مفتاح API العام الذي ترسله هذه الأداة (كرأس X-Search-Manager-Key) عند تفعيل «طلب مفتاح API» في الإعدادات. استخدم مفتاحاً **عاماً** فقط — ولا تستخدم أبداً مفتاح خادم — وقيّده بالمراجع المسموح بها وبفهارس هذه الأداة فقط. اتركه فارغاً إذا كان «طلب مفتاح API» معطّلاً. يأخذ تجاوز `apiKey` في وقت العرض الأولوية على هذه القيمة.',
     'Themes' => 'السمات',
     'Light' => 'فاتح',
     'Light Mode' => 'الوضع الفاتح',

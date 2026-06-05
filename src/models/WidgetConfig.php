@@ -433,6 +433,18 @@ class WidgetConfig extends Model
         return $this->getSetting('analytics.source', '');
     }
 
+    /**
+     * The saved public API key this widget sends as the `X-Search-Manager-Key`
+     * header. Used when `requireApiKey` is enabled. Public keys only — never a
+     * server key. A render-time `apiKey` override takes precedence over this.
+     *
+     * @since 5.47.0
+     */
+    public function getApiKey(): string
+    {
+        return (string) $this->getSetting('apiKey', '');
+    }
+
     public function getIdleTimeout(): int
     {
         return (int) $this->getSetting('analytics.idleTimeout', 1500);

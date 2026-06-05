@@ -263,6 +263,7 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} mag niet leeg zijn.',
+    'Enabled keys must allow all indices or at least one specific index.' => 'Ingeschakelde sleutels moeten alle indexen of ten minste één specifieke index toestaan.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} is vereist (of configureer Craft om Redis-cache te gebruiken).',
     '{field} is required when using a dedicated Redis connection.' => '{field} is vereist bij gebruik van een toegewezen Redis-verbinding.',
     '{field} has an invalid value.' => '{field} heeft een ongeldige waarde.',
@@ -314,7 +315,7 @@ return [
     'Select a default widget...' => 'Selecteer een standaardwidget...',
     'API Access' => 'API-toegang',
     'Require API Key' => 'API-sleutel vereisen',
-    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Wanneer ingeschakeld, vereisen de openbare zoek- en autocomplete-eindpunten een geldige API-sleutel in de header X-Search-Manager-Key. Wanneer uitgeschakeld, blijven deze eindpunten anoniem toegankelijk.',
+    'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Wanneer ingeschakeld, vereisen de openbare zoek-, autocomplete- en analysetracking-eindpunten (track-search / track-click) een geldige API-sleutel in de header X-Search-Manager-Key. Wanneer uitgeschakeld, blijven deze eindpunten anoniem toegankelijk.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Elementen automatisch indexeren',
@@ -702,6 +703,8 @@ return [
     'Edit API Key' => 'API-sleutel bewerken',
     'A descriptive label so you can identify this key in the list. Not exposed to callers.' => 'Een beschrijvend label zodat u deze sleutel in de lijst kunt herkennen. Niet zichtbaar voor aanroepers.',
     'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.' => 'Publieke sleutels zijn veilig om in browsercode in te bedden (widget, automatisch aanvullen). Serversleutels zijn uitsluitend voor vertrouwde server-side integraties. Het type kan na aanmaak niet meer worden gewijzigd.',
+    'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => 'Publieke sleutels zijn bedoeld voor browsergerichte toepassingen zoals widgets en aangepaste JavaScript-zoekpagina’s. Beperk ze op referrer en tot de indexen die ze nodig hebben. Het type kan niet meer worden gewijzigd nadat de sleutel is aangemaakt.',
+    'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'Serversleutels zijn bedoeld voor backend-naar-backend-integraties. Plaats ze niet in browser-HTML, JavaScript of binaire mobiele-appbestanden. Het type kan niet meer worden gewijzigd nadat de sleutel is aangemaakt.',
     'All indices (current and future)' => 'Alle indexen (huidig en toekomstig)',
     'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'Indien ingeschakeld, is deze sleutel geldig voor elke ingeschakelde index — inclusief indexen die na de sleutel worden aangemaakt. Indien uitgeschakeld, kiest u hieronder specifieke indexen.',
     'Specific indices' => 'Specifieke indexen',
@@ -1173,6 +1176,7 @@ return [
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Aangepast identificatiekenmerk voor deze widget in analyses (bijv. "header-search", "mobile-nav"). Laat leeg voor standaard.',
     'Select which index to search' => 'Selecteer welke index u wilt doorzoeken',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Selecteer welke indexen deze widget doorzoekt. Laat alles uitgevinkt om alle indexen te doorzoeken.',
+    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.' => 'De openbare API-sleutel die dit widget verstuurt (als X-Search-Manager-Key-header) wanneer "API-sleutel vereisen" is ingeschakeld in de instellingen. Gebruik uitsluitend een **publieke** sleutel — nooit een serversleutel — en beperk deze tot bepaalde verwijzers en de indexen van dit widget. Laat leeg als "API-sleutel vereisen" is uitgeschakeld. Een `apiKey`-overschrijving bij het renderen heeft voorrang op deze waarde.',
     'Themes' => 'Thema\'s',
     'Light' => 'Licht',
     'Light Mode' => 'Lichte modus',

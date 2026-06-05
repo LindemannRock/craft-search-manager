@@ -263,6 +263,7 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} kan ikke være tom.',
+    'Enabled keys must allow all indices or at least one specific index.' => 'Aktiverede nøgler skal tillade alle indekser eller mindst ét specifikt indeks.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} er påkrævet (eller konfigurer Craft til at bruge Redis-cache).',
     '{field} is required when using a dedicated Redis connection.' => '{field} er påkrævet, når der bruges en dedikeret Redis-forbindelse.',
     '{field} has an invalid value.' => '{field} har en ugyldig værdi.',
@@ -314,7 +315,7 @@ return [
     'Select a default widget...' => 'Vælg en standard-widget...',
     'API Access' => 'API-adgang',
     'Require API Key' => 'Kræv API-nøgle',
-    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Når aktiveret kræver de offentlige søge- og autofuldførelsesslutpunkter en gyldig API-nøgle i headeren X-Search-Manager-Key. Når deaktiveret forbliver disse slutpunkter anonyme.',
+    'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'Når aktiveret kræver de offentlige søge-, autofuldførelses- og analysesporingsslutpunkter (track-search / track-click) en gyldig API-nøgle i headeren X-Search-Manager-Key. Når deaktiveret forbliver disse slutpunkter anonyme.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Auto-indekser elementer',
@@ -702,6 +703,8 @@ return [
     'Edit API Key' => 'Rediger API-nøgle',
     'A descriptive label so you can identify this key in the list. Not exposed to callers.' => 'En beskrivende etiket, så du kan identificere denne nøgle i listen. Ikke synlig for kaldere.',
     'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.' => 'Offentlige nøgler er sikre at indlejre i browserkode (widget, autofuldførelse). Servernøgler er kun til betroede integrationer på serversiden. Type kan ikke ændres efter oprettelse.',
+    'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => 'Offentlige nøgler er beregnet til browserrettet brug, f.eks. widgets og brugerdefinerede JavaScript-søgesider. Begræns dem efter referrer og til de indeks, de har brug for. Typen kan ikke ændres, efter at nøglen er oprettet.',
+    'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'Servernøgler er beregnet til backend-til-backend-integrationer. Placer dem ikke i browser-HTML, JavaScript eller mobilapp-binærer. Typen kan ikke ændres, efter at nøglen er oprettet.',
     'All indices (current and future)' => 'Alle indekser (nuværende og fremtidige)',
     'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'Når aktiveret er denne nøgle gyldig mod alle aktiverede indekser — inklusive indekser oprettet efter nøglen. Når deaktiveret, vælg specifikke indekser nedenfor.',
     'Specific indices' => 'Specifikke indekser',
@@ -1173,6 +1176,7 @@ return [
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Tilpasset identifikator for denne widget i analyser (f.eks. "header-search", "mobile-nav"). Lad stå tom for standard.',
     'Select which index to search' => 'Vælg hvilket indeks der skal søges i',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Vælg hvilke indekser denne widget søger i. Lad alle være umarkerede for at søge i alle indekser.',
+    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.' => 'Den offentlige API-nøgle, som dette widget sender (som X-Search-Manager-Key-header), når "Kræv API-nøgle" er aktiveret i indstillingerne. Brug udelukkende en **offentlig** nøgle — aldrig en servernøgle — og begræns den efter referrer og til dette widgets indekser. Lad feltet stå tomt, hvis "Kræv API-nøgle" er deaktiveret. En `apiKey`-tilsidesættelse på rendertidspunktet har forrang over denne værdi.',
     'Themes' => 'Temaer',
     'Light' => 'Lys',
     'Light Mode' => 'Lys tilstand',

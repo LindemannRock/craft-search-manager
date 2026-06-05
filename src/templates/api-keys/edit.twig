@@ -81,6 +81,8 @@
 {% endif %}
 
 {% set errorSummary = [newPlaintextBanner, validationSummary]|filter(v => v)|join("\n") %}
+{% set publicTypeInfo = 'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.'|t('search-manager') %}
+{% set serverTypeInfo = 'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.'|t('search-manager') %}
 
 {% block content %}
     <input type="hidden" name="action" value="search-manager/api-keys/save">
@@ -101,6 +103,35 @@
         errors: apiKey.getErrors('name'),
         data: {key: 'name'},
     }) }}
+
+    {% if isNew %}
+        {{ forms.selectField({
+            label: 'Type'|t('search-manager'),
+            instructions: 'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.'|t('search-manager'),
+            id: 'type',
+            name: 'type',
+            value: apiKey.type,
+            options: [
+                {value: 'public', label: 'Public'|t('search-manager')},
+                {value: 'server', label: 'Server'|t('search-manager')},
+            ],
+            errors: apiKey.getErrors('type'),
+            data: {key: 'type'},
+        }) }}
+
+        {% include 'lindemannrock-base/_components/info-box' with {
+            type: 'info',
+            margin: 'top',
+            message: apiKey.type == 'server' ? serverTypeInfo : publicTypeInfo,
+            messageId: 'api-key-type-info-message',
+            allowHtml: false,
+        } only %}
+
+        <div id="api-key-type-info-source"
+             class="hidden"
+             data-public-message="{{ publicTypeInfo|e('html_attr') }}"
+             data-server-message="{{ serverTypeInfo|e('html_attr') }}"></div>
+    {% endif %}
 
     <hr>
 
@@ -166,25 +197,6 @@
             name: 'enabled',
             on: apiKey.enabled,
         }) }}
-
-        {# Type — dropdown on create, locked status pill in the read-only
-           block on edit. keyPrefix encodes the type so changing it on an
-           existing key would create an enforcement mismatch. #}
-        {% if isNew %}
-            {{ forms.selectField({
-                label: 'Type'|t('search-manager'),
-                instructions: 'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.'|t('search-manager'),
-                id: 'type',
-                name: 'type',
-                value: apiKey.type,
-                options: [
-                    {value: 'public', label: 'Public'|t('search-manager')},
-                    {value: 'server', label: 'Server'|t('search-manager')},
-                ],
-                errors: apiKey.getErrors('type'),
-                data: {key: 'type'},
-            }) }}
-        {% endif %}
 
         {# Optional caps — all nullable. Live in the sidebar alongside the
            other key-level metadata. #}
@@ -297,6 +309,21 @@
 {% endblock %}
 
 {% js %}
+    // Keep the key-type guidance aligned with the create-time selection.
+    (function() {
+        var typeSelect = document.getElementById('type');
+        var message = document.getElementById('api-key-type-info-message');
+        var source = document.getElementById('api-key-type-info-source');
+        if (!typeSelect || !message || !source) return;
+
+        function updateTypeInfo() {
+            message.textContent = typeSelect.value === 'server' ? source.dataset.serverMessage : source.dataset.publicMessage;
+        }
+
+        typeSelect.addEventListener('change', updateTypeInfo);
+        updateTypeInfo();
+    })();
+
     // Make the "All indices" toggle mutually exclusive with the explicit
     // checkbox list. Pure UX — the server enforces the same in the controller.
     (function() {

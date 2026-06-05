@@ -2,12 +2,12 @@
 
 **CP:** Search Manager → API Keys
 
-A CRUD surface for generating, scoping, and revoking API keys that gate access to the public search and autocomplete endpoints.
+A CRUD surface for generating, scoping, and revoking API keys that gate access to the public search, autocomplete, and analytics tracking endpoints.
 
 > [!IMPORTANT]
 > **What keys gate.** When **Require API Key** is enabled (Settings → General → API Access), the public **search** and **autocomplete** endpoints require a valid key in the `X-Search-Manager-Key` header — requests without a valid, active, in-scope key are rejected (`401` for a missing/invalid key, `403` for a disabled or expired key). When the setting is disabled (the default), those endpoints stay anonymous and behave exactly as before.
 >
-> The `track-search` / `track-click` analytics endpoints are **not** gated yet — they stay anonymous (planned for the widget/tracking slice).
+> The `track-search` / `track-click` analytics endpoints are gated too when the setting is on — same key + referrer + allowed-indices checks — so analytics writes also require a valid key. Tracking pings are **not** rate-limited (they're noisy by design). When the setting is off, all four endpoints stay anonymous.
 
 ## What a key is
 
@@ -37,6 +37,18 @@ The `type` field describes the **intended exposure**, not a restriction-bypass:
 
 Both types accept the same restrictions. The distinction exists so operators (and code reviewers) can tell at a glance whether a key was provisioned for the browser or for a backend caller. Type is locked once the key is generated — it's encoded in the prefix and changing it would invalidate the hash.
 
+### Which type should I use?
+
+| Caller | Use | Why |
+|--------|-----|-----|
+| Website search page using browser JavaScript | **Public** key | Browser users can see the key in DevTools and network requests. Scope it to the page's indices and add strict referrer patterns. |
+| Search Manager frontend widget | **Public** key | The widget emits the key into page HTML and sends it from browser-side JavaScript. Never use a server key in widget config. |
+| External server or backend service | **Server** key | The key stays server-side and does not rely on a browser `Referer` header. |
+| Mobile app through your own backend | **Server** key on your backend | Recommended. The mobile app calls your backend, and your backend calls Search Manager with the server key. |
+| Mobile app calling Search Manager directly | **Avoid when possible** | Native apps cannot use browser referrer restrictions reliably. Prefer a backend proxy; if direct calls are unavoidable, scope the key narrowly and use expiry/rate limits. |
+
+Server keys skip the public-key referrer check, but they still respect enabled/disabled state, expiry, allowed indices, max hits per page, and rate limits.
+
 ## Restrictions
 
 Every key is scoped by a small set of restrictions. Restrictions are stored per-key and, when **Require API Key** is enabled, checked on every request.
@@ -47,7 +59,7 @@ Which search indices the key may query.
 
 - **`*` (all indices)** — wildcard. Grants access to every currently enabled index, **plus any indices added later**. Use this for trusted server keys; avoid it for public widget keys.
 - **Explicit handles** — a list of specific index handles (e.g. `docs-en`, `blog-en`). Adding a new index does **not** automatically extend the key — you must edit it.
-- **Empty list** — the key is non-functional. The UI surfaces a warning, and with enforcement enabled the endpoint rejects the key.
+- **Empty list** — only allowed while the key is disabled. Enabled keys must either allow all indices or include at least one specific index.
 
 > [!TIP]
 > Pick the narrowest list that satisfies the caller. The `*` wildcard is a convenience for trusted server-side integrations; it is rarely the right choice for keys embedded in browsers.
@@ -161,6 +173,24 @@ php craft search-manager/api-keys/create \
 ```
 
 The plaintext is printed to stdout exactly once and never logged. See [Console Commands](../developers/console-commands.md#api-keys) for the full option list.
+
+For a backend integration, create a server key and keep the plaintext on the server:
+
+```bash
+php craft search-manager/api-keys/create \
+  --name="Backend search API" \
+  --type=server \
+  --indices=docs-en,blog-en \
+  --max-hits=50 \
+  --rate-limit=120
+```
+
+Then send it from the server-side caller:
+
+```text
+GET /actions/search-manager/api/search?q=test&indices=docs-en
+X-Search-Manager-Key: sm_srv_a1b2c3d4e5f6...
+```
 
 ## Next steps
 

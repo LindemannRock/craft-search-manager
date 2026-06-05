@@ -263,6 +263,7 @@ return [
 
     // Validation messages
     '{field} cannot be blank.' => '{field} cannot be blank.',
+    'Enabled keys must allow all indices or at least one specific index.' => 'Enabled keys must allow all indices or at least one specific index.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} is required (or configure Craft to use Redis cache).',
     '{field} is required when using a dedicated Redis connection.' => '{field} is required when using a dedicated Redis connection.',
     '{field} has an invalid value.' => '{field} has an invalid value.',
@@ -314,7 +315,7 @@ return [
     'Select a default widget...' => 'Select a default widget...',
     'API Access' => 'API Access',
     'Require API Key' => 'Require API Key',
-    'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'When enabled, the public search and autocomplete endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.',
+    'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.' => 'When enabled, the public search, autocomplete, and analytics tracking (track-search / track-click) endpoints require a valid API key in the X-Search-Manager-Key header. When disabled, those endpoints stay anonymous.',
 
     // Settings: Indexing
     'Auto-Index Elements' => 'Auto-Index Elements',
@@ -702,6 +703,8 @@ return [
     'Edit API Key' => 'Edit API Key',
     'A descriptive label so you can identify this key in the list. Not exposed to callers.' => 'A descriptive label so you can identify this key in the list. Not exposed to callers.',
     'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.' => 'Public keys are safe to embed in browser code (widget, autocomplete). Server keys are for trusted server-side integrations only. Type cannot be changed after creation.',
+    'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => 'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.',
+    'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.',
     'All indices (current and future)' => 'All indices (current and future)',
     'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.',
     'Specific indices' => 'Specific indices',
@@ -1173,6 +1176,7 @@ return [
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.',
     'Select which index to search' => 'Select which index to search',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Select which indices this widget searches. Leave all unchecked to search all indices.',
+    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.' => 'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.',
     'Themes' => 'Themes',
     'Light' => 'Light',
     'Light Mode' => 'Light Mode',

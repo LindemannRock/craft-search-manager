@@ -136,8 +136,20 @@ class ApiKey extends Model
             [['enabled'], 'boolean'],
             [['maxHitsPerPage', 'rateLimit'], 'integer', 'min' => 1, 'max' => 100000],
             [['allowedIndices', 'allowedReferrers'], 'each', 'rule' => ['string', 'max' => 255]],
+            [['allowedIndices'], 'validateAllowedIndices', 'skipOnEmpty' => false],
             [['allowedReferrers'], 'validateReferrerPatterns'],
         ];
+    }
+
+    /**
+     * Enabled keys must have an explicit index permission boundary. An empty
+     * allowlist is valid only for disabled draft keys.
+     */
+    public function validateAllowedIndices(string $attribute): void
+    {
+        if ($this->enabled && empty($this->allowedIndices)) {
+            $this->addError($attribute, Craft::t('search-manager', 'Enabled keys must allow all indices or at least one specific index.'));
+        }
     }
 
     /**

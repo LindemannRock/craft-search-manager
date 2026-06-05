@@ -676,6 +676,7 @@ return [
          * - enabled: Whether the config is active
          * - styleHandle: Handle of a widget style preset (from widgetStyles below or CP)
          * - settings: Widget settings (merged with defaults)
+         *   - apiKey: Public API key sent as X-Search-Manager-Key when Require API Key is enabled
          *   - search: Search settings
          *     - indexHandles: Array of index handles to search (empty = all, max 5)
          *     - placeholder: Placeholder text in the search input (default: 'Search...')
@@ -726,6 +727,12 @@ return [
             //     'enabled' => true,
             //     'styleHandle' => 'brand-theme', // References a style from widgetStyles below
             //     'settings' => [
+            //         // Public API key sent as X-Search-Manager-Key when Require API Key is enabled.
+            //         // Use a public, referrer-restricted key scoped to this widget's indices.
+            //         // Never use a server key here; this value is emitted into page HTML.
+            //         // You may use App::env('SEARCH_MANAGER_WIDGET_API_KEY') for environment-specific config,
+            //         // but the resolved value is still emitted into rendered HTML.
+            //         // 'apiKey' => 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
             //         'search' => [
             //             'indexHandles' => ['entries-en', 'products'],
             //             'placeholder' => 'Search...',
@@ -780,6 +787,7 @@ return [
             //     'type' => 'modal',
             //     'enabled' => true,
             //     'settings' => [
+            //         // 'apiKey' => 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
             //         'search' => [
             //             'indexHandles' => ['docs-manager'],
             //         ],

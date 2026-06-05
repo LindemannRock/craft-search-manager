@@ -84,6 +84,10 @@
 {% set source = source ?? widgetConfig.getAnalyticsSource() %}
 {% set idleTimeout = idleTimeout ?? widgetConfig.getIdleTimeout() %}
 
+{# Public API key — render-time override wins over the saved widget setting.
+   Sent as the X-Search-Manager-Key header by the widget when requireApiKey is on. #}
+{% set apiKey = apiKey ?? widgetConfig.getApiKey() %}
+
 {# Resolve styles first (needed for highlighting/backdrop defaults) #}
 {% set resolvedStyles = widgetConfig.getStylesForPreview() %}
 {% if styles is defined and styles is iterable %}
@@ -146,6 +150,7 @@
     destination-highlight-selector="{{ destinationHighlightSelector|e('html_attr') }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
     {% if class %}class="{{ class }}"{% endif %}
+    {% if apiKey %}api-key="{{ apiKey|e('html_attr') }}"{% endif %}
     {% if source %}source="{{ source|e('html_attr') }}"{% endif %}
     idle-timeout="{{ idleTimeout }}"
     dir="{{ dir }}"

@@ -8,6 +8,7 @@ use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\ApiKeyService;
 use yii\web\Response;
 
 /**
@@ -46,19 +47,56 @@ class SearchController extends Controller
 
     /**
      * @inheritdoc
+     *
+     * Slice 4: when `requireApiKey` is enabled, the tracking endpoints are gated
+     * behind a valid API key (closes audit #8) — same authenticate + public-key
+     * referrer gate as search/autocomplete, plus an allowed-indices check when
+     * the ping names `index`/`indices`. Tracking is **not** rate-limited (pings
+     * are noisy; the cap is scoped to search/autocomplete query volume). When
+     * `requireApiKey` is off, the endpoints stay anonymous (backward compatible).
+     *
+     * CSRF stays disabled for track-* regardless: they're fire-and-forget with no
+     * authenticated session to protect, and CSRF tokens break under full-page
+     * static caching (Blitz, Servd, etc.) where the baked-in token goes stale.
+     *
+     * @since 5.30.0
      */
     public function beforeAction($action): bool
     {
-        // Disable CSRF for anonymous analytics tracking endpoints.
-        // These are fire-and-forget, low-risk endpoints with no authenticated session to protect.
-        // CSRF tokens don't work with full-page static caching (Blitz, Servd, etc.)
-        // because the token baked into cached HTML becomes stale across sessions.
-        // Real protection against analytics pollution will come via Search API Keys (rate limiting + per-key validation).
-        if (in_array($action->id, ['track-click', 'track-search'], true)) {
+        $isTracking = in_array($action->id, ['track-click', 'track-search'], true);
+
+        if ($isTracking) {
             $this->enableCsrfValidation = false;
         }
 
-        return parent::beforeAction($action);
+        if (!parent::beforeAction($action)) {
+            return false;
+        }
+
+        if ($isTracking && SearchManager::$plugin->getSettings()->requireApiKey) {
+            $request = Craft::$app->getRequest();
+            $headers = $request->getHeaders();
+            $header = $headers->get(ApiKeyService::REQUEST_HEADER);
+            $referer = $headers->get('Referer');
+
+            $key = SearchManager::$plugin->apiKeys->authenticateRequest(
+                is_string($header) ? $header : null,
+                is_string($referer) ? $referer : null,
+            );
+
+            // Enforce the key's allowed indices only when the ping names them
+            // (track-click sends `index`, track-search sends `indices`). 403 on
+            // an out-of-allowlist index. Tracking is deliberately not rate-limited.
+            [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
+                (string) $request->getParam('indices', ''),
+                (string) $request->getParam('index', ''),
+            );
+            if ($indicesProvided) {
+                SearchManager::$plugin->apiKeys->scopeIndices($key, $indexHandles, true);
+            }
+        }
+
+        return true;
     }
 
     /** @inheritdoc */
