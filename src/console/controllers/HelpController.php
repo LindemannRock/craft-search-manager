@@ -25,7 +25,10 @@ final class HelpController extends AbstractHelpController
         return [
             'title' => 'Search Manager',
             'pluginHandle' => 'search-manager',
-            'commandPrefix' => 'ddev craft',
+            'commandPrefixes' => [
+                'php craft',
+                'ddev craft',
+            ],
             'summary' => 'Use these commands to inspect indices, queue rebuilds, clear storage, generate the IP hash salt, and provision API keys for scripted installs.',
             'common' => [
                 'index/list',
