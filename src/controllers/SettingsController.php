@@ -616,7 +616,7 @@ class SettingsController extends Controller
             model: $settings,
             postedValues: $postedSettings,
             allowedAttributes: $attributesToValidate,
-            isOverridden: fn(string $attribute): bool => $settings->isOverriddenByConfig($attribute),
+            shouldSkipAttribute: fn(string $attribute): bool => $settings->isOverriddenByConfig($attribute),
         );
         $attributesToValidate = $result->attributesToValidate;
 
