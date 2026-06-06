@@ -37,7 +37,7 @@ You can use it alongside Craft's native search, or replace it entirely.
 
 - **[Widget Styles](../widget/styles.md)** — Reusable appearance presets for the frontend widget. Define colors, spacing, and dimensions once and share across multiple widget configs. Manageable via CP or config file.
 
-- **[API Keys](api-keys.md)** — Generate, scope, and revoke keys for the public search and autocomplete endpoints. Per-key restrictions (allowed indices, referrer patterns, hit caps, expiry). Plaintext shown once at creation; only the hash is stored. Slice 1 ships provisioning and CRUD; endpoint enforcement lands in a follow-up.
+- **[API Keys](api-keys.md)** — Generate, scope, and revoke keys for the public search, autocomplete, and analytics tracking endpoints. Per-key restrictions include allowed indices, referrer patterns, hit caps, expiry, and rate limits. Plaintext is shown once at creation; only the hash is stored.
 
 - **[Privacy & Security](privacy-security.md)** — IP hashing with salt, subnet masking, async geo-lookup, bot filtering, and GDPR-friendly defaults.
 

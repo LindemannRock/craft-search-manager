@@ -234,7 +234,7 @@ Search Manager stores only a hash. If you lose this value you will need to creat
 
 - **Disabled vs revoked.** `--disabled` creates a paused key (config preserved; with **Require API Key** enabled, a disabled key is rejected). To remove a key permanently use the **Revoke** action in the CP — there is no console-side revoke or list/disable command; manage existing keys from the CP.
 - **Validation.** The command exercises the same model validation as the CP, including the referrer-pattern allowlist (regex-looking values are rejected). On validation failure the command prints the field errors and exits with `EXIT_DATAERR`.
-- **Enforcement.** Keys gate the public search and autocomplete endpoints when **Require API Key** is enabled (Settings → General → API Access); otherwise those endpoints stay anonymous. A key's `--rate-limit` (if set) caps requests per minute and returns `429` when exceeded.
+- **Enforcement.** Keys gate the public search, autocomplete, and analytics tracking endpoints when **Require API Key** is enabled (Settings → General → API Access); otherwise those endpoints stay anonymous. A key's `--rate-limit` (if set) caps search/autocomplete requests per minute and returns `429` when exceeded; tracking pings are not rate-limited.
 
 See [API Keys](../feature-tour/api-keys.md) for the full feature tour and lifecycle (active / disabled / expired / revoked).
 

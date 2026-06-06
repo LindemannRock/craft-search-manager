@@ -1,0 +1,967 @@
+{
+  "info": {
+    "_postman_id": "sm-collection-search-manager",
+    "name": "Search Manager API",
+    "description": "User-facing Postman collection for Search Manager's public search, autocomplete, analytics tracking, and API-key enforcement flows. Import the environment template, set your site URL and placeholders, then run the folders that match your setup.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Search API",
+      "description": "Search examples for custom templates, headless integrations, and mobile/backend callers. If Require API Key is enabled, set `api_key` or `server_api_key` in the active environment.",
+      "item": [
+        {
+          "name": "Search - basic keyed or anonymous",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}",
+                "description": "Public key for browser/custom JS tests. Leave empty when Require API Key is off."
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}",
+                "description": "Required for public keys that have allowed referrers."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "{{hits_per_page}}"
+                }
+              ]
+            },
+            "description": "Main search endpoint. Works anonymously when Require API Key is off; requires `X-Search-Manager-Key` when Require API Key is on."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('search response has hits array', function () {",
+                  "    pm.expect(json).to.have.property('hits');",
+                  "    pm.expect(json.hits).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search - enriched widget-style response",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}&enrich=1&hideResultsWithoutUrl=1&snippetMode=deep&snippetLength=1000&parseMarkdownSnippets=1",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "{{hits_per_page}}"
+                },
+                {
+                  "key": "enrich",
+                  "value": "1"
+                },
+                {
+                  "key": "hideResultsWithoutUrl",
+                  "value": "1"
+                },
+                {
+                  "key": "snippetMode",
+                  "value": "deep"
+                },
+                {
+                  "key": "snippetLength",
+                  "value": "1000"
+                },
+                {
+                  "key": "parseMarkdownSnippets",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Mirrors the bundled widget/custom template enriched search shape."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('enriched search response has hits array', function () {",
+                  "    pm.expect(json).to.have.property('hits');",
+                  "    pm.expect(json.hits).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search - no indices uses key scope",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&hitsPerPage={{hits_per_page}}",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "{{hits_per_page}}"
+                }
+              ]
+            },
+            "description": "When a valid key is authenticated, omitting `indices` searches the key's allowed indices. For a wildcard key, that means all enabled indices."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search - site filter",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&siteId={{site_id}}&hitsPerPage={{hits_per_page}}",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "siteId",
+                  "value": "{{site_id}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "{{hits_per_page}}"
+                }
+              ]
+            },
+            "description": "Adds `siteId` as a site filter. Keyed requests return 400 for an unknown site and 403 when the chosen index does not cover that site."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Search - server key example",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{server_api_key}}",
+                "description": "Use only from backend/server-side callers."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}&source=backend-postman",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "{{hits_per_page}}"
+                },
+                {
+                  "key": "source",
+                  "value": "backend-postman"
+                }
+              ]
+            },
+            "description": "Server-key example for backend-to-backend callers. Server keys skip public-key referrer checks but still enforce enabled/expired, allowed indices, max hits, site scope, and rate limit."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Autocomplete API",
+      "description": "Autocomplete examples for suggestions/results. Counts against per-key rate limits when Require API Key is enabled.",
+      "item": [
+        {
+          "name": "Autocomplete - suggestions and results",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indices={{indices}}&hitsPerPage=10",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Default autocomplete response with both term suggestions and element results."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('autocomplete response is JSON', function () {",
+                  "    pm.expect(json).to.be.an('object');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Autocomplete - only suggestions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indices={{indices}}&hitsPerPage=10&only=suggestions",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "10"
+                },
+                {
+                  "key": "only",
+                  "value": "suggestions"
+                }
+              ]
+            },
+            "description": "Returns only suggestion strings."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('suggestions-only response is an array', function () {",
+                  "    pm.expect(json).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Autocomplete - only results",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indices={{indices}}&hitsPerPage=10&only=results",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "10"
+                },
+                {
+                  "key": "only",
+                  "value": "results"
+                }
+              ]
+            },
+            "description": "Returns only autocomplete result objects."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('results-only response is an array', function () {",
+                  "    pm.expect(json).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Analytics Tracking",
+      "description": "Tracking endpoints used by the frontend widget. When Require API Key is enabled, they require the same key header and public-key referrer rules as search/autocomplete. Tracking is not rate-limited.",
+      "item": [
+        {
+          "name": "Track search intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "q",
+                  "value": "{{query}}",
+                  "type": "text"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}",
+                  "type": "text"
+                },
+                {
+                  "key": "resultsCount",
+                  "value": "{{results_count}}",
+                  "type": "text"
+                },
+                {
+                  "key": "trigger",
+                  "value": "{{trigger}}",
+                  "type": "text"
+                },
+                {
+                  "key": "source",
+                  "value": "{{source}}",
+                  "type": "text"
+                },
+                {
+                  "key": "siteId",
+                  "value": "{{site_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "cached",
+                  "value": "0",
+                  "type": "text"
+                },
+                {
+                  "key": "took",
+                  "value": "42.5",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/search/track-search"
+            },
+            "description": "Records a search-intent analytics row. Key attribution is stored when a valid key is authenticated."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 401, 403]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('track-search response has success flag', function () {",
+                  "    pm.expect(json).to.have.property('success');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Track result click",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "elementId",
+                  "value": "{{element_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "query",
+                  "value": "{{query}}",
+                  "type": "text"
+                },
+                {
+                  "key": "index",
+                  "value": "{{index_handle}}",
+                  "type": "text"
+                },
+                {
+                  "key": "position",
+                  "value": "1",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/search/track-click"
+            },
+            "description": "Records/logs a result-click event. This endpoint is gated when Require API Key is enabled, but click persistence is intentionally log-only at this release."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 401, 403]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('track-click response has success flag', function () {",
+                  "    pm.expect(json).to.have.property('success');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Enforcement Checks",
+      "description": "Requests that help users confirm Require API Key, referrer restrictions, index scope, site scope, and rate limiting. Some requests intentionally expect failures depending on your environment.",
+      "item": [
+        {
+          "name": "Missing key - 200 when off, 401 when on",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=5",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Use this to confirm the global Require API Key setting. Expected: 200 when disabled, 401 when enabled."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('missing key behavior matches one of the valid modes', function () {",
+                  "  pm.expect([200, 401]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid key - 200 when off, 401 when on",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{invalid_api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=5",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Expected: 200 when Require API Key is disabled; 401 when enabled."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('invalid key behavior matches one of the valid modes', function () {",
+                  "  pm.expect([200, 401]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Public key bad referrer - should be 403 when restricted",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{blocked_referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=5",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "For a public key with allowed referrers configured, this should return 403. If the key has no referrer restriction, it may return 200."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('bad referrer returns an expected status', function () {",
+                  "  pm.expect([200, 401, 403, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Out-of-scope index - should be 403 for scoped keys",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{blocked_index_handle}}&hitsPerPage=5",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{blocked_index_handle}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Expected: 403 when the authenticated key does not allow `blocked_index_handle`. A wildcard/all-indices key may return 200."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('out-of-scope index returns an expected status', function () {",
+                  "  pm.expect([200, 401, 403, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown site - should be 400 for keyed requests",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&siteId={{unknown_site_id}}&hitsPerPage=5",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "siteId",
+                  "value": "{{unknown_site_id}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "5"
+                }
+              ]
+            },
+            "description": "Expected: 400 for keyed requests when `unknown_site_id` is not a real Craft site ID. If Require API Key is off and no valid key is authenticated, anonymous traffic may return 200 with empty results."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unknown site returns an expected status', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rate limit probe - repeat with Runner",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Search-Manager-Key",
+                "value": "{{api_key}}"
+              },
+              {
+                "key": "Referer",
+                "value": "{{referrer}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=1&skipAnalytics=1",
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "1"
+                },
+                {
+                  "key": "skipAnalytics",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Use Postman Runner to repeat this request more times than the key's per-minute rate limit. Expected: 429 after the cap. Tracking requests do not count toward this cap."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rate-limit probe returns an expected status', function () {",
+                  "  pm.expect([200, 401, 403, 429]).to.include(pm.response.code);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

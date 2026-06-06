@@ -297,7 +297,7 @@ This ensures:
 
 ## Analytics Tracking Endpoints
 
-These endpoints are used by the frontend widget to track search activity. They accept anonymous requests (no CSRF token required) for compatibility with full-page static caching (Blitz, Servd, etc.).
+These endpoints are used by the frontend widget to track search activity. When **Require API Key** is enabled, they require the same `X-Search-Manager-Key` header as search/autocomplete. When the setting is disabled, they accept anonymous requests. They do not require a CSRF token, which keeps them compatible with full-page static caching (Blitz, Servd, etc.).
 
 ### Track Search
 
