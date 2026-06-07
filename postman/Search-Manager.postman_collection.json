@@ -5,6 +5,26 @@
     "description": "User-facing Postman collection for Search Manager's public search, autocomplete, analytics tracking, and API-key enforcement flows. Import the environment template, set your site URL and placeholders, then run the folders that match your setup.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "auth": {
+    "type": "apikey",
+    "apikey": [
+      {
+        "key": "key",
+        "value": "X-Search-Manager-Key",
+        "type": "string"
+      },
+      {
+        "key": "value",
+        "value": "{{api_key}}",
+        "type": "string"
+      },
+      {
+        "key": "in",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
   "item": [
     {
       "name": "Search API",
@@ -20,11 +40,6 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}",
-                "description": "Public key for browser/custom JS tests. Leave empty when Require API Key is off."
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}",
                 "description": "Required for public keys that have allowed referrers."
@@ -32,6 +47,15 @@
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -80,16 +104,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}&enrich=1&hideResultsWithoutUrl=1&snippetMode=deep&snippetLength=1000&parseMarkdownSnippets=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -158,16 +187,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&hitsPerPage={{hits_per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -205,16 +239,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&siteId={{site_id}}&hitsPerPage={{hits_per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -258,15 +297,19 @@
               {
                 "key": "Accept",
                 "value": "application/json"
-              },
-              {
-                "key": "X-Search-Manager-Key",
-                "value": "{{server_api_key}}",
-                "description": "Use only from backend/server-side callers."
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}&source=backend-postman",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -286,7 +329,27 @@
                 }
               ]
             },
-            "description": "Server-key example for backend-to-backend callers. Server keys skip public-key referrer checks but still enforce enabled/expired, allowed indices, max hits, site scope, and rate limit."
+            "description": "Server-key example for backend-to-backend callers. Server keys skip public-key referrer checks but still enforce enabled/expired, allowed indices, max hits, site scope, and rate limit.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{server_api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -318,16 +381,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indices={{indices}}&hitsPerPage=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "autocomplete"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -375,16 +443,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indices={{indices}}&hitsPerPage=10&only=suggestions",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "autocomplete"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -436,16 +509,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indices={{indices}}&hitsPerPage=10&only=results",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "autocomplete"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -503,10 +581,6 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
@@ -557,7 +631,16 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/actions/search-manager/search/track-search"
+              "raw": "{{base_url}}/actions/search-manager/search/track-search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "search",
+                "track-search"
+              ]
             },
             "description": "Records a search-intent analytics row. Key attribution is stored when a valid key is authenticated."
           },
@@ -591,10 +674,6 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
@@ -625,7 +704,16 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/actions/search-manager/search/track-click"
+              "raw": "{{base_url}}/actions/search-manager/search/track-click",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "search",
+                "track-click"
+              ]
             },
             "description": "Records/logs a result-click event. This endpoint is gated when Require API Key is enabled, but click persistence is intentionally log-only at this release."
           },
@@ -667,6 +755,15 @@
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -682,7 +779,10 @@
                 }
               ]
             },
-            "description": "Use this to confirm the global Require API Key setting. Expected: 200 when disabled, 401 when enabled."
+            "description": "Use this to confirm the global Require API Key setting. Expected: 200 when disabled, 401 when enabled.",
+            "auth": {
+              "type": "noauth"
+            }
           },
           "event": [
             {
@@ -708,16 +808,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{invalid_api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -733,7 +838,27 @@
                 }
               ]
             },
-            "description": "Expected: 200 when Require API Key is disabled; 401 when enabled."
+            "description": "Expected: 200 when Require API Key is disabled; 401 when enabled.",
+            "auth": {
+              "type": "apikey",
+              "apikey": [
+                {
+                  "key": "key",
+                  "value": "X-Search-Manager-Key",
+                  "type": "string"
+                },
+                {
+                  "key": "value",
+                  "value": "{{invalid_api_key}}",
+                  "type": "string"
+                },
+                {
+                  "key": "in",
+                  "value": "header",
+                  "type": "string"
+                }
+              ]
+            }
           },
           "event": [
             {
@@ -759,16 +884,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{blocked_referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -810,16 +940,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{blocked_index_handle}}&hitsPerPage=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -861,16 +996,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&siteId={{unknown_site_id}}&hitsPerPage=5",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",
@@ -916,16 +1056,21 @@
                 "value": "application/json"
               },
               {
-                "key": "X-Search-Manager-Key",
-                "value": "{{api_key}}"
-              },
-              {
                 "key": "Referer",
                 "value": "{{referrer}}"
               }
             ],
             "url": {
               "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage=1&skipAnalytics=1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
               "query": [
                 {
                   "key": "q",

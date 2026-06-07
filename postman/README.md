@@ -5,25 +5,32 @@ User-facing Postman collection and environment template for the Search Manager A
 ## Files
 
 - **`Search-Manager.postman_collection.json`** — examples for search, autocomplete, analytics tracking, and API-key enforcement checks.
-- **`Search-Manager-Local.postman_environment.json`** — local environment template with placeholders only.
+- **`Search-Manager.postman_environment.json`** — reusable environment template with placeholders only.
 
 ## Setup
 
 1. Import both files into Postman.
-2. Select **Search Manager — Local** from Postman's environment dropdown.
-3. Set:
+2. Duplicate **Search Manager API** once per target environment, for example:
+   - **Search Manager — DDEV**
+   - **Search Manager — Staging**
+   - **Search Manager — UAT**
+   - **Search Manager — Production**
+3. Select the duplicated environment from Postman's environment dropdown.
+4. Set:
    - `base_url` → your Craft site URL, no trailing slash.
    - `indices` → one or more enabled Search Manager index handles, comma-separated.
    - `index_handle` → one enabled index handle, used by `track-click`.
    - `query` → a query that should return results on your install.
    - `site_id` → a real Craft site ID, if you want to test site filtering.
    - `element_id` → a real element ID, if you want `track-click` to represent a real result.
-4. If **Require API Key** is enabled, also set:
+5. If **Require API Key** is enabled, also set:
    - `api_key` → a **public** Search Manager key for browser/widget/custom-JS requests.
    - `referrer` → a URL whose host matches that public key's allowed referrers.
    - `server_api_key` → a **server** key only for the server-key example request.
 
 The key values are Postman secret variables in the environment template. The shipped file contains no real keys.
+
+Only `base_url` and the environment values change between DDEV, staging, UAT, and production. The collection requests all use `{{base_url}}` plus explicit Postman path segments, matching Postman's standard import format.
 
 ## Which Key Type to Use
 
