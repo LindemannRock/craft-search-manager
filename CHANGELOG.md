@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.48.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.47.0...v5.48.0) - 2026-06-07
+
+
+### Added
+
+* add Postman collection download to settings test page ([7bd83ef](https://github.com/LindemannRock/craft-search-manager/commit/7bd83efcca5021940f96e0a808b4d36d2a3ef413))
+
+
+### Fixed
+
+* plugin credit in edit templates ([5820234](https://github.com/LindemannRock/craft-search-manager/commit/5820234a352afa88d7fe943e16735bbac49b385f))
+
 ## [5.47.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.46.0...v5.47.0) - 2026-06-07
 
 
