@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 jobs:
-  static-analysis:
+  quality-gates:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -22,6 +22,9 @@ jobs:
         uses: ramsey/composer-install@v3
         with:
           composer-options: --prefer-dist
+
+      - name: Composer security audit
+        run: composer audit
 
       - name: PHPStan
         run: composer phpstan

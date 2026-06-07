@@ -3,7 +3,7 @@ set -euo pipefail
 
 act push \
     -W .github/workflows/ci.yml \
-    -j static-analysis \
+    -j quality-gates \
     -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest \
     --container-architecture linux/amd64 \
     "$@"
