@@ -31,6 +31,13 @@
     {% endif %}
 {% endfor %}
 
+{% include 'lindemannrock-base/_components/info-box' with {
+    type: 'info',
+    variant: 'colored',
+    margin: 'bottom',
+    message: '<strong>' ~ 'Developer resources'|t('search-manager') ~ '</strong><br>' ~ 'Download the Postman collection and environment to test the Search Manager API outside Craft.'|t('search-manager') ~ '<br><br><a href="' ~ actionUrl('search-manager/settings/download-postman-collection') ~ '" class="btn" data-icon="download">' ~ 'Download Postman collection'|t('search-manager') ~ '</a>',
+} only %}
+
 {# Search Configuration #}
 <div class="pane" style="margin-bottom: 24px;">
     <h3 class="first">{{ "Search Configuration"|t('search-manager') }}</h3>

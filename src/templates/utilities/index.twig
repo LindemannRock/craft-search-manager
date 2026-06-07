@@ -250,6 +250,17 @@
                 ],
             } only %}
         {% endif %}
+
+        {% if canManageSettings %}
+            {% include 'lindemannrock-base/_layouts/cp-utilities/_action-section' with {
+                title: 'Developer resources'|t('search-manager'),
+                description: 'Download the Postman collection and environment to test the Search Manager API outside Craft.'|t('search-manager'),
+                showSeparator: hasNavigation or hasIndexManagement or hasCacheManagement or hasAnalyticsManagement,
+                buttons: [
+                    {type: 'link', label: 'Download Postman collection'|t('search-manager'), url: actionUrl('search-manager/settings/download-postman-collection'), class: 'btn'},
+                ],
+            } only %}
+        {% endif %}
     {% endif %}
 {% endblock %}
 

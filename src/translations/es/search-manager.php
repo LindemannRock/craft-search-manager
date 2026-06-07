@@ -1551,6 +1551,9 @@ return [
     'File System (default, single server)' => 'Sistema de archivos (predeterminado, servidor único)',
 
     // Test features
+    'Developer resources' => 'Recursos para desarrolladores',
+    'Download the Postman collection and environment to test the Search Manager API outside Craft.' => 'Descargue la colección y el entorno de Postman para probar la API de Search Manager fuera de Craft.',
+    'Download Postman collection' => 'Descargar colección de Postman',
     'Test Features' => 'Funciones de prueba',
     'Test Search' => 'Probar búsqueda',
     'Enter a search query to test. Supports all operators.' => 'Introduzca una consulta de búsqueda para probar. Admite todos los operadores.',

@@ -1551,6 +1551,9 @@ return [
     'File System (default, single server)' => 'Filsystem (standard, enkeltserver)',
 
     // Test features
+    'Developer resources' => 'Utviklerressurser',
+    'Download the Postman collection and environment to test the Search Manager API outside Craft.' => 'Last ned Postman-samlingen og -miljøet for å teste Search Manager API utenfor Craft.',
+    'Download Postman collection' => 'Last ned Postman-samling',
     'Test Features' => 'Testfunksjoner',
     'Test Search' => 'Test søk',
     'Enter a search query to test. Supports all operators.' => 'Skriv inn en søkespørring for å teste. Støtter alle operatorer.',

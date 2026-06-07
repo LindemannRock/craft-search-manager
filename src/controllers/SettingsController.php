@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\helpers\Db;
 use craft\web\Controller;
+use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\Settings;
@@ -158,6 +159,30 @@ class SettingsController extends Controller
             'cacheEnabled' => $settings->enableCache ?? true,
             'backends' => $backends,
         ]);
+    }
+
+    public function actionDownloadPostmanCollection(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+
+        $postmanPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'postman';
+        $files = [];
+
+        foreach ([
+            'Search-Manager.postman_collection.json',
+            'Search-Manager.postman_environment.json',
+            'README.md',
+        ] as $filename) {
+            $path = $postmanPath . DIRECTORY_SEPARATOR . $filename;
+            if (is_file($path)) {
+                $content = file_get_contents($path);
+                if ($content !== false) {
+                    $files[$filename] = $content;
+                }
+            }
+        }
+
+        return ExportHelper::toZip($files, 'search-manager-postman.zip');
     }
 
     public function actionTestSearch(): Response

@@ -65,6 +65,10 @@ Use this when:
 - Clearing data before a site launch
 - GDPR data deletion requests
 
+## Developer Resources
+
+Download the bundled Postman collection and environment from the Utilities page, or from **Settings > Test**. The ZIP contains the collection, environment template, and README so developers can test the Search Manager API outside Craft.
+
 ## Permissions
 
 Each section requires specific permissions:
@@ -74,6 +78,7 @@ Each section requires specific permissions:
 | Rebuild indices, clear storage | `searchManager:rebuildIndices` |
 | Clear caches | `searchManager:clearCache` |
 | Clear analytics | `searchManager:clearAnalytics` |
+| Developer resources | `searchManager:manageSettings` |
 
 Sections are hidden from users who don't have the required permission. See [Permissions](../developers/permissions.md) for the full permission tree.
 

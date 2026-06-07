@@ -1551,6 +1551,9 @@ return [
     'File System (default, single server)' => 'File System (default, single server)',
 
     // Test features
+    'Developer resources' => 'Developer resources',
+    'Download the Postman collection and environment to test the Search Manager API outside Craft.' => 'Download the Postman collection and environment to test the Search Manager API outside Craft.',
+    'Download Postman collection' => 'Download Postman collection',
     'Test Features' => 'Test Features',
     'Test Search' => 'Test Search',
     'Enter a search query to test. Supports all operators.' => 'Enter a search query to test. Supports all operators.',
