@@ -792,10 +792,15 @@ class MySqlStorage implements StorageInterface
     private function incrementMetadata(int $siteId, string $metaKey, int $increment): void
     {
         // Try to update existing row
+        $minimum = $metaKey === 'total_length' ? 1 : 0;
+
         $updated = $this->db->createCommand()
             ->update(
                 '{{%searchmanager_search_metadata}}',
-                ['metaValue' => new \yii\db\Expression('CAST(metaValue AS SIGNED) + :increment', [':increment' => $increment])],
+                ['metaValue' => new \yii\db\Expression('GREATEST(CAST(metaValue AS SIGNED) + :increment, :minimum)', [
+                    ':increment' => $increment,
+                    ':minimum' => $minimum,
+                ])],
                 [
                     'indexHandle' => $this->indexHandle,
                     'siteId' => $siteId,
@@ -813,7 +818,7 @@ class MySqlStorage implements StorageInterface
                         'indexHandle' => $this->indexHandle,
                         'siteId' => $siteId,
                         'metaKey' => $metaKey,
-                        'metaValue' => max(0, $increment), // Don't allow negative values
+                        'metaValue' => max($minimum, $increment),
                     ]
                 )->execute();
             } catch (\Exception $e) {

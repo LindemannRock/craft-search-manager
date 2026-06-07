@@ -742,6 +742,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const matchedHeadings = hit._matchedHeadings || [];
                     const matchedTerms = hit.matchedTerms || [];
                     const matchedPhrases = hit.matchedPhrases || [];
+                    const score = hit.score !== undefined && hit.score !== null ? Number(hit.score).toFixed(2) : 'N/A';
 
                     html += `
 <div style="padding: 16px; border: 1px solid ${isPromoted ? '#fbbf24' : (isBoosted ? '#34d399' : '#e5e7eb')}; border-radius: 4px; background: ${isPromoted ? '#fffbeb' : (isBoosted ? '#ecfdf5' : '#fff')};">
@@ -757,7 +758,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
                 <div style="display: flex; gap: 8px; margin-left: 12px;">
                     <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
-                        Score: ${hit.score ? hit.score.toFixed(2) : 'N/A'}
+                        Score: ${score}
                     </span>
                 </div>
             </div>
