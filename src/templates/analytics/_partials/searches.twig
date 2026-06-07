@@ -6,8 +6,8 @@
             <table class="data fullwidth">
                 <thead>
                     <tr>
-                        <th>{{ 'Date'|t('search-manager') }}</th>
-                        <th>{{ 'Time'|t('search-manager') }}</th>
+                        <th class="nowrap">{{ 'Date'|t('search-manager') }}</th>
+                        <th class="nowrap">{{ 'Time'|t('search-manager') }}</th>
                         <th>{{ 'Query'|t('search-manager') }}</th>
                         <th>{{ 'Site'|t('search-manager') }}</th>
                         <th>{{ 'Hits'|t('search-manager') }}</th>
@@ -25,7 +25,7 @@
                         <th>{{ 'Browser'|t('search-manager') }}</th>
                         <th>{{ 'OS'|t('search-manager') }}</th>
                         {% if settings.enableGeoDetection %}
-                            <th>{{ 'Location'|t('search-manager') }}</th>
+                            <th class="nowrap">{{ 'Location'|t('search-manager') }}</th>
                         {% endif %}
                     </tr>
                 </thead>

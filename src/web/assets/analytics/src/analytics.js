@@ -39,8 +39,25 @@
         if (hash && document.getElementById(hash)) {
             return hash;
         }
+        const activeTabLink = document.querySelector('#tabs a.sel[href^="#"], #tabs a.active[href^="#"], .tabs a.sel[href^="#"], .tabs a.active[href^="#"]');
+        if (activeTabLink) {
+            const tabId = activeTabLink.getAttribute('href').substring(1);
+            if (tabId && document.getElementById(tabId)) {
+                return tabId;
+            }
+        }
+        if (window.currentTab && document.getElementById(window.currentTab)) {
+            return window.currentTab;
+        }
         const visible = document.querySelector('.lr-tab-content:not(.hidden)');
         return visible ? visible.id : 'overview';
+    }
+
+    function syncVisibleTab(tabId) {
+        if (!tabId || !document.getElementById(tabId)) return;
+        document.querySelectorAll('.lr-tab-content').forEach(el => el.classList.add('hidden'));
+        document.getElementById(tabId).classList.remove('hidden');
+        window.currentTab = tabId;
     }
 
     function resetChartContainer(ctx) {
@@ -126,6 +143,7 @@
 
         loadInitialCharts();
         const activeTab = getActiveTabId();
+        syncVisibleTab(activeTab);
         loadTabData(activeTab);
     }
 
@@ -533,8 +551,8 @@
             var source = {cp: 'CP', frontend: 'Frontend', api: 'API'}[s.source] || Craft.escapeHtml((s.source || '').charAt(0).toUpperCase() + (s.source || '').slice(1));
 
             var row = '<tr>' +
-                '<td>' + Craft.escapeHtml(s.date || '\u2014') + '</td>' +
-                '<td>' + Craft.escapeHtml(s.time || '\u2014') + '</td>' +
+                '<td class="nowrap">' + Craft.escapeHtml(s.date || '\u2014') + '</td>' +
+                '<td class="nowrap">' + Craft.escapeHtml(s.time || '\u2014') + '</td>' +
                 '<td><code>' + Craft.escapeHtml(s.query) + '</code></td>' +
                 '<td>' + Craft.escapeHtml(s.siteName || '\u2014') + '</td>' +
                 '<td>' + hits + '</td>' +
@@ -556,7 +574,7 @@
                 var loc = '\u2014';
                 if (s.city && s.country) loc = Craft.escapeHtml(s.city + ', ' + s.country);
                 else if (s.country) loc = Craft.escapeHtml(s.country);
-                row += '<td>' + loc + '</td>';
+                row += '<td class="nowrap">' + loc + '</td>';
             }
 
             row += '</tr>';
