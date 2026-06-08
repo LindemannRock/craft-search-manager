@@ -179,12 +179,17 @@ class SearchEngine
             ]);
 
             // Delete old document data
+            $oldDocLength = $this->storage->getDocumentLength($siteId, $elementId);
             $oldTerms = $this->storage->getDocumentTerms($siteId, $elementId);
             foreach (array_keys($oldTerms) as $term) {
                 $this->storage->removeTermDocument($term, $siteId, $elementId);
             }
             $this->storage->deleteDocument($siteId, $elementId);
             $this->storage->deleteTitleTerms($siteId, $elementId);
+
+            if ($oldDocLength > 0 || !empty($oldTerms)) {
+                $this->storage->updateMetadata($siteId, $oldDocLength, false);
+            }
 
             // Store new document data WITH language
             $this->storage->storeDocument($siteId, $elementId, $termFreqs, $docLength, $language);

@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\MySqlStorage;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -48,11 +49,38 @@ final class MySqlStorageMetadataTest extends TestCase
         self::assertSame(1.0, $storage->getAverageDocLength(1));
     }
 
+    public function testReindexingExistingDocumentReplacesMetadataInsteadOfInflatingIt(): void
+    {
+        $storage = new MySqlStorage(self::INDEX_HANDLE);
+        $engine = new SearchEngine($storage, self::INDEX_HANDLE);
+
+        $engine->indexDocument(1, 100001, 'First title', 'alpha beta gamma');
+        $firstLength = $storage->getTotalLength(1);
+
+        $engine->indexDocument(1, 100001, 'Second title', 'alpha beta gamma delta epsilon');
+
+        self::assertSame(1, $storage->getTotalDocCount(1));
+        self::assertGreaterThan(0, $storage->getTotalLength(1));
+        self::assertNotSame($firstLength, $storage->getTotalLength(1));
+    }
+
     private function deleteRowsForIndex(): void
     {
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete('{{%searchmanager_search_metadata}}', ['indexHandle' => self::INDEX_HANDLE])
-            ->execute();
+        $tables = [
+            '{{%searchmanager_search_documents}}',
+            '{{%searchmanager_search_terms}}',
+            '{{%searchmanager_search_titles}}',
+            '{{%searchmanager_search_ngrams}}',
+            '{{%searchmanager_search_ngram_counts}}',
+            '{{%searchmanager_search_metadata}}',
+            '{{%searchmanager_search_elements}}',
+        ];
+
+        foreach ($tables as $table) {
+            Craft::$app->getDb()
+                ->createCommand()
+                ->delete($table, ['indexHandle' => self::INDEX_HANDLE])
+                ->execute();
+        }
     }
 }
