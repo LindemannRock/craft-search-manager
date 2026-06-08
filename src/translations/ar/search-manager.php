@@ -652,10 +652,10 @@ return [
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
-• Recommended to keep enabled for production sites' => '<strong>كيفية العمل:</strong><br>
-• يحلل اكتشاف الجهاز سلاسل user-agent للتعرف على الأجهزة والمتصفحات وأنظمة التشغيل<br>
-• تُخزَّن النتائج في Cache لتجنب إعادة تحليل نفس user-agent بشكل متكرر<br>
-• يُوصى بإبقائه مفعّلاً لمواقع الإنتاج',
+• Recommended to keep enabled for production sites' => '<strong>كيف يعمل:</strong><br>
+• يقوم كشف الأجهزة بتحليل سلاسل User Agent لتحديد الأجهزة والمتصفحات وأنظمة التشغيل<br>
+• تُخزَّن النتائج مؤقتاً لتجنب إعادة تحليل نفس User Agent بشكل متكرر<br>
+• يُنصح بإبقائه مفعّلاً للمواقع الإنتاجية',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync نشط:</strong> تمت جدولة مهمة مزامنة وستعمل كل {minutes} دقيقة.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync لا يعمل:</strong> احفظ الإعدادات لبدء مهمة المزامنة، أو ستبدأ تلقائياً عند تحميل الصفحة التالية.',
     'second' => 'ثانية',

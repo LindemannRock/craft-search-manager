@@ -653,7 +653,7 @@ return [
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>Come funziona:</strong><br>
-• Il rilevamento dispositivo analizza le stringhe user-agent per identificare dispositivi, browser e sistemi operativi<br>
+• Il rilevamento dispositivi analizza le stringhe user-agent per identificare dispositivi, browser e sistemi operativi<br>
 • I risultati vengono memorizzati nella cache per evitare di analizzare ripetutamente lo stesso user-agent<br>
 • Si consiglia di mantenere abilitato per i siti in produzione',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync attivo:</strong> un processo di sincronizzazione è pianificato e verrà eseguito ogni {minutes} minuti.',
@@ -1518,7 +1518,7 @@ return [
     'Clear All Caches' => 'Svuota tutte le cache',
     'Clear Device Cache' => 'Svuota cache dispositivi',
     'Clear All Analytics' => 'Cancella tutte le analisi',
-    'Are you sure you want to clear all caches?' => 'Sei sicuro di voler svuotare tutte le cache?',
+    'Are you sure you want to clear all caches?' => 'Si è sicuri di voler svuotare tutte le cache?',
     'Are you sure you want to clear ALL data from' => 'Sei sicuro di voler cancellare TUTTI i dati da',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Eliminare definitivamente tutti i dati di tracciamento delle analisi. Questa azione non può essere annullata!',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'Questo eliminerà tutti i dati di tracciamento della ricerca e resetterà tutte le statistiche. Sei assolutamente sicuro?',

@@ -652,10 +652,10 @@ return [
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
-• Recommended to keep enabled for production sites' => '<strong>仕組み:</strong><br>
-• デバイス検出はユーザーエージェント文字列を解析してデバイス、ブラウザ、オペレーティングシステムを識別します<br>
-• 同じユーザーエージェントを繰り返し解析しないように結果がキャッシュされます<br>
-• 本番サイトでは有効のままにしておくことをお勧めします',
+• Recommended to keep enabled for production sites' => '<strong>動作の仕組み:</strong><br>
+• デバイス検出は User-Agent 文字列を解析してデバイス、ブラウザー、OS を識別します<br>
+• 同じ User-Agent を繰り返し解析しないよう結果をキャッシュします<br>
+• 本番サイトでは有効のままにすることを推奨します',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>ステータス同期が有効:</strong> 同期ジョブがスケジュールされており、{minutes} 分ごとに実行されます。',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>ステータス同期が停止中:</strong> 同期ジョブを開始するには設定を保存してください。または次のページ読み込み時に自動的に開始されます。',
     'second' => '秒',

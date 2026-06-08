@@ -653,9 +653,9 @@ return [
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>Slik fungerer det:</strong><br>
-• Enhetsgjenkjenning analyserer user-agent-strenger for å identifisere enheter, nettlesere og operativsystemer<br>
-• Resultater caches for å unngå gjentatt analysering av samme user-agent<br>
-• Anbefales å holde aktivert for produksjonsnettsted',
+• Enhetsregistrering analyserer user-agent-strenger for å identifisere enheter, nettlesere og operativsystemer<br>
+• Resultater bufres for å unngå gjentatt analyse av samme user-agent<br>
+• Anbefalt å holde aktivert for produksjonsnettsteder',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync aktiv:</strong> En synkroniseringsjobb er planlagt og vil kjøre hvert {minutes}. minutt.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync kjører ikke:</strong> Lagre innstillingene for å starte synkroniseringsjobben, eller den starter automatisk ved neste sideinnlasting.',
     'second' => 'sekund',
@@ -1518,7 +1518,7 @@ return [
     'Clear All Caches' => 'Fjern alle cacher',
     'Clear Device Cache' => 'Fjern enhetscache',
     'Clear All Analytics' => 'Fjern all analyse',
-    'Are you sure you want to clear all caches?' => 'Er du sikker på at du vil tømme alle cacher?',
+    'Are you sure you want to clear all caches?' => 'Er du sikker på at du vil fjerne alle cacher?',
     'Are you sure you want to clear ALL data from' => 'Er du sikker på at du vil tømme ALL data fra',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Slett alle analysesporingsdata permanent. Denne handlingen kan ikke angres!',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'Dette sletter alle søkesporingsdata og nullstiller all statistikk. Er du helt sikker?',

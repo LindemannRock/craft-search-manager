@@ -76,7 +76,7 @@ return [
     'Revoke API keys' => 'API-Schlüssel widerrufen',
 
     // Common
-    'Loading...' => 'Laden...',
+    'Loading...' => 'Wird geladen...',
     'Warning' => 'Warnung',
     'Handle must be unique.' => 'Der Handle muss eindeutig sein.',
     'Unknown error' => 'Unbekannter Fehler',
@@ -654,8 +654,8 @@ return [
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>So funktioniert es:</strong><br>
 • Die Geräteerkennung analysiert User-Agent-Strings, um Geräte, Browser und Betriebssysteme zu identifizieren<br>
-• Ergebnisse werden gecacht, um denselben User-Agent nicht wiederholt zu analysieren<br>
-• Empfohlen, für Produktions-Sites aktiviert zu lassen',
+• Ergebnisse werden gecacht, um das erneute Parsen desselben User-Agents zu vermeiden<br>
+• Empfohlen, für Produktionsseiten aktiviert zu lassen',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync aktiv:</strong> Ein Synchronisierungsjob ist geplant und wird alle {minutes} Minuten ausgeführt.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync nicht aktiv:</strong> Speichern Sie die Einstellungen, um den Synchronisierungsjob zu starten, oder er startet automatisch beim nächsten Seitenaufruf.',
     'second' => 'Sekunde',
@@ -790,7 +790,7 @@ return [
     'Cannot load indices - connection failed' => 'Indizes können nicht geladen werden – Verbindung fehlgeschlagen',
     'Refresh Connection' => 'Verbindung aktualisieren',
     'Test Connection' => 'Verbindung testen',
-    'Testing...' => 'Testen...',
+    'Testing...' => 'Wird getestet...',
     'These are the indices that exist in the backend service itself.' => 'Dies sind die Indizes, die im Backend-Dienst selbst vorhanden sind.',
     'Loading indices...' => 'Indizes werden geladen...',
     'Default backend cannot be disabled.' => 'Standard-Backend kann nicht deaktiviert werden.',

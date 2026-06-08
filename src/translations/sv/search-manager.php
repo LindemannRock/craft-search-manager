@@ -652,10 +652,10 @@ return [
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
-• Recommended to keep enabled for production sites' => '<strong>Så här fungerar det:</strong><br>
-• Enhetsidentifiering analyserar user-agent-strängar för att identifiera enheter, webbläsare och operativsystem<br>
-• Resultat cachas för att undvika upprepad analys av samma user-agent<br>
-• Rekommenderas att hålla aktiverat för produktionssajter',
+• Recommended to keep enabled for production sites' => '<strong>Hur det fungerar:</strong><br>
+• Enhetsidentifiering tolkar user-agent-strängar för att identifiera enheter, webbläsare och operativsystem<br>
+• Resultaten cachas för att undvika att tolka samma user-agent upprepade gånger<br>
+• Rekommenderas att behålla aktiverat för produktionssajter',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync aktiv:</strong> Ett synkroniseringsjobb är schemalagt och körs var {minutes}:e minut.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync körs inte:</strong> Spara inställningarna för att starta synkroniseringsjobbet, eller startar det automatiskt vid nästa sidladdning.',
     'second' => 'sekund',
@@ -1518,7 +1518,7 @@ return [
     'Clear All Caches' => 'Rensa alla cacher',
     'Clear Device Cache' => 'Rensa enhetscache',
     'Clear All Analytics' => 'Rensa all analys',
-    'Are you sure you want to clear all caches?' => 'Är du säker på att du vill rensa alla cachar?',
+    'Are you sure you want to clear all caches?' => 'Är du säker på att du vill rensa alla cacher?',
     'Are you sure you want to clear ALL data from' => 'Är du säker på att du vill rensa ALL data från',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Ta bort alla analysspårningsdata permanent. Det här går inte att ångra!',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'Detta raderar all sökspårningsdata och återställer all statistik. Är du helt säker?',

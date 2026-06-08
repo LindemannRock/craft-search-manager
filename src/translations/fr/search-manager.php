@@ -652,10 +652,10 @@ return [
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
-• Recommended to keep enabled for production sites' => '<strong>Fonctionnement :</strong><br>
-• La détection de périphérique analyse les chaînes user-agent pour identifier les appareils, navigateurs et systèmes d\'exploitation<br>
+• Recommended to keep enabled for production sites' => '<strong>Comment ça fonctionne :</strong><br>
+• La détection d\'appareils analyse les chaînes user-agent pour identifier les appareils, les navigateurs et les systèmes d\'exploitation<br>
 • Les résultats sont mis en cache pour éviter de réanalyser le même user-agent plusieurs fois<br>
-• Il est recommandé de laisser cette option activée pour les sites en production',
+• Recommandé de maintenir activé pour les sites en production',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync actif :</strong> Une tâche de synchronisation est planifiée et s\'exécutera toutes les {minutes} minutes.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync inactif :</strong> Enregistrez les paramètres pour démarrer la tâche de synchronisation, ou elle démarrera automatiquement au prochain chargement de page.',
     'second' => 'seconde',
@@ -1518,7 +1518,7 @@ return [
     'Clear All Caches' => 'Vider tous les caches',
     'Clear Device Cache' => 'Vider le cache des appareils',
     'Clear All Analytics' => 'Effacer toutes les analytiques',
-    'Are you sure you want to clear all caches?' => 'Êtes-vous sûr de vouloir vider tous les caches ?',
+    'Are you sure you want to clear all caches?' => 'Voulez-vous vraiment vider tous les caches ?',
     'Are you sure you want to clear ALL data from' => 'Êtes-vous sûr de vouloir effacer TOUTES les données de',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Supprimer définitivement toutes les données de suivi analytique. Cette action est irréversible !',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'Cela supprimera toutes les données de suivi de recherche et réinitialisera toutes les statistiques. Êtes-vous absolument sûr ?',

@@ -654,8 +654,8 @@ return [
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>Hoe het werkt:</strong><br>
 • Apparaatdetectie parseert user-agent-strings om apparaten, browsers en besturingssystemen te identificeren<br>
-• Resultaten worden gecached om herhaald parsen van dezelfde user-agent te voorkomen<br>
-• Aanbevolen om ingeschakeld te houden voor productiesites',
+• Resultaten worden gecached om herhaalde verwerking van dezelfde user-agent te vermijden<br>
+• Aanbevolen ingeschakeld te houden voor productiesites',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync actief:</strong> Een synchronisatietaak is ingepland en wordt elke {minutes} minuten uitgevoerd.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync niet actief:</strong> Sla de instellingen op om de synchronisatietaak te starten, of deze wordt automatisch gestart bij de volgende paginalading.',
     'second' => 'seconde',
@@ -790,7 +790,7 @@ return [
     'Cannot load indices - connection failed' => 'Kan indexen niet laden – verbinding mislukt',
     'Refresh Connection' => 'Verbinding vernieuwen',
     'Test Connection' => 'Verbinding testen',
-    'Testing...' => 'Testen...',
+    'Testing...' => 'Bezig met testen...',
     'These are the indices that exist in the backend service itself.' => 'Dit zijn de indexen die bestaan in de backenddienst zelf.',
     'Loading indices...' => 'Indexen laden...',
     'Default backend cannot be disabled.' => 'Standaardbackend kan niet worden uitgeschakeld.',

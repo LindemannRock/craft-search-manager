@@ -654,8 +654,8 @@ return [
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>Cómo funciona:</strong><br>
 • La detección de dispositivos analiza las cadenas user-agent para identificar dispositivos, navegadores y sistemas operativos<br>
-• Los resultados se almacenan en caché para evitar reanálisis del mismo user-agent repetidamente<br>
-• Se recomienda mantenerlo habilitado en sitios de producción',
+• Los resultados se almacenan en caché para evitar reprocesar el mismo user-agent repetidamente<br>
+• Se recomienda mantener activado para sitios de producción',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync activo:</strong> Hay una tarea de sincronización programada que se ejecutará cada {minutes} minutos.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync no está en ejecución:</strong> Guarde la Configuración para iniciar la tarea de sincronización, o se iniciará automáticamente en la próxima carga de página.',
     'second' => 'segundo',

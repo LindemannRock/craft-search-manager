@@ -653,9 +653,9 @@ return [
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
 • Recommended to keep enabled for production sites' => '<strong>Como funciona:</strong><br>
-• A deteção de dispositivos analisa as strings user-agent para identificar dispositivos, navegadores e sistemas operativos<br>
-• Os resultados são armazenados em cache para evitar re-analisar o mesmo user-agent repetidamente<br>
-• Recomendado manter ativado em sites de produção',
+• A deteção de dispositivos analisa strings user-agent para identificar dispositivos, navegadores e sistemas operativos<br>
+• Os resultados são colocados em cache para evitar reanalisar o mesmo user-agent repetidamente<br>
+• Recomendado manter ativo para sites em produção',
     '<strong>Status Sync Active:</strong> A sync job is scheduled and will run every {minutes} minutes.' => '<strong>Status Sync ativo:</strong> Uma tarefa de sincronização está agendada e será executada a cada {minutes} minutos.',
     '<strong>Status Sync Not Running:</strong> Save settings to start the sync job, or it will auto-start on next page load.' => '<strong>Status Sync não está em execução:</strong> Guarde as definições para iniciar a tarefa de sincronização, ou será iniciada automaticamente no próximo carregamento de página.',
     'second' => 'segundo',
@@ -1518,7 +1518,7 @@ return [
     'Clear All Caches' => 'Limpar todas as caches',
     'Clear Device Cache' => 'Limpar cache de dispositivos',
     'Clear All Analytics' => 'Limpar todas as análises',
-    'Are you sure you want to clear all caches?' => 'Limpar todas as caches?',
+    'Are you sure you want to clear all caches?' => 'Tem a certeza de que pretende limpar todas as caches?',
     'Are you sure you want to clear ALL data from' => 'Limpar TODOS os dados de',
     'Permanently delete all analytics tracking data. This action cannot be undone!' => 'Eliminar permanentemente todos os dados de rastreamento de análise. Esta ação não pode ser anulada!',
     'This will delete all search tracking data and reset all statistics. Are you absolutely sure?' => 'Isto irá eliminar todos os dados de monitorização de pesquisa e repor todas as estatísticas. Tem a certeza absoluta?',
