@@ -7,9 +7,9 @@ use craft\base\Model;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
@@ -25,6 +25,8 @@ class ConfiguredBackend extends Model
 {
     use LoggingTrait;
     use ConfigSourceTrait;
+
+    private const PLUGIN_HANDLE = 'search-manager';
 
     // =========================================================================
     // PROPERTIES
@@ -429,7 +431,7 @@ class ConfiguredBackend extends Model
     public static function findByHandle(string $handle): ?self
     {
         // First, check config file
-        $backendConfig = ConfigFileHelper::getConfigByHandle('backends', $handle);
+        $backendConfig = BaseConfigFileHelper::getConfigByHandle(self::PLUGIN_HANDLE, 'backends', $handle);
 
         if ($backendConfig !== null) {
             return self::createFromConfig($handle, $backendConfig);
@@ -468,7 +470,7 @@ class ConfiguredBackend extends Model
     public static function findAll(): array
     {
         $backends = [];
-        $handlesFromConfig = ConfigFileHelper::getHandles('backends');
+        $handlesFromConfig = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'backends');
 
         // First, load backends from config file
         $configBackends = self::findAllFromConfig();
@@ -505,7 +507,7 @@ class ConfiguredBackend extends Model
     public static function findAllFromConfig(): array
     {
         $backends = [];
-        $backendConfigs = ConfigFileHelper::getConfiguredBackends();
+        $backendConfigs = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'backends');
 
         foreach ($backendConfigs as $handle => $backendConfig) {
             $backends[] = self::createFromConfig($handle, $backendConfig);

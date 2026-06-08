@@ -8,10 +8,10 @@ use craft\base\Model;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
@@ -28,6 +28,8 @@ class SearchIndex extends Model
 {
     use LoggingTrait;
     use ConfigSourceTrait;
+
+    private const PLUGIN_HANDLE = 'search-manager';
 
     /**
      * @var self[]|null Request-scoped index cache.
@@ -467,7 +469,7 @@ class SearchIndex extends Model
     public static function loadFromConfig(): array
     {
         try {
-            $configIndices = ConfigFileHelper::getIndices();
+            $configIndices = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'indices');
             $indices = [];
 
             // Fetch ALL config metadata in one query (instead of N queries)
@@ -524,7 +526,7 @@ class SearchIndex extends Model
      */
     public static function clearConfigCache(): void
     {
-        ConfigFileHelper::clearCache();
+        BaseConfigFileHelper::clearCache(self::PLUGIN_HANDLE);
         self::clearCache();
     }
 
@@ -547,7 +549,7 @@ class SearchIndex extends Model
      */
     private static function loadConfigForHandle(string $handle): ?array
     {
-        return ConfigFileHelper::getConfigByHandle('indices', $handle);
+        return BaseConfigFileHelper::getConfigByHandle(self::PLUGIN_HANDLE, 'indices', $handle);
     }
 
     /**

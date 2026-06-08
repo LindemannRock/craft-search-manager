@@ -7,9 +7,9 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\Json;
 use lindemannrock\base\helpers\BooleanHelper;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\WidgetStyle;
 use yii\base\Component;
 
@@ -23,6 +23,8 @@ use yii\base\Component;
 class WidgetStyleService extends Component
 {
     use LoggingTrait;
+
+    private const PLUGIN_HANDLE = 'search-manager';
 
     private const TABLE = '{{%searchmanager_widget_styles}}';
 
@@ -49,7 +51,7 @@ class WidgetStyleService extends Component
         }
 
         $this->_configFileStyles = [];
-        $styles = ConfigFileHelper::getWidgetStyles();
+        $styles = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'widgetStyles');
 
         foreach ($styles as $handle => $configData) {
             $this->_configFileStyles[$handle] = $this->createFromConfig($handle, $configData);

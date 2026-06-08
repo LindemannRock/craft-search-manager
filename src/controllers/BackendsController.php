@@ -5,9 +5,9 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\db\Query;
 use craft\web\Controller;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -23,6 +23,8 @@ use yii\web\Response;
 class BackendsController extends Controller
 {
     use LoggingTrait;
+
+    private const PLUGIN_HANDLE = 'search-manager';
 
     /** @inheritdoc */
     public function init(): void
@@ -51,7 +53,7 @@ class BackendsController extends Controller
         // template's "no default backend configured" warning, which must
         // survive a narrowed filter. Cached now before filter shrinks $backends.
         $hasAnyBackends = !empty($backends);
-        $configHandles = ConfigFileHelper::getHandles('backends');
+        $configHandles = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'backends');
         $databaseHandles = (new Query())
             ->select(['handle'])
             ->from('{{%searchmanager_backends}}')

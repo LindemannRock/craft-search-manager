@@ -6,9 +6,9 @@ use Craft;
 use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\base\helpers\BooleanHelper;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\models\WidgetStyle;
@@ -26,6 +26,8 @@ use yii\web\Response;
 class WidgetsController extends Controller
 {
     use LoggingTrait;
+
+    private const PLUGIN_HANDLE = 'search-manager';
 
     /** @inheritdoc */
     public function init(): void
@@ -50,7 +52,7 @@ class WidgetsController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         $widgetConfigs = array_values(SearchManager::$plugin->widgetConfigs->getAll());
-        $configHandles = ConfigFileHelper::getHandles('widgets');
+        $configHandles = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'widgets');
         $databaseHandles = (new Query())
             ->select(['handle'])
             ->from('{{%searchmanager_widget_configs}}')
@@ -636,7 +638,7 @@ class WidgetsController extends Controller
         $widgetStyles = array_values(SearchManager::$plugin->widgetStyles->getAll());
         $styleUsageCounts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
 
-        $configHandles = ConfigFileHelper::getHandles('widgetStyles');
+        $configHandles = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'widgetStyles');
         $databaseHandles = (new Query())
             ->select(['handle'])
             ->from('{{%searchmanager_widget_styles}}')

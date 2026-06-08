@@ -5,9 +5,9 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\db\Query;
 use craft\web\Controller;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -21,6 +21,8 @@ use yii\web\Response;
 class IndicesController extends Controller
 {
     use LoggingTrait;
+
+    private const PLUGIN_HANDLE = 'search-manager';
 
     /** @inheritdoc */
     public function init(): void
@@ -45,7 +47,7 @@ class IndicesController extends Controller
         $settings = SearchManager::$plugin->getSettings();
 
         $indices = SearchIndex::findAll();
-        $configHandles = ConfigFileHelper::getHandles('indices');
+        $configHandles = BaseConfigFileHelper::getHandles(self::PLUGIN_HANDLE, 'indices');
         $databaseHandles = (new Query())
             ->select(['handle'])
             ->from('{{%searchmanager_indices}}')

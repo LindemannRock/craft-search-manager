@@ -874,7 +874,7 @@ class UtilitiesController extends Controller
     {
         // Get handles from config file
         $configHandles = [];
-        $configIndices = \lindemannrock\searchmanager\helpers\ConfigFileHelper::getIndices();
+        $configIndices = \lindemannrock\base\helpers\ConfigFileHelper::getConfigSection('search-manager', 'indices');
         foreach ($configIndices as $handle => $config) {
             $configHandles[] = $handle;
         }

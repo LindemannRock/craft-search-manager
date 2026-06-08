@@ -8,8 +8,8 @@ use craft\helpers\Db;
 use craft\helpers\Json;
 use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\BooleanHelper;
+use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\ConfigFileHelper;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use yii\base\Component;
 
@@ -24,6 +24,8 @@ use yii\base\Component;
 class WidgetConfigService extends Component
 {
     use LoggingTrait;
+
+    private const PLUGIN_HANDLE = 'search-manager';
 
     private const TABLE = '{{%searchmanager_widget_configs}}';
 
@@ -63,7 +65,7 @@ class WidgetConfigService extends Component
         }
 
         $this->_configFileConfigs = [];
-        $widgetConfigs = ConfigFileHelper::getWidgetConfigs();
+        $widgetConfigs = BaseConfigFileHelper::getConfigSection(self::PLUGIN_HANDLE, 'widgets');
 
         foreach ($widgetConfigs as $handle => $configData) {
             $this->_configFileConfigs[$handle] = $this->createFromConfig($handle, $configData);
