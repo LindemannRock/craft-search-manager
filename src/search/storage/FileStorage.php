@@ -239,6 +239,23 @@ class FileStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getTermDocumentsBatch(array $terms, int $siteId): array
+    {
+        $byTerm = [];
+
+        foreach ($terms as $term) {
+            $data = $this->readFile($this->getTermPath($term, $siteId));
+            if (!empty($data)) {
+                $byTerm[$term] = $data;
+            }
+        }
+
+        return $byTerm;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function removeTermDocument(string $term, int $siteId, int $elementId): void
     {
         $termPath = $this->getTermPath($term, $siteId);

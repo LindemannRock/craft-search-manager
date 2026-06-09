@@ -273,6 +273,35 @@ class RedisStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getTermDocumentsBatch(array $terms, int $siteId): array
+    {
+        if (empty($terms)) {
+            return [];
+        }
+
+        // Pipeline one hGetAll per term so the candidate set costs a single
+        // round-trip instead of one per term.
+        $terms = array_values($terms);
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($terms as $term) {
+            $this->redis->hGetAll($this->getTermKey($term, $siteId));
+        }
+        $results = $this->redis->exec();
+
+        $byTerm = [];
+        foreach ($terms as $index => $term) {
+            $data = $results[$index] ?? [];
+            if (!empty($data)) {
+                $byTerm[$term] = array_map('intval', $data);
+            }
+        }
+
+        return $byTerm;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function removeTermDocument(string $term, int $siteId, int $elementId): void
     {
         $key = $this->getTermKey($term, $siteId);

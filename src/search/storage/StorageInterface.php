@@ -99,6 +99,19 @@ interface StorageInterface
     public function getTermDocuments(string $term, int $siteId): array;
 
     /**
+     * Get all documents for many terms in one batch.
+     *
+     * Used by the fuzzy fallback so the candidate terms are fetched in a single
+     * call instead of one {@see getTermDocuments()} query per candidate (an
+     * N+1). Terms with no documents are simply absent from the result.
+     *
+     * @param string[] $terms Terms to fetch documents for
+     * @param int $siteId Site ID
+     * @return array<string, array<string, int>> Map of term => ["siteId:elementId" => frequency]
+     */
+    public function getTermDocumentsBatch(array $terms, int $siteId): array;
+
+    /**
      * Remove a term-document association
      *
      * @param string $term The term

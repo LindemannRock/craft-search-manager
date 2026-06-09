@@ -425,6 +425,7 @@ class SearchEngine
             $docScores = [];
             $allDocIds = [];
             $termsForScoring = []; // Maps original term to actual terms used (exact or fuzzy)
+            $termDocsCache = []; // actualTerm => [docId => freq], reused during scoring to avoid re-querying
 
             // For each query token, find matching documents
             foreach ($tokens as $termIndex => $term) {
@@ -444,9 +445,16 @@ class SearchEngine
                         'fuzzy_terms' => $fuzzyTerms,
                     ]);
 
+                    // Batch-fetch docs for all fuzzy candidates in one query
+                    // instead of one query per candidate (was an N+1).
+                    $fuzzyDocsByTerm = !empty($fuzzyTerms)
+                        ? $this->storage->getTermDocumentsBatch($fuzzyTerms, $siteId)
+                        : [];
+
                     foreach ($fuzzyTerms as $fuzzyTerm) {
-                        $fuzzyDocs = $this->storage->getTermDocuments($fuzzyTerm, $siteId);
+                        $fuzzyDocs = $fuzzyDocsByTerm[$fuzzyTerm] ?? [];
                         $termsForScoring[$term][] = $fuzzyTerm; // Track fuzzy term for scoring
+                        $termDocsCache[$fuzzyTerm] = $fuzzyDocs;
 
                         $this->logDebug('Documents for fuzzy term', [
                             'fuzzy_term' => $fuzzyTerm,
@@ -460,6 +468,7 @@ class SearchEngine
                     }
                 } else {
                     $termsForScoring[$term][] = $term; // Track exact term for scoring
+                    $termDocsCache[$term] = $termDocs;
                     foreach (array_keys($termDocs) as $docId) {
                         $termMatches[$termIndex][$docId] = true;
                         $allDocIds[$docId] = true;
@@ -488,7 +497,10 @@ class SearchEngine
                 $actualTerms = $termsForScoring[$originalTerm] ?? [];
 
                 foreach ($actualTerms as $actualTerm) {
-                    $termDocs = $this->storage->getTermDocuments($actualTerm, $siteId);
+                    // Reuse the docs fetched during matching; fall back to a
+                    // direct lookup only if a term somehow wasn't cached.
+                    $termDocs = $termDocsCache[$actualTerm]
+                        ?? $this->storage->getTermDocuments($actualTerm, $siteId);
 
                     if (!empty($termDocs)) {
                         $docFreq = count($termDocs);
@@ -744,6 +756,7 @@ class SearchEngine
         $docScores = [];
         $allDocIds = [];
         $termsForScoring = [];
+        $termDocsCache = []; // actualTerm => [docId => freq], reused during scoring
 
         // For each term, find matching documents
         foreach ($processedTerms as $termIndex => $term) {
@@ -757,9 +770,16 @@ class SearchEngine
                 // Fuzzy fallback
                 $fuzzyTerms = $this->fuzzyMatcher->findMatches($term, $this->storage, $siteId);
 
+                // Batch-fetch docs for all fuzzy candidates in one query
+                // instead of one query per candidate (was an N+1).
+                $fuzzyDocsByTerm = !empty($fuzzyTerms)
+                    ? $this->storage->getTermDocumentsBatch($fuzzyTerms, $siteId)
+                    : [];
+
                 foreach ($fuzzyTerms as $fuzzyTerm) {
-                    $fuzzyDocs = $this->storage->getTermDocuments($fuzzyTerm, $siteId);
+                    $fuzzyDocs = $fuzzyDocsByTerm[$fuzzyTerm] ?? [];
                     $termsForScoring[$term][] = $fuzzyTerm;
+                    $termDocsCache[$fuzzyTerm] = $fuzzyDocs;
 
                     foreach ($fuzzyDocs as $docId => $freq) {
                         $termMatches[$termIndex][$docId] = true;
@@ -768,6 +788,7 @@ class SearchEngine
                 }
             } else {
                 $termsForScoring[$term][] = $term;
+                $termDocsCache[$term] = $termDocs;
                 foreach (array_keys($termDocs) as $docId) {
                     $termMatches[$termIndex][$docId] = true;
                     $allDocIds[$docId] = true;
@@ -792,7 +813,10 @@ class SearchEngine
             $actualTerms = $termsForScoring[$originalTerm] ?? [];
 
             foreach ($actualTerms as $actualTerm) {
-                $termDocs = $this->storage->getTermDocuments($actualTerm, $siteId);
+                // Reuse the docs fetched during matching; fall back to a direct
+                // lookup only if a term somehow wasn't cached.
+                $termDocs = $termDocsCache[$actualTerm]
+                    ?? $this->storage->getTermDocuments($actualTerm, $siteId);
 
                 if (!empty($termDocs)) {
                     $docFreq = count($termDocs);

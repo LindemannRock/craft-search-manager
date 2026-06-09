@@ -292,6 +292,34 @@ class MySqlStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getTermDocumentsBatch(array $terms, int $siteId): array
+    {
+        if (empty($terms)) {
+            return [];
+        }
+
+        $rows = (new Query())
+            ->select(['term', 'siteId', 'elementId', 'frequency'])
+            ->from('{{%searchmanager_search_terms}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'term' => array_values($terms),
+                'siteId' => $siteId,
+            ])
+            ->all();
+
+        $byTerm = [];
+        foreach ($rows as $row) {
+            $docId = $row['siteId'] . ':' . $row['elementId'];
+            $byTerm[$row['term']][$docId] = (int)$row['frequency'];
+        }
+
+        return $byTerm;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function removeTermDocument(string $term, int $siteId, int $elementId): void
     {
         $this->db->createCommand()->delete(

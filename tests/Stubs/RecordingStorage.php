@@ -35,10 +35,20 @@ final class RecordingStorage implements StorageInterface
     /** @var int[] Element-id counts passed to each getTitleTermsBatch() call. */
     public array $getTitleTermsBatchSizes = [];
 
+    /** @var int Times getTermDocuments() (single term) was called. */
+    public int $getTermDocumentsCalls = 0;
+
+    /** @var int Times getTermDocumentsBatch() was called. */
+    public int $getTermDocumentsBatchCalls = 0;
+
+    /** @var int[] Term counts passed to each getTermDocumentsBatch() call. */
+    public array $getTermDocumentsBatchSizes = [];
+
     /**
      * @param array<string, array<string, int>> $termDocs term => [docId => freq] (docId = "siteId:elementId")
      * @param array<int, string[]> $titleByElement elementId => title terms
      * @param array<string, int> $docLengths docId => length
+     * @param array<string, float> $fuzzyCandidates term => similarity, returned from getTermsByNgramSimilarity()
      */
     public function __construct(
         private array $termDocs,
@@ -46,12 +56,30 @@ final class RecordingStorage implements StorageInterface
         private array $docLengths,
         private int $totalDocs,
         private float $avgDocLength,
+        private array $fuzzyCandidates = [],
     ) {
     }
 
     public function getTermDocuments(string $term, int $siteId): array
     {
+        $this->getTermDocumentsCalls++;
+
         return $this->termDocs[$term] ?? [];
+    }
+
+    public function getTermDocumentsBatch(array $terms, int $siteId): array
+    {
+        $this->getTermDocumentsBatchCalls++;
+        $this->getTermDocumentsBatchSizes[] = count($terms);
+
+        $byTerm = [];
+        foreach ($terms as $term) {
+            if (!empty($this->termDocs[$term])) {
+                $byTerm[$term] = $this->termDocs[$term];
+            }
+        }
+
+        return $byTerm;
     }
 
     public function getDocumentLengthsBatch(array $docIds): array
@@ -135,7 +163,7 @@ final class RecordingStorage implements StorageInterface
 
     public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array
     {
-        return [];
+        return $this->fuzzyCandidates;
     }
 
     public function getTermsByPrefix(string $prefix, int $siteId): array
