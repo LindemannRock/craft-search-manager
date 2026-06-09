@@ -371,6 +371,35 @@ class RedisStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getTitleTermsBatch(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        // Pipeline one sMembers per element so the scoring loop pays a single
+        // round-trip instead of one per matched document.
+        $ids = array_values($elementIds);
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($ids as $elementId) {
+            $this->redis->sMembers($this->getTitleKey($siteId, (int)$elementId));
+        }
+        $results = $this->redis->exec();
+
+        $byElement = [];
+        foreach ($ids as $index => $elementId) {
+            $terms = $results[$index] ?? [];
+            if (!empty($terms)) {
+                $byElement[(int)$elementId] = $terms;
+            }
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function deleteTitleTerms(int $siteId, int $elementId): void
     {
         $key = $this->getTitleKey($siteId, $elementId);

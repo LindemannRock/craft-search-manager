@@ -543,6 +543,33 @@ class MySqlStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getTitleTermsBatch(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        $rows = (new Query())
+            ->select(['elementId', 'term'])
+            ->from('{{%searchmanager_search_titles}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'elementId' => $elementIds,
+            ])
+            ->all();
+
+        $byElement = [];
+        foreach ($rows as $row) {
+            $byElement[(int)$row['elementId']][] = $row['term'];
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function deleteTitleTerms(int $siteId, int $elementId): void
     {
         $this->db->createCommand()->delete(

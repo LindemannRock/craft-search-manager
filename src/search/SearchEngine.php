@@ -478,6 +478,11 @@ class SearchEngine
                 $this->groupDocIdsBySite(array_keys($allDocIds))
             );
 
+            // Batch fetch title terms once for the whole matched set, so the
+            // title boost below is an in-memory lookup rather than one storage
+            // query per matched document (the getTitleTerms() N+1).
+            $titleTermsByDocId = $this->preloadTitleTerms(array_keys($allDocIds), $siteId);
+
             // Calculate BM25 scores using actual matched terms (exact or fuzzy)
             foreach ($tokens as $originalTerm) {
                 $actualTerms = $termsForScoring[$originalTerm] ?? [];
@@ -500,7 +505,7 @@ class SearchEngine
                             );
 
                             // Apply title boost if term in title
-                            if ($this->isTermInTitle($actualTerm, $docId, $siteId)) {
+                            if (in_array($actualTerm, $titleTermsByDocId[$docId] ?? [], true)) {
                                 $score = $this->scorer->applyTitleBoost($score);
                             }
 
@@ -779,6 +784,9 @@ class SearchEngine
             $this->groupDocIdsBySite(array_keys($allDocIds))
         );
 
+        // Batch fetch title terms once for the whole matched set (see searchSimple).
+        $titleTermsByDocId = $this->preloadTitleTerms(array_keys($allDocIds), $siteId);
+
         // Calculate BM25 scores
         foreach ($processedTerms as $originalTerm) {
             $actualTerms = $termsForScoring[$originalTerm] ?? [];
@@ -801,7 +809,7 @@ class SearchEngine
                         );
 
                         // Apply title boost if term in title
-                        if ($this->isTermInTitle($actualTerm, $docId, $siteId)) {
+                        if (in_array($actualTerm, $titleTermsByDocId[$docId] ?? [], true)) {
                             $score = $this->scorer->applyTitleBoost($score);
                         }
 
@@ -1149,20 +1157,45 @@ class SearchEngine
     // =========================================================================
 
     /**
-     * Check if term is in document title
+     * Preload title terms for a set of docIds in one batched storage call,
+     * keyed by docId, so the BM25 title boost is an in-memory lookup instead of
+     * a per-document {@see StorageInterface::getTitleTerms()} query (an N+1 that
+     * made common, high-hit-count terms scale linearly with the matched set).
      *
-     * @param string $term The term
-     * @param string $docId Document ID (siteId:elementId)
-     * @param int $siteId Site ID
-     * @return bool
+     * Behaviour matches the previous per-document check exactly: title terms are
+     * fetched for the given $siteId and a term counts as a title match when it
+     * appears in that document's title-term list.
+     *
+     * @param list<string> $docIds "siteId:elementId" docIds for the matched set
+     * @param int $siteId Site ID the search ran against
+     * @return array<string, string[]> Map of docId => title terms
      */
-    private function isTermInTitle(string $term, string $docId, int $siteId): bool
+    private function preloadTitleTerms(array $docIds, int $siteId): array
     {
-        $parts = explode(':', $docId);
-        $elementId = (int)($parts[1] ?? $parts[0]);
+        if (empty($docIds)) {
+            return [];
+        }
 
-        $titleTerms = $this->storage->getTitleTerms($siteId, $elementId);
-        return in_array($term, $titleTerms, true);
+        $elementIds = [];
+        $docIdsByElement = [];
+        foreach ($docIds as $docId) {
+            $parts = explode(':', (string)$docId);
+            $elementId = (int)($parts[1] ?? $parts[0]);
+            $elementIds[$elementId] = true;
+            $docIdsByElement[$elementId][] = (string)$docId;
+        }
+
+        $byElement = $this->storage->getTitleTermsBatch($siteId, array_keys($elementIds));
+
+        $byDocId = [];
+        foreach ($docIdsByElement as $elementId => $ids) {
+            $terms = $byElement[$elementId] ?? [];
+            foreach ($ids as $docId) {
+                $byDocId[$docId] = $terms;
+            }
+        }
+
+        return $byDocId;
     }
 
     /**

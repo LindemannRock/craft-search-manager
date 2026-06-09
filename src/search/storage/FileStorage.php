@@ -347,6 +347,23 @@ class FileStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getTitleTermsBatch(int $siteId, array $elementIds): array
+    {
+        $byElement = [];
+
+        foreach ($elementIds as $elementId) {
+            $data = $this->readFile($this->getTitlePath($siteId, (int)$elementId));
+            if (!empty($data)) {
+                $byElement[(int)$elementId] = $data;
+            }
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function deleteTitleTerms(int $siteId, int $elementId): void
     {
         $titlePath = $this->getTitlePath($siteId, $elementId);

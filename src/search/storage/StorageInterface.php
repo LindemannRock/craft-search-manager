@@ -170,6 +170,19 @@ interface StorageInterface
     public function getTitleTerms(int $siteId, int $elementId): array;
 
     /**
+     * Get title terms for many documents in one batch.
+     *
+     * Used by the BM25 scoring loop to apply the title boost without issuing a
+     * per-document lookup (the {@see getTitleTerms()} N+1). Element IDs with no
+     * title terms are simply absent from the result.
+     *
+     * @param int $siteId Site ID
+     * @param int[] $elementIds Element IDs to fetch title terms for
+     * @return array<int, string[]> Map of elementId => array of title terms
+     */
+    public function getTitleTermsBatch(int $siteId, array $elementIds): array;
+
+    /**
      * Delete title terms for a document
      *
      * @param int $siteId Site ID
