@@ -49,6 +49,12 @@ class EnrichmentService extends Component
         $includeDebugMeta = (bool) ($options['includeDebugMeta'] ?? false);
         $siteId = isset($options['siteId']) ? (int) $options['siteId'] : null;
 
+        // Batch-load every referenced element up front, grouped by element type
+        // and site, so this loop does a map lookup instead of a getElementById()
+        // call per hit (the enrich=1 N+1, worst at hitsPerPage=100).
+        $currentSiteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $preloadedElements = $this->preloadElements($rawHits, $siteId, $indexHandles);
+
         $results = [];
 
         foreach ($rawHits as $hit) {
@@ -56,20 +62,19 @@ class EnrichmentService extends Component
             if (!$elementId) {
                 continue;
             }
-            // Cast to int for getElementById (search backends may return strings)
+            // Cast to int (search backends may return strings)
             $elementId = (int) $elementId;
 
-            // Use per-hit siteId if available (from searchAllSites), fall back to global option
-            $hitSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : $siteId;
+            // Per-hit siteId wins over the global option; a null site resolves to
+            // the current site — matching the previous getElementById() call.
+            $hitSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : ($siteId ?? $currentSiteId);
 
-            // Try to get the actual element for URL and additional data
-            // For public (non-CP) requests, only return live elements to prevent
-            // disabled/expired content from appearing in search results
-            $criteria = Craft::$app->getRequest()->getIsCpRequest() ? [] : ['status' => 'live'];
-            $element = Craft::$app->elements->getElementById($elementId, null, $hitSiteId, $criteria);
+            // Preloaded with CP=any-status / public=live-only. Missing, deleted,
+            // or non-live elements are absent here and skipped, exactly as a null
+            // getElementById() result was.
+            $element = $preloadedElements[$hitSiteId . ':' . $elementId] ?? null;
 
             if ($element === null) {
-                // Element might have been deleted or is not live, skip it
                 continue;
             }
 
@@ -213,6 +218,101 @@ class EnrichmentService extends Component
         }
 
         return $results;
+    }
+
+    /**
+     * Batch-load the Craft elements referenced by the raw hits, grouped by
+     * element type and site, so {@see enrichResults()} can do one query per
+     * group instead of a getElementById() call per hit.
+     *
+     * Behaviour matches the per-hit getElementById() call it replaces:
+     * - CP requests load any status; public/API requests only live elements.
+     * - Per-hit siteId wins over the global siteId; a null site resolves to the
+     *   current site.
+     * - Missing / deleted / wrong-status elements are simply absent from the
+     *   returned map, so the caller skips them exactly as before.
+     *
+     * The element type comes from each hit's index (an index only ever stores
+     * one element type). Hits whose index/type can't be resolved fall back to a
+     * per-element getElementById() so no result is silently dropped.
+     *
+     * @param array $rawHits Raw hits from the search backend
+     * @param int|null $siteId Global siteId option (per-hit siteId overrides it)
+     * @param string[] $indexHandles Index handles for the search (single-index fallback)
+     * @return array<string, \craft\base\ElementInterface> Map keyed by "siteId:elementId"
+     */
+    private function preloadElements(array $rawHits, ?int $siteId, array $indexHandles): array
+    {
+        $isCpRequest = Craft::$app->getRequest()->getIsCpRequest();
+        $status = $isCpRequest ? null : 'live';
+        $currentSiteId = Craft::$app->getSites()->getCurrentSite()->id;
+
+        $fallbackHandle = $indexHandles[0] ?? '';
+
+        // Resolve each unique index handle to its element type once. findByHandle()
+        // rebuilds a model (config + DB) on every call, so resolving per hit would
+        // be its own N+1 — resolve per distinct handle instead.
+        $elementClassByHandle = [];
+        foreach ($rawHits as $hit) {
+            $handle = $hit['_index'] ?? $fallbackHandle;
+            if ($handle !== '' && !array_key_exists($handle, $elementClassByHandle)) {
+                $elementClassByHandle[$handle] = SearchIndex::findByHandle($handle)?->elementType;
+            }
+        }
+
+        // group[elementClass][resolvedSiteId][elementId] = true
+        $groups = [];
+        // unresolved[resolvedSiteId][elementId] = true — element type unknown
+        $unresolved = [];
+
+        foreach ($rawHits as $hit) {
+            $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
+            if (!$elementId) {
+                continue;
+            }
+            $elementId = (int) $elementId;
+            $resolvedSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : ($siteId ?? $currentSiteId);
+
+            $handle = $hit['_index'] ?? $fallbackHandle;
+            $elementClass = $handle !== '' ? ($elementClassByHandle[$handle] ?? null) : null;
+
+            if ($elementClass !== null && is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
+                $groups[$elementClass][$resolvedSiteId][$elementId] = true;
+            } else {
+                $unresolved[$resolvedSiteId][$elementId] = true;
+            }
+        }
+
+        $map = [];
+
+        /** @var class-string<\craft\base\ElementInterface> $elementClass */
+        foreach ($groups as $elementClass => $bySite) {
+            foreach ($bySite as $resolvedSiteId => $idSet) {
+                /** @var \craft\elements\db\ElementQuery $query */
+                $query = $elementClass::find()
+                    ->id(array_keys($idSet))
+                    ->siteId($resolvedSiteId)
+                    ->status($status);
+
+                foreach ($query->all() as $element) {
+                    $map[$resolvedSiteId . ':' . $element->id] = $element;
+                }
+            }
+        }
+
+        // Defensive fallback: hits whose index/element type couldn't be resolved
+        // keep the original per-element load so behaviour is never lost.
+        $criteria = $isCpRequest ? [] : ['status' => 'live'];
+        foreach ($unresolved as $resolvedSiteId => $idSet) {
+            foreach (array_keys($idSet) as $elementId) {
+                $element = Craft::$app->elements->getElementById($elementId, null, $resolvedSiteId, $criteria);
+                if ($element !== null) {
+                    $map[$resolvedSiteId . ':' . $element->id] = $element;
+                }
+            }
+        }
+
+        return $map;
     }
 
     /**
