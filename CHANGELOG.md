@@ -1,5 +1,22 @@
 # Changelog
 
+## [5.48.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.48.0...v5.48.1) - 2026-06-09
+
+
+### Fixed
+
+* ensure metadata increment does not drop below minimum value ([f2518a7](https://github.com/LindemannRock/craft-search-manager/commit/f2518a7745367bd0fe4abb592d02df5ed6e069ab))
+* **i18n:** correct API key phrasing in German, French, and Italian translations ([2205bd7](https://github.com/LindemannRock/craft-search-manager/commit/2205bd75ca15d3ecdd5de430256ed17a577ee995))
+* **i18n:** correct phrasing in cache clearing confirmation messages ([56af083](https://github.com/LindemannRock/craft-search-manager/commit/56af083c193c4f05999de10471a4a6940822174e))
+* **search:** update document metadata on deletion if terms exist ([5817e13](https://github.com/LindemannRock/craft-search-manager/commit/5817e13c46cb610c96e64bcc26b5bb8e0550a02c))
+
+
+### Changed
+
+* **search:** batch BM25 title-term lookups to fix per-document N+1 ([b42e3d4](https://github.com/LindemannRock/craft-search-manager/commit/b42e3d40480b19ea71aeedd474da53c90b3cff78))
+* **search:** batch element hydration in enrichResults ([5911c7e](https://github.com/LindemannRock/craft-search-manager/commit/5911c7e62a28abf2108373faf2261fe2f86845c9))
+* **search:** batch fuzzy-fallback candidate doc lookups and reuse in scoring ([436aab5](https://github.com/LindemannRock/craft-search-manager/commit/436aab540487f83d4b297d1148b48c07af25d5fb))
+
 ## [5.48.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.47.0...v5.48.0) - 2026-06-07
 
 
