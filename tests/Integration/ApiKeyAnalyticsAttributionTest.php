@@ -311,18 +311,28 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $this->assertSame(ApiKey::TYPE_PUBLIC, $jsonItem['apiKeyType']);
     }
 
+    public function testJsonExportPreservesZeroExecutionTime(): void
+    {
+        $this->seedRow(apiKeyId: null, executionTime: 0.0);
+
+        $export = SearchManager::$plugin->analytics->exportAnalytics(self::TEST_SITE_ID, 'last30days');
+
+        $this->assertSame(0.0, $export['jsonData']['data'][0]['executionTime']);
+    }
+
     // ---- Helpers ------------------------------------------------------------
 
     private function seedRow(
         ?int $apiKeyId,
         ?string $apiKeyPrefix = null,
         ?string $apiKeyType = null,
+        float|null $executionTime = 1.0,
     ): void {
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
             'indexHandle' => 'test-index',
             'query' => 'attr-test',
             'resultsCount' => 1,
-            'executionTime' => 1.0,
+            'executionTime' => $executionTime,
             'backend' => 'test',
             'siteId' => self::TEST_SITE_ID,
             'sessionId' => null,

@@ -400,7 +400,7 @@ class AnalyticsExportService
                 'rules' => (int)($row['rulesMatched'] ?? 0),
                 'promotions' => (int)($row['promotionsShown'] ?? 0),
                 'redirected' => (bool)($row['wasRedirected'] ?? false),
-                'executionTime' => $row['executionTime'] ? (float)$row['executionTime'] : null,
+                'executionTime' => $row['executionTime'] !== null ? (float)$row['executionTime'] : null,
                 'backend' => $row['backend'],
                 'indexHandle' => $row['indexHandle'],
                 'siteId' => $row['siteId'] ? (int)$row['siteId'] : null,
