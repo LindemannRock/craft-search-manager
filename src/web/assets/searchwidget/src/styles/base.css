@@ -103,7 +103,7 @@
     --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
     --sm-selected-border: var(--sm-result-active-border-color-dark, #3b82f6);
 
-    --sm-promoted-bg: var(--sm-promoted-bg-dark, #3b82f6);
+    --sm-promoted-bg: var(--sm-promoted-bg-dark, #2563eb);
     --sm-promoted-color: var(--sm-promoted-color-dark, #ffffff);
 
     --sm-highlight-bg: var(--sm-highlight-bg-dark, #854d0e);

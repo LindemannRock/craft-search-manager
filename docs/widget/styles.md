@@ -266,7 +266,7 @@ The search input is the bare `<input>` element inside the header. By default it 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `promotedBg` | `string` | `#2563eb` | Badge background (light mode) |
-| `promotedBgDark` | `string` | `#3b82f6` | Badge background (dark mode) |
+| `promotedBgDark` | `string` | `#2563eb` | Badge background (dark mode) |
 | `promotedColor` | `string` | `#ffffff` | Badge text color (light mode) |
 | `promotedColorDark` | `string` | `#ffffff` | Badge text color (dark mode) |
 
