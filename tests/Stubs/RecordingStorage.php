@@ -44,11 +44,19 @@ final class RecordingStorage implements StorageInterface
     /** @var int[] Term counts passed to each getTermDocumentsBatch() call. */
     public array $getTermDocumentsBatchSizes = [];
 
+    /** @var int Times updateMetadata() was called. */
+    public int $updateMetadataCalls = 0;
+
+    /** @var array<int, array{siteId: int, docLength: int, isAddition: bool}> */
+    public array $updateMetadataEvents = [];
+
     /**
      * @param array<string, array<string, int>> $termDocs term => [docId => freq] (docId = "siteId:elementId")
      * @param array<int, string[]> $titleByElement elementId => title terms
      * @param array<string, int> $docLengths docId => length
      * @param array<string, float> $fuzzyCandidates term => similarity, returned from getTermsByNgramSimilarity()
+     * @param array<string, array<string, int>> $documentTermsById docId => [term => freq], for delete/indexing contract tests
+     * @param array<string, int> $documentLengthsById docId => document length, for delete/indexing contract tests
      */
     public function __construct(
         private array $termDocs,
@@ -57,6 +65,8 @@ final class RecordingStorage implements StorageInterface
         private int $totalDocs,
         private float $avgDocLength,
         private array $fuzzyCandidates = [],
+        private array $documentTermsById = [],
+        private array $documentLengthsById = [],
     ) {
     }
 
@@ -133,12 +143,12 @@ final class RecordingStorage implements StorageInterface
 
     public function getDocumentTerms(int $siteId, int $elementId): array
     {
-        return [];
+        return $this->documentTermsById[$siteId . ':' . $elementId] ?? [];
     }
 
     public function getDocumentLength(int $siteId, int $elementId): int
     {
-        return 1;
+        return $this->documentLengthsById[$siteId . ':' . $elementId] ?? 0;
     }
 
     public function getDocumentLanguage(int $siteId, int $elementId): string
@@ -212,6 +222,12 @@ final class RecordingStorage implements StorageInterface
 
     public function updateMetadata(int $siteId, int $docLength, bool $isAddition): void
     {
+        $this->updateMetadataCalls++;
+        $this->updateMetadataEvents[] = [
+            'siteId' => $siteId,
+            'docLength' => $docLength,
+            'isAddition' => $isAddition,
+        ];
     }
 
     public function clearSite(int $siteId): void

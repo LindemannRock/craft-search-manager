@@ -1157,8 +1157,11 @@ class SearchEngine
             $this->storage->deleteDocument($siteId, $elementId);
             $this->storage->deleteTitleTerms($siteId, $elementId);
 
-            // Update metadata
-            $this->storage->updateMetadata($siteId, $docLength, false);
+            // Missing-document deletes are valid no-ops from the pending-sync
+            // path. Only subtract metadata when the document actually existed.
+            if ($docLength > 0 || !empty($terms)) {
+                $this->storage->updateMetadata($siteId, $docLength, false);
+            }
 
             $this->logInfo('Document deleted', [
                 'site_id' => $siteId,
