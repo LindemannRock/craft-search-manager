@@ -51,7 +51,7 @@ class SearchIndex extends Model
     public int|array|null $siteId = null;
 
     /**
-     * @var array|\Closure Decoded from criteriaJson (array) or callable from config (Closure)
+     * @var array|\Closure Decoded from criteria (array) or callable from config (Closure)
      */
     public array|\Closure $criteria = [];
 
@@ -584,10 +584,10 @@ class SearchIndex extends Model
         } else {
             $model->siteId = $row['siteId'] ? (int)$row['siteId'] : null;
         }
-        $model->criteria = json_decode($row['criteriaJson'], true) ?? [];
+        $model->criteria = json_decode($row['criteria'], true) ?? [];
         $model->transformerClass = $row['transformerClass'];
-        $model->headingLevels = !empty($row['headingLevelsJson'])
-            ? json_decode($row['headingLevelsJson'], true)
+        $model->headingLevels = !empty($row['headingLevels'])
+            ? json_decode($row['headingLevels'], true)
             : null;
         $model->language = $row['language'] ?? null;
         $model->backend = $row['backend'] ?? null;
@@ -632,9 +632,9 @@ class SearchIndex extends Model
                 'handle' => $this->handle,
                 'elementType' => $this->elementType,
                 'siteId' => is_array($this->siteId) ? null : $this->siteId,
-                'criteriaJson' => json_encode($this->criteria),
+                'criteria' => json_encode($this->criteria),
                 'transformerClass' => $this->transformerClass,
-                'headingLevelsJson' => $this->headingLevels ? json_encode($this->headingLevels) : null,
+                'headingLevels' => $this->headingLevels ? json_encode($this->headingLevels) : null,
                 'language' => $this->language,
                 'backend' => $this->backend ?: null,
                 'enabled' => (int)$this->enabled,
@@ -786,7 +786,7 @@ class SearchIndex extends Model
                     [
                         'name' => $freshName,
                         'transformerClass' => $freshTransformer ?: '',
-                        'headingLevelsJson' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
+                        'headingLevels' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
                         'disableStopWords' => (int)$freshDisableStopWords,
@@ -864,7 +864,7 @@ class SearchIndex extends Model
                         [
                             'name' => $freshName,
                             'transformerClass' => $freshTransformer ?: '',
-                            'headingLevelsJson' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
+                            'headingLevels' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
                             'language' => $freshLanguage,
                             'enabled' => (int)$freshEnabled,
                             'disableStopWords' => (int)$freshDisableStopWords,
@@ -884,9 +884,9 @@ class SearchIndex extends Model
                         'handle' => $this->handle,
                         'elementType' => $this->elementType,
                         'siteId' => is_array($this->siteId) ? null : $this->siteId,
-                        'criteriaJson' => '{}', // Empty - actual criteria is in config
+                        'criteria' => '{}', // Empty - actual criteria is in config
                         'transformerClass' => $freshTransformer ?: '',
-                        'headingLevelsJson' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
+                        'headingLevels' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
                         'disableStopWords' => (int)$freshDisableStopWords,
@@ -1217,9 +1217,9 @@ class SearchIndex extends Model
             if ($configData['criteria'] instanceof \Closure) {
                 $lines[] = "    'criteria' => function(\$query) { ... },";
             } elseif (is_array($configData['criteria']) && !empty($configData['criteria'])) {
-                $criteriaJson = json_encode($configData['criteria'], JSON_PRETTY_PRINT);
-                $criteriaJson = str_replace("\n", "\n        ", $criteriaJson);
-                $lines[] = "    'criteria' => {$criteriaJson},";
+                $criteriaCode = json_encode($configData['criteria'], JSON_PRETTY_PRINT);
+                $criteriaCode = str_replace("\n", "\n        ", $criteriaCode);
+                $lines[] = "    'criteria' => {$criteriaCode},";
             }
         }
 

@@ -50,7 +50,7 @@ class ApiKey extends Model
     public const TYPES = [self::TYPE_PUBLIC, self::TYPE_SERVER];
 
     /**
-     * Wildcard value stored in `allowedIndicesJson` to mean
+     * Wildcard value stored in `allowedIndices` to mean
      * "all currently-enabled indices, plus any added later."
      */
     public const ALL_INDICES = '*';
@@ -335,8 +335,8 @@ class ApiKey extends Model
         $key->enabled = (bool)($row['enabled'] ?? true);
         $key->keyHash = (string)$row['keyHash'];
         $key->keyPrefix = (string)$row['keyPrefix'];
-        $key->allowedIndices = self::decodeJsonArray($row['allowedIndicesJson'] ?? null);
-        $key->allowedReferrers = self::decodeJsonArray($row['allowedReferrersJson'] ?? null);
+        $key->allowedIndices = self::decodeJsonArray($row['allowedIndices'] ?? null);
+        $key->allowedReferrers = self::decodeJsonArray($row['allowedReferrers'] ?? null);
         $key->maxHitsPerPage = isset($row['maxHitsPerPage']) ? (int)$row['maxHitsPerPage'] : null;
         $key->rateLimit = isset($row['rateLimit']) ? (int)$row['rateLimit'] : null;
         $key->validUntil = self::parseDate($row['validUntil'] ?? null);
@@ -392,8 +392,8 @@ class ApiKey extends Model
                 'enabled' => (int)$this->enabled,
                 'keyHash' => $this->keyHash,
                 'keyPrefix' => $this->keyPrefix,
-                'allowedIndicesJson' => json_encode(array_values($this->allowedIndices), JSON_THROW_ON_ERROR),
-                'allowedReferrersJson' => json_encode(array_values($this->allowedReferrers), JSON_THROW_ON_ERROR),
+                'allowedIndices' => json_encode(array_values($this->allowedIndices), JSON_THROW_ON_ERROR),
+                'allowedReferrers' => json_encode(array_values($this->allowedReferrers), JSON_THROW_ON_ERROR),
                 'maxHitsPerPage' => $this->maxHitsPerPage,
                 'validUntil' => $this->validUntil ? Db::prepareDateForDb($this->validUntil) : null,
                 'rateLimit' => $this->rateLimit,

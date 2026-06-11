@@ -45,7 +45,7 @@ class BackendSettings extends Model
     public bool $enabled = false;
 
     /**
-     * @var array Decoded from configJson
+     * @var array Decoded from config
      * @since 5.28.0
      */
     public array $config = [];
@@ -208,7 +208,7 @@ class BackendSettings extends Model
             if ($row) {
                 $settings->id = (int)$row['id'];
                 $settings->enabled = (bool)$row['enabled'];
-                $settings->config = json_decode($row['configJson'], true) ?? [];
+                $settings->config = json_decode($row['config'], true) ?? [];
             }
         } catch (\Throwable $e) {
             LoggingService::log('Failed to load backend settings from database', 'error', 'search-manager', [
@@ -255,7 +255,7 @@ class BackendSettings extends Model
             $model->id = (int)$row['id'];
             $model->backend = $row['backend'];
             $model->enabled = (bool)$row['enabled'];
-            $model->config = json_decode($row['configJson'], true) ?? [];
+            $model->config = json_decode($row['config'], true) ?? [];
 
             return $model;
         } catch (\Throwable $e) {
@@ -283,7 +283,7 @@ class BackendSettings extends Model
                 $model->id = (int)$row['id'];
                 $model->backend = $row['backend'];
                 $model->enabled = (bool)$row['enabled'];
-                $model->config = json_decode($row['configJson'], true) ?? [];
+                $model->config = json_decode($row['config'], true) ?? [];
                 $models[] = $model;
             }
 
@@ -311,7 +311,7 @@ class BackendSettings extends Model
         }
 
         try {
-            $configJson = json_encode($this->config);
+            $encodedConfig = json_encode($this->config);
 
             if ($this->id) {
                 // Update existing
@@ -321,7 +321,7 @@ class BackendSettings extends Model
                         '{{%searchmanager_backend_settings}}',
                         [
                             'enabled' => (int)$this->enabled,
-                            'configJson' => $configJson,
+                            'config' => $encodedConfig,
                             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
                         ],
                         ['id' => $this->id]
@@ -338,14 +338,14 @@ class BackendSettings extends Model
                         [
                             'backend' => $this->backend,
                             'enabled' => (int)$this->enabled,
-                            'configJson' => $configJson,
+                            'config' => $encodedConfig,
                             'dateCreated' => Db::prepareDateForDb(new \DateTime()),
                             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
                             'uid' => StringHelper::UUID(),
                         ],
                         [
                             'enabled' => (int)$this->enabled,
-                            'configJson' => $configJson,
+                            'config' => $encodedConfig,
                             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
                         ]
                     )
