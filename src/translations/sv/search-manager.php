@@ -111,7 +111,7 @@ return [
     'Description' => 'Beskrivning',
     'Enabled' => 'Aktiverad',
     'Error' => 'Fel',
-    'Failed' => 'Misslyckade',
+    'Failed' => 'Misslyckades',
     'ID' => 'ID',
     'Search...' => 'Sök...',
     'Test' => 'Test',
@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Inga API-nycklar har skapats ännu. Skapa nycklar här för att styra åtkomsten till de publika sök- och autokompletteringsslutpunkterna. Nycklar träder i kraft bara när "Kräv API-nyckel" är aktiverat i inställningarna; tills dess förblir dessa slutpunkter offentligt tillgängliga.',
 
     // Index page
-    'All types' => 'Alla typer',
     'Public' => 'Publik',
     'Server' => 'Server',
     'Allowed indices' => 'Tillåtna index',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} lagrar endast en hash. Om du förlorar detta värde måste du skapa en ny nyckel.',
 
     // Pending Syncs
-    'All indices' => 'Alla index',
-    'All sites' => 'Alla webbplatser',
     'All statuses' => 'Alla statusar',
     'All ops' => 'Alla åtgärder',
     'Failed & Abandoned' => 'Misslyckades & Avbruten',

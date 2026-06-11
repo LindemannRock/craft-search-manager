@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.',
 
     // Index page
-    'All types' => 'All types',
     'Public' => 'Public',
     'Server' => 'Server',
     'Allowed indices' => 'Allowed indices',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} stores only a hash. If you lose this value you will need to create a new key.',
 
     // Pending Syncs
-    'All indices' => 'All indices',
-    'All sites' => 'All sites',
     'All statuses' => 'All statuses',
     'All ops' => 'All ops',
     'Failed & Abandoned' => 'Failed & Abandoned',

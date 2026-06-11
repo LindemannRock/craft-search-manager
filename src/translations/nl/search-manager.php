@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Er zijn nog geen API-sleutels aangemaakt. Maak hier sleutels aan om de toegang tot de openbare zoek- en autocomplete-eindpunten te beheren. Sleutels worden alleen van kracht wanneer "API-sleutel vereisen" is ingeschakeld in de instellingen; tot die tijd blijven deze eindpunten openbaar toegankelijk.',
 
     // Index page
-    'All types' => 'Alle typen',
     'Public' => 'Publiek',
     'Server' => 'Server',
     'Allowed indices' => 'Toegestane indexen',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} bewaart alleen een hash. Als u deze waarde kwijtraakt, moet u een nieuwe sleutel aanmaken.',
 
     // Pending Syncs
-    'All indices' => 'Alle indexen',
-    'All sites' => 'Alle sites',
     'All statuses' => 'Alle statussen',
     'All ops' => 'Alle bewerkingen',
     'Failed & Abandoned' => 'Mislukt & Afgebroken',
@@ -756,7 +753,7 @@ return [
     '{count} pending sync(s) queued for retry' => '{count} openstaande synchronisatie(s) in de wachtrij geplaatst voor opnieuw proberen',
     '{count} pending sync(s) deleted' => '{count} openstaande synchronisatie(s) verwijderd',
     '{count} abandoned pending sync(s) purged' => '{count} afgebroken openstaande synchronisatie(s) verwijderd',
-    'Pending' => 'In afwachting',
+    'Pending' => 'Wachtend',
     'Only failed and abandoned rows can be retried. Pending and processing rows are already in the queue.' => 'Alleen mislukte en afgebroken rijen kunnen opnieuw worden geprobeerd. Rijen die in afwachting zijn of worden verwerkt staan al in de wachtrij.',
 
     // Backends

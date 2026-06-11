@@ -111,7 +111,7 @@ return [
     'Description' => 'Descrizione',
     'Enabled' => 'Abilitato',
     'Error' => 'Errore',
-    'Failed' => 'Non riusciti',
+    'Failed' => 'Fallito',
     'ID' => 'ID',
     'Search...' => 'Cerca...',
     'Test' => 'Test',
@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Non è ancora stata creata alcuna chiave API. Crea le chiavi qui per controllare l\'accesso agli endpoint pubblici di ricerca e completamento automatico. Le chiavi hanno effetto solo quando "Richiedi chiave API" è abilitato nelle impostazioni; fino ad allora, questi endpoint rimangono accessibili pubblicamente.',
 
     // Index page
-    'All types' => 'Tutti i tipi',
     'Public' => 'Pubblico',
     'Server' => 'Server',
     'Allowed indices' => 'Indici consentiti',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} memorizza solo un hash. Se perde questo valore, dovrà creare una nuova chiave.',
 
     // Pending Syncs
-    'All indices' => 'Tutti gli indici',
-    'All sites' => 'Tutti i siti',
     'All statuses' => 'Tutti gli stati',
     'All ops' => 'Tutte le operazioni',
     'Failed & Abandoned' => 'Fallito & Abbandonato',

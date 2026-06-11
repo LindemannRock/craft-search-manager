@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Aún no se ha creado ninguna API Key. Cree claves aquí para controlar el acceso a los endpoints públicos de búsqueda y autocompletado. Las claves solo tienen efecto cuando "Requerir API Key" está activado en la configuración; hasta entonces, esos endpoints permanecen accesibles públicamente.',
 
     // Index page
-    'All types' => 'Todos los tipos',
     'Public' => 'Pública',
     'Server' => 'Servidor',
     'Allowed indices' => 'Índices permitidos',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} solo almacena un hash. Si pierde este valor, deberá crear una nueva clave.',
 
     // Pending Syncs
-    'All indices' => 'Todos los índices',
-    'All sites' => 'Todos los sitios',
     'All statuses' => 'Todos los estados',
     'All ops' => 'Todas las operaciones',
     'Failed & Abandoned' => 'Fallido & Abandonado',

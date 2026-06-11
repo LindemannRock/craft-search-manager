@@ -117,7 +117,7 @@ return [
     'Test' => 'Test',
 
     // Element
-    'Asset' => 'Fichier',
+    'Asset' => 'Ressource',
     'Base' => 'Base',
     'Category' => 'Catégorie',
     'Element' => 'Élément',
@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Aucune clé API n\'a encore été créée. Créez des clés ici pour contrôler l\'accès aux endpoints de recherche et d\'autocomplétion publics. Les clés ne prennent effet que lorsque « Exiger une clé API » est activé dans les paramètres ; jusqu\'alors, ces endpoints restent accessibles publiquement.',
 
     // Index page
-    'All types' => 'Tous les types',
     'Public' => 'Public',
     'Server' => 'Serveur',
     'Allowed indices' => 'Index autorisés',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} ne stocke qu\'un hash. Si vous perdez cette valeur, vous devrez créer une nouvelle clé.',
 
     // Pending Syncs
-    'All indices' => 'Tous les index',
-    'All sites' => 'Tous les sites',
     'All statuses' => 'Tous les statuts',
     'All ops' => 'Toutes les opérations',
     'Failed & Abandoned' => 'Échoué & Abandonné',
@@ -1072,13 +1069,13 @@ return [
     'Custom URL' => 'URL personnalisée',
     'Select Entry' => 'Sélectionner une entrée',
     'Select Category' => 'Sélectionner une catégorie',
-    'Select Asset' => 'Sélectionner un fichier',
+    'Select Asset' => 'Sélectionner une ressource',
     'Choose an entry' => 'Choisir une entrée',
     'Choose an entry to redirect to.' => 'Choisir une entrée vers laquelle rediriger.',
     'Choose a category' => 'Choisir une catégorie',
     'Choose a category to redirect to.' => 'Choisir une catégorie vers laquelle rediriger.',
-    'Choose an asset' => 'Choisir un fichier',
-    'Choose an asset to redirect to.' => 'Choisir un fichier vers lequel rediriger.',
+    'Choose an asset' => 'Choisir une ressource',
+    'Choose an asset to redirect to.' => 'Choisir une ressource vers laquelle rediriger.',
     'Select an element' => 'Sélectionner un élément',
     'The URL to redirect to. Can be a path (/page) or full URL (https://...).' => 'L\'URL vers laquelle rediriger. Peut être un chemin (/page) ou une URL complète (https://...).',
     'Append the search query to the destination URL so the page knows what to highlight.' => 'Ajouter la requête de recherche à l\'URL de destination pour que la page sache quoi mettre en surbrillance.',
@@ -1141,7 +1138,7 @@ return [
 
     // Transformer help text
     'Recommended: Leave blank for auto-detection (default)' => 'Recommandé : laissez vide pour la détection automatique (par défaut)',
-    'Entries, Assets, Categories, Users' => 'Entrées, fichiers, catégories, utilisateurs',
+    'Entries, Assets, Categories, Users' => 'Entrées, ressources, catégories, utilisateurs',
     'Indexes all custom fields, relational fields, Matrix blocks, and Table fields' => 'Indexe tous les champs personnalisés, les champs relationnels, les blocs Matrix et les champs de tableau',
     'Doc Pages' => 'Pages de documentation',
     'Indexes full page content, headings, description, and keywords' => 'Indexe le contenu complet de la page, les titres, la description et les mots-clés',
@@ -1353,7 +1350,7 @@ return [
     'Search analytics will appear here once users start searching.' => 'Les analytiques de recherche apparaîtront ici une fois que les utilisateurs commenceront à rechercher.',
     'Compared to previous period (e.g., last 7 days vs. prior 7 days)' => 'Comparé à la période précédente (ex. : 7 derniers jours vs 7 jours précédents)',
     'Hits' => 'Accès',
-    'Avg Hits' => 'Résultats moy.',
+    'Avg Hits' => 'Accès moy.',
     'Avg Position' => 'Position moy.',
     'Avg Results' => 'Résultats moy.',
     'Avg Results After' => 'Résultats moy. après',
@@ -1406,7 +1403,7 @@ return [
     'Date Range' => 'Plage de dates',
     'Device' => 'Appareil',
     'Devices' => 'Appareils',
-    'Location' => 'Emplacement',
+    'Location' => 'Localisation',
     'Results' => 'Résultats',
     'Styles' => 'Styles',
 

@@ -53,7 +53,7 @@
                     current: typeFilter,
                     colorSet: 'apiKeyType',
                     options: [
-                        {value: 'all', label: 'All types'|t('search-manager'), status: 'all'},
+                        {value: 'all', label: 'All Types'|t('search-manager'), status: 'all'},
                         {value: 'public', label: 'Public'|t('search-manager'), colorKey: 'public'},
                         {value: 'server', label: 'Server'|t('search-manager'), colorKey: 'server'},
                     ],
@@ -148,7 +148,7 @@
 
     <td data-column="allowedIndices">
         {% if item.allowsAllIndices() %}
-            <span class="light">{{ 'All indices'|t('search-manager') }}</span>
+            <span class="light">{{ 'All Indices'|t('search-manager') }}</span>
         {% elseif item.allowedIndices|length == 0 %}
             <span class="light" title="{{ 'No indices allowed — this key cannot be used until you add some.'|t('search-manager') }}">{{ 'None'|t('search-manager') }}</span>
         {% else %}

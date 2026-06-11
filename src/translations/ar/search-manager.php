@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'لم يتم إنشاء أي مفاتيح API بعد. أنشئ المفاتيح هنا للتحكم في الوصول إلى نقاط نهاية البحث والإكمال التلقائي العامة. لا تسري المفاتيح إلا عند تفعيل "طلب مفتاح API" في الإعدادات؛ وحتى ذلك الحين تظل نقاط النهاية هذه متاحة للعموم.',
 
     // Index page
-    'All types' => 'كل الأنواع',
     'Public' => 'عام',
     'Server' => 'خادم',
     'Allowed indices' => 'الفهارس المسموح بها',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => 'يخزن {pluginName} hash فقط. إذا فقدت هذه القيمة فستحتاج إلى إنشاء مفتاح جديد.',
 
     // Pending Syncs
-    'All indices' => 'كل الفهارس',
-    'All sites' => 'كل المواقع',
     'All statuses' => 'كل الحالات',
     'All ops' => 'كل العمليات',
     'Failed & Abandoned' => 'فشل ومهجور',
@@ -1450,7 +1447,7 @@ return [
     'Bot vs Human Traffic' => 'حركة مرور الروبوتات مقابل البشر',
     'Top Bots' => 'أبرز الروبوتات',
     'Bot Name' => 'اسم الروبوت',
-    'Is Bot' => 'بوت',
+    'Is Bot' => 'روبوت',
     'No bot data available' => 'لا تتوفر بيانات روبوتات',
     'No bot data available for the selected filters.' => 'لا تتوفر بيانات روبوتات للمرشحات المحددة.',
     'No browser data available for the selected filters.' => 'لا تتوفر بيانات متصفحات للمرشحات المحددة.',

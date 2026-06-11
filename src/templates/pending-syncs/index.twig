@@ -34,7 +34,7 @@
     {key: 'lastError', label: 'Last error'|t('search-manager'), sortable: false, hideable: true},
 ] %}
 
-{% set indexOptions = [{value: 'all', label: 'All indices'|t('search-manager'), status: 'all'}] %}
+{% set indexOptions = [{value: 'all', label: 'All Indices'|t('search-manager'), status: 'all'}] %}
 {% for index in indices %}
     {% set indexOptions = indexOptions|merge([{
         value: index.handle,
@@ -42,7 +42,7 @@
     }]) %}
 {% endfor %}
 
-{% set siteOptions = [{value: 'all', label: 'All sites'|t('search-manager'), status: 'all'}] %}
+{% set siteOptions = [{value: 'all', label: 'All Sites'|t('search-manager'), status: 'all'}] %}
 {% for site in sites %}
     {% set siteOptions = siteOptions|merge([{
         value: site.id,
@@ -100,14 +100,14 @@
             type: 'dropdown',
             param: 'indexHandle',
             current: indexHandleFilter,
-            label: 'All indices'|t('search-manager'),
+            label: 'All Indices'|t('search-manager'),
             options: indexOptions,
         },
         {
             type: 'dropdown',
             param: 'siteId',
             current: siteIdFilter,
-            label: 'All sites'|t('search-manager'),
+            label: 'All Sites'|t('search-manager'),
             options: siteOptions,
         },
     ],

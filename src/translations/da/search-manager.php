@@ -676,7 +676,6 @@ return [
     'No API keys have been created yet. Create keys here to control access to the public search and autocomplete endpoints. Keys take effect only when Require API Key is enabled in settings; until then, those endpoints remain publicly accessible.' => 'Der er endnu ikke oprettet nogen API-nøgler. Opret nøgler her for at styre adgangen til de offentlige søge- og autofuldførelsesslutpunkter. Nøgler træder kun i kraft, når "Kræv API-nøgle" er aktiveret i indstillingerne; indtil da forbliver disse slutpunkter offentligt tilgængelige.',
 
     // Index page
-    'All types' => 'Alle typer',
     'Public' => 'Offentlig',
     'Server' => 'Server',
     'Allowed indices' => 'Tilladte indekser',
@@ -723,8 +722,6 @@ return [
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} gemmer kun et hash. Hvis du mister denne værdi, skal du oprette en ny nøgle.',
 
     // Pending Syncs
-    'All indices' => 'Alle indekser',
-    'All sites' => 'Alle websteder',
     'All statuses' => 'Alle statuser',
     'All ops' => 'Alle handlinger',
     'Failed & Abandoned' => 'Mislykket & Afbrudt',
