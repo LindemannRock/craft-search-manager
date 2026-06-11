@@ -846,10 +846,11 @@
         }
 
         data.forEach(q => {
+            const timeClass = getPerformanceTimeClass(q.avgTime);
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
-                <td><strong>${Number(q.avgTime).toLocaleString()}ms</strong></td>
+                <td><strong class="${timeClass}">${Number(q.avgTime).toLocaleString()}ms</strong></td>
                 <td>${q.indexSearches.toLocaleString()}</td>
             </tr>`);
         });
@@ -865,13 +866,25 @@
         }
 
         data.forEach(q => {
+            const timeClass = getPerformanceTimeClass(q.avgTime);
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
                 <td>${q.siteName || '—'}</td>
-                <td><strong class="${q.avgTime > 100 ? 'lr-text-red' : ''}">${Number(q.avgTime).toLocaleString()}ms</strong></td>
+                <td><strong class="${timeClass}">${Number(q.avgTime).toLocaleString()}ms</strong></td>
                 <td>${q.indexSearches.toLocaleString()}</td>
             </tr>`);
         });
+    }
+
+    function getPerformanceTimeClass(avgTime) {
+        const value = Number(avgTime);
+        if (value > 1000) {
+            return 'lr-text-red';
+        }
+        if (value >= 250) {
+            return 'lr-text-orange';
+        }
+        return '';
     }
 
     function renderIntentChart(data) {
