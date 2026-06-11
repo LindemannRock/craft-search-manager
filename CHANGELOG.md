@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.51.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.50.0...v5.51.0) (2026-06-11)
+
+
+### Added
+
+* **analytics:** add performance time classification for average query times ([c03c754](https://github.com/LindemannRock/craft-search-manager/commit/c03c7547bbc146d5876436fe844a1ac09895fb04))
+
 ## [5.50.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.49.0...v5.50.0) - 2026-06-11
 
 
