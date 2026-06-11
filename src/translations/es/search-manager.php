@@ -21,7 +21,7 @@ return [
     'Promotions' => 'Promociones',
     'Query Rules' => 'Reglas de consulta',
     'Widgets' => 'Widgets',
-    'API Keys' => 'API Keys',
+    'API Keys' => 'Claves API',
     'Analytics' => 'Analíticas',
     'Settings' => 'Configuración',
     'Logs' => 'Registros',
