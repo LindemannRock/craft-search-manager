@@ -1,5 +1,17 @@
 # Changelog
 
+## [5.49.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.48.2...v5.49.0) - 2026-06-11
+
+
+### Added
+
+* add loading spinner and status message for clear storage action ([161c5e4](https://github.com/LindemannRock/craft-search-manager/commit/161c5e410adec9216500e905a4fa053ceadcb8fb))
+
+
+### Fixed
+
+* **analytics:** ensure executionTime is null-safe in analytics export ([06bc9de](https://github.com/LindemannRock/craft-search-manager/commit/06bc9de328d72ffdadc280a2419ac0c71e37d7d6))
+
 ## [5.48.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.48.1...v5.48.2) - 2026-06-11
 
 
