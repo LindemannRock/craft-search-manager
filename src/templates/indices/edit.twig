@@ -784,6 +784,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 	// Clear index cache handler
 	const clearCacheBtn = document.getElementById('clear-index-cache-btn');
+	const indexId = {{ index.id ? index.id|json_encode|raw : 'null' }};
 	if (clearCacheBtn) {
 		clearCacheBtn.addEventListener('click', function(e) {
 			e.preventDefault();
@@ -792,7 +793,7 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 
 			Craft.sendActionRequest('POST', 'search-manager/indices/clear-cache', {
-				data: { indexId: {{ index.id }} }
+				data: { indexId }
 			}).then(function(response) {
 				if (response.data.success) {
 					Craft.cp.displayNotice(response.data.message || '{{ "Cache cleared successfully"|t('search-manager')|e('js') }}');
