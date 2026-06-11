@@ -1,5 +1,12 @@
 # Changelog
 
+## [5.50.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.49.0...v5.50.0) (2026-06-11)
+
+
+### Added
+
+* add indexId handling for clear cache action ([b0d94ad](https://github.com/LindemannRock/craft-search-manager/commit/b0d94ad7561249a1f14cea25ab6a01579efaed7e))
+
 ## [5.49.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.48.2...v5.49.0) - 2026-06-11
 
 
