@@ -80,8 +80,10 @@ class SearchWidgetBase extends HTMLElement {
             this.handleStateChange.bind(this)
         );
 
-        // Abort controller for cancelling in-flight searches
-        this.abortController = null;
+        // Monotonic search sequence for stale-response protection. Responses
+        // only apply when still current; superseded requests are discarded
+        // instead of aborted so Chrome's Network panel shows no (canceled) rows.
+        this.searchSequence = 0;
 
         // Debounce timer for search input
         this.debounceTimer = null;
@@ -238,11 +240,8 @@ class SearchWidgetBase extends HTMLElement {
      * Subclasses should call super.disconnectedCallback() to ensure cleanup.
      */
     disconnectedCallback() {
-        // Cancel any pending search
-        if (this.abortController) {
-            this.abortController.abort();
-            this.abortController = null;
-        }
+        // Invalidate any in-flight search (its response is discarded as stale)
+        this.searchSequence++;
 
         // Clear debounce timer
         if (this.debounceTimer) {
@@ -359,11 +358,9 @@ class SearchWidgetBase extends HTMLElement {
      * @param {string} query - Search query
      */
     async executeSearch(query) {
-        // Cancel any in-flight search
-        if (this.abortController) {
-            this.abortController.abort();
-        }
-        this.abortController = new AbortController();
+        // Supersede any in-flight search — its response becomes stale and is
+        // discarded on arrival (no abort, so no red canceled Network rows)
+        const requestId = ++this.searchSequence;
 
         // Set loading state
         this.state.set({ loading: true, error: null });
@@ -387,8 +384,12 @@ class SearchWidgetBase extends HTMLElement {
                 parseMarkdownSnippets: this.config.parseMarkdownSnippets,
                 debug: this.config.debug,
                 apiKey: this.config.apiKey,
-                signal: this.abortController.signal,
             });
+
+            // Stale response — a newer search owns the UI state
+            if (requestId !== this.searchSequence) {
+                return;
+            }
 
             // Update state with results and debug meta
             this.state.set({
@@ -422,7 +423,12 @@ class SearchWidgetBase extends HTMLElement {
             this.startAnalyticsIdleTimer(query, results.length);
 
         } catch (error) {
-            // Ignore abort errors (expected when search is cancelled)
+            // Stale failure — a newer search owns the UI state
+            if (requestId !== this.searchSequence) {
+                return;
+            }
+
+            // Ignore abort errors (browser can cancel fetches on page unload)
             if (error.name === 'AbortError') {
                 return;
             }

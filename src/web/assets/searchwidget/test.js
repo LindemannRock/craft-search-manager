@@ -56,6 +56,8 @@ if (fs.existsSync(mainFile)) {
     test('Escapes double quotes in rendered HTML', content.includes('&quot;'));
     test('Escapes single quotes in rendered HTML', content.includes('&#39;'));
     test('Does not render non-JSON error bodies', !content.includes('.text()'));
+    test('Search uses stale-response sequence guard', content.includes('searchSequence'));
+    test('Search requests are not aborted per keystroke', !content.includes('new AbortController'));
 }
 
 // Test 5: Source hardening remains explicit and reviewable
@@ -65,6 +67,14 @@ if (fs.existsSync(highlighterFile)) {
     test('Source escapeHtml encodes double quotes', source.includes('.replace(/"/g, \'&quot;\')'));
     test('Source escapeHtml encodes single quotes', source.includes(".replace(/'/g, '&#39;')"));
     test('Source escapeHtml avoids DOM serialization', !source.includes('document.createElement'));
+}
+
+const widgetBaseFile = path.join(SRC_DIR, 'core', 'SearchWidgetBase.js');
+if (fs.existsSync(widgetBaseFile)) {
+    const source = fs.readFileSync(widgetBaseFile, 'utf8');
+    test('Stale search responses are discarded before state updates', source.includes('requestId !== this.searchSequence'));
+    test('Stale search failures are discarded before error state', (source.match(/requestId !== this\.searchSequence/g) || []).length >= 2);
+    test('Source does not abort in-flight searches', !source.includes('new AbortController'));
 }
 
 const urlUtilsFile = path.join(SRC_DIR, 'modules', 'UrlUtils.js');
