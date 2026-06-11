@@ -1,5 +1,15 @@
 # Changelog
 
+## [5.48.2](https://github.com/LindemannRock/craft-search-manager/compare/v5.48.1...v5.48.2) - 2026-06-11
+
+
+### Fixed
+
+* **i18n:** align filter casing and terminology ([91776a0](https://github.com/LindemannRock/craft-search-manager/commit/91776a03b248ba21f2736c4f01a437294e39433b))
+* **search:** keep metadata unchanged for missing-document deletes ([0e1ee1e](https://github.com/LindemannRock/craft-search-manager/commit/0e1ee1e7bd842ca188ff53e964b302688bb26eed))
+* **widget:** ignore stale search responses without aborting requests ([dded753](https://github.com/LindemannRock/craft-search-manager/commit/dded7532a66286f12d935ed6475ffa4dd753799e))
+* **widget:** improve search request handling and promoted badge styling ([5ee3dc7](https://github.com/LindemannRock/craft-search-manager/commit/5ee3dc726e7ea297bf41326a6028ac6a3a2c295a))
+
 ## [5.48.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.48.0...v5.48.1) - 2026-06-09
 
 
