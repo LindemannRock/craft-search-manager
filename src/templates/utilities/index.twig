@@ -187,9 +187,12 @@
                     }) }}
 
                     <button type="button" class="btn secondary" id="clear-storage-by-type">
-                        {{ "Clear Storage"|t('search-manager') }}
+                        <span class="clear-storage-text">{{ "Clear Storage"|t('search-manager') }}</span>
+                        <span class="spinner clear-storage-spinner hidden" aria-hidden="true"></span>
                     </button>
                 </div>
+
+                <p id="clear-storage-status" class="light hidden" aria-live="polite" style="margin-top: 12px;"></p>
 
                 {% include 'lindemannrock-base/_components/info-box' with {
                     message: 'This will delete all search index data stored in the selected storage type across all indices. You\'ll need to rebuild affected indices afterwards.'|t('search-manager'),
@@ -328,7 +331,16 @@ $('#clear-storage-by-type').on('click', function() {
     }
 
     const $btn = $(this);
+    const $spinner = $btn.find('.clear-storage-spinner');
+    const $text = $btn.find('.clear-storage-text');
+    const $status = $('#clear-storage-status');
+    const statusText = {{ 'Clearing {type} storage. This may take a few minutes.'|t('search-manager')|json_encode|raw }};
+    // Option labels carry stat suffixes like "MySQL (280,864 rows)" — strip for the status line
+    const cleanTypeName = typeName.replace(/\s*\(.*\)$/, '');
     $btn.addClass('loading').prop('disabled', true);
+    $spinner.removeClass('hidden');
+    $text.text({{ 'Clearing Storage...'|t('search-manager')|json_encode|raw }});
+    $status.text(statusText.replace('{type}', cleanTypeName)).removeClass('hidden');
 
     $.ajax({
         url: '{{ actionUrl('search-manager/utilities/clear-storage-by-type')|raw }}',
@@ -351,6 +363,9 @@ $('#clear-storage-by-type').on('click', function() {
         },
         complete: function() {
             $btn.removeClass('loading').prop('disabled', false);
+            $spinner.addClass('hidden');
+            $text.text({{ 'Clear Storage'|t('search-manager')|json_encode|raw }});
+            $status.addClass('hidden');
         }
     });
 });

@@ -1510,7 +1510,9 @@ return [
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Zoekindexen bewaken, bestandscache wissen en uw zoekinfrastructuur beheren.',
     'Clear Storage' => 'Opslag wissen',
+    'Clearing Storage...' => 'Opslag wordt gewist...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'ALLE indexgegevens van een opslagtype wissen. Dit verwijdert gegevens van elke index die die opslag gebruikt — inclusief verweesde gegevens van indexen die niet meer bestaan. Gebruik dit bij het wisselen van backends of probleemoplossing.',
+    'Clearing {type} storage. This may take a few minutes.' => '{type}-opslag wordt gewist. Dit kan een paar minuten duren.',
     'Clear temporary cached data to improve performance and free up storage space.' => 'Tijdelijke gecachte gegevens wissen om prestaties te verbeteren en opslagruimte vrij te maken.',
     'Clear All Caches' => 'Alle caches wissen',
     'Clear Device Cache' => 'Apparaatcache wissen',

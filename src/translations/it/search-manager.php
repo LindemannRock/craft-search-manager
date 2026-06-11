@@ -1510,7 +1510,9 @@ return [
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitora gli indici di ricerca, svuota la cache dei file e gestisci l\'infrastruttura di ricerca.',
     'Clear Storage' => 'Cancella archiviazione',
+    'Clearing Storage...' => 'Cancellazione archiviazione in corso...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'Cancella TUTTI i dati dell\'indice da un tipo di archiviazione. Ciò rimuove i dati da ogni indice che utilizza quell\'archiviazione — inclusi i dati orfani di indici non più esistenti. Usalo quando cambi backend o risolvi problemi.',
+    'Clearing {type} storage. This may take a few minutes.' => 'Cancellazione dell\'archiviazione {type} in corso. L\'operazione potrebbe richiedere alcuni minuti.',
     'Clear temporary cached data to improve performance and free up storage space.' => 'Svuota i dati temporanei memorizzati nella cache per migliorare le prestazioni e liberare spazio di archiviazione.',
     'Clear All Caches' => 'Svuota tutte le cache',
     'Clear Device Cache' => 'Svuota cache dispositivi',

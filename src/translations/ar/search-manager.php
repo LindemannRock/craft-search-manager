@@ -1510,7 +1510,9 @@ return [
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'مراقبة فهارس البحث ومسح Cache الملفات وإدارة البنية التحتية للبحث الخاصة بك.',
     'Clear Storage' => 'مسح التخزين',
+    'Clearing Storage...' => 'جارٍ مسح التخزين...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'مسح جميع بيانات الفهرس من نوع تخزين. يزيل هذا البيانات من كل فهرس يستخدم هذا التخزين — بما في ذلك البيانات اليتيمة من الفهارس التي لم تعد موجودة. استخدم هذا عند تبديل الواجهات الخلفية أو استكشاف الأخطاء وإصلاحها.',
+    'Clearing {type} storage. This may take a few minutes.' => 'جاري مسح تخزين {type}. قد يستغرق هذا بضع دقائق.',
     'Clear temporary cached data to improve performance and free up storage space.' => 'مسح البيانات المخزنة مؤقتاً لتحسين الأداء وتحرير مساحة التخزين.',
     'Clear All Caches' => 'مسح جميع Caches',
     'Clear Device Cache' => 'مسح Cache الأجهزة',

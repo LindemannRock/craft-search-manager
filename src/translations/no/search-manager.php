@@ -1510,7 +1510,9 @@ return [
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Overvåk søkeindekser, tøm fil-Cache og administrer søkeinfrastrukturen din.',
     'Clear Storage' => 'Tøm lagring',
+    'Clearing Storage...' => 'Tømmer lagring...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'Tøm ALL indeksdata fra en lagringstype. Dette fjerner data fra hver indeks som bruker den lagringen — inkludert foreldreløse data fra indekser som ikke lenger eksisterer. Bruk dette ved bytte av backends eller feilsøking.',
+    'Clearing {type} storage. This may take a few minutes.' => 'Tømmer {type}-lagring. Dette kan ta noen minutter.',
     'Clear temporary cached data to improve performance and free up storage space.' => 'Tøm midlertidige cachede data for å forbedre ytelsen og frigjøre lagringsplass.',
     'Clear All Caches' => 'Fjern alle cacher',
     'Clear Device Cache' => 'Fjern enhetscache',
