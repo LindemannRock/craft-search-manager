@@ -12,6 +12,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use lindemannrock\base\helpers\DateFormatHelper;
+use lindemannrock\base\helpers\ScheduleHelper;
 use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
 use lindemannrock\searchmanager\jobs\SyncStatusJob;
@@ -85,6 +86,39 @@ final class RecurringJobsRescheduleTest extends TestCase
         $this->assertSame(1, $this->countQueueRows('CleanupAnalyticsJob'));
     }
 
+    public function testCleanupBootstrapUsesCanonicalDailyRun(): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->enableAnalytics = true;
+        $settings->analyticsRetention = 30;
+
+        $this->invokePrivate(SearchManager::$plugin, 'scheduleAnalyticsCleanup');
+
+        $row = $this->latestQueueRow('CleanupAnalyticsJob');
+
+        self::assertNotNull($row);
+        self::assertStringContainsString($this->expectedDailyRunTime(), (string) $row['description']);
+    }
+
+    public function testCleanupBootstrapCollapsesDuplicatePendingCleanupRows(): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->enableAnalytics = true;
+        $settings->analyticsRetention = 30;
+
+        Craft::$app->getQueue()->delay(300)->push(new CleanupAnalyticsJob([
+            'reschedule' => true,
+        ]));
+        Craft::$app->getQueue()->delay(300)->push(new CleanupAnalyticsJob([
+            'reschedule' => true,
+        ]));
+        $this->assertSame(2, $this->countQueueRows('CleanupAnalyticsJob'));
+
+        $this->invokePrivate(SearchManager::$plugin, 'scheduleAnalyticsCleanup');
+
+        $this->assertSame(1, $this->countQueueRows('CleanupAnalyticsJob'));
+    }
+
     public function testSyncBootstrapDoesNotDuplicateExistingDelayedSyncRow(): void
     {
         SearchManager::$plugin->getSettings()->statusSyncInterval = 5;
@@ -93,6 +127,23 @@ final class RecurringJobsRescheduleTest extends TestCase
             'reschedule' => true,
         ]));
         $this->assertSame(1, $this->countQueueRows('SyncStatusJob'));
+
+        $this->invokePrivate(SearchManager::$plugin, 'scheduleStatusSync');
+
+        $this->assertSame(1, $this->countQueueRows('SyncStatusJob'));
+    }
+
+    public function testSyncBootstrapCollapsesDuplicatePendingSyncRows(): void
+    {
+        SearchManager::$plugin->getSettings()->statusSyncInterval = 5;
+
+        Craft::$app->getQueue()->delay(300)->push(new SyncStatusJob([
+            'reschedule' => true,
+        ]));
+        Craft::$app->getQueue()->delay(300)->push(new SyncStatusJob([
+            'reschedule' => true,
+        ]));
+        $this->assertSame(2, $this->countQueueRows('SyncStatusJob'));
 
         $this->invokePrivate(SearchManager::$plugin, 'scheduleStatusSync');
 
@@ -150,6 +201,34 @@ final class RecurringJobsRescheduleTest extends TestCase
             ->where(['like', 'job', 'searchmanager'])
             ->andWhere(['like', 'job', $jobClass])
             ->count();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function latestQueueRow(string $jobClass): ?array
+    {
+        $row = (new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', $jobClass])
+            ->orderBy(['id' => SORT_DESC])
+            ->one();
+
+        return is_array($row) ? $row : null;
+    }
+
+    private function expectedDailyRunTime(): string
+    {
+        $nextRun = ScheduleHelper::calculateNext('daily');
+        self::assertNotNull($nextRun);
+
+        return DateFormatHelper::formatCompactDatetimeFromSettings(
+            $nextRun,
+            SearchManager::$plugin->getSettings(),
+            false,
+            false,
+        );
     }
 
     private function deleteSearchManagerQueueRows(): void

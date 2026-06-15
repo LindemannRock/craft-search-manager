@@ -25,6 +25,8 @@ use lindemannrock\base\helpers\ColorHelper;
 use lindemannrock\base\helpers\CpNavHelper;
 use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\PluginHelper;
+use lindemannrock\base\helpers\RecurringQueueHelper;
+use lindemannrock\base\helpers\ScheduleHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
@@ -636,47 +638,37 @@ class SearchManager extends Plugin
     }
 
     /**
-     * Schedule status sync job (for pending→live and live→expired transitions)
+     * Schedule status sync job (for pending→live and live→expired transitions).
      */
     private function scheduleStatusSync(): void
     {
         $settings = $this->getSettings();
 
-        // Only schedule if sync is enabled
         if ($settings->statusSyncInterval <= 0) {
-            return;
-        }
-
-        if ($this->hasPendingQueueJob('SyncStatusJob')) {
             return;
         }
 
         $initialDelay = 5 * 60;
         $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
 
-        // Create sync job with reschedule enabled
-        $job = new SyncStatusJob([
-            'reschedule' => true,
-            'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
-                $initialRun,
-                $settings,
-                false,
-                false,
-            ),
-        ]);
-
-        // Add to queue with a small initial delay (5 minutes)
-        Craft::$app->queue->delay($initialDelay)->push($job);
-
-        $this->logInfo('Scheduled initial status sync job', [
-            'interval' => $settings->statusSyncInterval . ' minutes',
-        ]);
+        RecurringQueueHelper::ensurePending(
+            pluginToken: 'searchmanager',
+            jobClass: SyncStatusJob::class,
+            delay: $initialDelay,
+            jobFactory: fn() => new SyncStatusJob([
+                'reschedule' => true,
+                'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
+                    $initialRun,
+                    $settings,
+                    false,
+                    false,
+                ),
+            ]),
+        );
     }
 
     /**
-     * Check if status sync job is running/scheduled
-     *
-     * @return bool
+     * Check if status sync job is running/scheduled.
      */
     public function isStatusSyncRunning(): bool
     {
@@ -688,64 +680,45 @@ class SearchManager extends Plugin
     }
 
     /**
-     * Schedule analytics cleanup job
+     * Schedule analytics cleanup job.
      *
-     * Respects analyticsRetention setting from config (e.g., 30 days dev, 60 staging, 365 prod)
+     * Respects analyticsRetention setting from config (e.g., 30 days dev, 60 staging, 365 prod).
      */
     private function scheduleAnalyticsCleanup(): void
     {
         $settings = $this->getSettings();
 
-        // Only schedule if analytics is enabled and retention is set
         if (!$settings->enableAnalytics || $settings->analyticsRetention <= 0) {
             return;
         }
 
-        if ($this->hasPendingQueueJob('CleanupAnalyticsJob')) {
+        $nextRun = ScheduleHelper::calculateNext('daily');
+        if ($nextRun === null) {
             return;
         }
 
-        $initialDelay = 5 * 60;
-        $initialRun = (clone DateFormatHelper::now())->modify("+{$initialDelay} seconds");
+        $delay = max(0, $nextRun->getTimestamp() - DateFormatHelper::now()->getTimestamp());
+        $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
+            $nextRun,
+            $settings,
+            false,
+            false,
+        );
 
-        $job = new CleanupAnalyticsJob([
-            'reschedule' => true,
-            'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
-                $initialRun,
-                $settings,
-                false,
-                false,
-            ),
-        ]);
-
-        // Add to queue with a small initial delay (5 minutes)
-        // The job will re-queue itself to the next fixed daily slot.
-        Craft::$app->queue->delay($initialDelay)->push($job);
-
-        $this->logInfo('Scheduled initial analytics cleanup job', [
-            'retention' => $settings->analyticsRetention . ' days',
-            'schedule' => 'daily',
-        ]);
+        RecurringQueueHelper::ensurePending(
+            pluginToken: 'searchmanager',
+            jobClass: CleanupAnalyticsJob::class,
+            delay: $delay,
+            jobFactory: fn() => new CleanupAnalyticsJob([
+                'reschedule' => true,
+                'nextRunTime' => $nextRunTime,
+            ]),
+        );
     }
 
     /**
-     * Check whether a queue job is already pending for this plugin.
-     */
-    private function hasPendingQueueJob(string $jobClass): bool
-    {
-        return (new \craft\db\Query())
-            ->from('{{%queue}}')
-            ->where(['like', 'job', 'searchmanager'])
-            ->andWhere(['like', 'job', $jobClass])
-            ->andWhere(['fail' => false])
-            ->andWhere(['timeUpdated' => null])
-            ->exists();
-    }
-
-    /**
-     * Check if analytics cleanup job is running/scheduled
+     * Check if analytics cleanup job is running/scheduled.
      *
-     * @return bool
      * @since 5.34.0
      */
     public function isAnalyticsCleanupRunning(): bool
