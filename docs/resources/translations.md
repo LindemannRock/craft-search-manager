@@ -21,12 +21,6 @@ Search Manager includes full translations for 12 languages out of the box.
 
 Translations are automatically applied based on the user's preferred language in Craft's Control Panel settings.
 
-## Language Notes
-
-- **Arabic**: Uses Modern Standard Arabic (MSA) with RTL support. Craft handles the RTL layout automatically.
-- **Japanese**: Uses polite form (です/ます) with katakana for adopted technical terms.
-- **All languages**: Technical terms (URL, API, HTTP, Cache, Plugin, etc.) remain in English as is standard in software localization.
-
 ## Overriding Translations
 
 You can override any translation string by creating a static translation file in your project:
