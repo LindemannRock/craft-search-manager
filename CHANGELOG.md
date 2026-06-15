@@ -1,5 +1,14 @@
 # Changelog
 
+## [5.51.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.51.0...v5.51.1) - 2026-06-15
+
+
+### Fixed
+
+* **i18n:** correct Portuguese translation for cache warming message ([6cca8a5](https://github.com/LindemannRock/craft-search-manager/commit/6cca8a578f64e05e45b727bd85b5ad09de19a48e))
+* **i18n:** correct translation for API Keys to Claves API ([fba145a](https://github.com/LindemannRock/craft-search-manager/commit/fba145a44ac1da4f3fef4e3158f22340af23f7e9))
+* **i18n:** remove language notes for Arabic and Japanese translations ([7c028c1](https://github.com/LindemannRock/craft-search-manager/commit/7c028c18c2ce82315cf8d2288752e6440fe0254b))
+
 ## [5.51.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.50.0...v5.51.0) - 2026-06-11
 
 
