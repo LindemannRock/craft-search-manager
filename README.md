@@ -1,3 +1,5 @@
+![Search Manager](docs/images/hero.webp)
+
 # Search Manager for Craft CMS
 
 [![Latest Version](https://img.shields.io/packagist/v/lindemannrock/craft-search-manager.svg)](https://packagist.org/packages/lindemannrock/craft-search-manager)
