@@ -580,7 +580,7 @@ return [
     'Popular Query Threshold' => 'Limite de consulta popular',
     'Cache search results to improve performance and reduce backend load' => 'Armazenar resultados de pesquisa na cache para melhorar o desempenho e reduzir a carga do backend',
     'Cache device detection results for better performance' => 'Guardar em cache os resultados de deteção de dispositivos para melhor desempenho',
-    'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.' => 'Pré-aquecer automaticamente a cache com consultas populares após uma reconstrução do índice. Isso garante que os primeiros visitantes obtenham resultados rápidos e em cache.',
+    'Automatically warm the cache with popular queries after an index rebuild. This ensures first visitors get fast, cached results.' => 'Pré-aquecer automaticamente a cache com consultas populares após uma reconstrução do índice. Isto garante que os primeiros visitantes obtenham resultados rápidos e em cache.',
     'Number of popular queries to pre-cache after index rebuild. Queries are pulled from analytics data.' => 'Número de consultas populares para pré-armazenar na cache após reconstrução do índice. As consultas são extraídas dos dados de análise.',
     'Number of times a query must be searched before it gets cached' => 'Número de vezes que uma consulta deve ser pesquisada antes de ser armazenada na cache',
     'Only cache queries that have been searched multiple times' => 'Armazenar na cache apenas consultas pesquisadas várias vezes',
