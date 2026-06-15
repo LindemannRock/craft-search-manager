@@ -12,6 +12,7 @@ use craft\console\Controller;
 use craft\helpers\Console;
 use craft\helpers\DateTimeHelper;
 use lindemannrock\searchmanager\models\ApiKey;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\console\ExitCode;
 
@@ -146,6 +147,12 @@ class ApiKeysController extends Controller
         $apiKey->maxHitsPerPage = $this->maxHits;
         $apiKey->rateLimit = $this->rateLimit;
 
+        $invalidIndices = $this->unknownIndexHandles($apiKey->allowedIndices);
+        if (!empty($invalidIndices)) {
+            $this->stderr("Unknown index handle(s): " . implode(', ', $invalidIndices) . "\n", Console::FG_RED);
+            return ExitCode::DATAERR;
+        }
+
         if ($this->validUntil !== '') {
             $parsed = DateTimeHelper::toDateTime($this->validUntil);
             if ($parsed === false) {
@@ -196,6 +203,10 @@ class ApiKeysController extends Controller
         $this->stdout("  Enabled:          ", Console::FG_GREY);
         $this->stdout($apiKey->enabled ? "yes\n" : "no (disabled at creation)\n");
 
+        if ($apiKey->enabled && $apiKey->type === ApiKey::TYPE_PUBLIC && empty($apiKey->allowedReferrers)) {
+            $this->stdout("\nWarning: this enabled public key has no referrer restrictions.\n", Console::FG_YELLOW);
+        }
+
         $this->stdout("\n🔑 Plaintext key — copy this now, it will never be shown again:\n\n", Console::FG_YELLOW);
         $this->stdout("    {$generated['plaintext']}\n\n", Console::FG_GREEN);
         $this->stdout("Search Manager stores only a hash. If you lose this value you will need to create a new key.\n", Console::FG_GREY);
@@ -237,5 +248,27 @@ class ApiKeysController extends Controller
             explode(',', $raw),
         );
         return array_values(array_unique(array_filter($items, fn(string $r): bool => $r !== '')));
+    }
+
+    /**
+     * Return explicit index handles that do not resolve to a configured index.
+     *
+     * @param string[] $handles
+     * @return string[]
+     */
+    private function unknownIndexHandles(array $handles): array
+    {
+        if (empty($handles) || in_array(ApiKey::ALL_INDICES, $handles, true)) {
+            return [];
+        }
+
+        $unknown = [];
+        foreach ($handles as $handle) {
+            if (SearchIndex::findByHandle($handle) === null) {
+                $unknown[] = $handle;
+            }
+        }
+
+        return $unknown;
     }
 }
