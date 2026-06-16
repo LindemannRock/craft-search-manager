@@ -935,6 +935,60 @@ class WidgetsController extends Controller
     }
 
     /**
+     * Bulk enable widget styles
+     *
+     * @since 5.52.0
+     */
+    public function actionBulkEnableStyle(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+        $this->requirePermission('searchManager:editWidgetStyles');
+
+        $styleIds = Craft::$app->getRequest()->getRequiredBodyParam('styleIds');
+        $count = 0;
+
+        foreach ($styleIds as $styleId) {
+            $widgetStyle = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
+            if ($widgetStyle) {
+                $widgetStyle->enabled = true;
+                if (SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
+                    $count++;
+                }
+            }
+        }
+
+        return $this->asJson(['success' => true, 'count' => $count]);
+    }
+
+    /**
+     * Bulk disable widget styles
+     *
+     * @since 5.52.0
+     */
+    public function actionBulkDisableStyle(): Response
+    {
+        $this->requirePostRequest();
+        $this->requireAcceptsJson();
+        $this->requirePermission('searchManager:editWidgetStyles');
+
+        $styleIds = Craft::$app->getRequest()->getRequiredBodyParam('styleIds');
+        $count = 0;
+
+        foreach ($styleIds as $styleId) {
+            $widgetStyle = SearchManager::$plugin->widgetStyles->getById((int) $styleId);
+            if ($widgetStyle) {
+                $widgetStyle->enabled = false;
+                if (SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
+                    $count++;
+                }
+            }
+        }
+
+        return $this->asJson(['success' => true, 'count' => $count]);
+    }
+
+    /**
      * Get usage count for a specific style handle
      */
     private function getStyleUsageCount(string $handle): int

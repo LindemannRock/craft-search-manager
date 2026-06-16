@@ -98,7 +98,7 @@
 		totalCount: totalCount,
 		itemLabel: {singular: 'style'|t('search-manager'), plural: 'styles'|t('search-manager')},
 	},
-	checkboxes: canDelete,
+	checkboxes: canEdit or canDelete,
 	newButton: canCreate ?? false ? {
 		url: url('search-manager/widgets/styles/new'),
 		label: 'New Widget Style'|t('search-manager'),
@@ -229,6 +229,17 @@
 {% endblock %}
 
 {% block bulkActions %}
+	{% if canEdit %}
+		{% include 'lindemannrock-base/_components/bulk-status-menu' with {
+			label: 'Set status'|t('search-manager'),
+			countId: 'lr-bulk-status-count',
+			items: [
+				{id: 'lr-bulk-enable-action', label: 'Enable'|t('search-manager'), status: 'enabled'},
+				{id: 'lr-bulk-disable-action', label: 'Disable'|t('search-manager'), status: 'disabled'},
+			],
+		} only %}
+	{% endif %}
+
 	{% if canDelete %}
 		{% include 'lindemannrock-base/_components/bulk-actions-menu' with {
 			label: 'Actions'|t('search-manager'),
@@ -251,6 +262,10 @@
 		deleteConfirm: {{ 'Delete style "{name}"? Widgets using this style will fall back to inline styles.'|t('search-manager')|json_encode|raw }},
 		bulkDeleteConfirmTemplate: {{ 'Delete {count} style(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
 		bulkDeletedTemplate: {{ 'Deleted {count} style(s)'|t('search-manager')|json_encode|raw }},
+		bulkEnabledTemplate: {{ 'Enabled {count} styles'|t('search-manager')|json_encode|raw }},
+		bulkEnableFailed: {{ 'Failed to enable styles'|t('search-manager')|json_encode|raw }},
+		bulkDisabledTemplate: {{ 'Disabled {count} styles'|t('search-manager')|json_encode|raw }},
+		bulkDisableFailed: {{ 'Failed to disable styles'|t('search-manager')|json_encode|raw }},
 	};
 
 	function selectedIds() {
@@ -260,6 +275,22 @@
 	function deleteStyle(id) {
 		return Craft.sendActionRequest('POST', 'search-manager/widgets/delete-style', {
 			data: { styleId: id },
+		});
+	}
+
+	function runBulkStatus(endpoint, successTemplate, errorFallback) {
+		const ids = selectedIds();
+		if (!ids.length) return;
+		Craft.sendActionRequest('POST', endpoint, {
+			data: { styleIds: ids },
+		}).then(function(response) {
+			const count = response.data.count || 0;
+			if (count > 0) {
+				Craft.cp.displayNotice(successTemplate.replace('{count}', count));
+				setTimeout(function() { window.location.reload(); }, 500);
+			}
+		}).catch(function() {
+			Craft.cp.displayError(errorFallback);
 		});
 	}
 
@@ -285,6 +316,16 @@
 		}).catch(function() {
 			Craft.cp.displayError(T.deleteFailed);
 		});
+	});
+
+	document.getElementById('lr-bulk-enable-action')?.addEventListener('click', function(e) {
+		e.preventDefault();
+		runBulkStatus('search-manager/widgets/bulk-enable-style', T.bulkEnabledTemplate, T.bulkEnableFailed);
+	});
+
+	document.getElementById('lr-bulk-disable-action')?.addEventListener('click', function(e) {
+		e.preventDefault();
+		runBulkStatus('search-manager/widgets/bulk-disable-style', T.bulkDisabledTemplate, T.bulkDisableFailed);
 	});
 
 	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
