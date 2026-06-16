@@ -292,15 +292,15 @@
 {% endblock %}
 
 {% block bulkActions %}
-    {% if canRetry %}
-        <button type="button" class="btn secondary" id="lr-bulk-retry-btn">
-            {{ 'Retry'|t('search-manager') }} (<span class="lr-bulk-count-retry">0</span>)
-        </button>
-    {% endif %}
-    {% if canPurge %}
-        <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-            {{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count-delete">0</span>)
-        </button>
+    {% if canRetry or canPurge %}
+        {% include 'lindemannrock-base/_components/bulk-actions-menu' with {
+            label: 'Actions'|t('search-manager'),
+            countId: 'lr-bulk-actions-count',
+            items: [
+                canRetry ? {id: 'lr-bulk-retry-btn', label: 'Retry'|t('search-manager')} : null,
+                canPurge ? {id: 'lr-bulk-delete-btn', label: 'Delete'|t('search-manager'), class: 'error'} : null,
+            ]|filter(v => v is not null),
+        } only %}
     {% endif %}
 {% endblock %}
 
@@ -316,45 +316,6 @@
     // client-side diffing isn't worth the surface area yet.
     document.addEventListener('lr:refresh', function() {
         window.location.reload();
-    });
-
-    // Live-update bulk action counts. The Retry and Delete buttons have
-    // different eligibility rules (see below) — so we count them separately
-    // and write into distinct counters. The base cp-table layout dispatches
-    // `lr:selectionChanged` on every toggle with the full selectedIds set.
-    //
-    //   Retry  → only rows at status=failed or status=abandoned.
-    //   Delete → anything except fresh-processing (worker actively holds it).
-    document.addEventListener('lr:selectionChanged', function(e) {
-        const ids = (e.detail && Array.isArray(e.detail.selectedIds))
-            ? e.detail.selectedIds
-            : [];
-
-        let retryCount = 0;
-        let deleteCount = 0;
-
-        ids.forEach(function(id) {
-            const row = document.querySelector('tr[data-id="' + id + '"]');
-            if (!row) return;
-            const meta = row.querySelector('[data-row-status]');
-            if (!meta) return;
-            const status = meta.dataset.rowStatus;
-            const isFresh = meta.dataset.rowFreshProcessing === '1';
-
-            if (status === 'failed' || status === 'abandoned') {
-                retryCount++;
-            }
-            if (!isFresh) {
-                deleteCount++;
-            }
-        });
-
-        document.querySelectorAll('.lr-bulk-count-retry').forEach(function(el) {
-            el.textContent = retryCount;
-        });
-        document.querySelectorAll('.lr-bulk-count-delete').forEach(function(el) {
-            el.textContent = deleteCount;
-        });
     });
 
     // Row-action handlers. The base row-actions component emits

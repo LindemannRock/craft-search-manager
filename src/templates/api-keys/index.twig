@@ -175,21 +175,24 @@
 
 {% block bulkActions %}
     {% if canEdit %}
-        <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
-            {{ 'Set status'|t('search-manager') }}
-        </button>
-        <div class="menu">
-            <ul>
-                <li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-                <li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-            </ul>
-        </div>
+        {% include 'lindemannrock-base/_components/bulk-status-menu' with {
+            label: 'Set status'|t('search-manager'),
+            countId: 'lr-bulk-status-count',
+            items: [
+                {id: 'lr-bulk-enable-action', label: 'Enable'|t('search-manager'), status: 'enabled'},
+                {id: 'lr-bulk-disable-action', label: 'Disable'|t('search-manager'), status: 'disabled'},
+            ],
+        } only %}
     {% endif %}
 
     {% if canRevoke %}
-        <button type="button" class="btn secondary" id="lr-bulk-revoke-btn">
-            {{ 'Revoke'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
-        </button>
+        {% include 'lindemannrock-base/_components/bulk-actions-menu' with {
+            label: 'Actions'|t('search-manager'),
+            countId: 'lr-bulk-actions-count',
+            items: [
+                {id: 'lr-bulk-revoke-btn', label: 'Revoke'|t('search-manager'), class: 'error'},
+            ],
+        } only %}
     {% endif %}
 {% endblock %}
 
@@ -236,14 +239,6 @@
 (function() {
     if (typeof Craft === 'undefined') return;
 
-    // Initialise the "Set status" menubtn — without `new Craft.MenuBtn(...)`,
-    // clicking the button doesn't open its menu, so the Enable/Disable items
-    // inside are unreachable. Matches the pattern in indices/index.twig.
-    const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
-    if (bulkStatusBtn && Craft.MenuBtn) {
-        new Craft.MenuBtn(bulkStatusBtn);
-    }
-
     // Pre-translated strings: keep |t() in Twig (so they're translatable)
     // and emit as JSON-encoded JS literals via |json_encode|raw — avoids
     // the |e('js') trap (produces \uXXXX garbage when re-quoted).
@@ -281,21 +276,6 @@
             window.location.reload();
         }).catch(function() {
             Craft.cp.displayError(T.revokeFailed);
-        });
-    });
-
-    // ---------------------------------------------------------------------
-    // Bulk-action button wiring. The cp-table layout dispatches
-    // `lr:selectionChanged` on every checkbox toggle with the full selected
-    // ids; we mirror the count into the button labels so operators see how
-    // many rows the next click will affect.
-    // ---------------------------------------------------------------------
-    document.addEventListener('lr:selectionChanged', function(e) {
-        const ids = (e.detail && Array.isArray(e.detail.selectedIds))
-            ? e.detail.selectedIds
-            : [];
-        document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
-            el.textContent = ids.length;
         });
     });
 

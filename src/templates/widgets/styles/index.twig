@@ -229,9 +229,13 @@
 
 {% block bulkActions %}
 	{% if canDelete %}
-		<button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-			{{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
-		</button>
+		{% include 'lindemannrock-base/_components/bulk-actions-menu' with {
+			label: 'Actions'|t('search-manager'),
+			countId: 'lr-bulk-actions-count',
+			items: [
+				{id: 'lr-bulk-delete-btn', label: 'Delete'|t('search-manager'), class: 'error'},
+			],
+		} only %}
 	{% endif %}
 {% endblock %}
 
@@ -247,15 +251,6 @@
 		bulkDeleteConfirmTemplate: {{ 'Delete {count} style(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
 		bulkDeletedTemplate: {{ 'Deleted {count} style(s)'|t('search-manager')|json_encode|raw }},
 	};
-
-	document.addEventListener('lr:selectionChanged', function(e) {
-		const ids = (e.detail && Array.isArray(e.detail.selectedIds))
-			? e.detail.selectedIds
-			: [];
-		document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
-			el.textContent = ids.length;
-		});
-	});
 
 	function selectedIds() {
 		return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];

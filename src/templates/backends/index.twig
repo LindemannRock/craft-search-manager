@@ -214,22 +214,23 @@
 
 {% block bulkActions %}
     {% if canEdit %}
-        <div class="btngroup">
-            <button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
-                {{ 'Set status'|t('search-manager') }}
-            </button>
-            <div class="menu">
-                <ul>
-                    <li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-                    <li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-                </ul>
-            </div>
-        </div>
+        {% include 'lindemannrock-base/_components/bulk-status-menu' with {
+            label: 'Set status'|t('search-manager'),
+            countId: 'lr-bulk-status-count',
+            items: [
+                {id: 'lr-bulk-enable-action', label: 'Enable'|t('search-manager'), status: 'enabled'},
+                {id: 'lr-bulk-disable-action', label: 'Disable'|t('search-manager'), status: 'disabled'},
+            ],
+        } only %}
     {% endif %}
     {% if canDelete %}
-        <button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-            {{ 'Delete'|t('search-manager') }} (<span id="lr-selected-count">0</span>)
-        </button>
+        {% include 'lindemannrock-base/_components/bulk-actions-menu' with {
+            label: 'Actions'|t('search-manager'),
+            countId: 'lr-bulk-actions-count',
+            items: [
+                {id: 'lr-bulk-delete-btn', label: 'Delete'|t('search-manager'), class: 'error'},
+            ],
+        } only %}
     {% endif %}
 {% endblock %}
 
@@ -375,14 +376,6 @@
     (function() {
         if (typeof Craft === 'undefined') return;
 
-        // Initialise the "Set status" menubtn — without `new Craft.MenuBtn(...)`,
-        // clicking the button doesn't open its menu so the Enable/Disable items
-        // inside are unreachable.
-        const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
-        if (bulkStatusBtn && Craft.MenuBtn) {
-            new Craft.MenuBtn(bulkStatusBtn);
-        }
-
         // Pre-translated strings: keep |t() in Twig (so they're translatable)
         // and emit as JSON-encoded JS literals via |json_encode|raw — avoids
         // the |e('js') trap (produces \uXXXX garbage when re-quoted).
@@ -415,13 +408,6 @@
                 }
             });
         }
-
-        document.addEventListener('lr:selectionChanged', function(e) {
-            const countSpan = document.getElementById('lr-selected-count');
-            if (countSpan) {
-                countSpan.textContent = e.detail && typeof e.detail.count === 'number' ? e.detail.count : 0;
-            }
-        });
 
         function selectedIds() {
             return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];

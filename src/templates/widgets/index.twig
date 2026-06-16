@@ -309,21 +309,24 @@
 
 {% block bulkActions %}
 	{% if canEdit %}
-		<button type="button" class="btn menubtn secondary" id="lr-bulk-status-btn">
-			{{ 'Set status'|t('search-manager') }}
-		</button>
-		<div class="menu">
-			<ul>
-				<li><a id="lr-bulk-enable-action">{{ 'Enable'|t('search-manager') }}</a></li>
-				<li><a id="lr-bulk-disable-action">{{ 'Disable'|t('search-manager') }}</a></li>
-			</ul>
-		</div>
+		{% include 'lindemannrock-base/_components/bulk-status-menu' with {
+			label: 'Set status'|t('search-manager'),
+			countId: 'lr-bulk-status-count',
+			items: [
+				{id: 'lr-bulk-enable-action', label: 'Enable'|t('search-manager'), status: 'enabled'},
+				{id: 'lr-bulk-disable-action', label: 'Disable'|t('search-manager'), status: 'disabled'},
+			],
+		} only %}
 	{% endif %}
 
 	{% if canDelete %}
-		<button type="button" class="btn secondary" id="lr-bulk-delete-btn">
-			{{ 'Delete'|t('search-manager') }} (<span class="lr-bulk-count">0</span>)
-		</button>
+		{% include 'lindemannrock-base/_components/bulk-actions-menu' with {
+			label: 'Actions'|t('search-manager'),
+			countId: 'lr-bulk-actions-count',
+			items: [
+				{id: 'lr-bulk-delete-btn', label: 'Delete'|t('search-manager'), class: 'error'},
+			],
+		} only %}
 	{% endif %}
 {% endblock %}
 
@@ -331,11 +334,6 @@
 <script>
 (function() {
 	if (typeof Craft === 'undefined') return;
-
-	const bulkStatusBtn = document.getElementById('lr-bulk-status-btn');
-	if (bulkStatusBtn && Craft.MenuBtn) {
-		new Craft.MenuBtn(bulkStatusBtn);
-	}
 
 	const T = {
 		deleted: {{ 'Widget config deleted'|t('search-manager')|json_encode|raw }},
@@ -351,15 +349,6 @@
 		bulkDeleteFailed: {{ 'Failed to delete configs'|t('search-manager')|json_encode|raw }},
 		bulkDeleteConfirmTemplate: {{ 'Delete {count} config(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
 	};
-
-	document.addEventListener('lr:selectionChanged', function(e) {
-		const ids = (e.detail && Array.isArray(e.detail.selectedIds))
-			? e.detail.selectedIds
-			: [];
-		document.querySelectorAll('.lr-bulk-count').forEach(function(el) {
-			el.textContent = ids.length;
-		});
-	});
 
 	function selectedIds() {
 		return window.lrTableSelection ? window.lrTableSelection.getSelectedIds() : [];
