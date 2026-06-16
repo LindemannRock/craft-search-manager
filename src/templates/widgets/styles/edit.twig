@@ -196,6 +196,16 @@
 					</dd>
 				</div>
 				<div class="data">
+					<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
+					<dd class="value">
+						{% include 'lindemannrock-base/_components/status-dot' with {
+							value: widgetStyle.isFromConfig() ? 'config' : 'database',
+							colorSet: 'configSource',
+						} only %}
+						<span>{{ widgetStyle.isFromConfig() ? 'Config File'|t('search-manager') : 'Database'|t('search-manager') }}</span>
+					</dd>
+				</div>
+				<div class="data">
 					<dt class="heading">{{ 'Handle'|t('search-manager') }}</dt>
 					<dd class="value"><code>{{ widgetStyle.handle }}</code></dd>
 				</div>
@@ -208,16 +218,6 @@
 							colorSet: 'widgetType',
 						} only %}
 						<span>{{ typeLabels[widgetStyle.type] ?? widgetStyle.type|capitalize }}</span>
-					</dd>
-				</div>
-				<div class="data">
-					<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
-					<dd class="value">
-						{% include 'lindemannrock-base/_components/status-dot' with {
-							value: widgetStyle.isFromConfig() ? 'config' : 'database',
-							colorSet: 'configSource',
-						} only %}
-						<span>{{ widgetStyle.isFromConfig() ? 'Config File'|t('search-manager') : 'Database'|t('search-manager') }}</span>
 					</dd>
 				</div>
 				{% if usageCount is defined and usageCount > 0 %}
