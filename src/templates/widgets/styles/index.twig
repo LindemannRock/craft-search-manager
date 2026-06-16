@@ -38,10 +38,11 @@
 				{
 					param: 'status',
 					current: statusFilter,
+					colorSet: 'status',
 					options: [
 						{value: 'all', label: 'All'|t('search-manager'), status: 'all'},
-						{value: 'enabled', label: 'Enabled'|t('search-manager'), status: 'green'},
-						{value: 'disabled', label: 'Disabled'|t('search-manager'), status: 'disabled'},
+						{value: 'enabled', label: 'Enabled'|t('search-manager'), colorKey: 'enabled'},
+						{value: 'disabled', label: 'Disabled'|t('search-manager'), colorKey: 'disabled'},
 					],
 				},
 				{
