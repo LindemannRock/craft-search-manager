@@ -11,6 +11,7 @@ use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
+use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -396,6 +397,21 @@ class ConfiguredBackend extends Model
         ])) {
             $this->addError($attribute, Craft::t('search-manager', 'Handle must be unique.'));
         }
+    }
+
+    /**
+     * Get the effective Redis connection info for this backend.
+     *
+     * @return array<string, mixed>|null
+     * @since 5.52.0
+     */
+    public function getRedisConnectionInfo(): ?array
+    {
+        if ($this->backendType !== 'redis') {
+            return null;
+        }
+
+        return RedisConnectionHelper::resolveForBackend($this);
     }
 
     // =========================================================================

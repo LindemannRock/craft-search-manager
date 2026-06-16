@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use Craft;
+use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\search\storage\RedisStorage;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 
@@ -19,12 +20,6 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  */
 class RedisBackend extends AbstractSearchEngineBackend
 {
-    /**
-     * Default database offset from Craft's Redis database.
-     * This ensures search data is isolated from Craft cache data.
-     */
-    private const SEARCH_DATABASE_OFFSET = 1;
-
     /**
      * @var \Redis|null Redis client for availability checks
      */
@@ -51,42 +46,18 @@ class RedisBackend extends AbstractSearchEngineBackend
     private function getResolvedRedisSettings(): array
     {
         $backendSettings = $this->getBackendSettings();
+        $resolved = RedisConnectionHelper::resolve($backendSettings);
 
-        // If host is explicitly configured, use those settings as-is
-        $configuredHost = $this->resolveEnvVar($backendSettings['host'] ?? null, null);
-        if (!empty($configuredHost)) {
-            return $backendSettings;
-        }
-
-        // Fall back to Craft's Redis cache settings
-        if (Craft::$app->cache instanceof \yii\redis\Cache) {
-            $redisConnection = Craft::$app->cache->redis;
-
-            $craftDatabase = (int) ($redisConnection->database ?? 0);
-
-            // Use separate database for search data to prevent cache flush conflicts
-            // Unless user has explicitly configured a database
-            $searchDatabase = isset($backendSettings['database']) && $backendSettings['database'] !== ''
-                ? (int) $this->resolveEnvVar($backendSettings['database'], 0)
-                : $craftDatabase + self::SEARCH_DATABASE_OFFSET;
-
+        if ($resolved['source'] === RedisConnectionHelper::SOURCE_CRAFT_CACHE_FALLBACK) {
             $this->logInfo('Using Craft Redis cache settings for Search Manager', [
-                'host' => $redisConnection->hostname ?? 'localhost',
-                'port' => $redisConnection->port ?? 6379,
-                'craftDatabase' => $craftDatabase,
-                'searchDatabase' => $searchDatabase,
+                'host' => $resolved['host'],
+                'port' => $resolved['port'],
+                'craftDatabase' => $resolved['craftDatabase'],
+                'searchDatabase' => $resolved['database'],
             ]);
-
-            return [
-                'host' => $redisConnection->hostname ?? 'localhost',
-                'port' => $redisConnection->port ?? 6379,
-                'password' => $redisConnection->password ?? null,
-                'database' => $searchDatabase,
-            ];
         }
 
-        // No Craft Redis, use defaults
-        return $backendSettings;
+        return RedisConnectionHelper::storageSettings($backendSettings);
     }
 
     /**

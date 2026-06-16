@@ -9,6 +9,7 @@ use craft\web\Controller;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
+use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\Response;
 
@@ -751,7 +752,7 @@ class UtilitiesController extends Controller
 
         foreach ($backends as $backend) {
             if ($backend->backendType === 'redis' && $backend->enabled) {
-                return $backend->settings ?? [];
+                return RedisConnectionHelper::storageSettings($backend->settings ?? []);
             }
         }
 
@@ -762,7 +763,7 @@ class UtilitiesController extends Controller
             if (isset($config['backends'])) {
                 foreach ($config['backends'] as $backendConfig) {
                     if (($backendConfig['backendType'] ?? '') === 'redis' && ($backendConfig['enabled'] ?? false)) {
-                        return $backendConfig['settings'] ?? [];
+                        return RedisConnectionHelper::storageSettings($backendConfig['settings'] ?? []);
                     }
                 }
             }

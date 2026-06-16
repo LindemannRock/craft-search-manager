@@ -8,6 +8,7 @@ use craft\helpers\Console;
 use craft\helpers\FileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
+use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\SearchManager;
 use yii\console\ExitCode;
 
@@ -520,35 +521,7 @@ class MaintenanceController extends Controller
      */
     private function getResolvedRedisConfig(\lindemannrock\searchmanager\models\ConfiguredBackend $backend): array
     {
-        $settings = $backend->settings ?? [];
-
-        $configuredHost = $this->resolveEnvVar($settings['host'] ?? null, null);
-        if (!empty($configuredHost)) {
-            return [
-                'host' => $configuredHost,
-                'port' => $this->resolveEnvVar($settings['port'] ?? null, 6379),
-                'password' => $this->resolveEnvVar($settings['password'] ?? null, null),
-                'database' => $this->resolveEnvVar($settings['database'] ?? null, 0),
-            ];
-        }
-
-        if (Craft::$app->cache instanceof \yii\redis\Cache) {
-            $redisConnection = Craft::$app->cache->redis;
-            $craftDatabase = (int) ($redisConnection->database ?? 0);
-
-            $searchDatabase = isset($settings['database']) && $settings['database'] !== ''
-                ? (int) $this->resolveEnvVar($settings['database'], 0)
-                : $craftDatabase + 1;
-
-            return [
-                'host' => $redisConnection->hostname ?? 'localhost',
-                'port' => $redisConnection->port ?? 6379,
-                'password' => $redisConnection->password ?? null,
-                'database' => $searchDatabase,
-            ];
-        }
-
-        return [];
+        return RedisConnectionHelper::storageSettings($backend->settings ?? []);
     }
 
     /**

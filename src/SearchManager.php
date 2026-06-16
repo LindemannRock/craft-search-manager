@@ -1030,7 +1030,7 @@ class SearchManager extends Plugin
      *
      * @param array<string, mixed> $settings
      * @return array<string, mixed>
-     * @since 5.47.0
+     * @since 5.52.0
      */
     public function getRedisConnectionInfo(array $settings = []): array
     {

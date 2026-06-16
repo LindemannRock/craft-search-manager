@@ -164,20 +164,27 @@
 					</dd>
 				</div>
 			{% endif %}
+			{% set redisConnectionInfo = index.redisConnectionInfo %}
+			{% if redisConnectionInfo %}
 				<div class="data">
-					<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
-					<dd class="value">
-						{% set expected = index.expectedCount %}
-						{% if index.documentCount == expected %}
-							{% include 'lindemannrock-base/_components/status-dot' with { value: 'ok', colorSet: 'healthStatus' } only %}
-						{% elseif index.documentCount < expected %}
-							{% include 'lindemannrock-base/_components/status-dot' with { value: 'low', colorSet: 'healthStatus' } only %}
-						{% else %}
-							{% include 'lindemannrock-base/_components/status-dot' with { value: 'high', colorSet: 'healthStatus' } only %}
-						{% endif %}
-						{{ index.documentCount }}&nbsp;/&nbsp;{{ expected }}
-					</dd>
+					<dt class="heading">{{ 'Database'|t('search-manager') }}</dt>
+					<dd class="value"><code>{{ redisConnectionInfo.databaseLabel }}</code></dd>
 				</div>
+			{% endif %}
+			<div class="data">
+				<dt class="heading">{{ 'Documents'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% set expected = index.expectedCount %}
+					{% if index.documentCount == expected %}
+						{% include 'lindemannrock-base/_components/status-dot' with { value: 'ok', colorSet: 'healthStatus' } only %}
+					{% elseif index.documentCount < expected %}
+						{% include 'lindemannrock-base/_components/status-dot' with { value: 'low', colorSet: 'healthStatus' } only %}
+					{% else %}
+						{% include 'lindemannrock-base/_components/status-dot' with { value: 'high', colorSet: 'healthStatus' } only %}
+					{% endif %}
+					{{ index.documentCount }}&nbsp;/&nbsp;{{ expected }}
+				</dd>
+			</div>
 			<div class="data">
 				<dt class="heading">{{ 'Last Indexed'|t('search-manager') }}</dt>
 				<dd class="value">

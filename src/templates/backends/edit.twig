@@ -158,13 +158,6 @@
 
 				{% set backendDescriptions = constant('lindemannrock\\searchmanager\\models\\ConfiguredBackend::BACKEND_DESCRIPTIONS') %}
 
-				{# Check if Craft is using Redis for caching (indicates Redis is available) #}
-				{% set craftUsesRedis = craft.app.cache is defined and craft.app.cache.className is defined and craft.app.cache.className == 'yii\\redis\\Cache' %}
-				{% set craftRedisDb = craftUsesRedis ? (craft.app.cache.redis.database ?? 0) : 0 %}
-				{% set craftRedisHost = craftUsesRedis ? (craft.app.cache.redis.hostname ?? 'localhost') : null %}
-				{% set craftRedisPort = craftUsesRedis ? (craft.app.cache.redis.port ?? 6379) : null %}
-				{% set searchFallbackDb = craftRedisDb + 1 %}
-
 				{% for type, schema in settingsSchemas %}
 					{% set typeDesc = backendDescriptions[type] ?? null %}
 					<div
@@ -197,13 +190,14 @@
 
 						{# Show Redis configuration info #}
 						{% if type == 'redis' %}
+							{% set redisInfo = craft.searchManager.getPlugin().getRedisConnectionInfo(backend.settings ?? {}) %}
 							{# 1. Redis Detected status #}
-							{% if craftUsesRedis %}
+							{% if redisInfo.usesCraftCache %}
 								{% include 'lindemannrock-base/_components/info-box' with {
                                     type: 'success',
-                                    message: 'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.'|t('search-manager', {host: craftRedisHost, port: craftRedisPort, db: craftRedisDb, fallbackDb: searchFallbackDb}),
+                                    message: 'Redis detected: Craft uses Redis at {host}:{port} on DB {db}. If no settings are provided below, Search Manager will reuse this connection and store its data on DB {fallbackDb} — isolated from Craft\'s cache so it survives cache flushes. If DB {fallbackDb} is already used for sessions or queue, set database explicitly below.'|t('search-manager', {host: redisInfo.host, port: redisInfo.port, db: redisInfo.craftDatabase, fallbackDb: redisInfo.database}),
                                 } %}
-                            {% else %}
+                            {% elseif not redisInfo.isConfigured %}
                                 {% include 'lindemannrock-base/_components/info-box' with {
                                     type: 'info',
                                     message: 'Redis not detected in Craft. Redis caching is not configured in config/app.php. You must provide connection settings below, or configure Redis in Craft first.'|t('search-manager'),
@@ -491,6 +485,15 @@ setTimeout(updateActionButton, 10);
 							<span>{{ backend.getTypeLabel() }}</span>
 						</dd>
 					</div>
+					{% set redisConnectionInfo = backend.redisConnectionInfo %}
+					{% if redisConnectionInfo %}
+						<div class="data">
+							<dt class="heading">{{ 'Database'|t('search-manager') }}</dt>
+							<dd class="value">
+								<code>{{ redisConnectionInfo.databaseLabel }}</code>
+							</dd>
+						</div>
+					{% endif %}
 					<div class="data">
 						<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
 						<dd class="value">

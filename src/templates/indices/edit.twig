@@ -729,6 +729,13 @@ document.addEventListener('DOMContentLoaded', function() {
 					</dd>
 				</div>
 			{% endif %}
+			{% set redisConnectionInfo = index.redisConnectionInfo %}
+			{% if redisConnectionInfo %}
+				<div class="data">
+					<dt class="heading">{{ 'Database'|t('search-manager') }}</dt>
+					<dd class="value"><code>{{ redisConnectionInfo.databaseLabel }}</code></dd>
+				</div>
+			{% endif %}
 			<div class="data">
 				<dt class="heading">{{ 'Source'|t('search-manager') }}</dt>
 				<dd class="value">

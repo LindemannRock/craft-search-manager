@@ -12,6 +12,7 @@ use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
@@ -1148,6 +1149,27 @@ class SearchIndex extends Model
         }
 
         return ConfiguredBackend::findByHandle($backendHandle);
+    }
+
+    /**
+     * Get the effective Redis connection info when this index uses Redis.
+     *
+     * @return array<string, mixed>|null
+     * @since 5.52.0
+     */
+    public function getRedisConnectionInfo(): ?array
+    {
+        if ($this->getEffectiveBackendType() !== 'redis') {
+            return null;
+        }
+
+        $configuredBackend = $this->getConfiguredBackend();
+
+        if ($configuredBackend !== null) {
+            return $configuredBackend->getRedisConnectionInfo();
+        }
+
+        return RedisConnectionHelper::resolve([]);
     }
 
     /**
