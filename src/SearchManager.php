@@ -660,8 +660,9 @@ class SearchManager extends Plugin
                 'nextRunTime' => DateFormatHelper::formatCompactDatetimeFromSettings(
                     $initialRun,
                     $settings,
+                    null,
                     false,
-                    false,
+                    pluginHandle: 'search-manager',
                 ),
             ]),
         );
@@ -701,8 +702,9 @@ class SearchManager extends Plugin
         $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
             $nextRun,
             $settings,
+            null,
             false,
-            false,
+            pluginHandle: 'search-manager',
         );
 
         RecurringQueueHelper::ensurePending(
@@ -1021,6 +1023,18 @@ class SearchManager extends Plugin
     public function getConfiguredBackend(string $handle): ?\lindemannrock\searchmanager\models\ConfiguredBackend
     {
         return \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($handle);
+    }
+
+    /**
+     * Resolve effective Redis connection info for CP templates.
+     *
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     * @since 5.47.0
+     */
+    public function getRedisConnectionInfo(array $settings = []): array
+    {
+        return \lindemannrock\searchmanager\helpers\RedisConnectionHelper::resolve($settings);
     }
 
     // =========================================================================

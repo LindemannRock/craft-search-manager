@@ -80,8 +80,9 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
             $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
                 $this->calculateNextRun(),
                 $settings,
+                null,
                 false,
-                false,
+                pluginHandle: 'search-manager',
             );
         }
 
@@ -212,8 +213,9 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
             $nextRunTime = DateFormatHelper::formatCompactDatetimeFromSettings(
                 $nextRun,
                 $settings,
+                null,
                 false,
-                false,
+                pluginHandle: 'search-manager',
             );
 
             $job = new self([

@@ -226,8 +226,9 @@ final class RecurringJobsRescheduleTest extends TestCase
         return DateFormatHelper::formatCompactDatetimeFromSettings(
             $nextRun,
             SearchManager::$plugin->getSettings(),
+            null,
             false,
-            false,
+            pluginHandle: 'search-manager',
         );
     }
 
