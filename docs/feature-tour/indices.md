@@ -264,7 +264,7 @@ When `autoIndex` is enabled (default), elements are automatically queued for ind
 
 The batch sync worker groups pending rows by index and writes documents through backend batch APIs. This is especially useful for Feed Me, CSV imports, migrations, and other bulk-write workflows where one import can trigger thousands of element save events.
 
-A status sync job periodically checks for entries that became live (postDate passed) or expired without a save event. That job still uses the existing direct sync path in this release; the pending buffer is focused on normal save/delete auto-sync first.
+A status sync job periodically checks for entries that became live (postDate passed) or expired without a save event. It queues matching rows into the same pending sync buffer, so scheduled status changes and normal save/delete events drain through one backend-writing path.
 
 Search Manager debounces automatic `lastIndexed` metadata updates with `lastIndexedDebounceSeconds` (default: 60 seconds). This keeps the "Last Indexed" column current enough for operators while avoiding an extra metadata-table write for every save during imports or busy editing sessions. Set the value to `0` if you want the timestamp updated after every successful auto-sync.
 

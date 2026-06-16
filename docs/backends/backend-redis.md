@@ -43,6 +43,8 @@ If Craft already uses Redis for caching, you can reuse that connection with no a
 
 When settings are empty, Search Manager automatically uses Craft's Redis connection but stores data in a separate database (Craft's database number + 1). This prevents search data from being wiped when Craft's cache is cleared.
 
+The backend edit screen and Redis-backed index sidebars show the effective database Search Manager will use. For example, if Craft uses DB 5 and no Redis database is set explicitly, Search Manager displays `DB 6 (5 + 1)`.
+
 ### Option 2: Dedicated Redis Connection
 
 For production, a dedicated Redis connection gives you full control:
@@ -80,6 +82,8 @@ The automatic database offset (+1) only applies when:
 - No explicit `database` value is set
 
 If your hosting platform uses `FLUSHALL` instead of `FLUSHDB` when clearing cache, the automatic isolation won't help — consider setting an explicit database number or using a different backend.
+
+On managed platforms where Redis may also hold sessions, queue data, or static page-cache data, prefer an explicit `database` value after confirming which DB number is safe for custom application data.
 
 Test by clearing Craft's cache and checking that your search index is still intact.
 

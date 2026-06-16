@@ -47,6 +47,8 @@ The `lastIndexedDebounceSeconds` setting only affects how often the "Last Indexe
 
 Automatic save/delete syncs use a pending buffer and `BatchSyncJob`. For large imports, tune `syncBatchSize` and `batchFlushInterval`: increase `syncBatchSize` to process more pending rows per job, or increase `batchFlushInterval` to coalesce import bursts more aggressively before draining.
 
+In Craft's queue manager, rows named **Updating search indexes** are Craft's native search-index jobs, not Search Manager pending-sync rows. They often display `0%` until each individual job finishes, then the next queued row starts. A long list after a docs sync, Feed Me import, or project-content update can be normal as long as the queue worker keeps reserving and completing jobs.
+
 ## Pending Syncs Are Not Draining
 
 If saved elements are not appearing in search:
@@ -64,6 +66,10 @@ For a triage view of the buffer with filters, per-row retry, and a one-click "Fa
 Search Manager schedules recurring queue jobs for analytics cleanup and entry status syncs. If the queue is empty after one of those jobs runs, the next occurrence was not scheduled correctly.
 
 Recurring jobs should always push the next occurrence from inside the running job. Duplicate guards belong in the bootstrap path only. Logs such as `Skipping reschedule - cleanup job already exists` or `Skipping reschedule - sync job already exists` after a job runs usually mean the running queue row matched itself and prevented the next run from being queued.
+
+During bootstrap, Search Manager collapses duplicate pending scheduler rows automatically and keeps one row for each recurring scheduler. Analytics cleanup is a fixed daily maintenance job. Status sync is an interval checker and may show a short initial delay before settling into its configured cadence.
+
+Craft stores queue job descriptions when rows are queued, so date/time format changes apply to newly queued rows. Existing delayed rows keep their old label until they run or are requeued. Queue labels stay compact: numeric months render numerically, while short and long month settings both render as short month names.
 
 If the job is still missing:
 
