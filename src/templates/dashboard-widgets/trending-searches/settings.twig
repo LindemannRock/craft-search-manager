@@ -27,3 +27,11 @@
         { label: 'Last 90 days vs Previous'|t('search-manager'), value: 'last90days' },
     ],
 }) }}
+
+{{ forms.selectField({
+    label: 'Site'|t('search-manager'),
+    id: 'siteId',
+    name: 'siteId',
+    value: widget.siteId,
+    options: siteOptions,
+}) }}

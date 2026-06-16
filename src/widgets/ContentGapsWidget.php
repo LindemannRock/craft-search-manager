@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\widgets;
 
 use Craft;
 use craft\base\Widget;
+use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -21,6 +22,8 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class ContentGapsWidget extends Widget
 {
+    use SiteFilterTrait;
+
     /**
      * @var int Number of content gaps to show
      */
@@ -39,7 +42,10 @@ class ContentGapsWidget extends Widget
         $rules = parent::rules();
         $rules[] = [['limit'], 'integer', 'min' => 3, 'max' => 20];
         $rules[] = [['limit'], 'default', 'value' => 5];
-        $rules[] = [['dateRange'], 'in', 'range' => ['today', 'yesterday', 'last7days', 'last30days', 'last90days', 'all']];
+        $rules[] = [['dateRange'], 'in', 'range' => array_keys(DateRangeHelper::getOptions('assoc'))];
+        $rules[] = [['siteId'], 'in', 'range' => array_column($this->siteOptions(), 'value')];
+        $rules[] = [['dateRange'], 'default', 'value' => 'last7days'];
+        $rules[] = [['siteId'], 'default', 'value' => 'all'];
         return $rules;
     }
 
@@ -66,7 +72,7 @@ class ContentGapsWidget extends Widget
      */
     public static function icon(): ?string
     {
-        return '@app/icons/solid/triangle-exclamation.svg';
+        return '@lindemannrock/searchmanager/icon-mask.svg';
     }
 
     /**
@@ -91,15 +97,9 @@ class ContentGapsWidget extends Widget
      */
     public function getSubtitle(): ?string
     {
-        return match ($this->dateRange) {
-            'today' => Craft::t('search-manager', 'Today'),
-            'yesterday' => Craft::t('search-manager', 'Yesterday'),
-            'last7days' => Craft::t('search-manager', 'Last 7 days'),
-            'last30days' => Craft::t('search-manager', 'Last 30 days'),
-            'last90days' => Craft::t('search-manager', 'Last 90 days'),
-            'all' => Craft::t('search-manager', 'All time'),
-            default => Craft::t('search-manager', 'Last 7 days'),
-        };
+        $labels = DateRangeHelper::getOptions('assoc');
+
+        return $labels[$this->dateRange] ?? $labels['last7days'];
     }
 
     /**
@@ -115,8 +115,7 @@ class ContentGapsWidget extends Widget
             return '<p class="light">' . Craft::t('search-manager', 'Analytics are disabled in plugin settings.') . '</p>';
         }
 
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        $contentGaps = SearchManager::$plugin->analytics->getZeroResultClusters($editableSiteIds, $this->dateRange, $this->limit);
+        $contentGaps = SearchManager::$plugin->analytics->getZeroResultClusters($this->effectiveSiteId(), $this->dateRange, $this->limit);
 
         return Craft::$app->getView()->renderTemplate(
             'search-manager/dashboard-widgets/content-gaps/body',
@@ -137,6 +136,7 @@ class ContentGapsWidget extends Widget
             'search-manager/dashboard-widgets/content-gaps/settings',
             [
                 'widget' => $this,
+                'siteOptions' => $this->siteOptions(),
             ]
         );
     }

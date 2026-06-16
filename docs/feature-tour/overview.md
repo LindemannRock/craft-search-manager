@@ -54,7 +54,7 @@ Search Manager provides four Craft dashboard widgets for at-a-glance analytics. 
 | **Trending Searches** | Queries with increasing search volume |
 | **Content Gaps** | Zero-result queries that indicate missing content |
 
-All widgets require the `searchManager:viewAnalytics` permission.
+All widgets require the `searchManager:viewAnalytics` permission and can be scoped to **All Sites** or one selected editable site.
 
 ## What Makes Search Manager Different
 

@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\widgets;
 
 use Craft;
 use craft\base\Widget;
+use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -21,6 +22,8 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class TrendingSearchesWidget extends Widget
 {
+    use SiteFilterTrait;
+
     /**
      * @var int Number of trending searches to show
      */
@@ -39,7 +42,10 @@ class TrendingSearchesWidget extends Widget
         $rules = parent::rules();
         $rules[] = [['limit'], 'integer', 'min' => 3, 'max' => 20];
         $rules[] = [['limit'], 'default', 'value' => 5];
-        $rules[] = [['dateRange'], 'in', 'range' => ['today', 'yesterday', 'last7days', 'last30days', 'last90days', 'all']];
+        $rules[] = [['dateRange'], 'in', 'range' => array_keys(DateRangeHelper::getOptions('assoc'))];
+        $rules[] = [['siteId'], 'in', 'range' => array_column($this->siteOptions(), 'value')];
+        $rules[] = [['dateRange'], 'default', 'value' => 'last7days'];
+        $rules[] = [['siteId'], 'default', 'value' => 'all'];
         return $rules;
     }
 
@@ -66,7 +72,7 @@ class TrendingSearchesWidget extends Widget
      */
     public static function icon(): ?string
     {
-        return '@app/icons/solid/arrow-trend-up.svg';
+        return '@lindemannrock/searchmanager/icon-mask.svg';
     }
 
     /**
@@ -115,8 +121,7 @@ class TrendingSearchesWidget extends Widget
             return '<p class="light">' . Craft::t('search-manager', 'Analytics are disabled in plugin settings.') . '</p>';
         }
 
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        $trending = SearchManager::$plugin->analytics->getTrendingQueries($editableSiteIds, $this->dateRange, $this->limit);
+        $trending = SearchManager::$plugin->analytics->getTrendingQueries($this->effectiveSiteId(), $this->dateRange, $this->limit);
 
         return Craft::$app->getView()->renderTemplate(
             'search-manager/dashboard-widgets/trending-searches/body',
@@ -137,6 +142,7 @@ class TrendingSearchesWidget extends Widget
             'search-manager/dashboard-widgets/trending-searches/settings',
             [
                 'widget' => $this,
+                'siteOptions' => $this->siteOptions(),
             ]
         );
     }

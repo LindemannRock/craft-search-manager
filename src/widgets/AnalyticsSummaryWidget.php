@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\widgets;
 
 use Craft;
 use craft\base\Widget;
+use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -19,6 +20,8 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class AnalyticsSummaryWidget extends Widget
 {
+    use SiteFilterTrait;
+
     /**
      * @var string Date range for analytics
      */
@@ -30,7 +33,10 @@ class AnalyticsSummaryWidget extends Widget
     public function rules(): array
     {
         $rules = parent::rules();
-        $rules[] = [['dateRange'], 'in', 'range' => ['today', 'yesterday', 'last7days', 'last30days', 'last90days', 'all']];
+        $rules[] = [['dateRange'], 'in', 'range' => array_keys(DateRangeHelper::getOptions('assoc'))];
+        $rules[] = [['siteId'], 'in', 'range' => array_column($this->siteOptions(), 'value')];
+        $rules[] = [['dateRange'], 'default', 'value' => 'last7days'];
+        $rules[] = [['siteId'], 'default', 'value' => 'all'];
         return $rules;
     }
 
@@ -57,7 +63,7 @@ class AnalyticsSummaryWidget extends Widget
      */
     public static function icon(): ?string
     {
-        return '@app/icons/solid/chart-line.svg';
+        return '@lindemannrock/searchmanager/icon-mask.svg';
     }
 
     /**
@@ -82,15 +88,9 @@ class AnalyticsSummaryWidget extends Widget
      */
     public function getSubtitle(): ?string
     {
-        return match ($this->dateRange) {
-            'today' => Craft::t('search-manager', 'Today'),
-            'yesterday' => Craft::t('search-manager', 'Yesterday'),
-            'last7days' => Craft::t('search-manager', 'Last 7 days'),
-            'last30days' => Craft::t('search-manager', 'Last 30 days'),
-            'last90days' => Craft::t('search-manager', 'Last 90 days'),
-            'all' => Craft::t('search-manager', 'All time'),
-            default => Craft::t('search-manager', 'Last 7 days'),
-        };
+        $labels = DateRangeHelper::getOptions('assoc');
+
+        return $labels[$this->dateRange] ?? $labels['last7days'];
     }
 
     /**
@@ -106,9 +106,9 @@ class AnalyticsSummaryWidget extends Widget
             return '<p class="light">' . Craft::t('search-manager', 'Analytics are disabled in plugin settings.') . '</p>';
         }
 
-        $editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();
-        $analyticsData = SearchManager::$plugin->analytics->getAnalyticsSummary($editableSiteIds, $this->dateRange);
-        $topSearches = SearchManager::$plugin->analytics->getMostCommonSearches($editableSiteIds, 1, $this->dateRange);
+        $effectiveSiteId = $this->effectiveSiteId();
+        $analyticsData = SearchManager::$plugin->analytics->getAnalyticsSummary($effectiveSiteId, $this->dateRange);
+        $topSearches = SearchManager::$plugin->analytics->getMostCommonSearches($effectiveSiteId, 1, $this->dateRange);
         $topSearch = $topSearches[0] ?? null;
 
         return Craft::$app->getView()->renderTemplate(
@@ -131,6 +131,7 @@ class AnalyticsSummaryWidget extends Widget
             'search-manager/dashboard-widgets/analytics-summary/settings',
             [
                 'widget' => $this,
+                'siteOptions' => $this->siteOptions(),
             ]
         );
     }
