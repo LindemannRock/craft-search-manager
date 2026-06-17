@@ -160,10 +160,24 @@ class PendingSyncsController extends Controller
             ]);
         }
 
+        $statsByStatus = [];
+        foreach ($context['stats']['counts'] as $entry) {
+            $statsByStatus[(string)$entry['status']] = (int)$entry['count'];
+        }
+
         return $this->asJson([
             'success' => true,
             'rowsHtml' => $rowsHtml,
             'totalCount' => $context['totalCount'],
+            'pagination' => [
+                'page' => $context['page'],
+                'limit' => $context['limit'],
+                'totalCount' => $context['totalCount'],
+                'totalPages' => max(1, (int)ceil($context['totalCount'] / $context['limit'])),
+            ],
+            'refresh' => [
+                'enabled' => (($statsByStatus[PendingSyncRepository::STATUS_PENDING] ?? 0) + ($statsByStatus[PendingSyncRepository::STATUS_PROCESSING] ?? 0)) > 0,
+            ],
         ]);
     }
 

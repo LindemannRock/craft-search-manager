@@ -318,12 +318,6 @@
         if (!tbody || typeof data.rowsHtml !== 'string') return;
 
         tbody.innerHTML = data.rowsHtml;
-
-        tbody.querySelectorAll('.menubtn').forEach(function(btn) {
-            if (Craft.MenuBtn && !btn._menuBtn) {
-                btn._menuBtn = new Craft.MenuBtn(btn);
-            }
-        });
     });
 
     // Row-action handlers. The base row-actions component emits
