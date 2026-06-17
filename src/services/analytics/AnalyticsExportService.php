@@ -165,6 +165,7 @@ class AnalyticsExportService
                 'osVersion',
                 'browser',
                 'browserVersion',
+                'browserEngine',
                 'country',
                 'city',
                 'language',
@@ -172,6 +173,10 @@ class AnalyticsExportService
                 'referer as referrer',
                 'isRobot',
                 'botName',
+                $this->optionalAnalyticsColumn('trafficType'),
+                $this->optionalAnalyticsColumn('isSystemAgent'),
+                $this->optionalAnalyticsColumn('botCategory'),
+                $this->optionalAnalyticsColumn('botProducerName'),
                 'userAgent',
             ])
             ->orderBy(['dateCreated' => SORT_DESC]);
@@ -224,6 +229,7 @@ class AnalyticsExportService
             Craft::t('search-manager', 'OS Version'),
             Craft::t('search-manager', 'Browser'),
             Craft::t('search-manager', 'Browser Version'),
+            Craft::t('search-manager', 'Browser Engine'),
         ];
 
         if ($geoEnabled) {
@@ -232,9 +238,13 @@ class AnalyticsExportService
             $headers[] = Craft::t('search-manager', 'Region');
         }
 
-        $headers[] = Craft::t('search-manager', 'Language');
+        $headers[] = Craft::t('search-manager', 'Detected Language');
+        $headers[] = Craft::t('search-manager', 'Traffic Type');
+        $headers[] = Craft::t('search-manager', 'System Agent');
         $headers[] = Craft::t('search-manager', 'Is Bot');
         $headers[] = Craft::t('search-manager', 'Bot Name');
+        $headers[] = Craft::t('search-manager', 'Bot Category');
+        $headers[] = Craft::t('search-manager', 'Bot Producer');
         $headers[] = Craft::t('search-manager', 'User Agent');
 
         $rows = [];
@@ -277,6 +287,7 @@ class AnalyticsExportService
                 'os_version' => $row['osVersion'] ?? '',
                 'browser' => $row['browser'] ?? '',
                 'browser_version' => $row['browserVersion'] ?? '',
+                'browser_engine' => $row['browserEngine'] ?? '',
             ];
 
             if ($geoEnabled) {
@@ -286,8 +297,12 @@ class AnalyticsExportService
             }
 
             $rowData['language'] = $row['language'] ?? '';
+            $rowData['traffic_type'] = $row['trafficType'] ?? ($row['isRobot'] ? 'bot' : 'human');
+            $rowData['system_agent'] = !empty($row['isSystemAgent']) ? 'Yes' : 'No';
             $rowData['is_bot'] = $row['isRobot'] ? 1 : 0;
             $rowData['bot_name'] = $row['botName'] ?? '';
+            $rowData['bot_category'] = $row['botCategory'] ?? '';
+            $rowData['bot_producer'] = $row['botProducerName'] ?? '';
             $rowData['user_agent'] = $row['userAgent'] ?? '';
 
             $rows[] = $rowData;
@@ -424,10 +439,21 @@ class AnalyticsExportService
                 'browser' => [
                     'name' => $row['browser'],
                     'version' => $row['browserVersion'],
+                    'engine' => $row['browserEngine'],
                 ],
                 'language' => $row['language'],
+                'detectedLanguage' => $row['language'],
+                'trafficType' => $row['trafficType'] ?? ($row['isRobot'] ? 'bot' : 'human'),
+                'isSystemAgent' => (bool)($row['isSystemAgent'] ?? false),
                 'isBot' => (bool)$row['isRobot'],
                 'botName' => $row['botName'],
+                'botCategory' => $row['botCategory'] ?? null,
+                'botProducerName' => $row['botProducerName'] ?? null,
+                'bot' => [
+                    'name' => $row['botName'],
+                    'category' => $row['botCategory'] ?? null,
+                    'producer' => $row['botProducerName'] ?? null,
+                ],
                 'userAgent' => $row['userAgent'],
             ];
 

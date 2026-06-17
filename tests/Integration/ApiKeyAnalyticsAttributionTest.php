@@ -320,6 +320,56 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $this->assertSame(0.0, $export['jsonData']['data'][0]['executionTime']);
     }
 
+    public function testExportIncludesDetectedLanguageAndTrafficMetadata(): void
+    {
+        foreach (['trafficType', 'isSystemAgent', 'botCategory', 'botProducerName'] as $column) {
+            if (!$this->analyticsColumnExists($column)) {
+                $this->markTestSkipped("The searchmanager_analytics.$column column is not installed in this test database.");
+            }
+        }
+
+        $this->seedMetadataRow();
+
+        $export = SearchManager::$plugin->analytics->exportAnalytics(self::TEST_SITE_ID, 'last30days');
+
+        foreach ([
+            'Browser Engine',
+            'Detected Language',
+            'Traffic Type',
+            'System Agent',
+            'Bot Category',
+            'Bot Producer',
+        ] as $header) {
+            $this->assertContains($header, $export['headers']);
+        }
+
+        $row = $export['rows'][0];
+        $this->assertSame('Blink', $row['browser_engine']);
+        $this->assertSame('en', $row['language']);
+        $this->assertSame('system', $row['traffic_type']);
+        $this->assertSame('Yes', $row['system_agent']);
+        $this->assertSame(1, $row['is_bot']);
+        $this->assertSame('Cache Manager', $row['bot_name']);
+        $this->assertSame('Service Agent', $row['bot_category']);
+        $this->assertSame('LindemannRock', $row['bot_producer']);
+
+        $jsonItem = $export['jsonData']['data'][0];
+        $this->assertSame('Blink', $jsonItem['browser']['engine']);
+        $this->assertSame('en', $jsonItem['language']);
+        $this->assertSame('en', $jsonItem['detectedLanguage']);
+        $this->assertSame('system', $jsonItem['trafficType']);
+        $this->assertTrue($jsonItem['isSystemAgent']);
+        $this->assertTrue($jsonItem['isBot']);
+        $this->assertSame('Cache Manager', $jsonItem['botName']);
+        $this->assertSame('Service Agent', $jsonItem['botCategory']);
+        $this->assertSame('LindemannRock', $jsonItem['botProducerName']);
+        $this->assertSame([
+            'name' => 'Cache Manager',
+            'category' => 'Service Agent',
+            'producer' => 'LindemannRock',
+        ], $jsonItem['bot']);
+    }
+
     // ---- Helpers ------------------------------------------------------------
 
     private function seedRow(
@@ -349,6 +399,49 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
             'dateCreated' => Db::prepareDateForDb(new \DateTime()),
             'uid' => StringHelper::UUID(),
         ])->execute();
+    }
+
+    private function seedMetadataRow(): void
+    {
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
+            'indexHandle' => 'test-index',
+            'query' => 'metadata-test',
+            'resultsCount' => 1,
+            'executionTime' => 12.3,
+            'backend' => 'test',
+            'siteId' => self::TEST_SITE_ID,
+            'sessionId' => null,
+            'isHit' => 1,
+            'wasRedirected' => 0,
+            'promotionsShown' => 0,
+            'synonymsExpanded' => 0,
+            'rulesMatched' => 0,
+            'deviceType' => 'desktop',
+            'deviceBrand' => 'Apple',
+            'deviceModel' => '',
+            'osName' => 'Mac',
+            'osVersion' => '10.15',
+            'browser' => 'Chrome',
+            'browserVersion' => '149',
+            'browserEngine' => 'Blink',
+            'language' => 'en',
+            'isRobot' => 1,
+            'botName' => 'Cache Manager',
+            'botCategory' => 'Service Agent',
+            'botProducerName' => 'LindemannRock',
+            'isSystemAgent' => 1,
+            'trafficType' => 'system',
+            'isMobileApp' => 0,
+            'dateCreated' => Db::prepareDateForDb(new \DateTime()),
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+    }
+
+    private function analyticsColumnExists(string $column): bool
+    {
+        $schema = Craft::$app->getDb()->getTableSchema('{{%searchmanager_analytics}}');
+
+        return $schema !== null && isset($schema->columns[$column]);
     }
 
     private function seedKey(string $type): ApiKey

@@ -138,13 +138,25 @@ class AnalyticsBreakdownService
     {
         $identityExpr = $this->actionIdentityExpression();
 
-        // Inner: collapse to one row per action, carrying the action's MAX(isRobot)
-        // as actionIsRobot. Bot-ness is per-row (derived from the request UA) and
-        // identical across all rows in an action — so MAX is a safe per-action lift.
+        $hasTrafficType = $this->hasAnalyticsColumn('trafficType');
+        $hasBotCategory = $this->hasAnalyticsColumn('botCategory');
+        $hasBotProducerName = $this->hasAnalyticsColumn('botProducerName');
+
+        // Inner: collapse to one row per action, carrying a traffic
+        // classification derived once from the request user agent.
         $perAction = (new Query())
-            ->select(['MAX(isRobot) AS actionIsRobot'])
             ->from('{{%searchmanager_analytics}}')
             ->groupBy(new Expression($identityExpr));
+
+        if ($hasTrafficType) {
+            $perAction->select([
+                'MAX(isRobot) AS actionIsRobot',
+                "MAX(CASE WHEN trafficType = 'system' THEN 1 ELSE 0 END) AS actionIsSystem",
+                "MAX(CASE WHEN trafficType = 'bot' THEN 1 ELSE 0 END) AS actionIsBot",
+            ]);
+        } else {
+            $perAction->select(['MAX(isRobot) AS actionIsRobot']);
+        }
 
         $this->applyDateRangeFilter($perAction, $dateRange);
 
@@ -152,48 +164,94 @@ class AnalyticsBreakdownService
             $perAction->andWhere(['siteId' => $siteId]);
         }
 
-        // Outer: total = action count; bots = action count where any row was a bot.
-        // Both numerator and denominator dedup consistently, so botPercentage is
-        // unchanged in formula but now correctly counts user search actions.
-        $result = (new Query())
-            ->select([
+        // Outer: total = action count. Bot/system counts are deduped to search
+        // actions, not raw index fan-out rows.
+        $summaryQuery = (new Query())
+            ->from(['t' => $perAction]);
+
+        if ($hasTrafficType) {
+            $summaryQuery->select([
+                'COUNT(*) as total',
+                'SUM(CASE WHEN actionIsBot = 1 THEN 1 ELSE 0 END) as bots',
+                'SUM(CASE WHEN actionIsSystem = 1 THEN 1 ELSE 0 END) as systems',
+            ]);
+        } else {
+            $summaryQuery->select([
                 'COUNT(*) as total',
                 'SUM(CASE WHEN actionIsRobot = 1 THEN 1 ELSE 0 END) as bots',
-            ])
-            ->from(['t' => $perAction])
-            ->one();
+                new Expression('0 AS systems'),
+            ]);
+        }
+
+        $result = $summaryQuery->one();
 
         $total = (int)($result['total'] ?? 0);
         $bots = (int)($result['bots'] ?? 0);
-        $humans = $total - $bots;
+        $systems = (int)($result['systems'] ?? 0);
+        $humans = max(0, $total - $bots - $systems);
+        $nonHuman = $bots + $systems;
 
-        // Top bots stays per-row (operational signal: "which bots are hitting
-        // search how often"). A bot firing 3 index searches IS three backend
-        // calls — the operational concern is request volume, not unique sessions.
-        $topBotsQuery = (new Query())
-            ->select(['botName', 'COUNT(*) as count'])
+        // Top agents stays per-row (operational signal: "which agents are
+        // hitting search how often"). A bot firing 3 index searches IS three
+        // backend calls — the operational concern is request volume.
+        $topAgentsSelect = ['botName', 'COUNT(*) as count'];
+        $topAgentsGroup = ['botName'];
+        if ($hasTrafficType) {
+            $topAgentsSelect[] = 'trafficType';
+            $topAgentsGroup[] = 'trafficType';
+        }
+        if ($hasBotCategory) {
+            $topAgentsSelect[] = 'botCategory';
+            $topAgentsGroup[] = 'botCategory';
+        }
+        if ($hasBotProducerName) {
+            $topAgentsSelect[] = 'botProducerName';
+            $topAgentsGroup[] = 'botProducerName';
+        }
+
+        $topAgentsQuery = (new Query())
+            ->select($topAgentsSelect)
             ->from('{{%searchmanager_analytics}}')
-            ->where(['isRobot' => 1])
             ->andWhere(['not', ['botName' => null]])
-            ->groupBy('botName')
+            ->groupBy($topAgentsGroup)
             ->orderBy(['count' => SORT_DESC])
             ->limit(10);
 
-        $this->applyDateRangeFilter($topBotsQuery, $dateRange);
+        if ($hasTrafficType) {
+            $topAgentsQuery->andWhere(['trafficType' => ['bot', 'system']]);
+        } else {
+            $topAgentsQuery->andWhere(['isRobot' => 1]);
+        }
+
+        $this->applyDateRangeFilter($topAgentsQuery, $dateRange);
 
         if ($siteId) {
-            $topBotsQuery->andWhere(['siteId' => $siteId]);
+            $topAgentsQuery->andWhere(['siteId' => $siteId]);
         }
+
+        $topAgents = array_map(static function(array $row) use ($hasTrafficType, $hasBotCategory, $hasBotProducerName): array {
+            return [
+                'botName' => $row['botName'] ?? null,
+                'trafficType' => $hasTrafficType ? ($row['trafficType'] ?? 'bot') : 'bot',
+                'botCategory' => $hasBotCategory ? ($row['botCategory'] ?? null) : null,
+                'botProducerName' => $hasBotProducerName ? ($row['botProducerName'] ?? null) : null,
+                'count' => (int)($row['count'] ?? 0),
+            ];
+        }, $topAgentsQuery->all());
 
         return [
             'total' => $total,
             'bots' => $bots,
+            'systems' => $systems,
             'humans' => $humans,
             'botPercentage' => $total > 0 ? round(($bots / $total) * 100, 1) : 0,
-            'topBots' => $topBotsQuery->all(),
+            'nonHumanPercentage' => $total > 0 ? round(($nonHuman / $total) * 100, 1) : 0,
+            'topBots' => $topAgents,
+            'topAgents' => $topAgents,
             'chart' => [
-                'labels' => ['Humans', 'Bots'],
-                'values' => [$humans, $bots],
+                'labels' => ['Human', 'Bot', 'System'],
+                'types' => ['human', 'bot', 'system'],
+                'values' => [$humans, $bots, $systems],
             ],
         ];
     }

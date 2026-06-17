@@ -322,6 +322,27 @@ class AnalyticsController extends Controller
             $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
             $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
             $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
+            $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
+            foreach ($botStats['chart']['types'] ?? [] as $index => $type) {
+                $trafficRows[] = [
+                    'category' => 'traffic-type',
+                    'name' => $type,
+                    'count' => $botStats['chart']['values'][$index] ?? 0,
+                ];
+            }
+            foreach ($botStats['topAgents'] ?? [] as $item) {
+                $agentParts = array_filter([
+                    $item['botName'] ?? '',
+                    $item['trafficType'] ?? '',
+                    $item['botCategory'] ?? '',
+                    $item['botProducerName'] ?? '',
+                ]);
+                $trafficRows[] = [
+                    'category' => 'agent',
+                    'name' => implode(' | ', $agentParts),
+                    'count' => $item['count'],
+                ];
+            }
             foreach ($deviceData as $item) {
                 $trafficRows[] = ['category' => 'device', 'name' => $item['deviceType'] ?? '', 'count' => $item['count']];
             }
@@ -1269,7 +1290,28 @@ class AnalyticsController extends Controller
                 $deviceData = SearchManager::$plugin->analytics->getDeviceBreakdown($effectiveSiteId, $dateRange);
                 $browserData = SearchManager::$plugin->analytics->getBrowserBreakdown($effectiveSiteId, $dateRange);
                 $osData = SearchManager::$plugin->analytics->getOsBreakdown($effectiveSiteId, $dateRange);
+                $botStats = SearchManager::$plugin->analytics->getBotStats($effectiveSiteId, $dateRange);
 
+                foreach ($botStats['chart']['types'] ?? [] as $index => $type) {
+                    $data[] = [
+                        'category' => 'traffic-type',
+                        'name' => $type,
+                        'count' => $botStats['chart']['values'][$index] ?? 0,
+                    ];
+                }
+                foreach ($botStats['topAgents'] ?? [] as $item) {
+                    $agentParts = array_filter([
+                        $item['botName'] ?? '',
+                        $item['trafficType'] ?? '',
+                        $item['botCategory'] ?? '',
+                        $item['botProducerName'] ?? '',
+                    ]);
+                    $data[] = [
+                        'category' => 'agent',
+                        'name' => implode(' | ', $agentParts),
+                        'count' => $item['count'],
+                    ];
+                }
                 foreach ($deviceData as $item) {
                     $data[] = ['category' => 'device', 'name' => $item['deviceType'] ?? '', 'count' => $item['count']];
                 }

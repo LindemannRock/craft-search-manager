@@ -191,6 +191,11 @@
     noSearches: "No searches recorded yet"|t('search-manager'),
     noUnhandled: "All searches have hits!"|t('search-manager'),
     noBotData: "No bot data available"|t('search-manager'),
+    noAgentData: "No agent data available"|t('search-manager'),
+    nonHumanTraffic: "Non-human traffic"|t('search-manager'),
+    human: "Human"|t('search-manager'),
+    bot: "Bot"|t('search-manager'),
+    system: "System"|t('search-manager'),
     loading: "Loading..."|t('search-manager'),
 } %}
 
@@ -220,4 +225,3 @@
 window.lrSearchAnalyticsInit({{ analyticsConfig|json_encode|raw }});
 {% endjs %}
 {% endblock %}
-

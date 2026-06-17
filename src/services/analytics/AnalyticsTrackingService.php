@@ -26,6 +26,7 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class AnalyticsTrackingService
 {
+    use AnalyticsQueryTrait;
     use LoggingTrait;
 
     /**
@@ -182,55 +183,70 @@ class AnalyticsTrackingService
         // Insert analytics record directly (geo data will be populated async)
         try {
             $db = Craft::$app->getDb();
+            $insertData = [
+                'indexHandle' => $indexHandle,
+                'query' => $query,
+                'resultsCount' => $resultsCount,
+                'executionTime' => $executionTime,
+                'backend' => $backend,
+                'siteId' => $siteId,
+                'intent' => $intent,
+                'source' => $source,
+                'trigger' => $trigger,
+                'platform' => $platform,
+                'appVersion' => $appVersion,
+                'ip' => $ip,
+                'userAgent' => $userAgent,
+                'referer' => $referer,
+                'apiKeyId' => $apiKeyId,
+                'apiKeyPrefix' => $apiKeyPrefix,
+                'apiKeyType' => $apiKeyType,
+                'isHit' => $isHit,
+                // Query rules & promotions tracking
+                'synonymsExpanded' => $synonymsExpanded,
+                'rulesMatched' => $rulesMatched,
+                'promotionsShown' => $promotionsShown,
+                'wasRedirected' => $wasRedirected,
+                // Device detection fields
+                'deviceType' => $deviceInfo['deviceType'],
+                'deviceBrand' => $deviceInfo['deviceBrand'],
+                'deviceModel' => $deviceInfo['deviceModel'],
+                'browser' => $deviceInfo['browser'],
+                'browserVersion' => $deviceInfo['browserVersion'],
+                'browserEngine' => $deviceInfo['browserEngine'],
+                'osName' => $deviceInfo['osName'],
+                'osVersion' => $deviceInfo['osVersion'],
+                'clientType' => $deviceInfo['clientType'],
+                'isRobot' => $deviceInfo['isRobot'],
+                'isMobileApp' => $deviceInfo['isMobileApp'],
+                'botName' => $deviceInfo['botName'],
+                // Geographic data - populated async via GeoLookupJob
+                'country' => null,
+                'city' => null,
+                'region' => null,
+                'latitude' => null,
+                'longitude' => null,
+                'language' => $deviceInfo['language'] ?? null,
+                'sessionId' => $sessionId,
+                'dateCreated' => Db::prepareDateForDb(new \DateTime()),
+                'uid' => \craft\helpers\StringHelper::UUID(),
+            ];
+
+            foreach ([
+                'botCategory' => $deviceInfo['botCategory'] ?? null,
+                'botUrl' => $deviceInfo['botUrl'] ?? null,
+                'botProducerName' => $deviceInfo['botProducerName'] ?? null,
+                'botProducerUrl' => $deviceInfo['botProducerUrl'] ?? null,
+                'isSystemAgent' => $deviceInfo['isSystemAgent'] ?? false,
+                'trafficType' => $deviceInfo['trafficType'] ?? 'human',
+            ] as $column => $value) {
+                if ($this->hasAnalyticsColumn($column)) {
+                    $insertData[$column] = $value;
+                }
+            }
+
             $db->createCommand()
-                ->insert('{{%searchmanager_analytics}}', [
-                    'indexHandle' => $indexHandle,
-                    'query' => $query,
-                    'resultsCount' => $resultsCount,
-                    'executionTime' => $executionTime,
-                    'backend' => $backend,
-                    'siteId' => $siteId,
-                    'intent' => $intent,
-                    'source' => $source,
-                    'trigger' => $trigger,
-                    'platform' => $platform,
-                    'appVersion' => $appVersion,
-                    'ip' => $ip,
-                    'userAgent' => $userAgent,
-                    'referer' => $referer,
-                    'apiKeyId' => $apiKeyId,
-                    'apiKeyPrefix' => $apiKeyPrefix,
-                    'apiKeyType' => $apiKeyType,
-                    'isHit' => $isHit,
-                    // Query rules & promotions tracking
-                    'synonymsExpanded' => $synonymsExpanded,
-                    'rulesMatched' => $rulesMatched,
-                    'promotionsShown' => $promotionsShown,
-                    'wasRedirected' => $wasRedirected,
-                    // Device detection fields
-                    'deviceType' => $deviceInfo['deviceType'],
-                    'deviceBrand' => $deviceInfo['deviceBrand'],
-                    'deviceModel' => $deviceInfo['deviceModel'],
-                    'browser' => $deviceInfo['browser'],
-                    'browserVersion' => $deviceInfo['browserVersion'],
-                    'browserEngine' => $deviceInfo['browserEngine'],
-                    'osName' => $deviceInfo['osName'],
-                    'osVersion' => $deviceInfo['osVersion'],
-                    'clientType' => $deviceInfo['clientType'],
-                    'isRobot' => $deviceInfo['isRobot'],
-                    'isMobileApp' => $deviceInfo['isMobileApp'],
-                    'botName' => $deviceInfo['botName'],
-                    // Geographic data - populated async via GeoLookupJob
-                    'country' => null,
-                    'city' => null,
-                    'region' => null,
-                    'latitude' => null,
-                    'longitude' => null,
-                    'language' => null, // Could be extracted from Accept-Language header if needed
-                    'sessionId' => $sessionId,
-                    'dateCreated' => Db::prepareDateForDb(new \DateTime()),
-                    'uid' => \craft\helpers\StringHelper::UUID(),
-                ])
+                ->insert('{{%searchmanager_analytics}}', $insertData)
                 ->execute();
 
             // Get the inserted record ID for async geo-lookup

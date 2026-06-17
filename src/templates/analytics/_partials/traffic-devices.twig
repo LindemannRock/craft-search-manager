@@ -1,10 +1,10 @@
-{# Traffic & Devices Tab - Bot Traffic, Device Types, Browsers, OS, Peak Hours #}
+{# Traffic & Devices Tab - Traffic Type, Agents, Device Types, Browsers, OS, Peak Hours #}
 
 <h2 class="lr-section-heading">{{ "Traffic Analysis"|t('search-manager') }}</h2>
 
 <div class="lr-analytics-charts two-columns">
     <div class="lr-chart-container">
-        <h3>{{ "Bot vs Human Traffic"|t('search-manager') }}</h3>
+        <h3>{{ "Traffic Type"|t('search-manager') }}</h3>
         <canvas id="bot-chart"></canvas>
         <div class="lr-muted-center" id="bot-percentage-label">
             {{ "Loading..."|t('search-manager') }}
@@ -12,17 +12,20 @@
     </div>
 
     <div class="lr-chart-container">
-        <h3>{{ "Top Bots"|t('search-manager') }}</h3>
+        <h3>{{ "Top Agents"|t('search-manager') }}</h3>
         <div class="lr-table-scroll">
             <table class="data fullwidth">
                 <thead>
                     <tr>
-                        <th>{{ "Bot Name"|t('search-manager') }}</th>
+                        <th>{{ "Agent"|t('search-manager') }}</th>
+                        <th>{{ "Traffic Type"|t('search-manager') }}</th>
+                        <th>{{ "Category"|t('search-manager') }}</th>
+                        <th>{{ "Producer"|t('search-manager') }}</th>
                         <th>{{ "Searches"|t('search-manager') }}</th>
                     </tr>
                 </thead>
                 <tbody id="top-bots-body">
-                    <tr><td colspan="2" class="light lr-text-center">{{ "Loading..."|t('search-manager') }}</td></tr>
+                    <tr><td colspan="5" class="light lr-text-center">{{ "Loading..."|t('search-manager') }}</td></tr>
                 </tbody>
             </table>
         </div>

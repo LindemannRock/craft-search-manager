@@ -36,7 +36,7 @@ Dashboards count user search actions where that's the right unit, and per-index 
 | **Dashboard totals, charts, breakdowns** (devices, browsers, countries, peak hours, top queries, intent, trending, content gaps, etc.) | **User search actions** | A 3-index search counts as one action — operators see what users did, not how the work was split across backends |
 | **Raw analytics log and CSV exports** | **Per-index rows** | Operators can inspect each index's result separately when debugging |
 | **Performance (response times, cache hit rate, fastest/slowest queries)** | **Per-index search calls** | Each index has its own execution time and cache state — averaging across them would hide the slow index. Labelled "Index searches" in the UI |
-| **Top Bots list** | **Per-index calls** | Operational signal: which bots are hitting search hardest, including bots that fan out across all indices |
+| **Top Agents list** | **Per-index calls** | Operational signal: which bots and system agents are hitting search hardest, including agents that fan out across all indices |
 
 This is why the **Total Searches** card may show a smaller number than the row count in the raw analytics log — the card counts user search actions, the log lists individual per-index rows.
 

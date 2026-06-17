@@ -529,6 +529,12 @@ class Install extends Migration
             'isRobot' => $this->boolean()->defaultValue(false),
             'isMobileApp' => $this->boolean()->defaultValue(false),
             'botName' => $this->string(100)->null(),
+            'botCategory' => $this->string(100)->null(),
+            'botUrl' => $this->string(255)->null(),
+            'botProducerName' => $this->string(100)->null(),
+            'botProducerUrl' => $this->string(255)->null(),
+            'isSystemAgent' => $this->boolean()->defaultValue(false),
+            'trafficType' => $this->string(20)->notNull()->defaultValue('human'),
             // Geo-location fields
             'country' => $this->string(2)->null(),
             'city' => $this->string(100)->null(),
@@ -555,6 +561,7 @@ class Install extends Migration
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['osName'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['clientType'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['isRobot'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['trafficType'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['dateCreated'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['siteId', 'dateCreated'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['synonymsExpanded'], false);

@@ -12,6 +12,7 @@ use Craft;
 use craft\db\Query;
 use lindemannrock\base\helpers\DateRangeHelper;
 use lindemannrock\base\helpers\DbHelper;
+use yii\db\Expression;
 
 /**
  * Shared query utilities for analytics sub-services
@@ -22,6 +23,8 @@ use lindemannrock\base\helpers\DbHelper;
  */
 trait AnalyticsQueryTrait
 {
+    private static array $analyticsColumnCache = [];
+
     /**
      * Apply date range filter to query
      *
@@ -59,6 +62,32 @@ trait AnalyticsQueryTrait
     public function actionIdentityExpression(): string
     {
         return 'COALESCE(sessionId, ' . DbHelper::castToText('id') . ')';
+    }
+
+    /**
+     * Check whether an analytics column exists on the current install.
+     *
+     * Search Manager is pre-release, so Install.php is the source of truth for
+     * new installs; this guard keeps existing local databases working until the
+     * matching SQL has been applied.
+     */
+    protected function hasAnalyticsColumn(string $column): bool
+    {
+        if (!array_key_exists($column, self::$analyticsColumnCache)) {
+            $schema = Craft::$app->getDb()->getTableSchema('{{%searchmanager_analytics}}');
+            self::$analyticsColumnCache[$column] = $schema !== null && isset($schema->columns[$column]);
+        }
+
+        return self::$analyticsColumnCache[$column];
+    }
+
+    /**
+     * Build a select expression that returns NULL when an optional analytics
+     * column is not present on the current database.
+     */
+    protected function optionalAnalyticsColumn(string $column): string|Expression
+    {
+        return $this->hasAnalyticsColumn($column) ? $column : new Expression("NULL AS {$column}");
     }
 
     /**

@@ -272,8 +272,11 @@
                     window.smCharts.bot = new Chart(botCtx, {
                         type: 'doughnut',
                         data: {
-                            labels: botStats.chart.labels,
-                            datasets: [{ data: botStats.chart.values, backgroundColor: ['#27ae60', '#e74c3c'] }]
+                            labels: botStats.chart.types ? botStats.chart.types.map(trafficTypeLabel) : botStats.chart.labels,
+                            datasets: [{ data: botStats.chart.values, backgroundColor: ['#27ae60', '#e74c3c', '#f39c12'] }]
+                        },
+                        options: {
+                            plugins: { legend: { position: 'bottom' } }
                         }
                     });
                 } else if (botCtx) {
@@ -290,6 +293,9 @@
                         data: {
                             labels: deviceBreakdown.labels,
                             datasets: [{ data: deviceBreakdown.values, backgroundColor: chartColors }]
+                        },
+                        options: {
+                            plugins: { legend: { position: 'bottom' } }
                         }
                     });
                 } else if (deviceCtx) {
@@ -306,6 +312,9 @@
                         data: {
                             labels: browserBreakdown.labels,
                             datasets: [{ label: strings.searchesLabel, data: browserBreakdown.values, backgroundColor: '#0d78f2' }]
+                        },
+                        options: {
+                            plugins: { legend: { display: false } }
                         }
                     });
                 } else if (browserCtx) {
@@ -322,6 +331,9 @@
                         data: {
                             labels: osBreakdown.labels,
                             datasets: [{ data: osBreakdown.values, backgroundColor: chartColors }]
+                        },
+                        options: {
+                            plugins: { legend: { position: 'bottom' } }
                         }
                     });
                 } else if (osCtx) {
@@ -609,24 +621,34 @@
         var tbody = $('#top-bots-body');
 
         if (!data) {
-            label.text(strings.noBotData);
-            tbody.html('<tr><td colspan="2" class="light lr-text-center">' + strings.noBotData + '</td></tr>');
+            label.text(strings.noAgentData || strings.noBotData);
+            tbody.html('<tr><td colspan="5" class="light lr-text-center">' + (strings.noAgentData || strings.noBotData) + '</td></tr>');
             return;
         }
 
-        label.html('<strong>' + (data.botPercentage || 0) + '%</strong> of traffic is from bots');
+        label.html(Craft.escapeHtml(strings.nonHumanTraffic || 'Non-human traffic') + ': <strong>' + (data.nonHumanPercentage || data.botPercentage || 0) + '%</strong>');
 
         tbody.empty();
-        if (data.topBots && data.topBots.length > 0) {
-            data.topBots.forEach(function(bot) {
+        const topAgents = data.topAgents || data.topBots || [];
+        if (topAgents.length > 0) {
+            topAgents.forEach(function(bot) {
                 tbody.append('<tr>' +
-                    '<td>' + Craft.escapeHtml(bot.botName) + '</td>' +
+                    '<td>' + Craft.escapeHtml(bot.botName || '—') + '</td>' +
+                    '<td>' + Craft.escapeHtml(trafficTypeLabel(bot.trafficType || 'bot')) + '</td>' +
+                    '<td>' + Craft.escapeHtml(bot.botCategory || '—') + '</td>' +
+                    '<td>' + Craft.escapeHtml(bot.botProducerName || '—') + '</td>' +
                     '<td>' + Number(bot.count).toLocaleString() + '</td>' +
                 '</tr>');
             });
         } else {
-            tbody.html('<tr><td colspan="2" class="light lr-text-center">' + strings.noBotData + '</td></tr>');
+            tbody.html('<tr><td colspan="5" class="light lr-text-center">' + (strings.noAgentData || strings.noBotData) + '</td></tr>');
         }
+    }
+
+    function trafficTypeLabel(type) {
+        if (type === 'system') return strings.system || 'System';
+        if (type === 'bot') return strings.bot || 'Bot';
+        return strings.human || 'Human';
     }
 
     function loadBreakdownCharts(dateRange, siteId) {
