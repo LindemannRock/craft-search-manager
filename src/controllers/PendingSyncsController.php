@@ -40,55 +40,10 @@ class PendingSyncsController extends Controller
     {
         $this->requirePermission('searchManager:managePendingSyncs');
 
-        $request = Craft::$app->getRequest();
-        $statusParam = $request->getParam('status');
-
-        // Status filter rules:
-        //  - 'all' / empty   → no status filter (show every row)
-        //  - 'failures'      → combined preset: failed + abandoned
-        //  - any single name → exact-match that status
-        $statusFilter = null;
-        if ($statusParam === 'failures') {
-            $statusFilter = [PendingSyncRepository::STATUS_FAILED, PendingSyncRepository::STATUS_ABANDONED];
-        } elseif ($statusParam !== null && $statusParam !== '' && $statusParam !== 'all') {
-            $statusFilter = (string) $statusParam;
-        }
-
-        $filters = array_filter([
-            'status' => $statusFilter,
-            'indexHandle' => $request->getParam('indexHandle'),
-            'op' => $request->getParam('op'),
-            'siteId' => $request->getParam('siteId') !== null ? (int) $request->getParam('siteId') : null,
-            'search' => $request->getParam('search'),
-            'stuck' => $request->getParam('stuck') === '1' ? true : null,
-        ], static fn($v): bool => $v !== null && $v !== '' && $v !== 'all' && $v !== []);
-
-        $sort = (string) $request->getParam('sort', 'queuedAt');
-        $dir = (string) $request->getParam('dir', 'asc');
-        $page = max(1, (int) $request->getParam('page', 1));
-        // Per-CP-page-size pulled from the plugin's `itemsPerPage` setting so
-        // this list paginates the same way as the rest of the plugin's tables.
-        $limit = max(1, (int) SearchManager::$plugin->getSettings()->itemsPerPage);
-        $offset = ($page - 1) * $limit;
-
-        $repository = SearchManager::$plugin->pendingSyncs;
-        $result = $repository->search($filters, $sort, $dir, $limit, $offset);
-        $stats = $repository->getStats();
-        ['elements' => $elements, 'existsAnywhere' => $existsAnywhere] = $this->preloadElements($result['rows']);
+        $context = $this->pendingSyncListContext();
 
         return $this->renderTemplate('search-manager/pending-syncs/index', [
-            'rows' => $result['rows'],
-            'elements' => $elements,
-            'existsAnywhere' => $existsAnywhere,
-            'totalCount' => $result['total'],
-            'stats' => $stats,
-            'filters' => $filters,
-            'statusParam' => $statusParam ?? 'all',
-            'sort' => $sort,
-            'dir' => $dir,
-            'page' => $page,
-            'limit' => $limit,
-            'staleCutoffSeconds' => $repository->getStaleCutoffSeconds(),
+            ...$context,
             'indices' => SearchIndex::findAll(),
             'sites' => Craft::$app->getSites()->getAllSites(),
         ]);
@@ -171,20 +126,105 @@ class PendingSyncsController extends Controller
     }
 
     /**
-     * Minimal endpoint backing the cp-table layout's AJAX auto-refresh. The
-     * layout fires `lr:refresh` on the client when this returns success; the
-     * Pending Syncs template handles that event by reloading the page so
-     * every cell (badges, counts, pagination, beforeTable stats) reflects
-     * the new state. We do not bother shipping the table payload back over
-     * the wire — a hard reload is simpler than a full client-side diff and
-     * the auto-refresh only kicks in when there is live work to watch.
+     * Endpoint backing the cp-table layout's AJAX auto-refresh.
      */
     public function actionGetData(): Response
     {
         $this->requireAcceptsJson();
         $this->requirePermission('searchManager:managePendingSyncs');
 
-        return $this->asJson(['success' => true]);
+        $context = $this->pendingSyncListContext();
+        $sites = Craft::$app->getSites()->getAllSites();
+        $canRetry = Craft::$app->getUser()->checkPermission('searchManager:retryPendingSyncs');
+        $canPurge = Craft::$app->getUser()->checkPermission('searchManager:purgePendingSyncs');
+        $checkboxesEnabled = $canRetry || $canPurge;
+
+        $rowsHtml = '';
+        foreach ($context['rows'] as $row) {
+            $rowsHtml .= Craft::$app->getView()->renderTemplate('search-manager/pending-syncs/_row', [
+                'item' => $row,
+                'elements' => $context['elements'],
+                'existsAnywhere' => $context['existsAnywhere'],
+                'sites' => $sites,
+                'staleCutoffSeconds' => $context['staleCutoffSeconds'],
+                'canRetry' => $canRetry,
+                'canPurge' => $canPurge,
+                'checkboxesEnabled' => $checkboxesEnabled,
+                'rowActionsEnabled' => true,
+            ]);
+        }
+
+        if ($rowsHtml === '') {
+            $rowsHtml = Craft::$app->getView()->renderTemplate('search-manager/pending-syncs/_empty-row', [
+                'colspan' => 9 + ($checkboxesEnabled ? 1 : 0) + 1,
+            ]);
+        }
+
+        return $this->asJson([
+            'success' => true,
+            'rowsHtml' => $rowsHtml,
+            'totalCount' => $context['totalCount'],
+        ]);
+    }
+
+    /**
+     * Build the shared pending-sync list context for the initial page render
+     * and AJAX row refresh.
+     *
+     * @return array<string, mixed>
+     */
+    private function pendingSyncListContext(): array
+    {
+        $request = Craft::$app->getRequest();
+        $statusParam = $request->getParam('status');
+
+        // Status filter rules:
+        //  - 'all' / empty   → no status filter (show every row)
+        //  - 'failures'      → combined preset: failed + abandoned
+        //  - any single name → exact-match that status
+        $statusFilter = null;
+        if ($statusParam === 'failures') {
+            $statusFilter = [PendingSyncRepository::STATUS_FAILED, PendingSyncRepository::STATUS_ABANDONED];
+        } elseif ($statusParam !== null && $statusParam !== '' && $statusParam !== 'all') {
+            $statusFilter = (string) $statusParam;
+        }
+
+        $filters = array_filter([
+            'status' => $statusFilter,
+            'indexHandle' => $request->getParam('indexHandle'),
+            'op' => $request->getParam('op'),
+            'siteId' => $request->getParam('siteId') !== null ? (int) $request->getParam('siteId') : null,
+            'search' => $request->getParam('search'),
+            'stuck' => $request->getParam('stuck') === '1' ? true : null,
+        ], static fn($v): bool => $v !== null && $v !== '' && $v !== 'all' && $v !== []);
+
+        $sort = (string) $request->getParam('sort', 'queuedAt');
+        $dir = (string) $request->getParam('dir', 'asc');
+        $page = max(1, (int) $request->getParam('page', 1));
+        // Per-CP-page-size pulled from the plugin's `itemsPerPage` setting so
+        // this list paginates the same way as the rest of the plugin's tables.
+        $limit = max(1, (int) SearchManager::$plugin->getSettings()->itemsPerPage);
+        $offset = ($page - 1) * $limit;
+
+        $repository = SearchManager::$plugin->pendingSyncs;
+        $result = $repository->search($filters, $sort, $dir, $limit, $offset);
+        $stats = $repository->getStats();
+        ['elements' => $elements, 'existsAnywhere' => $existsAnywhere] = $this->preloadElements($result['rows']);
+
+        return [
+            'rows' => $result['rows'],
+            'elements' => $elements,
+            'existsAnywhere' => $existsAnywhere,
+            'totalCount' => $result['total'],
+            'stats' => $stats,
+            'filters' => $filters,
+            'statusParam' => $statusParam ?? 'all',
+            'sort' => $sort,
+            'dir' => $dir,
+            'page' => $page,
+            'limit' => $limit,
+            'staleCutoffSeconds' => $repository->getStaleCutoffSeconds(),
+        ];
     }
 
     /**

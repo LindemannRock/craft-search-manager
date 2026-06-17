@@ -309,13 +309,21 @@
 (function() {
     if (typeof Craft === 'undefined') return;
 
-    // Auto-refresh: when the cp-table layout's AJAX poll fires (configured
-    // when there is live work in the buffer), it dispatches `lr:refresh`.
-    // We reload the page so every cell — including badges and counts in
-    // beforeTable — reflects the new state. Cheap and reliable; per-row
-    // client-side diffing isn't worth the surface area yet.
-    document.addEventListener('lr:refresh', function() {
-        window.location.reload();
+    // Auto-refresh: replace the current page of rows without a full browser
+    // navigation. The endpoint returns server-rendered row HTML so badges,
+    // dates, disabled row actions, and element links stay aligned with Twig.
+    document.addEventListener('lr:refresh', function(e) {
+        const data = e.detail || {};
+        const tbody = document.getElementById('lr-table-body');
+        if (!tbody || typeof data.rowsHtml !== 'string') return;
+
+        tbody.innerHTML = data.rowsHtml;
+
+        tbody.querySelectorAll('.menubtn').forEach(function(btn) {
+            if (Craft.MenuBtn && !btn._menuBtn) {
+                btn._menuBtn = new Craft.MenuBtn(btn);
+            }
+        });
     });
 
     // Row-action handlers. The base row-actions component emits

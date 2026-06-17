@@ -1,0 +1,128 @@
+{% set elementKey = item.elementId ~ ':' ~ item.siteId %}
+{% set element = elements[elementKey] ?? null %}
+{% set elementTypeShort = item.elementType|split('\\')|last %}
+{% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
+{% set canRetryThisRow = item.status in ['failed', 'abandoned'] %}
+
+<tr class="lr-data-row" data-id="{{ item.id }}" data-entry-id="{{ item.id }}" data-selectable="true">
+    {% if checkboxesEnabled %}
+        <td class="lr-checkbox-cell">
+            <div class="checkbox" title="{{ 'Select'|t('lindemannrock-base') }}" tabindex="0" aria-checked="false" role="checkbox"></div>
+        </td>
+    {% endif %}
+
+    <td data-column="index"
+        data-row-status="{{ item.status }}"
+        data-row-fresh-processing="{{ isFreshlyProcessing ? '1' : '0' }}">
+        <code>{{ item.indexHandle }}</code>
+    </td>
+
+    <td data-column="element">
+        {% if element and element.cpEditUrl %}
+            <a href="{{ element.cpEditUrl }}">
+                {{ element.title ?? (elementTypeShort ~ ' #' ~ item.elementId) }}
+            </a>
+        {% elseif element %}
+            {{ element.title ?? (elementTypeShort ~ ' #' ~ item.elementId) }}
+        {% elseif existsAnywhere[item.elementId] is defined %}
+            <span>{{ elementTypeShort }} #{{ item.elementId }}</span>
+            <span class="light" title="{{ 'Element is not propagated to this site. Row will be cleaned up on drain.'|t('search-manager') }}"> · {{ 'not on this site'|t('search-manager') }}</span>
+        {% else %}
+            <span class="light">{{ elementTypeShort }} #{{ item.elementId }}</span>
+            <span class="lr-text-amber" title="{{ 'Element no longer exists. Row will delete the document on drain.'|t('search-manager') }}"> · {{ 'deleted'|t('search-manager') }}</span>
+        {% endif %}
+    </td>
+
+    <td data-column="site">
+        {% set site = sites|filter(s => s.id == item.siteId)|first %}
+        {{ site ? site.name : ('Site #' ~ item.siteId) }}
+    </td>
+
+    <td data-column="op">
+        {% set opLabel = item.op == 'upsert' ? 'Write'|t('search-manager') : 'Delete'|t('search-manager') %}
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: opLabel,
+            value: item.op,
+            colorSet: 'pendingSyncOp',
+        } only %}
+    </td>
+
+    <td data-column="status">
+        {% include 'lindemannrock-base/_components/badge' with {
+            label: item.status|capitalize,
+            value: item.status,
+            colorSet: 'pendingSyncStatus',
+        } only %}
+    </td>
+
+    <td data-column="attempts">
+        {{ item.attemptCount }}
+    </td>
+
+    <td data-column="queuedAt">
+        {{ item.queuedAt|lrDatetime }}
+    </td>
+
+    <td data-column="nextAttemptAt">
+        {{ item.nextAttemptAt ? item.nextAttemptAt|lrDatetime : '—' }}
+    </td>
+
+    <td data-column="lastError">
+        {% if item.lastError %}
+            <span class="lr-pending-syncs-error" title="{{ item.lastError|e('html_attr') }}">
+                {{ item.lastError|length > 80 ? (item.lastError|slice(0, 80) ~ '...') : item.lastError }}
+            </span>
+        {% else %}
+            <span class="light">—</span>
+        {% endif %}
+    </td>
+
+    {% if rowActionsEnabled %}
+        {% set actionItems = [] %}
+
+        {% if element and element.cpEditUrl %}
+            {% set actionItems = actionItems|merge([{
+                label: 'View element'|t('search-manager'),
+                url: element.cpEditUrl,
+            }]) %}
+        {% endif %}
+
+        {% if canRetry %}
+            {% set actionItems = actionItems|merge([{
+                label: 'Retry now'|t('search-manager'),
+                jsAction: 'retry',
+                data: {id: item.id},
+                disabled: not canRetryThisRow,
+                title: canRetryThisRow ? null : 'Only failed and abandoned rows can be retried. Pending and processing rows are already in the queue.'|t('search-manager'),
+            }]) %}
+        {% endif %}
+
+        {% if canPurge %}
+            {% set actionItems = actionItems|merge([
+                {type: 'divider'},
+                {
+                    label: 'Delete from buffer'|t('search-manager'),
+                    class: 'error',
+                    jsAction: 'delete',
+                    data: {id: item.id},
+                    disabled: isFreshlyProcessing,
+                    title: isFreshlyProcessing ? 'Row is currently being processed by a worker.'|t('search-manager') : null,
+                },
+            ]) %}
+        {% endif %}
+
+        {% if actionItems|length %}
+            {% include 'lindemannrock-base/_components/row-actions' with {
+                item: {id: item.id},
+                actions: {
+                    type: 'menu',
+                    icon: 'settings',
+                    title: 'Actions'|t('search-manager'),
+                    items: actionItems,
+                },
+            } only %}
+        {% else %}
+            <td class="thin"></td>
+        {% endif %}
+    {% endif %}
+</tr>
