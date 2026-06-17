@@ -320,6 +320,59 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $this->assertSame(0.0, $export['jsonData']['data'][0]['executionTime']);
     }
 
+    public function testRecentSearchesExportUsesLogicalColumnOrder(): void
+    {
+        $this->seedRow(apiKeyId: 7, apiKeyPrefix: 'sm_pub_order01', apiKeyType: ApiKey::TYPE_PUBLIC);
+
+        $export = SearchManager::$plugin->analytics->exportAnalytics(self::TEST_SITE_ID, 'last30days');
+
+        $expectedHeaders = [
+            'Date',
+            'Time',
+            'Query',
+            'Site',
+            'Hits',
+            'Synonyms',
+            'Rules Matched',
+            'Promotions',
+            'Redirected',
+            'Index',
+            'Backend',
+            'Intent',
+            'Source',
+            'Platform',
+            'App Version',
+            'Execution Time (ms)',
+            'API Key',
+            'API Key Type',
+            'Referrer',
+        ];
+        $this->assertSame($expectedHeaders, array_slice($export['headers'], 0, count($expectedHeaders)));
+
+        $expectedKeys = [
+            'date',
+            'time',
+            'query',
+            'site',
+            'hits',
+            'synonyms',
+            'rules',
+            'promotions',
+            'redirected',
+            'index',
+            'backend',
+            'intent',
+            'source',
+            'platform',
+            'app_version',
+            'execution_time_ms',
+            'api_key',
+            'api_key_type',
+            'referrer',
+        ];
+        $this->assertSame($expectedKeys, array_slice(array_keys($export['rows'][0]), 0, count($expectedKeys)));
+    }
+
     public function testExportIncludesDetectedLanguageAndTrafficMetadata(): void
     {
         foreach (['trafficType', 'isSystemAgent', 'botCategory', 'botProducerName'] as $column) {
@@ -348,7 +401,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $this->assertSame('en', $row['language']);
         $this->assertSame('system', $row['traffic_type']);
         $this->assertSame('Yes', $row['system_agent']);
-        $this->assertSame(1, $row['is_bot']);
+        $this->assertSame('Yes', $row['is_bot']);
         $this->assertSame('Cache Manager', $row['bot_name']);
         $this->assertSame('Service Agent', $row['bot_category']);
         $this->assertSame('LindemannRock', $row['bot_producer']);

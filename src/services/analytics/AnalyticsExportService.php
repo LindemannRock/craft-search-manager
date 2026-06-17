@@ -206,30 +206,30 @@ class AnalyticsExportService
             Craft::t('search-manager', 'Date'),
             Craft::t('search-manager', 'Time'),
             Craft::t('search-manager', 'Query'),
+            Craft::t('search-manager', 'Site'),
             Craft::t('search-manager', 'Hits'),
             Craft::t('search-manager', 'Synonyms'),
-            Craft::t('search-manager', 'Rules'),
+            Craft::t('search-manager', 'Rules Matched'),
             Craft::t('search-manager', 'Promotions'),
             Craft::t('search-manager', 'Redirected'),
-            Craft::t('search-manager', 'Execution Time (ms)'),
-            Craft::t('search-manager', 'Backend'),
             Craft::t('search-manager', 'Index'),
-            Craft::t('search-manager', 'Site'),
+            Craft::t('search-manager', 'Backend'),
             Craft::t('search-manager', 'Intent'),
             Craft::t('search-manager', 'Source'),
             Craft::t('search-manager', 'Platform'),
             Craft::t('search-manager', 'App Version'),
+            Craft::t('search-manager', 'Execution Time (ms)'),
             Craft::t('search-manager', 'API Key'),
             Craft::t('search-manager', 'API Key Type'),
             Craft::t('search-manager', 'Referrer'),
             Craft::t('search-manager', 'Device Type'),
             Craft::t('search-manager', 'Device Brand'),
             Craft::t('search-manager', 'Device Model'),
-            Craft::t('search-manager', 'OS'),
-            Craft::t('search-manager', 'OS Version'),
             Craft::t('search-manager', 'Browser'),
             Craft::t('search-manager', 'Browser Version'),
             Craft::t('search-manager', 'Browser Engine'),
+            Craft::t('search-manager', 'OS'),
+            Craft::t('search-manager', 'OS Version'),
         ];
 
         if ($geoEnabled) {
@@ -264,30 +264,30 @@ class AnalyticsExportService
                 'date' => $dateStr,
                 'time' => $timeStr,
                 'query' => $row['query'],
+                'site' => $siteName,
                 'hits' => $row['resultsCount'],
                 'synonyms' => ($row['synonymsExpanded'] ?? false) ? 1 : 0,
                 'rules' => $row['rulesMatched'] ?? 0,
                 'promotions' => $row['promotionsShown'] ?? 0,
                 'redirected' => ($row['wasRedirected'] ?? false) ? 1 : 0,
-                'execution_time_ms' => $row['executionTime'] ?? 0,
-                'backend' => $row['backend'],
                 'index' => $row['indexHandle'],
-                'site' => $siteName,
+                'backend' => $row['backend'],
                 'intent' => $row['intent'] ?? '',
                 'source' => $row['source'] ?? 'frontend',
                 'platform' => $row['platform'] ?? '',
                 'app_version' => $row['appVersion'] ?? '',
+                'execution_time_ms' => $row['executionTime'] ?? 0,
                 'api_key' => $row['apiKeyPrefix'] ?? '',
                 'api_key_type' => $row['apiKeyType'] ?? '',
                 'referrer' => $row['referrer'] ?? '',
                 'device_type' => $row['deviceType'] ?? '',
                 'device_brand' => $row['deviceBrand'] ?? '',
                 'device_model' => $row['deviceModel'] ?? '',
-                'os' => $row['osName'] ?? '',
-                'os_version' => $row['osVersion'] ?? '',
                 'browser' => $row['browser'] ?? '',
                 'browser_version' => $row['browserVersion'] ?? '',
                 'browser_engine' => $row['browserEngine'] ?? '',
+                'os' => $row['osName'] ?? '',
+                'os_version' => $row['osVersion'] ?? '',
             ];
 
             if ($geoEnabled) {
@@ -299,7 +299,7 @@ class AnalyticsExportService
             $rowData['language'] = $row['language'] ?? '';
             $rowData['traffic_type'] = $row['trafficType'] ?? ($row['isRobot'] ? 'bot' : 'human');
             $rowData['system_agent'] = !empty($row['isSystemAgent']) ? 'Yes' : 'No';
-            $rowData['is_bot'] = $row['isRobot'] ? 1 : 0;
+            $rowData['is_bot'] = $row['isRobot'] ? 'Yes' : 'No';
             $rowData['bot_name'] = $row['botName'] ?? '';
             $rowData['bot_category'] = $row['botCategory'] ?? '';
             $rowData['bot_producer'] = $row['botProducerName'] ?? '';
