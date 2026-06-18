@@ -896,7 +896,7 @@ return [
     'Override the default transformer for this index. Leave blank to auto-detect based on element type.' => 'Substituir o transformer predefinido para este índice. Deixe em branco para deteção automática com base no tipo de elemento.',
     'Leave blank for automatic transformer selection. The best transformer is chosen based on the element type: AutoTransformer for Entries, Assets, Categories and Users; DocsManagerTransformer for Doc Pages. Only specify a custom class for advanced requirements.' => 'Deixe em branco para a seleção automática do transformer. O melhor transformer é escolhido com base no tipo de elemento: AutoTransformer para entradas, ficheiros, categorias e utilizadores; DocsManagerTransformer para páginas de documentação. Especifique uma classe personalizada apenas para requisitos avançados.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'Substituir o backend de pesquisa global para este índice. Deixe como \'Default\' para utilizar o backend configurado nas definições do plugin.',
-    'Use global default' => 'Usar o padrão global',
+    'Use global default' => 'Usar a predefinição global',
     'Which sites to index (leave all unchecked to index all sites)' => 'Que sites indexar (deixe tudo desmarcado para indexar todos os sites)',
     'Which doc sources to index (leave all unchecked for all sources)' => 'Que fontes de documentação indexar (deixe tudo desmarcado para todas as fontes)',
     'No indices configured' => 'Nenhum índice configurado',

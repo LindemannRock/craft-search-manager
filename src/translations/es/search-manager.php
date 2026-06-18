@@ -145,7 +145,7 @@ return [
     'Couldn’t revoke API key' => 'No se pudo revocar la clave API',
     'API key not found' => 'Clave API no encontrada',
     '{count, plural, =1{1 API key revoked} other{# API keys revoked}}' => '{count, plural, =1{1 clave API revocada} other{# claves API revocadas}}',
-    '{count, plural, =1{1 API key enabled} other{# API keys enabled}}' => '{count, plural, =1{1 clave API habilitada} other{# claves API habilitadas}}',
+    '{count, plural, =1{1 API key enabled} other{# API keys enabled}}' => '{count, plural, =1{1 clave API activada} other{# claves API activadas}}',
     '{count, plural, =1{1 API key disabled} other{# API keys disabled}}' => '{count, plural, =1{1 clave API desactivada} other{# claves API desactivadas}}',
     'Could not replace native search service. Check logs for details.' => 'No se pudo reemplazar el servicio de búsqueda nativo. Consulte los registros para obtener detalles.',
     'Could not retrieve document count from backend (permission issue)' => 'No se pudo obtener el recuento de documentos del backend (problema de permisos)',
@@ -251,11 +251,11 @@ return [
     'Delete {count} backend(s)? This cannot be undone.' => '¿Eliminar {count} backend(s)? Esta acción no se puede deshacer.',
     'Deleted {count} backends' => '{count} backends eliminados',
     'Disabled {count} backends' => '{count} backends desactivados',
-    'Enabled {count} backends' => '{count} backends habilitados',
+    'Enabled {count} backends' => '{count} backends activados',
     'Failed to delete backend' => 'Error al eliminar el backend',
     'Failed to delete backends' => 'Error al eliminar los backends',
     'Failed to disable backends' => 'Error al desactivar los backends',
-    'Failed to enable backends' => 'Error al habilitar los backends',
+    'Failed to enable backends' => 'Error al activar los backends',
     'Failed to update default backend' => 'Error al actualizar el backend predeterminado',
     'Failed to update default widget' => 'Error al actualizar el widget predeterminado',
     'Are you sure you want to delete this backend? Indices using it will fall back to the default.' => '¿Está seguro de que desea eliminar este backend? Los índices que lo usen recurrirán al predeterminado.',
@@ -309,9 +309,9 @@ return [
     'Logging Settings' => 'Configuración de registros',
     'Advanced Settings' => 'Configuración avanzada',
     'Default' => 'Predeterminado',
-    'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.' => 'No hay backends habilitados. <a href="{url}">Cree un backend</a> para usar como predeterminado.',
+    'No enabled backends. <a href="{url}">Create a backend</a> to use as the default.' => 'No hay backends activados. <a href="{url}">Cree un backend</a> para usar como predeterminado.',
     'Select a default backend...' => 'Seleccionar un backend predeterminado...',
-    'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'No hay widgets habilitados. <a href="{url}">Cree un widget</a> para usar como predeterminado.',
+    'No enabled widgets. <a href="{url}">Create a widget</a> to use as the default.' => 'No hay widgets activados. <a href="{url}">Cree un widget</a> para usar como predeterminado.',
     'Select a default widget...' => 'Seleccionar un widget predeterminado...',
     'API Access' => 'Acceso API',
     'Require API Key' => 'Requerir API Key',
@@ -320,7 +320,7 @@ return [
     // Settings: Indexing
     'Auto-Index Elements' => 'Auto-indexar elementos',
     'Automatically index elements when they are saved' => 'Indexar automáticamente los elementos al guardarlos',
-    'Queue Enabled' => 'Cola habilitada',
+    'Queue Enabled' => 'Cola activada',
     'Use queue for indexing operations (recommended for production)' => 'Usar la cola para las operaciones de indexación (recomendado para producción)',
     'Batch Size' => 'Tamaño del lote',
     'Number of elements to index in each batch' => 'Número de elementos a indexar en cada lote',
@@ -339,7 +339,7 @@ return [
     'Every 6 hours' => 'Cada 6 horas',
     'Every hour' => 'Cada hora',
     'Handles entries with scheduled postDate or expiryDate that change status without a save event' => 'Gestiona entradas con postDate o expiryDate programados que cambian de estado sin un evento de guardado',
-    'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.' => 'Reemplazar la búsqueda nativa de Craft con Search Manager. Cuando esté habilitado, las búsquedas en el Control Panel y Entry::find()->search() usarán el backend configurado.',
+    'Replace Craft\'s native search with Search Manager. When enabled, CP searches and Entry::find()->search() will use your configured backend.' => 'Reemplazar la búsqueda nativa de Craft con Search Manager. Cuando esté activado, las búsquedas en el Control Panel y Entry::find()->search() usarán el backend configurado.',
     'Replace Craft\'s native search with Search Manager throughout the Control Panel and templates.' => 'Reemplazar la búsqueda nativa de Craft con Search Manager en todo el Control Panel y las plantillas.',
     '<strong>Not Available:</strong> This feature requires MySQL, Redis, or File backend. You are currently using <strong>{backendUpper}</strong>, which handles search via its own API. For {backend}, use <code>craft.searchManager.search()</code> in templates instead of native search replacement.' => '<strong>No disponible:</strong> Esta función requiere el backend MySQL, Redis o File. Actualmente está usando <strong>{backendUpper}</strong>, que gestiona la búsqueda a través de su propia API. Para {backend}, use <code>craft.searchManager.search()</code> en las plantillas en lugar de reemplazar la búsqueda nativa.',
     'e.g., dev_, staging_, prod_' => 'p. ej., dev_, staging_, prod_',
@@ -399,7 +399,7 @@ return [
     'BM25 (Best Matching 25) is an industry-standard ranking algorithm used by Elasticsearch, Solr, and other search engines. These parameters control how search results are scored and ranked.' => 'BM25 (Best Matching 25) es un algoritmo de clasificación estándar de la industria usado por Elasticsearch, Solr y otros motores de búsqueda. Estos parámetros controlan cómo se puntúan y clasifican los resultados de búsqueda.',
     'Learn about BM25' => 'Aprender sobre BM25',
     'Boost factors multiply the relevance score for specific match types. Higher values rank those matches higher in results.' => 'Los factores de impulso multiplican la puntuación de relevancia para tipos de coincidencia específicos. Los valores más altos clasifican esas coincidencias más arriba en los resultados.',
-    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'La coincidencia aproximada habilita la tolerancia a errores tipográficos mediante similitud n-gram. Búsquedas como "tst" pueden encontrar "test", "javascirpt" encuentra "javascript".',
+    'Fuzzy matching enables typo-tolerance using n-gram similarity. Searches like "tst" can find "test", "javascirpt" finds "javascript".' => 'La coincidencia aproximada activa la tolerancia a errores tipográficos mediante similitud n-gram. Búsquedas como "tst" pueden encontrar "test", "javascirpt" encuentra "javascript".',
 
     // Settings: Autocomplete
     'Autocomplete / Suggestions' => 'Autocompletar / Sugerencias',
@@ -539,7 +539,7 @@ return [
     'Enable Analytics' => 'Activar analíticas',
     'Track Analytics' => 'Realizar seguimiento de analíticas',
     'Track search queries, results, and performance metrics' => 'Realizar seguimiento de consultas de búsqueda, resultados y métricas de rendimiento',
-    'When enabled, Search Manager will track search queries, device types, geographic data, and performance metrics.' => 'Cuando está habilitado, Search Manager realizará un seguimiento de las consultas de búsqueda, los tipos de dispositivos, los datos geográficos y las métricas de rendimiento.',
+    'When enabled, Search Manager will track search queries, device types, geographic data, and performance metrics.' => 'Cuando está activado, Search Manager realizará un seguimiento de las consultas de búsqueda, los tipos de dispositivos, los datos geográficos y las métricas de rendimiento.',
     'Analytics Retention' => 'Retención de analíticas',
     'Data Retention' => 'Retención de datos',
     'How many days to keep analytics data (0 for unlimited, max 3650)' => 'Cuántos días conservar los datos analíticos (0 para ilimitado, máx. 3650)',
@@ -625,7 +625,7 @@ return [
 • Cache is automatically cleared when content changes (if enabled below)' => '<strong>Cómo funciona:</strong><br>
 • Los resultados de búsqueda se almacenan en caché por consulta, índice, sitio y opciones de búsqueda<br>
 • Los resultados en caché se devuelven al instante sin consultar el backend<br>
-• La caché se borra automáticamente cuando cambia el contenido (si está habilitado abajo)',
+• La caché se borra automáticamente cuando cambia el contenido (si está activado abajo)',
     '<strong>How it works:</strong><br>
 • Autocomplete suggestions are cached per query prefix, index, and language<br>
 • Uses the same storage method as search results (file or Redis)<br>
@@ -637,7 +637,7 @@ return [
 • When enabled, cache is cleared automatically when elements are saved or deleted<br>
 • Status Sync handles scheduled entries (postDate/expiryDate) that change status without save events<br>
 • Both search cache and autocomplete cache are cleared together per index' => '<strong>Cómo funciona:</strong><br>
-• Cuando está habilitado, la caché se borra automáticamente cuando los elementos se guardan o eliminan<br>
+• Cuando está activado, la caché se borra automáticamente cuando los elementos se guardan o eliminan<br>
 • Status Sync gestiona las entradas programadas (postDate/expiryDate) que cambian de estado sin eventos de guardado<br>
 • Tanto la caché de búsqueda como la caché de autocompletado se borran juntos por índice',
     '<strong>How it works:</strong><br>
@@ -648,7 +648,7 @@ return [
 • Después de que se completa la reconstrucción del índice, una tarea en segundo plano precalienta la caché<br>
 • Las consultas populares se obtienen de las analíticas de búsqueda (términos más buscados)<br>
 • Tanto los resultados de búsqueda como las sugerencias de autocompletado se almacenan en caché previamente<br>
-• Requiere que las analíticas estén habilitadas para los datos de consulta',
+• Requiere que las analíticas estén activadas para los datos de consulta',
     '<strong>How it works:</strong><br>
 • Device detection parses user-agent strings to identify devices, browsers, and operating systems<br>
 • Results are cached to avoid re-parsing the same user-agent repeatedly<br>
@@ -691,7 +691,7 @@ return [
     'Are you sure you want to revoke this API key? Any callers using it will immediately lose access.' => '¿Está seguro de que desea revocar esta clave API? Cualquier llamador que la esté usando perderá el acceso inmediatamente.',
     'Are you sure you want to revoke 1 API key? Any callers using it will immediately lose access. This cannot be undone.' => '¿Está seguro de que desea revocar 1 clave API? Cualquier llamador que la esté usando perderá el acceso inmediatamente. Esta acción no se puede deshacer.',
     'Are you sure you want to revoke {count} API keys? Any callers using them will immediately lose access. This cannot be undone.' => '¿Está seguro de que desea revocar {count} claves API? Cualquier llamador que las esté usando perderá el acceso inmediatamente. Esta acción no se puede deshacer.',
-    'Couldn’t enable API keys' => 'No se pudieron habilitar las claves API',
+    'Couldn’t enable API keys' => 'No se pudieron activar las claves API',
     'Couldn’t disable API keys' => 'No se pudieron desactivar las claves API',
     'Couldn’t revoke API keys' => 'No se pudieron revocar las claves API',
     'Prefix' => 'Prefijo',
@@ -705,7 +705,7 @@ return [
     'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.' => 'Las claves públicas están pensadas para uso en el navegador, como widgets y páginas de búsqueda JavaScript personalizadas. Restrínjalas por referer y a los índices que necesiten. El tipo no se puede cambiar después de crear la clave.',
     'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.' => 'Las claves de servidor están pensadas para integraciones de backend a backend. No las coloque en HTML del navegador, JavaScript ni binarios de aplicaciones móviles. El tipo no se puede cambiar después de crear la clave.',
     'All indices (current and future)' => 'Todos los índices (actuales y futuros)',
-    'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'Cuando está activado, esta clave es válida para todos los índices habilitados — incluidos los índices creados después de la clave. Cuando está desactivado, elija índices específicos a continuación.',
+    'When on, this key is valid against every enabled index — including indices created after the key. When off, choose specific indices below.' => 'Cuando está activado, esta clave es válida para todos los índices activados — incluidos los índices creados después de la clave. Cuando está desactivado, elija índices específicos a continuación.',
     'Specific indices' => 'Índices específicos',
     'Tick each index this key can query.' => 'Marque cada índice que esta clave puede consultar.',
     'No indices configured yet. Add at least one index before this key can be useful.' => 'Aún no hay índices configurados. Añada al menos un índice antes de que esta clave pueda ser útil.',
@@ -791,7 +791,7 @@ return [
     'These are the indices that exist in the backend service itself.' => 'Estos son los índices que existen en el propio servicio de backend.',
     'Loading indices...' => 'Cargando índices...',
     'Default backend cannot be disabled.' => 'El backend predeterminado no se puede desactivar.',
-    'Please enable it or set a different backend as default.' => 'Habilítelo o establezca otro backend como predeterminado.',
+    'Please enable it or set a different backend as default.' => 'Actívelo o establezca otro backend como predeterminado.',
     'Please set a different backend as default.' => 'Establezca otro backend como predeterminado.',
     'The default backend "{name}" is disabled. Search functionality may not work.' => 'El backend predeterminado «{name}» está desactivado. La funcionalidad de búsqueda puede no funcionar.',
     'The default backend handle "{handle}" does not exist.' => 'El handle del backend predeterminado «{handle}» no existe.',
@@ -937,10 +937,10 @@ return [
     'Clear all data from index "{name}"? This cannot be undone.' => '¿Borrar todos los datos del índice «{name}»? Esta acción no se puede deshacer.',
     'Clear cached search results and autocomplete suggestions for "{name}"?' => '¿Vaciar los resultados de búsqueda en caché y las sugerencias de autocompletado de «{name}»?',
     'Delete index "{name}"? This will remove the index and all its data.' => '¿Eliminar el índice «{name}»? Esto eliminará el índice y todos sus datos.',
-    'Enabled {count} indices' => '{count} índices habilitados',
+    'Enabled {count} indices' => '{count} índices activados',
     'Disabled {count} indices' => '{count} índices desactivados',
     'Deleted {count} indices' => '{count} índices eliminados',
-    'Failed to enable indices' => 'Error al habilitar los índices',
+    'Failed to enable indices' => 'Error al activar los índices',
     'Failed to disable indices' => 'Error al desactivar los índices',
     'Failed to delete indices' => 'Error al eliminar los índices',
     'Delete {count} index(es)? This cannot be undone.' => '¿Eliminar {count} índice(s)? Esta acción no se puede deshacer.',
@@ -1018,10 +1018,10 @@ return [
     'Are you sure you want to delete this promotion?' => '¿Está seguro de que desea eliminar esta promoción?',
     'Failed to delete promotion' => 'Error al eliminar la promoción',
     'Delete promotion for "{name}"? This cannot be undone.' => '¿Eliminar la promoción de «{name}»? Esta acción no se puede deshacer.',
-    'Enabled {count} promotions' => '{count} promociones habilitadas',
+    'Enabled {count} promotions' => '{count} promociones activadas',
     'Disabled {count} promotions' => '{count} promociones desactivadas',
     'Deleted {count} promotions' => '{count} promociones eliminadas',
-    'Failed to enable promotions' => 'Error al habilitar las promociones',
+    'Failed to enable promotions' => 'Error al activar las promociones',
     'Failed to disable promotions' => 'Error al desactivar las promociones',
     'Failed to delete promotions' => 'Error al eliminar las promociones',
     'Delete {count} promotion(s)? This cannot be undone.' => '¿Eliminar {count} promoción(es)? Esta acción no se puede deshacer.',
@@ -1120,10 +1120,10 @@ return [
     'Are you sure you want to delete this query rule?' => '¿Está seguro de que desea eliminar esta regla de consulta?',
     'Failed to delete query rule' => 'Error al eliminar la regla de consulta',
     'Delete query rule "{name}"? This cannot be undone.' => '¿Eliminar la regla de consulta «{name}»? Esta acción no se puede deshacer.',
-    'Enabled {count} query rules' => '{count} reglas de consulta habilitadas',
+    'Enabled {count} query rules' => '{count} reglas de consulta activadas',
     'Disabled {count} query rules' => '{count} reglas de consulta desactivadas',
     'Deleted {count} query rules' => '{count} reglas de consulta eliminadas',
-    'Failed to enable query rules' => 'Error al habilitar las reglas de consulta',
+    'Failed to enable query rules' => 'Error al activar las reglas de consulta',
     'Failed to disable query rules' => 'Error al desactivar las reglas de consulta',
     'Failed to delete query rules' => 'Error al eliminar las reglas de consulta',
     'Delete {count} query rule(s)? This cannot be undone.' => '¿Eliminar {count} regla(s) de consulta? Esta acción no se puede deshacer.',
@@ -1157,7 +1157,7 @@ return [
     'No widget styles found.' => 'No se encontraron estilos de widget.',
     'No default widget is configured. Please set one of the widgets as default.' => 'No hay ningún widget predeterminado configurado. Establezca uno de los widgets como predeterminado.',
     'Default widget cannot be disabled.' => 'El widget predeterminado no se puede desactivar.',
-    'Please enable it or set a different widget as default.' => 'Habilítelo o establezca otro widget como predeterminado.',
+    'Please enable it or set a different widget as default.' => 'Actívelo o establezca otro widget como predeterminado.',
     'Please set a different widget as default.' => 'Establezca otro widget como predeterminado.',
     'The default widget "{name}" is disabled. Search widget may not work.' => 'El widget predeterminado «{name}» está desactivado. El widget de búsqueda puede no funcionar.',
     'The default widget handle "{handle}" does not exist.' => 'El handle del widget predeterminado «{handle}» no existe.',
@@ -1196,10 +1196,10 @@ return [
     'Delete widget config "{name}"? This cannot be undone.' => '¿Eliminar la configuración de widget «{name}»? Esta acción no se puede deshacer.',
     'Default config updated' => 'Configuración predeterminada actualizada',
     'Failed to update default config' => 'Error al actualizar la configuración predeterminada',
-    'Enabled {count} configs' => '{count} configuraciones habilitadas',
+    'Enabled {count} configs' => '{count} configuraciones activadas',
     'Disabled {count} configs' => '{count} configuraciones desactivadas',
     'Deleted {count} config(s)' => '{count} configuración(es) eliminada(s)',
-    'Failed to enable configs' => 'Error al habilitar las configuraciones',
+    'Failed to enable configs' => 'Error al activar las configuraciones',
     'Failed to disable configs' => 'Error al desactivar las configuraciones',
     'Failed to delete configs' => 'Error al eliminar las configuraciones',
     'Delete {count} config(s)? This cannot be undone.' => '¿Eliminar {count} configuración(es)? Esta acción no se puede deshacer.',

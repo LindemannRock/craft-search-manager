@@ -478,7 +478,7 @@ return [
     '<span> - Generic container (no default style)' => '<span> - Generisk behållare (ingen standardstil)',
     '<b> - Bold text' => '<b> - Fet text',
     '<i> - Italic text' => '<i> - Kursiv text',
-    'Preview of how highlighted text will appear:' => 'Förhandsgranskning av hur markerad text kommer att visas:',
+    'Preview of how highlighted text will appear:' => 'Förhandsvisning av hur markerad text kommer att visas:',
     'This is a ' => 'Det här är en ',
     'highlighted term' => 'markerad term',
     ' in search results.' => ' i sökresultaten.',
@@ -1321,7 +1321,7 @@ return [
     'With highlight' => 'Med markering',
 
     // Preview / sample
-    'Preview' => 'Förhandsgranskning',
+    'Preview' => 'Förhandsvisning',
     'Sample Result' => 'Exempelresultat',
     'Another Result' => 'Annat resultat',
     'Another result' => 'Annat resultat',
@@ -1567,8 +1567,8 @@ return [
 
     // Test features
     'Developer resources' => 'Utvecklarresurser',
-    'Download the Postman collection and environment to test the Search Manager API outside Craft.' => 'Ladda ned Postman-samlingen och miljön för att testa Search Manager API utanför Craft.',
-    'Download Postman collection' => 'Ladda ned Postman-samling',
+    'Download the Postman collection and environment to test the Search Manager API outside Craft.' => 'Ladda ner Postman-samlingen och miljön för att testa Search Manager API utanför Craft.',
+    'Download Postman collection' => 'Ladda ner Postman-samling',
     'Test Features' => 'Testfunktioner',
     'Test Search' => 'Testa sökning',
     'Enter a search query to test. Supports all operators.' => 'Ange en sökfråga att testa. Stöder alla operatorer.',
