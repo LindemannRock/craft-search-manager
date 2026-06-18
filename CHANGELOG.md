@@ -1,5 +1,28 @@
 # Changelog
 
+## [5.52.0](https://github.com/LindemannRock/craft-search-manager/compare/v5.51.1...v5.52.0) (2026-06-18)
+
+
+### Added
+
+* align analytics traffic metadata ([33b9f24](https://github.com/LindemannRock/craft-search-manager/commit/33b9f24cbbcf4adc242507668bbe392841956c5b))
+* **analytics:** add site column and reorder analytics export fields ([4e23cb4](https://github.com/LindemannRock/craft-search-manager/commit/4e23cb4e079f4535f95037fbabe4d66e9cadef3b))
+* **bulk-actions:** replace button group with bulk status and actions menus ([11a803b](https://github.com/LindemannRock/craft-search-manager/commit/11a803bb096d9c74e84d46cf8ca60a2144892be8))
+* **controllers:** add validation for unknown index handles in API key creation ([3dd7574](https://github.com/LindemannRock/craft-search-manager/commit/3dd75743ceeeb5670f294d248e451374078f56d6))
+* **helpers:** add RedisConnectionHelper for consistent Redis settings resolution ([7b76b9c](https://github.com/LindemannRock/craft-search-manager/commit/7b76b9c7cfcfd132f4f52ebd1d684dc7e6512dd0))
+* **jobs:** add pluginHandle parameter to DateFormatHelper calls ([2fb6ea8](https://github.com/LindemannRock/craft-search-manager/commit/2fb6ea838ec54b74bd99f8caf6a601deb204d9c1))
+* **pending-syncs:** implement AJAX auto-refresh for pending syncs table ([766d30e](https://github.com/LindemannRock/craft-search-manager/commit/766d30ecde5372deeb6d6d2863489d578b9e92bf))
+* **queue:** schedule status sync and analytics cleanup jobs ([377414b](https://github.com/LindemannRock/craft-search-manager/commit/377414bc0195ffb1c3b4b4e9aa838aa78d22a437))
+* **redis:** integrate RedisConnectionHelper for effective Redis settings resolution ([7d4a8b9](https://github.com/LindemannRock/craft-search-manager/commit/7d4a8b9c81091a22ce52be4262ddcb093f3a2da8))
+* **styles:** add bulk enable and disable actions for widget styles ([52783c0](https://github.com/LindemannRock/craft-search-manager/commit/52783c083ec371ad58af01d6f8af44997fb5fd6e))
+
+
+### Fixed
+
+* align source metadata order in view sidebars ([66f957b](https://github.com/LindemannRock/craft-search-manager/commit/66f957ba49550393826a60c81b599d40549b5941))
+* **i18n:** correct translations in Portuguese and Swedish ([99334bf](https://github.com/LindemannRock/craft-search-manager/commit/99334bf45efa2d7ba756939c078aa93af7b4267f))
+* render pending sync refreshes inline ([4568033](https://github.com/LindemannRock/craft-search-manager/commit/456803377c1233e082e3339c07002a9c1a593cc0))
+
 ## [5.51.1](https://github.com/LindemannRock/craft-search-manager/compare/v5.51.0...v5.51.1) - 2026-06-15
 
 
