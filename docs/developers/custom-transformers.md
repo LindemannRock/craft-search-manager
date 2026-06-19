@@ -52,7 +52,7 @@ class EntryTransformer extends BaseTransformer
 
     public function transform(ElementInterface $element): array
     {
-        // Start with common data (id, objectID, siteId, title, url, dates)
+        // Start with common data (id, elementId, backendId, objectID, siteId, title, url, dates)
         $data = $this->getCommonData($element);
 
         // Add custom fields
@@ -90,6 +90,8 @@ Returns a base array with standard element fields:
 [
     'objectID' => 123,
     'id' => 123,
+    'elementId' => 123,
+    'backendId' => '123_1',
     'title' => 'My Entry',
     'url' => 'https://example.com/my-entry',
     'siteId' => 1,
@@ -135,7 +137,7 @@ Your `transform()` method **must** return an array containing:
 
 | Field | Required | Source |
 |-------|----------|--------|
-| `id` or `objectID` | Yes | Element identifier |
+| `id`, `elementId`, or `objectID` | Yes | Craft element identifier |
 | `siteId` | Recommended | Required for multi-site to prevent ID collisions |
 
 Using `$this->getCommonData($element)` includes all required fields automatically.

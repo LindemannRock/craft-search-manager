@@ -317,7 +317,7 @@ Event::on(
             $event->results['hits'],
             function($hit) use ($user) {
                 // Only show entries the current user can view
-                $entry = \craft\elements\Entry::find()->id($hit['objectID'])->one();
+                $entry = \craft\elements\Entry::find()->id($hit['elementId'])->one();
                 return $entry && $user->can("viewentries:{$entry->section->uid}");
             }
         ));

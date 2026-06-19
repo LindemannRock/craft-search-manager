@@ -207,6 +207,13 @@ class AutoTransformer extends BaseTransformer
             return 'tag';
         }
 
+        if (method_exists($element, 'refHandle')) {
+            $refHandle = $element::refHandle();
+            if (is_string($refHandle) && $refHandle !== '') {
+                return $refHandle;
+            }
+        }
+
         // Fallback: derive from class name
         $className = get_class($element);
         $shortName = basename(str_replace('\\', '/', $className));

@@ -8,6 +8,8 @@ use craft\web\Controller;
 use lindemannrock\base\helpers\ExportHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
@@ -251,8 +253,6 @@ class SettingsController extends Controller
                 // Normalize fields for display (highlighting done client-side via SearchManagerHighlighter)
                 $enhancedHits = [];
                 foreach ($enrichedResults as $hit) {
-                    $hit['objectID'] = $hit['id'];
-
                     if (isset($hit['siteId'])) {
                         $site = Craft::$app->getSites()->getSiteById($hit['siteId']);
                         if ($site) {
@@ -261,7 +261,7 @@ class SettingsController extends Controller
                         }
                     }
 
-                    $enhancedHits[] = $hit;
+                    $enhancedHits[] = SearchHitPresenter::present($hit);
                 }
             } else {
                 // Manual hydration — load elements for raw backend hit display
@@ -284,7 +284,10 @@ class SettingsController extends Controller
                     foreach ($hitsBySite as $siteId => $siteHits) {
                         // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
                         // External backends may use composite keys, so we need the original element ID
-                        $elementIds = array_map(fn($hit) => $hit['elementId'] ?? $hit['id'], $siteHits);
+                        $elementIds = array_values(array_filter(array_map(
+                            static fn(array $hit): ?int => SearchHitIdentityHelper::elementId($hit),
+                            array_filter($siteHits, 'is_array'),
+                        )));
                         if ($this->isElementTypeAvailable($elementType, 'settings-search')) {
                             $elements = $elementType::find()
                             ->id($elementIds)
@@ -305,7 +308,10 @@ class SettingsController extends Controller
                     foreach ($results['hits'] as &$hit) {
                         $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
                         // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
-                        $actualElementId = $hit['elementId'] ?? $hit['id'];
+                        $actualElementId = SearchHitIdentityHelper::elementId($hit);
+                        if ($actualElementId === null) {
+                            continue;
+                        }
                         $elementKey = $hitSiteId . ':' . $actualElementId;
                         $element = $elementsById[$elementKey] ?? null;
 
@@ -330,7 +336,12 @@ class SettingsController extends Controller
                 }
 
                 // Highlighting is done client-side via SearchManagerHighlighter
-                $enhancedHits = $results['hits'] ?? [];
+                $enhancedHits = [];
+                foreach ($results['hits'] ?? [] as $hit) {
+                    if (is_array($hit)) {
+                        $enhancedHits[] = SearchHitPresenter::present($hit);
+                    }
+                }
             }
 
             return $this->asJson([

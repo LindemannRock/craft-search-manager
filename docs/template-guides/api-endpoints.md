@@ -72,8 +72,10 @@ These parameters only apply when `enrich=1`:
 {
     "hits": [
         {
-            "objectID": 123,
             "id": 123,
+            "elementId": 123,
+            "backendId": "123_1",
+            "objectID": 123,
             "promoted": true,
             "position": 1,
             "score": null,
@@ -81,8 +83,10 @@ These parameters only apply when `enrich=1`:
             "title": "Featured Product"
         },
         {
-            "objectID": 456,
             "id": 456,
+            "elementId": 456,
+            "backendId": "456_1",
+            "objectID": 456,
             "score": 45.23,
             "type": "product"
         }
@@ -146,8 +150,10 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `objectID` | `int` | Element ID |
-| `id` | `int` | Element ID (alias) |
+| `id` | `int` | Craft element ID |
+| `elementId` | `int` | Craft element ID. Use this for Craft element queries. |
+| `backendId` | `string` | Search Manager backend document ID, usually `{elementId}_{siteId}`. |
+| `objectID` | `int\|string` | Raw backend compatibility field. Prefer `elementId` and `backendId` in new code. |
 | `score` | `float\|null` | BM25 relevance score (`null` for promoted items) |
 | `type` | `string` | Element type (product, category, entry, etc.) |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |

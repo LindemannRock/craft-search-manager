@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use Craft;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\StopWords;
@@ -152,9 +153,14 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $data['body'] ?? '',
             ]);
 
+            $data = SearchHitIdentityHelper::normalizeHit($data);
+
             // Get site ID and element ID
             $siteId = $data['siteId'] ?? 1;
-            $elementId = $data['objectID'] ?? $data['id'];
+            $elementId = SearchHitIdentityHelper::elementId($data);
+            if ($elementId === null) {
+                throw new \InvalidArgumentException('Document must have either "elementId", "id", or "objectID" field');
+            }
 
             // Get element type: from data, or derive from index name
             $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
@@ -194,6 +200,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
             $successCount = 0;
             foreach ($items as $data) {
+                $data = SearchHitIdentityHelper::normalizeHit($data);
                 $title = $data['title'] ?? '';
                 $content = implode(' ', [
                     $data['content'] ?? '',
@@ -202,7 +209,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 ]);
 
                 $siteId = $data['siteId'] ?? 1;
-                $elementId = $data['objectID'] ?? $data['id'];
+                $elementId = SearchHitIdentityHelper::elementId($data);
+                if ($elementId === null) {
+                    continue;
+                }
                 $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
 
                 if ($engine->indexDocument($siteId, $elementId, $title, $content)) {
@@ -415,6 +425,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $hit = [
                 'objectID' => $elementId,
                 'id' => $elementId,
+                'elementId' => $elementId,
+                'backendId' => SearchHitIdentityHelper::backendId($elementId, $data['siteId']),
                 'score' => $data['score'],
                 'type' => $elementType,
                 'siteId' => $data['siteId'],
@@ -425,7 +437,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $hit = array_merge($info['documentData'], $hit);
             }
 
-            $hits[] = $hit;
+            $hits[] = SearchHitIdentityHelper::normalizeHit($hit);
         }
 
         usort($hits, fn($a, $b) => $b['score'] <=> $a['score']);
@@ -492,6 +504,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $hit = [
                 'objectID' => $elementId,
                 'id' => $elementId,
+                'elementId' => $elementId,
+                'backendId' => SearchHitIdentityHelper::backendId($elementId, $siteId),
                 'score' => $score,
                 'type' => $elementType,
             ];
@@ -501,7 +515,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $hit = array_merge($info['documentData'], $hit);
             }
 
-            $hits[] = $hit;
+            $hits[] = SearchHitIdentityHelper::normalizeHit($hit);
         }
 
         // Add matchedIn field indicating which fields matched the query
@@ -653,7 +667,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
         for ($i = 0; $i < $limit; $i++) {
             $hit = &$hits[$i];
-            $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
+            $elementId = SearchHitIdentityHelper::elementId($hit);
             if ($elementId === null) {
                 unset($hit);
                 continue;

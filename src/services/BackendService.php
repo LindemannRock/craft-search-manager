@@ -13,6 +13,7 @@ use lindemannrock\searchmanager\backends\PostgreSqlBackend;
 use lindemannrock\searchmanager\backends\RedisBackend;
 use lindemannrock\searchmanager\backends\TypesenseBackend;
 use lindemannrock\searchmanager\events\SearchEvent;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
@@ -513,6 +514,8 @@ class BackendService extends Component
                         $indexName,
                         $siteId
                     );
+
+                    $cached['hits'] = $this->filterHitsByType($cached['hits'], $options['type'] ?? null);
                 }
 
                 // Still track analytics for cached results
@@ -605,9 +608,11 @@ class BackendService extends Component
 
         $executionTime = (microtime(true) - $startTime) * 1000; // Convert to milliseconds
 
+        $backendFailed = (bool) ($results['_failed'] ?? false);
+
         // 3. Cache RAW results (BEFORE promotions) so promotions can be applied fresh
         // This ensures disabled/expired promotions are immediately excluded
-        if ($settings->enableCache) {
+        if ($settings->enableCache && !$backendFailed) {
             if ($settings->cachePopularQueriesOnly) {
                 // Check if query is popular enough
                 // +1 because current search will be tracked AFTER this check (line ~504)
@@ -628,6 +633,8 @@ class BackendService extends Component
             }
         }
 
+        unset($results['_failed']);
+
         // =====================================================================
         // PROMOTIONS: Apply pinned/promoted results (AFTER caching)
         // Promotions are applied fresh each time, not cached, so disabled
@@ -640,6 +647,8 @@ class BackendService extends Component
                 $indexName,
                 $siteId
             );
+
+            $results['hits'] = $this->filterHitsByType($results['hits'], $options['type'] ?? null);
         }
 
         // 4. Track analytics
@@ -744,16 +753,16 @@ class BackendService extends Component
 
             if (!empty($queryResults['hits'])) {
                 foreach ($queryResults['hits'] as $hit) {
-                    $elementId = $hit['objectID'] ?? $hit['elementId'] ?? null;
+                    $elementId = SearchHitIdentityHelper::elementId($hit);
 
                     // Avoid duplicates - keep highest score
-                    if ($elementId && !isset($seenElementIds[$elementId])) {
+                    if ($elementId !== null && !isset($seenElementIds[$elementId])) {
                         $seenElementIds[$elementId] = true;
                         $allHits[] = $hit;
-                    } elseif ($elementId && isset($seenElementIds[$elementId])) {
+                    } elseif ($elementId !== null && isset($seenElementIds[$elementId])) {
                         // Find existing hit and update score if higher
                         foreach ($allHits as &$existingHit) {
-                            if (($existingHit['objectID'] ?? $existingHit['elementId'] ?? null) === $elementId) {
+                            if (SearchHitIdentityHelper::elementId($existingHit) === $elementId) {
                                 $existingHit['score'] = max($existingHit['score'] ?? 0, $hit['score'] ?? 0);
                                 break;
                             }
@@ -1002,6 +1011,32 @@ class BackendService extends Component
     {
         // Lowercase, trim, and collapse multiple spaces to single space
         return mb_strtolower(trim(preg_replace('/\s+/', ' ', $query)));
+    }
+
+    /**
+     * Keep late-stage additions, such as promotions, inside the requested type
+     * boundary.
+     *
+     * @param array<int, array<string, mixed>> $hits
+     * @return array<int, array<string, mixed>>
+     */
+    private function filterHitsByType(array $hits, mixed $typeFilter): array
+    {
+        if ($typeFilter === null || $typeFilter === '') {
+            return $hits;
+        }
+
+        $allowedTypes = is_array($typeFilter) ? $typeFilter : explode(',', (string) $typeFilter);
+        $allowedTypes = array_values(array_filter(array_map('trim', $allowedTypes), static fn(string $value): bool => $value !== ''));
+
+        if ($allowedTypes === []) {
+            return $hits;
+        }
+
+        return array_values(array_filter(
+            $hits,
+            static fn(array $hit): bool => in_array((string) ($hit['type'] ?? ''), $allowedTypes, true),
+        ));
     }
 
     /**

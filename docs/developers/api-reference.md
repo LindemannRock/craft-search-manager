@@ -61,8 +61,10 @@ Index a document (array of key-value pairs) into a specific index.
 
 ```php
 SearchManager::$plugin->backend->index('entries-en', [
-    'objectID' => 123,
     'id' => 123,
+    'elementId' => 123,
+    'backendId' => '123_1',
+    'objectID' => 123,
     'title' => 'My Entry',
     'content' => 'Full text content...',
     'siteId' => 1,

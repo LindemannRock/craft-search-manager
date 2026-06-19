@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\QueryRule;
 use yii\base\Component;
 
@@ -267,7 +268,7 @@ class QueryRuleService extends Component
         $elementCache = [];
 
         foreach ($results as &$result) {
-            $elementId = is_array($result) ? ($result['objectID'] ?? $result['elementId'] ?? null) : $result;
+            $elementId = is_array($result) ? SearchHitIdentityHelper::elementId($result) : $result;
             if (!$elementId) {
                 continue;
             }

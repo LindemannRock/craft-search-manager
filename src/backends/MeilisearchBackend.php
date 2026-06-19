@@ -2,6 +2,7 @@
 
 namespace lindemannrock\searchmanager\backends;
 
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use Meilisearch\Client;
 use Meilisearch\Contracts\DocumentsQuery;
 use Meilisearch\Contracts\SearchQuery;
@@ -133,21 +134,7 @@ class MeilisearchBackend extends BaseBackend
      */
     private function prepareDocument(array $data): array
     {
-        $elementId = $data['objectID'] ?? $data['id'] ?? null;
-        $siteId = $data['siteId'] ?? null;
-
-        if ($elementId === null) {
-            throw new \InvalidArgumentException('Document must have either "objectID" or "id" field');
-        }
-
-        // Always set objectID - use composite key for multi-site, simple key otherwise
-        if ($siteId !== null) {
-            $data['objectID'] = $elementId . '_' . $siteId;
-        } else {
-            $data['objectID'] = (string)$elementId;
-        }
-
-        return $data;
+        return SearchHitIdentityHelper::prepareObjectIdDocument($data);
     }
 
     /** @inheritdoc */
@@ -200,12 +187,37 @@ class MeilisearchBackend extends BaseBackend
         return $existing === null ? $site : '(' . $existing . ') AND ' . $site;
     }
 
+    /**
+     * Build the portable Search Manager type filter as a Meilisearch filter.
+     */
+    private function typeFilter(mixed $type, ?string $existing = null): ?string
+    {
+        $existing = ($existing === null || $existing === '') ? null : $existing;
+
+        if ($type === null || $type === '') {
+            return $existing;
+        }
+
+        $types = is_array($type) ? $type : explode(',', (string) $type);
+        $types = array_values(array_filter(array_map('trim', $types), static fn(string $value): bool => $value !== ''));
+
+        if ($types === []) {
+            return $existing;
+        }
+
+        $typeFilter = $this->parseFilters(['type' => $types]);
+
+        return $existing === null ? $typeFilter : '(' . $existing . ') AND ' . $typeFilter;
+    }
+
     /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
             $client = $this->getSearchClient();
             $fullIndexName = $this->getFullIndexName($indexName);
+
+            $this->ensureFilterableAttributes($fullIndexName);
 
             // Build Meilisearch-compatible search options
             $searchParams = [
@@ -223,12 +235,22 @@ class MeilisearchBackend extends BaseBackend
             if (isset($options['attributesToRetrieve'])) {
                 $searchParams['attributesToRetrieve'] = $options['attributesToRetrieve'];
             }
+            if (isset($options['filter']) && is_string($options['filter']) && trim($options['filter']) !== '') {
+                $searchParams['filter'] = trim($options['filter']);
+            }
+
+            $typeFilter = $this->typeFilter($options['type'] ?? null, $searchParams['filter'] ?? null);
+            if ($typeFilter !== null) {
+                $searchParams['filter'] = $typeFilter;
+            }
 
             // Apply siteId filter if specified (not '*' or null for all sites).
-            // Meilisearch builds $searchParams from scratch and never passes
-            // through a caller filter here, so there's nothing to merge; the
-            // helper's merge support is exercised by its unit tests.
-            $siteFilter = self::siteIdFilter($options['siteId'] ?? null);
+            // Merge with any caller-supplied filter expression instead of
+            // overwriting it.
+            $existingFilter = isset($searchParams['filter'])
+                ? $searchParams['filter']
+                : null;
+            $siteFilter = self::siteIdFilter($options['siteId'] ?? null, $existingFilter);
             if ($siteFilter !== null) {
                 $searchParams['filter'] = $siteFilter;
             }
@@ -252,7 +274,7 @@ class MeilisearchBackend extends BaseBackend
                 if (isset($hit['_matchesPosition']) && is_array($hit['_matchesPosition'])) {
                     $hit['matchedIn'] = array_keys($hit['_matchesPosition']);
                 }
-                return $hit;
+                return SearchHitIdentityHelper::normalizeHit($hit);
             }, $rawHits);
 
             return [
@@ -266,7 +288,7 @@ class MeilisearchBackend extends BaseBackend
                 'index' => $indexName,
                 'query' => $query,
             ]);
-            return ['hits' => [], 'total' => 0];
+            return ['hits' => [], 'total' => 0, '_failed' => true];
         }
     }
 
@@ -638,14 +660,14 @@ class MeilisearchBackend extends BaseBackend
             $currentFilterable = $index->getFilterableAttributes();
 
             // Required filterable attributes for Search Manager
-            $requiredFilterable = ['siteId', 'elementType'];
+            $requiredFilterable = ['siteId', 'elementType', 'type'];
 
             // Check if already configured
             $missingAttributes = array_diff($requiredFilterable, $currentFilterable);
 
             if (!empty($missingAttributes)) {
                 // Add missing attributes while preserving existing ones
-                $newFilterable = array_unique(array_merge($currentFilterable, $requiredFilterable));
+                $newFilterable = array_values(array_unique(array_merge($currentFilterable, $requiredFilterable)));
                 $index->updateFilterableAttributes($newFilterable);
 
                 $this->logInfo('Configured Meilisearch filterable attributes', [

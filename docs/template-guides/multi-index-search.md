@@ -10,7 +10,7 @@ Search across multiple indices at once and get merged, scored results.
 <p>Found {{ results.total }} results</p>
 
 {% for hit in results.hits %}
-    {% set element = craft.entries.id(hit.objectID).one() %}
+    {% set element = craft.entries.id(hit.elementId).one() %}
     {% if element %}
         <article class="result result--{{ hit._index }}">
             <span class="source">{{ hit._index }}</span>
@@ -25,8 +25,8 @@ Search across multiple indices at once and get merged, scored results.
 ```php
 [
     'hits' => [
-        ['objectID' => 123, 'score' => 45.2, '_index' => 'products'],
-        ['objectID' => 456, 'score' => 38.1, '_index' => 'blog'],
+        ['elementId' => 123, 'backendId' => '123_1', 'score' => 45.2, '_index' => 'products'],
+        ['elementId' => 456, 'backendId' => '456_1', 'score' => 38.1, '_index' => 'blog'],
         // Merged and sorted by score
     ],
     'total' => 150,
@@ -74,7 +74,7 @@ Group results by their source index:
     <section>
         <h2>{{ indexName|capitalize }} ({{ hits|length }})</h2>
         {% for hit in hits %}
-            {% set entry = craft.entries.id(hit.objectID).one() %}
+            {% set entry = craft.entries.id(hit.elementId).one() %}
             {% if entry %}
                 <div>
                     <a href="{{ entry.url }}">{{ entry.title }}</a>

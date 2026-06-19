@@ -7,6 +7,7 @@ use craft\base\ElementInterface;
 use craft\elements\db\ElementQuery;
 use craft\search\SearchQuery;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -99,9 +100,9 @@ class CraftSearchAdapter extends \craft\services\Search
 
             if (isset($results['hits']) && !empty($results['hits'])) {
                 foreach ($results['hits'] as $i => $hit) {
-                    $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
+                    $elementId = SearchHitIdentityHelper::elementId($hit);
 
-                    if ($elementId && is_numeric($elementId)) {
+                    if ($elementId !== null) {
                         // Use actual score from search results
                         $score = $hit['score'] ?? (count($results['hits']) - $i);
                         // Craft expects format: "elementId-siteId" (e.g., "794-1")

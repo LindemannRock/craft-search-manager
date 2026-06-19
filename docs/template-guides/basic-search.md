@@ -79,7 +79,7 @@ Search results contain the indexed data from your transformer. If you need the f
 
 ```twig
 {% for hit in results.hits %}
-    {% set entry = craft.entries.id(hit.objectID).one() %}
+    {% set entry = craft.entries.id(hit.elementId).one() %}
     {% if entry %}
         <article>
             <h3><a href="{{ entry.url }}">{{ entry.title }}</a></h3>

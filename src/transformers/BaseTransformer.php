@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\transformers;
 use Craft;
 use craft\base\ElementInterface;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use yii\base\Component;
 
@@ -110,9 +111,13 @@ abstract class BaseTransformer extends Component implements TransformerInterface
      */
     protected function getCommonData(ElementInterface $element): array
     {
+        $backendId = SearchHitIdentityHelper::backendId($element->id, $element->siteId);
+
         return [
             'objectID' => $element->id,
             'id' => $element->id,
+            'elementId' => $element->id,
+            'backendId' => $backendId,
             'title' => $element->title ?? '',
             'url' => $element->url ?? '',
             'siteId' => $element->siteId,

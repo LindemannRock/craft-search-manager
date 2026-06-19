@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\services;
 
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use yii\base\Component;
 
@@ -148,7 +149,7 @@ class PromotionService extends Component
         // Remove promoted elements from their current positions (if they exist in results)
         $filteredResults = [];
         foreach ($results as $result) {
-            $elementId = is_array($result) ? ($result['objectID'] ?? $result['elementId'] ?? null) : $result;
+            $elementId = is_array($result) ? SearchHitIdentityHelper::elementId($result) : $result;
             if (!in_array($elementId, $promotedIds)) {
                 $filteredResults[] = $result;
             }
@@ -188,6 +189,9 @@ class PromotionService extends Component
                 $promotedItem = [
                     'objectID' => $promotion->elementId,
                     'id' => $promotion->elementId,
+                    'elementId' => $promotion->elementId,
+                    'backendId' => SearchHitIdentityHelper::backendId($promotion->elementId, $element?->siteId),
+                    'siteId' => $element?->siteId,
                     'promoted' => true,
                     'position' => $promotion->position,
                     'score' => null,

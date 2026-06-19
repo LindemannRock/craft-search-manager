@@ -10,7 +10,7 @@ Use `craft.searchManager.highlight()` to wrap matched terms with an HTML tag:
 {% set results = craft.searchManager.search('entries', query) %}
 
 {% for hit in results.hits %}
-    {% set entry = craft.entries.id(hit.objectID).one() %}
+    {% set entry = craft.entries.id(hit.elementId).one() %}
     {% if entry %}
         <h3>{{ craft.searchManager.highlight(entry.title, query)|raw }}</h3>
         {# "About <mark>craft</mark> <mark>cms</mark> development" #}
@@ -56,7 +56,7 @@ Each snippet is a string with matched terms already highlighted.
     {% set results = craft.searchManager.search('entries-en', query) %}
 
     {% for hit in results.hits %}
-        {% set entry = craft.entries.id(hit.objectID).one() %}
+        {% set entry = craft.entries.id(hit.elementId).one() %}
         {% if entry %}
             <article class="search-result">
                 <h3>

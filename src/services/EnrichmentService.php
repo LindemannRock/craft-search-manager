@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use craft\base\Component;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -58,12 +59,10 @@ class EnrichmentService extends Component
         $results = [];
 
         foreach ($rawHits as $hit) {
-            $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
-            if (!$elementId) {
+            $elementId = SearchHitIdentityHelper::elementId($hit);
+            if ($elementId === null) {
                 continue;
             }
-            // Cast to int (search backends may return strings)
-            $elementId = (int) $elementId;
 
             // Per-hit siteId wins over the global option; a null site resolves to
             // the current site — matching the previous getElementById() call.
@@ -266,11 +265,10 @@ class EnrichmentService extends Component
         $unresolved = [];
 
         foreach ($rawHits as $hit) {
-            $elementId = $hit['id'] ?? $hit['objectID'] ?? null;
-            if (!$elementId) {
+            $elementId = SearchHitIdentityHelper::elementId($hit);
+            if ($elementId === null) {
                 continue;
             }
-            $elementId = (int) $elementId;
             $resolvedSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : ($siteId ?? $currentSiteId);
 
             $handle = $hit['_index'] ?? $fallbackHandle;

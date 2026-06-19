@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use Algolia\AlgoliaSearch\Api\SearchClient;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 
 /**
  * Algolia Backend
@@ -14,6 +15,23 @@ use Algolia\AlgoliaSearch\Api\SearchClient;
  */
 class AlgoliaBackend extends BaseBackend
 {
+    /**
+     * Search Manager options that must not be forwarded to Algolia.
+     */
+    private const INTERNAL_SEARCH_OPTIONS = [
+        'apiKeyId',
+        'apiKeyPrefix',
+        'apiKeyType',
+        'appVersion',
+        'language',
+        'sessionId',
+        'siteId',
+        'skipAnalytics',
+        'source',
+        'type',
+        'platform',
+    ];
+
     private ?SearchClient $_client = null;
 
     /** @inheritdoc */
@@ -109,21 +127,7 @@ class AlgoliaBackend extends BaseBackend
      */
     private function prepareDocument(array $data): array
     {
-        $elementId = $data['objectID'] ?? $data['id'] ?? null;
-        $siteId = $data['siteId'] ?? null;
-
-        if ($elementId === null) {
-            throw new \InvalidArgumentException('Document must have either "objectID" or "id" field');
-        }
-
-        // Always set objectID - use composite key for multi-site, simple key otherwise
-        if ($siteId !== null) {
-            $data['objectID'] = $elementId . '_' . $siteId;
-        } else {
-            $data['objectID'] = (string)$elementId;
-        }
-
-        return $data;
+        return SearchHitIdentityHelper::prepareObjectIdDocument($data);
     }
 
     /** @inheritdoc */
@@ -168,6 +172,29 @@ class AlgoliaBackend extends BaseBackend
         return $existing === null ? $site : '(' . $existing . ') AND ' . $site;
     }
 
+    /**
+     * Build the portable Search Manager type filter as an Algolia filter.
+     */
+    private function typeFilter(mixed $type, ?string $existing = null): ?string
+    {
+        $existing = ($existing === null || $existing === '') ? null : $existing;
+
+        if ($type === null || $type === '') {
+            return $existing;
+        }
+
+        $types = is_array($type) ? $type : explode(',', (string) $type);
+        $types = array_values(array_filter(array_map('trim', $types), static fn(string $value): bool => $value !== ''));
+
+        if ($types === []) {
+            return $existing;
+        }
+
+        $typeFilter = $this->parseFilters(['type' => $types]);
+
+        return $existing === null ? $typeFilter : '(' . $existing . ') AND ' . $typeFilter;
+    }
+
     /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
@@ -175,10 +202,19 @@ class AlgoliaBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
-            // Filter out search-manager internal options that Algolia doesn't understand
-            $internalOptions = ['siteId', 'source', 'platform', 'appVersion'];
-            $searchParams = array_diff_key($options, array_flip($internalOptions));
+            $this->ensureFilterableAttributes($fullIndexName);
+
+            // Filter out Search Manager internal options that Algolia doesn't understand.
+            $searchParams = array_diff_key($options, array_flip(self::INTERNAL_SEARCH_OPTIONS));
             $searchParams['query'] = $query;
+
+            $existingFilters = isset($searchParams['filters']) && is_string($searchParams['filters'])
+                ? $searchParams['filters']
+                : null;
+            $typeFilter = $this->typeFilter($options['type'] ?? null, $existingFilters);
+            if ($typeFilter !== null) {
+                $searchParams['filters'] = $typeFilter;
+            }
 
             // Scope to a single site when requested (main search previously
             // dropped siteId). Merge with any caller-supplied filters instead of
@@ -223,13 +259,13 @@ class AlgoliaBackend extends BaseBackend
                         $hit['matchedIn'] = $matchedFields;
                     }
                 }
-                return $hit;
+                return SearchHitIdentityHelper::normalizeHit($hit);
             }, $results['hits'] ?? []);
 
             return ['hits' => $hits, 'total' => $results['nbHits'] ?? 0];
         } catch (\Throwable $e) {
             $this->logError('Algolia search failed', ['error' => $e->getMessage()]);
-            return ['hits' => [], 'total' => 0];
+            return ['hits' => [], 'total' => 0, '_failed' => true];
         }
     }
 
@@ -537,12 +573,12 @@ class AlgoliaBackend extends BaseBackend
 
             // Required filterable attributes for Search Manager
             // Using filterOnly() to allow filtering without facet counts
-            $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementType)'];
+            $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementType)', 'filterOnly(type)'];
 
             // Check if already configured (normalize for comparison)
             $normalizedCurrent = array_map(fn($f) => str_replace('filterOnly(', '', str_replace(')', '', $f)), $currentFacets);
             $missingFacets = [];
-            foreach (['siteId', 'elementType'] as $attr) {
+            foreach (['siteId', 'elementType', 'type'] as $attr) {
                 if (!in_array($attr, $normalizedCurrent, true)) {
                     $missingFacets[] = 'filterOnly(' . $attr . ')';
                 }
@@ -550,7 +586,7 @@ class AlgoliaBackend extends BaseBackend
 
             if (!empty($missingFacets)) {
                 // Add missing facets while preserving existing ones
-                $newFacets = array_unique(array_merge($currentFacets, $missingFacets));
+                $newFacets = array_values(array_unique(array_merge($currentFacets, $missingFacets)));
                 $client->setSettings($indexName, ['attributesForFaceting' => $newFacets]);
 
                 $this->logInfo('Configured Algolia filterable attributes', [

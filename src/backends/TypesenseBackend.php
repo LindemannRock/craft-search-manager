@@ -2,6 +2,7 @@
 
 namespace lindemannrock\searchmanager\backends;
 
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use Typesense\Client;
 
 /**
@@ -14,6 +15,23 @@ use Typesense\Client;
  */
 class TypesenseBackend extends BaseBackend
 {
+    /**
+     * Search Manager options that must not be forwarded to Typesense.
+     */
+    private const INTERNAL_SEARCH_OPTIONS = [
+        'apiKeyId',
+        'apiKeyPrefix',
+        'apiKeyType',
+        'appVersion',
+        'language',
+        'sessionId',
+        'siteId',
+        'skipAnalytics',
+        'source',
+        'type',
+        'platform',
+    ];
+
     private ?Client $_client = null;
 
     /** @inheritdoc */
@@ -111,23 +129,7 @@ class TypesenseBackend extends BaseBackend
      */
     private function prepareDocument(array $data): array
     {
-        $elementId = $data['id'] ?? $data['objectID'] ?? null;
-        $siteId = $data['siteId'] ?? null;
-
-        if ($elementId === null) {
-            throw new \InvalidArgumentException('Document must have either "id" or "objectID" field');
-        }
-
-        // Always set id - use composite key for multi-site, simple key otherwise
-        // Store original element ID for Craft lookups when using composite key
-        if ($siteId !== null) {
-            $data['elementId'] = $elementId;
-            $data['id'] = $elementId . '_' . $siteId;
-        } else {
-            $data['id'] = (string)$elementId;
-        }
-
-        return $data;
+        return SearchHitIdentityHelper::prepareIdDocument($data);
     }
 
     /** @inheritdoc */
@@ -183,6 +185,29 @@ class TypesenseBackend extends BaseBackend
         return $existing === null ? $site : '(' . $existing . ') && ' . $site;
     }
 
+    /**
+     * Build the portable Search Manager type filter as a Typesense filter.
+     */
+    private function typeFilter(mixed $type, ?string $existing = null): ?string
+    {
+        $existing = ($existing === null || $existing === '') ? null : $existing;
+
+        if ($type === null || $type === '') {
+            return $existing;
+        }
+
+        $types = is_array($type) ? $type : explode(',', (string) $type);
+        $types = array_values(array_filter(array_map('trim', $types), static fn(string $value): bool => $value !== ''));
+
+        if ($types === []) {
+            return $existing;
+        }
+
+        $typeFilter = $this->parseFilters(['type' => $types]);
+
+        return $existing === null ? $typeFilter : '(' . $existing . ') && ' . $typeFilter;
+    }
+
     /** @inheritdoc */
     public function search(string $indexName, string $query, array $options = []): array
     {
@@ -190,12 +215,19 @@ class TypesenseBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
-            // Filter out internal options that Typesense doesn't understand
-            $internalOptions = ['siteId', 'source', 'platform', 'appVersion'];
-            $searchParams = array_diff_key($options, array_flip($internalOptions));
+            // Filter out Search Manager internal options that Typesense doesn't understand.
+            $searchParams = array_diff_key($options, array_flip(self::INTERNAL_SEARCH_OPTIONS));
             $searchParams['q'] = $query;
             // Search all common string fields for consistency with other backends
             $searchParams['query_by'] = $searchParams['query_by'] ?? 'title,content,url';
+
+            $existingFilter = isset($searchParams['filter_by']) && is_string($searchParams['filter_by'])
+                ? $searchParams['filter_by']
+                : null;
+            $typeFilter = $this->typeFilter($options['type'] ?? null, $existingFilter);
+            if ($typeFilter !== null) {
+                $searchParams['filter_by'] = $typeFilter;
+            }
 
             // Scope to a single site when requested (main search previously
             // dropped siteId). Merge with any caller-supplied filter_by instead
@@ -245,13 +277,13 @@ class TypesenseBackend extends BaseBackend
                         $doc['matchedIn'] = array_unique($matchedFields);
                     }
                 }
-                return $doc;
+                return SearchHitIdentityHelper::normalizeHit($doc);
             }, $results['hits'] ?? []);
 
             return ['hits' => $hits, 'total' => $results['found'] ?? 0];
         } catch (\Throwable $e) {
             $this->logError('Typesense search failed', ['error' => $e->getMessage()]);
-            return ['hits' => [], 'total' => 0];
+            return ['hits' => [], 'total' => 0, '_failed' => true];
         }
     }
 
@@ -614,6 +646,7 @@ class TypesenseBackend extends BaseBackend
                 ['name' => 'objectID', 'type' => 'int32', 'optional' => true],
                 ['name' => 'elementId', 'type' => 'int32', 'optional' => true],
                 ['name' => 'siteId', 'type' => 'int32', 'optional' => true, 'facet' => true],
+                ['name' => 'type', 'type' => 'string', 'optional' => true, 'facet' => true],
                 ['name' => 'title', 'type' => 'string', 'optional' => true],
                 ['name' => 'url', 'type' => 'string', 'optional' => true],
                 ['name' => 'content', 'type' => 'string', 'optional' => true],

@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -512,8 +513,15 @@ class ApiController extends Controller
             $total = (int) ($results['total'] ?? count($enrichedHits));
             $totalPages = (int) ceil($total / $limit);
 
+            $presentedHits = [];
+            foreach ($enrichedHits as $hit) {
+                if (is_array($hit)) {
+                    $presentedHits[] = SearchHitPresenter::present($hit);
+                }
+            }
+
             $response = [
-                'hits' => $enrichedHits,
+                'hits' => $presentedHits,
                 'total' => $total,
                 'query' => $query,
                 'page' => $page,
@@ -544,6 +552,8 @@ class ApiController extends Controller
         $results['page'] = $page;
         $results['hitsPerPage'] = $limit;
         $results['totalPages'] = (int) ceil($total / $limit);
+
+        $results = SearchHitPresenter::presentResults($results);
 
         return $this->asJson($results);
     }
