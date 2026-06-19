@@ -75,6 +75,8 @@ For production relevance, configure Algolia's index settings in Algolia:
 
 Search Manager does not currently expose these relevance settings in the backend configuration form. Configure them in the Algolia dashboard or with Algolia's API.
 
+Search Manager intentionally does not convert Algolia ranking metadata into the `score` field. Treat Algolia result order as the relevance signal. If Search Manager exposes Algolia `_rankingInfo` in a future release, it should be used as debug metadata rather than a portable relevance score.
+
 ### Filtering Attributes
 
 Algolia requires filter fields to be listed in `attributesForFaceting` before they can be used in `filters`, `facetFilters`, or optional filters.

@@ -64,6 +64,12 @@ MEILISEARCH_SEARCH_API_KEY=your-search-key
 - **Searches all fields** by default
 - **Index clearing** uses `deleteAllDocuments()` to clear an index
 
+## Result Scores
+
+Search Manager requests Meilisearch ranking scores and maps `_rankingScore` to the public `score` field when Meilisearch returns it. That value reflects Meilisearch's ranking rules, not Search Manager's BM25 algorithm.
+
+Tune relevance in Meilisearch with ranking rules, searchable attribute order, typo tolerance, synonyms, and custom ranking rules. Do not compare Meilisearch scores directly with built-in backend, Algolia, or Typesense scores.
+
 ## Limitations
 
 - Requires hosting a Meilisearch server

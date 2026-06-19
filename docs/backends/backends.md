@@ -53,11 +53,13 @@ The external backends (Algolia, Meilisearch, Typesense) use their own ranking an
 
 The `score` field is a backend-specific relevance signal, not a universal scale:
 
-- Built-in backends return Search Manager's BM25 score.
-- Meilisearch results may include a score mapped from Meilisearch's ranking score.
-- Typesense results may include a score mapped from its text match value.
-- Algolia ranks results internally and may not return a comparable numeric score.
-- Promoted results can have `score: null`.
+| Backend | `score` meaning |
+|---------|-----------------|
+| MySQL / PostgreSQL / Redis / File | Search Manager's BM25 relevance score. |
+| Algolia | No Search Manager score mapping. Algolia result order comes from Algolia's ranking criteria; ranking metadata is not converted into `score`. |
+| Meilisearch | Mapped from Meilisearch's `_rankingScore` when Meilisearch returns it. |
+| Typesense | Mapped from Typesense's text match value when Typesense returns it. |
+| Promoted results | Can be `null` because promoted placement bypasses normal relevance scoring. |
 
 Use `score` for debugging or display within a single backend response. Do not compare scores across different backend types or treat every score as BM25.
 
