@@ -1,6 +1,6 @@
 name: Question
 description: "Ask a question about Search Manager. Not for bug reports."
-labels: 'question'
+labels: ['type: question', 'status: needs triage']
 body:
   - type: markdown
     attributes:

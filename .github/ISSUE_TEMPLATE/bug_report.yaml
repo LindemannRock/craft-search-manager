@@ -1,6 +1,6 @@
 name: Bug Report
 description: Report a bug or unexpected behavior.
-labels: 'bug'
+labels: ['type: bug', 'status: needs triage']
 body:
   - type: markdown
     attributes:
@@ -15,7 +15,7 @@ body:
     attributes:
       label: Describe the bug
       description: What happened? What did you expect to happen instead?
-      placeholder: "I have an issue where..."
+      placeholder: I have an issue where...
     validations:
       required: true
 
@@ -31,33 +31,11 @@ body:
     validations:
       required: true
 
-  - type: textarea
-    id: setup-context
-    attributes:
-      label: Setup context
-      description: Tell us about your setup so we can reproduce the issue.
-      value: |
-        - Search backend: MySQL, PostgreSQL, Redis, File, Algolia, Meilisearch, or Typesense
-        - Widget enabled: Yes or No
-        - Autocomplete enabled: Yes or No
-        - Multi-site: Yes or No
-    validations:
-      required: true
-
-  - type: dropdown
-    id: craft-major
-    attributes:
-      label: Craft CMS major version
-      options:
-        - "Craft 5"
-    validations:
-      required: true
-
   - type: input
     id: craft-version
     attributes:
       label: Craft CMS exact version
-      description: "**Do not write \"latest\"** — run `php craft version` to check."
+      description: "**Do not write \"latest\"** — check Craft's System Report."
       placeholder: e.g. 5.6.1
     validations:
       required: true
@@ -65,8 +43,9 @@ body:
   - type: input
     id: plugin-version
     attributes:
-      label: Search Manager version
-      description: "**Do not write \"latest\"** — check in Settings → Plugins."
+      label: "Search Manager version"
+      description: "**Do not write \"latest\"** — check Craft's System Report or Settings → Plugins."
+      placeholder: e.g. 5.2.0
     validations:
       required: true
 
@@ -74,11 +53,16 @@ body:
     id: php-version
     attributes:
       label: PHP version
-      description: "Run `php -v` to check."
+      description: Check Craft's System Report.
+      placeholder: e.g. 8.3.30
 
   - type: textarea
     id: additional-context
     attributes:
       label: Additional context
-      description: Anything else that might help — screenshots, log entries, other plugins installed.
-      placeholder: I also have X plugin installed... or This only happens on production...
+      description: Add anything else that may help us reproduce the issue.
+      value: |
+        - Database:
+        - Other relevant plugins:
+        - Environment: local, staging, or production
+        - Screenshots, screen recordings, or log entries:

@@ -1,6 +1,6 @@
 name: Translation Issue
 description: Report a missing, wrong, or broken translation.
-labels: 'translation'
+labels: ['area: translations', 'status: needs triage']
 body:
   - type: markdown
     attributes:
@@ -11,7 +11,7 @@ body:
 
         Before submitting, please check:
 
-          - I've searched [open and closed issues](https://github.com/LindemannRock/craft-search-manager/issues?q=is%3Aissue+label%3Atranslation).
+          - I've searched [open and closed issues](https://github.com/LindemannRock/craft-search-manager/issues?q=is%3Aissue+label%3A%22area%3A+translations%22).
 
   - type: dropdown
     id: language
@@ -89,7 +89,7 @@ body:
     id: translation-key
     attributes:
       label: Translation key (if known)
-      description: The English source string used as the lookup key in `translations/{lang}/{handle}.php`. Helps maintainers find it instantly.
+      description: The English source string used as the lookup key in `translations/{lang}/search-manager.php`. Helps maintainers find it instantly.
       placeholder: e.g. "Save settings"
 
   - type: textarea
@@ -98,19 +98,18 @@ body:
       label: Additional context
       description: Screenshots (especially helpful for layout/RTL issues), surrounding UI text, or anything else that helps locate the string.
 
-  - type: dropdown
-    id: craft-major
+  - type: input
+    id: craft-version
     attributes:
-      label: Craft CMS major version
-      options:
-        - "Craft 5"
-    validations:
-      required: true
+      label: Craft CMS exact version
+      description: "**Do not write \"latest\"** — check Craft's System Report."
+      placeholder: e.g. 5.6.1
 
   - type: input
     id: plugin-version
     attributes:
       label: "Search Manager version"
-      description: Check in Settings → Plugins.
+      description: "**Do not write \"latest\"** — check Craft's System Report or Settings → Plugins."
+      placeholder: e.g. 5.2.0
     validations:
       required: true
