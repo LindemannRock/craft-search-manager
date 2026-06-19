@@ -260,7 +260,8 @@
 		deleted: {{ 'Widget style deleted'|t('search-manager')|json_encode|raw }},
 		deleteFailed: {{ 'Failed to delete style'|t('search-manager')|json_encode|raw }},
 		deleteConfirm: {{ 'Delete style "{name}"? Widgets using this style will fall back to inline styles.'|t('search-manager')|json_encode|raw }},
-		bulkDeleteConfirmTemplate: {{ 'Delete {count} style(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+		bulkDeleteConfirmSingular: {{ 'Delete {count} style? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+		bulkDeleteConfirmPlural: {{ 'Delete {count} styles? This cannot be undone.'|t('search-manager')|json_encode|raw }},
 		bulkDeletedTemplate: {{ 'Deleted {count} style(s)'|t('search-manager')|json_encode|raw }},
 		bulkEnabledTemplate: {{ 'Enabled {count} styles'|t('search-manager')|json_encode|raw }},
 		bulkEnableFailed: {{ 'Failed to enable styles'|t('search-manager')|json_encode|raw }},
@@ -331,7 +332,8 @@
 	document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
 		const ids = selectedIds();
 		if (!ids.length) return;
-		if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
+		const confirmTemplate = ids.length === 1 ? T.bulkDeleteConfirmSingular : T.bulkDeleteConfirmPlural;
+		if (!confirm(confirmTemplate.replace('{count}', ids.length))) return;
 
 		// `delete-style` is a single-row endpoint; for bulk we fan out per id
 		// and aggregate successes/failures client-side. Acceptable today since

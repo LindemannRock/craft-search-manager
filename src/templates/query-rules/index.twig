@@ -265,7 +265,8 @@
         bulkDisableFailed: {{ 'Failed to disable query rules'|t('search-manager')|json_encode|raw }},
         bulkDeletedTemplate: {{ 'Deleted {count} query rules'|t('search-manager')|json_encode|raw }},
         bulkDeleteFailed: {{ 'Failed to delete query rules'|t('search-manager')|json_encode|raw }},
-        bulkDeleteConfirmTemplate: {{ 'Delete {count} query rule(s)? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        bulkDeleteConfirmSingular: {{ 'Delete {count} query rule? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        bulkDeleteConfirmPlural: {{ 'Delete {count} query rules? This cannot be undone.'|t('search-manager')|json_encode|raw }},
     };
 
     function selectedIds() {
@@ -323,7 +324,8 @@
     document.getElementById('lr-bulk-delete-btn')?.addEventListener('click', function() {
         const ids = selectedIds();
         if (!ids.length) return;
-        if (!confirm(T.bulkDeleteConfirmTemplate.replace('{count}', ids.length))) return;
+        const confirmTemplate = ids.length === 1 ? T.bulkDeleteConfirmSingular : T.bulkDeleteConfirmPlural;
+        if (!confirm(confirmTemplate.replace('{count}', ids.length))) return;
         runBulk('search-manager/query-rules/bulk-delete', T.bulkDeletedTemplate, T.bulkDeleteFailed);
     });
 })();
