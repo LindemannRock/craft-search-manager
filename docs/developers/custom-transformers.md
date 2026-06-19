@@ -80,6 +80,28 @@ Assign your transformer to an index in `config/search-manager.php`:
 ],
 ```
 
+## Custom Fields in API and GraphQL
+
+The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, sorted, and returned by the REST API depending on backend configuration.
+
+For example, a transformer can add frontend-specific fields:
+
+```php
+$data['price'] = (float)($element->price ?? 0);
+$data['brand'] = $element->brand->one()?->title ?? null;
+$data['availability'] = $element->inStock ? 'in-stock' : 'out-of-stock';
+```
+
+Those fields are part of the indexed document and can appear in `/actions/search-manager/api/search` responses. This is useful when replacing older Scout, Algolia-only, or script-based indexing setups where custom code shaped records directly for a search provider.
+
+GraphQL is different: `searchManagerSearch` exposes a stable typed result shape and does not dynamically expose arbitrary transformer fields. Use GraphQL search for identity and ranking fields such as `elementId`, `siteId`, `backendId`, `title`, `url`, `score`, and `matchedIn`; then query Craft's native GraphQL element fields with `elementId` and `siteId` when the frontend needs full entry data.
+
+Provider-specific setup still applies to custom transformer fields:
+
+- **Algolia** — add custom filter fields to `attributesForFaceting`; configure ranking, replicas, and searchable attributes in Algolia.
+- **Meilisearch** — configure custom fields as filterable or sortable attributes when you use them in filters or sorts.
+- **Typesense** — include custom searchable fields in `query_by`, and define/filter/sort fields according to your Typesense schema needs.
+
 ## BaseTransformer Methods
 
 ### `getCommonData(ElementInterface $element)`

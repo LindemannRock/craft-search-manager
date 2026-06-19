@@ -101,6 +101,10 @@ These parameters only apply when `enrich=1`:
 > [!NOTE]
 > The raw response does not return internal metadata (synonyms expanded, rules matched, promotions matched). Use the `?debug=1` parameter with the `searchManager:viewDebug` permission to inspect query internals during development.
 
+Custom transformer fields are part of the indexed document and can appear in REST search hits. For example, if your transformer adds `price`, `brand`, `availability`, or `vehicleModel`, those keys can be returned by this endpoint alongside the standard identity fields. This makes the REST API the right choice when a headless frontend needs the search document shape you defined in a transformer.
+
+GraphQL search uses a fixed typed schema and does not dynamically expose those custom transformer fields. Use GraphQL for stable search fields and native Craft element follow-up queries; use the REST API when you want the raw/custom search document payload.
+
 ### Enriched Response
 
 When `enrich=1`, results are resolved to full element data with snippets and heading expansion:

@@ -69,7 +69,7 @@ Search arguments:
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
-GraphQL exposes stable typed hit fields. Arbitrary indexed custom fields are not exposed directly because GraphQL requires a fixed schema; use enriched fields, `matchedIn`, `matchedTerms`, and normal Craft element queries when the frontend needs full custom field data.
+GraphQL exposes stable typed hit fields. Arbitrary indexed custom fields from custom transformers are not exposed directly because GraphQL requires a fixed schema; use enriched fields, `matchedIn`, `matchedTerms`, and normal Craft element queries when the frontend needs full custom field data. The REST API can return transformer-specific fields because JSON responses do not need a fixed GraphQL type.
 
 Common hit fields:
 
@@ -136,6 +136,165 @@ Backend filter examples:
 | Algolia | `elementType:"entry" AND siteId:1` |
 | Meilisearch | `elementType = "entry" AND siteId = 1` |
 | Typesense | `elementType:=\`entry\` && siteId:=\`1\`` |
+
+## Backend Examples
+
+The GraphQL response shape stays the same across backends. The index handle selects the backend, and backend-specific differences mainly show up in `score`, filter syntax, and raw provider behavior that GraphQL intentionally keeps behind typed fields.
+
+Custom transformer fields can still be searched or filtered by the selected backend when the backend is configured for them. GraphQL simply keeps the search response typed; use `elementId` and `siteId` for a follow-up Craft GraphQL element query when you need entry fields that are not part of the search hit type.
+
+### Algolia
+
+Use the Algolia-backed index handle. Algolia result order is the relevance signal; `score` may be `null` because Search Manager does not convert Algolia ranking metadata into a portable score.
+
+```graphql
+query {
+  searchManagerSearch(
+    query: "test"
+    index: "test-algolia"
+    hitsPerPage: 5
+    skipAnalytics: true
+  ) {
+    total
+    hits {
+      id
+      elementId
+      siteId
+      backendId
+      objectID
+      title
+      url
+      score
+      matchedIn
+    }
+  }
+}
+```
+
+For Algolia filters, use Algolia filter syntax and make sure custom filter fields are configured in Algolia `attributesForFaceting`. Search Manager automatically configures the built-in filter fields it owns, such as `siteId`, `elementType`, and `type`.
+
+```graphql
+query {
+  searchManagerSearch(
+    query: "test"
+    index: "test-algolia"
+    filters: "type:\"entry\" AND siteId:1"
+    hitsPerPage: 5
+    skipAnalytics: true
+  ) {
+    total
+    hits {
+      title
+      type
+      siteId
+      url
+    }
+  }
+}
+```
+
+### Meilisearch
+
+Use the Meilisearch-backed index handle. When Meilisearch returns `_rankingScore`, Search Manager maps it to `score`; the value reflects Meilisearch ranking rules, not Search Manager BM25.
+
+```graphql
+query {
+  searchManagerSearch(
+    query: "test"
+    index: "meilisearch"
+    hitsPerPage: 5
+    enrich: true
+    skipAnalytics: true
+  ) {
+    total
+    hits {
+      id
+      elementId
+      siteId
+      backendId
+      objectID
+      title
+      description
+      url
+      score
+      matchedIn
+    }
+  }
+}
+```
+
+For Meilisearch filters, use Meilisearch filter syntax. Custom fields must be filterable in Meilisearch before they can be used in `filters`.
+
+```graphql
+query {
+  searchManagerSearch(
+    query: "test"
+    index: "meilisearch"
+    filters: "type = \"entry\" AND siteId = 1"
+    hitsPerPage: 5
+    skipAnalytics: true
+  ) {
+    total
+    hits {
+      title
+      type
+      siteId
+      score
+    }
+  }
+}
+```
+
+### Typesense
+
+Use the Typesense-backed index handle. When Typesense returns a text-match value, Search Manager maps it to `score`; the value reflects Typesense ranking settings, not Search Manager BM25.
+
+```graphql
+query {
+  searchManagerSearch(
+    query: "test"
+    index: "typesense"
+    hitsPerPage: 5
+    skipAnalytics: true
+  ) {
+    total
+    hits {
+      id
+      elementId
+      siteId
+      backendId
+      objectID
+      title
+      slug
+      url
+      score
+      matchedIn
+    }
+  }
+}
+```
+
+For Typesense filters, use Typesense filter syntax. Typesense also requires searchable fields to be included in `query_by`; Search Manager defaults to `title`, `content`, and `url`.
+
+```graphql
+query {
+  searchManagerSearch(
+    query: "test"
+    index: "typesense"
+    filters: "type:=`entry` && siteId:=`1`"
+    hitsPerPage: 5
+    skipAnalytics: true
+  ) {
+    total
+    hits {
+      title
+      type
+      siteId
+      score
+    }
+  }
+}
+```
 
 ## Enriched Search
 
