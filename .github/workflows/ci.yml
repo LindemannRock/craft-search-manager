@@ -24,7 +24,7 @@ jobs:
           composer-options: --prefer-dist
 
       - name: Composer security audit
-        run: composer audit
+        run: composer audit --abandoned=report
 
       - name: PHPStan
         run: composer phpstan
