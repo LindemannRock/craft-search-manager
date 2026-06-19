@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'Crear claves API',
     'Edit API keys' => 'Editar claves API',
     'Revoke API keys' => 'Revocar claves API',
+    'Query {name} data' => 'Consultar datos de {name}',
 
     // Common
     'Loading...' => 'Cargando...',

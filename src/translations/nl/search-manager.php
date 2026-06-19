@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'API-sleutels aanmaken',
     'Edit API keys' => 'API-sleutels bewerken',
     'Revoke API keys' => 'API-sleutels intrekken',
+    'Query {name} data' => '{name}-gegevens opvragen',
 
     // Common
     'Loading...' => 'Laden...',

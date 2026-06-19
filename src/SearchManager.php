@@ -7,14 +7,19 @@ use craft\base\Model;
 use craft\base\Plugin;
 use craft\console\Application as ConsoleApplication;
 use craft\events\ElementEvent;
+use craft\events\ExecuteGqlQueryEvent;
 use craft\events\RegisterCacheOptionsEvent;
 use craft\events\RegisterComponentTypesEvent;
+use craft\events\RegisterGqlQueriesEvent;
+use craft\events\RegisterGqlSchemaComponentsEvent;
+use craft\events\RegisterGqlTypesEvent;
 use craft\events\RegisterTemplateRootsEvent;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\helpers\UrlHelper;
 use craft\services\Dashboard;
 use craft\services\Elements;
+use craft\services\Gql;
 use craft\services\UserPermissions;
 use craft\services\Utilities;
 use craft\utilities\ClearCaches;
@@ -29,6 +34,15 @@ use lindemannrock\base\helpers\RecurringQueueHelper;
 use lindemannrock\base\helpers\ScheduleHelper;
 use lindemannrock\logginglibrary\LoggingLibrary;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\gql\queries\SearchQuery;
+use lindemannrock\searchmanager\gql\types\AutocompleteResponseType as GqlAutocompleteResponseType;
+use lindemannrock\searchmanager\gql\types\AutocompleteResultType as GqlAutocompleteResultType;
+use lindemannrock\searchmanager\gql\types\IndexCountType as GqlIndexCountType;
+use lindemannrock\searchmanager\gql\types\MatchedTermsType as GqlMatchedTermsType;
+use lindemannrock\searchmanager\gql\types\SearchHeadingType as GqlSearchHeadingType;
+use lindemannrock\searchmanager\gql\types\SearchHitType as GqlSearchHitType;
+use lindemannrock\searchmanager\gql\types\SearchMetaType as GqlSearchMetaType;
+use lindemannrock\searchmanager\gql\types\SearchResponseType as GqlSearchResponseType;
 use lindemannrock\searchmanager\jobs\CleanupAnalyticsJob;
 use lindemannrock\searchmanager\jobs\SyncStatusJob;
 use lindemannrock\searchmanager\models\Settings;
@@ -200,6 +214,9 @@ class SearchManager extends Plugin
         // Register template variables
         $this->registerTemplateVariables();
 
+        // Register GraphQL types, queries, permissions, and cache behavior
+        $this->registerGraphql();
+
         // Register CP routes
         $this->registerCpRoutes();
 
@@ -307,6 +324,94 @@ class SearchManager extends Plugin
                 $variable->set('searchManager', SearchManagerVariable::class);
             }
         );
+    }
+
+    /**
+     * Register Search Manager GraphQL types, queries, permissions, and cache behavior.
+     */
+    private function registerGraphql(): void
+    {
+        $graphqlCacheSetting = null;
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_REGISTER_GQL_TYPES,
+            static function(RegisterGqlTypesEvent $event) {
+                $event->types[] = GqlAutocompleteResponseType::class;
+                $event->types[] = GqlAutocompleteResultType::class;
+                $event->types[] = GqlIndexCountType::class;
+                $event->types[] = GqlMatchedTermsType::class;
+                $event->types[] = GqlSearchHeadingType::class;
+                $event->types[] = GqlSearchHitType::class;
+                $event->types[] = GqlSearchMetaType::class;
+                $event->types[] = GqlSearchResponseType::class;
+            }
+        );
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_REGISTER_GQL_QUERIES,
+            static function(RegisterGqlQueriesEvent $event) {
+                foreach (SearchQuery::getQueries() as $key => $value) {
+                    $event->queries[$key] = $value;
+                }
+            }
+        );
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_REGISTER_GQL_SCHEMA_COMPONENTS,
+            static function(RegisterGqlSchemaComponentsEvent $event) {
+                if (self::$plugin === null) {
+                    return;
+                }
+
+                $pluginName = self::$plugin->getSettings()->getFullName();
+
+                $event->queries[$pluginName]['searchManager.all:read'] = [
+                    'label' => Craft::t('search-manager', 'Query {name} data', ['name' => $pluginName]),
+                ];
+            }
+        );
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY,
+            static function(ExecuteGqlQueryEvent $event) use (&$graphqlCacheSetting) {
+                if (!self::queryRunsSearch($event->query)) {
+                    return;
+                }
+
+                $generalConfig = Craft::$app->getConfig()->getGeneral();
+                $graphqlCacheSetting = $generalConfig->enableGraphqlCaching;
+                $generalConfig->enableGraphqlCaching = false;
+            }
+        );
+
+        Event::on(
+            Gql::class,
+            Gql::EVENT_AFTER_EXECUTE_GQL_QUERY,
+            static function(ExecuteGqlQueryEvent $event) use (&$graphqlCacheSetting) {
+                if ($graphqlCacheSetting === null || !self::queryRunsSearch($event->query)) {
+                    return;
+                }
+
+                Craft::$app->getConfig()->getGeneral()->enableGraphqlCaching = $graphqlCacheSetting;
+                $graphqlCacheSetting = null;
+            }
+        );
+    }
+
+    /**
+     * Return whether a GraphQL operation includes the side-effecting search resolver.
+     *
+     * @param string $query
+     * @return bool
+     * @since 5.53.0
+     */
+    private static function queryRunsSearch(string $query): bool
+    {
+        return str_contains($query, 'searchManagerSearch');
     }
 
     /**

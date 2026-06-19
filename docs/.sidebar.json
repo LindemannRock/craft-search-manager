@@ -62,6 +62,7 @@
 			"developers/events",
 			"developers/template-variables",
 			"developers/twig-globals",
+			"developers/graphql",
 			"developers/custom-transformers",
 			"developers/api-reference",
 			"developers/shared-features"

@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'Opprett API-nøkler',
     'Edit API keys' => 'Rediger API-nøkler',
     'Revoke API keys' => 'Tilbakekall API-nøkler',
+    'Query {name} data' => 'Spørr {name}-data',
 
     // Common
     'Loading...' => 'Laster...',

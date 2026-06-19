@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'API-Schlüssel erstellen',
     'Edit API keys' => 'API-Schlüssel bearbeiten',
     'Revoke API keys' => 'API-Schlüssel widerrufen',
+    'Query {name} data' => '{name} Daten abfragen',
 
     // Common
     'Loading...' => 'Wird geladen...',

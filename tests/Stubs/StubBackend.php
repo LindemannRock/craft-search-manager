@@ -31,6 +31,19 @@ final class StubBackend extends BackendService
     public bool $failBatchIndex = false;
     public bool $failBatchDelete = false;
 
+    /** @var array<string, mixed> */
+    public array $searchResponse = [
+        'hits' => [],
+        'total' => 0,
+    ];
+
+    /** @var array<string, mixed> */
+    public array $searchMultipleResponse = [
+        'hits' => [],
+        'total' => 0,
+        'indices' => [],
+    ];
+
     /**
      * @param array<int, array<string, mixed>> $items
      */
@@ -54,6 +67,48 @@ final class StubBackend extends BackendService
     public function clearSearchCache(string $indexName): void
     {
         $this->calls[] = ['method' => 'clearSearchCache', 'indexName' => $indexName];
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    public function search(string $indexName, string $query, array $options = []): array
+    {
+        $this->calls[] = [
+            'method' => 'search',
+            'indexName' => $indexName,
+            'items' => [
+                [
+                    'query' => $query,
+                    'options' => $options,
+                ],
+            ],
+        ];
+
+        return $this->searchResponse;
+    }
+
+    /**
+     * @param array<int, string> $indexNames
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    public function searchMultiple(array $indexNames, string $query, array $options = []): array
+    {
+        $this->calls[] = [
+            'method' => 'searchMultiple',
+            'indexName' => implode(',', $indexNames),
+            'items' => [
+                [
+                    'query' => $query,
+                    'indices' => $indexNames,
+                    'options' => $options,
+                ],
+            ],
+        ];
+
+        return $this->searchMultipleResponse;
     }
 
     /**

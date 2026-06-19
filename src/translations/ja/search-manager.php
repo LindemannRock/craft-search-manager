@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'API キーを作成',
     'Edit API keys' => 'API キーを編集',
     'Revoke API keys' => 'API キーを失効',
+    'Query {name} data' => '{name} データを照会する',
 
     // Common
     'Loading...' => '読み込み中...',

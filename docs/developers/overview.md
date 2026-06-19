@@ -20,6 +20,7 @@ Search Manager follows a modular architecture:
 | Index custom elements | Custom transformer class | [Custom Transformers](custom-transformers.md) |
 | React to search events | Event listeners | [Events](events.md) |
 | Add Twig functionality | Template variables and globals | [Template Variables](template-variables.md), [Twig Globals](twig-globals.md) |
+| Query search from a SPA | Craft GraphQL queries | [GraphQL](graphql.md) |
 | Manage from CLI | Console commands | [Console Commands](console-commands.md) |
 | Control access | Permissions | [Permissions](permissions.md) |
 | Base plugin utilities | Shared features from lindemannrock-base | [Shared Features](shared-features.md) |

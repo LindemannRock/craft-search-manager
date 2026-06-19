@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'إنشاء مفاتيح API',
     'Edit API keys' => 'تحرير مفاتيح API',
     'Revoke API keys' => 'إبطال مفاتيح API',
+    'Query {name} data' => 'الاستعلام عن بيانات {name}',
 
     // Common
     'Loading...' => 'جارٍ التحميل...',

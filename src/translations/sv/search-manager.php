@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'Skapa API-nycklar',
     'Edit API keys' => 'Redigera API-nycklar',
     'Revoke API keys' => 'Återkalla API-nycklar',
+    'Query {name} data' => 'Fråga {name}-data',
 
     // Common
     'Loading...' => 'Laddar...',

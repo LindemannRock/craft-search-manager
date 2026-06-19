@@ -74,6 +74,7 @@ return [
     'Create API keys' => 'Opret API-nøgler',
     'Edit API keys' => 'Rediger API-nøgler',
     'Revoke API keys' => 'Tilbagekald API-nøgler',
+    'Query {name} data' => 'Forespørg {name}-data',
 
     // Common
     'Loading...' => 'Indlæser...',
