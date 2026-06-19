@@ -1,6 +1,6 @@
 # Multi-Index Search
 
-Search across multiple indices at once and get merged, scored results.
+Search across multiple indices at once and get one merged result set.
 
 ## Basic Multi-Index Search
 
@@ -27,7 +27,7 @@ Search across multiple indices at once and get merged, scored results.
     'hits' => [
         ['elementId' => 123, 'backendId' => '123_1', 'score' => 45.2, '_index' => 'products'],
         ['elementId' => 456, 'backendId' => '456_1', 'score' => 38.1, '_index' => 'blog'],
-        // Merged and sorted by score
+        // Merged using each backend's relevance signal when available
     ],
     'total' => 150,
     'indices' => [
@@ -37,9 +37,11 @@ Search across multiple indices at once and get merged, scored results.
 ]
 ```
 
-- Results are merged and sorted by relevance score across all indices
+- Results are merged using each backend's relevance signal when available
 - Each hit includes `_index` to identify its source
 - `indices` provides per-index result counts
+
+Scores are backend-specific. Built-in backends use Search Manager's BM25 score, Meilisearch and Typesense can expose provider ranking values, Algolia may not include a comparable numeric score, and promoted results can use `score: null`. Do not compare scores across different backend types.
 
 ## Per-Index Breakdown
 
@@ -78,7 +80,9 @@ Group results by their source index:
             {% if entry %}
                 <div>
                     <a href="{{ entry.url }}">{{ entry.title }}</a>
-                    <small>Score: {{ hit.score|number_format(2) }}</small>
+                    {% if hit.score is defined and hit.score is not null %}
+                        <small>Score: {{ hit.score|number_format(2) }}</small>
+                    {% endif %}
                 </div>
             {% endif %}
         {% endfor %}

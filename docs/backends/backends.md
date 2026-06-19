@@ -4,15 +4,15 @@ Search Manager supports seven search backends. You can configure multiple backen
 
 ## Choosing a Backend
 
-| Backend | Best For | External Service | BM25 Ranking | Browse API |
-|---------|----------|-----------------|--------------|------------|
-| [MySQL](backend-mysql.md) | Most Craft sites (up to ~50k elements per index) | No | Yes | No |
-| [PostgreSQL](backend-postgresql.md) | PostgreSQL-based Craft sites (up to ~50k elements per index) | No | Yes | No |
-| [Redis](backend-redis.md) | Multi-server setups, 50k+ element indices | No (PHP extension) | Yes | No |
-| [File](backend-file.md) | Development, prototyping (under ~500 elements) | No | Yes | No |
-| [Algolia](backend-algolia.md) | Cloud-hosted, Scout replacement | Yes | Native | Yes |
-| [Meilisearch](backend-meilisearch.md) | Self-hosted Algolia alternative | Yes | Native | Yes |
-| [Typesense](backend-typesense.md) | Self-hosted, native typo tolerance | Yes | Native | Yes |
+| Backend | Best For | External Service | Ranking Model | Browse API |
+|---------|----------|-----------------|---------------|------------|
+| [MySQL](backend-mysql.md) | Most Craft sites (up to ~50k elements per index) | No | Search Manager BM25 | No |
+| [PostgreSQL](backend-postgresql.md) | PostgreSQL-based Craft sites (up to ~50k elements per index) | No | Search Manager BM25 | No |
+| [Redis](backend-redis.md) | Multi-server setups, 50k+ element indices | No (PHP extension) | Search Manager BM25 | No |
+| [File](backend-file.md) | Development, prototyping (under ~500 elements) | No | Search Manager BM25 | No |
+| [Algolia](backend-algolia.md) | Cloud-hosted, Scout replacement | Yes | Algolia ranking | Yes |
+| [Meilisearch](backend-meilisearch.md) | Self-hosted Algolia alternative | Yes | Meilisearch ranking | Yes |
+| [Typesense](backend-typesense.md) | Self-hosted, native typo tolerance | Yes | Typesense ranking | Yes |
 
 ### Quick Decision Guide
 
@@ -48,6 +48,18 @@ The external backends (Algolia, Meilisearch, Typesense) use their own ranking an
 - `multipleQueries()` — batch search across multiple indices in a single request
 - `parseFilters()` — generate backend-specific filter syntax automatically
 - Native search replacement is **not available** for external backends
+
+### Result Scores
+
+The `score` field is a backend-specific relevance signal, not a universal scale:
+
+- Built-in backends return Search Manager's BM25 score.
+- Meilisearch results may include a score mapped from Meilisearch's ranking score.
+- Typesense results may include a score mapped from its text match value.
+- Algolia ranks results internally and may not return a comparable numeric score.
+- Promoted results can have `score: null`.
+
+Use `score` for debugging or display within a single backend response. Do not compare scores across different backend types or treat every score as BM25.
 
 ## Configuring Backends
 

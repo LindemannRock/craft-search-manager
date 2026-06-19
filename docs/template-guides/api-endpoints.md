@@ -154,11 +154,13 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 | `elementId` | `int` | Craft element ID. Use this for Craft element queries. |
 | `backendId` | `string` | Search Manager backend document ID, usually `{elementId}_{siteId}`. |
 | `objectID` | `int\|string` | Raw backend compatibility field. Prefer `elementId` and `backendId` in new code. |
-| `score` | `float\|null` | BM25 relevance score (`null` for promoted items) |
+| `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
 | `type` | `string` | Element type (product, category, entry, etc.) |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |
 | `title` | `string` | Element title (for promoted items) |
+
+`score` is not a universal ranking scale. It is safe to display for debugging or within one backend's results, but do not compare scores across Algolia, Meilisearch, Typesense, and built-in backends.
 
 ### Examples
 

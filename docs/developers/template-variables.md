@@ -26,7 +26,7 @@ Perform a search against a specific index.
 
 ### `searchMultiple(indexNames, query, options)`
 
-Search across multiple indices at once. Results are merged and sorted by score.
+Search across multiple indices at once. Results are merged using the backend relevance signal when available. Scores are backend-specific, so do not compare them across different backend types.
 
 ```twig
 {% set results = craft.searchManager.searchMultiple(['products', 'blog', 'pages'], 'laptop') %}

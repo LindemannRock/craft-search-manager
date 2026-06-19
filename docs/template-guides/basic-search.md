@@ -18,11 +18,15 @@ The most basic search — query an index and display results:
         <article>
             <h3><a href="{{ hit.url }}">{{ hit.title }}</a></h3>
             <p>{{ hit.excerpt ?? '' }}</p>
-            <small>Score: {{ hit.score|number_format(2) }}</small>
+            {% if hit.score is defined and hit.score is not null %}
+                <small>Score: {{ hit.score|number_format(2) }}</small>
+            {% endif %}
         </article>
     {% endfor %}
 {% endif %}
 ```
+
+`score` is optional. Built-in backends return a BM25 score, while external providers use their own ranking models and may return a different kind of score or no numeric score at all.
 
 ## Search Form
 

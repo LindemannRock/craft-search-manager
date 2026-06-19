@@ -83,9 +83,12 @@ Common hit fields:
 | `type` | Search result type used by Search Manager filters and widgets. |
 | `section` | Human-readable section/type label when indexed. |
 | `slug` | Indexed slug from `_slug`/`slug`. |
+| `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
 | `matchedTerms` | Matched query terms grouped into `title` and `content` lists when the backend provides them. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
+
+Scores are useful for debug displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.
 
 ## Filters
 

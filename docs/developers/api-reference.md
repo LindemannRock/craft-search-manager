@@ -44,7 +44,7 @@ $results = SearchManager::$plugin->backend->search('entries-en', 'craft cms', [
 
 ### `searchMultiple(indexNames, query, options)`
 
-Search across multiple indices. Results are merged and sorted by score.
+Search across multiple indices. Results are merged using the backend relevance signal when available. Scores are backend-specific; built-in backends use Search Manager's BM25 score, while external providers use their own ranking models.
 
 ```php
 $results = SearchManager::$plugin->backend->searchMultiple(
