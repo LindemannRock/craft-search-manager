@@ -21,6 +21,14 @@ The output depends on your active backend:
 | Typesense | `category:=[\`Electronics\`, \`Computers\`] && inStock:=\`true\` && brand:=\`Apple\`` |
 | MySQL/PostgreSQL/Redis/File | SQL-like filter |
 
+Backend setup still matters. Search Manager can generate the right filter syntax, but external providers require the filtered fields to be configured in the provider:
+
+- Algolia custom filter fields must be listed in `attributesForFaceting`.
+- Meilisearch custom filter fields must be listed in `filterableAttributes`.
+- Typesense custom filter fields must exist in the collection schema with filtering support.
+
+For Algolia, Search Manager automatically configures only its built-in filter fields: `siteId`, `elementType`, and `type`. Fields like `brand`, `category`, `price`, or `inStock` must be added in Algolia before those filters can work.
+
 ## Filtering Search Results
 
 Combine filters with a search query:
