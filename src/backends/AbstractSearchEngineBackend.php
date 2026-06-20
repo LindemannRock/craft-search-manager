@@ -655,7 +655,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         );
 
         $siteCache = [];
-        $elementTermsCache = [];
 
         $hitCount = count($hits);
         $limit = $maxHits > 0 ? min($maxHits, $hitCount) : $hitCount;
@@ -664,6 +663,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $parsedQuery = QueryParser::hasAdvancedOperators($query) ? QueryParser::parse($query) : null;
         $phrases = $parsedQuery !== null ? $parsedQuery->phrases : [];
         $isPhraseOnly = !empty($phrases) && empty($parsedQuery->terms) && empty($parsedQuery->wildcards);
+        $elementTermsCache = $this->preloadMatchedFieldTerms($hits, $siteId, $storage, $limit);
 
         for ($i = 0; $i < $limit; $i++) {
             $hit = &$hits[$i];
@@ -727,17 +727,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $matchedIn = [];
 
             $cacheKey = $hitSiteId . ':' . (int)$elementId;
-            if (!isset($elementTermsCache[$cacheKey])) {
-                $titleTerms = $storage->getTitleTerms($hitSiteId, (int)$elementId);
-                $docTerms = $storage->getDocumentTerms($hitSiteId, (int)$elementId);
-                $elementTermsCache[$cacheKey] = [
-                    'titleTerms' => $titleTerms,
-                    'docTermKeys' => array_keys($docTerms),
-                ];
-            }
-
-            $titleTerms = $elementTermsCache[$cacheKey]['titleTerms'];
-            $docTermKeys = $elementTermsCache[$cacheKey]['docTermKeys'];
+            $titleTerms = $elementTermsCache[$cacheKey]['titleTerms'] ?? [];
+            $docTermKeys = $elementTermsCache[$cacheKey]['docTermKeys'] ?? [];
 
             // Check if any matched terms appear in title or content
             $titleMatches = array_values(array_intersect($titleTerms, $actualTerms));
@@ -784,6 +775,48 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         }
 
         return $hits;
+    }
+
+    /**
+     * Preload title/content terms for the hits this response will decorate.
+     *
+     * @param array<int, mixed> $hits
+     * @return array<string, array{titleTerms: array<int, string>, docTermKeys: array<int, string>}>
+     */
+    private function preloadMatchedFieldTerms(array $hits, int $defaultSiteId, StorageInterface $storage, int $limit): array
+    {
+        $elementIdsBySite = [];
+        for ($i = 0; $i < $limit; $i++) {
+            if (!isset($hits[$i]) || !is_array($hits[$i])) {
+                continue;
+            }
+
+            $elementId = SearchHitIdentityHelper::elementId($hits[$i]);
+            if ($elementId === null) {
+                continue;
+            }
+
+            $hitSiteId = isset($hits[$i]['siteId']) && is_numeric($hits[$i]['siteId'])
+                ? (int)$hits[$i]['siteId']
+                : $defaultSiteId;
+            $elementIdsBySite[$hitSiteId][(int)$elementId] = (int)$elementId;
+        }
+
+        $elementTermsCache = [];
+        foreach ($elementIdsBySite as $siteId => $elementIds) {
+            $ids = array_values($elementIds);
+            $titleTermsByElement = $storage->getTitleTermsBatch((int)$siteId, $ids);
+            $docTermsByElement = $storage->getDocumentTermsBatch((int)$siteId, $ids);
+
+            foreach ($ids as $elementId) {
+                $elementTermsCache[(int)$siteId . ':' . $elementId] = [
+                    'titleTerms' => $titleTermsByElement[$elementId] ?? [],
+                    'docTermKeys' => array_keys($docTermsByElement[$elementId] ?? []),
+                ];
+            }
+        }
+
+        return $elementTermsCache;
     }
 
     /**

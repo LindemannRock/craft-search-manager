@@ -39,6 +39,18 @@ interface StorageInterface
     public function getDocumentTerms(int $siteId, int $elementId): array;
 
     /**
+     * Get document terms for many documents in one batch.
+     *
+     * Used by local-backend hit decoration to avoid calling
+     * {@see getDocumentTerms()} once per hit.
+     *
+     * @param int $siteId Site ID
+     * @param int[] $elementIds Element IDs to fetch document terms for
+     * @return array<int, array<string, int>> Map of elementId => [term => frequency]
+     */
+    public function getDocumentTermsBatch(int $siteId, array $elementIds): array;
+
+    /**
      * Delete a document from the index
      *
      * @param int $siteId Site ID

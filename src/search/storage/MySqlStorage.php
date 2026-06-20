@@ -161,6 +161,35 @@ class MySqlStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getDocumentTermsBatch(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        $rows = (new Query())
+            ->select(['elementId', 'term', 'frequency'])
+            ->from('{{%searchmanager_search_documents}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'elementId' => array_values(array_unique(array_map('intval', $elementIds))),
+            ])
+            ->andWhere(['!=', 'term', '_length'])
+            ->andWhere(['!=', 'term', '_language'])
+            ->all();
+
+        $byElement = [];
+        foreach ($rows as $row) {
+            $byElement[(int)$row['elementId']][(string)$row['term']] = (int)$row['frequency'];
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function deleteDocument(int $siteId, int $elementId): void
     {
         // Delete from all tables that have elementId-specific data
@@ -370,17 +399,6 @@ class MySqlStorage implements StorageInterface
             'indexHandle' => $this->indexHandle,
             'resultCount' => count($results),
             'sampleTerms' => array_slice(array_column($results, 'term'), 0, 5),
-        ]);
-
-        // Debug: Check what indexHandles exist in the table
-        $existingHandles = (new \craft\db\Query())
-            ->select(['indexHandle'])
-            ->from('{{%searchmanager_search_terms}}')
-            ->distinct()
-            ->column();
-        $this->logDebug('getTermsForAutocomplete: Existing indexHandles in DB', [
-            'handles' => $existingHandles,
-            'lookingFor' => $this->indexHandle,
         ]);
 
         $terms = [];

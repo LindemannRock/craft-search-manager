@@ -150,6 +150,26 @@ class FileStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getDocumentTermsBatch(int $siteId, array $elementIds): array
+    {
+        $byElement = [];
+
+        foreach (array_values(array_unique(array_map('intval', $elementIds))) as $elementId) {
+            $data = $this->readFile($this->getDocPath($siteId, $elementId));
+            if (empty($data)) {
+                continue;
+            }
+
+            unset($data['_length'], $data['_language']);
+            $byElement[$elementId] = array_map('intval', $data);
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function deleteDocument(int $siteId, int $elementId): void
     {
         // Delete document data file

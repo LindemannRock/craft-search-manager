@@ -47,6 +47,15 @@ final class RecordingStorage implements StorageInterface
     /** @var int Times updateMetadata() was called. */
     public int $updateMetadataCalls = 0;
 
+    /** @var int Times getDocumentTerms() (per-document) was called. */
+    public int $getDocumentTermsCalls = 0;
+
+    /** @var int Times getDocumentTermsBatch() was called. */
+    public int $getDocumentTermsBatchCalls = 0;
+
+    /** @var int[] Element-id counts passed to each getDocumentTermsBatch() call. */
+    public array $getDocumentTermsBatchSizes = [];
+
     /** @var array<int, array{siteId: int, docLength: int, isAddition: bool}> */
     public array $updateMetadataEvents = [];
 
@@ -143,7 +152,25 @@ final class RecordingStorage implements StorageInterface
 
     public function getDocumentTerms(int $siteId, int $elementId): array
     {
+        $this->getDocumentTermsCalls++;
+
         return $this->documentTermsById[$siteId . ':' . $elementId] ?? [];
+    }
+
+    public function getDocumentTermsBatch(int $siteId, array $elementIds): array
+    {
+        $this->getDocumentTermsBatchCalls++;
+        $this->getDocumentTermsBatchSizes[] = count($elementIds);
+
+        $out = [];
+        foreach ($elementIds as $elementId) {
+            $terms = $this->documentTermsById[$siteId . ':' . (int)$elementId] ?? [];
+            if (!empty($terms)) {
+                $out[(int)$elementId] = $terms;
+            }
+        }
+
+        return $out;
     }
 
     public function getDocumentLength(int $siteId, int $elementId): int

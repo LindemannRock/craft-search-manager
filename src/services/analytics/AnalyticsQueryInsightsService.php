@@ -532,11 +532,20 @@ class AnalyticsQueryInsightsService
 
         $currentResults = $currentQuery->all();
 
+        $currentQueryTexts = array_values(array_unique(array_filter(
+            array_map(static fn(array $row): string => (string)($row['query'] ?? ''), $currentResults),
+            static fn(string $query): bool => $query !== '',
+        )));
+        if (empty($currentQueryTexts)) {
+            return [];
+        }
+
         $previousInner = (new Query())
             ->select(['query'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['>=', 'dateCreated', Db::prepareDateForDb($previousStart)])
             ->andWhere(['<=', 'dateCreated', Db::prepareDateForDb($previousEnd)])
+            ->andWhere(['query' => $currentQueryTexts])
             ->groupBy(['query', new Expression($identityExpr)]);
 
         if ($siteId) {
