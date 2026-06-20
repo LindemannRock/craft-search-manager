@@ -310,8 +310,9 @@ class SearchEngine
             }
 
             // Process regular terms
+            $boostMatchesByTerm = [];
             if (!empty($parsed->terms)) {
-                $termScores = $this->searchTerms($parsed->terms, $parsed->operator, $siteId, $totalDocs, $avgDocLength);
+                $termScores = $this->searchTerms($parsed->terms, $parsed->operator, $siteId, $totalDocs, $avgDocLength, $boostMatchesByTerm);
                 $docScores = $this->mergeScores($docScores, $termScores, $parsed->operator);
                 $allDocIds = array_unique(array_merge($allDocIds, array_keys($termScores)));
             }
@@ -330,7 +331,7 @@ class SearchEngine
 
             // Apply boost factors
             if (!empty($parsed->boosts)) {
-                $docScores = $this->applyBoosts($docScores, $parsed->boosts);
+                $docScores = $this->applyBoosts($docScores, $parsed->boosts, $boostMatchesByTerm);
             }
 
             // Exclude NOT terms
@@ -736,10 +737,19 @@ class SearchEngine
      * @param int $siteId Site ID
      * @param int $totalDocs Total document count
      * @param float $avgDocLength Average document length
+     * @param array<string, array<string, bool>>|null $matchedDocIdsByTerm Matched doc IDs keyed by normalized query term
      * @return array Document scores [docId => score]
      */
-    private function searchTerms(array $terms, string $operator, int $siteId, int $totalDocs, float $avgDocLength): array
-    {
+    private function searchTerms(
+        array $terms,
+        string $operator,
+        int $siteId,
+        int $totalDocs,
+        float $avgDocLength,
+        ?array &$matchedDocIdsByTerm = null,
+    ): array {
+        $matchedDocIdsByTerm ??= [];
+
         // Tokenize and filter terms
         $processedTerms = [];
         foreach ($terms as $term) {
@@ -783,6 +793,7 @@ class SearchEngine
 
                     foreach ($fuzzyDocs as $docId => $freq) {
                         $termMatches[$termIndex][$docId] = true;
+                        $matchedDocIdsByTerm[$term][$docId] = true;
                         $allDocIds[$docId] = true;
                     }
                 }
@@ -791,6 +802,7 @@ class SearchEngine
                 $termDocsCache[$term] = $termDocs;
                 foreach (array_keys($termDocs) as $docId) {
                     $termMatches[$termIndex][$docId] = true;
+                    $matchedDocIdsByTerm[$term][$docId] = true;
                     $allDocIds[$docId] = true;
                 }
             }
@@ -967,14 +979,18 @@ class SearchEngine
      * @param array $boosts Boost factors ['term' => factor]
      * @return array Boosted document scores
      */
-    private function applyBoosts(array $docScores, array $boosts): array
+    private function applyBoosts(array $docScores, array $boosts, array $matchedDocIdsByTerm): array
     {
-        // This is simplified - ideally we'd track which terms matched which documents
-        // For now, apply average boost to all documents
-        $avgBoost = array_sum($boosts) / count($boosts);
+        foreach ($boosts as $term => $boost) {
+            $tokens = $this->filterTokens($this->tokenizer->tokenize((string)$term));
 
-        foreach ($docScores as $docId => $score) {
-            $docScores[$docId] = $score * $avgBoost;
+            foreach (array_unique($tokens) as $token) {
+                foreach (array_keys($matchedDocIdsByTerm[$token] ?? []) as $docId) {
+                    if (isset($docScores[$docId])) {
+                        $docScores[$docId] *= (float)$boost;
+                    }
+                }
+            }
         }
 
         return $docScores;
