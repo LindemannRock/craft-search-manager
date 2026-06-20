@@ -1,0 +1,231 @@
+<?php
+/**
+ * LindemannRock Search Manager
+ *
+ * @link      https://lindemannrock.com
+ * @copyright Copyright (c) 2026 LindemannRock
+ */
+
+declare(strict_types=1);
+
+namespace lindemannrock\searchmanager\tests\Integration;
+
+use Craft;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
+use lindemannrock\searchmanager\jobs\CacheWarmJob;
+use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\tests\TestCase;
+
+/**
+ * Regression coverage for analytics queries that feed search caching and cache warming.
+ */
+final class AnalyticsCacheBoundedQueriesTest extends TestCase
+{
+    private const TEST_SITE_ID = 999997;
+    private const TEST_BACKEND = 'test-analytics-cache-bounded';
+    private const TEST_INDEX = 'test-cache-warm-bounded';
+
+    private bool $originalEnableCache = true;
+    private bool $originalPopularOnly = false;
+    private int $originalPopularThreshold = 5;
+    private int $originalAnalyticsRetention = 90;
+    private ?string $indexHandle = null;
+
+    /** @var list<string> */
+    private array $testQueries = [];
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $settings = SearchManager::$plugin->getSettings();
+        $this->originalEnableCache = $settings->enableCache;
+        $this->originalPopularOnly = $settings->cachePopularQueriesOnly;
+        $this->originalPopularThreshold = $settings->popularQueryThreshold;
+        $this->originalAnalyticsRetention = $settings->analyticsRetention;
+
+        $settings->enableCache = true;
+        $settings->cachePopularQueriesOnly = true;
+        $settings->popularQueryThreshold = 3;
+        $settings->analyticsRetention = 30;
+
+        $pair = $this->findWorkingIndexAndElement();
+        $this->indexHandle = $pair !== null ? $pair[0]->handle : $this->firstEnabledIndexHandle();
+
+        if ($this->indexHandle !== null) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
+        }
+    }
+
+    protected function tearDown(): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $settings->enableCache = $this->originalEnableCache;
+        $settings->cachePopularQueriesOnly = $this->originalPopularOnly;
+        $settings->popularQueryThreshold = $this->originalPopularThreshold;
+        $settings->analyticsRetention = $this->originalAnalyticsRetention;
+
+        if ($this->indexHandle !== null) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
+        }
+
+        $this->deleteTestAnalyticsRows();
+
+        parent::tearDown();
+    }
+
+    public function testPopularQueryProbeUsesBoundedThresholdLogic(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/BackendService.php');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('private function _isQueryPopularForCache', $source);
+        self::assertStringContainsString('->limit($rowsNeededBeforeCurrentSearch)', $source);
+        self::assertStringNotContainsString('private function _getQuerySearchCount', $source);
+
+        $methodStart = strpos($source, 'private function _isQueryPopularForCache');
+        self::assertIsInt($methodStart);
+        $methodBody = substr($source, $methodStart, 1600);
+
+        self::assertStringNotContainsString('->count(', $methodBody);
+    }
+
+    public function testPopularOnlyCacheWritesWhenPendingSearchMeetsThreshold(): void
+    {
+        $handle = $this->requireIndex();
+        $query = $this->markerQuery('popular');
+
+        $this->seedAnalyticsRows($query, 2);
+
+        $first = SearchManager::$plugin->backend->search($handle, $query, [
+            'limit' => 10,
+            'skipAnalytics' => true,
+        ]);
+        self::assertFalse($first['meta']['cached'], 'first threshold-crossing search still executes before writing cache');
+
+        $second = SearchManager::$plugin->backend->search($handle, $query, [
+            'limit' => 10,
+            'skipAnalytics' => true,
+        ]);
+        self::assertTrue($second['meta']['cached'], 'query should be cached once stored rows plus pending search meet threshold');
+    }
+
+    public function testPopularOnlyCacheDoesNotWriteBelowThreshold(): void
+    {
+        $handle = $this->requireIndex();
+        $query = $this->markerQuery('unpopular');
+
+        $this->seedAnalyticsRows($query, 1);
+
+        $first = SearchManager::$plugin->backend->search($handle, $query, [
+            'limit' => 10,
+            'skipAnalytics' => true,
+        ]);
+        self::assertFalse($first['meta']['cached']);
+
+        $second = SearchManager::$plugin->backend->search($handle, $query, [
+            'limit' => 10,
+            'skipAnalytics' => true,
+        ]);
+        self::assertFalse($second['meta']['cached'], 'below-threshold queries must not get a cache entry');
+    }
+
+    public function testCacheWarmPopularQueriesAreDateBounded(): void
+    {
+        $recentQuery = $this->markerQuery('recent-warm');
+        $oldQuery = $this->markerQuery('old-warm');
+
+        $this->seedAnalyticsRows($recentQuery, 1, self::TEST_INDEX, new \DateTime('-1 day'));
+        $this->seedAnalyticsRows($oldQuery, 20, self::TEST_INDEX, new \DateTime('-60 days'));
+
+        $method = new \ReflectionMethod(CacheWarmJob::class, 'getPopularQueries');
+        $method->setAccessible(true);
+
+        $results = $method->invoke(new CacheWarmJob(), self::TEST_INDEX, 1);
+
+        self::assertCount(1, $results);
+        self::assertSame($recentQuery, $results[0]['query']);
+        self::assertSame(self::TEST_SITE_ID, (int)$results[0]['siteId']);
+    }
+
+    private function firstEnabledIndexHandle(): ?string
+    {
+        foreach (SearchIndex::findAll() as $index) {
+            if ($index->enabled && SearchManager::$plugin->backend->getBackendForIndex($index->handle) !== null) {
+                return $index->handle;
+            }
+        }
+
+        return null;
+    }
+
+    private function requireIndex(): string
+    {
+        if ($this->indexHandle === null) {
+            $this->markTestSkipped('No enabled index with a working backend available.');
+        }
+
+        if (!SearchManager::$plugin->getSettings()->enableCache) {
+            $this->markTestSkipped('enableCache is overridden off (config), cannot test cache behaviour.');
+        }
+
+        if (!SearchManager::$plugin->getSettings()->cachePopularQueriesOnly) {
+            $this->markTestSkipped('cachePopularQueriesOnly is overridden off (config), cannot test popular-only cache behaviour.');
+        }
+
+        return $this->indexHandle;
+    }
+
+    private function markerQuery(string $label): string
+    {
+        $query = '__sm_analytics_cache_' . $label . '_' . StringHelper::UUID();
+        $this->testQueries[] = $query;
+
+        return $query;
+    }
+
+    private function seedAnalyticsRows(string $query, int $count, string $indexHandle = self::TEST_INDEX, ?\DateTimeInterface $dateCreated = null): void
+    {
+        $dateCreated ??= new \DateTime();
+
+        for ($i = 0; $i < $count; $i++) {
+            Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
+                'indexHandle' => $indexHandle,
+                'query' => $query,
+                'resultsCount' => 1,
+                'executionTime' => 1.0,
+                'backend' => self::TEST_BACKEND,
+                'siteId' => self::TEST_SITE_ID,
+                'sessionId' => null,
+                'isHit' => 1,
+                'wasRedirected' => 0,
+                'promotionsShown' => 0,
+                'synonymsExpanded' => 0,
+                'rulesMatched' => 0,
+                'isRobot' => 0,
+                'isMobileApp' => 0,
+                'dateCreated' => Db::prepareDateForDb($dateCreated),
+                'uid' => StringHelper::UUID(),
+            ])->execute();
+        }
+    }
+
+    private function deleteTestAnalyticsRows(): void
+    {
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchmanager_analytics}}', ['backend' => self::TEST_BACKEND])
+            ->execute();
+
+        if ($this->testQueries === []) {
+            return;
+        }
+
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchmanager_analytics}}', ['query' => $this->testQueries])
+            ->execute();
+    }
+}

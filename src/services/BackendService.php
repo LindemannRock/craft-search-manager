@@ -617,16 +617,11 @@ class BackendService extends Component
         // This ensures disabled/expired promotions are immediately excluded
         if ($settings->enableCache && !$backendFailed) {
             if ($settings->cachePopularQueriesOnly) {
-                // Check if query is popular enough
-                // +1 because current search will be tracked AFTER this check (line ~504)
-                // Without +1, threshold of 3 would require 4 searches before caching
-                $searchCount = $this->_getQuerySearchCount($query) + 1;
-                if ($searchCount >= $settings->popularQueryThreshold) {
+                if ($this->_isQueryPopularForCache($query, $settings->popularQueryThreshold)) {
                     $this->_saveToCache($indexName, $query, $options, $results);
                 } else {
                     $this->logDebug('Query not popular enough to cache', [
                         'query' => $query,
-                        'count' => $searchCount,
                         'threshold' => $settings->popularQueryThreshold,
                     ]);
                 }
@@ -1349,29 +1344,37 @@ class BackendService extends Component
     }
 
     /**
-     * Get search count for a query from analytics
+     * Determine whether the query has reached the popular-query cache threshold.
      *
-     * Uses normalized query matching (case-insensitive) for better accuracy
-     *
-     * @param string $query
-     * @return int
+     * Uses a bounded row probe instead of an exact all-time COUNT. The current
+     * search is still treated as a pending +1 because analytics is tracked after
+     * the cache write decision.
      */
-    private function _getQuerySearchCount(string $query): int
+    private function _isQueryPopularForCache(string $query, int $threshold): bool
     {
-        try {
-            // Normalize the query for matching
-            $normalizedQuery = $this->_normalizeQueryForCache($query);
+        if ($threshold <= 1) {
+            return true;
+        }
 
-            return (int)(new \craft\db\Query())
+        try {
+            $normalizedQuery = $this->_normalizeQueryForCache($query);
+            $rowsNeededBeforeCurrentSearch = $threshold - 1;
+
+            $matchingRows = (new \craft\db\Query())
+                ->select(['id'])
                 ->from('{{%searchmanager_analytics}}')
                 ->where(['query' => $normalizedQuery])
-                ->count();
+                ->limit($rowsNeededBeforeCurrentSearch)
+                ->column();
+
+            return count($matchingRows) >= $rowsNeededBeforeCurrentSearch;
         } catch (\Throwable $e) {
-            $this->logError('Failed to get query search count', [
+            $this->logError('Failed to check popular-query cache threshold', [
                 'query' => $query,
+                'threshold' => $threshold,
                 'error' => $e->getMessage(),
             ]);
-            return 0;
+            return false;
         }
     }
 }

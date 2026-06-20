@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\jobs;
 
 use Craft;
+use craft\helpers\Db;
 use craft\queue\BaseJob;
 use lindemannrock\base\traits\QueueTtrTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -143,11 +144,16 @@ class CacheWarmJob extends BaseJob implements RetryableJobInterface
      */
     private function getPopularQueries(string $indexHandle, int $limit): array
     {
+        $settings = SearchManager::$plugin->getSettings();
+        $analyticsWindowDays = $settings->analyticsRetention > 0 ? $settings->analyticsRetention : 90;
+        $cutoffDate = (new \DateTime())->modify("-{$analyticsWindowDays} days");
+
         // Query the analytics table for popular queries
         $results = (new \craft\db\Query())
             ->select(['query', 'siteId', 'COUNT(*) as searchCount'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['indexHandle' => $indexHandle])
+            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb($cutoffDate)])
             ->andWhere(['not', ['query' => null]])
             ->andWhere(['not', ['query' => '']])
             ->groupBy(['query', 'siteId'])
