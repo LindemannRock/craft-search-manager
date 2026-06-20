@@ -239,6 +239,30 @@ class RedisStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getDocumentLanguagesBatch(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        $ids = array_values(array_unique(array_map('intval', $elementIds)));
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($ids as $elementId) {
+            $this->redis->hGet($this->getDocKey($siteId, $elementId), '_language');
+        }
+        $results = $this->redis->exec();
+
+        $byElement = [];
+        foreach ($ids as $index => $elementId) {
+            $byElement[$elementId] = ($results[$index] ?? null) ?: 'en';
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getDocumentLengthsBatch(array $docIds): array
     {
         $lengths = [];

@@ -913,6 +913,17 @@ class SearchEngine
         // For now, only support 'title' and 'content' fields
         // This is a simplified implementation - full field support requires indexing changes
 
+        $titleTermsByElement = [];
+        if (isset($fieldFilters['title'])) {
+            $titleElementIds = [];
+            foreach (array_keys($docScores) as $docId) {
+                $parts = explode(':', (string)$docId);
+                $titleElementIds[] = (int)($parts[1] ?? $parts[0]);
+            }
+
+            $titleTermsByElement = $this->storage->getTitleTermsBatch($siteId, array_values(array_unique($titleElementIds)));
+        }
+
         $filteredScores = [];
 
         foreach ($docScores as $docId => $score) {
@@ -923,7 +934,7 @@ class SearchEngine
                     // Check if any of the terms are in the title
                     $parts = explode(':', $docId);
                     $elementId = (int)($parts[1] ?? $parts[0]);
-                    $titleTerms = $this->storage->getTitleTerms($siteId, $elementId);
+                    $titleTerms = $titleTermsByElement[$elementId] ?? [];
 
                     $hasMatch = false;
                     foreach ($terms as $term) {
@@ -1046,14 +1057,30 @@ class SearchEngine
     private function filterByLanguage(array $docScores, string $language, int $siteId): array
     {
         $filtered = [];
+        $elementIdsBySite = [];
+
+        foreach (array_keys($docScores) as $docId) {
+            $parts = explode(':', $docId);
+            $elemSiteId = (int)$parts[0];
+            $elementId = (int)($parts[1] ?? $parts[0]);
+            $elementIdsBySite[$elemSiteId][] = $elementId;
+        }
+
+        $languagesByDocId = [];
+        foreach ($elementIdsBySite as $elemSiteId => $elementIds) {
+            $languagesByElement = $this->storage->getDocumentLanguagesBatch((int)$elemSiteId, array_values(array_unique($elementIds)));
+            foreach ($languagesByElement as $elementId => $docLanguage) {
+                $languagesByDocId[$elemSiteId . ':' . $elementId] = $docLanguage;
+            }
+        }
 
         foreach ($docScores as $docId => $score) {
             $parts = explode(':', $docId);
             $elemSiteId = (int)$parts[0];
             $elementId = (int)($parts[1] ?? $parts[0]);
+            $docKey = $elemSiteId . ':' . $elementId;
 
-            // Get document language
-            $docLanguage = $this->storage->getDocumentLanguage($elemSiteId, $elementId);
+            $docLanguage = $languagesByDocId[$docKey] ?? 'en';
 
             // Check if language matches (exact or generic match)
             if ($this->languageMatches($docLanguage, $language)) {

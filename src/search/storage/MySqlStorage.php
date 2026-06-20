@@ -137,6 +137,34 @@ class MySqlStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getDocumentLanguagesBatch(int $siteId, array $elementIds): array
+    {
+        if (empty($elementIds)) {
+            return [];
+        }
+
+        $rows = (new Query())
+            ->select(['elementId', 'language'])
+            ->from('{{%searchmanager_search_documents}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'elementId' => array_values(array_unique(array_map('intval', $elementIds))),
+                'term' => '_language',
+            ])
+            ->all();
+
+        $byElement = [];
+        foreach ($rows as $row) {
+            $byElement[(int)$row['elementId']] = (string)($row['language'] ?: 'en');
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getDocumentTerms(int $siteId, int $elementId): array
     {
         $rows = (new Query())

@@ -27,8 +27,6 @@ class AutocompleteService extends Component
 {
     use LoggingTrait;
 
-    private static bool $redisFallbackLogged = false;
-
     /**
      * @inheritdoc
      */
@@ -565,20 +563,13 @@ class AutocompleteService extends Component
 
         // Use Redis/database cache if configured
         if ($settings->cacheStorageMethod === 'redis') {
-            $cache = \Craft::$app->cache;
-            if ($cache instanceof \yii\redis\Cache) {
+            $cache = PluginHelper::getRedisCacheOrLog(SearchManager::$plugin->id);
+            if ($cache !== null) {
                 $cached = $cache->get($fullCacheKey);
                 if ($cached !== false) {
                     return $cached;
                 }
                 return null;
-            }
-
-            if (!self::$redisFallbackLogged) {
-                $this->logWarning('Redis cache selected but Craft cache is not Redis; falling back to file cache', [
-                    'cacheClass' => get_class($cache),
-                ]);
-                self::$redisFallbackLogged = true;
             }
         }
 

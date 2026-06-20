@@ -43,4 +43,18 @@ class RedisCacheSafeguardTest extends TestCase
             );
         }
     }
+
+    public function testAutocompleteCacheReadPathUsesRedisSafeguardHelper(): void
+    {
+        $sourceFile = dirname(__DIR__, 2) . '/src/services/AutocompleteService.php';
+        $source = file_get_contents($sourceFile);
+        $this->assertIsString($source);
+
+        preg_match('/private function getFromCache\(.*?private function saveToCache/s', $source, $matches);
+        $this->assertNotEmpty($matches);
+
+        $getFromCacheSource = $matches[0];
+        $this->assertStringContainsString('PluginHelper::getRedisCacheOrLog', $getFromCacheSource);
+        $this->assertStringNotContainsString('instanceof \\yii\\redis\\Cache', $getFromCacheSource);
+    }
 }

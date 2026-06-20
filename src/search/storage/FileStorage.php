@@ -132,6 +132,21 @@ class FileStorage implements StorageInterface
     /**
      * @inheritdoc
      */
+    public function getDocumentLanguagesBatch(int $siteId, array $elementIds): array
+    {
+        $byElement = [];
+
+        foreach (array_values(array_unique(array_map('intval', $elementIds))) as $elementId) {
+            $data = $this->readFile($this->getDocPath($siteId, $elementId));
+            $byElement[$elementId] = $data['_language'] ?? 'en';
+        }
+
+        return $byElement;
+    }
+
+    /**
+     * @inheritdoc
+     */
     public function getDocumentTerms(int $siteId, int $elementId): array
     {
         $docPath = $this->getDocPath($siteId, $elementId);

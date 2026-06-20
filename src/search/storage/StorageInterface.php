@@ -85,6 +85,18 @@ interface StorageInterface
      */
     public function getDocumentLanguage(int $siteId, int $elementId): string;
 
+    /**
+     * Get document languages for many documents in one batch.
+     *
+     * Used by language-filtered local searches to avoid calling
+     * {@see getDocumentLanguage()} once per matched document.
+     *
+     * @param int $siteId Site ID
+     * @param int[] $elementIds Element IDs to fetch languages for
+     * @return array<int, string> Map of elementId => language code
+     */
+    public function getDocumentLanguagesBatch(int $siteId, array $elementIds): array;
+
     // =========================================================================
     // TERM OPERATIONS
     // =========================================================================

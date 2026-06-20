@@ -56,6 +56,15 @@ final class RecordingStorage implements StorageInterface
     /** @var int[] Element-id counts passed to each getDocumentTermsBatch() call. */
     public array $getDocumentTermsBatchSizes = [];
 
+    /** @var int Times getDocumentLanguage() (per-document) was called. */
+    public int $getDocumentLanguageCalls = 0;
+
+    /** @var int Times getDocumentLanguagesBatch() was called. */
+    public int $getDocumentLanguagesBatchCalls = 0;
+
+    /** @var int[] Element-id counts passed to each getDocumentLanguagesBatch() call. */
+    public array $getDocumentLanguagesBatchSizes = [];
+
     /** @var array<int, array{siteId: int, docLength: int, isAddition: bool}> */
     public array $updateMetadataEvents = [];
 
@@ -66,6 +75,7 @@ final class RecordingStorage implements StorageInterface
      * @param array<string, float> $fuzzyCandidates term => similarity, returned from getTermsByNgramSimilarity()
      * @param array<string, array<string, int>> $documentTermsById docId => [term => freq], for delete/indexing contract tests
      * @param array<string, int> $documentLengthsById docId => document length, for delete/indexing contract tests
+     * @param array<string, string> $documentLanguagesById docId => language, for language-filter batching tests
      */
     public function __construct(
         private array $termDocs,
@@ -76,6 +86,7 @@ final class RecordingStorage implements StorageInterface
         private array $fuzzyCandidates = [],
         private array $documentTermsById = [],
         private array $documentLengthsById = [],
+        private array $documentLanguagesById = [],
     ) {
     }
 
@@ -180,7 +191,22 @@ final class RecordingStorage implements StorageInterface
 
     public function getDocumentLanguage(int $siteId, int $elementId): string
     {
-        return 'en';
+        $this->getDocumentLanguageCalls++;
+
+        return $this->documentLanguagesById[$siteId . ':' . $elementId] ?? 'en';
+    }
+
+    public function getDocumentLanguagesBatch(int $siteId, array $elementIds): array
+    {
+        $this->getDocumentLanguagesBatchCalls++;
+        $this->getDocumentLanguagesBatchSizes[] = count($elementIds);
+
+        $out = [];
+        foreach ($elementIds as $elementId) {
+            $out[(int)$elementId] = $this->documentLanguagesById[$siteId . ':' . (int)$elementId] ?? 'en';
+        }
+
+        return $out;
     }
 
     public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array

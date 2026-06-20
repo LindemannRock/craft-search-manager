@@ -96,9 +96,14 @@ class AnalyticsTrackingService
         } elseif (str_contains($indexHandle, ',')) {
             // Comma-joined indices: filter to only those that are enabled AND have analytics enabled
             $handles = array_map('trim', explode(',', $indexHandle));
+            $indicesByHandle = [];
+            foreach (\lindemannrock\searchmanager\models\SearchIndex::findAll() as $idx) {
+                $indicesByHandle[$idx->handle] = $idx;
+            }
+
             $analyticsEnabledHandles = [];
             foreach ($handles as $handle) {
-                $idx = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($handle);
+                $idx = $indicesByHandle[$handle] ?? null;
                 if ($idx && $idx->enabled && $idx->enableAnalytics) {
                     $analyticsEnabledHandles[] = $handle;
                 }
