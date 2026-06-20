@@ -343,6 +343,7 @@ final class AnalyticsSessionDedupTest extends TestCase
         ?string $intent = null,
         ?string $deviceType = null,
         int $isRobot = 0,
+        ?string $trafficType = null,
         ?float $executionTime = 1.0,
     ): void {
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
@@ -361,6 +362,11 @@ final class AnalyticsSessionDedupTest extends TestCase
             'synonymsExpanded' => 0,
             'rulesMatched' => 0,
             'isRobot' => $isRobot,
+            // Real detection always sets trafficType alongside isRobot (both come
+            // from the same DeviceDetection pass), so getBotStats() classifies by
+            // trafficType. Keep the seeded pair consistent; a bare isRobot=1 with
+            // the column's 'human' default is a state production never writes.
+            'trafficType' => $trafficType ?? ($isRobot === 1 ? 'bot' : 'human'),
             'isMobileApp' => 0,
             'dateCreated' => Db::prepareDateForDb(new \DateTime()),
             'uid' => StringHelper::UUID(),
