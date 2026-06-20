@@ -917,11 +917,7 @@ LUA;
         ];
 
         foreach ($patterns as $pattern) {
-            $keys = $this->redis->keys($pattern);
-
-            if (!empty($keys)) {
-                $this->redis->del($keys);
-            }
+            $this->deleteKeysInBatches($this->scanKeys($pattern));
         }
 
         $this->logInfo('Cleared site data', [
@@ -936,11 +932,7 @@ LUA;
     public function clearAll(): void
     {
         $pattern = $this->keyPrefix . '*';
-        $keys = $this->redis->keys($pattern);
-
-        if (!empty($keys)) {
-            $this->redis->del($keys);
-        }
+        $this->deleteKeysInBatches($this->scanKeys($pattern));
 
         $this->logInfo('Cleared all data', [
             'index' => $this->indexHandle,
@@ -983,6 +975,16 @@ LUA;
         } while ((int)$iterator > 0);
 
         return $keys;
+    }
+
+    /**
+     * @param array<int, string> $keys
+     */
+    private function deleteKeysInBatches(array $keys, int $batchSize = 500): void
+    {
+        foreach (array_chunk($keys, $batchSize) as $batch) {
+            $this->redis->del($batch);
+        }
     }
 
     /**

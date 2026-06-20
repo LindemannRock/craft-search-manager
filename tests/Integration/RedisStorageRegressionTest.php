@@ -94,10 +94,76 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame(0, $redis->nonLuaSetCalls);
     }
 
-    public function testAutocompleteMethodsDoNotContainBlockingKeysCalls(): void
+    public function testClearSiteUsesScanAndDeletesOnlyMatchingSiteKeys(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeDocument(1, 101, ['protein' => 3], 8);
+        $storage->storeTermDocument('protein', 1, 101, 3);
+        $storage->storeTitleTerms(1, 101, ['protein']);
+        $storage->storeTermNgrams('protein', ['pr', 'ro'], 1);
+        $storage->updateMetadata(1, 8, true);
+        $storage->storeElement(1, 101, 'Protein Powder', 'entry');
+
+        $storage->storeDocument(2, 202, ['protein' => 2], 7);
+        $storage->storeTermDocument('protein', 2, 202, 2);
+        $storage->storeTitleTerms(2, 202, ['protein']);
+        $storage->storeTermNgrams('protein', ['pr', 'ro'], 2);
+        $storage->updateMetadata(2, 7, true);
+        $storage->storeElement(2, 202, 'Protein Bar', 'entry');
+
+        $storage->clearSite(1);
+
+        self::assertSame(0, $redis->keysCalls);
+        self::assertSame([
+            'sm:idx:test-index:doc:1:*',
+            'sm:idx:test-index:term:*:1',
+            'sm:idx:test-index:title:1:*',
+            'sm:idx:test-index:ngram:1:*',
+            'sm:idx:test-index:ngramcount:1:*',
+            'sm:idx:test-index:meta:1:*',
+            'sm:idx:test-index:elem:1:*',
+            'sm:idx:test-index:elemindex:1',
+        ], $redis->scanPatterns);
+        self::assertFalse($redis->hasKey('sm:idx:test-index:doc:1:101'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:term:protein:1'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:title:1:101'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:ngram:1:pr'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:ngramcount:1:protein'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:meta:1:doc_count'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:elem:1:101'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:elemindex:1'));
+
+        self::assertTrue($redis->hasKey('sm:idx:test-index:doc:2:202'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:term:protein:2'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:title:2:202'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:ngram:2:pr'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:ngramcount:2:protein'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:meta:2:doc_count'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:elem:2:202'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:elemindex:2'));
+    }
+
+    public function testClearAllUsesScanAndDeletesOnlyCurrentIndexPrefix(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeDocument(1, 101, ['protein' => 3], 8);
+        $storage->storeTermDocument('protein', 1, 101, 3);
+        $redis->hSet('sm:idx:other-index:doc:1:101', 'protein', 3);
+
+        $storage->clearAll();
+
+        self::assertSame(0, $redis->keysCalls);
+        self::assertSame(['sm:idx:test-index:*'], $redis->scanPatterns);
+        self::assertFalse($redis->hasKey('sm:idx:test-index:doc:1:101'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:term:protein:1'));
+        self::assertTrue($redis->hasKey('sm:idx:other-index:doc:1:101'));
+    }
+
+    public function testRedisStorageDoesNotContainBlockingKeysCalls(): void
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/RedisStorage.php');
         self::assertIsString($source);
+        self::assertStringNotContainsString('->keys(', $source);
 
         foreach (['getTermsForAutocomplete', 'getElementSuggestions'] as $method) {
             preg_match('/public function ' . $method . '\(.*?^    }$/ms', $source, $matches);
@@ -136,6 +202,7 @@ final class RedisStorageFakeRedis
     public int $keysCalls = 0;
     public int $evalCalls = 0;
     public int $nonLuaSetCalls = 0;
+    public int $delCalls = 0;
 
     /** @var list<string> */
     public array $scanPatterns = [];
@@ -206,6 +273,11 @@ final class RedisStorageFakeRedis
         $this->sets[$key] = array_values(array_unique($this->sets[$key]));
     }
 
+    public function sAdd(string $key, string $member): void
+    {
+        $this->sAddArray($key, [$member]);
+    }
+
     public function sMembers(string $key): array|self
     {
         if ($this->pipeline !== null) {
@@ -219,6 +291,24 @@ final class RedisStorageFakeRedis
     public function zAdd(string $key, int|float $score, string $member): void
     {
         $this->zsets[$key][$member] = $score;
+    }
+
+    public function del(array|string $keys): int
+    {
+        $this->delCalls++;
+        $deleted = 0;
+
+        foreach ((array)$keys as $key) {
+            $key = (string)$key;
+            foreach (['hashes', 'sets', 'zsets', 'strings'] as $property) {
+                if (isset($this->{$property}[$key])) {
+                    unset($this->{$property}[$key]);
+                    $deleted++;
+                }
+            }
+        }
+
+        return $deleted;
     }
 
     public function zRangeByLex(string $key, string $min, string $max, int $offset, int $limit): array
@@ -254,6 +344,11 @@ final class RedisStorageFakeRedis
     public function get(string $key): int|false
     {
         return $this->strings[$key] ?? false;
+    }
+
+    public function exists(string $key): int
+    {
+        return $this->hasKey($key) ? 1 : 0;
     }
 
     public function set(string $key, int $value): void
@@ -314,6 +409,15 @@ final class RedisStorageFakeRedis
         $this->keysCalls++;
 
         return [];
+    }
+
+    public function hasKey(string $key): bool
+    {
+        return isset($this->hashes[$key], $this->sets[$key], $this->zsets[$key], $this->strings[$key])
+            || isset($this->hashes[$key])
+            || isset($this->sets[$key])
+            || isset($this->zsets[$key])
+            || isset($this->strings[$key]);
     }
 
     /**
