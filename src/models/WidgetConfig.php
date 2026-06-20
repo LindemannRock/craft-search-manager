@@ -595,6 +595,8 @@ class WidgetConfig extends Model
     {
         $s = $this->getSettingsArray();
 
+        $this->validateApiKey($s);
+
         // Search settings
         $this->validateStringField($s, 'search', 'placeholder', 'Placeholder', 255);
         $this->validateIndexHandles($s);
@@ -643,6 +645,27 @@ class WidgetConfig extends Model
         $this->validateIntField($s, 'analytics', 'idleTimeout', 'Idle Timeout', 0, 10000);
         $this->validateStringField($s, 'analytics', 'source', 'Source Identifier', 64);
         $this->validateSourceIdentifier($s);
+    }
+
+    /**
+     * Validate the widget's saved API key is browser-safe.
+     */
+    private function validateApiKey(array $settings): void
+    {
+        $value = trim((string)($settings['apiKey'] ?? ''));
+        if ($value === '') {
+            return;
+        }
+
+        if (!str_starts_with($value, 'sm_pub_')) {
+            $this->addError(
+                'settings.apiKey',
+                Craft::t(
+                    'search-manager',
+                    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.'
+                )
+            );
+        }
     }
 
     /**
