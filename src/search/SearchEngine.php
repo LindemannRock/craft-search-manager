@@ -86,7 +86,9 @@ class SearchEngine
 
         // Initialize components with configuration
         $this->tokenizer = new Tokenizer();
-        $this->stopWords = new StopWords($config['language'] ?? 'en');
+        $this->stopWords = new StopWords(LanguageNormalizer::normalize(
+            isset($config['language']) && is_string($config['language']) ? $config['language'] : null,
+        ));
         $this->stopWordsEnabled = ($config['enableStopWords'] ?? true) && !($config['disableStopWords'] ?? false);
 
         $this->ngramGenerator = new NgramGenerator(
@@ -145,10 +147,12 @@ class SearchEngine
                 $site = \Craft::$app->sites->getSiteById($siteId);
                 if ($site) {
                     // Extract language code from site language (en-US → en)
-                    $language = substr($site->language, 0, 2);
+                    $language = LanguageNormalizer::normalize(substr($site->language, 0, 2));
                 } else {
                     $language = 'en'; // Fallback
                 }
+            } else {
+                $language = LanguageNormalizer::normalize($language);
             }
 
             $this->logDebug('Indexing document with language', [
@@ -254,7 +258,10 @@ class SearchEngine
             // Check if query has advanced operators - use new parser
             if (QueryParser::hasAdvancedOperators($query)) {
                 // Get language for localized operators (API can override site language)
-                $language = $options['language'] ?? $this->getSiteLanguage($siteId);
+                $language = LanguageNormalizer::normalize(
+                    isset($options['language']) && is_string($options['language']) ? $options['language'] : null,
+                    $this->getSiteLanguage($siteId),
+                );
                 $parsed = QueryParser::parse($query, $language);
                 return $this->searchWithParsedQuery($parsed, $siteId, $limit, $options);
             }
@@ -340,8 +347,11 @@ class SearchEngine
             }
 
             // Filter by language if specified
-            if (isset($options['language']) && !empty($options['language'])) {
-                $docScores = $this->filterByLanguage($docScores, $options['language'], $siteId);
+            $languageFilter = isset($options['language']) && is_string($options['language'])
+                ? LanguageNormalizer::normalizeOrNull($options['language'])
+                : null;
+            if ($languageFilter !== null) {
+                $docScores = $this->filterByLanguage($docScores, $languageFilter, $siteId);
             }
 
             // Sort by score (highest first)
@@ -548,8 +558,11 @@ class SearchEngine
             }
 
             // Filter by language if specified
-            if (isset($options['language']) && !empty($options['language'])) {
-                $results = $this->filterByLanguage($results, $options['language'], $siteId);
+            $languageFilter = isset($options['language']) && is_string($options['language'])
+                ? LanguageNormalizer::normalizeOrNull($options['language'])
+                : null;
+            if ($languageFilter !== null) {
+                $results = $this->filterByLanguage($results, $languageFilter, $siteId);
             }
 
             // Sort by score (highest first)
@@ -1333,10 +1346,7 @@ class SearchEngine
             $site = \Craft::$app->getSites()->getSiteById($siteId);
             if ($site) {
                 // Get language from site (e.g., 'de-DE' → 'de')
-                $language = $site->language;
-                return str_contains($language, '-')
-                    ? substr($language, 0, 2)
-                    : $language;
+                return LanguageNormalizer::normalize(substr($site->language, 0, 2));
             }
         } catch (\Throwable $e) {
             $this->logWarning('Could not get site language', [

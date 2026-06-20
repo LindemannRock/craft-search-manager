@@ -15,6 +15,7 @@ use lindemannrock\searchmanager\backends\TypesenseBackend;
 use lindemannrock\searchmanager\events\SearchEvent;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
@@ -386,6 +387,8 @@ class BackendService extends Component
             $this->logError('No backend available for search', ['index' => $indexName]);
             return [];
         }
+
+        $this->normalizeSearchLanguageOption($options);
 
         // Handle "all sites" option - siteId of '*' or null/not set means search all
         // Check raw value BEFORE applying default
@@ -827,6 +830,8 @@ class BackendService extends Component
             return ['hits' => [], 'total' => 0, 'indices' => []];
         }
 
+        $this->normalizeSearchLanguageOption($options);
+
         // Match search(): if siteId is omitted, search all sites
         $rawSiteId = $options['siteId'] ?? null;
         if ($rawSiteId === null || $rawSiteId === '*') {
@@ -992,6 +997,29 @@ class BackendService extends Component
                 'promotionsMatched' => array_values($meta['promotionsMatched']),
             ],
         ];
+    }
+
+    /**
+     * Normalize or drop public language options before reaching any backend.
+     *
+     * @param array<string, mixed> $options
+     */
+    private function normalizeSearchLanguageOption(array &$options): void
+    {
+        if (!isset($options['language'])) {
+            return;
+        }
+
+        $language = is_string($options['language'])
+            ? LanguageNormalizer::normalizeOrNull($options['language'])
+            : null;
+
+        if ($language === null) {
+            unset($options['language']);
+            return;
+        }
+
+        $options['language'] = $language;
     }
 
     // =========================================================================

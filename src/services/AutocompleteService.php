@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\search\TermNormalizer;
 use lindemannrock\searchmanager\SearchManager;
@@ -53,7 +54,9 @@ class AutocompleteService extends Component
         $minLength = $options['minLength'] ?? $settings->autocompleteMinLength ?? 2;
         $limit = $options['limit'] ?? $settings->autocompleteLimit ?? 10;
         $fuzzy = $options['fuzzy'] ?? $settings->autocompleteFuzzy ?? false;
-        $language = $options['language'] ?? null;
+        $language = isset($options['language']) && is_string($options['language'])
+            ? LanguageNormalizer::normalizeOrNull($options['language'])
+            : null;
         $includeMeta = $options['includeMeta'] ?? false;
 
         // Check if siteId was explicitly provided (for all-sites indices, it won't be)
@@ -70,7 +73,7 @@ class AutocompleteService extends Component
                     // Detect from site
                     $site = Craft::$app->getSites()->getSiteById($siteId);
                     if ($site) {
-                        $language = substr($site->language, 0, 2);  // en-US → en
+                        $language = LanguageNormalizer::normalize(substr($site->language, 0, 2));
                     } else {
                         $language = 'en';
                     }
@@ -138,6 +141,7 @@ class AutocompleteService extends Component
             $suggestions = $this->getBackendAutocomplete($indexHandle, $normalizedQuery, [
                 'limit' => $limit,
                 'siteId' => $siteIdProvided ? $siteId : null,
+                'language' => $language,
             ]);
 
             // Cache and return

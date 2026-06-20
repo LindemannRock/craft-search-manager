@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\StopWords;
@@ -93,15 +94,15 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $searchIndex = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
         $hasExplicitLanguage = $searchIndex && !empty($searchIndex->language);
 
-        if ($languageOverride) {
-            $language = $languageOverride;
+        if (is_string($languageOverride) && LanguageNormalizer::normalizeOrNull($languageOverride) !== null) {
+            $language = LanguageNormalizer::normalize($languageOverride);
         } elseif ($hasExplicitLanguage) {
-            $language = $searchIndex->language;
+            $language = LanguageNormalizer::normalize((string)$searchIndex->language);
         } elseif ($currentSite = \Craft::$app->getSites()->getCurrentSite()) {
-            // Fall back to current site's language (e.g., 'en-US' -> 'en')
+            // Fall back to current site's generic language (e.g., en-US -> en).
             $siteLanguage = $currentSite->language;
             if (!empty($siteLanguage)) {
-                $language = strtolower(substr($siteLanguage, 0, 2));
+                $language = LanguageNormalizer::normalize(substr($siteLanguage, 0, 2));
             }
         }
 
@@ -325,11 +326,13 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
             // Pass language override to get correctly configured SearchEngine
             // Derive language from siteId if no explicit language and a specific siteId is provided
-            $languageOverride = $options['language'] ?? null;
+            $languageOverride = isset($options['language']) && is_string($options['language'])
+                ? LanguageNormalizer::normalizeOrNull($options['language'])
+                : null;
             if ($languageOverride === null && $rawSiteId !== null && $rawSiteId !== '*' && is_numeric($rawSiteId)) {
                 $site = Craft::$app->getSites()->getSiteById((int) $rawSiteId);
                 if ($site && !empty($site->language)) {
-                    $languageOverride = strtolower(substr($site->language, 0, 2));
+                    $languageOverride = LanguageNormalizer::normalize(substr($site->language, 0, 2));
                 }
             }
 

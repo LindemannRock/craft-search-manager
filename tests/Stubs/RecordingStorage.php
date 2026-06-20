@@ -68,6 +68,9 @@ final class RecordingStorage implements StorageInterface
     /** @var array<int, array{siteId: int, docLength: int, isAddition: bool}> */
     public array $updateMetadataEvents = [];
 
+    /** @var list<array{siteId: int|null, language: string|null, limit: int}> */
+    public array $getTermsForAutocompleteCalls = [];
+
     /**
      * @param array<string, array<string, int>> $termDocs term => [docId => freq] (docId = "siteId:elementId")
      * @param array<int, string[]> $titleByElement elementId => title terms
@@ -211,7 +214,13 @@ final class RecordingStorage implements StorageInterface
 
     public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
     {
-        return [];
+        $this->getTermsForAutocompleteCalls[] = [
+            'siteId' => $siteId,
+            'language' => $language,
+            'limit' => $limit,
+        ];
+
+        return ['protein' => 3];
     }
 
     public function getElementsByIds(int $siteId, array $elementIds): array

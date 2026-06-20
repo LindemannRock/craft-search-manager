@@ -34,7 +34,7 @@ class StopWords
     public function __construct(string $language = 'en')
     {
         $this->setLoggingHandle('search-manager');
-        $this->language = $language;
+        $this->language = LanguageNormalizer::normalize($language);
         $this->loadStopWords();
     }
 
