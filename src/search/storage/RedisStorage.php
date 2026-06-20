@@ -378,7 +378,7 @@ class RedisStorage implements StorageInterface
             $pattern = $this->keyPrefix . 'term:*';
         }
 
-        $keys = $this->redis->keys($pattern);
+        $keys = $this->scanKeys($pattern);
 
         if (!is_array($keys) || empty($keys)) {
             return [];
@@ -614,7 +614,7 @@ class RedisStorage implements StorageInterface
         } else {
             // Search all sites - find all elemindex keys for this index
             $pattern = $this->keyPrefix . 'elemindex:*';
-            $keys = $this->redis->keys($pattern);
+            $keys = $this->scanKeys($pattern);
             foreach ($keys as $key) {
                 // Extract siteId from key: prefix:elemindex:siteId
                 if (preg_match('/elemindex:(\d+)$/', $key, $matches)) {
@@ -809,26 +809,16 @@ class RedisStorage implements StorageInterface
             return [];
         }
 
-        // Use SCAN to find all term keys matching the prefix pattern
-        // Redis key format: {indexHandle}:term:{term}:site{siteId}
-        $pattern = $this->indexHandle . ':term:' . $prefix . '*:site' . $siteId;
+        // Use SCAN to find term keys matching the same shape as getTermKey().
+        // Redis key format: {keyPrefix}term:{term}:{siteId}
+        $pattern = $this->keyPrefix . 'term:' . $prefix . '*:' . $siteId;
 
         $matchingTerms = [];
-        $iterator = null;
-
-        // SCAN returns keys in batches to avoid blocking
-        do {
-            $keys = $this->redis->scan($iterator, $pattern, 100);
-
-            if ($keys !== false) {
-                foreach ($keys as $key) {
-                    // Extract term from key: {indexHandle}:term:{TERM}:site{siteId}
-                    if (preg_match('/^' . preg_quote($this->indexHandle, '/') . ':term:(.+?):site' . $siteId . '$/', $key, $matches)) {
-                        $matchingTerms[] = $matches[1];
-                    }
-                }
+        foreach ($this->scanKeys($pattern) as $key) {
+            if (preg_match('/^' . preg_quote($this->keyPrefix, '/') . 'term:(.+):' . $siteId . '$/', $key, $matches)) {
+                $matchingTerms[] = $matches[1];
             }
-        } while ($iterator > 0);
+        }
 
         return array_unique($matchingTerms);
     }
@@ -882,20 +872,27 @@ class RedisStorage implements StorageInterface
         $docCountKey = $this->getMetaKey($siteId, 'doc_count');
         $lengthKey = $this->getMetaKey($siteId, 'total_length');
 
-        // Use INCRBY for atomic increments
         $docCountChange = $isAddition ? 1 : -1;
         $lengthChange = $isAddition ? $docLength : -$docLength;
 
-        $this->redis->incrBy($docCountKey, $docCountChange);
-        $this->redis->incrBy($lengthKey, $lengthChange);
+        // Keep the increment and lower-bound clamp in one Redis command. The
+        // previous INCRBY -> GET -> SET sequence could overwrite a concurrent
+        // increment between GET and SET.
+        $script = <<<'LUA'
+local doc_count = redis.call('INCRBY', KEYS[1], ARGV[1])
+if doc_count < 0 then
+    redis.call('SET', KEYS[1], 0)
+end
 
-        // Ensure values don't go negative
-        if ($this->redis->get($docCountKey) < 0) {
-            $this->redis->set($docCountKey, 0);
-        }
-        if ($this->redis->get($lengthKey) < 1) {
-            $this->redis->set($lengthKey, 1);
-        }
+local total_length = redis.call('INCRBY', KEYS[2], ARGV[2])
+if total_length < 1 then
+    redis.call('SET', KEYS[2], 1)
+end
+
+return {redis.call('GET', KEYS[1]), redis.call('GET', KEYS[2])}
+LUA;
+
+        $this->redis->eval($script, [$docCountKey, $lengthKey, $docCountChange, $lengthChange], 2);
     }
 
     // =========================================================================
@@ -964,6 +961,28 @@ class RedisStorage implements StorageInterface
     private function getDocKey(int $siteId, int $elementId): string
     {
         return $this->keyPrefix . 'doc:' . $siteId . ':' . $elementId;
+    }
+
+    /**
+     * Iterate Redis keys without blocking the server like KEYS does.
+     *
+     * @return array<int, string>
+     */
+    private function scanKeys(string $pattern, int $count = 100): array
+    {
+        $keys = [];
+        $iterator = null;
+
+        do {
+            $batch = $this->redis->scan($iterator, $pattern, $count);
+            if ($batch !== false) {
+                foreach ($batch as $key) {
+                    $keys[] = (string)$key;
+                }
+            }
+        } while ((int)$iterator > 0);
+
+        return $keys;
     }
 
     /**
