@@ -1,0 +1,156 @@
+name: Issue intake
+
+on:
+  issues:
+    types: [opened, edited, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  intake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign and classify issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const body = issue.body || '';
+            const existingLabels = new Set(issue.labels.map((label) => label.name));
+
+            const addLabels = async (labels) => {
+              const nextLabels = [...new Set(labels)].filter((label) => !existingLabels.has(label));
+
+              if (nextLabels.length === 0) {
+                return;
+              }
+
+              await github.rest.issues.addLabels({
+                owner,
+                repo,
+                issue_number: issue.number,
+                labels: nextLabels,
+              });
+            };
+
+            if (context.payload.action === 'opened' && issue.assignees.length === 0) {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: issue.number,
+                assignees: ['bhlindemann'],
+              });
+            }
+
+            const sections = [...body.matchAll(/^###\s+(.+?)\s*\n+\s*([\s\S]*?)(?=\n###\s+|\s*$)/gm)];
+
+            const extractSection = (labelPattern) => {
+              const section = sections.find((match) => labelPattern.test(match[1].trim()));
+
+              if (!section) {
+                return '';
+              }
+
+              return section[2]
+                .replace(/<!--[\s\S]*?-->/g, '')
+                .trim();
+            };
+
+            const pluginVersionSection = sections.find((match) => {
+              const label = match[1].trim();
+
+              return /version$/i.test(label)
+                && !/^craft cms/i.test(label)
+                && !/^php/i.test(label);
+            });
+            const pluginVersionText = pluginVersionSection
+              ? pluginVersionSection[2].replace(/<!--[\s\S]*?-->/g, '').trim()
+              : '';
+
+            const versionMatch = pluginVersionText.match(/\b(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?\b/);
+            const pluginVersion = versionMatch ? versionMatch[0] : '';
+            const major = versionMatch ? Number(versionMatch[1]) : null;
+            const prerelease = pluginVersion.includes('-') ? pluginVersion.split('-')[1].toLowerCase() : '';
+
+            const familyOverride = (
+              body.match(/(?:product|compatibility|line) family:\s*(formie|freeform)/i) || []
+            )[1]?.toLowerCase();
+            const family = familyOverride
+              || (repo.includes('formie') ? 'formie' : null)
+              || (repo.includes('freeform') ? 'freeform' : null);
+
+            const classifyBranchAndLine = () => {
+              if (family === 'formie') {
+                if (major === 3 && !prerelease) {
+                  return ['branch: main', 'line: formie-3'];
+                }
+
+                if (major === 3) {
+                  return ['branch: formie-3', 'line: formie-3'];
+                }
+
+                if (major === 4 && prerelease.includes('beta')) {
+                  return ['branch: formie-4-beta', 'line: formie-4-beta'];
+                }
+
+                if (major === 4) {
+                  return ['branch: main', 'line: formie-4'];
+                }
+
+                return ['branch: unsure', 'line: unsure'];
+              }
+
+              if (family === 'freeform') {
+                if (major === 5 && !prerelease) {
+                  return ['branch: main', 'line: freeform-5'];
+                }
+
+                if (major === 5) {
+                  return ['branch: freeform-5', 'line: freeform-5'];
+                }
+
+                if (major === 6 && prerelease.includes('beta')) {
+                  return ['branch: freeform-6-beta', 'line: freeform-6-beta'];
+                }
+
+                if (major === 6) {
+                  return ['branch: main', 'line: freeform-6'];
+                }
+
+                return ['branch: unsure', 'line: unsure'];
+              }
+
+              if (major === 6 && prerelease.includes('alpha')) {
+                return ['branch: craft-6-alpha', 'line: craft-6-alpha'];
+              }
+
+              if (major === 6 && prerelease.includes('beta')) {
+                return ['branch: craft-6-beta', 'line: craft-6-beta'];
+              }
+
+              if (major === 6) {
+                return ['branch: main', 'line: craft-6'];
+              }
+
+              if (major === 5 || pluginVersion) {
+                return ['branch: main', 'line: craft-5'];
+              }
+
+              return ['branch: unsure', 'line: unsure'];
+            };
+
+            const labelsToAdd = [];
+            const [branchLabel, lineLabel] = classifyBranchAndLine();
+
+            if (![...existingLabels].some((label) => label.startsWith('branch: '))) {
+              labelsToAdd.push(branchLabel);
+            }
+
+            if (![...existingLabels].some((label) => label.startsWith('line: '))) {
+              labelsToAdd.push(lineLabel);
+            }
+
+            await addLabels(labelsToAdd);
