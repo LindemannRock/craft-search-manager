@@ -275,6 +275,10 @@ final class ApiKeyServiceTest extends TestCase
         $key->allowedReferrers = ['^example\\.com$'];
         $this->assertFalse($key->validate());
         $this->assertArrayHasKey('allowedReferrers', $key->getErrors());
+        $this->assertSame(
+            'Invalid referrer pattern: \'^example\\.com$\'. Use \'example.com\' or \'*.example.com\'.',
+            $key->getFirstError('allowedReferrers'),
+        );
     }
 
     public function testReferrerPatternValidationAcceptsExactAndWildcard(): void

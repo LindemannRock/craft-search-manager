@@ -266,6 +266,7 @@ return [
     // Validation messages
     '{field} cannot be blank.' => '{field} ne peut pas être vide.',
     'Enabled keys must allow all indices or at least one specific index.' => 'Les clés activées doivent autoriser tous les index ou au moins un index spécifique.',
+    'Invalid referrer pattern: \'{pattern}\'. Use \'example.com\' or \'*.example.com\'.' => 'Pattern de référent non valide : \'{pattern}\'. Utilisez \'example.com\' ou \'*.example.com\'.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} est requis (ou configurez Craft pour utiliser le cache Redis).',
     '{field} is required when using a dedicated Redis connection.' => '{field} est requis lors de l\'utilisation d\'une connexion Redis dédiée.',
     '{field} has an invalid value.' => '{field} a une valeur invalide.',

@@ -165,7 +165,9 @@ class ApiKey extends Model
             }
             // Allow only: optional leading `*.`, then host chars (alnum, hyphen, dot)
             if (!preg_match('/^(\*\.)?[a-zA-Z0-9][a-zA-Z0-9\-.]*[a-zA-Z0-9]$/', $pattern)) {
-                $this->addError($attribute, "Invalid referrer pattern: '$pattern'. Use 'example.com' or '*.example.com'.");
+                $this->addError($attribute, Craft::t('search-manager', 'Invalid referrer pattern: \'{pattern}\'. Use \'example.com\' or \'*.example.com\'.', [
+                    'pattern' => $pattern,
+                ]));
             }
         }
     }

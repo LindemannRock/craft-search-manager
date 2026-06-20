@@ -266,6 +266,7 @@ return [
     // Validation messages
     '{field} cannot be blank.' => 'لا يمكن أن يكون {field} فارغاً.',
     'Enabled keys must allow all indices or at least one specific index.' => 'يجب أن تسمح المفاتيح المفعّلة بكل الفهارس أو بفهرس محدد واحد على الأقل.',
+    'Invalid referrer pattern: \'{pattern}\'. Use \'example.com\' or \'*.example.com\'.' => 'نمط المرجع غير صالح: \'{pattern}\'. استخدم \'example.com\' أو \'*.example.com\'.',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} مطلوب (أو قم بتهيئة Craft لاستخدام Cache Redis).',
     '{field} is required when using a dedicated Redis connection.' => '{field} مطلوب عند استخدام اتصال Redis مخصص.',
     '{field} has an invalid value.' => '{field} يحتوي على قيمة غير صالحة.',

@@ -266,6 +266,7 @@ return [
     // Validation messages
     '{field} cannot be blank.' => '{field} は空にできません。',
     'Enabled keys must allow all indices or at least one specific index.' => '有効なキーは、すべてのインデックスまたは少なくとも 1 つの特定のインデックスを許可する必要があります。',
+    'Invalid referrer pattern: \'{pattern}\'. Use \'example.com\' or \'*.example.com\'.' => '無効なリファラーパターンです: \'{pattern}\'。\'example.com\' または \'*.example.com\' を使用してください。',
     '{field} is required (or configure Craft to use Redis cache).' => '{field} は必須です（または Craft が Redis キャッシュを使用するように設定してください）。',
     '{field} is required when using a dedicated Redis connection.' => '{field} は専用 Redis 接続を使用する場合に必須です。',
     '{field} has an invalid value.' => '{field} の値が無効です。',
