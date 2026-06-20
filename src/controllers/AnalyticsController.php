@@ -549,6 +549,7 @@ class AnalyticsController extends Controller
      */
     public function actionGetData(): Response
     {
+        $this->requireAcceptsJson();
         $this->requirePermission('searchManager:viewAnalytics');
 
         $request = Craft::$app->getRequest();
@@ -924,6 +925,7 @@ class AnalyticsController extends Controller
      */
     public function actionGetChartData(): Response
     {
+        $this->requireAcceptsJson();
         $this->requirePermission('searchManager:viewAnalytics');
 
         $effectiveSiteId = $this->resolveEffectiveSiteId(Craft::$app->getRequest()->getQueryParam('siteId'));
@@ -945,6 +947,7 @@ class AnalyticsController extends Controller
      */
     public function actionGetRuleAnalytics(): Response
     {
+        $this->requireAcceptsJson();
         $this->requirePermission('searchManager:viewAnalytics');
 
         $request = Craft::$app->getRequest();
@@ -1003,6 +1006,7 @@ class AnalyticsController extends Controller
      */
     public function actionGetPromotionAnalytics(): Response
     {
+        $this->requireAcceptsJson();
         $this->requirePermission('searchManager:viewAnalytics');
 
         $request = Craft::$app->getRequest();
