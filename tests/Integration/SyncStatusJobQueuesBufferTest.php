@@ -99,4 +99,18 @@ final class SyncStatusJobQueuesBufferTest extends TestCase
         $this->assertSame(PendingSyncRepository::OP_UPSERT, $row['op']);
         $this->assertSame(PendingSyncRepository::STATUS_PENDING, $row['status']);
     }
+
+    public function testStatusQueriesAvoidCustomFieldHydration(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/jobs/SyncStatusJob.php');
+        $this->assertIsString($source);
+
+        $this->assertSame(2, substr_count($source, '->withCustomFields(false)'));
+        $this->assertSame(2, substr_count($source, '->drafts(false)'));
+        $this->assertSame(2, substr_count($source, '->revisions(false)'));
+        $this->assertStringNotContainsString('->limit(null)', $source);
+
+        $this->assertStringContainsString("PendingSyncRepository::OP_UPSERT", $source);
+        $this->assertStringContainsString("PendingSyncRepository::OP_DELETE", $source);
+    }
 }

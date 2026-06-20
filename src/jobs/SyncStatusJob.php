@@ -156,9 +156,11 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
             $newlyLiveEntries = Entry::find()
                 ->status('live')
                 ->siteId($siteId)
+                ->drafts(false)
+                ->revisions(false)
+                ->withCustomFields(false)
                 ->andWhere(['>=', 'entries.postDate', $lastSyncDb])
                 ->andWhere(['<=', 'entries.postDate', $nowDb])
-                ->limit(null)
                 ->all();
 
             foreach ($newlyLiveEntries as $entry) {
@@ -169,9 +171,11 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
             $newlyExpiredEntries = Entry::find()
                 ->status('expired')
                 ->siteId($siteId)
+                ->drafts(false)
+                ->revisions(false)
+                ->withCustomFields(false)
                 ->andWhere(['>=', 'entries.expiryDate', $lastSyncDb])
                 ->andWhere(['<=', 'entries.expiryDate', $nowDb])
-                ->limit(null)
                 ->all();
 
             foreach ($newlyExpiredEntries as $entry) {
