@@ -15,6 +15,7 @@ use lindemannrock\base\helpers\GqlHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use yii\web\ForbiddenHttpException;
 
 /**
  * GraphQL resolver for Search Manager search and autocomplete queries.
@@ -66,6 +67,10 @@ class SearchResolver extends Resolver
         if (self::hasSiteArgument($arguments) && $siteId === null) {
             return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'hitsPerPage' => $limit, 'totalPages' => 0];
         }
+        $siteIds = self::resolveSchemaSiteScope($siteId);
+        if ($siteIds === []) {
+            return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'hitsPerPage' => $limit, 'totalPages' => 0];
+        }
 
         [$indexHandles, $indicesProvided] = self::resolveIndexHandles($arguments);
         if ($indicesProvided && empty($indexHandles)) {
@@ -98,7 +103,7 @@ class SearchResolver extends Resolver
             $options = array_merge($options, self::filterOptionsForIndex($indexHandles[0], $filters));
         }
 
-        if ($siteId !== null) {
+        if ($siteIds === null && $siteId !== null) {
             $options['siteId'] = $siteId;
         }
         foreach (['language', 'platform', 'appVersion'] as $option) {
@@ -108,23 +113,20 @@ class SearchResolver extends Resolver
             }
         }
 
-        if (count($indexHandles) === 1) {
-            $results = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);
-        } elseif (count($indexHandles) > 1) {
-            $results = SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
-        } else {
-            $allIndexHandles = self::enabledIndexHandles();
-            if (empty($allIndexHandles)) {
-                return [
-                    'hits' => [],
-                    'total' => 0,
-                    'query' => $query,
-                    'error' => 'No search indices configured',
-                ];
-            }
-
-            $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
+        if (empty($indexHandles)) {
+            $indexHandles = self::enabledIndexHandles();
         }
+
+        if (empty($indexHandles)) {
+            return [
+                'hits' => [],
+                'total' => 0,
+                'query' => $query,
+                'error' => 'No search indices configured',
+            ];
+        }
+
+        $results = self::runSearch($indexHandles, $query, $options, $siteIds);
 
         if ((bool)($arguments['enrich'] ?? false)) {
             $results = self::enrichResults($results, $query, $indexHandles, $siteId, $arguments, $limit);
@@ -165,6 +167,10 @@ class SearchResolver extends Resolver
         if (self::hasSiteArgument($arguments) && $siteId === null) {
             return ['suggestions' => [], 'results' => []];
         }
+        $siteIds = self::resolveSchemaSiteScope($siteId);
+        if ($siteIds === []) {
+            return ['suggestions' => [], 'results' => []];
+        }
 
         [$indexHandles, $indicesProvided] = self::resolveIndexHandles($arguments);
         if ($indicesProvided && empty($indexHandles)) {
@@ -176,7 +182,7 @@ class SearchResolver extends Resolver
         }
 
         $options = ['limit' => $limit];
-        if ($siteId !== null) {
+        if ($siteIds === null && $siteId !== null) {
             $options['siteId'] = $siteId;
         }
         $language = self::trimmedString($arguments['language'] ?? null);
@@ -187,18 +193,25 @@ class SearchResolver extends Resolver
         $suggestions = [];
         $results = [];
         foreach ($indexHandles as $handle) {
-            if ($only !== 'results') {
-                $suggestions = array_merge($suggestions, SearchManager::$plugin->autocomplete->suggest($query, $handle, $options));
-            }
-            if ($only !== 'suggestions') {
-                $results = array_merge(
-                    $results,
-                    SearchManager::$plugin->autocomplete->suggestElements(
-                        $query,
-                        $handle,
-                        array_merge($options, ['type' => self::trimmedString($arguments['type'] ?? null)]),
-                    ),
-                );
+            foreach ($siteIds ?? [null] as $scopedSiteId) {
+                $siteOptions = $options;
+                if ($scopedSiteId !== null) {
+                    $siteOptions['siteId'] = $scopedSiteId;
+                }
+
+                if ($only !== 'results') {
+                    $suggestions = array_merge($suggestions, SearchManager::$plugin->autocomplete->suggest($query, $handle, $siteOptions));
+                }
+                if ($only !== 'suggestions') {
+                    $results = array_merge(
+                        $results,
+                        SearchManager::$plugin->autocomplete->suggestElements(
+                            $query,
+                            $handle,
+                            array_merge($siteOptions, ['type' => self::trimmedString($arguments['type'] ?? null)]),
+                        ),
+                    );
+                }
             }
         }
 
@@ -243,6 +256,100 @@ class SearchResolver extends Resolver
     private static function resolveRequestedSiteId(array $arguments): ?int
     {
         return GqlHelper::resolveSiteId($arguments);
+    }
+
+    /**
+     * Resolve the site IDs the active GraphQL schema may query.
+     *
+     * A null return means there is no active schema context, so direct internal
+     * callers keep the historical all-sites behavior. An empty array means an
+     * active schema has no readable sites and should receive no results.
+     *
+     * @return array<int, int>|null
+     * @throws ForbiddenHttpException when an explicit site is outside schema scope
+     */
+    private static function resolveSchemaSiteScope(?int $requestedSiteId): ?array
+    {
+        try {
+            Craft::$app->getGql()->getActiveSchema();
+        } catch (\Throwable) {
+            return null;
+        }
+
+        $allowedSiteIds = array_values(array_map(
+            static fn($site): int => (int)$site->id,
+            GqlHelper::getAllowedSites(),
+        ));
+
+        if ($requestedSiteId !== null) {
+            if (!in_array($requestedSiteId, $allowedSiteIds, true)) {
+                throw new ForbiddenHttpException('The active GraphQL schema is not allowed to query the requested site.');
+            }
+
+            return [$requestedSiteId];
+        }
+
+        return $allowedSiteIds;
+    }
+
+    /**
+     * @param array<int, string> $indexHandles
+     * @param array<string, mixed> $options
+     * @param array<int, int>|null $siteIds
+     * @return array<string, mixed>
+     */
+    private static function runSearch(array $indexHandles, string $query, array $options, ?array $siteIds): array
+    {
+        if ($siteIds === null) {
+            return count($indexHandles) === 1
+                ? SearchManager::$plugin->backend->search($indexHandles[0], $query, $options)
+                : SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $options);
+        }
+
+        if (count($siteIds) === 1) {
+            $siteOptions = array_merge($options, ['siteId' => $siteIds[0]]);
+
+            return count($indexHandles) === 1
+                ? SearchManager::$plugin->backend->search($indexHandles[0], $query, $siteOptions)
+                : SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $siteOptions);
+        }
+
+        $merged = ['hits' => [], 'total' => 0, 'indices' => []];
+        foreach ($siteIds as $siteId) {
+            $siteOptions = array_merge($options, [
+                'siteId' => $siteId,
+                'limit' => (int)($options['offset'] ?? 0) + (int)($options['limit'] ?? 20),
+                'offset' => 0,
+            ]);
+            $siteResults = count($indexHandles) === 1
+                ? SearchManager::$plugin->backend->search($indexHandles[0], $query, $siteOptions)
+                : SearchManager::$plugin->backend->searchMultiple($indexHandles, $query, $siteOptions);
+
+            $merged['hits'] = array_merge($merged['hits'], is_array($siteResults['hits'] ?? null) ? $siteResults['hits'] : []);
+            $merged['total'] += (int)($siteResults['total'] ?? 0);
+
+            if (isset($siteResults['indices']) && is_array($siteResults['indices'])) {
+                foreach ($siteResults['indices'] as $index => $total) {
+                    if (is_string($index)) {
+                        $merged['indices'][$index] = ($merged['indices'][$index] ?? 0) + (int)$total;
+                    }
+                }
+            }
+        }
+
+        usort($merged['hits'], static function(mixed $a, mixed $b): int {
+            if (!is_array($a) || !is_array($b)) {
+                return 0;
+            }
+
+            return ((float)($b['score'] ?? 0)) <=> ((float)($a['score'] ?? 0));
+        });
+
+        $offset = (int)($options['offset'] ?? 0);
+        $limit = (int)($options['limit'] ?? 20);
+        $merged['hits'] = array_slice($merged['hits'], $offset, $limit);
+
+        return $merged;
     }
 
     /**

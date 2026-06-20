@@ -195,8 +195,7 @@ class SearchController extends Controller
         $resultsCount = (int) $request->getParam('resultsCount', 0);
         $trigger = $request->getParam('trigger', 'unknown');
         $source = $request->getParam('source', 'frontend-widget');
-        $siteId = $request->getParam('siteId');
-        $siteId = $siteId ? (int) $siteId : null;
+        $siteId = self::normalizeTrackingSiteId($request->getParam('siteId'));
 
         // Validate and sanitize inputs to prevent analytics pollution
 
@@ -358,5 +357,25 @@ class SearchController extends Controller
         }
 
         return $tookFloat;
+    }
+
+    /**
+     * Resolve an analytics tracking site ID only when it references a known site.
+     *
+     * Anonymous tracking pings are accepted from cached/static frontends, so an
+     * unknown site ID is treated as absent rather than persisted as analytics
+     * pollution.
+     *
+     * @since 5.53.0
+     */
+    public static function normalizeTrackingSiteId(mixed $rawSiteId): ?int
+    {
+        if (!is_numeric($rawSiteId) || (int)$rawSiteId <= 0) {
+            return null;
+        }
+
+        $siteId = (int)$rawSiteId;
+
+        return Craft::$app->getSites()->getSiteById($siteId) !== null ? $siteId : null;
     }
 }

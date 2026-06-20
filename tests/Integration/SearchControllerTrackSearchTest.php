@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
 use lindemannrock\searchmanager\controllers\SearchController;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -87,5 +88,19 @@ final class SearchControllerTrackSearchTest extends TestCase
         $this->assertNull(SearchController::parseWidgetCacheTelemetry('maybe', '42'));
         // Object / array — not boolean-like, shouldn't crash.
         $this->assertNull(SearchController::parseWidgetCacheTelemetry(['true'], '42'));
+    }
+
+    public function testTrackingSiteIdKeepsKnownSite(): void
+    {
+        $site = Craft::$app->getSites()->getPrimarySite();
+
+        $this->assertSame($site->id, SearchController::normalizeTrackingSiteId((string)$site->id));
+    }
+
+    public function testTrackingSiteIdDiscardsUnknownSite(): void
+    {
+        $this->assertNull(SearchController::normalizeTrackingSiteId('2147483000'));
+        $this->assertNull(SearchController::normalizeTrackingSiteId('not-a-site'));
+        $this->assertNull(SearchController::normalizeTrackingSiteId('0'));
     }
 }
