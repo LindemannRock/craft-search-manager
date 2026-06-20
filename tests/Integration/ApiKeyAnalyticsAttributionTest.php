@@ -41,9 +41,11 @@ use yii\web\HeaderCollection;
  * persists nothing, so neither has attribution to assert (slice 5 attributes
  * existing rows only — see `.internal/api-keys-implementation.md`).
  *
- * Isolation mirrors {@see AnalyticsSessionDedupTest}: a synthetic siteId no real
- * search can ever write to, plus a `backend = 'test'` marker, scope every seed
- * and delete to this test class.
+ * Direct service insert tests use a synthetic siteId no real search can ever
+ * write to, plus a `backend = 'test'` marker. Controller round-trip coverage
+ * uses a real Craft site ID because public tracking now discards unknown siteId
+ * values; cleanup also deletes by this class's unique query markers so it never
+ * deletes all analytics rows for a real site.
  *
  * @since 5.47.0
  */
@@ -173,7 +175,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
             'resultsCount' => '3',
             'trigger' => 'enter',
             'source' => 'test-widget',
-            'siteId' => (string) self::TEST_SITE_ID,
+            'siteId' => (string) $this->realTestSiteId(),
         ]);
 
         $originalRequireApiKey = SearchManager::$plugin->getSettings()->requireApiKey;
@@ -194,10 +196,13 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         $row = (new Query())
             ->from('{{%searchmanager_analytics}}')
             ->where([
-                'siteId' => self::TEST_SITE_ID,
+                'siteId' => $this->realTestSiteId(),
                 'query' => '__sm_attr_controller',
                 'source' => 'test-widget',
             ])
+            // Belt-and-suspenders: prefer this run's freshly inserted row so a
+            // lingering older marker row can never shadow the current key.
+            ->orderBy(['id' => SORT_DESC])
             ->one();
 
         $this->assertNotNull($row, 'track-search controller should persist an analytics row.');
@@ -621,8 +626,21 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
     {
         Craft::$app->getDb()
             ->createCommand()
-            ->delete('{{%searchmanager_analytics}}', ['siteId' => self::TEST_SITE_ID])
+            ->delete('{{%searchmanager_analytics}}', [
+                'or',
+                ['and', ['siteId' => self::TEST_SITE_ID], ['backend' => 'test']],
+                // Match every test-owned marker query (`__sm_attr_*`). Letting Yii
+                // escape + wrap is required: the `, false` form built a fixed-length
+                // `LIKE '__sm_attr_'` that never matched the longer real markers, so
+                // controller rows on the real site survived cleanup and leaked.
+                ['like', 'query', '__sm_attr_'],
+            ])
             ->execute();
+    }
+
+    private function realTestSiteId(): int
+    {
+        return Craft::$app->getSites()->getPrimarySite()->id;
     }
 
     /**
