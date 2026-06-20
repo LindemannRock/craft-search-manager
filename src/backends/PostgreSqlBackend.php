@@ -3,14 +3,13 @@
 namespace lindemannrock\searchmanager\backends;
 
 use Craft;
-use lindemannrock\searchmanager\search\storage\MySqlStorage;
+use lindemannrock\searchmanager\search\storage\PostgreSqlStorage;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 
 /**
  * PostgreSQL Backend
  *
- * Search backend using BM25 algorithm with MySQL-compatible storage
- * (PostgreSQL and MySQL share the same SQL structure for search tables)
+ * Search backend using BM25 algorithm with PostgreSQL storage.
  *
  * @since 5.0.0
  */
@@ -21,8 +20,7 @@ class PostgreSqlBackend extends AbstractSearchEngineBackend
      */
     protected function createStorage(string $fullIndexName): StorageInterface
     {
-        // PostgreSQL uses MySqlStorage - same SQL structure
-        return new MySqlStorage($fullIndexName);
+        return new PostgreSqlStorage($fullIndexName);
     }
 
     /**
