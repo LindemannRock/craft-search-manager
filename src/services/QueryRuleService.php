@@ -3,9 +3,15 @@
 namespace lindemannrock\searchmanager\services;
 
 use Craft;
+use craft\base\ElementInterface;
+use craft\db\Query;
+use craft\db\Table;
+use craft\elements\Entry;
+use craft\fields\Categories;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\QueryRule;
+use lindemannrock\searchmanager\models\SearchIndex;
 use yii\base\Component;
 
 /**
@@ -264,8 +270,13 @@ class QueryRuleService extends Component
             'boosts' => $boosts,
         ]);
 
-        // Cache element metadata for boost lookups
-        $elementCache = [];
+        $needsElementMetadata = !empty($boosts['sections']) || !empty($boosts['categories']);
+        $elementMap = $needsElementMetadata
+            ? $this->preloadBoostElements($results, $indexHandle, $siteId)
+            : [];
+        $categoryBoostsByElement = !empty($boosts['categories'])
+            ? $this->preloadCategoryBoosts($elementMap, $boosts['categories'])
+            : [];
 
         foreach ($results as &$result) {
             $elementId = is_array($result) ? SearchHitIdentityHelper::elementId($result) : $result;
@@ -281,17 +292,13 @@ class QueryRuleService extends Component
             }
 
             // Check section/category boosts (requires loading element)
-            if (!empty($boosts['sections']) || !empty($boosts['categories'])) {
-                if (!isset($elementCache[$elementId])) {
-                    $element = Craft::$app->getElements()->getElementById($elementId, null, $siteId);
-                    $elementCache[$elementId] = $element;
-                }
-
-                $element = $elementCache[$elementId];
+            if ($needsElementMetadata) {
+                $elementKey = $this->resultElementKey($result, $elementId, $siteId);
+                $element = $elementMap[$elementKey] ?? null;
 
                 if ($element) {
                     // Section boost (for entries)
-                    if (!empty($boosts['sections']) && $element instanceof \craft\elements\Entry) {
+                    if (!empty($boosts['sections']) && $element instanceof Entry) {
                         $sectionHandle = $element->getSection()->handle ?? null;
                         if ($sectionHandle && isset($boosts['sections'][$sectionHandle])) {
                             $multiplier *= $boosts['sections'][$sectionHandle];
@@ -299,15 +306,8 @@ class QueryRuleService extends Component
                     }
 
                     // Category boost - check if element is in a boosted category
-                    // This requires the element to have a categories field
-                    if (!empty($boosts['categories'])) {
-                        foreach ($boosts['categories'] as $categoryId => $boost) {
-                            // Check all relation fields for this category
-                            if ($this->elementHasCategory($element, $categoryId)) {
-                                $multiplier *= $boost;
-                                break; // Only apply once per element
-                            }
-                        }
+                    if (isset($categoryBoostsByElement[$elementKey])) {
+                        $multiplier *= $categoryBoostsByElement[$elementKey];
                     }
                 }
             }
@@ -332,30 +332,177 @@ class QueryRuleService extends Component
     }
 
     /**
-     * Check if an element belongs to a category
+     * Preload elements needed for section/category boost checks.
+     *
+     * @param array<int, mixed> $results
+     * @return array<string, ElementInterface>
      */
-    private function elementHasCategory(\craft\base\ElementInterface $element, int $categoryId): bool
+    private function preloadBoostElements(array $results, ?string $indexHandle, ?int $siteId): array
     {
-        // Get all category fields
-        $fieldLayout = $element->getFieldLayout();
-        if (!$fieldLayout) {
-            return false;
+        $currentSiteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $elementClassByHandle = $this->elementClassesByIndexHandle($indexHandle);
+        $fallbackClass = $indexHandle !== null ? ($elementClassByHandle[$indexHandle] ?? null) : null;
+
+        $groups = [];
+        $unresolved = [];
+
+        foreach ($results as $result) {
+            $elementId = is_array($result) ? SearchHitIdentityHelper::elementId($result) : (is_numeric($result) ? (int)$result : null);
+            if ($elementId === null) {
+                continue;
+            }
+
+            $resolvedSiteId = is_array($result) && isset($result['siteId'])
+                ? (int)$result['siteId']
+                : ($siteId ?? $currentSiteId);
+            $handle = is_array($result) ? (string)($result['_index'] ?? '') : '';
+            $elementClass = $handle !== ''
+                ? ($elementClassByHandle[$handle] ?? null)
+                : $fallbackClass;
+
+            if ($elementClass !== null && is_subclass_of($elementClass, ElementInterface::class)) {
+                $groups[$elementClass][$resolvedSiteId][$elementId] = true;
+            } else {
+                $unresolved[$resolvedSiteId][$elementId] = true;
+            }
         }
 
-        foreach ($fieldLayout->getCustomFields() as $field) {
-            if ($field instanceof \craft\fields\Categories) {
-                $categories = $element->getFieldValue($field->handle);
-                if ($categories) {
-                    foreach ($categories->all() as $category) {
-                        if ($category->id === $categoryId) {
-                            return true;
-                        }
-                    }
+        $map = [];
+
+        /** @var class-string<ElementInterface> $elementClass */
+        foreach ($groups as $elementClass => $bySite) {
+            foreach ($bySite as $resolvedSiteId => $idSet) {
+                /** @var \craft\elements\db\ElementQuery $query */
+                $query = $elementClass::find()
+                    ->id(array_keys($idSet))
+                    ->siteId((int)$resolvedSiteId)
+                    ->status(null);
+
+                foreach ($query->all() as $element) {
+                    $map[$resolvedSiteId . ':' . $element->id] = $element;
+                    unset($unresolved[$resolvedSiteId][(int)$element->id]);
                 }
             }
         }
 
-        return false;
+        foreach ($unresolved as $resolvedSiteId => $idSet) {
+            foreach (array_keys($idSet) as $elementId) {
+                $element = Craft::$app->getElements()->getElementById((int)$elementId, null, (int)$resolvedSiteId);
+                if ($element !== null) {
+                    $map[$resolvedSiteId . ':' . $element->id] = $element;
+                }
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Resolve candidate element classes from the selected index scope.
+     *
+     * @return array<string, class-string<ElementInterface>>
+     */
+    private function elementClassesByIndexHandle(?string $indexHandle): array
+    {
+        $indices = $indexHandle !== null
+            ? array_filter([SearchIndex::findByHandle($indexHandle)])
+            : SearchIndex::findAll();
+
+        $classes = [];
+        foreach ($indices as $index) {
+            if (!$index->enabled || !is_subclass_of($index->elementType, ElementInterface::class)) {
+                continue;
+            }
+            $classes[$index->handle] = $index->elementType;
+        }
+
+        return $classes;
+    }
+
+    /**
+     * Preload the first matching category boost multiplier per element.
+     *
+     * @param array<string, ElementInterface> $elements
+     * @param array<int|string, float|int> $categoryBoosts
+     * @return array<string, float>
+     */
+    private function preloadCategoryBoosts(array $elements, array $categoryBoosts): array
+    {
+        if (empty($elements)) {
+            return [];
+        }
+
+        $fieldIds = [];
+        $sourcesBySite = [];
+
+        foreach ($elements as $key => $element) {
+            $fieldLayout = $element->getFieldLayout();
+            if (!$fieldLayout) {
+                continue;
+            }
+
+            foreach ($fieldLayout->getCustomFields() as $field) {
+                if ($field instanceof Categories && $field->id !== null) {
+                    $fieldIds[(int)$field->id] = true;
+                    $sourcesBySite[(int)$element->siteId][(int)$element->id] = $key;
+                }
+            }
+        }
+
+        if (empty($fieldIds) || empty($sourcesBySite)) {
+            return [];
+        }
+
+        $categoryIds = array_map('intval', array_keys($categoryBoosts));
+        $rows = (new Query())
+            ->select(['sourceId', 'sourceSiteId', 'targetId'])
+            ->from(Table::RELATIONS)
+            ->where([
+                'fieldId' => array_keys($fieldIds),
+                'sourceId' => array_values(array_unique(array_merge(...array_map('array_keys', $sourcesBySite)))),
+                'targetId' => $categoryIds,
+            ])
+            ->all();
+
+        $matches = [];
+        foreach ($rows as $row) {
+            $sourceId = (int)$row['sourceId'];
+            $sourceSiteId = $row['sourceSiteId'] !== null ? (int)$row['sourceSiteId'] : null;
+            $targetId = (int)$row['targetId'];
+
+            foreach ($sourcesBySite as $siteId => $sourceKeys) {
+                if ($sourceSiteId !== null && $sourceSiteId !== (int)$siteId) {
+                    continue;
+                }
+                if (isset($sourceKeys[$sourceId])) {
+                    $matches[$sourceKeys[$sourceId]][$targetId] = true;
+                }
+            }
+        }
+
+        $boostsByElement = [];
+        foreach ($matches as $elementKey => $categoryMatches) {
+            foreach ($categoryBoosts as $categoryId => $boost) {
+                if (isset($categoryMatches[(int)$categoryId])) {
+                    $boostsByElement[$elementKey] = (float)$boost;
+                    break;
+                }
+            }
+        }
+
+        return $boostsByElement;
+    }
+
+    /**
+     * Build the map key used for result element metadata.
+     */
+    private function resultElementKey(mixed $result, int $elementId, ?int $siteId): string
+    {
+        $resolvedSiteId = is_array($result) && isset($result['siteId'])
+            ? (int)$result['siteId']
+            : ($siteId ?? Craft::$app->getSites()->getCurrentSite()->id);
+
+        return $resolvedSiteId . ':' . $elementId;
     }
 
     // =========================================================================
