@@ -1561,6 +1561,9 @@ return [
     'Top Cities' => 'أبرز المدن',
     'No trend data available for the selected filters.' => 'لا تتوفر بيانات اتجاه للمرشحات المحددة.',
     'No query length data available for the selected filters.' => 'لا توجد بيانات طول استعلام متاحة للفلاتر المحددة.',
+    '1 word' => 'كلمة واحدة',
+    '2-3 words' => '2-3 كلمات',
+    '4+ words' => '4+ كلمات',
 
     // Analytics misc
     'Date' => 'التاريخ',

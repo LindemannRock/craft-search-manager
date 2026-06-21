@@ -1561,6 +1561,9 @@ return [
     'Top Cities' => '主要な都市',
     'No trend data available for the selected filters.' => '選択したフィルターのトレンドデータがありません。',
     'No query length data available for the selected filters.' => '選択されたフィルターに対するクエリ長データがありません。',
+    '1 word' => '1 語',
+    '2-3 words' => '2〜3 語',
+    '4+ words' => '4 語以上',
 
     // Analytics misc
     'Date' => '日付',

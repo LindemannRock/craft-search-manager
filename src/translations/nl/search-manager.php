@@ -1561,6 +1561,9 @@ return [
     'Top Cities' => 'Belangrijkste steden',
     'No trend data available for the selected filters.' => 'Geen trendgegevens beschikbaar voor de geselecteerde filters.',
     'No query length data available for the selected filters.' => 'Geen gegevens over zoekopdrachtlengte beschikbaar voor de geselecteerde filters.',
+    '1 word' => '1 woord',
+    '2-3 words' => '2-3 woorden',
+    '4+ words' => '4+ woorden',
 
     // Analytics misc
     'Date' => 'Datum',

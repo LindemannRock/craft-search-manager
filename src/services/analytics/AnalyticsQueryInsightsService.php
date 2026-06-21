@@ -232,8 +232,17 @@ class AnalyticsQueryInsightsService
             $distribution[$row['bucket']] = (int)$row['count'];
         }
 
+        $labels = [
+            '1 word' => Craft::t('search-manager', '1 word'),
+            '2-3 words' => Craft::t('search-manager', '2-3 words'),
+            '4+ words' => Craft::t('search-manager', '4+ words'),
+        ];
+
         return [
-            'labels' => array_keys($distribution),
+            'labels' => array_map(
+                static fn(string $bucket): string => $labels[$bucket],
+                array_keys($distribution),
+            ),
             'values' => array_values($distribution),
         ];
     }

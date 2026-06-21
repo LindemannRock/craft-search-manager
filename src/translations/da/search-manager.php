@@ -1561,6 +1561,9 @@ return [
     'Top Cities' => 'Mest almindelige byer',
     'No trend data available for the selected filters.' => 'Ingen trenddata tilgængelige for de valgte filtre.',
     'No query length data available for the selected filters.' => 'Ingen forespørgselslængdedata tilgængelige for de valgte filtre.',
+    '1 word' => '1 ord',
+    '2-3 words' => '2-3 ord',
+    '4+ words' => '4+ ord',
 
     // Analytics misc
     'Date' => 'Dato',

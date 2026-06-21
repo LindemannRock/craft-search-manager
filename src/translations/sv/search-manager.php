@@ -1561,6 +1561,9 @@ return [
     'Top Cities' => 'Vanligaste städer',
     'No trend data available for the selected filters.' => 'Inga trenddata tillgängliga för de valda filtren.',
     'No query length data available for the selected filters.' => 'Inga data om frågelängd tillgängliga för de valda filtren.',
+    '1 word' => '1 ord',
+    '2-3 words' => '2-3 ord',
+    '4+ words' => '4+ ord',
 
     // Analytics misc
     'Date' => 'Datum',

@@ -215,9 +215,22 @@ final class AnalyticsSessionDedupTest extends TestCase
         $dist = SearchManager::$plugin->analytics->getQueryLengthDistribution(self::TEST_SITE_ID, 'last30days');
         $buckets = array_combine($dist['labels'], $dist['values']);
 
-        $this->assertSame(1, (int) $buckets['1 word'], 'Multi-index single-word search = 1 action, not 3 rows.');
-        $this->assertSame(1, (int) $buckets['2-3 words'], 'Multi-index 3-word search = 1 action, not 3 rows.');
-        $this->assertSame(0, (int) $buckets['4+ words']);
+        $this->assertSame([
+            Craft::t('search-manager', '1 word'),
+            Craft::t('search-manager', '2-3 words'),
+            Craft::t('search-manager', '4+ words'),
+        ], $dist['labels']);
+        $this->assertSame(
+            1,
+            (int) $buckets[Craft::t('search-manager', '1 word')],
+            'Multi-index single-word search = 1 action, not 3 rows.',
+        );
+        $this->assertSame(
+            1,
+            (int) $buckets[Craft::t('search-manager', '2-3 words')],
+            'Multi-index 3-word search = 1 action, not 3 rows.',
+        );
+        $this->assertSame(0, (int) $buckets[Craft::t('search-manager', '4+ words')]);
     }
 
     public function testIntentBucketCountsActionOnceNotRows(): void

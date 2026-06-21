@@ -1561,6 +1561,9 @@ return [
     'Top Cities' => 'Principales ciudades',
     'No trend data available for the selected filters.' => 'No hay datos de tendencia disponibles para los filtros seleccionados.',
     'No query length data available for the selected filters.' => 'No hay datos de longitud de consulta disponibles para los filtros seleccionados.',
+    '1 word' => '1 palabra',
+    '2-3 words' => '2-3 palabras',
+    '4+ words' => '4+ palabras',
 
     // Analytics misc
     'Date' => 'Fecha',
