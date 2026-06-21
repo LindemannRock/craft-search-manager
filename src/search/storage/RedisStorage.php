@@ -1076,16 +1076,7 @@ LUA;
         // If it's a string starting with $, it's an env var reference
         if (is_string($value) && str_starts_with($value, '$')) {
             $envVarName = ltrim($value, '$');
-            $resolved = App::env($envVarName);
-
-            $this->logDebug('Resolved env var', [
-                'original' => $value,
-                'envVarName' => $envVarName,
-                'resolved' => $resolved,
-                'default' => $default,
-            ]);
-
-            return $resolved ?? $default;
+            return App::env($envVarName) ?? $default;
         }
 
         // Return the value as-is (it's a plain string, not an env var reference)
