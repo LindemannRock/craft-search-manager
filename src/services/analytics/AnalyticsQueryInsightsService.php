@@ -620,8 +620,7 @@ class AnalyticsQueryInsightsService
         $query = (new Query())
             ->select(['COUNT(DISTINCT query) as count'])
             ->from('{{%searchmanager_analytics}}')
-            ->where(['source' => 'frontend'])
-            ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
+            ->where(['>=', 'dateCreated', Db::prepareDateForDb((new \DateTime())->modify("-{$days} days"))]);
 
         if ($siteId) {
             $query->andWhere(['siteId' => $siteId]);

@@ -639,7 +639,6 @@ class FileStorage implements StorageInterface
             $similarity = $union > 0 ? $intersection / $union : 0.0;
 
             if ($similarity >= $threshold) {
-                // Extract term from filename
                 $term = $this->extractTermFromFilename(basename($file));
                 $similarities[$term] = $similarity;
             }
@@ -661,17 +660,17 @@ class FileStorage implements StorageInterface
             return [];
         }
 
-        $termsDir = $this->basePath . '/terms/site' . $siteId;
+        $termsDir = $this->basePath . '/terms';
 
         if (!is_dir($termsDir)) {
             return [];
         }
 
         $matchingTerms = [];
-        $files = glob($termsDir . '/*.dat');
+        $files = glob($termsDir . '/*_' . $siteId . '.dat');
 
         foreach ($files as $file) {
-            $term = $this->extractTermFromFilename(basename($file));
+            $term = $this->extractTermFromFilename(basename($file), $siteId);
             if (str_starts_with($term, $prefix)) {
                 $matchingTerms[] = $term;
             }
@@ -935,19 +934,30 @@ class FileStorage implements StorageInterface
     }
 
     /**
-     * Extract term from sanitized filename
+     * Extract term from sanitized filename.
      *
-     * @param string $filename Filename (e.g., "term_name.dat")
-     * @return string Original term (approximate - best effort)
+     * The filename is already the persisted searchable term after filename
+     * sanitization. Preserve literal underscores so underscore-containing terms
+     * round-trip deterministically. For term-document files, strip the site
+     * suffix added by {@see getTermPath()}.
+     *
+     * @param string $filename Filename (e.g., "term_name.dat" or "term_name_1.dat")
+     * @param int|null $siteId Site ID suffix to remove for term-document files
+     * @return string Persisted term
      */
-    private function extractTermFromFilename(string $filename): string
+    private function extractTermFromFilename(string $filename, ?int $siteId = null): string
     {
         // Remove .dat extension
         $term = str_replace('.dat', '', $filename);
 
-        // This is a limitation of file-based storage - we can't perfectly
-        // reverse the sanitization, but for most terms this works
-        return str_replace('_', '', $term);
+        if ($siteId !== null) {
+            $suffix = '_' . $siteId;
+            if (str_ends_with($term, $suffix)) {
+                $term = substr($term, 0, -strlen($suffix));
+            }
+        }
+
+        return $term;
     }
 
     /**

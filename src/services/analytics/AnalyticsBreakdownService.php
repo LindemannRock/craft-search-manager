@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\services\analytics;
 
+use Craft;
 use craft\db\Query;
 use craft\helpers\App;
 use lindemannrock\base\helpers\DateFormatHelper;
@@ -626,6 +627,13 @@ class AnalyticsBreakdownService
         if (isset($locations[$defaultCountry][$defaultCity])) {
             return $locations[$defaultCountry][$defaultCity];
         }
+
+        Craft::warning('Configured default analytics location was not found; falling back to Dubai. | ' . json_encode([
+            'configuredCountry' => $defaultCountry,
+            'configuredCity' => $defaultCity,
+            'fallbackCountry' => 'AE',
+            'fallbackCity' => 'Dubai',
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), SearchManager::$plugin->id);
 
         // Fallback to Dubai if configuration not found
         return $locations['AE']['Dubai'];
