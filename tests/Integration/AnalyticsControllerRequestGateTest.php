@@ -28,9 +28,6 @@ final class AnalyticsControllerRequestGateTest extends TestCase
 
         foreach ([
             'actionGetData',
-            'actionGetChartData',
-            'actionGetRuleAnalytics',
-            'actionGetPromotionAnalytics',
             'actionDelete',
             'actionClearAll',
         ] as $method) {
@@ -48,6 +45,31 @@ final class AnalyticsControllerRequestGateTest extends TestCase
             $this->assertIsInt($acceptsJsonPos, $method . ' must call requireAcceptsJson().');
             $this->assertIsInt($permissionPos, $method . ' must still call requirePermission().');
             $this->assertLessThan($permissionPos, $acceptsJsonPos, $method . ' must gate Accepts JSON before permission.');
+        }
+    }
+
+    public function testOnlyLiveAnalyticsWiringRemains(): void
+    {
+        $controllerSource = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/AnalyticsController.php');
+        $this->assertIsString($controllerSource);
+        self::assertStringNotContainsString('actionGetChartData', $controllerSource);
+        self::assertStringNotContainsString('actionGetRuleAnalytics', $controllerSource);
+        self::assertStringNotContainsString('actionGetPromotionAnalytics', $controllerSource);
+        self::assertStringNotContainsString('analytics-content', $controllerSource);
+
+        $analyticsIndex = file_get_contents(dirname(__DIR__, 2) . '/src/templates/analytics/index.twig');
+        $this->assertIsString($analyticsIndex);
+        self::assertStringContainsString('search-manager/analytics/get-data', $analyticsIndex);
+        self::assertStringNotContainsString('search-manager/analytics/get-chart-data', $analyticsIndex);
+
+        foreach ([
+            'query-rules/edit.twig' => 'search-manager/query-rules/_partials/analytics',
+            'promotions/edit.twig' => 'search-manager/promotions/_partials/analytics',
+        ] as $template => $partial) {
+            $source = file_get_contents(dirname(__DIR__, 2) . '/src/templates/' . $template);
+            $this->assertIsString($source);
+            self::assertStringContainsString($partial, $source);
+            self::assertStringNotContainsString('analytics-content', $source);
         }
     }
 }
