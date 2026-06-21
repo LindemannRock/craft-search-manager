@@ -575,7 +575,7 @@ class QueryRule extends Model
      *
      * @return string
      */
-    public function getActionDescription(): string
+    public function getActionDescription(?string $redirectUrl = null): string
     {
         return match ($this->actionType) {
             self::ACTION_SYNONYM => Craft::t('search-manager', 'Synonyms: {terms}', [
@@ -597,7 +597,7 @@ class QueryRule extends Model
                 'value' => $this->actionValue['value'] ?? '',
             ]),
             self::ACTION_REDIRECT => Craft::t('search-manager', 'Redirect to {url}', [
-                'url' => $this->getRedirectUrl(),
+                'url' => $redirectUrl ?? $this->getRedirectUrl(),
             ]),
             default => Craft::t('search-manager', 'Unknown action'),
         };

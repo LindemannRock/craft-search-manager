@@ -131,11 +131,17 @@ class PromotionService extends Component
      * @param string $query Search query
      * @param string $indexHandle Index handle
      * @param int|null $siteId Site ID
+     * @param Promotion[]|null $matchedPromotions Already matched promotions for this request
      * @return array Modified results with promotions applied
      */
-    public function applyPromotions(array $results, string $query, string $indexHandle, ?int $siteId = null): array
-    {
-        $promotions = $this->getPromotedElements($query, $indexHandle, $siteId);
+    public function applyPromotions(
+        array $results,
+        string $query,
+        string $indexHandle,
+        ?int $siteId = null,
+        ?array $matchedPromotions = null,
+    ): array {
+        $promotions = $matchedPromotions ?? $this->getPromotedElements($query, $indexHandle, $siteId);
 
         if (empty($promotions)) {
             return $results;

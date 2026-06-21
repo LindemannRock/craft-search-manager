@@ -11,6 +11,7 @@ use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
+use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
@@ -555,48 +556,35 @@ class SettingsController extends Controller
             $redirectElements = $this->preloadTestQueryRuleRedirectElements($matchingRules);
 
             foreach ($matchingRules as $rule) {
-                // Build effect description
-                $effectDescription = '';
+                $elementInfo = null;
+
                 switch ($rule->actionType) {
-                    case 'synonym':
+                    case QueryRule::ACTION_SYNONYM:
+                        $effectDescription = $rule->getActionDescription();
                         $terms = $rule->getSynonyms();
-                        $effectDescription = 'Expands to: ' . implode(', ', $terms);
                         $synonyms = array_merge($synonyms, $terms);
                         break;
-                    case 'boost_section':
-                        $effectDescription = 'Boost section "' . ($rule->actionValue['sectionHandle'] ?? '') . '" by ' . ($rule->actionValue['multiplier'] ?? 2.0) . 'x';
-                        break;
-                    case 'boost_category':
-                        $effectDescription = 'Boost category by ' . ($rule->actionValue['multiplier'] ?? 2.0) . 'x';
-                        break;
-                    case 'boost_element':
-                        $effectDescription = 'Boost element #' . ($rule->actionValue['elementId'] ?? '') . ' by ' . ($rule->actionValue['multiplier'] ?? 2.0) . 'x';
-                        break;
-                    case 'filter':
-                        $effectDescription = 'Filter: ' . ($rule->actionValue['field'] ?? '') . ' = ' . ($rule->actionValue['value'] ?? '');
-                        break;
-                    case 'redirect':
+
+                    case QueryRule::ACTION_REDIRECT:
                         $redirect = $rule->getRedirectUrl();
-                        // Check if element-based redirect
-                        $elementInfo = null;
+                        $effectDescription = $rule->getActionDescription($redirect);
                         if (!empty($rule->actionValue['elementId']) && !empty($rule->actionValue['elementType'])) {
                             $elementType = (string)$rule->actionValue['elementType'];
                             $element = $redirectElements[$this->elementCacheKey($elementType, null, (int)$rule->actionValue['elementId'])] ?? null;
                             if ($element) {
                                 $elementInfo = [
                                     'id' => $element->id,
-                                    'title' => $element->title ?? 'Untitled',
+                                    'title' => $element->title ?? Craft::t('search-manager', 'Untitled'),
                                     'type' => (new \ReflectionClass($element))->getShortName(),
                                     'url' => $element->getUrl(),
                                     'cpEditUrl' => $element->getCpEditUrl(),
                                 ];
-                                $effectDescription = 'Redirect to ' . $elementInfo['type'] . ': ' . $elementInfo['title'];
-                            } else {
-                                $effectDescription = 'Redirect to element (not found)';
                             }
-                        } else {
-                            $effectDescription = 'Redirect to: ' . $redirect;
                         }
+                        break;
+
+                    default:
+                        $effectDescription = $rule->getActionDescription();
                         break;
                 }
 

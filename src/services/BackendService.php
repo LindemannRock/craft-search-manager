@@ -515,7 +515,8 @@ class BackendService extends Component
                         $cached['hits'],
                         $query,
                         $indexName,
-                        $siteId
+                        $siteId,
+                        $matchedPromotions,
                     );
 
                     $cached['hits'] = $this->filterHitsByType($cached['hits'], $options['type'] ?? null);
@@ -644,7 +645,8 @@ class BackendService extends Component
                 $results['hits'],
                 $query,
                 $indexName,
-                $siteId
+                $siteId,
+                $matchedPromotions,
             );
 
             $results['hits'] = $this->filterHitsByType($results['hits'], $options['type'] ?? null);
