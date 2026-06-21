@@ -6,6 +6,7 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\db\Table;
+use craft\elements\Category;
 use craft\elements\Entry;
 use craft\fields\Categories;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -190,6 +191,8 @@ class QueryRuleService extends Component
             'elements' => [],
         ];
 
+        $categoryHandleIds = $this->resolveCategoryHandleBoostIds($rules, $siteId);
+
         foreach ($rules as $rule) {
             switch ($rule->actionType) {
                 case QueryRule::ACTION_BOOST_SECTION:
@@ -205,10 +208,9 @@ class QueryRuleService extends Component
                     if ($categoryId) {
                         $boosts['categories'][$categoryId] = $rule->getBoostMultiplier();
                     } elseif ($categoryHandle) {
-                        // Resolve handle to ID
-                        $category = \craft\elements\Category::find()->slug($categoryHandle)->one();
-                        if ($category) {
-                            $boosts['categories'][$category->id] = $rule->getBoostMultiplier();
+                        $resolvedCategoryId = $categoryHandleIds[$categoryHandle] ?? null;
+                        if ($resolvedCategoryId !== null) {
+                            $boosts['categories'][$resolvedCategoryId] = $rule->getBoostMultiplier();
                         }
                     }
                     break;
@@ -223,6 +225,48 @@ class QueryRuleService extends Component
         }
 
         return $boosts;
+    }
+
+    /**
+     * Resolve legacy category-handle boost rules in one category query.
+     *
+     * @param array<int, QueryRule> $rules
+     * @return array<string, int>
+     */
+    private function resolveCategoryHandleBoostIds(array $rules, ?int $siteId): array
+    {
+        $handles = [];
+        foreach ($rules as $rule) {
+            if ($rule->actionType !== QueryRule::ACTION_BOOST_CATEGORY) {
+                continue;
+            }
+            if (!empty($rule->actionValue['categoryId'])) {
+                continue;
+            }
+            $categoryHandle = $rule->actionValue['categoryHandle'] ?? null;
+            if (is_string($categoryHandle) && $categoryHandle !== '') {
+                $handles[$categoryHandle] = true;
+            }
+        }
+
+        if (empty($handles)) {
+            return [];
+        }
+
+        $query = Category::find()
+            ->slug(array_keys($handles))
+            ->status(null);
+
+        if ($siteId !== null) {
+            $query->siteId($siteId);
+        }
+
+        $idsByHandle = [];
+        foreach ($query->all() as $category) {
+            $idsByHandle[(string)$category->slug] = (int)$category->id;
+        }
+
+        return $idsByHandle;
     }
 
     /**

@@ -104,7 +104,29 @@ final class QueryRuleBoostBatchTest extends TestCase
         self::assertStringContainsString('preloadCategoryBoosts', $source);
         self::assertStringNotContainsString('getElementById($elementId, null, $siteId)', $source);
         self::assertStringNotContainsString('getFieldValue($field->handle)', $source);
-        self::assertStringNotContainsString('->all() as $category', $source);
+
+        preg_match('/private function preloadCategoryBoosts\(.*?^    \}/ms', $source, $matches);
+        $this->assertNotEmpty($matches, 'preloadCategoryBoosts source should be found');
+        self::assertStringNotContainsString('->all() as $category', $matches[0]);
+    }
+
+    public function testLegacyCategoryHandleBoostsResolveHandlesInOneBatch(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/QueryRuleService.php');
+        $this->assertIsString($source);
+
+        preg_match(
+            '/public function getBoostMultipliers\(.*?^    \}/ms',
+            $source,
+            $matches,
+        );
+        $this->assertNotEmpty($matches, 'getBoostMultipliers source should be found');
+
+        self::assertStringContainsString('resolveCategoryHandleBoostIds($rules, $siteId)', $matches[0]);
+        self::assertStringNotContainsString('Category::find()', $matches[0]);
+        self::assertSame(1, substr_count($source, 'Category::find()'));
+        self::assertStringContainsString('->slug(array_keys($handles))', $source);
+        self::assertStringContainsString('$handles[$categoryHandle] = true', $source);
     }
 
     private function installCountingElements(): object
