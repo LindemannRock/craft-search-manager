@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
+use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -70,6 +71,64 @@ final class LocalBackendMatchedFieldsBatchTest extends TestCase
         self::assertSame(['content'], $decorated[1]['matchedIn']);
         self::assertSame(['coffee'], $decorated[1]['matchedTerms']['content']);
     }
+
+    public function testAllSitesSearchBatchesElementLookupsBySite(): void
+    {
+        $siteIds = \Craft::$app->getSites()->getAllSiteIds();
+        self::assertNotEmpty($siteIds);
+
+        $termDocs = [];
+        $titleByElement = [];
+        $documentTermsById = [];
+        $documentLengthsById = [];
+        $docLengths = [];
+        $elementsById = [];
+        $expectedBatchSizes = [];
+
+        foreach ($siteIds as $siteId) {
+            $siteId = (int)$siteId;
+            $expectedBatchSizes[] = 3;
+            for ($i = 1; $i <= 3; $i++) {
+                $elementId = ($siteId * 1000) + $i;
+                $docId = $siteId . ':' . $elementId;
+                $termDocs['coffee'][$docId] = 1;
+                $titleByElement[$elementId] = ['coffee'];
+                $documentTermsById[$docId] = ['coffee' => 1];
+                $documentLengthsById[$docId] = 1;
+                $docLengths[$docId] = 1;
+                $elementsById[$elementId] = [
+                    'elementType' => 'entry',
+                    'documentData' => [
+                        'title' => 'Coffee ' . $elementId,
+                        'url' => 'https://example.test/' . $siteId . '/' . $elementId,
+                    ],
+                ];
+            }
+        }
+
+        $storage = new RecordingStorage(
+            $termDocs,
+            $titleByElement,
+            $docLengths,
+            max(1, count($docLengths)),
+            1.0,
+            documentTermsById: $documentTermsById,
+            documentLengthsById: $documentLengthsById,
+            elementsById: $elementsById,
+        );
+        $engine = new SearchEngine($storage, 'test-index', ['enableStopWords' => false]);
+        $backend = new LocalBackendMatchedFieldsTestBackend($storage);
+
+        $result = $backend->searchEverySite($engine, 'coffee', 'test-index', 2, 1);
+
+        self::assertSame(count($siteIds), $storage->getElementsByIdsCalls);
+        self::assertSame($expectedBatchSizes, $storage->getElementsByIdsBatchSizes);
+        self::assertSame(count($siteIds) * 3, $result['total']);
+        self::assertCount(2, $result['hits']);
+        self::assertSame(['Coffee ' . ($siteIds[0] * 1000 + 2), 'Coffee ' . ($siteIds[0] * 1000 + 3)], array_column($result['hits'], 'title'));
+        self::assertSame([$siteIds[0], $siteIds[0]], array_column($result['hits'], 'siteId'));
+        self::assertSame(['title'], $result['hits'][0]['matchedIn']);
+    }
 }
 
 final class LocalBackendMatchedFieldsTestBackend extends AbstractSearchEngineBackend
@@ -86,6 +145,14 @@ final class LocalBackendMatchedFieldsTestBackend extends AbstractSearchEngineBac
     public function decorate(array $hits, string $query, string $indexName, int $siteId, int $maxHits): array
     {
         return $this->addMatchedFieldsToHits($hits, $query, $indexName, $siteId, $this->storage, $maxHits);
+    }
+
+    /**
+     * @return array{hits: array<int, array<string, mixed>>, total: int}
+     */
+    public function searchEverySite(SearchEngine $engine, string $query, string $indexName, int $limit, int $offset): array
+    {
+        return $this->searchAllSites($engine, $this->storage, $indexName, $query, $limit, $offset, null, []);
     }
 
     protected function createStorage(string $fullIndexName): StorageInterface

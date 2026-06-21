@@ -414,10 +414,20 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             }
         }
 
+        $elementInfoBySite = [];
+        $elementIdsBySite = [];
+        foreach ($allResults as $data) {
+            $elementIdsBySite[(int)$data['siteId']][(int)$data['elementId']] = true;
+        }
+        foreach ($elementIdsBySite as $siteId => $idSet) {
+            $elementInfoBySite[$siteId] = $storage->getElementsByIds($siteId, array_keys($idSet));
+        }
+
         $hits = [];
         foreach ($allResults as $data) {
             $elementId = $data['elementId'];
-            $elementInfo = $storage->getElementsByIds($data['siteId'], [$elementId]);
+            $siteId = (int)$data['siteId'];
+            $elementInfo = $elementInfoBySite[$siteId] ?? [];
             $info = $elementInfo[$elementId] ?? null;
             $elementType = $info['elementType'] ?? 'entry';
 
@@ -432,7 +442,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 'backendId' => SearchHitIdentityHelper::backendId($elementId, $data['siteId']),
                 'score' => $data['score'],
                 'type' => $elementType,
-                'siteId' => $data['siteId'],
+                'siteId' => $siteId,
             ];
 
             // Merge stored document data into hit (provides section, _headings, category, etc.)

@@ -71,6 +71,12 @@ final class RecordingStorage implements StorageInterface
     /** @var list<array{siteId: int|null, language: string|null, limit: int}> */
     public array $getTermsForAutocompleteCalls = [];
 
+    /** @var int Times getElementsByIds() was called. */
+    public int $getElementsByIdsCalls = 0;
+
+    /** @var int[] Element-id counts passed to each getElementsByIds() call. */
+    public array $getElementsByIdsBatchSizes = [];
+
     /**
      * @param array<string, array<string, int>> $termDocs term => [docId => freq] (docId = "siteId:elementId")
      * @param array<int, string[]> $titleByElement elementId => title terms
@@ -99,7 +105,7 @@ final class RecordingStorage implements StorageInterface
     {
         $this->getTermDocumentsCalls++;
 
-        return $this->termDocs[$term] ?? [];
+        return $this->filterDocsForSite($this->termDocs[$term] ?? [], $siteId);
     }
 
     public function getTermDocumentsBatch(array $terms, int $siteId): array
@@ -110,7 +116,7 @@ final class RecordingStorage implements StorageInterface
         $byTerm = [];
         foreach ($terms as $term) {
             if (!empty($this->termDocs[$term])) {
-                $byTerm[$term] = $this->termDocs[$term];
+                $byTerm[$term] = $this->filterDocsForSite($this->termDocs[$term], $siteId);
             }
         }
 
@@ -227,6 +233,9 @@ final class RecordingStorage implements StorageInterface
 
     public function getElementsByIds(int $siteId, array $elementIds): array
     {
+        $this->getElementsByIdsCalls++;
+        $this->getElementsByIdsBatchSizes[] = count($elementIds);
+
         $out = [];
         foreach ($elementIds as $elementId) {
             if (isset($this->elementsById[(int)$elementId])) {
@@ -255,6 +264,19 @@ final class RecordingStorage implements StorageInterface
     public function getTotalLength(int $siteId): int
     {
         return (int)($this->avgDocLength * $this->totalDocs);
+    }
+
+    /**
+     * @param array<string, int> $docs
+     * @return array<string, int>
+     */
+    private function filterDocsForSite(array $docs, int $siteId): array
+    {
+        return array_filter(
+            $docs,
+            static fn (string $docId): bool => str_starts_with($docId, $siteId . ':'),
+            ARRAY_FILTER_USE_KEY,
+        );
     }
 
     // ---- Write / maintenance surface — no-ops -------------------------------
