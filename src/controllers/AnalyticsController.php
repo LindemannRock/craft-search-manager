@@ -149,7 +149,7 @@ class AnalyticsController extends Controller
     }
 
     /**
-     * Delete an analytic
+     * Delete an analytics record
      *
      * @return Response
      */
@@ -165,7 +165,7 @@ class AnalyticsController extends Controller
             return $this->asJson(['success' => true]);
         }
 
-        return $this->asJson(['success' => false, 'error' => 'Could not delete analytic']);
+        return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete analytics record')]);
     }
 
     /**

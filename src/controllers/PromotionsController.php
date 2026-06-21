@@ -319,7 +319,7 @@ class PromotionsController extends Controller
             );
         } else {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
-                return $this->asJson(['success' => false, 'error' => 'Could not delete promotion']);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete promotion')]);
             }
 
             Craft::$app->getSession()->setError(

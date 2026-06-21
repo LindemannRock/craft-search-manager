@@ -426,7 +426,7 @@ class QueryRulesController extends Controller
             );
         } else {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
-                return $this->asJson(['success' => false, 'error' => 'Could not delete query rule']);
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Could not delete query rule')]);
             }
 
             Craft::$app->getSession()->setError(

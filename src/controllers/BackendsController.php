@@ -470,7 +470,9 @@ class BackendsController extends Controller
                 if (!$backendAdapter) {
                     return $this->asJson([
                         'success' => false,
-                        'error' => "Unknown backend type: {$configuredBackend->backendType}",
+                        'error' => Craft::t('search-manager', 'Unknown backend type: {backendType}', [
+                            'backendType' => $configuredBackend->backendType,
+                        ]),
                     ]);
                 }
 
@@ -481,13 +483,13 @@ class BackendsController extends Controller
                 if ($backendAdapter->isAvailable()) {
                     return $this->asJson([
                         'success' => true,
-                        'message' => 'Connection successful',
+                        'message' => Craft::t('search-manager', 'Connection successful'),
                     ]);
                 }
 
                 return $this->asJson([
                     'success' => false,
-                    'error' => 'Backend is not available. Check your settings.',
+                    'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
                 ]);
             }
 
@@ -499,7 +501,9 @@ class BackendsController extends Controller
             if (!$backendAdapter) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => "Unknown backend type: {$backendType}",
+                    'error' => Craft::t('search-manager', 'Unknown backend type: {backendType}', [
+                        'backendType' => $backendType,
+                    ]),
                 ]);
             }
 
@@ -510,13 +514,13 @@ class BackendsController extends Controller
             if ($backendAdapter->isAvailable()) {
                 return $this->asJson([
                     'success' => true,
-                    'message' => 'Connection successful',
+                    'message' => Craft::t('search-manager', 'Connection successful'),
                 ]);
             }
 
             return $this->asJson([
                 'success' => false,
-                'error' => 'Backend is not available. Check your settings.',
+                'error' => Craft::t('search-manager', 'Backend is not available. Check your settings.'),
             ]);
         } catch (\Throwable $e) {
             $this->logError('Backend connection test failed', [
@@ -559,7 +563,9 @@ class BackendsController extends Controller
             if (!$backendAdapter) {
                 return $this->asJson([
                     'success' => false,
-                    'error' => "Unknown backend type: {$configuredBackend->backendType}",
+                    'error' => Craft::t('search-manager', 'Unknown backend type: {backendType}', [
+                        'backendType' => $configuredBackend->backendType,
+                    ]),
                 ]);
             }
 
