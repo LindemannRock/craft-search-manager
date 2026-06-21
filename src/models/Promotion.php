@@ -95,7 +95,7 @@ class Promotion extends Model
 
         $element = Craft::$app->getElements()->getElementById($this->elementId, null, $this->siteId);
         if (!$element) {
-            $this->addError($attribute, 'Element not found.');
+            $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
             return;
         }
 

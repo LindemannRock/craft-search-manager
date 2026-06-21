@@ -217,7 +217,7 @@ class QueryRulesController extends Controller
         $matchTypeOptions = [];
         foreach (QueryRule::getMatchTypes() as $value => $label) {
             $matchTypeOptions[] = [
-                'label' => Craft::t('search-manager', $label),
+                'label' => $label,
                 'value' => $value,
             ];
         }
@@ -226,7 +226,7 @@ class QueryRulesController extends Controller
         $actionTypeOptions = [];
         foreach (QueryRule::getActionTypes() as $value => $label) {
             $actionTypeOptions[] = [
-                'label' => Craft::t('search-manager', $label),
+                'label' => $label,
                 'value' => $value,
             ];
         }

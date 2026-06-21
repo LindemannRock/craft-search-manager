@@ -566,7 +566,7 @@ class WidgetConfig extends Model
             [['handle', 'name'], 'required'],
             [['handle'], 'string', 'max' => 64],
             [['name'], 'string', 'max' => 255],
-            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.'],
+            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.')],
             [['handle'], 'validateUniqueHandle'],
             [['type'], 'in', 'range' => WidgetStyle::WIDGET_TYPES],
             [['enabled'], 'boolean'],
@@ -598,52 +598,52 @@ class WidgetConfig extends Model
         $this->validateApiKey($s);
 
         // Search settings
-        $this->validateStringField($s, 'search', 'placeholder', 'Placeholder', 255);
+        $this->validateStringField($s, 'search', 'placeholder', Craft::t('search-manager', 'Placeholder'), 255);
         $this->validateIndexHandles($s);
 
         // Behavior settings — integers with ranges
-        $this->validateIntField($s, 'behavior', 'debounce', 'Debounce', 0, 2000);
-        $this->validateIntField($s, 'behavior', 'minChars', 'Minimum Characters', 1, 10);
-        $this->validateIntField($s, 'behavior', 'maxResults', 'Maximum Results', 1, 100);
-        $this->validateIntField($s, 'behavior', 'maxHeadingsPerResult', 'Max Headings per Result', 1, 50);
+        $this->validateIntField($s, 'behavior', 'debounce', Craft::t('search-manager', 'Debounce'), 0, 2000);
+        $this->validateIntField($s, 'behavior', 'minChars', Craft::t('search-manager', 'Minimum Characters'), 1, 10);
+        $this->validateIntField($s, 'behavior', 'maxResults', Craft::t('search-manager', 'Maximum Results'), 1, 100);
+        $this->validateIntField($s, 'behavior', 'maxHeadingsPerResult', Craft::t('search-manager', 'Max Headings per Result'), 1, 50);
         if (BooleanHelper::normalize($s['behavior']['showRecent'] ?? true, true)) {
-            $this->validateIntField($s, 'behavior', 'maxRecentSearches', 'Max Recent Searches', 1, 50);
+            $this->validateIntField($s, 'behavior', 'maxRecentSearches', Craft::t('search-manager', 'Max Recent Searches'), 1, 50);
         }
-        $this->validateIntField($s, 'behavior', 'resultTitleLines', 'Result Title Lines', 1, 5);
-        $this->validateIntField($s, 'behavior', 'resultDescLines', 'Result Description Lines', 1, 5);
-        $this->validateIntField($s, 'behavior', 'snippetLength', 'Snippet Length', 50, 500);
+        $this->validateIntField($s, 'behavior', 'resultTitleLines', Craft::t('search-manager', 'Result Title Lines'), 1, 5);
+        $this->validateIntField($s, 'behavior', 'resultDescLines', Craft::t('search-manager', 'Result Description Lines'), 1, 5);
+        $this->validateIntField($s, 'behavior', 'snippetLength', Craft::t('search-manager', 'Snippet Length'), 50, 500);
 
         // Behavior settings — enums
-        $this->validateEnumField($s, 'behavior', 'resultLayout', 'Result Layout', ['default', 'hierarchical']);
-        $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', 'Hierarchy Display', ['individual', 'unified']);
-        $this->validateEnumField($s, 'behavior', 'snippetMode', 'Snippet Mode', ['early', 'balanced', 'deep']);
+        $this->validateEnumField($s, 'behavior', 'resultLayout', Craft::t('search-manager', 'Result Layout'), ['default', 'hierarchical']);
+        $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', Craft::t('search-manager', 'Hierarchy Display'), ['individual', 'unified']);
+        $this->validateEnumField($s, 'behavior', 'snippetMode', Craft::t('search-manager', 'Snippet Mode'), ['early', 'balanced', 'deep']);
 
         // Behavior settings — booleans
-        $this->validateBooleanField($s, 'behavior', 'preventBodyScroll', 'Prevent Body Scroll');
-        $this->validateBooleanField($s, 'behavior', 'showRecent', 'Show Recent Searches');
-        $this->validateBooleanField($s, 'behavior', 'groupResults', 'Group Results');
-        $this->validateBooleanField($s, 'behavior', 'hideResultsWithoutUrl', 'Hide Results Without URL');
-        $this->validateBooleanField($s, 'behavior', 'showCodeSnippets', 'Show Code Snippets');
-        $this->validateBooleanField($s, 'behavior', 'parseMarkdownSnippets', 'Parse Markdown Snippets');
-        $this->validateBooleanField($s, 'behavior', 'showLoadingIndicator', 'Show Loading Indicator');
-        $this->validateBooleanField($s, 'behavior', 'highlightDestinationPage', 'Highlight Destination Page');
-        $this->validateBooleanField($s, 'behavior', 'persistQueryInUrl', 'Persist Query in URL');
+        $this->validateBooleanField($s, 'behavior', 'preventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));
+        $this->validateBooleanField($s, 'behavior', 'showRecent', Craft::t('search-manager', 'Show Recent Searches'));
+        $this->validateBooleanField($s, 'behavior', 'groupResults', Craft::t('search-manager', 'Group Results'));
+        $this->validateBooleanField($s, 'behavior', 'hideResultsWithoutUrl', Craft::t('search-manager', 'Hide Results Without URL'));
+        $this->validateBooleanField($s, 'behavior', 'showCodeSnippets', Craft::t('search-manager', 'Show Code Snippets'));
+        $this->validateBooleanField($s, 'behavior', 'parseMarkdownSnippets', Craft::t('search-manager', 'Parse Markdown Snippets'));
+        $this->validateBooleanField($s, 'behavior', 'showLoadingIndicator', Craft::t('search-manager', 'Show Loading Indicator'));
+        $this->validateBooleanField($s, 'behavior', 'highlightDestinationPage', Craft::t('search-manager', 'Highlight Destination Page'));
+        $this->validateBooleanField($s, 'behavior', 'persistQueryInUrl', Craft::t('search-manager', 'Persist Query in URL'));
 
         // Behavior settings — strings
-        $this->validateStringField($s, 'behavior', 'hotkey', 'Hotkey', 1);
-        $this->validateStringField($s, 'behavior', 'hierarchyGroupBy', 'Group By Field', 64);
-        $this->validateStringField($s, 'behavior', 'queryParamName', 'Query Parameter Name', 32);
-        $this->validateStringField($s, 'behavior', 'destinationHighlightSelector', 'Content Selector', 255);
+        $this->validateStringField($s, 'behavior', 'hotkey', Craft::t('search-manager', 'Hotkey'), 1);
+        $this->validateStringField($s, 'behavior', 'hierarchyGroupBy', Craft::t('search-manager', 'Group By Field'), 64);
+        $this->validateStringField($s, 'behavior', 'queryParamName', Craft::t('search-manager', 'Query Parameter Name'), 32);
+        $this->validateStringField($s, 'behavior', 'destinationHighlightSelector', Craft::t('search-manager', 'Content Selector'), 255);
         $this->validateQueryParamName($s);
         $this->validateCssSelector('settings.behavior.destinationHighlightSelector', (string)($s['behavior']['destinationHighlightSelector'] ?? ''));
 
         // Trigger settings
-        $this->validateStringField($s, 'trigger', 'triggerText', 'Trigger Text', 255);
-        $this->validateBooleanField($s, 'trigger', 'showTrigger', 'Show Trigger Button');
+        $this->validateStringField($s, 'trigger', 'triggerText', Craft::t('search-manager', 'Trigger Text'), 255);
+        $this->validateBooleanField($s, 'trigger', 'showTrigger', Craft::t('search-manager', 'Show Trigger Button'));
 
         // Analytics settings
-        $this->validateIntField($s, 'analytics', 'idleTimeout', 'Idle Timeout', 0, 10000);
-        $this->validateStringField($s, 'analytics', 'source', 'Source Identifier', 64);
+        $this->validateIntField($s, 'analytics', 'idleTimeout', Craft::t('search-manager', 'Idle Timeout'), 0, 10000);
+        $this->validateStringField($s, 'analytics', 'source', Craft::t('search-manager', 'Source Identifier'), 64);
         $this->validateSourceIdentifier($s);
     }
 
@@ -678,12 +678,18 @@ class WidgetConfig extends Model
             return;
         }
         if (!is_numeric($value) || preg_match('/^-?\d+$/', (string)$value) !== 1) {
-            $this->addError("settings.{$group}.{$key}", "{$label} must be a whole number.");
+            $this->addError("settings.{$group}.{$key}", Craft::t('search-manager', '{label} must be a whole number.', [
+                'label' => $label,
+            ]));
             return;
         }
         $intVal = (int) $value;
         if ($intVal < $min || $intVal > $max) {
-            $this->addError("settings.{$group}.{$key}", "{$label} must be between {$min} and {$max}.");
+            $this->addError("settings.{$group}.{$key}", Craft::t('search-manager', '{label} must be between {min} and {max}.', [
+                'label' => $label,
+                'min' => $min,
+                'max' => $max,
+            ]));
         }
     }
 
@@ -697,7 +703,9 @@ class WidgetConfig extends Model
             return;
         }
         if (!BooleanHelper::isBooleanLike($value)) {
-            $this->addError("settings.{$group}.{$key}", "{$label} must be true or false.");
+            $this->addError("settings.{$group}.{$key}", Craft::t('search-manager', '{label} must be true or false.', [
+                'label' => $label,
+            ]));
         }
     }
 
@@ -716,7 +724,10 @@ class WidgetConfig extends Model
             return;
         }
         if (mb_strlen((string) $value) > $maxLength) {
-            $this->addError("settings.{$group}.{$key}", "{$label} must be {$maxLength} characters or fewer.");
+            $this->addError("settings.{$group}.{$key}", Craft::t('search-manager', '{label} must be {maxLength} characters or fewer.', [
+                'label' => $label,
+                'maxLength' => $maxLength,
+            ]));
         }
     }
 
@@ -730,7 +741,10 @@ class WidgetConfig extends Model
             return;
         }
         if (!in_array(strtolower(trim((string) $value)), $allowed, true)) {
-            $this->addError("settings.{$group}.{$key}", "{$label} must be one of: " . implode(', ', $allowed) . '.');
+            $this->addError("settings.{$group}.{$key}", Craft::t('search-manager', '{label} must be one of: {values}.', [
+                'label' => $label,
+                'values' => implode(', ', $allowed),
+            ]));
         }
     }
 
@@ -745,7 +759,7 @@ class WidgetConfig extends Model
         }
 
         if (!is_array($handles)) {
-            $this->addError('settings.search.indexHandles', 'Search Indices must be an array of index handles.');
+            $this->addError('settings.search.indexHandles', Craft::t('search-manager', 'Search Indices must be an array of index handles.'));
             return;
         }
 
@@ -756,7 +770,7 @@ class WidgetConfig extends Model
 
         foreach ($handles as $handle) {
             if (!is_string($handle) || $handle === '' || !in_array($handle, $validHandles, true)) {
-                $this->addError('settings.search.indexHandles', 'One or more selected search indices are invalid.');
+                $this->addError('settings.search.indexHandles', Craft::t('search-manager', 'One or more selected search indices are invalid.'));
                 return;
             }
         }
@@ -775,7 +789,7 @@ class WidgetConfig extends Model
         if (preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,31}$/', $value) !== 1) {
             $this->addError(
                 'settings.behavior.queryParamName',
-                'Query Parameter Name must start with a letter and contain only letters, numbers, hyphens, and underscores.'
+                Craft::t('search-manager', 'Query Parameter Name must start with a letter and contain only letters, numbers, hyphens, and underscores.')
             );
         }
     }
@@ -793,7 +807,7 @@ class WidgetConfig extends Model
         if (preg_match('/^[a-z][a-z0-9_-]{0,63}$/', $value) !== 1) {
             $this->addError(
                 'settings.analytics.source',
-                'Source Identifier must start with a lowercase letter and contain only lowercase letters, numbers, hyphens, and underscores.'
+                Craft::t('search-manager', 'Source Identifier must start with a lowercase letter and contain only lowercase letters, numbers, hyphens, and underscores.')
             );
         }
     }
@@ -809,14 +823,14 @@ class WidgetConfig extends Model
         }
 
         if (preg_match('/[<>"\'`{};]/', $value) === 1 || stripos($value, 'javascript:') !== false) {
-            $this->addError($attribute, 'Content Selector contains unsafe characters.');
+            $this->addError($attribute, Craft::t('search-manager', 'Content Selector contains unsafe characters.'));
             return;
         }
 
         if (preg_match('/[^a-zA-Z0-9\s\-\_\.\#\[\]\:\,\>\+\~\*\(\)=]/', $value) === 1) {
             $this->addError(
                 $attribute,
-                'Content Selector contains invalid characters. Use CSS selectors only (for example: main, article, [data-search-content]).'
+                Craft::t('search-manager', 'Content Selector contains invalid characters. Use CSS selectors only (for example: main, article, [data-search-content]).')
             );
         }
     }

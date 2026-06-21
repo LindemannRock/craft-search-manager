@@ -137,7 +137,7 @@ class SearchIndex extends Model
             [['handle'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/'],
             [['handle'], 'validateUniqueHandle'],
             [['language'], 'string', 'max' => 10],
-            [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => 'Language must be a valid language code (e.g., en, ar, fr-ca)'],
+            [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Language must be a valid language code (e.g., en, ar, fr-ca)')],
             [['backend'], 'string', 'max' => 255],
             [['backend'], 'validateBackendHandle'],
             [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl'], 'boolean'],
@@ -173,13 +173,15 @@ class SearchIndex extends Model
 
         // Validate format: must look like a PHP fully-qualified class name
         if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*(\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*$/', $this->$attribute)) {
-            $this->addError($attribute, 'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).');
+            $this->addError($attribute, Craft::t('search-manager', 'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).'));
             return;
         }
 
         // Check if class exists
         if (!class_exists($this->$attribute)) {
-            $this->addError($attribute, "Transformer class does not exist: {$this->$attribute}");
+            $this->addError($attribute, Craft::t('search-manager', 'Transformer class does not exist: {class}', [
+                'class' => $this->$attribute,
+            ]));
             $this->logWarning('Invalid transformer class in config', [
                 'handle' => $this->handle,
                 'transformer' => $this->$attribute,
@@ -202,7 +204,7 @@ class SearchIndex extends Model
         if (is_array($value)) {
             $ids = array_values(array_unique(array_filter(array_map('intval', $value), fn($id) => $id > 0)));
             if (empty($ids)) {
-                $this->addError($attribute, 'siteId array must contain at least one valid site ID.');
+                $this->addError($attribute, Craft::t('search-manager', 'siteId array must contain at least one valid site ID.'));
                 return;
             }
 
@@ -215,7 +217,7 @@ class SearchIndex extends Model
             return;
         }
 
-        $this->addError($attribute, 'siteId must be an integer, an array of integers, or null.');
+        $this->addError($attribute, Craft::t('search-manager', 'siteId must be an integer, an array of integers, or null.'));
     }
 
     /**

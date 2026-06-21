@@ -135,34 +135,34 @@ class QueryRule extends Model
 
             case self::ACTION_BOOST_SECTION:
                 if (empty($value['sectionHandle'])) {
-                    $this->addError($attribute, 'Boost section action requires a "sectionHandle".');
+                    $this->addError($attribute, Craft::t('search-manager', 'Boost section action requires a "sectionHandle".'));
                 }
                 if (!isset($value['multiplier']) || !is_numeric($value['multiplier'])) {
-                    $this->addError($attribute, 'Boost section action requires a numeric "multiplier".');
+                    $this->addError($attribute, Craft::t('search-manager', 'Boost section action requires a numeric "multiplier".'));
                 }
                 break;
 
             case self::ACTION_BOOST_CATEGORY:
                 if (empty($value['categoryId']) && empty($value['categoryHandle'])) {
-                    $this->addError($attribute, 'Boost category action requires a "categoryId" or "categoryHandle".');
+                    $this->addError($attribute, Craft::t('search-manager', 'Boost category action requires a "categoryId" or "categoryHandle".'));
                 }
                 if (!isset($value['multiplier']) || !is_numeric($value['multiplier'])) {
-                    $this->addError($attribute, 'Boost category action requires a numeric "multiplier".');
+                    $this->addError($attribute, Craft::t('search-manager', 'Boost category action requires a numeric "multiplier".'));
                 }
                 break;
 
             case self::ACTION_BOOST_ELEMENT:
                 if (empty($value['elementId'])) {
-                    $this->addError($attribute, 'Boost element action requires an "elementId".');
+                    $this->addError($attribute, Craft::t('search-manager', 'Boost element action requires an "elementId".'));
                 }
                 if (!isset($value['multiplier']) || !is_numeric($value['multiplier'])) {
-                    $this->addError($attribute, 'Boost element action requires a numeric "multiplier".');
+                    $this->addError($attribute, Craft::t('search-manager', 'Boost element action requires a numeric "multiplier".'));
                 }
                 break;
 
             case self::ACTION_FILTER:
                 if (empty($value['field']) || !isset($value['value'])) {
-                    $this->addError($attribute, 'Filter action requires "field" and "value".');
+                    $this->addError($attribute, Craft::t('search-manager', 'Filter action requires "field" and "value".'));
                 }
                 break;
 
@@ -171,7 +171,7 @@ class QueryRule extends Model
                 $hasUrl = !empty($value['url']);
                 $hasElement = !empty($value['elementId']) && !empty($value['elementType']);
                 if (!$hasUrl && !$hasElement) {
-                    $this->addError($attribute, 'Redirect action requires a URL or an element.');
+                    $this->addError($attribute, Craft::t('search-manager', 'Redirect action requires a URL or an element.'));
                 }
                 // Validate URL protocol when URL-based redirect
                 if ($hasUrl) {
@@ -185,7 +185,7 @@ class QueryRule extends Model
                         }
                     }
                     if (!$isSafe) {
-                        $this->addError($attribute, 'Redirect URL must start with https://, http://, or / (relative path).');
+                        $this->addError($attribute, Craft::t('search-manager', 'Redirect URL must start with https://, http://, or / (relative path).'));
                     }
                 }
                 break;
@@ -578,13 +578,28 @@ class QueryRule extends Model
     public function getActionDescription(): string
     {
         return match ($this->actionType) {
-            self::ACTION_SYNONYM => 'Synonyms: ' . implode(', ', $this->getSynonyms()),
-            self::ACTION_BOOST_SECTION => 'Boost section "' . ($this->actionValue['sectionHandle'] ?? '') . '" ×' . $this->getBoostMultiplier(),
-            self::ACTION_BOOST_CATEGORY => 'Boost category ×' . $this->getBoostMultiplier(),
-            self::ACTION_BOOST_ELEMENT => 'Boost element #' . ($this->actionValue['elementId'] ?? '') . ' ×' . $this->getBoostMultiplier(),
-            self::ACTION_FILTER => 'Filter: ' . ($this->actionValue['field'] ?? '') . ' = ' . ($this->actionValue['value'] ?? ''),
-            self::ACTION_REDIRECT => 'Redirect to ' . $this->getRedirectUrl(),
-            default => 'Unknown action',
+            self::ACTION_SYNONYM => Craft::t('search-manager', 'Synonyms: {terms}', [
+                'terms' => implode(', ', $this->getSynonyms()),
+            ]),
+            self::ACTION_BOOST_SECTION => Craft::t('search-manager', 'Boost section "{section}" ×{multiplier}', [
+                'section' => $this->actionValue['sectionHandle'] ?? '',
+                'multiplier' => $this->getBoostMultiplier(),
+            ]),
+            self::ACTION_BOOST_CATEGORY => Craft::t('search-manager', 'Boost category ×{multiplier}', [
+                'multiplier' => $this->getBoostMultiplier(),
+            ]),
+            self::ACTION_BOOST_ELEMENT => Craft::t('search-manager', 'Boost element #{elementId} ×{multiplier}', [
+                'elementId' => $this->actionValue['elementId'] ?? '',
+                'multiplier' => $this->getBoostMultiplier(),
+            ]),
+            self::ACTION_FILTER => Craft::t('search-manager', 'Filter: {field} = {value}', [
+                'field' => $this->actionValue['field'] ?? '',
+                'value' => $this->actionValue['value'] ?? '',
+            ]),
+            self::ACTION_REDIRECT => Craft::t('search-manager', 'Redirect to {url}', [
+                'url' => $this->getRedirectUrl(),
+            ]),
+            default => Craft::t('search-manager', 'Unknown action'),
         };
     }
 
@@ -596,12 +611,12 @@ class QueryRule extends Model
     public static function getActionTypes(): array
     {
         return [
-            self::ACTION_SYNONYM => 'Synonyms',
-            self::ACTION_BOOST_SECTION => 'Boost Section',
-            self::ACTION_BOOST_CATEGORY => 'Boost Category',
-            self::ACTION_BOOST_ELEMENT => 'Boost Element',
-            self::ACTION_FILTER => 'Filter Results',
-            self::ACTION_REDIRECT => 'Redirect',
+            self::ACTION_SYNONYM => Craft::t('search-manager', 'Synonyms'),
+            self::ACTION_BOOST_SECTION => Craft::t('search-manager', 'Boost Section'),
+            self::ACTION_BOOST_CATEGORY => Craft::t('search-manager', 'Boost Category'),
+            self::ACTION_BOOST_ELEMENT => Craft::t('search-manager', 'Boost Element'),
+            self::ACTION_FILTER => Craft::t('search-manager', 'Filter Results'),
+            self::ACTION_REDIRECT => Craft::t('search-manager', 'Redirect'),
         ];
     }
 
@@ -613,10 +628,10 @@ class QueryRule extends Model
     public static function getMatchTypes(): array
     {
         return [
-            self::MATCH_EXACT => 'Exact Match',
-            self::MATCH_CONTAINS => 'Contains',
-            self::MATCH_PREFIX => 'Starts With',
-            self::MATCH_REGEX => 'Regex',
+            self::MATCH_EXACT => Craft::t('search-manager', 'Exact Match'),
+            self::MATCH_CONTAINS => Craft::t('search-manager', 'Contains'),
+            self::MATCH_PREFIX => Craft::t('search-manager', 'Starts With'),
+            self::MATCH_REGEX => Craft::t('search-manager', 'Regex'),
         ];
     }
 }
