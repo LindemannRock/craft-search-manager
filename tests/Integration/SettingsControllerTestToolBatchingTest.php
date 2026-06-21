@@ -20,6 +20,22 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(SettingsController::class)]
 final class SettingsControllerTestToolBatchingTest extends TestCase
 {
+    public function testCleanupAnalyticsRequiresJsonAcceptAfterPostGate(): void
+    {
+        $body = $this->controllerMethodBody('actionCleanupAnalytics');
+
+        $permissionPos = strpos($body, '$this->requirePermission(\'searchManager:manageSettings\');');
+        $postPos = strpos($body, '$this->requirePostRequest();');
+        $acceptsJsonPos = strpos($body, '$this->requireAcceptsJson();');
+
+        self::assertIsInt($permissionPos, 'actionCleanupAnalytics must keep the manageSettings permission gate.');
+        self::assertIsInt($postPos, 'actionCleanupAnalytics must keep the POST gate.');
+        self::assertIsInt($acceptsJsonPos, 'actionCleanupAnalytics must require JSON accept headers.');
+        self::assertLessThan($postPos, $permissionPos, 'Permission gate should remain before POST validation.');
+        self::assertLessThan($acceptsJsonPos, $postPos, 'POST validation should remain before JSON accept validation.');
+        self::assertStringContainsString('return $this->asJson([', $body);
+    }
+
     public function testPromotionTestToolDoesNotQueryOneElementPerPromotionSitePair(): void
     {
         $body = $this->controllerMethodBody('actionTestPromotions');

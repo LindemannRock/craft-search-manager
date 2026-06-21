@@ -920,6 +920,7 @@ class SettingsController extends Controller
     {
         $this->requirePermission('searchManager:manageSettings');
         $this->requirePostRequest();
+        $this->requireAcceptsJson();
 
         $settings = SearchManager::$plugin->getSettings();
         $retention = $settings->analyticsRetention;
