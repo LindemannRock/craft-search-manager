@@ -270,7 +270,7 @@
 											{% set resolvedStoragePath = craft.searchManager.getFileBackendStoragePathDisplay(fieldValue) %}
 											{% if resolvedStoragePath %}
 												{% include 'lindemannrock-base/_components/info-box' with {
-                                                    message: '<strong>Storage:</strong> <code>{path}</code>'|t('search-manager', {path: resolvedStoragePath})
+                                                    message: '<strong>Storage:</strong> <code>{path}</code>'|t('search-manager', {path: resolvedStoragePath|e})
                                                 } %}
 											{% endif %}
 										{% endif %}
