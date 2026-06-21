@@ -2,6 +2,7 @@
 
 namespace lindemannrock\searchmanager\services;
 
+use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\Promotion;
@@ -57,11 +58,13 @@ class PromotionService extends Component
      */
     public function getPromotionCount(?bool $enabledOnly = null): int
     {
-        $promotions = Promotion::findAll();
-        if ($enabledOnly === null) {
-            return count($promotions);
+        $query = (new Query())->from('{{%searchmanager_promotions}}');
+
+        if ($enabledOnly !== null) {
+            $query->where(['enabled' => $enabledOnly ? 1 : 0]);
         }
-        return count(array_filter($promotions, fn($p) => $p->enabled === $enabledOnly));
+
+        return (int)$query->count();
     }
 
     /**
