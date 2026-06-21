@@ -700,9 +700,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $queryTerms = array_values(array_unique($queryTerms));
 
                 $actualTermSet = [];
+                $termDocsByTerm = $queryTerms !== []
+                    ? $storage->getTermDocumentsBatch($queryTerms, (int)$hitSiteId)
+                    : [];
 
                 foreach ($queryTerms as $queryTerm) {
-                    $termDocs = $storage->getTermDocuments($queryTerm, (int)$hitSiteId);
+                    $termDocs = $termDocsByTerm[$queryTerm] ?? [];
                     if (!empty($termDocs)) {
                         $actualTermSet[$queryTerm] = true;
                         continue;

@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\base\ElementInterface;
 use craft\helpers\Db;
 use craft\web\Controller;
 use lindemannrock\base\helpers\ExportHelper;
@@ -470,31 +471,33 @@ class SettingsController extends Controller
             $allPromotions = \lindemannrock\searchmanager\models\Promotion::findByIndex($indexHandle);
 
             $promotions = [];
+            $matchingPromotions = [];
             foreach ($allPromotions as $promotion) {
                 // Check if query pattern matches
                 if (!$promotion->matches(mb_strtolower(trim($query)))) {
                     continue;
                 }
 
-                $element = $promotion->getElement();
+                $matchingPromotions[] = $promotion;
+            }
+
+            $sites = Craft::$app->getSites()->getAllSites();
+            $promotionElements = $this->preloadTestPromotionElements($matchingPromotions);
+            $promotionLiveElements = $this->preloadTestPromotionLiveElements($matchingPromotions, $promotionElements, $sites);
+
+            foreach ($matchingPromotions as $promotion) {
+                $element = $promotionElements[$promotion->id ?? 0] ?? null;
 
                 // Get element status per site for display
                 $siteStatuses = [];
                 if ($element) {
-                    foreach (Craft::$app->getSites()->getAllSites() as $site) {
+                    foreach ($sites as $site) {
                         $elementClass = $promotion->elementType ?? get_class($element);
-                        $siteElement = null;
-                        if (is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
-                            $siteElement = $elementClass::find()
-                                ->id($promotion->elementId)
-                                ->siteId($site->id)
-                                ->status('live')
-                                ->one();
-                        }
+                        $cacheKey = $this->elementCacheKey($elementClass, $site->id, (int)$promotion->elementId);
                         $siteStatuses[] = [
                             'siteId' => $site->id,
                             'siteName' => $site->name,
-                            'isLive' => $siteElement !== null,
+                            'isLive' => isset($promotionLiveElements[$cacheKey]),
                         ];
                     }
                 }
@@ -549,6 +552,7 @@ class SettingsController extends Controller
             $rules = [];
             $redirect = null;
             $synonyms = [$query]; // Start with original query
+            $redirectElements = $this->preloadTestQueryRuleRedirectElements($matchingRules);
 
             foreach ($matchingRules as $rule) {
                 // Build effect description
@@ -576,10 +580,8 @@ class SettingsController extends Controller
                         // Check if element-based redirect
                         $elementInfo = null;
                         if (!empty($rule->actionValue['elementId']) && !empty($rule->actionValue['elementType'])) {
-                            $element = Craft::$app->getElements()->getElementById(
-                                (int)$rule->actionValue['elementId'],
-                                $rule->actionValue['elementType']
-                            );
+                            $elementType = (string)$rule->actionValue['elementType'];
+                            $element = $redirectElements[$this->elementCacheKey($elementType, null, (int)$rule->actionValue['elementId'])] ?? null;
                             if ($element) {
                                 $elementInfo = [
                                     'id' => $element->id,
@@ -671,6 +673,182 @@ class SettingsController extends Controller
         Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));
 
         return $this->redirectToPostedUrl();
+    }
+
+    /**
+     * @param array<int, \lindemannrock\searchmanager\models\Promotion> $promotions
+     * @return array<int, ElementInterface>
+     */
+    private function preloadTestPromotionElements(array $promotions): array
+    {
+        $currentSiteId = Craft::$app->getSites()->getCurrentSite()->id ?? null;
+        $idsByTypeAndSite = [];
+        $fallbackPromotions = [];
+
+        foreach ($promotions as $promotion) {
+            if ($promotion->id === null || $promotion->elementId === null) {
+                continue;
+            }
+
+            $elementClass = $promotion->elementType;
+            if (!$this->isElementClass($elementClass)) {
+                $fallbackPromotions[] = $promotion;
+                continue;
+            }
+
+            $siteId = $promotion->siteId ?? $currentSiteId;
+            $groupKey = $elementClass . ':' . ($siteId ?? 'default');
+            $idsByTypeAndSite[$groupKey]['class'] = $elementClass;
+            $idsByTypeAndSite[$groupKey]['siteId'] = $siteId;
+            $idsByTypeAndSite[$groupKey]['ids'][(int)$promotion->elementId] = (int)$promotion->elementId;
+        }
+
+        $elementsByLookup = [];
+        foreach ($idsByTypeAndSite as $group) {
+            /** @var class-string<ElementInterface> $elementClass */
+            $elementClass = $group['class'];
+            $query = $elementClass::find()
+                ->id(array_values($group['ids']))
+                ->status(null)
+                ->indexBy('id');
+
+            if ($group['siteId'] !== null) {
+                $query->siteId($group['siteId']);
+            }
+
+            foreach ($query->all() as $element) {
+                if ($element instanceof ElementInterface) {
+                    $elementsByLookup[$this->elementCacheKey($elementClass, $group['siteId'], (int)$element->id)] = $element;
+                }
+            }
+        }
+
+        $elementsByPromotionId = [];
+        foreach ($promotions as $promotion) {
+            if ($promotion->id === null || $promotion->elementId === null) {
+                continue;
+            }
+
+            $elementClass = $promotion->elementType;
+            $siteId = $promotion->siteId ?? $currentSiteId;
+            if ($this->isElementClass($elementClass)) {
+                $element = $elementsByLookup[$this->elementCacheKey($elementClass, $siteId, (int)$promotion->elementId)] ?? null;
+                if ($element instanceof ElementInterface) {
+                    $elementsByPromotionId[$promotion->id] = $element;
+                }
+            }
+        }
+
+        foreach ($fallbackPromotions as $promotion) {
+            if ($promotion->id === null) {
+                continue;
+            }
+            $element = $promotion->getElement();
+            if ($element instanceof ElementInterface) {
+                $elementsByPromotionId[$promotion->id] = $element;
+            }
+        }
+
+        return $elementsByPromotionId;
+    }
+
+    /**
+     * @param array<int, \lindemannrock\searchmanager\models\Promotion> $promotions
+     * @param array<int, ElementInterface> $promotionElements
+     * @param array<int, \craft\models\Site> $sites
+     * @return array<string, ElementInterface>
+     */
+    private function preloadTestPromotionLiveElements(array $promotions, array $promotionElements, array $sites): array
+    {
+        $idsByTypeAndSite = [];
+
+        foreach ($promotions as $promotion) {
+            if ($promotion->id === null || $promotion->elementId === null || !isset($promotionElements[$promotion->id])) {
+                continue;
+            }
+
+            $elementClass = $promotion->elementType ?? get_class($promotionElements[$promotion->id]);
+            if (!$this->isElementClass($elementClass)) {
+                continue;
+            }
+
+            foreach ($sites as $site) {
+                $groupKey = $elementClass . ':' . $site->id;
+                $idsByTypeAndSite[$groupKey]['class'] = $elementClass;
+                $idsByTypeAndSite[$groupKey]['siteId'] = (int)$site->id;
+                $idsByTypeAndSite[$groupKey]['ids'][(int)$promotion->elementId] = (int)$promotion->elementId;
+            }
+        }
+
+        $elements = [];
+        foreach ($idsByTypeAndSite as $group) {
+            /** @var class-string<ElementInterface> $elementClass */
+            $elementClass = $group['class'];
+            foreach ($elementClass::find()
+                ->id(array_values($group['ids']))
+                ->siteId($group['siteId'])
+                ->status('live')
+                ->all() as $element) {
+                if ($element instanceof ElementInterface) {
+                    $elements[$this->elementCacheKey($elementClass, $group['siteId'], (int)$element->id)] = $element;
+                }
+            }
+        }
+
+        return $elements;
+    }
+
+    /**
+     * @param array<int, \lindemannrock\searchmanager\models\QueryRule> $rules
+     * @return array<string, ElementInterface>
+     */
+    private function preloadTestQueryRuleRedirectElements(array $rules): array
+    {
+        $idsByType = [];
+
+        foreach ($rules as $rule) {
+            if ($rule->actionType !== 'redirect') {
+                continue;
+            }
+
+            $elementId = $rule->actionValue['elementId'] ?? null;
+            $elementClass = $rule->actionValue['elementType'] ?? null;
+            if (!is_numeric($elementId) || !is_string($elementClass) || !$this->isElementClass($elementClass)) {
+                continue;
+            }
+
+            $idsByType[$elementClass][(int)$elementId] = (int)$elementId;
+        }
+
+        $elements = [];
+        foreach ($idsByType as $elementClass => $ids) {
+            if (!is_string($elementClass)) {
+                continue;
+            }
+
+            /** @var class-string<ElementInterface> $elementClassName */
+            $elementClassName = $elementClass;
+            foreach ($elementClassName::find()
+                ->id(array_values($ids))
+                ->status(null)
+                ->all() as $element) {
+                if ($element instanceof ElementInterface) {
+                    $elements[$this->elementCacheKey($elementClassName, null, (int)$element->id)] = $element;
+                }
+            }
+        }
+
+        return $elements;
+    }
+
+    private function isElementClass(?string $elementClass): bool
+    {
+        return $elementClass !== null && is_subclass_of($elementClass, ElementInterface::class);
+    }
+
+    private function elementCacheKey(string $elementClass, ?int $siteId, int $elementId): string
+    {
+        return $elementClass . ':' . ($siteId ?? '*') . ':' . $elementId;
     }
 
     /**

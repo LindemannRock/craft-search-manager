@@ -62,6 +62,9 @@ final class LocalBackendMatchedFieldsBatchTest extends TestCase
         self::assertSame(0, $storage->getDocumentTermsCalls);
         self::assertSame(1, $storage->getDocumentTermsBatchCalls);
         self::assertSame([50], $storage->getDocumentTermsBatchSizes);
+        self::assertSame(0, $storage->getTermDocumentsCalls);
+        self::assertSame(1, $storage->getTermDocumentsBatchCalls);
+        self::assertSame([1], $storage->getTermDocumentsBatchSizes);
         self::assertSame(['title'], $decorated[0]['matchedIn']);
         self::assertSame(['coffee'], $decorated[0]['matchedTerms']['title']);
         self::assertSame(['content'], $decorated[1]['matchedIn']);
