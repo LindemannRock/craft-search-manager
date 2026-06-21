@@ -14,6 +14,7 @@ use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
+use lindemannrock\searchmanager\models\WidgetStyle;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -24,6 +25,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(Promotion::class)]
 #[CoversClass(SearchIndex::class)]
 #[CoversClass(WidgetConfig::class)]
+#[CoversClass(WidgetStyle::class)]
 final class ModelValidationI18nTest extends TestCase
 {
     public function testQueryRuleValidationMessagesAndDescriptionsStayStable(): void
@@ -92,6 +94,31 @@ final class ModelValidationI18nTest extends TestCase
         self::assertSame(['Content Selector contains unsafe characters.'], $widget->getErrors('settings.behavior.destinationHighlightSelector'));
     }
 
+    public function testWidgetStyleRangeValidationUsesTranslatedLabelAndMessage(): void
+    {
+        $previousLanguage = \Craft::$app->language;
+
+        try {
+            \Craft::$app->language = 'de';
+
+            $style = new WidgetStyle();
+            $style->name = 'Invalid style';
+            $style->handle = 'invalid-style';
+            $style->type = WidgetStyle::TYPE_MODAL;
+            $style->styles = [
+                'modalMaxWidth' => 1299,
+            ];
+
+            self::assertFalse($style->validate(['styles']));
+            self::assertSame([
+                'Maximale Modal-Breite muss zwischen 300 und 1200 liegen.',
+            ], $style->getErrors('styles.modalMaxWidth'));
+            self::assertSame([], $style->getErrors('styles'));
+        } finally {
+            \Craft::$app->language = $previousLanguage;
+        }
+    }
+
     public function testTargetedModelValidationStringsAreTranslatedAtSource(): void
     {
         $root = dirname(__DIR__, 2);
@@ -110,6 +137,10 @@ final class ModelValidationI18nTest extends TestCase
             self::assertDoesNotMatchRegularExpression('/addError\\([^,\\n]+,\\s*[\'"]/', $source, $target);
             self::assertDoesNotMatchRegularExpression('/[\'"]message[\'"]\\s*=>\\s*[\'"]/', $source, $target);
         }
+
+        $source = (string)file_get_contents($root . '/src/models/WidgetStyle.php');
+        self::assertStringNotContainsString('{$label} must be between {$min} and {$max}.', $source);
+        self::assertStringNotContainsString("Craft::t('search-manager', \$label)", $source);
     }
 
     private function makeWidgetConfig(): WidgetConfig

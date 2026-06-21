@@ -93,45 +93,45 @@ class WidgetStyle extends Model
         $s = $this->getStyles();
 
         // Modal dimensions
-        $this->validateStyleInt($s, 'modalMaxWidth', 300, 1200, 'Modal Max Width');
-        $this->validateStyleInt($s, 'modalMaxHeight', 30, 95, 'Modal Max Height');
-        $this->validateStyleInt($s, 'modalBorderRadius', 0, 50, 'Modal Border Radius');
-        $this->validateStyleInt($s, 'modalBorderWidth', 0, 10, 'Modal Border Width');
-        $this->validateStyleInt($s, 'modalPaddingX', 0, 64, 'Modal Padding X');
-        $this->validateStyleInt($s, 'modalPaddingY', 0, 64, 'Modal Padding Y');
+        $this->validateStyleInt($s, 'modalMaxWidth', 300, 1200, Craft::t('search-manager', 'Modal Max Width'));
+        $this->validateStyleInt($s, 'modalMaxHeight', 30, 95, Craft::t('search-manager', 'Modal Max Height'));
+        $this->validateStyleInt($s, 'modalBorderRadius', 0, 50, Craft::t('search-manager', 'Modal Border Radius'));
+        $this->validateStyleInt($s, 'modalBorderWidth', 0, 10, Craft::t('search-manager', 'Modal Border Width'));
+        $this->validateStyleInt($s, 'modalPaddingX', 0, 64, Craft::t('search-manager', 'Modal Padding X'));
+        $this->validateStyleInt($s, 'modalPaddingY', 0, 64, Craft::t('search-manager', 'Modal Padding Y'));
 
         // Backdrop
-        $this->validateStyleInt($s, 'backdropOpacity', 0, 100, 'Backdrop Opacity');
+        $this->validateStyleInt($s, 'backdropOpacity', 0, 100, Craft::t('search-manager', 'Backdrop Opacity'));
 
         // Header
-        $this->validateStyleInt($s, 'headerBorderRadius', 0, 20, 'Header Border Radius');
-        $this->validateStyleInt($s, 'headerBorderWidth', 0, 10, 'Header Border Width');
-        $this->validateStyleInt($s, 'headerPaddingX', 0, 40, 'Header Padding X');
-        $this->validateStyleInt($s, 'headerPaddingY', 0, 40, 'Header Padding Y');
+        $this->validateStyleInt($s, 'headerBorderRadius', 0, 20, Craft::t('search-manager', 'Header Border Radius'));
+        $this->validateStyleInt($s, 'headerBorderWidth', 0, 10, Craft::t('search-manager', 'Header Border Width'));
+        $this->validateStyleInt($s, 'headerPaddingX', 0, 40, Craft::t('search-manager', 'Header Padding X'));
+        $this->validateStyleInt($s, 'headerPaddingY', 0, 40, Craft::t('search-manager', 'Header Padding Y'));
 
         // Input
-        $this->validateStyleInt($s, 'inputFontSize', 12, 24, 'Input Font Size');
-        $this->validateStyleInt($s, 'inputBorderRadius', 0, 20, 'Input Border Radius');
-        $this->validateStyleInt($s, 'inputBorderWidth', 0, 10, 'Input Border Width');
-        $this->validateStyleInt($s, 'inputPaddingX', 0, 40, 'Input Padding X');
-        $this->validateStyleInt($s, 'inputPaddingY', 0, 40, 'Input Padding Y');
+        $this->validateStyleInt($s, 'inputFontSize', 12, 24, Craft::t('search-manager', 'Input Font Size'));
+        $this->validateStyleInt($s, 'inputBorderRadius', 0, 20, Craft::t('search-manager', 'Input Border Radius'));
+        $this->validateStyleInt($s, 'inputBorderWidth', 0, 10, Craft::t('search-manager', 'Input Border Width'));
+        $this->validateStyleInt($s, 'inputPaddingX', 0, 40, Craft::t('search-manager', 'Input Padding X'));
+        $this->validateStyleInt($s, 'inputPaddingY', 0, 40, Craft::t('search-manager', 'Input Padding Y'));
 
         // Results
-        $this->validateStyleInt($s, 'resultGap', 0, 20, 'Result Gap');
-        $this->validateStyleInt($s, 'resultBorderRadius', 0, 20, 'Result Border Radius');
-        $this->validateStyleInt($s, 'resultBorderWidth', 0, 10, 'Result Border Width');
-        $this->validateStyleInt($s, 'resultPaddingX', 0, 32, 'Result Padding X');
-        $this->validateStyleInt($s, 'resultPaddingY', 0, 32, 'Result Padding Y');
+        $this->validateStyleInt($s, 'resultGap', 0, 20, Craft::t('search-manager', 'Result Gap'));
+        $this->validateStyleInt($s, 'resultBorderRadius', 0, 20, Craft::t('search-manager', 'Result Border Radius'));
+        $this->validateStyleInt($s, 'resultBorderWidth', 0, 10, Craft::t('search-manager', 'Result Border Width'));
+        $this->validateStyleInt($s, 'resultPaddingX', 0, 32, Craft::t('search-manager', 'Result Padding X'));
+        $this->validateStyleInt($s, 'resultPaddingY', 0, 32, Craft::t('search-manager', 'Result Padding Y'));
 
         // Trigger
-        $this->validateStyleInt($s, 'triggerBorderRadius', 0, 20, 'Trigger Border Radius');
-        $this->validateStyleInt($s, 'triggerBorderWidth', 0, 5, 'Trigger Border Width');
-        $this->validateStyleInt($s, 'triggerPaddingX', 0, 40, 'Trigger Padding X');
-        $this->validateStyleInt($s, 'triggerPaddingY', 0, 40, 'Trigger Padding Y');
-        $this->validateStyleInt($s, 'triggerFontSize', 10, 24, 'Trigger Font Size');
+        $this->validateStyleInt($s, 'triggerBorderRadius', 0, 20, Craft::t('search-manager', 'Trigger Border Radius'));
+        $this->validateStyleInt($s, 'triggerBorderWidth', 0, 5, Craft::t('search-manager', 'Trigger Border Width'));
+        $this->validateStyleInt($s, 'triggerPaddingX', 0, 40, Craft::t('search-manager', 'Trigger Padding X'));
+        $this->validateStyleInt($s, 'triggerPaddingY', 0, 40, Craft::t('search-manager', 'Trigger Padding Y'));
+        $this->validateStyleInt($s, 'triggerFontSize', 10, 24, Craft::t('search-manager', 'Trigger Font Size'));
 
         // Keyboard badge
-        $this->validateStyleInt($s, 'kbdBorderRadius', 0, 20, 'Keyboard Badge Border Radius');
+        $this->validateStyleInt($s, 'kbdBorderRadius', 0, 20, Craft::t('search-manager', 'Keyboard Badge Border Radius'));
     }
 
     /**
@@ -145,7 +145,11 @@ class WidgetStyle extends Model
 
         $value = (int) $styles[$key];
         if ($value < $min || $value > $max) {
-            $this->addError("styles.{$key}", "{$label} must be between {$min} and {$max}.");
+            $this->addError("styles.{$key}", Craft::t('search-manager', '{label} must be between {min} and {max}.', [
+                'label' => $label,
+                'min' => $min,
+                'max' => $max,
+            ]));
         }
     }
 
