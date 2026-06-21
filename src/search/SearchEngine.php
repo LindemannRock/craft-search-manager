@@ -1106,17 +1106,22 @@ class SearchEngine
     private function excludeNotTerms(array $docScores, array $notTerms, int $siteId): array
     {
         $excludedDocIds = [];
+        $tokensByValue = [];
 
         foreach ($notTerms as $notTerm) {
-            // Tokenize and filter
-            $tokens = $this->tokenizer->tokenize($notTerm);
-            $tokens = $this->filterTokens($tokens);
+            foreach ($this->filterTokens($this->tokenizer->tokenize($notTerm)) as $token) {
+                $tokensByValue[$token] = true;
+            }
+        }
 
-            foreach ($tokens as $token) {
-                $termDocs = $this->storage->getTermDocuments($token, $siteId);
-                foreach (array_keys($termDocs) as $docId) {
-                    $excludedDocIds[$docId] = true;
-                }
+        if ($tokensByValue === []) {
+            return $docScores;
+        }
+
+        $termDocsByToken = $this->storage->getTermDocumentsBatch(array_keys($tokensByValue), $siteId);
+        foreach ($termDocsByToken as $termDocs) {
+            foreach (array_keys($termDocs) as $docId) {
+                $excludedDocIds[$docId] = true;
             }
         }
 

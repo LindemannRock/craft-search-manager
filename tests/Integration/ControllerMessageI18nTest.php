@@ -14,6 +14,7 @@ use lindemannrock\searchmanager\controllers\AnalyticsController;
 use lindemannrock\searchmanager\controllers\BackendsController;
 use lindemannrock\searchmanager\controllers\PromotionsController;
 use lindemannrock\searchmanager\controllers\QueryRulesController;
+use lindemannrock\searchmanager\controllers\SettingsController;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -24,6 +25,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(QueryRulesController::class)]
 #[CoversClass(AnalyticsController::class)]
 #[CoversClass(BackendsController::class)]
+#[CoversClass(SettingsController::class)]
 final class ControllerMessageI18nTest extends TestCase
 {
     public function testDeleteJsonFailureMessagesUseStaticTranslationKeys(): void
@@ -117,6 +119,49 @@ final class ControllerMessageI18nTest extends TestCase
             'BackendsController.php',
             'actionInfo',
             '"Unknown backend type: {$configuredBackend->backendType}"',
+        );
+    }
+
+    public function testBackendBulkActionFallbacksUseStaticTranslationKey(): void
+    {
+        $this->assertControllerMethodContains(
+            'BackendsController.php',
+            'actionBulkDisable',
+            "Craft::t('search-manager', 'Unknown error')",
+        );
+        $this->assertControllerMethodContains(
+            'BackendsController.php',
+            'actionBulkDelete',
+            "Craft::t('search-manager', 'Unknown error')",
+        );
+        $this->assertControllerMethodNotContains(
+            'BackendsController.php',
+            'actionBulkDisable',
+            ": 'Unknown error'",
+        );
+        $this->assertControllerMethodNotContains(
+            'BackendsController.php',
+            'actionBulkDelete',
+            ": 'Unknown error'",
+        );
+    }
+
+    public function testSettingsPromotionTestFallbackUsesNoPeriodStaticKey(): void
+    {
+        $this->assertControllerMethodContains(
+            'SettingsController.php',
+            'actionTestPromotions',
+            "Craft::t('search-manager', 'Element not found')",
+        );
+        $this->assertControllerMethodNotContains(
+            'SettingsController.php',
+            'actionTestPromotions',
+            ": 'Element not found'",
+        );
+        $this->assertControllerMethodNotContains(
+            'SettingsController.php',
+            'actionTestPromotions',
+            "Craft::t('search-manager', 'Element not found.')",
         );
     }
 

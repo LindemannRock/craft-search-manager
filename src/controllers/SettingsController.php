@@ -508,7 +508,7 @@ class SettingsController extends Controller
                     'matchType' => $promotion->matchType,
                     'position' => $promotion->position,
                     'elementId' => $promotion->elementId,
-                    'elementTitle' => $element ? $element->title : 'Element not found',
+                    'elementTitle' => $element ? $element->title : Craft::t('search-manager', 'Element not found'),
                     'elementEditUrl' => $element ? $element->getCpEditUrl() : '#',
                     'enabled' => $promotion->enabled,
                     'siteStatuses' => $siteStatuses,

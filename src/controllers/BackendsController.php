@@ -663,7 +663,9 @@ class BackendsController extends Controller
                     $count++;
                 } else {
                     $backendErrors = $backend->getErrors();
-                    $errorMessage = !empty($backendErrors['enabled']) ? $backendErrors['enabled'][0] : 'Unknown error';
+                    $errorMessage = !empty($backendErrors['enabled'])
+                        ? $backendErrors['enabled'][0]
+                        : Craft::t('search-manager', 'Unknown error');
                     $errors[] = "{$backend->name}: {$errorMessage}";
                 }
             }
@@ -706,7 +708,9 @@ class BackendsController extends Controller
                     $count++;
                 } else {
                     $backendErrors = $backend->getErrors();
-                    $errorMessage = !empty($backendErrors['handle']) ? $backendErrors['handle'][0] : 'Unknown error';
+                    $errorMessage = !empty($backendErrors['handle'])
+                        ? $backendErrors['handle'][0]
+                        : Craft::t('search-manager', 'Unknown error');
                     $errors[] = "{$backend->name}: {$errorMessage}";
                 }
             }

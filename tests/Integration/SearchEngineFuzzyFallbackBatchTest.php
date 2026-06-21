@@ -104,4 +104,27 @@ final class SearchEngineFuzzyFallbackBatchTest extends TestCase
         $this->assertNotEmpty($results);
         $this->assertSame(1, array_key_first($results), 'doc 1 (exact + fuzzy contributions) ranks first');
     }
+
+    public function testNotTermsBatchExclusionLookups(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [
+                'protein' => ['1:1' => 3, '1:2' => 3, '1:3' => 3],
+                'exclude' => ['1:2' => 1],
+                'blocked' => ['1:3' => 1],
+            ],
+            titleByElement: [],
+            docLengths: ['1:1' => 10, '1:2' => 10, '1:3' => 10],
+            totalDocs: 3,
+            avgDocLength: 10.0,
+        );
+        $engine = new SearchEngine($storage, 'test-index');
+
+        $results = $engine->search('protein NOT exclude NOT blocked', self::SITE_ID);
+
+        $this->assertSame(1, $storage->getTermDocumentsCalls, 'positive term fetched once; NOT exclusions must not fetch per token');
+        $this->assertSame(1, $storage->getTermDocumentsBatchCalls, 'NOT exclusion terms must be fetched in one batch');
+        $this->assertSame([2], $storage->getTermDocumentsBatchSizes, 'both NOT tokens in a single batch call');
+        $this->assertSame([1], array_keys($results), 'documents matching either NOT token are excluded');
+    }
 }

@@ -117,8 +117,8 @@
                     data: {
                         labels: chartData.map(d => d.date),
                         datasets: [
-                            { label: 'With Hits', data: chartData.map(d => d.withResults), borderColor: '#10B981', tension: 0.1 },
-                            { label: 'Zero Hits', data: chartData.map(d => d.zeroResults), borderColor: '#EF4444', tension: 0.1 }
+                            { label: strings.withHits || '', data: chartData.map(d => d.withResults), borderColor: '#10B981', tension: 0.1 },
+                            { label: strings.zeroHits || '', data: chartData.map(d => d.zeroResults), borderColor: '#EF4444', tension: 0.1 }
                         ]
                     },
                     options: { responsive: true, maintainAspectRatio: false }
@@ -431,7 +431,7 @@
                 plugins: {
                     title: {
                         display: true,
-                        text: 'Peak Hour: ' + data.peakHourFormatted
+                        text: (strings.peakHourTitle || '') + ' ' + data.peakHourFormatted
                     }
                 }
             }
@@ -560,7 +560,7 @@
             var promos = s.promotionsShown > 0 ? '<span class="lr-text-amber">' + s.promotionsShown + '</span>' : '<span class="light">\u2014</span>';
             var redirected = s.wasRedirected ? '<span class="status red" title="Redirected to another page"></span>' : '<span class="light">\u2014</span>';
             var intent = s.intent ? Craft.escapeHtml(s.intent.charAt(0).toUpperCase() + s.intent.slice(1)) : '\u2014';
-            var source = {cp: 'CP', frontend: 'Frontend', api: 'API'}[s.source] || Craft.escapeHtml((s.source || '').charAt(0).toUpperCase() + (s.source || '').slice(1));
+            var source = {cp: 'CP', frontend: strings.frontend || '', api: 'API'}[s.source] || Craft.escapeHtml((s.source || '').charAt(0).toUpperCase() + (s.source || '').slice(1));
 
             var row = '<tr>' +
                 '<td class="nowrap">' + Craft.escapeHtml(s.date || '\u2014') + '</td>' +
@@ -988,7 +988,7 @@
             data: {
                 labels: data.labels,
                 datasets: [{
-                    label: 'Avg Response Time (ms)',
+                    label: strings.avgResponseTimeMs || '',
                     data: data.avgTime,
                     borderColor: '#3498db',
                     backgroundColor: 'rgba(52, 152, 219, 0.1)',
@@ -1004,7 +1004,7 @@
                 scales: {
                     y: {
                         beginAtZero: true,
-                        title: { display: true, text: 'ms' }
+                        title: { display: true, text: strings.ms || '' }
                     }
                 }
             }
@@ -1174,7 +1174,7 @@
 
         data.forEach(p => {
             tbody.append(`<tr>
-                <td><strong>${Craft.escapeHtml(p.elementTitle || 'Element #' + p.elementId)}</strong></td>
+                <td><strong>${Craft.escapeHtml(p.elementTitle || (strings.elementNumber || '') + p.elementId)}</strong></td>
                 <td>#${p.position}</td>
                 <td>${p.impressions.toLocaleString()}</td>
                 <td>${p.uniqueQueries.toLocaleString()}</td>
@@ -1197,9 +1197,9 @@
         window.smCharts.promosByPosition = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: data.labels.map(l => 'Position #' + l),
+                labels: data.labels.map(l => (strings.positionNumber || '') + l),
                 datasets: [{
-                    label: 'Impressions',
+                    label: strings.impressions || '',
                     data: data.values,
                     backgroundColor: '#0d78f2'
                 }]
