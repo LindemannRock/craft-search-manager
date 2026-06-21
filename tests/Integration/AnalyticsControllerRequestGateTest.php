@@ -31,6 +31,8 @@ final class AnalyticsControllerRequestGateTest extends TestCase
             'actionGetChartData',
             'actionGetRuleAnalytics',
             'actionGetPromotionAnalytics',
+            'actionDelete',
+            'actionClearAll',
         ] as $method) {
             preg_match(
                 '/public function ' . preg_quote($method, '/') . '\(\): Response\s+\{(?<body>.*?)(?:\n    \}|\n    public function )/s',

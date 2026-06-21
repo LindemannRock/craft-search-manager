@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\variables;
 
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\SearchManager;
 
 /**
  * Backend Variable Proxy
@@ -19,6 +20,12 @@ use lindemannrock\searchmanager\interfaces\BackendInterface;
  */
 class BackendVariableProxy
 {
+    private const MAX_QUERY_LENGTH = 256;
+    private const SEARCH_DEFAULT_LIMIT = 20;
+    private const SEARCH_MAX_LIMIT = 200;
+    private const AUTOCOMPLETE_DEFAULT_LIMIT = 10;
+    private const AUTOCOMPLETE_MAX_LIMIT = 100;
+
     private BackendInterface $backend;
 
     private string $backendHandle;
@@ -55,7 +62,61 @@ class BackendVariableProxy
      */
     public function search(string $indexName, string $query, array $options = []): array
     {
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            return [
+                'hits' => [],
+                'total' => 0,
+                'query' => $query,
+                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
+            ];
+        }
+
+        $options = self::normalizeLimitOptions($options, self::SEARCH_DEFAULT_LIMIT, self::SEARCH_MAX_LIMIT);
+
         return $this->backend->search($indexName, $query, $options);
+    }
+
+    /**
+     * Get autocomplete suggestions for a query
+     *
+     * @param string $query Partial search query
+     * @param string $indexHandle Index to search (default: 'all-sites')
+     * @param array $options Suggestion options
+     * @return array Array of suggestion strings
+     */
+    public function suggest(string $query, string $indexHandle = 'all-sites', array $options = []): array
+    {
+        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+            return [];
+        }
+
+        $settings = SearchManager::$plugin->getSettings();
+        if (!($settings->enableAutocomplete ?? true)) {
+            return [];
+        }
+
+        $options = self::normalizeLimitOptions($options, self::AUTOCOMPLETE_DEFAULT_LIMIT, self::AUTOCOMPLETE_MAX_LIMIT);
+
+        return SearchManager::$plugin->autocomplete->suggest($query, $indexHandle, $options);
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    private static function normalizeLimitOptions(array $options, int $default, int $max): array
+    {
+        $rawLimit = $options['limit'] ?? $options['hitsPerPage'] ?? $default;
+        $limit = is_numeric($rawLimit) ? (int)$rawLimit : $default;
+        if ($limit < 1) {
+            $limit = $default;
+        }
+        $limit = min($max, $limit);
+
+        $options['limit'] = $limit;
+        unset($options['hitsPerPage']);
+
+        return $options;
     }
 
     /**

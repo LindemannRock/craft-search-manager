@@ -10,8 +10,10 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\variables\BackendVariableProxy;
 use lindemannrock\searchmanager\variables\SearchManagerVariable;
 
 /**
@@ -87,6 +89,49 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertSame([], $suggestions);
         self::assertSame([], $autocomplete->suggestCalls);
     }
+
+    public function testProxySearchQueryGuardsMatchTwigVariableGuards(): void
+    {
+        $stub = new SearchManagerVariableRecordingBackend();
+        $proxy = new BackendVariableProxy($stub, 'stub');
+        $query = str_repeat('a', 257);
+
+        $response = $proxy->search('content', $query, ['limit' => 10]);
+
+        self::assertSame([], $response['hits']);
+        self::assertSame(0, $response['total']);
+        self::assertSame($query, $response['query']);
+        self::assertSame('Query too long (max 256 characters)', $response['error']);
+        self::assertSame([], $stub->callsFor('search'));
+
+        $proxy->search('content', 'coffee', ['hitsPerPage' => 999]);
+
+        $searchCalls = $stub->callsFor('search');
+        self::assertCount(1, $searchCalls);
+        self::assertSame(200, $searchCalls[0]['items'][0]['options']['limit']);
+        self::assertArrayNotHasKey('hitsPerPage', $searchCalls[0]['items'][0]['options']);
+    }
+
+    public function testProxySuggestQueryGuardsMatchTwigVariableGuards(): void
+    {
+        $stub = new SearchManagerVariableRecordingBackend();
+        $proxy = new BackendVariableProxy($stub, 'stub');
+        $autocomplete = new SearchManagerVariableRecordingAutocompleteService();
+        $this->swapPluginComponent('search-manager', 'autocomplete', $autocomplete);
+
+        $overlongSuggestions = $proxy->suggest(str_repeat('a', 257), 'content', ['limit' => 10]);
+
+        self::assertSame([], $overlongSuggestions);
+        self::assertSame([], $autocomplete->suggestCalls);
+
+        $suggestions = $proxy->suggest('coffee', 'content', ['hitsPerPage' => 999]);
+
+        self::assertSame(['coffee'], $suggestions);
+        self::assertCount(1, $autocomplete->suggestCalls);
+        self::assertSame(100, $autocomplete->suggestCalls[0]['options']['limit']);
+        self::assertArrayNotHasKey('hitsPerPage', $autocomplete->suggestCalls[0]['options']);
+        self::assertSame([], $stub->callsFor('search'));
+    }
 }
 
 final class SearchManagerVariableRecordingAutocompleteService extends AutocompleteService
@@ -107,5 +152,137 @@ final class SearchManagerVariableRecordingAutocompleteService extends Autocomple
         ];
 
         return ['coffee'];
+    }
+}
+
+final class SearchManagerVariableRecordingBackend implements BackendInterface
+{
+    /** @var list<array{method: string, indexName: string, items?: array<int, array<string, mixed>>}> */
+    public array $calls = [];
+
+    public function index(string $indexName, array $data): bool
+    {
+        return true;
+    }
+
+    public function batchIndex(string $indexName, array $items): bool
+    {
+        return true;
+    }
+
+    public function batchDelete(string $indexName, array $items): bool
+    {
+        return true;
+    }
+
+    public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        return true;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<string, mixed>
+     */
+    public function search(string $indexName, string $query, array $options = []): array
+    {
+        $this->calls[] = [
+            'method' => 'search',
+            'indexName' => $indexName,
+            'items' => [
+                [
+                    'query' => $query,
+                    'options' => $options,
+                ],
+            ],
+        ];
+
+        return [
+            'hits' => [],
+            'total' => 0,
+        ];
+    }
+
+    public function clearIndex(string $indexName): bool
+    {
+        return true;
+    }
+
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        return true;
+    }
+
+    public function isAvailable(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getStatus(): array
+    {
+        return [];
+    }
+
+    public function getName(): string
+    {
+        return 'test';
+    }
+
+    public function browse(string $indexName, string $query = '', array $parameters = []): iterable
+    {
+        return [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function multipleQueries(array $queries = []): array
+    {
+        return [];
+    }
+
+    public function parseFilters(array $filters = []): string
+    {
+        return '';
+    }
+
+    public function supportsBrowse(): bool
+    {
+        return false;
+    }
+
+    public function supportsMultipleQueries(): bool
+    {
+        return false;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    public function listIndices(): array
+    {
+        return [];
+    }
+
+    public function setConfiguredSettings(array $settings): void
+    {
+    }
+
+    public function setBackendHandle(string $handle): void
+    {
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function callsFor(string $method): array
+    {
+        return array_values(array_filter(
+            $this->calls,
+            static fn (array $c): bool => $c['method'] === $method,
+        ));
     }
 }

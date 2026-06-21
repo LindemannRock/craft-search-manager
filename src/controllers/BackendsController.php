@@ -428,14 +428,15 @@ class BackendsController extends Controller
                 Craft::t('search-manager', 'Backend deleted')
             );
         } else {
-            $errors = $backend->getErrors();
-            $errorMessage = !empty($errors['handle']) ? $errors['handle'][0] : 'Could not delete backend';
-            if (Craft::$app->getRequest()->getAcceptsJson()) {
-                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', $errorMessage)]);
+            $error = Craft::t('search-manager', 'Could not delete backend');
+            $errors = $backend->getFirstErrors();
+            if ($errors !== []) {
+                $error .= ': ' . reset($errors);
             }
-            Craft::$app->getSession()->setError(
-                Craft::t('search-manager', $errorMessage)
-            );
+            if (Craft::$app->getRequest()->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
         }
 
         return $this->redirect('search-manager/backends');
