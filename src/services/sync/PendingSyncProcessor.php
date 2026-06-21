@@ -125,6 +125,8 @@ class PendingSyncProcessor extends Component
         $synced = false;
 
         $indexing = SearchManager::$plugin->indexing;
+        $elementTypeAvailable = $this->isElementTypeAvailable($index->elementType, 'batch-sync');
+        $elementsByKey = $elementTypeAvailable ? $this->preloadElements($index, $rows) : [];
 
         foreach ($rows as $row) {
             $rowId = (int)$row['id'];
@@ -138,12 +140,12 @@ class PendingSyncProcessor extends Component
                 continue;
             }
 
-            if ($op === PendingSyncRepository::OP_DELETE || !$this->isElementTypeAvailable($elementType, 'batch-sync')) {
+            if ($op === PendingSyncRepository::OP_DELETE || !$elementTypeAvailable) {
                 $this->queueDelete($elementId, $siteId, $row, $deleteItems, $deleteRows);
                 continue;
             }
 
-            $element = $this->loadElement($elementType, $elementId, $siteId);
+            $element = $elementsByKey[$this->elementCacheKey($siteId, $elementId)] ?? null;
             if (!$element || !$indexing->shouldIndexElementForSite($element)) {
                 $this->queueDelete($elementId, $siteId, $row, $deleteItems, $deleteRows);
                 continue;
@@ -257,19 +259,52 @@ class PendingSyncProcessor extends Component
     }
 
     /**
-     * @param class-string<ElementInterface> $elementType
+     * Preload structurally valid upsert rows for one index by site.
+     *
+     * @param array<int, array<string, mixed>> $rows
+     * @return array<string, ElementInterface>
      */
-    private function loadElement(string $elementType, int $elementId, int $siteId): ?ElementInterface
+    private function preloadElements(SearchIndex $index, array $rows): array
     {
-        /** @var \craft\elements\db\ElementQuery $query */
-        $query = $elementType::find();
-        $element = $query
-            ->id($elementId)
-            ->siteId($siteId)
-            ->status(null)
-            ->one();
+        $elementType = $index->elementType;
+        if (!is_subclass_of($elementType, ElementInterface::class)) {
+            return [];
+        }
 
-        return $element instanceof ElementInterface ? $element : null;
+        $idsBySite = [];
+        foreach ($rows as $row) {
+            $siteId = (int)$row['siteId'];
+            if (
+                (string)$row['op'] !== PendingSyncRepository::OP_UPSERT
+                || (string)$row['elementType'] !== $elementType
+                || !$index->appliesToSiteId($siteId)
+            ) {
+                continue;
+            }
+            $idsBySite[$siteId][(int)$row['elementId']] = true;
+        }
+
+        $elements = [];
+        foreach ($idsBySite as $siteId => $idSet) {
+            /** @var \craft\elements\db\ElementQuery $query */
+            $query = $elementType::find()
+                ->id(array_keys($idSet))
+                ->siteId((int)$siteId)
+                ->status(null);
+
+            foreach ($query->all() as $element) {
+                if ($element instanceof ElementInterface) {
+                    $elements[$this->elementCacheKey((int)$siteId, (int)$element->id)] = $element;
+                }
+            }
+        }
+
+        return $elements;
+    }
+
+    private function elementCacheKey(int $siteId, int $elementId): string
+    {
+        return $siteId . ':' . $elementId;
     }
 
     /**
