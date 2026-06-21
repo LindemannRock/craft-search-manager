@@ -33,6 +33,8 @@ class QueryParser
 {
     use LoggingTrait;
 
+    private const SUPPORTED_FIELD_FILTERS = ['title', 'content'];
+
     /**
      * Localized boolean operators by language
      * All operators are case-insensitive
@@ -140,7 +142,7 @@ class QueryParser
         // Quick check without full parsing
         // Check syntax operators first
         if (str_contains($query, '"') ||         // Phrases
-            str_contains($query, ':') ||         // Field filters
+            preg_match(self::getFieldFilterPattern(), $query) || // Supported field filters
             str_contains($query, '*') ||         // Wildcards
             str_contains($query, '^')) {         // Boosts
             return true;
@@ -177,6 +179,14 @@ class QueryParser
         }
 
         return array_unique($operators);
+    }
+
+    /**
+     * Match only field filters the local engine actually supports.
+     */
+    private static function getFieldFilterPattern(): string
+    {
+        return '/(?<!\S)(' . implode('|', array_map('preg_quote', self::SUPPORTED_FIELD_FILTERS)) . '):(\S+)/i';
     }
 
     // =========================================================================
@@ -300,10 +310,10 @@ class QueryParser
     {
         $extractedTerms = [];
 
-        // Match patterns like "field:term" or "field:term1,term2"
-        if (preg_match_all('/(\w+):(\S+)/', $query, $matches, PREG_SET_ORDER)) {
+        // Match supported patterns like "title:term" or "content:term1,term2".
+        if (preg_match_all(self::getFieldFilterPattern(), $query, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
-                $field = $match[1];
+                $field = strtolower($match[1]);
                 $value = $match[2];
 
                 // Remove boost suffix if present (title:test^2 → title:test)
@@ -331,7 +341,7 @@ class QueryParser
             }
 
             // Remove field filter syntax but keep the terms
-            $query = preg_replace('/\w+:(\S+)/', '$1', $query);
+            $query = preg_replace(self::getFieldFilterPattern(), '$2', $query);
         }
 
         return $query;

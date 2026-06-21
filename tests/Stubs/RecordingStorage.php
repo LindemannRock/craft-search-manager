@@ -79,6 +79,7 @@ final class RecordingStorage implements StorageInterface
      * @param array<string, array<string, int>> $documentTermsById docId => [term => freq], for delete/indexing contract tests
      * @param array<string, int> $documentLengthsById docId => document length, for delete/indexing contract tests
      * @param array<string, string> $documentLanguagesById docId => language, for language-filter batching tests
+     * @param array<int, array<string, mixed>> $elementsById elementId => element metadata, for phrase/order checks
      */
     public function __construct(
         private array $termDocs,
@@ -90,6 +91,7 @@ final class RecordingStorage implements StorageInterface
         private array $documentTermsById = [],
         private array $documentLengthsById = [],
         private array $documentLanguagesById = [],
+        private array $elementsById = [],
     ) {
     }
 
@@ -225,7 +227,14 @@ final class RecordingStorage implements StorageInterface
 
     public function getElementsByIds(int $siteId, array $elementIds): array
     {
-        return [];
+        $out = [];
+        foreach ($elementIds as $elementId) {
+            if (isset($this->elementsById[(int)$elementId])) {
+                $out[(int)$elementId] = $this->elementsById[(int)$elementId];
+            }
+        }
+
+        return $out;
     }
 
     public function termHasNgrams(string $term, int $siteId): bool

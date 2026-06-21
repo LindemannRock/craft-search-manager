@@ -98,7 +98,7 @@ These settings tune the BM25 ranking algorithm and fuzzy matching behavior. The 
 | `bm25K1` | `float` | `1.5` | Term frequency saturation. Higher = more weight on term frequency |
 | `bm25B` | `float` | `0.75` | Document length normalization. 0 = no penalty for long docs, 1 = full penalty |
 | `titleBoostFactor` | `float` | `5.0` | Multiplier for matches in the title field |
-| `exactMatchBoostFactor` | `float` | `3.0` | Multiplier when all query terms are present |
+| `exactMatchBoostFactor` | `float` | `3.0` | Multiplier when normalized query terms appear as an ordered contiguous sequence |
 | `phraseBoostFactor` | `float` | `4.0` | Multiplier for exact phrase matches (`"like this"`) |
 | `ngramSizes` | `string` | `'2,3'` | N-gram sizes for fuzzy matching (comma-separated) |
 | `similarityThreshold` | `float` | `0.25` | Minimum similarity score for fuzzy matches (0.0–1.0) |

@@ -107,7 +107,7 @@ When multiple boost factors apply, they stack. From highest to lowest impact:
 |------|--------|--------------|
 | 1 | Title matches | 5x |
 | 2 | Phrase matches (`"exact phrase"`) | 4x |
-| 3 | Exact matches (all terms present) | 3x |
+| 3 | Exact matches (ordered contiguous query-term sequence) | 3x |
 | 4 | Per-term boosts (`term^2`) | Custom multiplier |
 | 5 | Base BM25 score | 1x |
 

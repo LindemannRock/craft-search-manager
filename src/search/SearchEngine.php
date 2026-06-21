@@ -550,11 +550,7 @@ class SearchEngine
 
             // Apply exact match boost for multi-term queries
             if (count($tokens) > 1) {
-                // For simplicity, we check if all terms are present
-                // A full implementation would check phrase order
-                foreach ($results as $docId => $score) {
-                    $results[$docId] = $this->scorer->applyExactMatchBoost($score);
-                }
+                $results = $this->applyExactMatchBoostToOrderedMatches($results, $tokens, $siteId);
             }
 
             // Filter by language if specified
@@ -740,6 +736,96 @@ class SearchEngine
         $text = strip_tags($html);
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         return $text;
+    }
+
+    /**
+     * Apply exact-match boost only when stored title/content contains the
+     * normalized query terms as an ordered contiguous sequence.
+     *
+     * @param array<string, float|int> $docScores
+     * @param string[] $tokens
+     * @return array<string, float|int>
+     */
+    private function applyExactMatchBoostToOrderedMatches(array $docScores, array $tokens, int $siteId): array
+    {
+        if (empty($docScores) || count($tokens) < 2) {
+            return $docScores;
+        }
+
+        $elementIdsByDocId = [];
+        foreach (array_keys($docScores) as $docId) {
+            $parts = explode(':', (string) $docId);
+            $elementId = (int) ($parts[1] ?? $parts[0]);
+            $elementIdsByDocId[(string) $docId] = $elementId;
+        }
+
+        $elements = $this->storage->getElementsByIds($siteId, array_values(array_unique($elementIdsByDocId)));
+
+        foreach ($elementIdsByDocId as $docId => $elementId) {
+            $elementData = $elements[$elementId] ?? null;
+            if ($elementData === null) {
+                continue;
+            }
+
+            $searchableText = $this->buildPhraseMatchText($elementData);
+            if ($searchableText === '') {
+                continue;
+            }
+
+            $contentTokens = $this->filterTokens($this->tokenizer->tokenize($searchableText));
+            if ($this->containsOrderedTokenSequence($contentTokens, $tokens)) {
+                $docScores[$docId] = $this->scorer->applyExactMatchBoost((float) $docScores[$docId]);
+            }
+        }
+
+        return $docScores;
+    }
+
+    /**
+     * @param array<string, mixed> $elementData
+     */
+    private function buildPhraseMatchText(array $elementData): string
+    {
+        $parts = [];
+        if (isset($elementData['title']) && is_scalar($elementData['title'])) {
+            $parts[] = (string) $elementData['title'];
+        }
+
+        $docData = $elementData['documentData'] ?? [];
+        if (is_array($docData)) {
+            foreach (['content', 'body', 'excerpt'] as $field) {
+                if (isset($docData[$field]) && is_scalar($docData[$field])) {
+                    $parts[] = $this->stripHtmlForPhrase((string) $docData[$field]);
+                }
+            }
+        }
+
+        return trim(implode(' ', $parts));
+    }
+
+    /**
+     * @param string[] $haystack
+     * @param string[] $needle
+     */
+    private function containsOrderedTokenSequence(array $haystack, array $needle): bool
+    {
+        $needleCount = count($needle);
+        if ($needleCount === 0 || count($haystack) < $needleCount) {
+            return false;
+        }
+
+        $lastStart = count($haystack) - $needleCount;
+        for ($start = 0; $start <= $lastStart; $start++) {
+            for ($offset = 0; $offset < $needleCount; $offset++) {
+                if ($haystack[$start + $offset] !== $needle[$offset]) {
+                    continue 2;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /**
