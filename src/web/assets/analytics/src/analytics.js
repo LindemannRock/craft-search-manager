@@ -491,11 +491,12 @@
         }
 
         data.clusters.forEach(c => {
+            const queries = c.queries.slice(0, 3).map(q => Craft.escapeHtml(q)).join(', ');
             let row = `<tr>
                 <td><strong>${Craft.escapeHtml(c.representative)}</strong></td>
                 <td>${c.count.toLocaleString()}</td>
-                <td>${c.queries.slice(0, 3).join(', ')}</td>
-                <td>${c.lastSearched}</td>
+                <td>${queries}</td>
+                <td>${Craft.escapeHtml(c.lastSearched)}</td>
             </tr>`;
             tbody.append(row);
         });
@@ -871,7 +872,7 @@
             const timeClass = getPerformanceTimeClass(q.avgTime);
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.siteName || '—'}</td>
+                <td>${q.siteName ? Craft.escapeHtml(q.siteName) : '—'}</td>
                 <td><strong class="${timeClass}">${Number(q.avgTime).toLocaleString()}ms</strong></td>
                 <td>${q.indexSearches.toLocaleString()}</td>
             </tr>`);
@@ -891,7 +892,7 @@
             const timeClass = getPerformanceTimeClass(q.avgTime);
             tbody.append(`<tr>
                 <td><code>${Craft.escapeHtml(q.query)}</code></td>
-                <td>${q.siteName || '—'}</td>
+                <td>${q.siteName ? Craft.escapeHtml(q.siteName) : '—'}</td>
                 <td><strong class="${timeClass}">${Number(q.avgTime).toLocaleString()}ms</strong></td>
                 <td>${q.indexSearches.toLocaleString()}</td>
             </tr>`);

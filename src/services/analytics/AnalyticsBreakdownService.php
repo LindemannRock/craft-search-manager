@@ -291,8 +291,8 @@ class AnalyticsBreakdownService
         foreach ($results as $row) {
             // Format source label
             $sourceLabel = match ($row['source']) {
-                'frontend' => 'Frontend',
-                'cp' => 'Control Panel',
+                'frontend' => Craft::t('search-manager', 'Frontend'),
+                'cp' => Craft::t('search-manager', 'Control Panel'),
                 'api' => 'API',
                 default => ucfirst($row['source']),
             };

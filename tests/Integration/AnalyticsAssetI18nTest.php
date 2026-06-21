@@ -13,7 +13,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
- * Pins analytics dashboard asset string handling for audit #161.
+ * Pins analytics dashboard asset string handling for audits #161-#164.
  */
 final class AnalyticsAssetI18nTest extends TestCase
 {
@@ -85,6 +85,38 @@ final class AnalyticsAssetI18nTest extends TestCase
         ] as $needle) {
             self::assertStringNotContainsString($needle, $source);
         }
+    }
+
+    public function testAnalyticsSourceEscapesStoredAnalyticsHtmlInterpolations(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/analytics/src/analytics.js');
+
+        self::assertStringContainsString('c.queries.slice(0, 3).map(q => Craft.escapeHtml(q)).join(\', \')', $source);
+        self::assertStringContainsString('<td>${Craft.escapeHtml(c.lastSearched)}</td>', $source);
+        self::assertSame(2, substr_count($source, '<td>${q.siteName ? Craft.escapeHtml(q.siteName) : \'—\'}</td>'));
+    }
+
+    public function testAnalyticsDistDoesNotContainUnsafeRawStoredAnalyticsPatterns(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/analytics/dist/analytics.js');
+
+        foreach ([
+            'c.queries.slice(0, 3).join(\', \')',
+            '<td>${c.lastSearched}</td>',
+            '<td>${q.siteName || \'—\'}</td>',
+        ] as $needle) {
+            self::assertStringNotContainsString($needle, $source);
+        }
+    }
+
+    public function testSourceBreakdownLabelsUseStaticTranslations(): void
+    {
+        $source = $this->readPluginFile('src/services/analytics/AnalyticsBreakdownService.php');
+
+        self::assertStringContainsString("'frontend' => Craft::t('search-manager', 'Frontend')", $source);
+        self::assertStringContainsString("'cp' => Craft::t('search-manager', 'Control Panel')", $source);
+        self::assertStringContainsString("'api' => 'API'", $source);
+        self::assertStringContainsString('default => ucfirst($row[\'source\'])', $source);
     }
 
     private function readPluginFile(string $path): string

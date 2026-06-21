@@ -1467,6 +1467,7 @@ return [
     'Source Distribution' => 'Distribution des sources',
     'Source Kind' => 'Type de source',
     'Frontend' => 'Frontend',
+    'Control Panel' => 'Panneau de contrôle',
     'Filter which sources are shown below' => 'Filtrer les sources affichées ci-dessous',
     'No source data available for the selected filters.' => 'Aucune donnée de source disponible pour les filtres sélectionnés.',
     'Traffic Analysis' => 'Analyse du trafic',

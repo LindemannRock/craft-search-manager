@@ -1467,6 +1467,7 @@ return [
     'Source Distribution' => 'Bronverdeling',
     'Source Kind' => 'Brontype',
     'Frontend' => 'Frontend',
+    'Control Panel' => 'Configuratiescherm',
     'Filter which sources are shown below' => 'Filteren welke bronnen hieronder worden getoond',
     'No source data available for the selected filters.' => 'Geen brongegevens beschikbaar voor de geselecteerde filters.',
     'Traffic Analysis' => 'Verkeersanalyse',

@@ -1467,6 +1467,7 @@ return [
     'Source Distribution' => 'ソース分布',
     'Source Kind' => 'ソースタイプ',
     'Frontend' => 'フロントエンド',
+    'Control Panel' => 'コントロールパネル',
     'Filter which sources are shown below' => '下に表示するソースをフィルター',
     'No source data available for the selected filters.' => '選択されたフィルターに対するソースデータがありません。',
     'Traffic Analysis' => 'トラフィック分析',

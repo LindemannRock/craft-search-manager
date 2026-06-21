@@ -1467,6 +1467,7 @@ return [
     'Source Distribution' => 'توزيع المصادر',
     'Source Kind' => 'نوع المصدر',
     'Frontend' => 'الواجهة الأمامية',
+    'Control Panel' => 'لوحة التحكم',
     'Filter which sources are shown below' => 'تصفية المصادر المعروضة أدناه',
     'No source data available for the selected filters.' => 'لا توجد بيانات مصدر متاحة للفلاتر المحددة.',
     'Traffic Analysis' => 'تحليل الزيارات',

@@ -1467,6 +1467,7 @@ return [
     'Source Distribution' => 'Källfördelning',
     'Source Kind' => 'Källtyp',
     'Frontend' => 'Frontend',
+    'Control Panel' => 'Kontrollpanelen',
     'Filter which sources are shown below' => 'Filtrera vilka källor som visas nedan',
     'No source data available for the selected filters.' => 'Inga källdata tillgängliga för de valda filtren.',
     'Traffic Analysis' => 'Trafikanalys',

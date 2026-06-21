@@ -1467,6 +1467,7 @@ return [
     'Source Distribution' => 'Kildefordeling',
     'Source Kind' => 'Kildetype',
     'Frontend' => 'Frontend',
+    'Control Panel' => 'Kontrolpanelet',
     'Filter which sources are shown below' => 'Filtrér hvilke kilder der vises nedenfor',
     'No source data available for the selected filters.' => 'Ingen kildedata tilgængelige for de valgte filtre.',
     'Traffic Analysis' => 'Trafikanalyse',
