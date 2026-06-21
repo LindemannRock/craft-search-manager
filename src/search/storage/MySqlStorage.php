@@ -176,6 +176,7 @@ class MySqlStorage implements StorageInterface
                 'elementId' => $elementId,
             ])
             ->andWhere(['!=', 'term', '_length'])
+            ->andWhere(['!=', 'term', '_language'])
             ->all();
 
         $terms = [];

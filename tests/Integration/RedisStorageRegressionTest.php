@@ -54,6 +54,16 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame([101, 102], array_keys($results));
     }
 
+    public function testDocumentTermsExcludeSpecialLanguageAndLengthRows(): void
+    {
+        [$storage] = $this->makeStorage();
+
+        $storage->storeDocument(1, 101, ['alpha' => 2], 5, 'de');
+
+        self::assertSame(['alpha' => 2], $storage->getDocumentTerms(1, 101));
+        self::assertSame([101 => ['alpha' => 2]], $storage->getDocumentTermsBatch(1, [101]));
+    }
+
     public function testAutocompleteHotPathUsesScanInsteadOfKeys(): void
     {
         [$storage, $redis] = $this->makeStorage();

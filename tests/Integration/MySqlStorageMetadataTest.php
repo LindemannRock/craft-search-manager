@@ -86,6 +86,16 @@ final class MySqlStorageMetadataTest extends TestCase
         self::assertSame([], $storage->getTermDocuments('alpha', 1));
     }
 
+    public function testDocumentTermsExcludeSpecialLanguageAndLengthRows(): void
+    {
+        $storage = new MySqlStorage(self::INDEX_HANDLE);
+
+        $storage->storeDocument(1, 100001, ['alpha' => 2], 5, 'de');
+
+        self::assertSame(['alpha' => 2], $storage->getDocumentTerms(1, 100001));
+        self::assertSame([100001 => ['alpha' => 2]], $storage->getDocumentTermsBatch(1, [100001]));
+    }
+
     public function testSearchReturnsNothingWhenDocCountIsZeroDespiteIndexedRows(): void
     {
         $storage = new MySqlStorage(self::INDEX_HANDLE);

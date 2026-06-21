@@ -155,8 +155,8 @@ class RedisStorage implements StorageInterface
             return [];
         }
 
-        // Remove _length from terms
-        unset($data['_length']);
+        // Remove special keys from terms
+        unset($data['_length'], $data['_language']);
 
         // Convert to integers
         return array_map('intval', $data);
