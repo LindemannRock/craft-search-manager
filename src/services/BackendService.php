@@ -427,13 +427,13 @@ class BackendService extends Component
         // =====================================================================
         // QUERY RULES: Get all matching rules for analytics
         // =====================================================================
-        $matchedRules = \lindemannrock\searchmanager\models\QueryRule::findMatching($query, $indexName, $siteId);
+        $matchedRules = SearchManager::$plugin->queryRules->getMatchingRules($query, $indexName, $siteId);
         $matchedPromotions = \lindemannrock\searchmanager\models\Promotion::findMatching($query, $indexName, $siteId);
 
         // =====================================================================
         // QUERY RULES: Check for redirect first
         // =====================================================================
-        $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, $indexName, $siteId);
+        $redirectUrl = SearchManager::$plugin->queryRules->getRedirectUrl($query, $indexName, $siteId, $matchedRules);
         if ($redirectUrl) {
             $this->logDebug('Query rule redirect matched', [
                 'query' => $query,
@@ -471,7 +471,7 @@ class BackendService extends Component
         // =====================================================================
         // QUERY RULES: Expand query with synonyms
         // =====================================================================
-        $expandedQueries = SearchManager::$plugin->queryRules->expandWithSynonyms($query, $indexName, $siteId);
+        $expandedQueries = SearchManager::$plugin->queryRules->expandWithSynonyms($query, $indexName, $siteId, $matchedRules);
         $useSynonyms = count($expandedQueries) > 1;
 
         if ($useSynonyms) {
@@ -605,7 +605,8 @@ class BackendService extends Component
                 $results['hits'],
                 $query,
                 $indexName,
-                $siteId
+                $siteId,
+                $matchedRules,
             );
         }
 

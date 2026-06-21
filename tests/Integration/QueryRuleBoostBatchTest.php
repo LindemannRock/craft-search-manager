@@ -164,8 +164,12 @@ final class QueryRuleBoostBatchTest extends TestCase
                 parent::__construct();
             }
 
-            public function getBoostMultipliers(string $query, ?string $indexHandle = null, ?int $siteId = null): array
-            {
+            public function getBoostMultipliers(
+                string $query,
+                ?string $indexHandle = null,
+                ?int $siteId = null,
+                ?array $matchedRules = null,
+            ): array {
                 return $this->testBoosts;
             }
         };

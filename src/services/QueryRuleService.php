@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\services;
 
 use Craft;
+use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\db\Table;
@@ -65,11 +66,13 @@ class QueryRuleService extends Component
      */
     public function getQueryRuleCount(?bool $enabledOnly = null): int
     {
-        $rules = QueryRule::findAll();
-        if ($enabledOnly === null) {
-            return count($rules);
+        $query = (new Query())->from('{{%searchmanager_query_rules}}');
+
+        if ($enabledOnly !== null) {
+            $query->where(['enabled' => $enabledOnly ? 1 : 0]);
         }
-        return count(array_filter($rules, fn($r) => $r->enabled === $enabledOnly));
+
+        return (int)$query->count();
     }
 
     /**
@@ -130,10 +133,15 @@ class QueryRuleService extends Component
      * Check if query should redirect
      * Returns redirect URL or null
      *
+     * @param QueryRule[]|null $matchedRules
      */
-    public function getRedirectUrl(string $query, ?string $indexHandle = null, ?int $siteId = null): ?string
-    {
-        $rules = $this->getMatchingRules($query, $indexHandle, $siteId);
+    public function getRedirectUrl(
+        string $query,
+        ?string $indexHandle = null,
+        ?int $siteId = null,
+        ?array $matchedRules = null,
+    ): ?string {
+        $rules = $matchedRules ?? $this->getMatchingRules($query, $indexHandle, $siteId);
 
         foreach ($rules as $rule) {
             if ($rule->isRedirect()) {
@@ -156,10 +164,15 @@ class QueryRuleService extends Component
      * Expand query with synonyms
      * Returns array of queries to search for
      *
+     * @param QueryRule[]|null $matchedRules
      */
-    public function expandWithSynonyms(string $query, ?string $indexHandle = null, ?int $siteId = null): array
-    {
-        $rules = $this->getMatchingRules($query, $indexHandle, $siteId);
+    public function expandWithSynonyms(
+        string $query,
+        ?string $indexHandle = null,
+        ?int $siteId = null,
+        ?array $matchedRules = null,
+    ): array {
+        $rules = $matchedRules ?? $this->getMatchingRules($query, $indexHandle, $siteId);
         $queries = [$query];
 
         foreach ($rules as $rule) {
@@ -181,10 +194,15 @@ class QueryRuleService extends Component
      * Get boost multipliers for a query
      * Returns array of [type => [identifier => multiplier]]
      *
+     * @param QueryRule[]|null $matchedRules
      */
-    public function getBoostMultipliers(string $query, ?string $indexHandle = null, ?int $siteId = null): array
-    {
-        $rules = $this->getMatchingRules($query, $indexHandle, $siteId);
+    public function getBoostMultipliers(
+        string $query,
+        ?string $indexHandle = null,
+        ?int $siteId = null,
+        ?array $matchedRules = null,
+    ): array {
+        $rules = $matchedRules ?? $this->getMatchingRules($query, $indexHandle, $siteId);
         $boosts = [
             'sections' => [],
             'categories' => [],
@@ -299,11 +317,17 @@ class QueryRuleService extends Component
      * @param string $query Search query
      * @param string|null $indexHandle Index handle
      * @param int|null $siteId Site ID
+     * @param QueryRule[]|null $matchedRules
      * @return array Modified results with boosted scores
      */
-    public function applyBoosts(array $results, string $query, ?string $indexHandle = null, ?int $siteId = null): array
-    {
-        $boosts = $this->getBoostMultipliers($query, $indexHandle, $siteId);
+    public function applyBoosts(
+        array $results,
+        string $query,
+        ?string $indexHandle = null,
+        ?int $siteId = null,
+        ?array $matchedRules = null,
+    ): array {
+        $boosts = $this->getBoostMultipliers($query, $indexHandle, $siteId, $matchedRules);
 
         if (empty($boosts['sections']) && empty($boosts['categories']) && empty($boosts['elements'])) {
             return $results;
@@ -430,11 +454,14 @@ class QueryRuleService extends Component
         }
 
         foreach ($unresolved as $resolvedSiteId => $idSet) {
-            foreach (array_keys($idSet) as $elementId) {
-                $element = Craft::$app->getElements()->getElementById((int)$elementId, null, (int)$resolvedSiteId);
-                if ($element !== null) {
-                    $map[$resolvedSiteId . ':' . $element->id] = $element;
-                }
+            /** @var \craft\elements\db\ElementQuery $query */
+            $query = Element::find()
+                ->id(array_keys($idSet))
+                ->siteId((int)$resolvedSiteId)
+                ->status(null);
+
+            foreach ($query->all() as $element) {
+                $map[$resolvedSiteId . ':' . $element->id] = $element;
             }
         }
 
