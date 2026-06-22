@@ -6,6 +6,7 @@ use Craft;
 use craft\web\Controller;
 use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -213,9 +214,8 @@ class SearchController extends Controller
             $trigger = 'unknown';
         }
 
-        // Source: sanitize and limit length (max 64 chars, alphanumeric + dash/underscore)
-        $source = preg_replace('/[^a-zA-Z0-9_-]/', '', $source);
-        $source = substr($source, 0, 64) ?: 'frontend-widget';
+        // Source: sanitize and limit length to the analytics source column.
+        $source = TrackingMetadataHelper::source($source) ?? 'frontend-widget';
 
         // Widget cache telemetry: the widget knows from the final search response
         // whether the result was cache-hit (meta.cached) and the backend's reported

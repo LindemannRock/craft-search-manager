@@ -496,23 +496,33 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         array $searchOptions,
     ): array {
         $results = $engine->search($query, $siteId, 0, $searchOptions);
+        $elementIds = array_keys($results);
+        $elementInfo = $storage->getElementsByIds($siteId, $elementIds);
+
+        if ($typeFilter !== null) {
+            $results = array_filter(
+                $results,
+                function(float $score, int|string $elementId) use ($elementInfo, $typeFilter): bool {
+                    $info = $elementInfo[$elementId] ?? null;
+                    $elementType = $info['elementType'] ?? 'entry';
+
+                    return $this->matchesTypeFilter($elementType, $typeFilter);
+                },
+                ARRAY_FILTER_USE_BOTH,
+            );
+        }
+
         $total = count($results);
         if ($limit > 0) {
             $results = array_slice($results, $offset, $limit, true);
         } elseif ($offset > 0) {
             $results = array_slice($results, $offset, null, true);
         }
-        $elementIds = array_keys($results);
-        $elementInfo = $storage->getElementsByIds($siteId, $elementIds);
 
         $hits = [];
         foreach ($results as $elementId => $score) {
             $info = $elementInfo[$elementId] ?? null;
             $elementType = $info['elementType'] ?? 'entry';
-
-            if ($typeFilter !== null && !$this->matchesTypeFilter($elementType, $typeFilter)) {
-                continue;
-            }
 
             $hit = [
                 'objectID' => $elementId,

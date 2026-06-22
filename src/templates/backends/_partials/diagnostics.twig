@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', function() {
         yes: {{ include('lindemannrock-base/_components/status-dot', { value: 'yes', colorSet: 'yesNo' }, false)|json_encode|raw }},
         no: {{ include('lindemannrock-base/_components/status-dot', { value: 'no', colorSet: 'yesNo' }, false)|json_encode|raw }},
     };
+    const unknownLabel = {{ 'Unknown'|t('search-manager')|json_encode|raw }};
 
     function testConnection() {
         const connectionResult = document.getElementById('connection-result');
@@ -109,7 +110,7 @@ document.addEventListener('DOMContentLoaded', function() {
         html += '</tr></thead><tbody>';
 
         indices.forEach(function(index) {
-            const name = index.name || index.uid || 'Unknown';
+            const name = index.name || index.uid || unknownLabel;
             const entries = index.entries !== undefined ? index.entries.toLocaleString() : '—';
             html += '<tr><td><code>' + Craft.escapeHtml(name) + '</code></td><td>' + entries + '</td>';
             if (hasDataSize) {
