@@ -761,6 +761,10 @@ return [
     'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'التعطيل يوقف المفتاح دون حذفه. الإبطال (الحذف) يزيل المفتاح نهائياً.',
     'Copy this key now — it will never be shown again.' => 'انسخ هذا المفتاح الآن — لن يتم عرضه مرة أخرى أبداً.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => 'يخزن {pluginName} hash فقط. إذا فقدت هذه القيمة فستحتاج إلى إنشاء مفتاح جديد.',
+    'Default ({name})' => 'الافتراضي ({name})',
+    'Create a backend' => 'أنشئ واجهة خلفية',
+    '<strong>No configured backends yet.</strong> {link} to use a different search service for this index.' => '<strong>لا توجد واجهات خلفية مهيأة بعد.</strong> {link} لاستخدام خدمة بحث مختلفة لهذا الفهرس.',
+    '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.' => '<strong>واجهة خلفية مخصصة:</strong> يستخدم هذا الفهرس واجهة خلفية مختلفة عن الإعداد الافتراضي العام. سيتم تخزين البيانات والبحث فيها في الواجهة الخلفية المحددة.',
 
     // Pending Syncs
     'All statuses' => 'كل الحالات',

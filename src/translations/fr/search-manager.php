@@ -761,6 +761,10 @@ return [
     'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'La désactivation désactive la clé sans la supprimer. Révoquer (supprimer) supprime la clé définitivement.',
     'Copy this key now — it will never be shown again.' => 'Copiez cette clé maintenant — elle ne sera plus jamais affichée.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} ne stocke qu\'un hash. Si vous perdez cette valeur, vous devrez créer une nouvelle clé.',
+    'Default ({name})' => 'Par défaut ({name})',
+    'Create a backend' => 'Créez un backend',
+    '<strong>No configured backends yet.</strong> {link} to use a different search service for this index.' => '<strong>Aucun backend configuré pour l\'instant.</strong> {link} pour utiliser un service de recherche différent pour cet index.',
+    '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.' => '<strong>Backend personnalisé :</strong> Cet index utilise un backend différent du backend par défaut global. Les données seront stockées et recherchées dans le backend sélectionné.',
 
     // Pending Syncs
     'All statuses' => 'Tous les statuts',

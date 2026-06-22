@@ -397,13 +397,14 @@
     }) }}
 
     {% if backendOptions|length <= 1 %}
+        {% set createBackendLink = '<a href="' ~ cpUrl('search-manager/backends/new') ~ '">' ~ 'Create a backend'|t('search-manager') ~ '</a>' %}
         {% include 'lindemannrock-base/_components/info-box' with {
-            message: '<strong>No configured backends yet.</strong> <a href="' ~ cpUrl('search-manager/backends/new') ~ '">Create a backend</a> to use a different search service for this index.'
+            message: '<strong>No configured backends yet.</strong> {link} to use a different search service for this index.'|t('search-manager', {link: createBackendLink})
         } %}
     {% elseif index.backend %}
         {% include 'lindemannrock-base/_components/info-box' with {
             type: 'warning',
-            message: '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.'
+            message: '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.'|t('search-manager')
         } %}
     {% endif %}
 

@@ -13,6 +13,7 @@ use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\ForbiddenHttpException;
@@ -96,7 +97,7 @@ class SearchResolver extends Resolver
             'page' => $page,
             'type' => self::trimmedString($arguments['type'] ?? null),
             'skipAnalytics' => (bool)($arguments['skipAnalytics'] ?? false),
-            'source' => self::trimmedString($arguments['source'] ?? null) ?? 'graphql',
+            'source' => TrackingMetadataHelper::source(self::trimmedString($arguments['source'] ?? null)) ?? 'graphql',
         ];
 
         if ($filters !== null && count($indexHandles) === 1) {
@@ -106,11 +107,20 @@ class SearchResolver extends Resolver
         if ($siteIds === null && $siteId !== null) {
             $options['siteId'] = $siteId;
         }
-        foreach (['language', 'platform', 'appVersion'] as $option) {
-            $value = self::trimmedString($arguments[$option] ?? null);
-            if ($value !== null) {
-                $options[$option] = $value;
-            }
+        $language = self::trimmedString($arguments['language'] ?? null);
+        if ($language !== null) {
+            $options['language'] = $language;
+        }
+        // Cap analytics tracking params to their DB column widths (audit #189, mirrors #180):
+        // source/platform VARCHAR(50), appVersion VARCHAR(20). Prevents silent truncation
+        // (non-strict MySQL) or a caught-and-logged lost-analytics insert (strict MySQL/PostgreSQL).
+        $platform = TrackingMetadataHelper::platform(self::trimmedString($arguments['platform'] ?? null));
+        if ($platform !== null) {
+            $options['platform'] = $platform;
+        }
+        $appVersion = TrackingMetadataHelper::appVersion(self::trimmedString($arguments['appVersion'] ?? null));
+        if ($appVersion !== null) {
+            $options['appVersion'] = $appVersion;
         }
 
         if (empty($indexHandles)) {

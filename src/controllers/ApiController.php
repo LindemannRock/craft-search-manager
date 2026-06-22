@@ -5,6 +5,7 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\web\Controller;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
+use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -364,18 +365,9 @@ class ApiController extends Controller
         // width and strip unexpected characters — otherwise an oversized/garbage
         // value silently truncates (non-strict MySQL) or trips a caught insert error
         // (strict MySQL/PostgreSQL), losing the analytics row and adding log noise.
-        $source = $request->getParam('source', null);
-        if ($source !== null) {
-            $source = substr(preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $source), 0, 50) ?: null;
-        }
-        $platform = $request->getParam('platform', null);
-        if ($platform !== null) {
-            $platform = substr(preg_replace('/[^a-zA-Z0-9 ._-]/', '', (string) $platform), 0, 50) ?: null;
-        }
-        $appVersion = $request->getParam('appVersion', null);
-        if ($appVersion !== null) {
-            $appVersion = substr(preg_replace('/[^a-zA-Z0-9 ._-]/', '', (string) $appVersion), 0, 20) ?: null;
-        }
+        $source = TrackingMetadataHelper::source($request->getParam('source', null));
+        $platform = TrackingMetadataHelper::platform($request->getParam('platform', null));
+        $appVersion = TrackingMetadataHelper::appVersion($request->getParam('appVersion', null));
 
         if (empty($query)) {
             return $this->asJson([

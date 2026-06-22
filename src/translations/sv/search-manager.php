@@ -761,6 +761,10 @@ return [
     'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'Att inaktivera avaktiverar nyckeln utan att ta bort den. Återkalla (radera) tar bort nyckeln permanent.',
     'Copy this key now — it will never be shown again.' => 'Kopiera denna nyckel nu — den kommer aldrig att visas igen.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} lagrar endast en hash. Om du förlorar detta värde måste du skapa en ny nyckel.',
+    'Default ({name})' => 'Standard ({name})',
+    'Create a backend' => 'Skapa en backend',
+    '<strong>No configured backends yet.</strong> {link} to use a different search service for this index.' => '<strong>Inga konfigurerade backends ännu.</strong> {link} för att använda en annan söktjänst för detta index.',
+    '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.' => '<strong>Anpassad backend:</strong> Det här indexet använder en annan backend än det globala standardvärdet. Data lagras och söks i den valda backenden.',
 
     // Pending Syncs
     'All statuses' => 'Alla statusar',

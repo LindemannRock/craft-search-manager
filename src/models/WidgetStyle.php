@@ -66,7 +66,7 @@ class WidgetStyle extends Model
             [['handle'], 'string', 'max' => 64],
             [['name'], 'string', 'max' => 255],
             [['type'], 'in', 'range' => self::WIDGET_TYPES],
-            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.'],
+            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.')],
             [['handle'], 'validateUniqueHandle'],
             [['enabled'], 'boolean'],
             [['styles'], 'validateStyles'],

@@ -118,11 +118,13 @@ final class DedicatedI18nSweepTest extends TestCase
 
     public function testApiControllerCapsAnalyticsParams(): void
     {
-        // #180: anonymous endpoint caps source/platform/appVersion to their column widths.
+        // #180: anonymous endpoint caps source/platform/appVersion through the shared helper.
         $api = $this->readPluginFile('src/controllers/ApiController.php');
-        self::assertStringContainsString("preg_replace('/[^a-zA-Z0-9_-]/', '', (string) \$source), 0, 50)", $api);
-        self::assertStringContainsString("preg_replace('/[^a-zA-Z0-9 ._-]/', '', (string) \$platform), 0, 50)", $api);
-        self::assertStringContainsString("preg_replace('/[^a-zA-Z0-9 ._-]/', '', (string) \$appVersion), 0, 20)", $api);
+        self::assertStringContainsString('use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;', $api);
+        self::assertStringContainsString("\$source = TrackingMetadataHelper::source(\$request->getParam('source', null));", $api);
+        self::assertStringContainsString("\$platform = TrackingMetadataHelper::platform(\$request->getParam('platform', null));", $api);
+        self::assertStringContainsString("\$appVersion = TrackingMetadataHelper::appVersion(\$request->getParam('appVersion', null));", $api);
+        self::assertStringNotContainsString("preg_replace('/[^a-zA-Z0-9_-]/', '', (string) \$source)", $api);
     }
 
     public function testNewKeysExistAcrossAllLocales(): void

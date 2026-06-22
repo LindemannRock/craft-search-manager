@@ -761,6 +761,10 @@ return [
     'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => '無効化するとキーは削除せずに停止します。失効（削除）するとキーは完全に削除されます。',
     'Copy this key now — it will never be shown again.' => 'このキーを今すぐコピーしてください — このキーは二度と表示されません。',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} はハッシュのみを保存します。この値を失うと、新しいキーを作成する必要があります。',
+    'Default ({name})' => 'デフォルト ({name})',
+    'Create a backend' => 'バックエンドを作成',
+    '<strong>No configured backends yet.</strong> {link} to use a different search service for this index.' => '<strong>まだバックエンドが設定されていません。</strong> このインデックスに別の検索サービスを使用するには {link} してください。',
+    '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.' => '<strong>カスタムバックエンド：</strong> このインデックスはグローバルのデフォルトとは異なるバックエンドを使用しています。データは選択したバックエンドに保存され、検索されます。',
 
     // Pending Syncs
     'All statuses' => 'すべてのステータス',

@@ -761,6 +761,10 @@ return [
     'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'Uitschakelen deactiveert de sleutel zonder deze te verwijderen. Intrekken (verwijderen) verwijdert de sleutel permanent.',
     'Copy this key now — it will never be shown again.' => 'Kopieer deze sleutel nu — deze wordt nooit meer getoond.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} bewaart alleen een hash. Als u deze waarde kwijtraakt, moet u een nieuwe sleutel aanmaken.',
+    'Default ({name})' => 'Standaard ({name})',
+    'Create a backend' => 'Maak een backend aan',
+    '<strong>No configured backends yet.</strong> {link} to use a different search service for this index.' => '<strong>Nog geen backends geconfigureerd.</strong> {link} om een andere zoekservice voor deze index te gebruiken.',
+    '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.' => '<strong>Aangepaste backend:</strong> Deze index gebruikt een andere backend dan de globale standaard. Gegevens worden opgeslagen en doorzocht in de geselecteerde backend.',
 
     // Pending Syncs
     'All statuses' => 'Alle statussen',

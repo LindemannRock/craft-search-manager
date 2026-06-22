@@ -809,10 +809,11 @@ class ConfiguredBackend extends Model
 
         if ($includeDefault) {
             $defaultBackendHandle = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings()->defaultBackendHandle;
-            $defaultLabel = 'None';
+            $defaultLabel = Craft::t('search-manager', 'None');
 
             if ($defaultBackendHandle) {
-                // Look up the configured backend to get its name
+                // Look up the configured backend to get its name (a real backend name stays
+                // untranslated; it is only interpolated into the translated default label).
                 $defaultBackend = self::findByHandle($defaultBackendHandle);
                 if ($defaultBackend) {
                     $defaultLabel = $defaultBackend->name;
@@ -822,7 +823,7 @@ class ConfiguredBackend extends Model
                 }
             }
 
-            $options[''] = "Default ({$defaultLabel})";
+            $options[''] = Craft::t('search-manager', 'Default ({name})', ['name' => $defaultLabel]);
         }
 
         foreach (self::findAllEnabled() as $backend) {

@@ -761,6 +761,10 @@ return [
     'Disabling deactivates the key without deleting it. Revoke (delete) removes the key permanently.' => 'Deaktivering deaktiverer nøglen uden at slette den. Tilbagekald (slet) fjerner nøglen permanent.',
     'Copy this key now — it will never be shown again.' => 'Kopiér denne nøgle nu — den vises aldrig igen.',
     '{pluginName} stores only a hash. If you lose this value you will need to create a new key.' => '{pluginName} gemmer kun et hash. Hvis du mister denne værdi, skal du oprette en ny nøgle.',
+    'Default ({name})' => 'Standard ({name})',
+    'Create a backend' => 'Opret en backend',
+    '<strong>No configured backends yet.</strong> {link} to use a different search service for this index.' => '<strong>Ingen konfigurerede backends endnu.</strong> {link} for at bruge en anden søgetjeneste til dette indeks.',
+    '<strong>Custom Backend:</strong> This index uses a different backend than the global default. Data will be stored and searched in the selected backend.' => '<strong>Brugerdefineret backend:</strong> Dette indeks bruger en anden backend end den globale standard. Data vil blive lagret og søgt i den valgte backend.',
 
     // Pending Syncs
     'All statuses' => 'Alle statuser',
