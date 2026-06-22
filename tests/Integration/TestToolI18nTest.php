@@ -50,8 +50,8 @@ final class TestToolI18nTest extends TestCase
         // The strings object exists and routes representative strings through |t().
         self::assertStringContainsString('const T = {', $source);
         foreach ([
-            "promoted: {{ 'PROMOTED'|t('search-manager')|json_encode|raw }}",
-            "boosted: {{ 'BOOSTED'|t('search-manager')|json_encode|raw }}",
+            "promoted: {{ 'Promoted'|t('search-manager')|json_encode|raw }}",
+            "boosted: {{ 'Boosted'|t('search-manager')|json_encode|raw }}",
             "noResults: {{ 'No results found for \"{query}\"'|t('search-manager')|json_encode|raw }}",
             "promotionsNote: {{ 'Note: Promotions only appear in search results on sites where the element is live (green).'|t('search-manager')|json_encode|raw }}",
             "backendLabel: {{ 'Backend:'|t('search-manager')|json_encode|raw }}",
@@ -71,6 +71,29 @@ final class TestToolI18nTest extends TestCase
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
+    }
+
+    public function testResultBadgesUseCssUppercaseNotAllCapsKeys(): void
+    {
+        // The Promoted/Boosted/Disabled result-card pills are inline-styled badges on
+        // the test page (not the base badge component). Their uppercase is a CSS concern
+        // (text-transform), so the translation value stays normal-case and Disabled is
+        // reused — never a forked all-caps key (meaningless for AR/JA, awkward elsewhere).
+        $twig = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+
+        self::assertStringContainsString('text-transform: uppercase;">${T.promoted}</span>', $twig);
+        self::assertStringContainsString('text-transform: uppercase;">${T.boosted}</span>', $twig);
+        self::assertStringContainsString('text-transform: uppercase;">${T.disabled}</span>', $twig);
+        self::assertStringNotContainsString('disabledBadge', $twig);
+
+        // The all-caps keys must not exist in the translation files; normal-case ones do.
+        $en = require dirname(__DIR__, 2) . '/src/translations/en/search-manager.php';
+        foreach (['PROMOTED', 'BOOSTED', 'DISABLED'] as $allCaps) {
+            self::assertArrayNotHasKey($allCaps, $en);
+        }
+        self::assertArrayHasKey('Promoted', $en);
+        self::assertArrayHasKey('Boosted', $en);
+        self::assertArrayHasKey('Disabled', $en);
     }
 
     public function testSearchTestToolRawStringClusterIsGone(): void
