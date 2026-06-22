@@ -109,6 +109,61 @@ final class AnalyticsAssetI18nTest extends TestCase
         }
     }
 
+    public function testAnalyticsTwigProvidesIntentAndActionTypeChartLabels(): void
+    {
+        // Audits #173/#174: chart legends must be fed translated labels, not raw DB enums.
+        $source = $this->readPluginFile('src/templates/analytics/index.twig');
+
+        foreach ([
+            'intentInformational: "Informational"|t(\'search-manager\')',
+            'intentProduct: "Product"|t(\'search-manager\')',
+            'intentNavigational: "Navigational"|t(\'search-manager\')',
+            'intentQuestion: "Question"|t(\'search-manager\')',
+            'actionTypeLabels: {',
+            '\'synonym\': \'Synonyms\'|t(\'search-manager\')',
+            '\'boost_section\': \'Boost Section\'|t(\'search-manager\')',
+            '\'redirect\': \'Redirect\'|t(\'search-manager\')',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $source);
+        }
+    }
+
+    public function testAnalyticsSourceMapsEnumLabelsToTranslationsWithFallback(): void
+    {
+        // Audits #173/#174: source maps enums to translated labels and keeps a fallback.
+        $source = $this->readPluginFile('src/web/assets/analytics/src/analytics.js');
+
+        self::assertStringContainsString('const actionTypeLabels = config.actionTypeLabels || {};', $source);
+        self::assertStringContainsString('actionTypeLabels[l] || l.replace(\'_\', \' \')', $source);
+
+        self::assertStringContainsString('strings.intentInformational', $source);
+        self::assertStringContainsString('strings.intentProduct', $source);
+        self::assertStringContainsString('strings.intentNavigational', $source);
+        self::assertStringContainsString('strings.intentQuestion', $source);
+        self::assertStringContainsString('intentLabels[l] || (l.charAt(0).toUpperCase() + l.slice(1))', $source);
+
+        // The pre-fix code derived chart labels purely from the raw enum — that must be gone.
+        self::assertStringNotContainsString('labels: data.labels.map(l => l.charAt(0).toUpperCase() + l.slice(1))', $source);
+        self::assertStringNotContainsString("labels: data.labels.map(l => l.replace('_', ' ').replace(/\\b\\w/g, c => c.toUpperCase()))", $source);
+    }
+
+    public function testAnalyticsDistWiresTranslatedEnumLabels(): void
+    {
+        // Audits #173/#174: rebuilt dist must reference the translated label maps (property
+        // names survive terser minification).
+        $source = $this->readPluginFile('src/web/assets/analytics/dist/analytics.js');
+
+        foreach ([
+            'actionTypeLabels',
+            'intentInformational',
+            'intentProduct',
+            'intentNavigational',
+            'intentQuestion',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $source);
+        }
+    }
+
     public function testSourceBreakdownLabelsUseStaticTranslations(): void
     {
         $source = $this->readPluginFile('src/services/analytics/AnalyticsBreakdownService.php');

@@ -197,7 +197,7 @@
 
     <td data-column="site">
         {% set site = sites|filter(s => s.id == item.siteId)|first %}
-        {{ site ? site.name : ('Site #' ~ item.siteId) }}
+        {{ site ? site.name : 'Site #{id}'|t('search-manager', {id: item.siteId}) }}
     </td>
 
     <td data-column="op">

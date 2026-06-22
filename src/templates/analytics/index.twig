@@ -206,6 +206,10 @@
     positionNumber: "Position #"|t('search-manager'),
     elementNumber: "Element #"|t('search-manager'),
     frontend: "Frontend"|t('search-manager'),
+    intentInformational: "Informational"|t('search-manager'),
+    intentProduct: "Product"|t('search-manager'),
+    intentNavigational: "Navigational"|t('search-manager'),
+    intentQuestion: "Question"|t('search-manager'),
 } %}
 
 {% set analyticsConfig = {
@@ -218,6 +222,14 @@
     },
     strings: analyticsStrings,
     actionTypeBadges: actionTypeBadges,
+    actionTypeLabels: {
+        'synonym': 'Synonyms'|t('search-manager'),
+        'boost_section': 'Boost Section'|t('search-manager'),
+        'boost_category': 'Boost Category'|t('search-manager'),
+        'boost_element': 'Boost Element'|t('search-manager'),
+        'filter': 'Filter'|t('search-manager'),
+        'redirect': 'Redirect'|t('search-manager'),
+    },
     enableGeoDetection: settings.enableGeoDetection ?? false,
     backendLabels: {
         algolia: 'Algolia',

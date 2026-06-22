@@ -922,11 +922,19 @@
             return;
         }
 
+        // Map known intent enums to translated labels; capitalize unknown/custom values
+        const intentLabels = {
+            informational: strings.intentInformational,
+            product: strings.intentProduct,
+            navigational: strings.intentNavigational,
+            question: strings.intentQuestion,
+        };
+
         const colors = ['#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e74c3c'];
         window.smCharts.intent = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: data.labels.map(l => l.charAt(0).toUpperCase() + l.slice(1)),
+                labels: data.labels.map(l => intentLabels[l] || (l.charAt(0).toUpperCase() + l.slice(1))),
                 datasets: [{
                     data: data.values,
                     backgroundColor: colors.slice(0, data.labels.length)
@@ -1091,10 +1099,14 @@
             'redirect': '#e74c3c'
         };
 
+        // Map action-type enums to translated labels (reusing the table badge labels);
+        // fall back to title-casing the raw enum for unknown/custom types
+        const actionTypeLabels = config.actionTypeLabels || {};
+
         window.smCharts.rulesByType = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: data.labels.map(l => l.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())),
+                labels: data.labels.map(l => actionTypeLabels[l] || l.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())),
                 datasets: [{
                     data: data.values,
                     backgroundColor: data.labels.map(l => colors[l] || '#95a5a6')

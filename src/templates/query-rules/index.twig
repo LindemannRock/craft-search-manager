@@ -163,7 +163,7 @@
     <td data-column="siteId">
         {% if item.siteId %}
             {% set site = craft.app.sites.getSiteById(item.siteId) %}
-            {{ site ? site.name : 'Unknown' }}
+            {{ site ? site.name : 'Unknown'|t('search-manager') }}
         {% else %}
             <span class="light">{{ 'All Sites'|t('search-manager') }}</span>
         {% endif %}
