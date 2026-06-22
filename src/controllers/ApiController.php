@@ -359,10 +359,23 @@ class ApiController extends Controller
         // Skip analytics if explicitly requested (e.g., widget passes skipAnalytics=1 to prevent keystroke spam)
         $skipAnalytics = (bool) $request->getParam('skipAnalytics', false);
 
-        // Analytics options (for mobile apps and custom integrations)
+        // Analytics options (for mobile apps and custom integrations).
+        // This is an anonymous endpoint, so cap each value to its analytics column
+        // width and strip unexpected characters — otherwise an oversized/garbage
+        // value silently truncates (non-strict MySQL) or trips a caught insert error
+        // (strict MySQL/PostgreSQL), losing the analytics row and adding log noise.
         $source = $request->getParam('source', null);
+        if ($source !== null) {
+            $source = substr(preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $source), 0, 50) ?: null;
+        }
         $platform = $request->getParam('platform', null);
+        if ($platform !== null) {
+            $platform = substr(preg_replace('/[^a-zA-Z0-9 ._-]/', '', (string) $platform), 0, 50) ?: null;
+        }
         $appVersion = $request->getParam('appVersion', null);
+        if ($appVersion !== null) {
+            $appVersion = substr(preg_replace('/[^a-zA-Z0-9 ._-]/', '', (string) $appVersion), 0, 20) ?: null;
+        }
 
         if (empty($query)) {
             return $this->asJson([
