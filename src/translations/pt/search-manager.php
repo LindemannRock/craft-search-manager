@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'Ficheiro',
+    'Assets' => 'Ficheiros',
     'Base' => 'Base',
+    'Categories' => 'Categorias',
     'Category' => 'Categoria',
     'Element' => 'Elemento',
     'Entries' => 'Entradas',
     'Entry' => 'Entrada',
     'Section' => 'Secção',
+    'User' => 'Utilizador',
+    'Users' => 'Utilizadores',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: A indexar elemento {id}',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => 'Idioma detetado automaticamente:',
     'For multiple sites, language is resolved per site unless manually set.' => 'Para múltiplos sites, o idioma é resolvido por site, salvo definição manual.',
     'Manual override active. Language will NOT auto-detect from site.' => 'Substituição manual ativa. O idioma NÃO será detetado automaticamente a partir do site.',
+    'Manual override: {language}' => 'Substituição manual: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'A filtragem de palavras de paragem está atualmente desativada nas definições do plugin. A seleção de idioma não está disponível.',
     'stop words, query operators, and internal autocomplete language.' => 'palavras de paragem, operadores de consulta e idioma interno de completação automática.',
     'Enable Stop Words' => 'Ativar palavras de paragem',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'Falha ao eliminar as promoções',
     'Delete {count} promotion? This cannot be undone.' => 'Eliminar {count} promoção? Esta ação não pode ser anulada.',
     'Delete {count} promotions? This cannot be undone.' => 'Eliminar {count} promoções? Esta ação não pode ser anulada.',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => 'Exemplo: "sale" corresponde a "holiday sale", "sale items", "big sale event"',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => 'Exemplo: "best " corresponde a "best deals", "best products", "best sellers"',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => 'Exemplo: "holiday sale" corresponde apenas exatamente a "holiday sale", não a "holiday sale 2024"',
 
     // Query rules
     'New Query Rule' => 'Nova regra de consulta',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => 'Corresponder se a consulta de pesquisa começar com este padrão.',
     'Match only if the search query exactly matches this pattern.' => 'Corresponder apenas se a consulta de pesquisa corresponder exatamente a este padrão.',
     'Match using a regular expression pattern for complex matching.' => 'Corresponder utilizando um padrão de expressão regular para correspondências complexas.',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => 'Exemplo: "sale" corresponde a "big sale", "sale items", "flash sale"',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => 'Exemplo: "buy " corresponde a "buy phone", "buy laptop", "buy headphones"',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => 'Exemplo: "^(sale|تخفيض|soldes|angebot)" corresponde a qualquer um destes no início',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => 'Exemplo: "sale" corresponde apenas exatamente a "sale", não a "flash sale"',
     'Apply this rule to a specific index, or all indices.' => 'Aplicar esta regra a um índice específico, ou a todos os índices.',
     'Action' => 'Ação',
     'Action Type' => 'Tipo de ação',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => 'Sem dados disponíveis para os filtros selecionados.',
     'No data available for word cloud.' => 'Sem dados disponíveis para a nuvem de palavras.',
     'Redirected' => 'Redirecionado',
+    'Redirected to another page' => 'Redirecionado para outra página',
     'Redirects' => 'Redirecionamentos',
     'Source' => 'Origem',
+    'Synonyms used' => 'Sinónimos utilizados',
     'Source Identifier' => 'Identificador da fonte',
     'Sources' => 'Fontes',
     'Source Distribution' => 'Distribuição de fontes',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'Falha ao sincronizar a contagem',
     'File' => 'Ficheiro',
     'File System (default, single server)' => 'Sistema de ficheiros (predefinido, servidor único)',
+    'Not configured' => 'Não configurado',
+    '{count} row' => '{count} linha',
+    '{count} rows' => '{count} linhas',
+    '{count} key' => '{count} chave',
+    '{count} keys' => '{count} chaves',
+    '{count} file' => '{count} ficheiro',
+    '{count} files' => '{count} ficheiros',
 
     // Test features
     'Developer resources' => 'Recursos para programadores',

@@ -312,19 +312,19 @@ function updateMatchTypeUI() {
 			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}' + commaHint;
 			queryInput.placeholder = 'sale';
-			matchTypeTipText.textContent = 'Example: "sale" matches "holiday sale", "sale items", "big sale event"';
+			matchTypeTipText.textContent = {{ 'Example: "sale" matches "holiday sale", "sale items", "big sale event"'|t('search-manager')|json_encode|raw }};
 			break;
 		case 'prefix':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}' + commaHint;
 			queryInput.placeholder = 'best ';
-			matchTypeTipText.textContent = 'Example: "best " matches "best deals", "best products", "best sellers"';
+			matchTypeTipText.textContent = {{ 'Example: "best " matches "best deals", "best products", "best sellers"'|t('search-manager')|json_encode|raw }};
 			break;
 		default: // exact
 			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
 			queryInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}' + commaHint;
 			queryInput.placeholder = 'holiday sale';
-			matchTypeTipText.textContent = 'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"';
+			matchTypeTipText.textContent = {{ 'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"'|t('search-manager')|json_encode|raw }};
 	}
 }
 

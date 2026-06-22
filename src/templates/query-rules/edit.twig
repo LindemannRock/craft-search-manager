@@ -637,28 +637,28 @@ function updateMatchTypeUI() {
 			matchTypeInstructions.textContent = '{{ 'Match if the search query contains this pattern anywhere.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter text that should appear anywhere in the search query.'|t('search-manager') }}' + commaHint;
 			matchValueInput.placeholder = 'sale';
-			matchTypeTipText.textContent = 'Example: "sale" matches "big sale", "sale items", "flash sale"';
+			matchTypeTipText.textContent = {{ 'Example: "sale" matches "big sale", "sale items", "flash sale"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 			break;
 		case 'prefix':
 			matchTypeInstructions.textContent = '{{ 'Match if the search query starts with this pattern.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter text that the search query should start with.'|t('search-manager') }}' + commaHint;
 			matchValueInput.placeholder = 'buy ';
-			matchTypeTipText.textContent = 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"';
+			matchTypeTipText.textContent = {{ 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 			break;
 		case 'regex':
 			matchTypeInstructions.textContent = '{{ 'Match using a regular expression pattern for complex matching.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter a regular expression pattern (without delimiters).'|t('search-manager') }}';
 			matchValueInput.placeholder = '^(sale|تخفيض|soldes|angebot)';
-			matchTypeTipText.textContent = 'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start';
+			matchTypeTipText.textContent = {{ 'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'block';
 			break;
 		default: // exact
 			matchTypeInstructions.textContent = '{{ 'Match only if the search query exactly matches this pattern.'|t('search-manager') }}';
 			matchValueInstructions.textContent = '{{ 'Enter the exact search query to match.'|t('search-manager') }}' + commaHint;
 			matchValueInput.placeholder = 'sale';
-			matchTypeTipText.textContent = 'Example: "sale" only matches exactly "sale", not "flash sale"';
+			matchTypeTipText.textContent = {{ 'Example: "sale" only matches exactly "sale", not "flash sale"'|t('search-manager')|json_encode|raw }};
 			regexTip.style.display = 'none';
 	}
 }

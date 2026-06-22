@@ -34,6 +34,21 @@
         let currentDateRange = config.dateRange || 'last7days';
         let currentSiteId = config.siteId || '';
 
+        // Map known intent enums to translated labels; capitalize unknown/custom values.
+        // Shared by the searches table column and the intent chart legend.
+        function intentLabel(value) {
+            if (!value) {
+                return '—';
+            }
+            const intentLabels = {
+                informational: strings.intentInformational,
+                product: strings.intentProduct,
+                navigational: strings.intentNavigational,
+                question: strings.intentQuestion,
+            };
+            return intentLabels[value] || (value.charAt(0).toUpperCase() + value.slice(1));
+        }
+
     function getActiveTabId() {
         const hash = window.location.hash ? window.location.hash.substring(1) : '';
         if (hash && document.getElementById(hash)) {
@@ -549,18 +564,18 @@
         data.forEach(function(s) {
             var hits;
             if (s.wasRedirected) {
-                hits = '<span class="lr-text-purple" title="Redirected">\u2014</span>';
+                hits = '<span class="lr-text-purple" title="' + strings.redirected + '">\u2014</span>';
             } else if (s.resultsCount > 0) {
                 hits = '<span class="lr-text-green">' + Number(s.resultsCount).toLocaleString() + '</span>';
             } else {
                 hits = '<span class="lr-text-red">0</span>';
             }
 
-            var synonyms = s.synonymsExpanded ? '<span class="status green" title="Synonyms used"></span>' : '<span class="light">\u2014</span>';
+            var synonyms = s.synonymsExpanded ? '<span class="status green" title="' + strings.synonymsUsed + '"></span>' : '<span class="light">\u2014</span>';
             var rules = s.rulesMatched > 0 ? '<span class="lr-text-blue">' + s.rulesMatched + '</span>' : '<span class="light">\u2014</span>';
             var promos = s.promotionsShown > 0 ? '<span class="lr-text-amber">' + s.promotionsShown + '</span>' : '<span class="light">\u2014</span>';
-            var redirected = s.wasRedirected ? '<span class="status red" title="Redirected to another page"></span>' : '<span class="light">\u2014</span>';
-            var intent = s.intent ? Craft.escapeHtml(s.intent.charAt(0).toUpperCase() + s.intent.slice(1)) : '\u2014';
+            var redirected = s.wasRedirected ? '<span class="status red" title="' + strings.redirectedToPage + '"></span>' : '<span class="light">\u2014</span>';
+            var intent = s.intent ? Craft.escapeHtml(intentLabel(s.intent)) : '\u2014';
             var source = {cp: 'CP', frontend: strings.frontend || '', api: 'API'}[s.source] || Craft.escapeHtml((s.source || '').charAt(0).toUpperCase() + (s.source || '').slice(1));
 
             var row = '<tr>' +
@@ -922,19 +937,11 @@
             return;
         }
 
-        // Map known intent enums to translated labels; capitalize unknown/custom values
-        const intentLabels = {
-            informational: strings.intentInformational,
-            product: strings.intentProduct,
-            navigational: strings.intentNavigational,
-            question: strings.intentQuestion,
-        };
-
         const colors = ['#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#e74c3c'];
         window.smCharts.intent = new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: data.labels.map(l => intentLabels[l] || (l.charAt(0).toUpperCase() + l.slice(1))),
+                labels: data.labels.map(l => intentLabel(l)),
                 datasets: [{
                     data: data.values,
                     backgroundColor: colors.slice(0, data.labels.length)

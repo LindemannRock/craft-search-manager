@@ -210,7 +210,7 @@
 					<dd class="value"><code>{{ widgetStyle.handle }}</code></dd>
 				</div>
 				<div class="data">
-					{% set typeLabels = {modal: 'Modal', page: 'Search Page', inline: 'Inline Search'} %}
+					{% set typeLabels = {modal: 'Modal'|t('search-manager'), page: 'Search Page'|t('search-manager'), inline: 'Inline Search'|t('search-manager')} %}
 					<dt class="heading">{{ 'Type'|t('search-manager') }}</dt>
 					<dd class="value">
 						{% include 'lindemannrock-base/_components/status-dot' with {

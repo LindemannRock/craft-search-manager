@@ -9,7 +9,7 @@
         {% set isDefault = backend.handle == defaultBackendHandle %}
         {% set backendOptions = backendOptions|merge([{
             value: backend.handle,
-            label: backend.name ~ ' (' ~ backend.getTypeLabel() ~ ')' ~ (isDefault ? ' — Default' : '')
+            label: backend.name ~ ' (' ~ backend.getTypeLabel() ~ ')' ~ (isDefault ? ' — ' ~ 'Default'|t('search-manager') : '')
         }]) %}
     {% endif %}
 {% endfor %}

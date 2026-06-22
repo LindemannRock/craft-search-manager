@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'أصل',
+    'Assets' => 'أصول',
     'Base' => 'أساسي',
+    'Categories' => 'فئات',
     'Category' => 'فئة',
     'Element' => 'عنصر',
     'Entries' => 'إدخالات',
     'Entry' => 'إدخال',
     'Section' => 'القسم',
+    'User' => 'مستخدم',
+    'Users' => 'مستخدمون',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: فهرسة العنصر {id}',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => 'اللغة المكتشفة تلقائياً:',
     'For multiple sites, language is resolved per site unless manually set.' => 'للمواقع المتعددة، يتم تحديد اللغة لكل موقع ما لم يتم تعيينها يدوياً.',
     'Manual override active. Language will NOT auto-detect from site.' => 'التجاوز اليدوي نشط. لن يتم اكتشاف اللغة تلقائياً من الموقع.',
+    'Manual override: {language}' => 'التجاوز اليدوي: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'تصفية كلمات التوقف معطلة حالياً في إعدادات الإضافة. اختيار اللغة غير متاح.',
     'stop words, query operators, and internal autocomplete language.' => 'كلمات التوقف ومشغلات الاستعلام ولغة الإكمال التلقائي الداخلية.',
     'Enable Stop Words' => 'تفعيل كلمات التوقف',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'فشل في حذف العروض الترويجية',
     'Delete {count} promotion? This cannot be undone.' => 'حذف {count} عرض ترويجي؟ لا يمكن التراجع عن هذا الإجراء.',
     'Delete {count} promotions? This cannot be undone.' => 'حذف {count} عروض ترويجية؟ لا يمكن التراجع عن هذا الإجراء.',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => 'مثال: "sale" يطابق "holiday sale" و"sale items" و"big sale event"',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => 'مثال: "best " يطابق "best deals" و"best products" و"best sellers"',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => 'مثال: "holiday sale" يطابق "holiday sale" تماماً فقط، وليس "holiday sale 2024"',
 
     // Query rules
     'New Query Rule' => 'قاعدة استعلام جديدة',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => 'المطابقة إذا بدأ استعلام البحث بهذا النمط.',
     'Match only if the search query exactly matches this pattern.' => 'المطابقة فقط إذا كان استعلام البحث يطابق هذا النمط بالضبط.',
     'Match using a regular expression pattern for complex matching.' => 'المطابقة باستخدام نمط تعبير عادي للمطابقة المعقدة.',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => 'مثال: "sale" يطابق "big sale" و"sale items" و"flash sale"',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => 'مثال: "buy " يطابق "buy phone" و"buy laptop" و"buy headphones"',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => 'مثال: "^(sale|تخفيض|soldes|angebot)" يطابق أياً من هذه في البداية',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => 'مثال: "sale" يطابق "sale" تماماً فقط، وليس "flash sale"',
     'Apply this rule to a specific index, or all indices.' => 'تطبيق هذه القاعدة على فهرس محدد، أو على جميع الفهارس.',
     'Action' => 'الإجراء',
     'Action Type' => 'نوع الإجراء',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => 'لا توجد بيانات متاحة للفلاتر المحددة.',
     'No data available for word cloud.' => 'لا توجد بيانات متاحة لسحابة الكلمات.',
     'Redirected' => 'تمت إعادة التوجيه',
+    'Redirected to another page' => 'تمت إعادة التوجيه إلى صفحة أخرى',
     'Redirects' => 'عمليات إعادة التوجيه',
     'Source' => 'المصدر',
+    'Synonyms used' => 'تم استخدام المرادفات',
     'Source Identifier' => 'معرف المصدر',
     'Sources' => 'المصادر',
     'Source Distribution' => 'توزيع المصادر',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'فشل في مزامنة العدد',
     'File' => 'ملف',
     'File System (default, single server)' => 'نظام الملفات (افتراضي، خادم واحد)',
+    'Not configured' => 'غير مُكوَّن',
+    '{count} row' => '{count} صف',
+    '{count} rows' => '{count} صفوف',
+    '{count} key' => '{count} مفتاح',
+    '{count} keys' => '{count} مفاتيح',
+    '{count} file' => '{count} ملف',
+    '{count} files' => '{count} ملفات',
 
     // Test features
     'Developer resources' => 'موارد المطورين',

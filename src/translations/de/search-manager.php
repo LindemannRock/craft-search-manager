@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'Datei',
+    'Assets' => 'Dateien',
     'Base' => 'Basis',
+    'Categories' => 'Kategorien',
     'Category' => 'Kategorie',
     'Element' => 'Element',
     'Entries' => 'Einträge',
     'Entry' => 'Eintrag',
     'Section' => 'Abschnitt',
+    'User' => 'Benutzer',
+    'Users' => 'Benutzer',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: Element {id} wird indexiert',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => 'Automatisch erkannte Sprache:',
     'For multiple sites, language is resolved per site unless manually set.' => 'Bei mehreren Websites wird die Sprache pro Website aufgelöst, sofern nicht manuell festgelegt.',
     'Manual override active. Language will NOT auto-detect from site.' => 'Manuelle Überschreibung aktiv. Sprache wird NICHT automatisch von der Website erkannt.',
+    'Manual override: {language}' => 'Manuelle Überschreibung: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'Stoppwörter-Filterung ist in den Plugin-Einstellungen derzeit deaktiviert. Sprachauswahl ist nicht verfügbar.',
     'stop words, query operators, and internal autocomplete language.' => 'Stoppwörter, Query-Operatoren und interne Autocomplete-Sprache.',
     'Enable Stop Words' => 'Stoppwörter aktivieren',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'Promotions konnten nicht gelöscht werden',
     'Delete {count} promotion? This cannot be undone.' => '{count} Promotion löschen? Dies kann nicht rückgängig gemacht werden.',
     'Delete {count} promotions? This cannot be undone.' => '{count} Promotions löschen? Dies kann nicht rückgängig gemacht werden.',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => 'Beispiel: "sale" entspricht "holiday sale", "sale items", "big sale event"',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => 'Beispiel: "best " entspricht "best deals", "best products", "best sellers"',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => 'Beispiel: "holiday sale" entspricht nur exakt "holiday sale", nicht "holiday sale 2024"',
 
     // Query rules
     'New Query Rule' => 'Neue Query-Regel',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => 'Übereinstimmung, wenn die Suchanfrage mit diesem Muster beginnt.',
     'Match only if the search query exactly matches this pattern.' => 'Nur übereinstimmen, wenn die Suchanfrage exakt mit diesem Muster übereinstimmt.',
     'Match using a regular expression pattern for complex matching.' => 'Abgleich mit einem regulären Ausdrucksmuster für komplexe Übereinstimmungen.',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => 'Beispiel: "sale" entspricht "big sale", "sale items", "flash sale"',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => 'Beispiel: "buy " entspricht "buy phone", "buy laptop", "buy headphones"',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => 'Beispiel: "^(sale|تخفيض|soldes|angebot)" entspricht einem dieser Werte am Anfang',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => 'Beispiel: "sale" entspricht nur exakt "sale", nicht "flash sale"',
     'Apply this rule to a specific index, or all indices.' => 'Diese Regel auf einen bestimmten Index oder alle Indizes anwenden.',
     'Action' => 'Aktion',
     'Action Type' => 'Aktionstyp',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => 'Keine Daten für die ausgewählten Filter verfügbar.',
     'No data available for word cloud.' => 'Keine Daten für Word Cloud verfügbar.',
     'Redirected' => 'Weitergeleitet',
+    'Redirected to another page' => 'Auf eine andere Seite weitergeleitet',
     'Redirects' => 'Weiterleitungen',
     'Source' => 'Quelle',
+    'Synonyms used' => 'Synonyme verwendet',
     'Source Identifier' => 'Quellenbezeichner',
     'Sources' => 'Quellen',
     'Source Distribution' => 'Quellenverteilung',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'Anzahl konnte nicht synchronisiert werden',
     'File' => 'Datei',
     'File System (default, single server)' => 'Dateisystem (Standard, einzelner Server)',
+    'Not configured' => 'Nicht konfiguriert',
+    '{count} row' => '{count} Zeile',
+    '{count} rows' => '{count} Zeilen',
+    '{count} key' => '{count} Schlüssel',
+    '{count} keys' => '{count} Schlüssel',
+    '{count} file' => '{count} Datei',
+    '{count} files' => '{count} Dateien',
 
     // Test features
     'Developer resources' => 'Entwicklerressourcen',

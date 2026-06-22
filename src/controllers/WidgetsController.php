@@ -1014,7 +1014,7 @@ class WidgetsController extends Controller
     {
         $options = [];
         foreach (WidgetStyle::WIDGET_TYPE_LABELS as $value => $label) {
-            $options[] = ['value' => $value, 'label' => $label];
+            $options[] = ['value' => $value, 'label' => Craft::t('search-manager', $label)];
         }
         return $options;
     }

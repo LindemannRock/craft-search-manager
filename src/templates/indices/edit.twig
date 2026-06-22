@@ -85,10 +85,10 @@
     }) }}
 
     {% set elementTypeOptions = {
-        'craft\\elements\\Entry': 'Entries',
-        'craft\\elements\\Asset': 'Assets',
-        'craft\\elements\\Category': 'Categories',
-        'craft\\elements\\User': 'Users',
+        'craft\\elements\\Entry': 'Entries'|t('search-manager'),
+        'craft\\elements\\Asset': 'Assets'|t('search-manager'),
+        'craft\\elements\\Category': 'Categories'|t('search-manager'),
+        'craft\\elements\\User': 'Users'|t('search-manager'),
     } %}
     {% if lrPluginEnabled('smartlink-manager') %}
         {% set elementTypeOptions = elementTypeOptions|merge({
@@ -450,7 +450,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const resolvedSiteIds = selectedSiteIds.length ? selectedSiteIds : Object.keys(siteLanguages);
 
         if (manualLanguage) {
-            detectedLanguageSpan.textContent = 'Manual override: ' + manualLanguage;
+            detectedLanguageSpan.textContent = {{ 'Manual override: {language}'|t('search-manager')|json_encode|raw }}.replace('{language}', manualLanguage);
             const manualBase = manualLanguage.split('-')[0];
             if (manualLanguage.includes('-')) {
                 stopwordsFileSpan.textContent = manualLanguage + '.php → ' + manualBase + '.php';

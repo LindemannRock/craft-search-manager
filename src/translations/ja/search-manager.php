@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'アセット',
+    'Assets' => 'アセット',
     'Base' => 'ベース',
+    'Categories' => 'カテゴリ',
     'Category' => 'カテゴリ',
     'Element' => 'エレメント',
     'Entries' => 'エントリ',
     'Entry' => 'エントリ',
     'Section' => 'セクション',
+    'User' => 'ユーザー',
+    'Users' => 'ユーザー',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: エレメント {id} をインデックス中',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => '自動検出された言語 :',
     'For multiple sites, language is resolved per site unless manually set.' => '複数サイトの場合、手動設定されない限り言語はサイトごとに解決されます。',
     'Manual override active. Language will NOT auto-detect from site.' => '手動オーバーライドがアクティブです。言語はサイトから自動検出されません。',
+    'Manual override: {language}' => '手動オーバーライド: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'ストップワードフィルタリングはプラグイン設定で現在無効になっています。言語選択は利用できません。',
     'stop words, query operators, and internal autocomplete language.' => 'ストップワード、クエリ演算子、および内部オートコンプリート言語。',
     'Enable Stop Words' => 'ストップワードを有効化',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'プロモーションの削除に失敗しました',
     'Delete {count} promotion? This cannot be undone.' => '{count} 件のプロモーションを削除しますか？この操作は元に戻せません。',
     'Delete {count} promotions? This cannot be undone.' => '{count} 件のプロモーションを削除しますか？この操作は元に戻せません。',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => '例: 「 sale 」は「 holiday sale 」「 sale items 」「 big sale event 」に一致します',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => '例: 「 best 」は「 best deals 」「 best products 」「 best sellers 」に一致します',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => '例: 「 holiday sale 」は「 holiday sale 」のみに完全に一致し、「 holiday sale 2024 」には一致しません',
 
     // Query rules
     'New Query Rule' => '新規クエリルール',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => '検索クエリがこのパターンで始まる場合に一致します。',
     'Match only if the search query exactly matches this pattern.' => '検索クエリがこのパターンに完全に一致する場合のみ一致します。',
     'Match using a regular expression pattern for complex matching.' => '複雑なマッチングのために正規表現パターンを使用して一致します。',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => '例: 「 sale 」は「 big sale 」「 sale items 」「 flash sale 」に一致します',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => '例: 「 buy 」は「 buy phone 」「 buy laptop 」「 buy headphones 」に一致します',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => '例: 「 ^(sale|تخفيض|soldes|angebot) 」は先頭でこれらのいずれかに一致します',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => '例: 「 sale 」は「 sale 」のみに完全に一致し、「 flash sale 」には一致しません',
     'Apply this rule to a specific index, or all indices.' => 'このルールを特定のインデックス、またはすべてのインデックスに適用します。',
     'Action' => 'アクション',
     'Action Type' => 'アクションタイプ',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => '選択されたフィルターに対するデータがありません。',
     'No data available for word cloud.' => 'ワードクラウドのデータがありません。',
     'Redirected' => 'リダイレクト済み',
+    'Redirected to another page' => '別のページへリダイレクト済み',
     'Redirects' => 'リダイレクト',
     'Source' => 'ソース',
+    'Synonyms used' => '同義語を使用',
     'Source Identifier' => 'ソース識別子',
     'Sources' => 'ソース',
     'Source Distribution' => 'ソース分布',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'カウントの同期に失敗しました',
     'File' => 'ファイル',
     'File System (default, single server)' => 'ファイルシステム（デフォルト、単一サーバー）',
+    'Not configured' => '未設定',
+    '{count} row' => '{count} 行',
+    '{count} rows' => '{count} 行',
+    '{count} key' => '{count} キー',
+    '{count} keys' => '{count} キー',
+    '{count} file' => '{count} ファイル',
+    '{count} files' => '{count} ファイル',
 
     // Test features
     'Developer resources' => '開発者向けリソース',

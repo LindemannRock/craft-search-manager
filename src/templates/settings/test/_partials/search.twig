@@ -12,12 +12,12 @@
             {% set siteNames = [] %}
             {% for siteId in index.siteId %}
                 {% set site = craft.app.sites.getSiteById(siteId) %}
-                {% set siteNames = siteNames|merge([site ? site.name : 'Site ' ~ siteId]) %}
+                {% set siteNames = siteNames|merge([site ? site.name : 'Site #{id}'|t('search-manager', {id: siteId})]) %}
             {% endfor %}
             {% set siteLabel = siteNames|join(', ') %}
         {% elseif index.siteId %}
             {% set site = craft.app.sites.getSiteById(index.siteId) %}
-            {% set siteLabel = site ? site.name : 'Site ' ~ index.siteId %}
+            {% set siteLabel = site ? site.name : 'Site #{id}'|t('search-manager', {id: index.siteId}) %}
         {% else %}
             {% set siteLabel = 'All Sites'|t('search-manager') %}
         {% endif %}

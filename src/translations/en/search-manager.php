@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'Asset',
+    'Assets' => 'Assets',
     'Base' => 'Base',
+    'Categories' => 'Categories',
     'Category' => 'Category',
     'Element' => 'Element',
     'Entries' => 'Entries',
     'Entry' => 'Entry',
     'Section' => 'Section',
+    'User' => 'User',
+    'Users' => 'Users',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: Indexing element {id}',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => 'Auto-detected language:',
     'For multiple sites, language is resolved per site unless manually set.' => 'For multiple sites, language is resolved per site unless manually set.',
     'Manual override active. Language will NOT auto-detect from site.' => 'Manual override active. Language will NOT auto-detect from site.',
+    'Manual override: {language}' => 'Manual override: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'Stop words filtering is currently disabled in plugin settings. Language selection is not available.',
     'stop words, query operators, and internal autocomplete language.' => 'stop words, query operators, and internal autocomplete language.',
     'Enable Stop Words' => 'Enable Stop Words',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'Failed to delete promotions',
     'Delete {count} promotion? This cannot be undone.' => 'Delete {count} promotion? This cannot be undone.',
     'Delete {count} promotions? This cannot be undone.' => 'Delete {count} promotions? This cannot be undone.',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => 'Example: "sale" matches "holiday sale", "sale items", "big sale event"',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => 'Example: "best " matches "best deals", "best products", "best sellers"',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => 'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"',
 
     // Query rules
     'New Query Rule' => 'New Query Rule',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => 'Match if the search query starts with this pattern.',
     'Match only if the search query exactly matches this pattern.' => 'Match only if the search query exactly matches this pattern.',
     'Match using a regular expression pattern for complex matching.' => 'Match using a regular expression pattern for complex matching.',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => 'Example: "sale" matches "big sale", "sale items", "flash sale"',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => 'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => 'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => 'Example: "sale" only matches exactly "sale", not "flash sale"',
     'Apply this rule to a specific index, or all indices.' => 'Apply this rule to a specific index, or all indices.',
     'Action' => 'Action',
     'Action Type' => 'Action Type',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => 'No data available for the selected filters.',
     'No data available for word cloud.' => 'No data available for word cloud.',
     'Redirected' => 'Redirected',
+    'Redirected to another page' => 'Redirected to another page',
     'Redirects' => 'Redirects',
     'Source' => 'Source',
+    'Synonyms used' => 'Synonyms used',
     'Source Identifier' => 'Source Identifier',
     'Sources' => 'Sources',
     'Source Distribution' => 'Source Distribution',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'Failed to sync count',
     'File' => 'File',
     'File System (default, single server)' => 'File System (default, single server)',
+    'Not configured' => 'Not configured',
+    '{count} row' => '{count} row',
+    '{count} rows' => '{count} rows',
+    '{count} key' => '{count} key',
+    '{count} keys' => '{count} keys',
+    '{count} file' => '{count} file',
+    '{count} files' => '{count} files',
 
     // Test features
     'Developer resources' => 'Developer resources',

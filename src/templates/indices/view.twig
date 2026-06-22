@@ -133,8 +133,14 @@
 				<dd class="value"><code>{{ index.handle }}</code></dd>
 			</div>
 			<div class="data">
+				{% set elementTypeLabels = {
+					'craft\\elements\\Entry': 'Entry'|t('search-manager'),
+					'craft\\elements\\Asset': 'Asset'|t('search-manager'),
+					'craft\\elements\\Category': 'Category'|t('search-manager'),
+					'craft\\elements\\User': 'User'|t('search-manager'),
+				} %}
 				<dt class="heading">{{ 'Element Type'|t('search-manager') }}</dt>
-				<dd class="value">{{ index.elementType|split('\\')|last }}</dd>
+				<dd class="value">{{ elementTypeLabels[index.elementType] ?? (index.elementType|split('\\')|last) }}</dd>
 			</div>
 			{% set configuredBackend = index.configuredBackend %}
 			<div class="data">

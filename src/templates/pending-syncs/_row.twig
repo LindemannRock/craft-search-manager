@@ -1,6 +1,12 @@
 {% set elementKey = item.elementId ~ ':' ~ item.siteId %}
 {% set element = elements[elementKey] ?? null %}
-{% set elementTypeShort = item.elementType|split('\\')|last %}
+{% set elementTypeLabels = {
+    'craft\\elements\\Entry': 'Entry'|t('search-manager'),
+    'craft\\elements\\Asset': 'Asset'|t('search-manager'),
+    'craft\\elements\\Category': 'Category'|t('search-manager'),
+    'craft\\elements\\User': 'User'|t('search-manager'),
+} %}
+{% set elementTypeShort = elementTypeLabels[item.elementType] ?? (item.elementType|split('\\')|last) %}
 {% set isFreshlyProcessing = item.status == 'processing' and item.claimedAt and (now|date('U') - item.claimedAt|date('U')) < staleCutoffSeconds %}
 {% set canRetryThisRow = item.status in ['failed', 'abandoned'] %}
 

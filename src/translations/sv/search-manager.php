@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'Fil',
+    'Assets' => 'Filer',
     'Base' => 'Bas',
+    'Categories' => 'Kategorier',
     'Category' => 'Kategori',
     'Element' => 'Element',
     'Entries' => 'Poster',
     'Entry' => 'Post',
     'Section' => 'Sektion',
+    'User' => 'Användare',
+    'Users' => 'Användare',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: Indexerar element {id}',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => 'Automatiskt identifierat språk:',
     'For multiple sites, language is resolved per site unless manually set.' => 'För flera webbplatser bestäms språket per webbplats om det inte ställs in manuellt.',
     'Manual override active. Language will NOT auto-detect from site.' => 'Manuell åsidosättning aktiv. Språket kommer INTE att identifieras automatiskt från webbplatsen.',
+    'Manual override: {language}' => 'Manuell åsidosättning: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'Stoppordfiltrering är för närvarande inaktiverad i plugininställningarna. Språkval är inte tillgängligt.',
     'stop words, query operators, and internal autocomplete language.' => 'stoppord, frågeoperatorer och internt autokompletteringsspråk.',
     'Enable Stop Words' => 'Aktivera stoppord',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'Kunde inte radera kampanjer',
     'Delete {count} promotion? This cannot be undone.' => 'Radera {count} kampanj? Detta kan inte ångras.',
     'Delete {count} promotions? This cannot be undone.' => 'Radera {count} kampanjer? Detta kan inte ångras.',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => 'Exempel: "sale" matchar "holiday sale", "sale items", "big sale event"',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => 'Exempel: "best " matchar "best deals", "best products", "best sellers"',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => 'Exempel: "holiday sale" matchar endast exakt "holiday sale", inte "holiday sale 2024"',
 
     // Query rules
     'New Query Rule' => 'Ny frågeregel',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => 'Matcha om sökfrågan börjar med detta mönster.',
     'Match only if the search query exactly matches this pattern.' => 'Matcha enbart om sökfrågan exakt matchar detta mönster.',
     'Match using a regular expression pattern for complex matching.' => 'Matcha med hjälp av ett reguljärt uttrycksmönster för komplex matchning.',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => 'Exempel: "sale" matchar "big sale", "sale items", "flash sale"',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => 'Exempel: "buy " matchar "buy phone", "buy laptop", "buy headphones"',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => 'Exempel: "^(sale|تخفيض|soldes|angebot)" matchar något av dessa i början',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => 'Exempel: "sale" matchar endast exakt "sale", inte "flash sale"',
     'Apply this rule to a specific index, or all indices.' => 'Tillämpa denna regel på ett specifikt index, eller alla index.',
     'Action' => 'Åtgärd',
     'Action Type' => 'Åtgärdstyp',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => 'Inga data tillgängliga för de valda filtren.',
     'No data available for word cloud.' => 'Inga data tillgängliga för ordmoln.',
     'Redirected' => 'Omdirigerad',
+    'Redirected to another page' => 'Omdirigerad till en annan sida',
     'Redirects' => 'Omdirigeringar',
     'Source' => 'Källa',
+    'Synonyms used' => 'Synonymer användes',
     'Source Identifier' => 'Källidentifierare',
     'Sources' => 'Källor',
     'Source Distribution' => 'Källfördelning',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'Misslyckades att synkronisera antal',
     'File' => 'Fil',
     'File System (default, single server)' => 'Filsystem (standard, enskild server)',
+    'Not configured' => 'Inte konfigurerad',
+    '{count} row' => '{count} rad',
+    '{count} rows' => '{count} rader',
+    '{count} key' => '{count} nyckel',
+    '{count} keys' => '{count} nycklar',
+    '{count} file' => '{count} fil',
+    '{count} files' => '{count} filer',
 
     // Test features
     'Developer resources' => 'Utvecklarresurser',

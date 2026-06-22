@@ -140,11 +140,40 @@ final class AnalyticsAssetI18nTest extends TestCase
         self::assertStringContainsString('strings.intentProduct', $source);
         self::assertStringContainsString('strings.intentNavigational', $source);
         self::assertStringContainsString('strings.intentQuestion', $source);
-        self::assertStringContainsString('intentLabels[l] || (l.charAt(0).toUpperCase() + l.slice(1))', $source);
+        // Intent mapping now lives in a shared intentLabel() helper used by both the chart
+        // legend and the searches-table column, keeping the capitalize fallback.
+        self::assertStringContainsString('function intentLabel(value)', $source);
+        self::assertStringContainsString('intentLabels[value] || (value.charAt(0).toUpperCase() + value.slice(1))', $source);
+        self::assertStringContainsString('labels: data.labels.map(l => intentLabel(l))', $source);
 
         // The pre-fix code derived chart labels purely from the raw enum — that must be gone.
         self::assertStringNotContainsString('labels: data.labels.map(l => l.charAt(0).toUpperCase() + l.slice(1))', $source);
         self::assertStringNotContainsString("labels: data.labels.map(l => l.replace('_', ' ').replace(/\\b\\w/g, c => c.toUpperCase()))", $source);
+    }
+
+    public function testAnalyticsSearchTableLabelsAreTranslated(): void
+    {
+        // Dedicated sweep: searches-table tooltips + intent column bypassed translation.
+        $twig = $this->readPluginFile('src/templates/analytics/index.twig');
+        foreach ([
+            'redirected: "Redirected"|t(\'search-manager\')',
+            'synonymsUsed: "Synonyms used"|t(\'search-manager\')',
+            'redirectedToPage: "Redirected to another page"|t(\'search-manager\')',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $twig);
+        }
+
+        $source = $this->readPluginFile('src/web/assets/analytics/src/analytics.js');
+        self::assertStringContainsString('title="\' + strings.redirected + \'"', $source);
+        self::assertStringContainsString('title="\' + strings.synonymsUsed + \'"', $source);
+        self::assertStringContainsString('title="\' + strings.redirectedToPage + \'"', $source);
+        self::assertStringContainsString('Craft.escapeHtml(intentLabel(s.intent))', $source);
+
+        // Raw English tooltips / raw intent capitalization must be gone.
+        self::assertStringNotContainsString('title="Redirected"', $source);
+        self::assertStringNotContainsString('title="Synonyms used"', $source);
+        self::assertStringNotContainsString('title="Redirected to another page"', $source);
+        self::assertStringNotContainsString('Craft.escapeHtml(s.intent.charAt(0).toUpperCase() + s.intent.slice(1))', $source);
     }
 
     public function testAnalyticsDistWiresTranslatedEnumLabels(): void

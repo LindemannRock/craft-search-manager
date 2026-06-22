@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'Bestand',
+    'Assets' => 'Bestanden',
     'Base' => 'Basis',
+    'Categories' => 'Categorieën',
     'Category' => 'Categorie',
     'Element' => 'Element',
     'Entries' => 'Items',
     'Entry' => 'Item',
     'Section' => 'Sectie',
+    'User' => 'Gebruiker',
+    'Users' => 'Gebruikers',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: Element {id} indexeren',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => 'Automatisch gedetecteerde taal:',
     'For multiple sites, language is resolved per site unless manually set.' => 'Voor meerdere sites wordt de taal per site bepaald, tenzij handmatig ingesteld.',
     'Manual override active. Language will NOT auto-detect from site.' => 'Handmatige overschrijving actief. Taal wordt NIET automatisch gedetecteerd vanuit de site.',
+    'Manual override: {language}' => 'Handmatige overschrijving: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'Stopwoordenfiltering is momenteel uitgeschakeld in de plugininstellingen. Taalselectie is niet beschikbaar.',
     'stop words, query operators, and internal autocomplete language.' => 'stopwoorden, zoekoperators en de interne taal voor automatisch aanvullen.',
     'Enable Stop Words' => 'Stopwoorden inschakelen',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'Promoties verwijderen mislukt',
     'Delete {count} promotion? This cannot be undone.' => '{count} promotie verwijderen? Dit kan niet ongedaan worden gemaakt.',
     'Delete {count} promotions? This cannot be undone.' => '{count} promoties verwijderen? Dit kan niet ongedaan worden gemaakt.',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => 'Voorbeeld: "sale" komt overeen met "holiday sale", "sale items", "big sale event"',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => 'Voorbeeld: "best " komt overeen met "best deals", "best products", "best sellers"',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => 'Voorbeeld: "holiday sale" komt alleen exact overeen met "holiday sale", niet met "holiday sale 2024"',
 
     // Query rules
     'New Query Rule' => 'Nieuwe zoekregel',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => 'Overeenkomen als de zoekopdracht begint met dit patroon.',
     'Match only if the search query exactly matches this pattern.' => 'Alleen overeenkomen als de zoekopdracht exact overeenkomt met dit patroon.',
     'Match using a regular expression pattern for complex matching.' => 'Overeenkomen met een reguliere-expressiepatroon voor complexe matching.',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => 'Voorbeeld: "sale" komt overeen met "big sale", "sale items", "flash sale"',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => 'Voorbeeld: "buy " komt overeen met "buy phone", "buy laptop", "buy headphones"',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => 'Voorbeeld: "^(sale|تخفيض|soldes|angebot)" komt overeen met een van deze aan het begin',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => 'Voorbeeld: "sale" komt alleen exact overeen met "sale", niet met "flash sale"',
     'Apply this rule to a specific index, or all indices.' => 'Pas deze regel toe op een specifieke index, of op alle indexen.',
     'Action' => 'Actie',
     'Action Type' => 'Actietype',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => 'Geen gegevens beschikbaar voor de geselecteerde filters.',
     'No data available for word cloud.' => 'Geen gegevens beschikbaar voor woordwolk.',
     'Redirected' => 'Omgeleid',
+    'Redirected to another page' => 'Doorgestuurd naar een andere pagina',
     'Redirects' => 'Redirects',
     'Source' => 'Bron',
+    'Synonyms used' => 'Synoniemen gebruikt',
     'Source Identifier' => 'Bronidentificatie',
     'Sources' => 'Bronnen',
     'Source Distribution' => 'Bronverdeling',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'Aantal synchroniseren mislukt',
     'File' => 'Bestand',
     'File System (default, single server)' => 'Bestandssysteem (standaard, enkele server)',
+    'Not configured' => 'Niet geconfigureerd',
+    '{count} row' => '{count} rij',
+    '{count} rows' => '{count} rijen',
+    '{count} key' => '{count} sleutel',
+    '{count} keys' => '{count} sleutels',
+    '{count} file' => '{count} bestand',
+    '{count} files' => '{count} bestanden',
 
     // Test features
     'Developer resources' => 'Ontwikkelaarsbronnen',

@@ -179,9 +179,9 @@
                         id: 'storage-type-select',
                         name: 'storageType',
                         options: [
-                            {label: 'Database (loading...)', value: 'database'},
-                            {label: 'Redis (loading...)', value: 'redis'},
-                            {label: 'File (loading...)', value: 'file'},
+                            {label: 'Database'|t('search-manager') ~ ' (' ~ 'Loading...'|t('search-manager') ~ ')', value: 'database'},
+                            {label: 'Redis (' ~ 'Loading...'|t('search-manager') ~ ')', value: 'redis'},
+                            {label: 'File'|t('search-manager') ~ ' (' ~ 'Loading...'|t('search-manager') ~ ')', value: 'file'},
                         ],
                         value: 'database',
                     }) }}
@@ -271,6 +271,20 @@
 {% js %}
 {% if hasIndexManagement %}
 // Load storage stats and update dropdown options
+// Pre-translated storage-stat strings (counts use explicit singular/plural keys).
+var storageStrings = {
+    database: {{ 'Database'|t('search-manager')|json_encode|raw }},
+    file: {{ 'File'|t('search-manager')|json_encode|raw }},
+    notConfigured: {{ 'Not configured'|t('search-manager')|json_encode|raw }},
+    notAvailable: {{ 'N/A'|t('search-manager')|json_encode|raw }},
+    rowsSingular: {{ '{count} row'|t('search-manager')|json_encode|raw }},
+    rowsPlural: {{ '{count} rows'|t('search-manager')|json_encode|raw }},
+    keysSingular: {{ '{count} key'|t('search-manager')|json_encode|raw }},
+    keysPlural: {{ '{count} keys'|t('search-manager')|json_encode|raw }},
+    filesSingular: {{ '{count} file'|t('search-manager')|json_encode|raw }},
+    filesPlural: {{ '{count} files'|t('search-manager')|json_encode|raw }},
+};
+
 function loadStorageStats() {
     $.ajax({
         url: '{{ actionUrl('search-manager/utilities/get-storage-stats')|raw }}',
@@ -283,31 +297,34 @@ function loadStorageStats() {
                 var currentVal = $select.val();
 
                 // Database (MySQL or PostgreSQL)
-                var dbLabel = 'Database';
+                var dbLabel = storageStrings.database;
                 if (response.stats.database && response.stats.database.driverLabel) {
                     dbLabel = response.stats.database.driverLabel;
                 }
                 var dbText = dbLabel;
                 if (response.stats.database && response.stats.database.available) {
-                    dbText += ' (' + response.stats.database.totalRows.toLocaleString() + ' rows)';
+                    var dbRows = response.stats.database.totalRows;
+                    dbText += ' (' + (dbRows === 1 ? storageStrings.rowsSingular : storageStrings.rowsPlural).replace('{count}', dbRows.toLocaleString()) + ')';
                 }
                 $select.find('option[value="database"]').text(dbText);
 
                 // Redis
                 var redisText = 'Redis';
                 if (response.stats.redis && response.stats.redis.available) {
-                    redisText += ' (' + response.stats.redis.keyCount.toLocaleString() + ' keys)';
+                    var redisKeys = response.stats.redis.keyCount;
+                    redisText += ' (' + (redisKeys === 1 ? storageStrings.keysSingular : storageStrings.keysPlural).replace('{count}', redisKeys.toLocaleString()) + ')';
                 } else if (response.stats.redis && response.stats.redis.status === 'not_configured') {
-                    redisText += ' (not configured)';
+                    redisText += ' (' + storageStrings.notConfigured + ')';
                 } else if (response.stats.redis && response.stats.redis.status === 'extension_not_installed') {
-                    redisText += ' (n/a)';
+                    redisText += ' (' + storageStrings.notAvailable + ')';
                 }
                 $select.find('option[value="redis"]').text(redisText);
 
                 // File
-                var fileText = 'File';
+                var fileText = storageStrings.file;
                 if (response.stats.file && response.stats.file.available) {
-                    fileText += ' (' + response.stats.file.fileCount.toLocaleString() + ' files)';
+                    var fileCount = response.stats.file.fileCount;
+                    fileText += ' (' + (fileCount === 1 ? storageStrings.filesSingular : storageStrings.filesPlural).replace('{count}', fileCount.toLocaleString()) + ')';
                 }
                 $select.find('option[value="file"]').text(fileText);
 

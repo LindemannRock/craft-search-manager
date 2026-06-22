@@ -121,12 +121,16 @@ return [
 
     // Element
     'Asset' => 'Fil',
+    'Assets' => 'Filer',
     'Base' => 'Basis',
+    'Categories' => 'Kategorier',
     'Category' => 'Kategori',
     'Element' => 'Element',
     'Entries' => 'Poster',
     'Entry' => 'Post',
     'Section' => 'Sektion',
+    'User' => 'Bruger',
+    'Users' => 'Brugere',
 
     // Jobs
     '{pluginName}: Indexing element {id}' => '{pluginName}: Indekserer element {id}',
@@ -535,6 +539,7 @@ return [
     'Auto-detected language:' => 'Automatisk registreret sprog:',
     'For multiple sites, language is resolved per site unless manually set.' => 'For flere websteder bestemmes sproget per websted medmindre det er indstillet manuelt.',
     'Manual override active. Language will NOT auto-detect from site.' => 'Manuel tilsidesættelse aktiv. Sproget vil IKKE blive automatisk registreret fra webstedet.',
+    'Manual override: {language}' => 'Manuel tilsidesættelse: {language}',
     'Stop words filtering is currently disabled in plugin settings. Language selection is not available.' => 'Stopordfiltrering er i øjeblikket deaktiveret i pluginindstillingerne. Sprogvalg er ikke tilgængeligt.',
     'stop words, query operators, and internal autocomplete language.' => 'stopord, forespørgselsoperatorer og internt autofuldførelsessprog.',
     'Enable Stop Words' => 'Aktiver stopord',
@@ -1063,6 +1068,9 @@ return [
     'Failed to delete promotions' => 'Kunne ikke slette kampagner',
     'Delete {count} promotion? This cannot be undone.' => 'Slet {count} kampagne? Dette kan ikke fortrydes.',
     'Delete {count} promotions? This cannot be undone.' => 'Slet {count} kampagner? Dette kan ikke fortrydes.',
+    'Example: "sale" matches "holiday sale", "sale items", "big sale event"' => 'Eksempel: "sale" matcher "holiday sale", "sale items", "big sale event"',
+    'Example: "best " matches "best deals", "best products", "best sellers"' => 'Eksempel: "best " matcher "best deals", "best products", "best sellers"',
+    'Example: "holiday sale" only matches exactly "holiday sale", not "holiday sale 2024"' => 'Eksempel: "holiday sale" matcher kun præcist "holiday sale", ikke "holiday sale 2024"',
 
     // Query rules
     'New Query Rule' => 'Ny forespørgselsregel',
@@ -1087,6 +1095,10 @@ return [
     'Match if the search query starts with this pattern.' => 'Match hvis søgeforespørgslen begynder med dette mønster.',
     'Match only if the search query exactly matches this pattern.' => 'Match kun hvis søgeforespørgslen matcher dette mønster eksakt.',
     'Match using a regular expression pattern for complex matching.' => 'Match ved hjælp af et regulært udtryksmønster til kompleks matching.',
+    'Example: "sale" matches "big sale", "sale items", "flash sale"' => 'Eksempel: "sale" matcher "big sale", "sale items", "flash sale"',
+    'Example: "buy " matches "buy phone", "buy laptop", "buy headphones"' => 'Eksempel: "buy " matcher "buy phone", "buy laptop", "buy headphones"',
+    'Example: "^(sale|تخفيض|soldes|angebot)" matches any of these at the start' => 'Eksempel: "^(sale|تخفيض|soldes|angebot)" matcher et hvilket som helst af disse i starten',
+    'Example: "sale" only matches exactly "sale", not "flash sale"' => 'Eksempel: "sale" matcher kun præcist "sale", ikke "flash sale"',
     'Apply this rule to a specific index, or all indices.' => 'Anvend denne regel på et specifikt indeks eller alle indekser.',
     'Action' => 'Handling',
     'Action Type' => 'Handlingstype',
@@ -1462,8 +1474,10 @@ return [
     'No data available for the selected filters.' => 'Ingen data tilgængelige for de valgte filtre.',
     'No data available for word cloud.' => 'Ingen data tilgængelige for ordsky.',
     'Redirected' => 'Omdirigeret',
+    'Redirected to another page' => 'Omdirigeret til en anden side',
     'Redirects' => 'Omdirigeringer',
     'Source' => 'Kilde',
+    'Synonyms used' => 'Synonymer anvendt',
     'Source Identifier' => 'Kildeidentifikator',
     'Sources' => 'Kilder',
     'Source Distribution' => 'Kildefordeling',
@@ -1654,6 +1668,13 @@ return [
     'Failed to sync count' => 'Kunne ikke synkronisere antal',
     'File' => 'Fil',
     'File System (default, single server)' => 'Filsystem (standard, enkelt server)',
+    'Not configured' => 'Ikke konfigureret',
+    '{count} row' => '{count} række',
+    '{count} rows' => '{count} rækker',
+    '{count} key' => '{count} nøgle',
+    '{count} keys' => '{count} nøgler',
+    '{count} file' => '{count} fil',
+    '{count} files' => '{count} filer',
 
     // Test features
     'Developer resources' => 'Udviklerressourcer',
