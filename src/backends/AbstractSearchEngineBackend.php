@@ -496,10 +496,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         array $searchOptions,
     ): array {
         $results = $engine->search($query, $siteId, 0, $searchOptions);
-        $elementIds = array_keys($results);
-        $elementInfo = $storage->getElementsByIds($siteId, $elementIds);
+        $elementInfo = [];
 
         if ($typeFilter !== null) {
+            $elementInfo = $storage->getElementsByIds($siteId, array_keys($results));
             $results = array_filter(
                 $results,
                 function(float $score, int|string $elementId) use ($elementInfo, $typeFilter): bool {
@@ -517,6 +517,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $results = array_slice($results, $offset, $limit, true);
         } elseif ($offset > 0) {
             $results = array_slice($results, $offset, null, true);
+        }
+
+        if ($typeFilter === null) {
+            $elementInfo = $storage->getElementsByIds($siteId, array_keys($results));
         }
 
         $hits = [];

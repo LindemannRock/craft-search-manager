@@ -66,6 +66,52 @@ final class AuditPass35Test extends TestCase
         self::assertSame([2, 4], array_column($result['hits'], 'elementId'));
     }
 
+    public function testSingleSiteWithoutTypeFilterOnlyLoadsPageMetadata(): void
+    {
+        $termDocs = [];
+        $titleByElement = [];
+        $documentTermsById = [];
+        $documentLengthsById = [];
+        $docLengths = [];
+        $elementsById = [];
+
+        for ($i = 1; $i <= 6; $i++) {
+            $docId = '1:' . $i;
+            $termDocs['coffee'][$docId] = 1;
+            $titleByElement[$i] = ['coffee'];
+            $documentTermsById[$docId] = ['coffee' => 1];
+            $documentLengthsById[$docId] = 1;
+            $docLengths[$docId] = 1;
+            $elementsById[$i] = [
+                'elementType' => 'entry',
+                'documentData' => [
+                    'title' => 'Coffee ' . $i,
+                ],
+            ];
+        }
+
+        $storage = new RecordingStorage(
+            $termDocs,
+            $titleByElement,
+            $docLengths,
+            6,
+            1.0,
+            documentTermsById: $documentTermsById,
+            documentLengthsById: $documentLengthsById,
+            elementsById: $elementsById,
+        );
+        $engine = new SearchEngine($storage, 'test-index', ['enableStopWords' => false]);
+        $backend = new AuditPass35Backend($storage);
+
+        $result = $backend->searchOneSite($engine, 'coffee', 'test-index', 1, 2, 1, null);
+
+        self::assertSame(6, $result['total']);
+        self::assertCount(2, $result['hits']);
+        self::assertSame([2, 3], array_column($result['hits'], 'elementId'));
+        self::assertSame(1, $storage->getElementsByIdsCalls);
+        self::assertSame([2], $storage->getElementsByIdsBatchSizes);
+    }
+
     public function testSearchControllerUsesSharedTrackingSourceNormalizer(): void
     {
         $source = $this->readPluginFile('src/controllers/SearchController.php');
@@ -103,7 +149,7 @@ final class AuditPass35Backend extends AbstractSearchEngineBackend
     /**
      * @return array{hits: array<int, array<string, mixed>>, total: int}
      */
-    public function searchOneSite(SearchEngine $engine, string $query, string $indexName, int $siteId, int $limit, int $offset, string $type): array
+    public function searchOneSite(SearchEngine $engine, string $query, string $indexName, int $siteId, int $limit, int $offset, ?string $type): array
     {
         return $this->searchSingleSite($engine, $this->storage, $indexName, $query, $siteId, $limit, $offset, $type, []);
     }
