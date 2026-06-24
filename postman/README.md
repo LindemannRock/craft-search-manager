@@ -2,6 +2,8 @@
 
 User-facing Postman collection and environment template for the Search Manager API.
 
+Plugin source: <https://github.com/LindemannRock/craft-search-manager>
+
 ## Files
 
 - **`Search-Manager.postman_collection.json`** — examples for search, autocomplete, analytics tracking, and API-key enforcement checks.

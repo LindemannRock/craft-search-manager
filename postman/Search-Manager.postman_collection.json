@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "sm-collection-search-manager",
     "name": "Search Manager API",
-    "description": "User-facing Postman collection for Search Manager's public search, autocomplete, analytics tracking, and API-key enforcement flows. Import the environment template, set your site URL and placeholders, then run the folders that match your setup.",
+    "description": "User-facing Postman collection for Search Manager's public search, autocomplete, analytics tracking, and API-key enforcement flows.\n\nSource: https://github.com/LindemannRock/craft-search-manager\n\nImport the environment template, set your site URL and placeholders, then run the folders that match your setup.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {

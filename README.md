@@ -79,6 +79,8 @@ ddev craft search-manager/security/generate-salt
 
 Full documentation is available in the [docs](docs/) folder.
 
+Postman collection setup notes are available in [postman/README.md](postman/README.md).
+
 ## Support
 
 - **Issues**: [GitHub Issues](https://github.com/LindemannRock/craft-search-manager/issues)
