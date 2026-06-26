@@ -277,9 +277,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $storage = $this->getStorage($indexName);
             $storage->clearAll();
 
-            // Clear cached instances
-            unset($this->searchEngines[$fullIndexName]);
-            unset($this->storages[$fullIndexName]);
+            $this->clearCachedIndexInstances($fullIndexName);
 
             $this->logInfo("Cleared {$this->getBackendLabel()} index with SearchEngine", ['index' => $fullIndexName]);
             return true;
@@ -287,6 +285,17 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $this->logError("Failed to clear {$this->getBackendLabel()} index", ['error' => $e->getMessage()]);
             return false;
         }
+    }
+
+    private function clearCachedIndexInstances(string $fullIndexName): void
+    {
+        foreach (array_keys($this->searchEngines) as $cacheKey) {
+            if ($cacheKey === $fullIndexName || str_starts_with($cacheKey, $fullIndexName . '_')) {
+                unset($this->searchEngines[$cacheKey]);
+            }
+        }
+
+        unset($this->storages[$fullIndexName]);
     }
 
     /**
