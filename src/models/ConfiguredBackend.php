@@ -290,7 +290,7 @@ class ConfiguredBackend extends Model
             $valueString = trim((string)$value);
             $isRequired = (bool)$config['required'];
             $fieldType = (string)$config['type'];
-            $fieldLabel = (string)$config['label'];
+            $fieldLabel = Craft::t('search-manager', (string)$config['label']);
 
             if ($isRequired && $valueString === '') {
                 $this->addError(
