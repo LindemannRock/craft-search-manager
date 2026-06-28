@@ -1538,7 +1538,7 @@ return [
 
     // Device / traffic analytics
     'Device Analytics' => 'Enhetsanalys',
-    'Browser Engine' => 'Browsermotor',
+    'Browser Engine' => 'Webbläsarmotor',
     'Detected Language' => 'Identifierat språk',
     'Traffic Type' => 'Trafiktyp',
     'System Agent' => 'Systemagent',
