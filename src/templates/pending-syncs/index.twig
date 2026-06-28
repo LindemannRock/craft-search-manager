@@ -217,7 +217,7 @@
 
     <td data-column="status">
         {% include 'lindemannrock-base/_components/badge' with {
-            label: item.status|capitalize,
+            label: item.status == 'pending' ? 'Pending'|t('search-manager') : (item.status == 'processing' ? 'Processing'|t('search-manager') : (item.status == 'failed' ? 'Failed'|t('search-manager') : (item.status == 'abandoned' ? 'Abandoned'|t('search-manager') : item.status|capitalize))),
             value: item.status,
             colorSet: 'pendingSyncStatus',
         } only %}
