@@ -77,6 +77,19 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame(0, $redis->keysCalls);
     }
 
+    public function testAutocompleteTermExtractionIgnoresIndexHandleNamedTerm(): void
+    {
+        [$storage, $redis] = $this->makeStorage('term');
+        $storage->storeTermDocument('protein', 1, 101, 3);
+
+        $terms = $storage->getTermsForAutocomplete(null, null, 10);
+
+        self::assertSame(['protein' => 1], $terms);
+        self::assertSame(['sm:idx:term:term:*'], $redis->scanPatterns);
+        self::assertArrayNotHasKey('term', $terms);
+    }
+
+
     public function testElementSuggestionsAllSitesUseScanInsteadOfKeys(): void
     {
         [$storage, $redis] = $this->makeStorage();
@@ -186,7 +199,7 @@ final class RedisStorageRegressionTest extends TestCase
     /**
      * @return array{0: RedisStorage, 1: RedisStorageFakeRedis}
      */
-    private function makeStorage(): array
+    private function makeStorage(string $indexHandle = 'test-index'): array
     {
         $redis = new RedisStorageFakeRedis();
         $reflection = new \ReflectionClass(RedisStorage::class);
@@ -194,8 +207,8 @@ final class RedisStorageRegressionTest extends TestCase
         $storage = $reflection->newInstanceWithoutConstructor();
 
         foreach ([
-            'indexHandle' => 'test-index',
-            'keyPrefix' => 'sm:idx:test-index:',
+            'indexHandle' => $indexHandle,
+            'keyPrefix' => 'sm:idx:' . $indexHandle . ':',
             'redis' => $redis,
         ] as $property => $value) {
             $refProperty = $reflection->getProperty($property);

@@ -387,12 +387,13 @@ class RedisStorage implements StorageInterface
         $terms = [];
         foreach ($keys as $key) {
             // Key format: {prefix}term:TERM:SITE_ID
-            // Extract TERM from the key
-            $parts = explode(':', $key);
-            $termIndex = array_search('term', $parts);
+            $keyRemainder = str_starts_with($key, $this->keyPrefix)
+                ? substr($key, strlen($this->keyPrefix))
+                : '';
+            $parts = explode(':', $keyRemainder, 3);
 
-            if ($termIndex !== false && isset($parts[$termIndex + 1])) {
-                $term = $parts[$termIndex + 1];
+            if (($parts[0] ?? null) === 'term' && isset($parts[1], $parts[2])) {
+                $term = $parts[1];
 
                 // Get document count for this term
                 $count = $this->redis->hLen($key);

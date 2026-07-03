@@ -139,6 +139,24 @@ final class MySqlStorageMetadataTest extends TestCase
         self::assertNotSame($firstLength, $storage->getTotalLength(1));
     }
 
+    public function testMetadataIncrementUsesAtomicUpsert(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/MySqlStorage.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString('->upsert(', $source);
+        self::assertStringContainsString('GREATEST(CAST([[metaValue]] AS SIGNED) + :increment, :minimum)', $source);
+        self::assertStringNotContainsString('Duplicate entry', $source);
+        self::assertStringNotContainsString('$updated === 0', $source);
+
+        $storage = new MySqlStorage(self::INDEX_HANDLE);
+        $storage->updateMetadata(1, 10, true);
+        $storage->updateMetadata(1, 15, true);
+
+        self::assertSame(2, $storage->getTotalDocCount(1));
+        self::assertSame(25, $storage->getTotalLength(1));
+    }
+
     private function deleteRowsForIndex(): void
     {
         $tables = [

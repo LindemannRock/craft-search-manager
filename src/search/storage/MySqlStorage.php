@@ -893,43 +893,24 @@ class MySqlStorage implements StorageInterface
      */
     private function incrementMetadata(int $siteId, string $metaKey, int $increment): void
     {
-        // Try to update existing row
         $minimum = $metaKey === 'total_length' ? 1 : 0;
+        $initialValue = max($minimum, $increment);
 
-        $updated = $this->db->createCommand()
-            ->update(
-                '{{%searchmanager_search_metadata}}',
-                ['metaValue' => new \yii\db\Expression('GREATEST(CAST(metaValue AS SIGNED) + :increment, :minimum)', [
+        $this->db->createCommand()->upsert(
+            '{{%searchmanager_search_metadata}}',
+            [
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'metaKey' => $metaKey,
+                'metaValue' => (string)$initialValue,
+            ],
+            [
+                'metaValue' => new Expression('GREATEST(CAST([[metaValue]] AS SIGNED) + :increment, :minimum)', [
                     ':increment' => $increment,
                     ':minimum' => $minimum,
-                ])],
-                [
-                    'indexHandle' => $this->indexHandle,
-                    'siteId' => $siteId,
-                    'metaKey' => $metaKey,
-                ]
-            )
-            ->execute();
-
-        // If no row exists, insert it
-        if ($updated === 0) {
-            try {
-                $this->db->createCommand()->insert(
-                    '{{%searchmanager_search_metadata}}',
-                    [
-                        'indexHandle' => $this->indexHandle,
-                        'siteId' => $siteId,
-                        'metaKey' => $metaKey,
-                        'metaValue' => max($minimum, $increment),
-                    ]
-                )->execute();
-            } catch (\Exception $e) {
-                // Ignore duplicate key errors (race condition)
-                if (strpos($e->getMessage(), 'Duplicate entry') === false) {
-                    throw $e;
-                }
-            }
-        }
+                ]),
+            ]
+        )->execute();
     }
 
     // =========================================================================
