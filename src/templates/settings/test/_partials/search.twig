@@ -306,6 +306,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const autocompleteMinLength = {{ settings.autocompleteMinLength ?? 2 }};
     const indexSiteIds = {{ indexSiteIds|json_encode|raw }};
     let autocompleteTimer;
+    let autocompleteTerms = [];
     let lastSearchData = null;
     let lastSearchQuery = null;
 
@@ -430,6 +431,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const query = this.value.trim();
 
         if (!showAutocomplete.checked || query.length < autocompleteMinLength) {
+            autocompleteTerms = [];
             autocompleteDropdown.style.display = 'none';
             return;
         }
@@ -443,6 +445,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Hide autocomplete on blur (with delay for click)
     testQueryInput.addEventListener('blur', function() {
         setTimeout(() => { autocompleteDropdown.style.display = 'none'; }, 200);
+    });
+
+    autocompleteDropdown.addEventListener('click', function(event) {
+        const item = event.target.closest('[data-autocomplete-index]');
+        if (!item) {
+            return;
+        }
+
+        const index = Number(item.dataset.autocompleteIndex);
+        const term = autocompleteTerms[index];
+        if (typeof term !== 'string') {
+            return;
+        }
+
+        testQueryInput.value = term;
+        autocompleteDropdown.style.display = 'none';
+        testButton.click();
     });
 
     async function fetchAutocomplete(query) {
@@ -467,11 +486,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             if (suggestions && suggestions.length > 0) {
                 // Show dropdown
-                autocompleteDropdown.innerHTML = suggestions.map(term => `
+                autocompleteTerms = suggestions;
+                autocompleteDropdown.innerHTML = suggestions.map((term, index) => `
                     <div style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.1s;"
                          onmouseover="this.style.background='#f9fafb'"
                          onmouseout="this.style.background='#fff'"
-                         onclick="document.getElementById('testQuery').value='${term}'; document.getElementById('autocomplete-dropdown').style.display='none'; document.getElementById('testButton').click();">
+                         data-autocomplete-index="${index}">
                         <code style="font-size: 13px;">${highlightMatch(term, query)}</code>
                     </div>
                 `).join('');
@@ -480,10 +500,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update autocomplete section
                 updateAutocompleteSection(suggestions, query, meta);
             } else {
+                autocompleteTerms = [];
                 autocompleteDropdown.style.display = 'none';
                 updateAutocompleteSection([], query, meta);
             }
         } catch (error) {
+            autocompleteTerms = [];
             autocompleteDropdown.style.display = 'none';
         }
     }
@@ -546,7 +568,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <strong>${T.cacheLabel}</strong> ${cacheLabel}${meta && meta.cacheDriver ? ' (' + meta.cacheDriver + ')' : ''}
                 </p>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${suggestions.map(s => `<span style="background: #f3f4f6; padding: 6px 12px; border-radius: 16px; font-size: 13px;">${s}</span>`).join('')}
+                    ${suggestions.map(s => `<span style="background: #f3f4f6; padding: 6px 12px; border-radius: 16px; font-size: 13px;">${Craft.escapeHtml(s)}</span>`).join('')}
                 </div>
             `;
         } else {
@@ -679,11 +701,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                     <span style="color: #9ca3af;">(ID: ${p.elementId})</span>
                                     ${!p.enabled ? `<span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 6px; text-transform: uppercase;">${T.disabled}</span>` : ''}
                                 </td>
-                                <td><code>${p.matchType}</code></td>
+                                <td><code>${Craft.escapeHtml(p.matchType)}</code></td>
                                 <td><code>${Craft.escapeHtml(p.query)}</code></td>
                                 <td>
                                     ${p.siteStatuses ? p.siteStatuses.map(s => `
-                                        <span style="background: ${s.isLive ? '#dcfce7' : '#fee2e2'}; color: ${s.isLive ? '#166534' : '#dc2626'}; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">${s.siteName}</span>
+                                        <span style="background: ${s.isLive ? '#dcfce7' : '#fee2e2'}; color: ${s.isLive ? '#166534' : '#dc2626'}; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">${Craft.escapeHtml(s.siteName)}</span>
                                     `).join('') : '-'}
                                 </td>
                             </tr>
@@ -717,23 +739,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 const redirectRule = data.rules.find(r => r.actionType === 'redirect');
                 if (redirectRule && redirectRule.elementInfo) {
                     const el = redirectRule.elementInfo;
+                    const elementUrl = Craft.escapeHtml(el.url || '');
                     redirectHtml = `
                         <div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;">
                             <strong>↪️ ${T.redirectLabel}</strong> ${T.redirectsTo}
                             <strong>${Craft.escapeHtml(el.type)}</strong>:
                             <a href="${el.cpEditUrl}" target="_blank" style="font-weight: 600;">${Craft.escapeHtml(el.title)}</a>
                             <span style="color: #9ca3af;">(ID: ${el.id})</span>
-                            <br><span style="color: #6b7280; font-size: 13px;">URL: <a href="${el.url}" target="_blank">${el.url}</a></span>
+                            <br><span style="color: #6b7280; font-size: 13px;">URL: <a href="${elementUrl}" target="_blank">${elementUrl}</a></span>
                         </div>`;
                 } else {
-                    redirectHtml = `<div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;"><strong>↪️ ${T.redirectLabel}</strong> ${T.redirectsTo} <a href="${data.redirect}" target="_blank">${data.redirect}</a></div>`;
+                    const redirectUrl = Craft.escapeHtml(String(data.redirect || ''));
+                    redirectHtml = `<div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;"><strong>↪️ ${T.redirectLabel}</strong> ${T.redirectsTo} <a href="${redirectUrl}" target="_blank">${redirectUrl}</a></div>`;
                 }
             }
 
             container.innerHTML = `
                 <p style="margin-bottom: 12px;"><strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>${T.matchedLabel}</strong> ${(data.rules.length === 1 ? T.rulesSingular : T.rulesPlural).replace('{count}', data.rules.length)}</p>
                 ${redirectHtml}
-                ${data.synonyms && data.synonyms.length > 0 ? `<div style="padding: 12px; background: #dbeafe; border-radius: 4px; margin-bottom: 12px;"><strong>${T.expandedQueriesLabel}</strong> ${data.synonyms.map(s => `<code>${s}</code>`).join(', ')}</div>` : ''}
+                ${data.synonyms && data.synonyms.length > 0 ? `<div style="padding: 12px; background: #dbeafe; border-radius: 4px; margin-bottom: 12px;"><strong>${T.expandedQueriesLabel}</strong> ${data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(', ')}</div>` : ''}
                 <table class="data fullwidth" style="margin: 0;">
                     <thead>
                         <tr>
@@ -750,11 +774,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (r.actionType === 'redirect' && r.elementInfo) {
                                 effectHtml = T.redirectToElement.replace('{link}', `<a href="${r.elementInfo.cpEditUrl}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`);
                             }
+                            const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);
                             return `
                                 <tr>
                                     <td><a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a></td>
-                                    <td><span style="background: ${actionColors[r.actionType] || '#f3f4f6'}; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${T.actionLabels[r.actionType] || r.actionType}</span></td>
-                                    <td><code>${r.matchType}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
+                                    <td><span style="background: ${actionColors[r.actionType] || '#f3f4f6'}; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${actionLabel}</span></td>
+                                    <td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
                                     <td>${effectHtml}</td>
                                 </tr>
                             `;
