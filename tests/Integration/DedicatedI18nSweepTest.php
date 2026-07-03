@@ -64,6 +64,24 @@ final class DedicatedI18nSweepTest extends TestCase
         }
     }
 
+    public function testPendingSyncStatusBadgeLabelsAreTranslated(): void
+    {
+        // #201: pending-syncs status badge routes each enum through a literal
+        // translated key ('Pending'/'Processing'/'Failed'/'Abandoned') with a
+        // |capitalize fallback for unknown values, instead of raw item.status|capitalize.
+        foreach ([
+            'src/templates/pending-syncs/index.twig',
+            'src/templates/pending-syncs/_row.twig',
+        ] as $path) {
+            $source = $this->readPluginFile($path);
+            self::assertStringContainsString("'Pending'|t('search-manager')", $source);
+            self::assertStringContainsString("'Processing'|t('search-manager')", $source);
+            self::assertStringContainsString("'Failed'|t('search-manager')", $source);
+            self::assertStringContainsString("'Abandoned'|t('search-manager')", $source);
+            self::assertStringNotContainsString('label: item.status|capitalize,', $source);
+        }
+    }
+
     public function testLanguagePreviewManualOverrideIsTranslated(): void
     {
         $edit = $this->readPluginFile('src/templates/indices/edit.twig');
