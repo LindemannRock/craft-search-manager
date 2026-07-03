@@ -1633,6 +1633,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Övervaka sökindex, rensa fil-Cache och hantera din sökinfrastruktur.',
+    'Manage Settings' => 'Hantera inställningar',
     'Clear Storage' => 'Rensa lagring',
     'Clearing Storage...' => 'Rensar lagring...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'Rensa ALL indexdata från en lagringstyp. Detta tar bort data från varje index som använder den lagringen — inklusive föräldralösa data från index som inte längre finns. Använd detta vid byte av backends eller felsökning.',

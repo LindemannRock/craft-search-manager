@@ -1633,6 +1633,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => '検索インデックスの監視、ファイルキャッシュの削除、検索インフラストラクチャの管理。',
+    'Manage Settings' => '設定を管理する',
     'Clear Storage' => 'ストレージを削除する',
     'Clearing Storage...' => 'ストレージを削除中...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'ストレージタイプからすべてのインデックスデータを削除します。そのストレージを使用するすべてのインデックスからデータを削除します — もう存在しないインデックスの孤立データを含みます。バックエンドの切り替えやトラブルシューティング時に使用。',

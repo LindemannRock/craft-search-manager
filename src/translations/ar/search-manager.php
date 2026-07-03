@@ -597,7 +597,7 @@ return [
     'Geographic Distribution' => 'التوزيع الجغرافي',
     'Geographic detection is disabled.' => 'الكشف الجغرافي معطّل.',
     'Detect user location for analytics' => 'اكتشاف موقع المستخدم للتحليلات',
-    'Device Detection Caching' => 'تخزين كشف الأجهزة مؤقتاً',
+    'Device Detection Caching' => 'Cache كشف الأجهزة',
     'Device Detection Cache Duration' => 'مدة Cache كشف الأجهزة',
     'Device detection caching is only available when Analytics is enabled. Go to {link} to enable analytics.' => 'تخزين كشف الأجهزة مؤقتاً متاح فقط عند تفعيل التحليلات. انتقل إلى {link} لتفعيل التحليلات.',
     '<strong>Privacy Levels:</strong><br>
@@ -1633,6 +1633,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'مراقبة فهارس البحث ومسح Cache الملفات وإدارة البنية التحتية للبحث الخاصة بك.',
+    'Manage Settings' => 'إدارة الإعدادات',
     'Clear Storage' => 'مسح التخزين',
     'Clearing Storage...' => 'جارٍ مسح التخزين...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'مسح جميع بيانات الفهرس من نوع تخزين. يزيل هذا البيانات من كل فهرس يستخدم هذا التخزين — بما في ذلك البيانات اليتيمة من الفهارس التي لم تعد موجودة. استخدم هذا عند تبديل الواجهات الخلفية أو استكشاف الأخطاء وإصلاحها.',

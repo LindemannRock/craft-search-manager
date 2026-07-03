@@ -1633,6 +1633,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitor search indices, clear file cache, and manage your search infrastructure.',
+    'Manage Settings' => 'Manage Settings',
     'Clear Storage' => 'Clear Storage',
     'Clearing Storage...' => 'Clearing Storage...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.',

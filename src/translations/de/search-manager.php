@@ -1633,6 +1633,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Suchindizes überwachen, Datei-Cache leeren und die Such-Infrastruktur verwalten.',
+    'Manage Settings' => 'Einstellungen verwalten',
     'Clear Storage' => 'Speicher leeren',
     'Clearing Storage...' => 'Speicher wird geleert...',
     'Clear ALL index data from a storage type. This removes data from every index using that storage — including orphaned data from indices that no longer exist. Use this when switching backends or troubleshooting.' => 'ALLE Indexdaten eines Speichertyps löschen. Dies entfernt Daten aus jedem Index, der diesen Speicher verwendet – einschließlich verwaister Daten von Indizes, die nicht mehr existieren. Verwenden Sie dies beim Wechseln von Backends oder bei der Fehlerbehebung.',
