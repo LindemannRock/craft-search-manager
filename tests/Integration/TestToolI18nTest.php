@@ -65,7 +65,7 @@ final class TestToolI18nTest extends TestCase
         // Render sites reference the strings object, not raw literals.
         foreach ([
             "T.noResults.replace('{query}', Craft.escapeHtml(query))",
-            'T.actionLabels[r.actionType] || r.actionType',
+            'T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType)',
             'hit.title || T.untitled',
             'data.error || T.unknownError',
         ] as $needle) {
@@ -128,6 +128,35 @@ final class TestToolI18nTest extends TestCase
 
         self::assertStringNotContainsString('&#10003; Yes</span>', $source);
         self::assertStringNotContainsString("idx.uid || 'Unknown'", $source);
+    }
+
+    public function testSearchTestToolEscapesDynamicInnerHtmlValues(): void
+    {
+        // Audits #202/#203: autocomplete terms must not be embedded in inline
+        // handlers, and admin-configured values rendered through innerHTML stay
+        // escaped before reaching the DOM.
+        $source = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+
+        self::assertStringContainsString('let autocompleteTerms = [];', $source);
+        self::assertStringContainsString("autocompleteDropdown.addEventListener('click'", $source);
+        self::assertStringContainsString('data-autocomplete-index="${index}"', $source);
+        self::assertStringContainsString('testQueryInput.value = term;', $source);
+        self::assertStringNotContainsString('onclick="document.getElementById(\'testQuery\').value=\'${term}\'', $source);
+
+        foreach ([
+            '${Craft.escapeHtml(s)}</span>',
+            '<td><code>${Craft.escapeHtml(p.matchType)}</code></td>',
+            '${Craft.escapeHtml(s.siteName)}</span>',
+            'const elementUrl = Craft.escapeHtml(el.url || \'\');',
+            '<a href="${elementUrl}" target="_blank">${elementUrl}</a>',
+            'const redirectUrl = Craft.escapeHtml(String(data.redirect || \'\'));',
+            '<a href="${redirectUrl}" target="_blank">${redirectUrl}</a>',
+            'data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(\', \')',
+            'const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);',
+            '<td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $source);
+        }
     }
 
     private function readPluginFile(string $path): string
