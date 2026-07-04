@@ -11,6 +11,7 @@ return [
     'Search Manager' => 'Search Manager',
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Configure backends, tune indexing, and manage search behavior from one control panel workspace.',
     'Open Search Manager' => 'Open Search Manager',
+    'Complete setup' => 'Complete setup',
     'Quick Actions' => 'Quick Actions',
 
     // Navigation
@@ -23,6 +24,7 @@ return [
     'Widgets' => 'Widgets',
     'API Keys' => 'API Keys',
     'Analytics' => 'Analytics',
+    'Setup' => 'Setup',
     'Settings' => 'Settings',
     'Logs' => 'Logs',
     'Overview' => 'Overview',
@@ -33,6 +35,21 @@ return [
     'Trending' => 'Trending',
     'Recent Searches' => 'Recent Searches',
     'Related Queries' => 'Related Queries',
+
+    // Setup
+    'Set up Search Manager' => 'Set up Search Manager',
+    'Complete this step before tracking search analytics.' => 'Complete this step before tracking search analytics.',
+    'Ready' => 'Ready',
+    'v{version}' => 'v{version}',
+    'IP salt' => 'IP salt',
+    'Analytics needs a privacy salt before search analytics is ready.' => 'Analytics needs a privacy salt before search analytics is ready.',
+    'Analytics privacy salt is ready for search analytics.' => 'Analytics privacy salt is ready for search analytics.',
+    'IP hash salt is configured.' => 'IP hash salt is configured.',
+    'Setup incomplete' => 'Setup incomplete',
+    'Finish setup before tracking search analytics.' => 'Finish setup before tracking search analytics.',
+    'Open setup' => 'Open setup',
+    'Setup complete.' => 'Setup complete.',
+    'Search Manager is ready to track search analytics.' => 'Search Manager is ready to track search analytics.',
 
     // Permissions
     'Access main plugin sections' => 'Access main plugin sections',
@@ -1633,6 +1650,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitor search indices, clear file cache, and manage your search infrastructure.',
+    'Manage Backends' => 'Manage Backends',
     'Manage Settings' => 'Manage Settings',
     'Clear Storage' => 'Clear Storage',
     'Clearing Storage...' => 'Clearing Storage...',

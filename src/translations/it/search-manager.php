@@ -11,6 +11,7 @@ return [
     'Search Manager' => 'Search Manager',
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Configura backend, regola l\'indicizzazione e gestisci il comportamento di ricerca da un unico spazio di lavoro nel pannello di controllo.',
     'Open Search Manager' => 'Apri Search Manager',
+    'Complete setup' => 'Completa configurazione',
     'Quick Actions' => 'Azioni rapide',
 
     // Navigation
@@ -23,6 +24,7 @@ return [
     'Widgets' => 'Widget',
     'API Keys' => 'Chiavi API',
     'Analytics' => 'Analisi',
+    'Setup' => 'Configurazione',
     'Settings' => 'Impostazioni',
     'Logs' => 'Log',
     'Overview' => 'Panoramica',
@@ -33,6 +35,21 @@ return [
     'Trending' => 'Di tendenza',
     'Recent Searches' => 'Ricerche recenti',
     'Related Queries' => 'Query correlate',
+
+    // Setup
+    'Set up Search Manager' => 'Configura Search Manager',
+    'Complete this step before tracking search analytics.' => 'Completa questo passaggio prima di tracciare le analisi di ricerca.',
+    'Ready' => 'Pronto',
+    'v{version}' => 'v{version}',
+    'IP salt' => 'Salt IP',
+    'Analytics needs a privacy salt before search analytics is ready.' => 'Le analisi richiedono un salt privacy prima che le analisi di ricerca siano pronte.',
+    'Analytics privacy salt is ready for search analytics.' => 'Il salt privacy delle analisi è pronto per le analisi di ricerca.',
+    'IP hash salt is configured.' => 'Il salt hash IP è configurato.',
+    'Setup incomplete' => 'Configurazione incompleta',
+    'Finish setup before tracking search analytics.' => 'Completa la configurazione prima di tracciare le analisi di ricerca.',
+    'Open setup' => 'Apri configurazione',
+    'Setup complete.' => 'Configurazione completata.',
+    'Search Manager is ready to track search analytics.' => 'Search Manager è pronto per tracciare le analisi di ricerca.',
 
     // Permissions
     'Access main plugin sections' => 'Accedi alle sezioni principali del plugin',
@@ -1231,7 +1248,7 @@ return [
     'To change, set another widget as default first.' => 'Per cambiare, imposta prima un altro widget come predefinito.',
     'Update your config/search-manager.php to point to a valid widget handle.' => 'Aggiorna il tuo config/search-manager.php per puntare a un handle di widget valido.',
     'Human-readable name for this configuration' => 'Nome leggibile per questa configurazione',
-    "Unique identifier used in templates (e.g., `config: 'homepage'`)" => "Identificatore univoco usato nei template (ad es. `config: 'homepage'`)",
+    'Unique identifier used in templates (e.g., `config: \'homepage\'`)' => 'Identificatore univoco usato nei template (ad es. `config: \'homepage\'`)',
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Identificatore personalizzato per questo widget nelle analisi (ad es. "header-search", "mobile-nav"). Lascia vuoto per il predefinito.',
     'Select which index to search' => 'Seleziona quale indice cercare',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Seleziona quali indici cerca questo widget. Lascia tutto deselezionato per cercare in tutti gli indici.',
@@ -1633,6 +1650,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Monitora gli indici di ricerca, svuota la cache dei file e gestisci l\'infrastruttura di ricerca.',
+    'Manage Backends' => 'Gestisci backend',
     'Manage Settings' => 'Gestisci impostazioni',
     'Clear Storage' => 'Cancella archiviazione',
     'Clearing Storage...' => 'Cancellazione archiviazione in corso...',

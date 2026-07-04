@@ -11,6 +11,7 @@ return [
     'Search Manager' => 'Search Manager',
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'バックエンドの設定、インデックスの調整、検索動作の管理をコントロールパネルの 1 つのワークスペースから行います。',
     'Open Search Manager' => 'Search Manager を開く',
+    'Complete setup' => 'セットアップを完了する',
     'Quick Actions' => 'クイックアクション',
 
     // Navigation
@@ -23,6 +24,7 @@ return [
     'Widgets' => 'ウィジェット',
     'API Keys' => 'API キー',
     'Analytics' => 'アナリティクス',
+    'Setup' => 'セットアップ',
     'Settings' => '設定',
     'Logs' => 'ログ',
     'Overview' => '概要',
@@ -33,6 +35,21 @@ return [
     'Trending' => 'トレンド',
     'Recent Searches' => '最近の検索',
     'Related Queries' => '関連クエリ',
+
+    // Setup
+    'Set up Search Manager' => 'Search Manager をセットアップする',
+    'Complete this step before tracking search analytics.' => '検索アナリティクスのトラッキングを開始する前に、この手順を完了してください。',
+    'Ready' => '準備完了',
+    'v{version}' => 'v{version}',
+    'IP salt' => 'IP ソルト',
+    'Analytics needs a privacy salt before search analytics is ready.' => '検索アナリティクスの準備が整うには、アナリティクスのプライバシーソルトが必要です。',
+    'Analytics privacy salt is ready for search analytics.' => 'アナリティクスのプライバシーソルトは検索アナリティクスの準備ができています。',
+    'IP hash salt is configured.' => 'IP ハッシュソルトが設定されています。',
+    'Setup incomplete' => 'セットアップ未完了',
+    'Finish setup before tracking search analytics.' => '検索アナリティクスのトラッキングを開始する前に、セットアップを完了してください。',
+    'Open setup' => 'セットアップを開く',
+    'Setup complete.' => 'セットアップが完了しました。',
+    'Search Manager is ready to track search analytics.' => 'Search Manager は検索アナリティクスをトラッキングする準備ができています。',
 
     // Permissions
     'Access main plugin sections' => 'プラグインのメインセクションにアクセスする',
@@ -1231,7 +1248,7 @@ return [
     'To change, set another widget as default first.' => '変更するには、まず別のウィジェットをデフォルトに設定してください。',
     'Update your config/search-manager.php to point to a valid widget handle.' => 'config/search-manager.php を更新して有効なウィジェットハンドルを指定してください。',
     'Human-readable name for this configuration' => 'この設定の読みやすい名前',
-    "Unique identifier used in templates (e.g., `config: 'homepage'`)" => "テンプレートで使用される一意の識別子（例: `config: 'homepage'`）",
+    'Unique identifier used in templates (e.g., `config: \'homepage\'`)' => 'テンプレートで使用される一意の識別子（例: `config: \'homepage\'`）',
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'アナリティクスでのこのウィジェットのカスタム識別子（例: "header-search"、"mobile-nav"）。デフォルトの場合は空白。',
     'Select which index to search' => '検索するインデックスを選択',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'このウィジェットが検索するインデックスを選択。すべてのインデックスを検索する場合はすべてチェックを外す。',
@@ -1633,6 +1650,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => '検索インデックスの監視、ファイルキャッシュの削除、検索インフラストラクチャの管理。',
+    'Manage Backends' => 'バックエンドを管理',
     'Manage Settings' => '設定を管理する',
     'Clear Storage' => 'ストレージを削除する',
     'Clearing Storage...' => 'ストレージを削除中...',

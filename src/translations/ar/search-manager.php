@@ -11,6 +11,7 @@ return [
     'Search Manager' => 'Search Manager',
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'قم بتكوين الواجهات الخلفية، وضبط الفهرسة، وإدارة سلوك البحث من مساحة عمل واحدة في لوحة التحكم.',
     'Open Search Manager' => 'فتح Search Manager',
+    'Complete setup' => 'إكمال الإعداد',
     'Quick Actions' => 'إجراءات سريعة',
 
     // Navigation
@@ -23,6 +24,7 @@ return [
     'Widgets' => 'الأدوات',
     'API Keys' => 'مفاتيح API',
     'Analytics' => 'التحليلات',
+    'Setup' => 'الإعداد',
     'Settings' => 'الإعدادات',
     'Logs' => 'السجلات',
     'Overview' => 'نظرة عامة',
@@ -33,6 +35,21 @@ return [
     'Trending' => 'الشائع',
     'Recent Searches' => 'عمليات البحث الأخيرة',
     'Related Queries' => 'الاستعلامات ذات الصلة',
+
+    // Setup
+    'Set up Search Manager' => 'إعداد Search Manager',
+    'Complete this step before tracking search analytics.' => 'أكمل هذه الخطوة قبل تتبع تحليلات البحث.',
+    'Ready' => 'جاهز',
+    'v{version}' => 'v{version}',
+    'IP salt' => 'Salt IP',
+    'Analytics needs a privacy salt before search analytics is ready.' => 'تحتاج التحليلات إلى salt خصوصية قبل أن تصبح تحليلات البحث جاهزة.',
+    'Analytics privacy salt is ready for search analytics.' => 'Salt خصوصية التحليلات جاهز لتحليلات البحث.',
+    'IP hash salt is configured.' => 'تم تكوين salt تجزئة IP.',
+    'Setup incomplete' => 'الإعداد غير مكتمل',
+    'Finish setup before tracking search analytics.' => 'أكمل الإعداد قبل تتبع تحليلات البحث.',
+    'Open setup' => 'فتح الإعداد',
+    'Setup complete.' => 'اكتمل الإعداد.',
+    'Search Manager is ready to track search analytics.' => 'Search Manager جاهز لتتبع تحليلات البحث.',
 
     // Permissions
     'Access main plugin sections' => 'الوصول إلى الأقسام الرئيسية للإضافة',
@@ -1231,7 +1248,7 @@ return [
     'To change, set another widget as default first.' => 'للتغيير، قم بتعيين أداة أخرى كافتراضية أولاً.',
     'Update your config/search-manager.php to point to a valid widget handle.' => 'قم بتحديث config/search-manager.php للإشارة إلى handle أداة صالح.',
     'Human-readable name for this configuration' => 'اسم قابل للقراءة البشرية لهذا التكوين',
-    "Unique identifier used in templates (e.g., `config: 'homepage'`)" => "معرف فريد يُستخدم في القوالب (مثل `config: 'homepage'`)",
+    'Unique identifier used in templates (e.g., `config: \'homepage\'`)' => 'معرف فريد يُستخدم في القوالب (مثل `config: \'homepage\'`)',
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'معرف مخصص لهذه الأداة في التحليلات (مثل "header-search"، "mobile-nav"). اترك فارغاً للافتراضي.',
     'Select which index to search' => 'حدد الفهرس المراد البحث فيه',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'حدد الفهارس التي تبحث فيها هذه الأداة. اترك الكل بدون تحديد للبحث في جميع الفهارس.',
@@ -1633,6 +1650,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'مراقبة فهارس البحث ومسح Cache الملفات وإدارة البنية التحتية للبحث الخاصة بك.',
+    'Manage Backends' => 'إدارة الواجهات الخلفية',
     'Manage Settings' => 'إدارة الإعدادات',
     'Clear Storage' => 'مسح التخزين',
     'Clearing Storage...' => 'جارٍ مسح التخزين...',

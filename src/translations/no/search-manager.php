@@ -11,6 +11,7 @@ return [
     'Search Manager' => 'Search Manager',
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Konfigurer backends, juster indeksering og administrer søkeatferd fra ett arbeidsområde i kontrollpanelet.',
     'Open Search Manager' => 'Åpne Search Manager',
+    'Complete setup' => 'Fullfør oppsett',
     'Quick Actions' => 'Hurtighandlinger',
 
     // Navigation
@@ -23,6 +24,7 @@ return [
     'Widgets' => 'Widgeter',
     'API Keys' => 'API-nøkler',
     'Analytics' => 'Analyse',
+    'Setup' => 'Oppsett',
     'Settings' => 'Innstillinger',
     'Logs' => 'Logger',
     'Overview' => 'Oversikt',
@@ -33,6 +35,21 @@ return [
     'Trending' => 'Trender',
     'Recent Searches' => 'Nylige søk',
     'Related Queries' => 'Relaterte spørringer',
+
+    // Setup
+    'Set up Search Manager' => 'Konfigurer Search Manager',
+    'Complete this step before tracking search analytics.' => 'Fullfør dette trinnet før søkeanalyse kan spores.',
+    'Ready' => 'Klar',
+    'v{version}' => 'v{version}',
+    'IP salt' => 'IP-salt',
+    'Analytics needs a privacy salt before search analytics is ready.' => 'Analyse trenger et personvernsalt før søkeanalyse er klar.',
+    'Analytics privacy salt is ready for search analytics.' => 'Personvernsaltet for analyse er klart for søkeanalyse.',
+    'IP hash salt is configured.' => 'IP-hashsalt er konfigurert.',
+    'Setup incomplete' => 'Oppsettet er ikke fullført',
+    'Finish setup before tracking search analytics.' => 'Fullfør oppsettet før søkeanalyse kan spores.',
+    'Open setup' => 'Åpne oppsett',
+    'Setup complete.' => 'Oppsettet er fullført.',
+    'Search Manager is ready to track search analytics.' => 'Search Manager er klar til å spore søkeanalyse.',
 
     // Permissions
     'Access main plugin sections' => 'Tilgang til plugin-programmets hovedseksjoner',
@@ -1231,7 +1248,7 @@ return [
     'To change, set another widget as default first.' => 'Angi en annen widget som standard først for å endre.',
     'Update your config/search-manager.php to point to a valid widget handle.' => 'Oppdater din config/search-manager.php til å peke på et gyldig widget-handle.',
     'Human-readable name for this configuration' => 'Lesbart navn for denne konfigurasjonen',
-    "Unique identifier used in templates (e.g., `config: 'homepage'`)" => "Unik identifikator brukt i maler (f.eks. `config: 'homepage'`)",
+    'Unique identifier used in templates (e.g., `config: \'homepage\'`)' => 'Unik identifikator brukt i maler (f.eks. `config: \'homepage\'`)',
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Tilpasset identifikator for denne widgeten i analyser (f.eks. "header-search", "mobile-nav"). La stå tom for standard.',
     'Select which index to search' => 'Velg hvilken indeks det skal søkes i',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Velg hvilke indekser denne widgeten søker i. La alle være umarkert for å søke i alle indekser.',
@@ -1633,6 +1650,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Overvåk søkeindekser, tøm fil-Cache og administrer søkeinfrastrukturen din.',
+    'Manage Backends' => 'Administrer backends',
     'Manage Settings' => 'Administrer innstillinger',
     'Clear Storage' => 'Tøm lagring',
     'Clearing Storage...' => 'Tømmer lagring...',

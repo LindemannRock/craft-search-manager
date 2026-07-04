@@ -11,6 +11,7 @@ return [
     'Search Manager' => 'Search Manager',
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Configurez les backends, ajustez l\'indexation et gérez le comportement de recherche depuis un seul espace de travail du panneau de contrôle.',
     'Open Search Manager' => 'Ouvrir Search Manager',
+    'Complete setup' => 'Terminer la configuration',
     'Quick Actions' => 'Actions rapides',
 
     // Navigation
@@ -23,6 +24,7 @@ return [
     'Widgets' => 'Widgets',
     'API Keys' => 'Clés API',
     'Analytics' => 'Analytiques',
+    'Setup' => 'Configuration',
     'Settings' => 'Paramètres',
     'Logs' => 'Journaux',
     'Overview' => 'Vue d\'ensemble',
@@ -33,6 +35,21 @@ return [
     'Trending' => 'Tendances',
     'Recent Searches' => 'Recherches récentes',
     'Related Queries' => 'Requêtes associées',
+
+    // Setup
+    'Set up Search Manager' => 'Configurer Search Manager',
+    'Complete this step before tracking search analytics.' => 'Terminez cette étape avant de suivre les analytiques de recherche.',
+    'Ready' => 'Prêt',
+    'v{version}' => 'v{version}',
+    'IP salt' => 'Salt IP',
+    'Analytics needs a privacy salt before search analytics is ready.' => 'Les analytiques ont besoin d\'un salt de confidentialité avant que les analytiques de recherche soient prêtes.',
+    'Analytics privacy salt is ready for search analytics.' => 'Le salt de confidentialité des analytiques est prêt pour les analytiques de recherche.',
+    'IP hash salt is configured.' => 'Le salt de hachage IP est configuré.',
+    'Setup incomplete' => 'Configuration incomplète',
+    'Finish setup before tracking search analytics.' => 'Terminez la configuration avant de suivre les analytiques de recherche.',
+    'Open setup' => 'Ouvrir la configuration',
+    'Setup complete.' => 'Configuration terminée.',
+    'Search Manager is ready to track search analytics.' => 'Search Manager est prêt à suivre les analytiques de recherche.',
 
     // Permissions
     'Access main plugin sections' => 'Accéder aux sections principales du plugin',
@@ -1231,7 +1248,7 @@ return [
     'To change, set another widget as default first.' => 'Pour changer, définissez d\'abord un autre widget par défaut.',
     'Update your config/search-manager.php to point to a valid widget handle.' => 'Mettez à jour votre config/search-manager.php pour pointer vers un handle de widget valide.',
     'Human-readable name for this configuration' => 'Nom lisible pour cette configuration',
-    "Unique identifier used in templates (e.g., `config: 'homepage'`)" => "Identifiant unique utilisé dans les templates (ex. : `config: 'homepage'`)",
+    'Unique identifier used in templates (e.g., `config: \'homepage\'`)' => 'Identifiant unique utilisé dans les templates (ex. : `config: \'homepage\'`)',
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Identifiant personnalisé pour ce widget dans les analytiques (ex. : "header-search", "mobile-nav"). Laissez vide pour le défaut.',
     'Select which index to search' => 'Sélectionnez quel index rechercher',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Sélectionnez quels index ce widget recherche. Laissez tout décoché pour rechercher dans tous les index.',
@@ -1633,6 +1650,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Surveillez les index de recherche, videz le cache de fichiers et gérez votre infrastructure de recherche.',
+    'Manage Backends' => 'Gérer les backends',
     'Manage Settings' => 'Gérer les paramètres',
     'Clear Storage' => 'Vider le stockage',
     'Clearing Storage...' => 'Vidage du stockage en cours...',

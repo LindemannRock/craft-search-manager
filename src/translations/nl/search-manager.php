@@ -11,6 +11,7 @@ return [
     'Search Manager' => 'Search Manager',
     'Configure backends, tune indexing, and manage search behavior from one control panel workspace.' => 'Configureer backends, stem indexering af en beheer zoekgedrag vanuit één werkruimte in het configuratiescherm.',
     'Open Search Manager' => 'Search Manager openen',
+    'Complete setup' => 'Setup voltooien',
     'Quick Actions' => 'Snelle acties',
 
     // Navigation
@@ -23,6 +24,7 @@ return [
     'Widgets' => 'Widgets',
     'API Keys' => 'API-sleutels',
     'Analytics' => 'Analyses',
+    'Setup' => 'Setup',
     'Settings' => 'Instellingen',
     'Logs' => 'Logboeken',
     'Overview' => 'Overzicht',
@@ -33,6 +35,21 @@ return [
     'Trending' => 'Trending',
     'Recent Searches' => 'Recente zoekopdrachten',
     'Related Queries' => 'Gerelateerde zoekopdrachten',
+
+    // Setup
+    'Set up Search Manager' => 'Search Manager instellen',
+    'Complete this step before tracking search analytics.' => 'Voltooi deze stap voordat zoekanalyses kunnen worden bijgehouden.',
+    'Ready' => 'Gereed',
+    'v{version}' => 'v{version}',
+    'IP salt' => 'IP-salt',
+    'Analytics needs a privacy salt before search analytics is ready.' => 'Analyses hebben een privacy-salt nodig voordat zoekanalyses gereed zijn.',
+    'Analytics privacy salt is ready for search analytics.' => 'De privacy-salt voor analyses is gereed voor zoekanalyses.',
+    'IP hash salt is configured.' => 'IP-hashsalt is geconfigureerd.',
+    'Setup incomplete' => 'Setup onvolledig',
+    'Finish setup before tracking search analytics.' => 'Voltooi de setup voordat zoekanalyses kunnen worden bijgehouden.',
+    'Open setup' => 'Setup openen',
+    'Setup complete.' => 'Setup voltooid.',
+    'Search Manager is ready to track search analytics.' => 'Search Manager is gereed om zoekanalyses bij te houden.',
 
     // Permissions
     'Access main plugin sections' => 'Toegang tot de belangrijkste pluginsecties',
@@ -1231,7 +1248,7 @@ return [
     'To change, set another widget as default first.' => 'Om te wijzigen, stel eerst een andere widget in als standaard.',
     'Update your config/search-manager.php to point to a valid widget handle.' => 'Werk uw config/search-manager.php bij om naar een geldige widget-handle te verwijzen.',
     'Human-readable name for this configuration' => 'Leesbare naam voor deze configuratie',
-    "Unique identifier used in templates (e.g., `config: 'homepage'`)" => "Uniek identificatiekenmerk gebruikt in templates (bijv. `config: 'homepage'`)",
+    'Unique identifier used in templates (e.g., `config: \'homepage\'`)' => 'Uniek identificatiekenmerk gebruikt in templates (bijv. `config: \'homepage\'`)',
     'Custom identifier for this widget in analytics (e.g., "header-search", "mobile-nav"). Leave empty for default.' => 'Aangepast identificatiekenmerk voor deze widget in analyses (bijv. "header-search", "mobile-nav"). Laat leeg voor standaard.',
     'Select which index to search' => 'Selecteer welke index u wilt doorzoeken',
     'Select which indices this widget searches. Leave all unchecked to search all indices.' => 'Selecteer welke indexen deze widget doorzoekt. Laat alles uitgevinkt om alle indexen te doorzoeken.',
@@ -1633,6 +1650,7 @@ return [
 
     // Utilities / diagnostics
     'Monitor search indices, clear file cache, and manage your search infrastructure.' => 'Zoekindexen bewaken, bestandscache wissen en uw zoekinfrastructuur beheren.',
+    'Manage Backends' => 'Backends beheren',
     'Manage Settings' => 'Instellingen beheren',
     'Clear Storage' => 'Opslag wissen',
     'Clearing Storage...' => 'Opslag wordt gewist...',
