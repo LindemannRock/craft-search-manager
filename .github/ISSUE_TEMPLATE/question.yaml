@@ -20,6 +20,31 @@ body:
     validations:
       required: true
 
+  - type: input
+    id: craft-version
+    attributes:
+      label: Craft CMS exact version
+      description: "**Do not write \"latest\"** — check Craft's System Report."
+      placeholder: e.g. 5.6.1
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-version
+    attributes:
+      label: "Search Manager version"
+      description: "**Do not write \"latest\"** — check Craft's System Report or Settings → Plugins."
+      placeholder: e.g. 5.2.0
+    validations:
+      required: true
+
+  - type: input
+    id: php-version
+    attributes:
+      label: PHP version
+      description: Check Craft's System Report.
+      placeholder: e.g. 8.3.30
+
   - type: textarea
     id: additional-context
     attributes:
