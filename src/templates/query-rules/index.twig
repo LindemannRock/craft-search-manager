@@ -1,5 +1,10 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: 'query-rules',
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
+
 {# Follows the canonical CP table index-page pattern (in-memory variant) —
    see plugins/base/docs/template-guides/cp-table-index-pattern.md.
    QueryRulesController::actionIndex() owns query-param parsing, allowlist

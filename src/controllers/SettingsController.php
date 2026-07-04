@@ -7,6 +7,8 @@ use craft\base\ElementInterface;
 use craft\helpers\Db;
 use craft\web\Controller;
 use lindemannrock\base\helpers\ExportHelper;
+use lindemannrock\base\helpers\PluginHelper;
+use lindemannrock\base\helpers\PluginThemeStyleHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
@@ -37,6 +39,30 @@ class SettingsController extends Controller
     public function actionIndex(): Response
     {
         return $this->actionGeneral();
+    }
+
+    /**
+     * Setup checklist.
+     *
+     * @since 5.53.0
+     */
+    public function actionSetup(): Response
+    {
+        $this->requirePermission('searchManager:manageSettings');
+
+        $plugin = SearchManager::$plugin;
+        $settings = $plugin->getSettings();
+        $iconSvg = PluginHelper::getIconSvg($plugin);
+        $setupStatus = $plugin->setup->getStatus($settings);
+
+        return $this->renderTemplate('search-manager/setup', [
+            'settings' => $settings,
+            'pluginVersion' => PluginHelper::getPluginVersion($plugin),
+            'pluginIconSvg' => $iconSvg,
+            'pluginHeroStyle' => PluginThemeStyleHelper::heroCssVarsFromSvg($iconSvg),
+            'logoPaths' => PluginHelper::lrLogoPaths(),
+            'ipSaltConfigured' => $setupStatus['ipSaltConfigured'],
+        ]);
     }
 
     public function actionGeneral(): Response

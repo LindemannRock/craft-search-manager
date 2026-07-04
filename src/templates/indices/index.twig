@@ -7,6 +7,10 @@
    presentational and just renders what's handed in. #}
 
 {% set globalSettings = craft.searchManager.getSettings() %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: 'indices',
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
 
 {# Build columns array — Analytics column is conditional on the global toggle. #}
 {% set columns = [

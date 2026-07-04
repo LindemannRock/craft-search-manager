@@ -4,6 +4,10 @@
 {% set title = widgetConfig.name %}
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'widgets' %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
 {% set isDefault = defaultWidgetHandle == widgetConfig.handle %}
 {% set canEdit = currentUser.can('searchManager:editWidgetConfigs') %}
 

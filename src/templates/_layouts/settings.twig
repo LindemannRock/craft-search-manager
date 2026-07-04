@@ -5,8 +5,8 @@
 {% set selectedSettingsItem = selectedSettingsItem ?? 'general' %}
 {% set selectedSubnavItem = 'settings' %}
 
-{% set ipSaltSummary = include('lindemannrock-base/_partials/ip-salt-error', {
-    pluginHandle: 'search-manager'
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
 })|trim %}
 {% set validationSummary = '' %}
 {% if settings is defined and settings.hasErrors() %}
@@ -15,7 +15,7 @@
         translationCategory: 'search-manager',
     })|trim %}
 {% endif %}
-{% set errorSummary = [ipSaltSummary, validationSummary]|filter(v => v)|join("\n") %}
+{% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}
 
 {% block sidebar %}
     {% set settings = craft.app.plugins.getPlugin('search-manager').getSettings() %}

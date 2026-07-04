@@ -55,6 +55,7 @@ use lindemannrock\searchmanager\services\EnrichmentService;
 use lindemannrock\searchmanager\services\IndexingService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
+use lindemannrock\searchmanager\services\SetupService;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\services\TransformerService;
@@ -82,6 +83,7 @@ use yii\base\Event;
  * @property-read EnrichmentService $enrichment
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
+ * @property-read SetupService $setup
  * @property-read PendingSyncRepository $pendingSyncs
  * @property-read PendingSyncProcessor $pendingSyncProcessor
  * @property-read WidgetConfigService $widgetConfigs
@@ -199,9 +201,9 @@ class SearchManager extends Plugin
                 'installExperience' => [
                     'headline' => Craft::t('search-manager', 'Search Manager'),
                     'body' => Craft::t('search-manager', 'Configure backends, tune indexing, and manage search behavior from one control panel workspace.'),
-                    'ctaLabel' => Craft::t('search-manager', 'Open Search Manager'),
-                    'ctaUrl' => 'search-manager',
-                    'redirectUri' => 'search-manager',
+                    'ctaLabel' => Craft::t('search-manager', 'Complete setup'),
+                    'ctaUrl' => 'search-manager/setup',
+                    'redirectUri' => 'search-manager/setup',
                     'confettiPreset' => 'surprise',
                 ],
             ]
@@ -275,6 +277,7 @@ class SearchManager extends Plugin
             'pendingSyncProcessor' => PendingSyncProcessor::class,
             'promotions' => PromotionService::class,
             'queryRules' => QueryRuleService::class,
+            'setup' => SetupService::class,
             'transformers' => TransformerService::class,
             'widgetConfigs' => WidgetConfigService::class,
             'widgetStyles' => \lindemannrock\searchmanager\services\WidgetStyleService::class,
@@ -473,6 +476,7 @@ class SearchManager extends Plugin
                     'search-manager/analytics/export' => 'search-manager/analytics/export',
                     'search-manager/analytics/export-rule-analytics' => 'search-manager/analytics/export-rule-analytics',
                     'search-manager/analytics/export-promotion-analytics' => 'search-manager/analytics/export-promotion-analytics',
+                    'search-manager/setup' => 'search-manager/settings/setup',
                     'search-manager/settings' => 'search-manager/settings/general',
                     'search-manager/settings/general' => 'search-manager/settings/general',
                     'search-manager/settings/backend' => 'search-manager/settings/backend',
@@ -1032,6 +1036,13 @@ class SearchManager extends Plugin
             'url' => 'search-manager/analytics',
             'permissionsAll' => ['searchManager:viewAnalytics'],
             'when' => $settings->enableAnalytics && $hasBackends,
+        ];
+
+        $sections[] = [
+            'key' => 'setup',
+            'label' => Craft::t('search-manager', 'Setup'),
+            'url' => 'search-manager/setup',
+            'permissionsAll' => ['searchManager:manageSettings'],
         ];
 
         if ($includeLogs) {

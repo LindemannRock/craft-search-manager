@@ -5,6 +5,9 @@
 {% set selectedSubnavItem = 'api-keys' %}
 {% set saveShortcutRedirect = cpUrl('search-manager/api-keys/edit/{id}') %}
 {% set retainScrollOnSaveShortcut = true %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -80,7 +83,7 @@
     })|trim %}
 {% endif %}
 
-{% set errorSummary = [newPlaintextBanner, validationSummary]|filter(v => v)|join("\n") %}
+{% set errorSummary = [setupIncompleteSummary, newPlaintextBanner, validationSummary]|filter(v => v)|join("\n") %}
 {% set publicTypeInfo = 'Public keys are intended for browser-facing use such as widgets and custom JavaScript search pages. Restrict them by referrer and to the indices they need. Type cannot be changed after the key is created.'|t('search-manager') %}
 {% set serverTypeInfo = 'Server keys are intended for backend-to-backend integrations. Keep them out of browser HTML, JavaScript, and mobile app binaries. Type cannot be changed after the key is created.'|t('search-manager') %}
 

@@ -4,6 +4,10 @@
 {% set title = widgetStyle.name %}
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'widgets' %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
 
 {% set crumbs = [
 	{ label: searchHelper.fullName, url: url('search-manager') },

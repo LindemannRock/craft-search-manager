@@ -10,6 +10,9 @@
 {% set fullPageForm = true %}
 {% set saveShortcutRedirect = cpUrl('search-manager/indices/edit/{id}') %}
 {% set retainScrollOnSaveShortcut = true %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
 
 {% import "_includes/forms" as forms %}
 
@@ -44,13 +47,15 @@
 {% endblock %}
 
 {# Display validation errors summary before content #}
+{% set validationSummary = '' %}
 {% if index.hasErrors() %}
-	{% set errorSummary = include('lindemannrock-base/_partials/error-summary', {
+	{% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
 		errors: index.getErrors(),
 		linkMode: 'data-key',
 		translationCategory: 'search-manager',
-	}) %}
+	})|trim %}
 {% endif %}
+{% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}
 
 {% block content %}
 

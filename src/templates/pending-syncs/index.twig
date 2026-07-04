@@ -1,5 +1,10 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: 'pending-syncs',
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
+
 {# `searchHelper` is a Twig global registered by base/PluginNameExtension — do
    not shadow it with the plugin instance. It exposes .fullName, .displayName,
    etc. via PluginNameHelper. #}

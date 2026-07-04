@@ -4,6 +4,10 @@
 {% set title = index.name %}
 {% set fullPageForm = false %}
 {% set selectedSubnavItem = 'indices' %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
 
 {% set canRebuild = currentUser.can('searchManager:rebuildIndices') %}
 {% set canClear = currentUser.can('searchManager:clearIndices') %}

@@ -2,6 +2,10 @@
 
 {% set title = "Analytics"|t('search-manager') %}
 {% set selectedSubnavItem = 'analytics' %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
 
 {% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 {% set pluginHandle = pluginHandle ?? plugin.id %}

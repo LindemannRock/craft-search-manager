@@ -1,0 +1,93 @@
+{% extends "_layouts/cp" %}
+
+{% set selectedSubnavItem = 'setup' %}
+{% set title = "Set up Search Manager"|t('search-manager') %}
+{% set allComplete = ipSaltConfigured %}
+
+{% set ipSaltIncompleteBody %}
+    <p>
+        {{ 'Analytics tracking requires a secure salt for privacy protection.'|t('lindemannrock-base') }}
+    </p>
+    <p>
+        <strong>{{ 'Run one of these commands in your terminal:'|t('lindemannrock-base') }}</strong>
+    </p>
+{% endset %}
+
+{% set ipSaltFooter %}
+    <p>
+        {{ 'This will automatically add {envVar} to your .env file.'|t('lindemannrock-base', {envVar: '<code>SEARCH_MANAGER_IP_SALT</code>'})|raw }}
+    </p>
+    <p>
+        <strong>{{ 'Warning:'|t('lindemannrock-base') }}</strong>
+        {{ 'Copy the same salt to staging and production environments.'|t('lindemannrock-base') }}
+    </p>
+{% endset %}
+
+{% set setupConfig = {
+    plugin: {
+        handle: 'search-manager',
+        name: searchHelper.fullName,
+        version: pluginVersion ? ('v{version}'|t('search-manager', {version: pluginVersion})) : null,
+        iconSvg: pluginIconSvg,
+        logoPaths: logoPaths,
+        heroStyle: pluginHeroStyle,
+    },
+    page: {
+        badge: allComplete ? 'Ready'|t('search-manager') : 'Setup'|t('search-manager'),
+        title: searchHelper.fullName,
+        description: 'Complete this step before tracking search analytics.'|t('search-manager'),
+    },
+    tasks: [
+        {
+            done: ipSaltConfigured,
+            heading: 'IP salt'|t('search-manager'),
+            description: ipSaltConfigured ? 'Analytics privacy salt is ready for search analytics.'|t('search-manager') : 'Analytics needs a privacy salt before search analytics is ready.'|t('search-manager'),
+            complete: {
+                heading: 'IP hash salt is configured.'|t('search-manager'),
+                body: 'Analytics privacy salt is ready for search analytics.'|t('search-manager'),
+            },
+            incomplete: {
+                heading: 'IP hash salt is missing.'|t('lindemannrock-base'),
+                bodyHtml: ipSaltIncompleteBody,
+                commands: [
+                    {
+                        legend: 'Standard:'|t('lindemannrock-base'),
+                        value: 'php craft search-manager/security/generate-salt',
+                        copyLabel: 'Copy'|t('lindemannrock-base'),
+                        copiedMessage: 'Copied!'|t('lindemannrock-base'),
+                    },
+                    {
+                        legend: 'DDEV:'|t('lindemannrock-base'),
+                        value: 'ddev craft search-manager/security/generate-salt',
+                        copyLabel: 'Copy'|t('lindemannrock-base'),
+                        copiedMessage: 'Copied!'|t('lindemannrock-base'),
+                    },
+                ],
+                footerHtml: ipSaltFooter,
+            },
+        },
+    ],
+} %}
+
+{% block content %}
+    {% embed 'lindemannrock-base/_layouts/cp-plugin-setup' with {
+        setupConfig: setupConfig,
+        allComplete: allComplete,
+        ipSaltConfigured: ipSaltConfigured,
+        pluginIconSvg: pluginIconSvg,
+        pluginHeroStyle: pluginHeroStyle,
+        logoPaths: logoPaths,
+    } only %}
+        {% block summary %}
+            {% if allComplete %}
+                {% include 'lindemannrock-base/_components/info-box' with {
+                    message: '<strong>' ~ 'Setup complete.'|t('search-manager') ~ '</strong> ' ~ 'Search Manager is ready to track search analytics.'|t('search-manager'),
+                    type: 'success',
+                    variant: 'colored',
+                    margin: 'none',
+                    allowHtml: true,
+                } only %}
+            {% endif %}
+        {% endblock %}
+    {% endembed %}
+{% endblock %}

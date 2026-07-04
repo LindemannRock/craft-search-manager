@@ -1,6 +1,10 @@
 {% extends "_layouts/cp" %}
 {% set title = searchHelper.fullName %}
 {% set selectedSubnavItem = 'dashboard' %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },

@@ -39,6 +39,12 @@
     },
 } %}
 
+{% block notices %}
+    {% include 'search-manager/_partials/setup-incomplete-summary' with {
+        selectedSubnavItem: 'utilities',
+    } only %}
+{% endblock %}
+
 {% block overview %}
     {# Search Indices Card #}
     {% if canManageIndices %}

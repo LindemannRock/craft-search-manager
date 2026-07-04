@@ -1,5 +1,10 @@
 {% extends 'lindemannrock-base/_layouts/cp-table' %}
 
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: 'api-keys',
+})|trim %}
+{% set errorSummary = setupIncompleteSummary %}
+
 {# REFERENCE IMPLEMENTATION for the canonical CP table index-page pattern —
    see plugins/base/docs/template-guides/cp-table-index-pattern.md. All filter
    / sort / pagination state is computed in ApiKeysController::actionIndex();
@@ -245,10 +250,10 @@
     // the |e('js') trap (produces \uXXXX garbage when re-quoted).
     const T = {
         revokeConfirm: {{ 'Are you sure you want to revoke this API key? Any callers using it will immediately lose access.'|t('search-manager')|json_encode|raw }},
-        revokeFailed: {{ 'Couldn’t revoke API key.'|t('search-manager')|json_encode|raw }},
-        bulkEnableFailed: {{ 'Couldn’t enable API keys.'|t('search-manager')|json_encode|raw }},
-        bulkDisableFailed: {{ 'Couldn’t disable API keys.'|t('search-manager')|json_encode|raw }},
-        bulkRevokeFailed: {{ 'Couldn’t revoke API keys.'|t('search-manager')|json_encode|raw }},
+        revokeFailed: {{ 'Couldn’t revoke API key'|t('search-manager')|json_encode|raw }},
+        bulkEnableFailed: {{ 'Couldn’t enable API keys'|t('search-manager')|json_encode|raw }},
+        bulkDisableFailed: {{ 'Couldn’t disable API keys'|t('search-manager')|json_encode|raw }},
+        bulkRevokeFailed: {{ 'Couldn’t revoke API keys'|t('search-manager')|json_encode|raw }},
         // Two strings rendered server-side; JS picks by count and substitutes
         // the placeholder. Avoids ICU-plural syntax in this template entirely.
         bulkRevokeConfirmSingular: {{ 'Are you sure you want to revoke 1 API key? Any callers using it will immediately lose access. This cannot be undone.'|t('search-manager')|json_encode|raw }},

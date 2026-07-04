@@ -7,6 +7,9 @@
 {% set selectedSubnavItem = 'widgets' %}
 {% set saveShortcutRedirect = cpUrl('search-manager/widgets/edit/{id}') %}
 {% set retainScrollOnSaveShortcut = true %}
+{% set setupIncompleteSummary = include('search-manager/_partials/setup-incomplete-summary', {
+    selectedSubnavItem: selectedSubnavItem,
+})|trim %}
 
 {% set crumbs = [
     { label: searchHelper.fullName, url: url('search-manager') },
@@ -91,13 +94,15 @@
 {% endblock %}
 
 {# Display validation errors summary before content #}
+{% set validationSummary = '' %}
 {% if widgetConfig.hasErrors() %}
-	{% set errorSummary = include('lindemannrock-base/_partials/error-summary', {
+	{% set validationSummary = include('lindemannrock-base/_partials/error-summary', {
 		errors: widgetConfig.getErrors(),
 		linkMode: 'data-key',
 		translationCategory: 'search-manager',
-	}) %}
+	})|trim %}
 {% endif %}
+{% set errorSummary = [setupIncompleteSummary, validationSummary]|filter(v => v)|join("\n") %}
 
 {% block content %}
 	<input type="hidden" name="action" value="search-manager/widgets/save">
