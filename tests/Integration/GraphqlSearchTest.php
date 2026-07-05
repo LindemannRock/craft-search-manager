@@ -11,11 +11,14 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use craft\events\ExecuteGqlQueryEvent;
 use craft\models\GqlSchema;
+use craft\services\Gql;
 use lindemannrock\searchmanager\gql\queries\SearchQuery;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
+use yii\base\Application as YiiApplication;
 use yii\web\ForbiddenHttpException;
 
 /**
@@ -38,6 +41,59 @@ final class GraphqlSearchTest extends TestCase
 
         $this->assertArrayHasKey('searchManagerSearch', $queries);
         $this->assertArrayHasKey('searchManagerAutocomplete', $queries);
+    }
+
+    public function testGraphqlSearchCacheToggleRestoresOnSkippedAfterEvent(): void
+    {
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $original = $generalConfig->enableGraphqlCaching;
+        $generalConfig->enableGraphqlCaching = true;
+
+        try {
+            Craft::$app->getGql()->trigger(
+                Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY,
+                new ExecuteGqlQueryEvent(['query' => $this->searchQuery()]),
+            );
+
+            $this->assertFalse($generalConfig->enableGraphqlCaching);
+
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+
+            $this->assertTrue($generalConfig->enableGraphqlCaching);
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            $generalConfig->enableGraphqlCaching = $original;
+        }
+    }
+
+    public function testGraphqlSearchCacheToggleDoesNotOverwriteOriginalBeforeRestore(): void
+    {
+        $generalConfig = Craft::$app->getConfig()->getGeneral();
+        $original = $generalConfig->enableGraphqlCaching;
+        $generalConfig->enableGraphqlCaching = true;
+
+        try {
+            Craft::$app->getGql()->trigger(
+                Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY,
+                new ExecuteGqlQueryEvent(['query' => $this->searchQuery()]),
+            );
+            Craft::$app->getGql()->trigger(
+                Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY,
+                new ExecuteGqlQueryEvent(['query' => $this->searchQuery()]),
+            );
+
+            $this->assertFalse($generalConfig->enableGraphqlCaching);
+
+            Craft::$app->getGql()->trigger(
+                Gql::EVENT_AFTER_EXECUTE_GQL_QUERY,
+                new ExecuteGqlQueryEvent(['query' => $this->searchQuery()]),
+            );
+
+            $this->assertTrue($generalConfig->enableGraphqlCaching);
+        } finally {
+            Craft::$app->trigger(YiiApplication::EVENT_AFTER_REQUEST);
+            $generalConfig->enableGraphqlCaching = $original;
+        }
     }
 
     public function testSearchResolverDelegatesToBackendWithGraphqlOptions(): void
@@ -242,6 +298,11 @@ final class GraphqlSearchTest extends TestCase
                 array_map(static fn(string $uid): string => 'sites.' . $uid . ':read', $siteUids),
             ),
         ]);
+    }
+
+    private function searchQuery(): string
+    {
+        return 'query { searchManagerSearch(query: "coffee") { total } }';
     }
 }
 

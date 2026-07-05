@@ -65,6 +65,7 @@ use lindemannrock\searchmanager\widgets\AnalyticsSummaryWidget;
 use lindemannrock\searchmanager\widgets\ContentGapsWidget;
 use lindemannrock\searchmanager\widgets\TopSearchesWidget;
 use lindemannrock\searchmanager\widgets\TrendingSearchesWidget;
+use yii\base\Application as YiiApplication;
 use yii\base\Event;
 
 /**
@@ -382,11 +383,15 @@ class SearchManager extends Plugin
             Gql::EVENT_BEFORE_EXECUTE_GQL_QUERY,
             static function(ExecuteGqlQueryEvent $event) use (&$graphqlCacheSetting) {
                 if (!self::queryRunsSearch($event->query)) {
+                    self::restoreGraphqlCacheSetting($graphqlCacheSetting);
+
                     return;
                 }
 
                 $generalConfig = Craft::$app->getConfig()->getGeneral();
-                $graphqlCacheSetting = $generalConfig->enableGraphqlCaching;
+                if ($graphqlCacheSetting === null) {
+                    $graphqlCacheSetting = $generalConfig->enableGraphqlCaching;
+                }
                 $generalConfig->enableGraphqlCaching = false;
             }
         );
@@ -399,8 +404,15 @@ class SearchManager extends Plugin
                     return;
                 }
 
-                Craft::$app->getConfig()->getGeneral()->enableGraphqlCaching = $graphqlCacheSetting;
-                $graphqlCacheSetting = null;
+                self::restoreGraphqlCacheSetting($graphqlCacheSetting);
+            }
+        );
+
+        Event::on(
+            YiiApplication::class,
+            YiiApplication::EVENT_AFTER_REQUEST,
+            static function() use (&$graphqlCacheSetting) {
+                self::restoreGraphqlCacheSetting($graphqlCacheSetting);
             }
         );
     }
@@ -415,6 +427,22 @@ class SearchManager extends Plugin
     private static function queryRunsSearch(string $query): bool
     {
         return str_contains($query, 'searchManagerSearch');
+    }
+
+    /**
+     * Restore Craft's GraphQL cache toggle after Search Manager temporarily
+     * disables it for side-effecting search queries.
+     *
+     * @param bool|null $graphqlCacheSetting
+     */
+    private static function restoreGraphqlCacheSetting(?bool &$graphqlCacheSetting): void
+    {
+        if ($graphqlCacheSetting === null) {
+            return;
+        }
+
+        Craft::$app->getConfig()->getGeneral()->enableGraphqlCaching = $graphqlCacheSetting;
+        $graphqlCacheSetting = null;
     }
 
     /**
