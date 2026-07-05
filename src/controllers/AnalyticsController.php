@@ -937,6 +937,7 @@ class AnalyticsController extends Controller
             ?? $request->getBodyParam('range')
             ?? DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id);
         $format = $request->getBodyParam('format', 'csv');
+        $effectiveSiteId = $this->resolveEffectiveSiteId($request->getBodyParam('siteId'));
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
@@ -955,7 +956,8 @@ class AnalyticsController extends Controller
         // Get raw analytics data for export
         $query = (new \craft\db\Query())
             ->from('{{%searchmanager_rule_analytics}}')
-            ->where(['queryRuleId' => $ruleId]);
+            ->where(['queryRuleId' => $ruleId])
+            ->andWhere(['siteId' => $effectiveSiteId]);
 
         SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
 
@@ -1002,6 +1004,7 @@ class AnalyticsController extends Controller
             ?? $request->getBodyParam('range')
             ?? DateRangeHelper::getDefaultDateRange(SearchManager::$plugin->id);
         $format = $request->getBodyParam('format', 'csv');
+        $effectiveSiteId = $this->resolveEffectiveSiteId($request->getBodyParam('siteId'));
 
         if (!ExportHelper::isFormatEnabled($format, SearchManager::$plugin->id)) {
             throw new \yii\web\BadRequestHttpException("Export format '{$format}' is not enabled.");
@@ -1020,7 +1023,8 @@ class AnalyticsController extends Controller
         // Get raw analytics data for export
         $query = (new \craft\db\Query())
             ->from('{{%searchmanager_promotion_analytics}}')
-            ->where(['promotionId' => $promotionId]);
+            ->where(['promotionId' => $promotionId])
+            ->andWhere(['siteId' => $effectiveSiteId]);
 
         SearchManager::$plugin->analytics->applyDateRangeFilter($query, $dateRange);
 

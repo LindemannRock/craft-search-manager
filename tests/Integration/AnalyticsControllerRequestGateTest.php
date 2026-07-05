@@ -72,4 +72,51 @@ final class AnalyticsControllerRequestGateTest extends TestCase
             self::assertStringNotContainsString('analytics-content', $source);
         }
     }
+
+    public function testFocusedRuleAndPromotionExportsFilterByEffectiveSiteScope(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/controllers/AnalyticsController.php');
+        $this->assertIsString($source);
+
+        foreach ([
+            'actionExportRuleAnalytics' => '{{%searchmanager_rule_analytics}}',
+            'actionExportPromotionAnalytics' => '{{%searchmanager_promotion_analytics}}',
+        ] as $method => $table) {
+            preg_match(
+                '/public function ' . preg_quote($method, '/') . '\(\): Response\s+\{(?<body>.*?)(?:\n    \}|\n    public function )/s',
+                $source,
+                $matches,
+            );
+            $body = $matches['body'] ?? '';
+            $this->assertNotSame('', $body, $method . ' body should be captured.');
+
+            self::assertStringContainsString(
+                '$effectiveSiteId = $this->resolveEffectiveSiteId($request->getBodyParam(\'siteId\'));',
+                $body,
+                $method . ' must resolve the requested site through editable-site scope.',
+            );
+            self::assertStringContainsString($table, $body);
+            self::assertStringContainsString(
+                "->andWhere(['siteId' => \$effectiveSiteId])",
+                $body,
+                $method . ' must constrain raw analytics rows to the effective site scope.',
+            );
+        }
+    }
+
+    public function testDashboardWidgetExplicitSiteFallsBackWhenSiteIsNoLongerEditable(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/widgets/SiteFilterTrait.php');
+        $this->assertIsString($source);
+
+        self::assertStringContainsString(
+            '$editableSiteIds = Craft::$app->getSites()->getEditableSiteIds();',
+            $source,
+        );
+        self::assertStringContainsString(
+            'if (in_array($siteId, $editableSiteIds, true))',
+            $source,
+        );
+        self::assertStringContainsString('return $editableSiteIds;', $source);
+    }
 }
