@@ -89,8 +89,8 @@ class Highlighter
                 continue; // Skip very short terms
             }
 
-            // Use word boundaries for better matching
-            $pattern = '/\b(' . preg_quote($term, '/') . ')\b/iu';
+            // Use Unicode-aware token boundaries so non-ASCII terms highlight correctly.
+            $pattern = '/(?<![\p{L}\p{N}_])(' . preg_quote($term, '/') . ')(?![\p{L}\p{N}_])/iu';
             $text = preg_replace($pattern, $openTag . '$1' . $closeTag, $text);
         }
 

@@ -309,26 +309,34 @@ class SearchEngine
 
             $docScores = [];
             $allDocIds = [];
+            $hasScoreComponent = false;
 
             // Process phrases (exact matches)
             if (!empty($parsed->phrases)) {
                 $docScores = $this->searchPhrases($parsed->phrases, $siteId, $totalDocs, $avgDocLength);
                 $allDocIds = array_keys($docScores);
+                $hasScoreComponent = true;
             }
 
             // Process regular terms
             $boostMatchesByTerm = [];
             if (!empty($parsed->terms)) {
                 $termScores = $this->searchTerms($parsed->terms, $parsed->operator, $siteId, $totalDocs, $avgDocLength, $boostMatchesByTerm);
-                $docScores = $this->mergeScores($docScores, $termScores, $parsed->operator);
+                $docScores = $hasScoreComponent
+                    ? $this->mergeScores($docScores, $termScores, $parsed->operator)
+                    : $termScores;
                 $allDocIds = array_unique(array_merge($allDocIds, array_keys($termScores)));
+                $hasScoreComponent = true;
             }
 
             // Process wildcards
             if (!empty($parsed->wildcards)) {
                 $wildcardScores = $this->searchWildcards($parsed->wildcards, $siteId, $totalDocs, $avgDocLength);
-                $docScores = $this->mergeScores($docScores, $wildcardScores, $parsed->operator);
+                $docScores = $hasScoreComponent
+                    ? $this->mergeScores($docScores, $wildcardScores, $parsed->operator)
+                    : $wildcardScores;
                 $allDocIds = array_unique(array_merge($allDocIds, array_keys($wildcardScores)));
+                $hasScoreComponent = true;
             }
 
             // Process field filters
@@ -1139,15 +1147,11 @@ class SearchEngine
      */
     private function mergeScores(array $scores1, array $scores2, string $operator): array
     {
-        if (empty($scores1)) {
-            return $scores2;
-        }
-
-        if (empty($scores2)) {
-            return $scores1;
-        }
-
         if ($operator === 'AND') {
+            if (empty($scores1) || empty($scores2)) {
+                return [];
+            }
+
             // Only keep documents in both sets
             $merged = [];
             foreach ($scores1 as $docId => $score1) {
@@ -1156,14 +1160,22 @@ class SearchEngine
                 }
             }
             return $merged;
-        } else {
-            // OR: Combine all documents
-            $merged = $scores1;
-            foreach ($scores2 as $docId => $score2) {
-                $merged[$docId] = ($merged[$docId] ?? 0) + $score2;
-            }
-            return $merged;
         }
+
+        if (empty($scores1)) {
+            return $scores2;
+        }
+
+        if (empty($scores2)) {
+            return $scores1;
+        }
+
+        // OR: Combine all documents
+        $merged = $scores1;
+        foreach ($scores2 as $docId => $score2) {
+            $merged[$docId] = ($merged[$docId] ?? 0) + $score2;
+        }
+        return $merged;
     }
 
     /**

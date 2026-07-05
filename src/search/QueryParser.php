@@ -35,6 +35,8 @@ class QueryParser
 
     private const SUPPORTED_FIELD_FILTERS = ['title', 'content'];
 
+    private const QUERY_TOKEN_PATTERN = '[\p{L}\p{N}_]+';
+
     /**
      * Localized boolean operators by language
      * All operators are case-insensitive
@@ -152,8 +154,8 @@ class QueryParser
         $allOperators = self::getAllBooleanOperators();
 
         // Build regex pattern for all operators (unicode-aware)
-        $escapedOperators = array_map('preg_quote', $allOperators);
-        $pattern = '/\s+(' . implode('|', $escapedOperators) . ')\s+/iu';
+        $escapedOperators = array_map(static fn(string $operator): string => preg_quote($operator, '/'), $allOperators);
+        $pattern = '/(?:^|\s+)(' . implode('|', $escapedOperators) . ')\s+/iu';
 
         return (bool)preg_match($pattern, $query);
     }
@@ -361,7 +363,8 @@ class QueryParser
     {
         // Build regex pattern for all NOT operators (English + localized)
         $notOperators = $this->getNotOperators();
-        $pattern = '/\s+(' . implode('|', array_map('preg_quote', $notOperators)) . ')\s+(\S+)/iu';
+        $escapedOperators = array_map(static fn(string $operator): string => preg_quote($operator, '/'), $notOperators);
+        $pattern = '/(?:^|\s+)(' . implode('|', $escapedOperators) . ')\s+(\S+)/iu';
 
         // Match "NOT term" patterns (case-insensitive, unicode)
         if (preg_match_all($pattern, $query, $matches, PREG_SET_ORDER)) {
@@ -377,7 +380,7 @@ class QueryParser
             }
 
             // Remove NOT terms from query
-            $removePattern = '/\s+(' . implode('|', array_map('preg_quote', $notOperators)) . ')\s+\S+/iu';
+            $removePattern = '/(?:^|\s+)(' . implode('|', $escapedOperators) . ')\s+\S+/iu';
             $query = preg_replace($removePattern, '', $query);
         }
 
@@ -396,7 +399,7 @@ class QueryParser
     private function extractWildcards(string $query, ParsedQuery $parsed): string
     {
         // Match terms ending with asterisk
-        if (preg_match_all('/(\w+)\*/', $query, $matches)) {
+        if (preg_match_all('/(' . self::QUERY_TOKEN_PATTERN . ')\*/u', $query, $matches)) {
             foreach ($matches[1] as $wildcardTerm) {
                 $wildcardTerm = trim($wildcardTerm);
                 if (!empty($wildcardTerm)) {
@@ -406,7 +409,7 @@ class QueryParser
             }
 
             // Remove wildcards from query
-            $query = preg_replace('/\w+\*/', '', $query);
+            $query = preg_replace('/' . self::QUERY_TOKEN_PATTERN . '\*/u', '', $query);
         }
 
         return $query;
@@ -424,7 +427,7 @@ class QueryParser
     private function extractBoosts(string $query, ParsedQuery $parsed): string
     {
         // Match patterns like "term^2" or "term^1.5"
-        if (preg_match_all('/(\w+)\^([\d.]+)/', $query, $matches, PREG_SET_ORDER)) {
+        if (preg_match_all('/(' . self::QUERY_TOKEN_PATTERN . ')\^([\d.]+)/u', $query, $matches, PREG_SET_ORDER)) {
             foreach ($matches as $match) {
                 $term = $match[1];
                 $boost = (float)$match[2];
@@ -439,7 +442,7 @@ class QueryParser
             }
 
             // Remove boost markers but keep the terms
-            $query = preg_replace('/(\w+)\^[\d.]+/', '$1', $query);
+            $query = preg_replace('/(' . self::QUERY_TOKEN_PATTERN . ')\^[\d.]+/u', '$1', $query);
         }
 
         return $query;

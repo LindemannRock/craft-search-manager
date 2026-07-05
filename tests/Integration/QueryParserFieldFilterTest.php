@@ -61,4 +61,25 @@ final class QueryParserFieldFilterTest extends TestCase
 
         self::assertSame([1], array_keys($results));
     }
+
+    public function testQueryInitialNotIsParsedAsAdvancedExclusion(): void
+    {
+        self::assertTrue(QueryParser::hasAdvancedOperators('NOT spam'));
+
+        $parsed = QueryParser::parse('NOT spam protein');
+
+        self::assertSame(['spam'], $parsed->notTerms);
+        self::assertContains('protein', $parsed->terms);
+        self::assertNotContains('NOT', $parsed->terms);
+        self::assertNotContains('spam', $parsed->terms);
+    }
+
+    public function testUnicodeWildcardAndBoostOperatorsAreParsed(): void
+    {
+        $parsed = QueryParser::parse('東京* über* نص^2');
+
+        self::assertSame(['東京', 'über'], $parsed->wildcards);
+        self::assertSame(['نص' => 2.0], $parsed->boosts);
+        self::assertContains('نص', $parsed->terms);
+    }
 }
