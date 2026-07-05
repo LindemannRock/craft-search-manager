@@ -11,6 +11,8 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -26,6 +28,11 @@ final class FileBackendStoragePathTest extends TestCase
 
     protected function tearDown(): void
     {
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchmanager_backends}}', ['handle' => 'invalidFilePathHelperTest'])
+            ->execute();
+
         putenv(self::ENV_NAME);
         unset($_ENV[self::ENV_NAME], $_SERVER[self::ENV_NAME]);
 
@@ -86,6 +93,28 @@ final class FileBackendStoragePathTest extends TestCase
         self::assertFalse($backend->validate());
         self::assertTrue($backend->hasErrors('settings.storagePath'));
         self::assertStringContainsString('parent directory traversal', implode(' ', $backend->getErrors('settings.storagePath')));
+    }
+
+    public function testConfiguredBasePathsSkipsInvalidStoredFileBackendPath(): void
+    {
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_backends}}', [
+            'name' => 'Invalid File Path Helper Test',
+            'handle' => 'invalidFilePathHelperTest',
+            'backendType' => 'file',
+            'settings' => json_encode(['storagePath' => '@missing-alias/search-manager']),
+            'enabled' => 1,
+            'dateCreated' => Db::prepareDateForDb(new \DateTime()),
+            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+
+        $paths = FileBackendStoragePathHelper::configuredBasePaths();
+
+        self::assertContains(FileBackendStoragePathHelper::defaultBasePath(), $paths);
+        self::assertSame($paths, array_values(array_filter(
+            $paths,
+            static fn(string $path): bool => !str_contains($path, '@missing-alias')
+        )));
     }
 
     private function backend(string $storagePath): ConfiguredBackend

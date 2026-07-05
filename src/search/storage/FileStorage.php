@@ -451,6 +451,7 @@ class FileStorage implements StorageInterface
             'elementType' => $elementType,
             'searchText' => $searchText,
             'elementId' => $elementId,
+            'siteId' => $siteId,
         ];
 
         if ($documentData !== null) {
@@ -725,19 +726,15 @@ class FileStorage implements StorageInterface
      */
     public function updateMetadata(int $siteId, int $docLength, bool $isAddition): void
     {
-        // Update doc count
-        $docCountPath = $this->getMetaPath($siteId, 'doc_count');
-        $docCount = $this->readFile($docCountPath) ?: 0;
-        $docCount += $isAddition ? 1 : -1;
-        $docCount = max(0, $docCount);
-        $this->writeFile($docCountPath, $docCount);
+        $this->updateJsonFile(
+            $this->getMetaPath($siteId, 'doc_count'),
+            static fn(mixed $current): int => max(0, (int)$current + ($isAddition ? 1 : -1))
+        );
 
-        // Update total length
-        $lengthPath = $this->getMetaPath($siteId, 'total_length');
-        $totalLength = $this->readFile($lengthPath) ?: 0;
-        $totalLength += $isAddition ? $docLength : -$docLength;
-        $totalLength = max(1, $totalLength); // Minimum 1 to avoid division by zero
-        $this->writeFile($lengthPath, $totalLength);
+        $this->updateJsonFile(
+            $this->getMetaPath($siteId, 'total_length'),
+            static fn(mixed $current): int => max(1, (int)$current + ($isAddition ? $docLength : -$docLength))
+        );
     }
 
     // =========================================================================
@@ -912,6 +909,46 @@ class FileStorage implements StorageInterface
         $result = @file_put_contents($path, $json, LOCK_EX);
 
         return $result !== false;
+    }
+
+    /**
+     * Update a JSON file while holding an exclusive lock across read/modify/write.
+     *
+     * @param callable(mixed): mixed $update
+     */
+    private function updateJsonFile(string $path, callable $update): bool
+    {
+        $handle = @fopen($path, 'c+');
+        if ($handle === false) {
+            return false;
+        }
+
+        try {
+            if (!flock($handle, LOCK_EX)) {
+                return false;
+            }
+
+            $contents = stream_get_contents($handle);
+            $current = null;
+            if (is_string($contents) && $contents !== '') {
+                $decoded = json_decode($contents, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    $current = $decoded;
+                }
+            }
+
+            $json = json_encode($update($current), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($json === false) {
+                return false;
+            }
+
+            rewind($handle);
+            ftruncate($handle, 0);
+            return fwrite($handle, $json) !== false;
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
     }
 
     /**

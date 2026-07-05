@@ -80,7 +80,14 @@ class FileBackendStoragePathHelper
                 continue;
             }
 
-            $paths[] = self::resolve($backend->settings['storagePath'] ?? null);
+            try {
+                $paths[] = self::resolve($backend->settings['storagePath'] ?? null);
+            } catch (\InvalidArgumentException $e) {
+                Craft::warning(
+                    'Skipping invalid file backend storage path for "' . $backend->handle . '": ' . $e->getMessage(),
+                    'search-manager'
+                );
+            }
         }
 
         return array_values(array_unique($paths));
