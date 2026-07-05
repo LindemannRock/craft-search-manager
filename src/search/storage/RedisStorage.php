@@ -525,7 +525,7 @@ class RedisStorage implements StorageInterface
 
         // Also add to a sorted set for prefix searching
         $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
-        $this->redis->zAdd($indexKey, 0, $elementId . ':' . $searchText);
+        $this->redis->zAdd($indexKey, 0, $searchText . ':' . $elementId);
 
         $this->logDebug('Stored element for suggestions', [
             'site_id' => $siteId,
@@ -550,6 +550,7 @@ class RedisStorage implements StorageInterface
         if (!empty($data['searchText'])) {
             // Remove from sorted set index
             $indexKey = $this->keyPrefix . 'elemindex:' . $siteId;
+            $this->redis->zRem($indexKey, $data['searchText'] . ':' . $elementId);
             $this->redis->zRem($indexKey, $elementId . ':' . $data['searchText']);
         }
 
@@ -655,9 +656,15 @@ class RedisStorage implements StorageInterface
         $elementMeta = [];
 
         foreach ($allMatches as $item) {
-            // Extract elementId from "elementId:searchText"
-            $parts = explode(':', $item['match'], 2);
-            $elemId = (int)$parts[0];
+            // Extract elementId from "searchText:elementId"; searchText itself may contain colons.
+            $separatorPos = strrpos($item['match'], ':');
+            if ($separatorPos === false) {
+                continue;
+            }
+            $elemId = (int)substr($item['match'], $separatorPos + 1);
+            if ($elemId <= 0) {
+                continue;
+            }
             $elementMeta[] = ['siteId' => $item['siteId'], 'elementId' => $elemId];
 
             $key = $this->getElementKey($item['siteId'], $elemId);
@@ -751,10 +758,13 @@ class RedisStorage implements StorageInterface
         // Get all terms that have any of the search n-grams
         $candidateTerms = [];
 
+        $this->redis->multi(\Redis::PIPELINE);
         foreach ($ngrams as $ngram) {
-            $ngramKey = $this->getNgramKey($siteId, $ngram);
-            $terms = $this->redis->sMembers($ngramKey);
+            $this->redis->sMembers($this->getNgramKey($siteId, $ngram));
+        }
+        $termsByNgram = $this->redis->exec();
 
+        foreach ($termsByNgram as $terms) {
             foreach ($terms as $term) {
                 if (!isset($candidateTerms[$term])) {
                     $candidateTerms[$term] = 0;

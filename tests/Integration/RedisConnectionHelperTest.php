@@ -119,6 +119,19 @@ final class RedisConnectionHelperTest extends TestCase
         self::assertTrue($info['isAutoDatabase']);
     }
 
+    public function testUnresolvedHostEnvIsNotReportedConfigured(): void
+    {
+        Craft::$app->set('cache', $this->originalCache);
+
+        $info = RedisConnectionHelper::resolve([
+            'host' => '$' . self::ENV_HOST,
+        ]);
+
+        self::assertNull($info['host']);
+        self::assertFalse($info['isConfigured']);
+        self::assertSame(RedisConnectionHelper::SOURCE_DEFAULT, $info['source']);
+    }
+
     public function testCraftRedisFallbackUsesCraftDatabasePlusOne(): void
     {
         $this->installCraftRedisCache(database: 5);

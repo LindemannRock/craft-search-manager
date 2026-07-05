@@ -96,12 +96,36 @@ final class RedisStorageRegressionTest extends TestCase
         $storage->storeElement(1, 101, 'Protein Powder', 'entry');
         $storage->storeElement(2, 101, 'Protein Bar', 'entry');
 
-        $suggestions = $storage->getElementSuggestions('101', null, 10);
+        $suggestions = $storage->getElementSuggestions('protein', null, 10);
 
         self::assertSame([1, 2], array_column($suggestions, 'siteId'));
         self::assertSame([101, 101], array_column($suggestions, 'elementId'));
         self::assertSame(['sm:idx:test-index:elemindex:*'], $redis->scanPatterns);
         self::assertSame(0, $redis->keysCalls);
+    }
+
+    public function testElementSuggestionsUseSearchTextFirstLexMembers(): void
+    {
+        [$storage] = $this->makeStorage();
+        $storage->storeElement(1, 101, 'Coffee: Dark Roast', 'entry');
+
+        $suggestions = $storage->getElementSuggestions('coffee', 1, 10);
+
+        self::assertSame([101], array_column($suggestions, 'elementId'));
+        self::assertSame(['Coffee: Dark Roast'], array_column($suggestions, 'title'));
+    }
+
+    public function testNgramSimilarityPipelinesCandidateTermReads(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeTermNgrams('protein', ['pr', 'ro'], 1);
+        $storage->storeTermNgrams('product', ['pr', 'ro'], 1);
+
+        $matches = $storage->getTermsByNgramSimilarity(['pr', 'ro'], 1, 0.5);
+
+        self::assertSame(['protein', 'product'], array_keys($matches));
+        self::assertGreaterThanOrEqual(2, $redis->multiCalls);
+        self::assertSame(2, $redis->sMembersPipelineCalls);
     }
 
     public function testMetadataClampUsesAtomicLuaAndPreservesMinimums(): void
@@ -196,6 +220,24 @@ final class RedisStorageRegressionTest extends TestCase
         }
     }
 
+    public function testRedisMaintenanceSurfacesDoNotContainBlockingKeysCalls(): void
+    {
+        foreach ([
+            'src/controllers/UtilitiesController.php' => ['clearRedisStorage', 'getRedisStats'],
+            'src/console/controllers/MaintenanceController.php' => ['clearRedisStorage', 'getRedisStats'],
+        ] as $file => $methods) {
+            $source = file_get_contents(dirname(__DIR__, 2) . '/' . $file);
+            self::assertIsString($source);
+
+            foreach ($methods as $method) {
+                preg_match('/private function ' . $method . '\(.*?^    }$/ms', $source, $matches);
+                self::assertNotEmpty($matches, $method . ' source should be found in ' . $file);
+                self::assertStringNotContainsString('->keys(', $matches[0], $method . ' must not use blocking KEYS');
+                self::assertStringContainsString('scanRedisKeys(', $matches[0], $method . ' should use SCAN iteration');
+            }
+        }
+    }
+
     /**
      * @return array{0: RedisStorage, 1: RedisStorageFakeRedis}
      */
@@ -226,6 +268,8 @@ final class RedisStorageFakeRedis
     public int $evalCalls = 0;
     public int $nonLuaSetCalls = 0;
     public int $delCalls = 0;
+    public int $multiCalls = 0;
+    public int $sMembersPipelineCalls = 0;
 
     /** @var list<string> */
     public array $scanPatterns = [];
@@ -304,6 +348,7 @@ final class RedisStorageFakeRedis
     public function sMembers(string $key): array|self
     {
         if ($this->pipeline !== null) {
+            $this->sMembersPipelineCalls++;
             $this->pipeline[] = fn (): array => $this->sets[$key] ?? [];
             return $this;
         }
@@ -314,6 +359,11 @@ final class RedisStorageFakeRedis
     public function zAdd(string $key, int|float $score, string $member): void
     {
         $this->zsets[$key][$member] = $score;
+    }
+
+    public function zRem(string $key, string $member): void
+    {
+        unset($this->zsets[$key][$member]);
     }
 
     public function del(array|string $keys): int
@@ -351,6 +401,7 @@ final class RedisStorageFakeRedis
 
     public function multi(int $mode): self
     {
+        $this->multiCalls++;
         $this->pipeline = [];
 
         return $this;
@@ -366,6 +417,11 @@ final class RedisStorageFakeRedis
 
     public function get(string $key): int|false
     {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = fn (): int|false => $this->strings[$key] ?? false;
+            return false;
+        }
+
         return $this->strings[$key] ?? false;
     }
 

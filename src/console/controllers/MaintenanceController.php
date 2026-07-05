@@ -384,7 +384,7 @@ class MaintenanceController extends Controller
                 }
                 $redis->select($database);
 
-                $keys = $redis->keys($pattern);
+                $keys = $this->scanRedisKeys($redis, $pattern);
                 $deletedKeys = 0;
                 if (!empty($keys)) {
                     $deletedKeys = count($keys);
@@ -478,12 +478,11 @@ class MaintenanceController extends Controller
 
         $redis->select($database);
 
-        $keys = $redis->keys('sm:idx:*');
-        $keyCount = is_array($keys) ? count($keys) : 0;
+        $keys = $this->scanRedisKeys($redis, 'sm:idx:*');
 
         return [
             'status' => 'connected',
-            'keyCount' => $keyCount,
+            'keyCount' => count($keys),
         ];
     }
 
@@ -522,6 +521,26 @@ class MaintenanceController extends Controller
     private function getResolvedRedisConfig(\lindemannrock\searchmanager\models\ConfiguredBackend $backend): array
     {
         return RedisConnectionHelper::storageSettings($backend->settings ?? []);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function scanRedisKeys(\Redis $redis, string $pattern, int $count = 1000): array
+    {
+        $keys = [];
+        $iterator = null;
+
+        do {
+            $batch = $redis->scan($iterator, $pattern, $count);
+            if ($batch !== false) {
+                foreach ($batch as $key) {
+                    $keys[] = (string)$key;
+                }
+            }
+        } while ((int)$iterator > 0);
+
+        return $keys;
     }
 
     /**

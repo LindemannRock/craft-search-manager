@@ -558,8 +558,8 @@ class UtilitiesController extends Controller
 
             $redis->select($database);
 
-            // Find all Search Manager keys (pattern: sm:idx:*)
-            $keys = $redis->keys('sm:idx:*');
+            // Find all Search Manager keys without blocking Redis like KEYS does.
+            $keys = $this->scanRedisKeys($redis, 'sm:idx:*');
             $deletedKeys = 0;
 
             if (!empty($keys)) {
@@ -699,13 +699,12 @@ class UtilitiesController extends Controller
 
             $redis->select($database);
 
-            $keys = $redis->keys('sm:idx:*');
-            $keyCount = is_array($keys) ? count($keys) : 0;
+            $keys = $this->scanRedisKeys($redis, 'sm:idx:*');
 
             return [
                 'available' => true,
                 'status' => 'connected',
-                'keyCount' => $keyCount,
+                'keyCount' => count($keys),
             ];
         } catch (\Throwable $e) {
             return [
@@ -772,6 +771,26 @@ class UtilitiesController extends Controller
         }
 
         return [];
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function scanRedisKeys(\Redis $redis, string $pattern, int $count = 1000): array
+    {
+        $keys = [];
+        $iterator = null;
+
+        do {
+            $batch = $redis->scan($iterator, $pattern, $count);
+            if ($batch !== false) {
+                foreach ($batch as $key) {
+                    $keys[] = (string)$key;
+                }
+            }
+        } while ((int)$iterator > 0);
+
+        return $keys;
     }
 
     /**

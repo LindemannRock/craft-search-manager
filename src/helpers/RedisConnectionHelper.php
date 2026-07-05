@@ -102,7 +102,7 @@ class RedisConnectionHelper
             'source' => self::SOURCE_DEFAULT,
             'craftDatabase' => null,
             'isAutoDatabase' => !$hasExplicitDatabase,
-            'isConfigured' => !empty($settings['host']),
+            'isConfigured' => !empty($configuredHost),
             'usesCraftCache' => false,
         ];
     }
