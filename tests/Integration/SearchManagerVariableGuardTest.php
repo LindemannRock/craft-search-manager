@@ -126,11 +126,27 @@ final class SearchManagerVariableGuardTest extends TestCase
 
         $suggestions = $proxy->suggest('coffee', 'content', ['hitsPerPage' => 999]);
 
-        self::assertSame(['coffee'], $suggestions);
-        self::assertCount(1, $autocomplete->suggestCalls);
-        self::assertSame(100, $autocomplete->suggestCalls[0]['options']['limit']);
-        self::assertArrayNotHasKey('hitsPerPage', $autocomplete->suggestCalls[0]['options']);
+        self::assertSame(['backend-coffee'], $suggestions);
+        self::assertSame([], $autocomplete->suggestCalls);
         self::assertSame([], $stub->callsFor('search'));
+
+        $autocompleteCalls = $stub->callsFor('autocomplete');
+        self::assertCount(1, $autocompleteCalls);
+        self::assertSame(100, $autocompleteCalls[0]['items'][0]['options']['limit']);
+        self::assertArrayNotHasKey('hitsPerPage', $autocompleteCalls[0]['items'][0]['options']);
+    }
+
+    public function testProxySuggestReturnsEmptyWhenSelectedBackendCannotAutocomplete(): void
+    {
+        $stub = new SearchManagerVariableRecordingBackend();
+        $stub->autocompleteSupported = false;
+        $proxy = new BackendVariableProxy($stub, 'stub');
+        $autocomplete = new SearchManagerVariableRecordingAutocompleteService();
+        $this->swapPluginComponent('search-manager', 'autocomplete', $autocomplete);
+
+        self::assertSame([], $proxy->suggest('coffee', 'content', ['limit' => 10]));
+        self::assertSame([], $autocomplete->suggestCalls);
+        self::assertSame([], $stub->callsFor('autocomplete'));
     }
 }
 
@@ -159,6 +175,7 @@ final class SearchManagerVariableRecordingBackend implements BackendInterface
 {
     /** @var list<array{method: string, indexName: string, items?: array<int, array<string, mixed>>}> */
     public array $calls = [];
+    public bool $autocompleteSupported = true;
 
     public function index(string $indexName, array $data): bool
     {
@@ -257,6 +274,31 @@ final class SearchManagerVariableRecordingBackend implements BackendInterface
     public function supportsMultipleQueries(): bool
     {
         return false;
+    }
+
+    public function supportsAutocomplete(): bool
+    {
+        return $this->autocompleteSupported;
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return array<int, string>
+     */
+    public function autocomplete(string $indexName, string $query, array $options = []): array
+    {
+        $this->calls[] = [
+            'method' => 'autocomplete',
+            'indexName' => $indexName,
+            'items' => [
+                [
+                    'query' => $query,
+                    'options' => $options,
+                ],
+            ],
+        ];
+
+        return ['backend-coffee'];
     }
 
     /**

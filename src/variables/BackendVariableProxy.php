@@ -97,7 +97,15 @@ class BackendVariableProxy
 
         $options = self::normalizeLimitOptions($options, self::AUTOCOMPLETE_DEFAULT_LIMIT, self::AUTOCOMPLETE_MAX_LIMIT);
 
-        return SearchManager::$plugin->autocomplete->suggest($query, $indexHandle, $options);
+        if (!method_exists($this->backend, 'supportsAutocomplete') || !method_exists($this->backend, 'autocomplete')) {
+            return [];
+        }
+
+        if (!$this->backend->supportsAutocomplete()) {
+            return [];
+        }
+
+        return $this->backend->autocomplete($indexHandle, $query, $options);
     }
 
     /**

@@ -47,6 +47,7 @@ class AutocompleteResultType extends ObjectType
     {
         return [
             'id' => ['name' => 'id', 'type' => Type::int(), 'description' => 'The element ID.'],
+            'siteId' => ['name' => 'siteId', 'type' => Type::int(), 'description' => 'The site ID.'],
             'text' => ['name' => 'text', 'type' => Type::string(), 'description' => 'The suggestion label.'],
             'type' => ['name' => 'type', 'type' => Type::string(), 'description' => 'The suggestion type.'],
             'url' => ['name' => 'url', 'type' => Type::string(), 'description' => 'The suggestion URL, when available.'],

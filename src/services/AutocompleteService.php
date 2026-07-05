@@ -396,6 +396,7 @@ class AutocompleteService extends Component
                 'text' => $suggestion['title'],
                 'type' => $suggestion['elementType'],
                 'id' => (int)$suggestion['elementId'],
+                'siteId' => isset($suggestion['siteId']) ? (int)$suggestion['siteId'] : null,
             ];
         }
 

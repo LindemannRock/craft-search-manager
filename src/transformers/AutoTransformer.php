@@ -109,8 +109,7 @@ class AutoTransformer extends BaseTransformer
                     }
 
                     // Collect raw HTML from CKEditor/Redactor before stripping
-                    $fieldClass = get_class($field);
-                    if ($fieldClass === 'craft\ckeditor\Field' || $fieldClass === 'craft\redactor\Field') {
+                    if ($this->isRichTextField($field)) {
                         $rawHtml = (string) $fieldValue;
                         if (!empty($rawHtml)) {
                             $richTextContent[] = $rawHtml;
@@ -261,11 +260,21 @@ class AutoTransformer extends BaseTransformer
         }
 
         // Words ending in 's' → remove 's'
-        if (strlen($word) > 1 && str_ends_with($word, 's') && !str_ends_with($word, 'ss')) {
+        if (strlen($word) > 1
+            && str_ends_with($word, 's')
+            && !str_ends_with($word, 'ss')
+            && !str_ends_with($word, 'us')
+            && !str_ends_with($word, 'is')
+            && !str_ends_with($word, 'os')) {
             return substr($word, 0, -1);
         }
 
         return $word;
+    }
+
+    private function isRichTextField(object $field): bool
+    {
+        return is_a($field, 'craft\ckeditor\Field') || is_a($field, 'craft\redactor\Field');
     }
 
     // =========================================================================
@@ -283,63 +292,45 @@ class AutoTransformer extends BaseTransformer
      */
     protected function processFieldByType($field, $fieldValue, ElementInterface $element)
     {
-        $fieldClass = get_class($field);
-
-        switch ($fieldClass) {
-            // Plain text fields
-            case 'craft\fields\PlainText':
-            case 'craft\fields\Dropdown':
-            case 'craft\fields\Url':
-            case 'craft\fields\Email':
-            case 'craft\fields\Number':
-            case 'craft\fields\Color':
-                return (string)$fieldValue;
-
-            // Rich text
-            case 'craft\ckeditor\Field':
-            case 'craft\redactor\Field':
-                return $this->stripHtml((string)$fieldValue);
-
-            // Relational: Entries
-            case 'craft\fields\Entries':
-                return $this->processRelationalField($fieldValue);
-
-            // Relational: Categories
-            case 'craft\fields\Categories':
-                return $this->processRelationalField($fieldValue);
-
-            // Relational: Tags
-            case 'craft\fields\Tags':
-                return $this->processRelationalField($fieldValue);
-
-            // Relational: Assets
-            case 'craft\fields\Assets':
-                return $this->processRelationalField($fieldValue);
-
-            // Relational: Users
-            case 'craft\fields\Users':
-                return $this->processRelationalField($fieldValue);
-
-            // Matrix blocks
-            case 'craft\fields\Matrix':
-                return $this->processMatrixField($fieldValue);
-
-            // Table field
-            case 'craft\fields\Table':
-                return $this->processTableField($fieldValue);
-
-            // Icon Manager (custom field)
-            case 'lindemannrock\iconmanager\fields\IconManagerField':
-                return $this->processIconManagerField($fieldValue);
-
-            // Default: Fall back to searchable keywords
-            default:
-                if ($field->searchable) {
-                    $keywords = $field->getSearchKeywords($fieldValue, $element);
-                    return !empty($keywords) ? $keywords : null;
-                }
-                return null;
+        if (is_a($field, 'craft\fields\PlainText')
+            || is_a($field, 'craft\fields\Dropdown')
+            || is_a($field, 'craft\fields\Url')
+            || is_a($field, 'craft\fields\Email')
+            || is_a($field, 'craft\fields\Number')
+            || is_a($field, 'craft\fields\Color')) {
+            return (string)$fieldValue;
         }
+
+        if ($this->isRichTextField($field)) {
+            return $this->stripHtml((string)$fieldValue);
+        }
+
+        if (is_a($field, 'craft\fields\Entries')
+            || is_a($field, 'craft\fields\Categories')
+            || is_a($field, 'craft\fields\Tags')
+            || is_a($field, 'craft\fields\Assets')
+            || is_a($field, 'craft\fields\Users')) {
+            return $this->processRelationalField($fieldValue);
+        }
+
+        if (is_a($field, 'craft\fields\Matrix')) {
+            return $this->processMatrixField($fieldValue);
+        }
+
+        if (is_a($field, 'craft\fields\Table')) {
+            return $this->processTableField($fieldValue);
+        }
+
+        if (is_a($field, 'lindemannrock\iconmanager\fields\IconManagerField')) {
+            return $this->processIconManagerField($fieldValue);
+        }
+
+        if ($field->searchable) {
+            $keywords = $field->getSearchKeywords($fieldValue, $element);
+            return !empty($keywords) ? $keywords : null;
+        }
+
+        return null;
     }
 
     /**

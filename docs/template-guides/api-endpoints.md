@@ -226,8 +226,8 @@ GET /actions/search-manager/api/autocomplete
 {
     "suggestions": ["test", "testing", "tested"],
     "results": [
-        {"text": "Test Product", "type": "product", "id": 123},
-        {"text": "Test Category", "type": "category", "id": 45}
+        {"text": "Test Product", "type": "product", "id": 123, "siteId": 1},
+        {"text": "Test Category", "type": "category", "id": 45, "siteId": 1}
     ]
 }
 ```
@@ -242,8 +242,8 @@ GET /actions/search-manager/api/autocomplete
 
 ```json
 [
-    {"text": "Test Product", "type": "product", "id": 123},
-    {"text": "Test Category", "type": "category", "id": 45}
+    {"text": "Test Product", "type": "product", "id": 123, "siteId": 1},
+    {"text": "Test Category", "type": "category", "id": 45, "siteId": 1}
 ]
 ```
 
@@ -260,7 +260,7 @@ https://your-site.com/actions/search-manager/api/autocomplete?q=test&index=entri
 const response = await fetch('/actions/search-manager/api/autocomplete?q=test&index=entries-en');
 const data = await response.json();
 // data.suggestions = ["test", "testing"]
-// data.results = [{text: "Test Page", type: "page", id: 1}]
+// data.results = [{text: "Test Page", type: "page", id: 1, siteId: 1}]
 
 // Only suggestions
 const response = await fetch('/actions/search-manager/api/autocomplete?q=test&only=suggestions');

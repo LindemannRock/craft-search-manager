@@ -354,6 +354,7 @@ query {
     suggestions
     results {
       id
+      siteId
       text
       type
       url
@@ -377,6 +378,7 @@ Autocomplete arguments:
 | `language` | `String` | Optional language code. |
 
 Autocomplete does not record search analytics.
+When multiple indices return the same element suggestion, Search Manager keeps the first result per `siteId`, element `id`, and `type`.
 
 ## Multi-Index Counts
 

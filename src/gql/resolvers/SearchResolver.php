@@ -227,8 +227,35 @@ class SearchResolver extends Resolver
 
         return [
             'suggestions' => $only === 'results' ? [] : array_values(array_unique($suggestions)),
-            'results' => $only === 'suggestions' ? [] : $results,
+            'results' => $only === 'suggestions' ? [] : self::dedupeAutocompleteResults($results),
         ];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $results
+     * @return array<int, array<string, mixed>>
+     */
+    private static function dedupeAutocompleteResults(array $results): array
+    {
+        $seen = [];
+        $deduped = [];
+
+        foreach ($results as $result) {
+            $key = implode(':', [
+                (string)($result['siteId'] ?? ''),
+                (string)($result['id'] ?? ''),
+                (string)($result['type'] ?? ''),
+            ]);
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $deduped[] = $result;
+        }
+
+        return $deduped;
     }
 
     /**

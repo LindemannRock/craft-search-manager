@@ -175,7 +175,7 @@ $suggestions = SearchManager::$plugin->autocomplete->suggest('cra', 'entries-en'
 
 ### `suggestElements(query, indexHandle, options)`
 
-Get element-based suggestions (returns titles and IDs).
+Get element-based suggestions (returns titles, IDs, site IDs, and element types).
 
 ```php
 $results = SearchManager::$plugin->autocomplete->suggestElements('test', 'entries-en');

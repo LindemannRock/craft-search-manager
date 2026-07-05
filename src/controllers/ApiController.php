@@ -232,7 +232,7 @@ class ApiController extends Controller
                 foreach ($indexHandles as $handle) {
                     $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, $options));
                 }
-                return $this->asJson($allResults);
+                return $this->asJson($this->dedupeAutocompleteResults($allResults));
             }
             $allIndices = SearchIndex::findAll();
             $allIndexHandles = array_map(
@@ -243,7 +243,7 @@ class ApiController extends Controller
             foreach ($allIndexHandles as $handle) {
                 $allResults = array_merge($allResults, $autocomplete->suggestElements($query, $handle, $options));
             }
-            return $this->asJson($allResults);
+            return $this->asJson($this->dedupeAutocompleteResults($allResults));
         }
 
         // Default: return both
@@ -262,7 +262,7 @@ class ApiController extends Controller
             }
             return $this->asJson([
                 'suggestions' => array_values(array_unique($allSuggestions)),
-                'results' => $allResults,
+                'results' => $this->dedupeAutocompleteResults($allResults),
             ]);
         }
 
@@ -279,8 +279,37 @@ class ApiController extends Controller
         }
         return $this->asJson([
             'suggestions' => array_values(array_unique($allSuggestions)),
-            'results' => $allResults,
+            'results' => $this->dedupeAutocompleteResults($allResults),
         ]);
+    }
+
+    /**
+     * Dedupe element autocomplete results after merging multiple indices.
+     *
+     * @param array<int, array<string, mixed>> $results
+     * @return array<int, array<string, mixed>>
+     */
+    private function dedupeAutocompleteResults(array $results): array
+    {
+        $seen = [];
+        $deduped = [];
+
+        foreach ($results as $result) {
+            $key = implode(':', [
+                (string)($result['siteId'] ?? ''),
+                (string)($result['id'] ?? ''),
+                (string)($result['type'] ?? ''),
+            ]);
+
+            if (isset($seen[$key])) {
+                continue;
+            }
+
+            $seen[$key] = true;
+            $deduped[] = $result;
+        }
+
+        return $deduped;
     }
 
     /**
