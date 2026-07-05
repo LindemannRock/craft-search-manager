@@ -502,7 +502,7 @@ class Install extends Migration
             'appVersion' => $this->string(20)->null(),
             'ip' => $this->string(64)->null(),
             'userAgent' => $this->text()->null(),
-            'referer' => $this->string()->null(),
+            'referer' => $this->string(2048)->null(),
             // API key attribution (null = anonymous / unkeyed request). apiKeyId is
             // a plain nullable int with no foreign key: it is retained after a key
             // is revoked so historical rows stay correlatable, while prefix/type are

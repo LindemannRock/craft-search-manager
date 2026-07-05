@@ -586,14 +586,23 @@ class ConfiguredBackend extends Model
 
         $model->enabled = (bool)$row['enabled'];
 
-        if (!empty($row['dateCreated'])) {
-            $model->dateCreated = new \DateTime($row['dateCreated']);
-        }
-        if (!empty($row['dateUpdated'])) {
-            $model->dateUpdated = new \DateTime($row['dateUpdated']);
-        }
+        $model->dateCreated = self::parseDate($row['dateCreated'] ?? null);
+        $model->dateUpdated = self::parseDate($row['dateUpdated'] ?? null);
 
         return $model;
+    }
+
+    private static function parseDate(mixed $value): ?\DateTime
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return new \DateTime((string)$value, new \DateTimeZone('UTC'));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

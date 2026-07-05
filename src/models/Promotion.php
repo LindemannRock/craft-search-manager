@@ -89,7 +89,12 @@ class Promotion extends Model
      */
     public function validateElement(string $attribute): void
     {
-        if (empty($this->elementId)) {
+        if ($this->elementId === null) {
+            return;
+        }
+
+        if ($this->elementId <= 0) {
+            $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
             return;
         }
 
@@ -290,11 +295,24 @@ class Promotion extends Model
         $model->position = (int)$row['position'];
         $model->siteId = $row['siteId'] ? (int)$row['siteId'] : null;
         $model->enabled = (bool)$row['enabled'];
-        $model->dateCreated = $row['dateCreated'] ? new \DateTime($row['dateCreated']) : null;
-        $model->dateUpdated = $row['dateUpdated'] ? new \DateTime($row['dateUpdated']) : null;
+        $model->dateCreated = self::parseDate($row['dateCreated'] ?? null);
+        $model->dateUpdated = self::parseDate($row['dateUpdated'] ?? null);
         $model->uid = $row['uid'] ?? null;
 
         return $model;
+    }
+
+    private static function parseDate(mixed $value): ?\DateTime
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return new \DateTime((string)$value, new \DateTimeZone('UTC'));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

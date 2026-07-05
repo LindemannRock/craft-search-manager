@@ -600,11 +600,24 @@ class SearchIndex extends Model
         $model->skipEntriesWithoutUrl = (bool)($row['skipEntriesWithoutUrl'] ?? false);
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
-        $model->dateCreated = !empty($row['dateCreated']) ? new \DateTime($row['dateCreated']) : null;
-        $model->dateUpdated = !empty($row['dateUpdated']) ? new \DateTime($row['dateUpdated']) : null;
+        $model->dateCreated = self::parseDate($row['dateCreated'] ?? null);
+        $model->dateUpdated = self::parseDate($row['dateUpdated'] ?? null);
         $model->documentCount = (int)$row['documentCount'];
 
         return $model;
+    }
+
+    private static function parseDate(mixed $value): ?\DateTime
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return new \DateTime((string)$value, new \DateTimeZone('UTC'));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

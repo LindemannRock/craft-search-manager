@@ -395,11 +395,24 @@ class QueryRule extends Model
         $model->priority = (int)$row['priority'];
         $model->siteId = $row['siteId'] ? (int)$row['siteId'] : null;
         $model->enabled = (bool)$row['enabled'];
-        $model->dateCreated = $row['dateCreated'] ? new \DateTime($row['dateCreated']) : null;
-        $model->dateUpdated = $row['dateUpdated'] ? new \DateTime($row['dateUpdated']) : null;
+        $model->dateCreated = self::parseDate($row['dateCreated'] ?? null);
+        $model->dateUpdated = self::parseDate($row['dateUpdated'] ?? null);
         $model->uid = $row['uid'] ?? null;
 
         return $model;
+    }
+
+    private static function parseDate(mixed $value): ?\DateTime
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        try {
+            return new \DateTime((string)$value, new \DateTimeZone('UTC'));
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**
