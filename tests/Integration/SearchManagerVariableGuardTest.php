@@ -64,6 +64,37 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertArrayNotHasKey('hitsPerPage', $searchMultipleCalls[0]['items'][0]['options']);
     }
 
+    public function testTwigVariableAndProxyNormalizeSearchLimitsIdentically(): void
+    {
+        $cases = [
+            [['limit' => 0], 20],
+            [['limit' => -5], 20],
+            [['limit' => 'invalid'], 20],
+            [['hitsPerPage' => 0], 20],
+            [['hitsPerPage' => 999], 200],
+            [['limit' => 5, 'hitsPerPage' => 999], 5],
+        ];
+
+        foreach ($cases as [$options, $expectedLimit]) {
+            $variable = new SearchManagerVariable();
+            $variableStub = $this->installStubBackend();
+            $proxyStub = new SearchManagerVariableRecordingBackend();
+            $proxy = new BackendVariableProxy($proxyStub, 'stub');
+
+            $variable->search('content', 'coffee', $options);
+            $proxy->search('content', 'coffee', $options);
+
+            $variableOptions = $variableStub->callsFor('search')[0]['items'][0]['options'];
+            $proxyOptions = $proxyStub->callsFor('search')[0]['items'][0]['options'];
+
+            self::assertSame($expectedLimit, $variableOptions['limit']);
+            self::assertSame($expectedLimit, $proxyOptions['limit']);
+            self::assertSame($variableOptions, $proxyOptions);
+            self::assertArrayNotHasKey('hitsPerPage', $variableOptions);
+            self::assertArrayNotHasKey('hitsPerPage', $proxyOptions);
+        }
+    }
+
     public function testTwigSuggestUsesAutocompleteSizedLimitCap(): void
     {
         $variable = new SearchManagerVariable();
@@ -76,6 +107,39 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertCount(1, $autocomplete->suggestCalls);
         self::assertSame(100, $autocomplete->suggestCalls[0]['options']['limit']);
         self::assertArrayNotHasKey('hitsPerPage', $autocomplete->suggestCalls[0]['options']);
+    }
+
+    public function testTwigVariableAndProxyNormalizeAutocompleteLimitsIdentically(): void
+    {
+        $cases = [
+            [['limit' => 0], 10],
+            [['limit' => -5], 10],
+            [['limit' => 'invalid'], 10],
+            [['hitsPerPage' => 0], 10],
+            [['hitsPerPage' => 999], 100],
+            [['limit' => 5, 'hitsPerPage' => 999], 5],
+        ];
+
+        foreach ($cases as [$options, $expectedLimit]) {
+            $variable = new SearchManagerVariable();
+            $autocomplete = new SearchManagerVariableRecordingAutocompleteService();
+            $this->swapPluginComponent('search-manager', 'autocomplete', $autocomplete);
+
+            $proxyStub = new SearchManagerVariableRecordingBackend();
+            $proxy = new BackendVariableProxy($proxyStub, 'stub');
+
+            $variable->suggest('coffee', 'content', $options);
+            $proxy->suggest('coffee', 'content', $options);
+
+            $variableOptions = $autocomplete->suggestCalls[0]['options'];
+            $proxyOptions = $proxyStub->callsFor('autocomplete')[0]['items'][0]['options'];
+
+            self::assertSame($expectedLimit, $variableOptions['limit']);
+            self::assertSame($expectedLimit, $proxyOptions['limit']);
+            self::assertSame($variableOptions, $proxyOptions);
+            self::assertArrayNotHasKey('hitsPerPage', $variableOptions);
+            self::assertArrayNotHasKey('hitsPerPage', $proxyOptions);
+        }
     }
 
     public function testOverlongTwigSuggestReturnsEmptyWithoutDelegating(): void

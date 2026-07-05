@@ -4,6 +4,7 @@ namespace lindemannrock\searchmanager\variables;
 
 use Craft;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
+use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
 
@@ -17,12 +18,6 @@ use lindemannrock\searchmanager\web\assets\highlighter\SearchHighlighterAsset;
  */
 class SearchManagerVariable
 {
-    private const MAX_QUERY_LENGTH = 256;
-    private const SEARCH_DEFAULT_LIMIT = 20;
-    private const SEARCH_MAX_LIMIT = 200;
-    private const AUTOCOMPLETE_DEFAULT_LIMIT = 10;
-    private const AUTOCOMPLETE_MAX_LIMIT = 100;
-
     /**
      * Get plugin settings
      */
@@ -84,16 +79,16 @@ class SearchManagerVariable
      */
     public function search(string $indexName, string $query, array $options = []): array
     {
-        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+        if (mb_strlen($query) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
             return [
                 'hits' => [],
                 'total' => 0,
                 'query' => $query,
-                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
+                'error' => 'Query too long (max ' . TwigSearchOptionsHelper::MAX_QUERY_LENGTH . ' characters)',
             ];
         }
 
-        $options = self::normalizeLimitOptions($options, self::SEARCH_DEFAULT_LIMIT, self::SEARCH_MAX_LIMIT);
+        $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
 
         return SearchManager::$plugin->backend->search($indexName, $query, $options);
     }
@@ -108,17 +103,17 @@ class SearchManagerVariable
      */
     public function searchMultiple(array $indexNames, string $query, array $options = []): array
     {
-        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+        if (mb_strlen($query) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
             return [
                 'hits' => [],
                 'total' => 0,
                 'indices' => [],
                 'query' => $query,
-                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
+                'error' => 'Query too long (max ' . TwigSearchOptionsHelper::MAX_QUERY_LENGTH . ' characters)',
             ];
         }
 
-        $options = self::normalizeLimitOptions($options, self::SEARCH_DEFAULT_LIMIT, self::SEARCH_MAX_LIMIT);
+        $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
 
         return SearchManager::$plugin->backend->searchMultiple($indexNames, $query, $options);
     }
@@ -217,7 +212,7 @@ class SearchManagerVariable
      */
     public function suggest(string $query, string $indexHandle = 'all-sites', array $options = []): array
     {
-        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+        if (mb_strlen($query) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
             return [];
         }
 
@@ -227,32 +222,9 @@ class SearchManagerVariable
             return []; // Return empty array if disabled
         }
 
-        $options = self::normalizeLimitOptions($options, self::AUTOCOMPLETE_DEFAULT_LIMIT, self::AUTOCOMPLETE_MAX_LIMIT);
+        $options = TwigSearchOptionsHelper::normalizeAutocompleteLimitOptions($options);
 
         return SearchManager::$plugin->autocomplete->suggest($query, $indexHandle, $options);
-    }
-
-    /**
-     * Normalize Twig-facing search limit options while preserving both accepted
-     * caller spellings. `limit` is the backend-native option; `hitsPerPage`
-     * mirrors the HTTP/GraphQL argument and is accepted for template parity.
-     *
-     * @param array<string, mixed> $options
-     * @return array<string, mixed>
-     */
-    private static function normalizeLimitOptions(array $options, int $default, int $max): array
-    {
-        $rawLimit = $options['limit'] ?? $options['hitsPerPage'] ?? $default;
-        $limit = is_numeric($rawLimit) ? (int)$rawLimit : $default;
-        if ($limit < 1) {
-            $limit = $default;
-        }
-        $limit = min($max, $limit);
-
-        $options['limit'] = $limit;
-        unset($options['hitsPerPage']);
-
-        return $options;
     }
 
     /**

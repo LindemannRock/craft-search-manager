@@ -2,6 +2,7 @@
 
 namespace lindemannrock\searchmanager\variables;
 
+use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -20,12 +21,6 @@ use lindemannrock\searchmanager\SearchManager;
  */
 class BackendVariableProxy
 {
-    private const MAX_QUERY_LENGTH = 256;
-    private const SEARCH_DEFAULT_LIMIT = 20;
-    private const SEARCH_MAX_LIMIT = 200;
-    private const AUTOCOMPLETE_DEFAULT_LIMIT = 10;
-    private const AUTOCOMPLETE_MAX_LIMIT = 100;
-
     private BackendInterface $backend;
 
     private string $backendHandle;
@@ -62,16 +57,16 @@ class BackendVariableProxy
      */
     public function search(string $indexName, string $query, array $options = []): array
     {
-        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+        if (mb_strlen($query) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
             return [
                 'hits' => [],
                 'total' => 0,
                 'query' => $query,
-                'error' => 'Query too long (max ' . self::MAX_QUERY_LENGTH . ' characters)',
+                'error' => 'Query too long (max ' . TwigSearchOptionsHelper::MAX_QUERY_LENGTH . ' characters)',
             ];
         }
 
-        $options = self::normalizeLimitOptions($options, self::SEARCH_DEFAULT_LIMIT, self::SEARCH_MAX_LIMIT);
+        $options = TwigSearchOptionsHelper::normalizeSearchLimitOptions($options);
 
         return $this->backend->search($indexName, $query, $options);
     }
@@ -86,7 +81,7 @@ class BackendVariableProxy
      */
     public function suggest(string $query, string $indexHandle = 'all-sites', array $options = []): array
     {
-        if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
+        if (mb_strlen($query) > TwigSearchOptionsHelper::MAX_QUERY_LENGTH) {
             return [];
         }
 
@@ -95,7 +90,7 @@ class BackendVariableProxy
             return [];
         }
 
-        $options = self::normalizeLimitOptions($options, self::AUTOCOMPLETE_DEFAULT_LIMIT, self::AUTOCOMPLETE_MAX_LIMIT);
+        $options = TwigSearchOptionsHelper::normalizeAutocompleteLimitOptions($options);
 
         if (!method_exists($this->backend, 'supportsAutocomplete') || !method_exists($this->backend, 'autocomplete')) {
             return [];
@@ -107,26 +102,6 @@ class BackendVariableProxy
 
         return $this->backend->autocomplete($indexHandle, $query, $options);
     }
-
-    /**
-     * @param array<string, mixed> $options
-     * @return array<string, mixed>
-     */
-    private static function normalizeLimitOptions(array $options, int $default, int $max): array
-    {
-        $rawLimit = $options['limit'] ?? $options['hitsPerPage'] ?? $default;
-        $limit = is_numeric($rawLimit) ? (int)$rawLimit : $default;
-        if ($limit < 1) {
-            $limit = $default;
-        }
-        $limit = min($max, $limit);
-
-        $options['limit'] = $limit;
-        unset($options['hitsPerPage']);
-
-        return $options;
-    }
-
     /**
      * Browse an index (iterate through all objects)
      *
