@@ -515,8 +515,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return SearchManagerHighlighter.highlight(text, query, { tag: 'strong' });
         }
         const index = text.toLowerCase().indexOf(query.toLowerCase());
-        if (index === -1) return text;
-        return text.substring(0, index) + '<strong>' + text.substring(index, index + query.length) + '</strong>' + text.substring(index + query.length);
+        if (index === -1) return Craft.escapeHtml(text);
+        return Craft.escapeHtml(text.substring(0, index)) + '<strong>' + Craft.escapeHtml(text.substring(index, index + query.length)) + '</strong>' + Craft.escapeHtml(text.substring(index + query.length));
     }
 
     // Highlight text using SearchManagerHighlighter (for search results)
@@ -672,7 +672,7 @@ document.addEventListener('DOMContentLoaded', function() {
             testResults.style.display = 'block';
             resultsTitle.innerHTML = T.error;
             resultsTitle.style.color = '#dc2626';
-            resultsContent.innerHTML = `<p style="color: #dc2626;">${error.message}</p>`;
+            resultsContent.innerHTML = `<p style="color: #dc2626;">${Craft.escapeHtml(error.message)}</p>`;
         });
     });
 

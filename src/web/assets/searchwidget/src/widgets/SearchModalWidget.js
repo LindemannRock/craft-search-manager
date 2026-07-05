@@ -30,6 +30,7 @@
 
 import SearchWidgetBase from '../core/SearchWidgetBase.js';
 import { getObservedAttributes } from '../core/ConfigParser.js';
+import { escapeHtml } from '../modules/Highlighter.js';
 import baseStyles from '../styles/base.css';
 import modalStyles from '../styles/modal.css';
 import debugStyles from '../styles/debug.css';
@@ -101,6 +102,8 @@ class SearchModalWidget extends SearchWidgetBase {
      */
     render() {
         const { theme, placeholder, showTrigger } = this.config;
+        const hotkeyDisplay = escapeHtml(this.getHotkeyDisplay());
+        const safePlaceholder = escapeHtml(placeholder || '');
 
         this.shadowRoot.innerHTML = `
             <style>${styles}</style>
@@ -112,7 +115,7 @@ class SearchModalWidget extends SearchWidgetBase {
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
                 <span class="sm-trigger-text">Search</span>
-                <kbd class="sm-trigger-kbd" aria-hidden="true">${this.getHotkeyDisplay()}</kbd>
+                <kbd class="sm-trigger-kbd" aria-hidden="true">${hotkeyDisplay}</kbd>
             </button>
 
             <!-- Modal backdrop -->
@@ -129,7 +132,7 @@ class SearchModalWidget extends SearchWidgetBase {
                             id="${this.inputId}"
                             class="sm-input"
                             part="input"
-                            placeholder="${placeholder}"
+                            placeholder="${safePlaceholder}"
                             maxlength="256"
                             autocomplete="off"
                             autocorrect="off"

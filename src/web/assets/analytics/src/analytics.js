@@ -767,7 +767,7 @@
         ctx.style.height = '100%';
 
         if (data.peakHourFormatted) {
-            $('#peak-hour-label').html('<strong>' + strings.peakHourLabel + '</strong> ' + data.peakHourFormatted);
+            $('#peak-hour-label').html('<strong>' + strings.peakHourLabel + '</strong> ' + Craft.escapeHtml(data.peakHourFormatted));
         }
     }
 

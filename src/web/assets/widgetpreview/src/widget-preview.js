@@ -10,6 +10,8 @@
 window.SearchManagerPreview = (function() {
 	'use strict';
 
+	var syncInterval = null;
+
 	/**
 	 * Preview mapping: bare style keys → preview update rules.
 	 *
@@ -334,7 +336,10 @@ window.SearchManagerPreview = (function() {
 			}
 
 			// Poll for color picker changes (they don't always fire input events)
-			setInterval(syncAll, 100);
+			if (syncInterval !== null) {
+				clearInterval(syncInterval);
+			}
+			syncInterval = setInterval(syncAll, 100);
 		},
 
 		/**

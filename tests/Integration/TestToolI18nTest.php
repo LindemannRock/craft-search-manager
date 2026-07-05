@@ -154,9 +154,15 @@ final class TestToolI18nTest extends TestCase
             'data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(\', \')',
             'const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);',
             '<td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>',
+            'if (index === -1) return Craft.escapeHtml(text);',
+            "Craft.escapeHtml(text.substring(0, index)) + '<strong>' + Craft.escapeHtml(text.substring(index, index + query.length))",
+            'resultsContent.innerHTML = `<p style="color: #dc2626;">${Craft.escapeHtml(error.message)}</p>`;',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
+
+        $backend = $this->readPluginFile('src/templates/settings/test/_partials/backend.twig');
+        self::assertStringContainsString("Craft.escapeHtml(response.data.error || {{ 'Failed'|t('search-manager')|json_encode|raw }})", $backend);
     }
 
     private function readPluginFile(string $path): string

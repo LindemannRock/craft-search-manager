@@ -94,6 +94,7 @@ final class AnalyticsAssetI18nTest extends TestCase
         self::assertStringContainsString('c.queries.slice(0, 3).map(q => Craft.escapeHtml(q)).join(\', \')', $source);
         self::assertStringContainsString('<td>${Craft.escapeHtml(c.lastSearched)}</td>', $source);
         self::assertSame(2, substr_count($source, '<td>${q.siteName ? Craft.escapeHtml(q.siteName) : \'—\'}</td>'));
+        self::assertStringContainsString("Craft.escapeHtml(data.peakHourFormatted)", $source);
     }
 
     public function testAnalyticsDistDoesNotContainUnsafeRawStoredAnalyticsPatterns(): void

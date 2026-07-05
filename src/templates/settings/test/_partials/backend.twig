@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: { backendId: backendHandle }
                 });
             } else {
-                backendConnection.innerHTML = '&#10007; ' + (response.data.error || '{{ 'Failed'|t('search-manager') }}');
+                backendConnection.innerHTML = '&#10007; ' + Craft.escapeHtml(response.data.error || {{ 'Failed'|t('search-manager')|json_encode|raw }});
                 backendConnection.style.color = '#dc2626';
                 backendIndicesList.innerHTML = '<p class="light" style="color: #dc2626;">{{ 'Cannot load - connection failed'|t('search-manager') }}</p>';
                 return null;
