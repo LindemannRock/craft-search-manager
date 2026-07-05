@@ -52,9 +52,9 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         }
     }
 
-    private function rebuildSingleIndex($queue, string $indexHandle): void
+    private function rebuildSingleIndex($queue, string $indexHandle, ?SearchIndex $preloadedIndex = null): void
     {
-        $index = SearchIndex::findByHandle($indexHandle);
+        $index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);
 
         if (!$index) {
             $this->logError('Index not found', ['handle' => $indexHandle]);
@@ -227,7 +227,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             }
 
             $this->setProgress($queue, $i / count($indices));
-            $this->rebuildSingleIndex($queue, $index->handle);
+            $this->rebuildSingleIndex($queue, $index->handle, $index);
         }
     }
 

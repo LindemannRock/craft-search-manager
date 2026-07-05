@@ -238,10 +238,6 @@ class PendingSyncProcessor extends Component
             if (SearchManager::$plugin->backend->batchDelete($indexHandle, $deleteItems)) {
                 SearchIndex::touchLastIndexedDebounced($indexHandle);
                 $synced = true;
-                if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
-                    SearchManager::$plugin->backend->clearSearchCache($indexHandle);
-                    SearchManager::$plugin->autocomplete->clearCache($indexHandle);
-                }
                 $successIds = array_merge($successIds, $this->rowIds($deleteRows));
             } else {
                 $failures[] = [
@@ -249,6 +245,11 @@ class PendingSyncProcessor extends Component
                     'error' => "Batch delete failed for {$indexHandle}.",
                 ];
             }
+        }
+
+        if ($synced && SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+            SearchManager::$plugin->backend->clearSearchCache($indexHandle);
+            SearchManager::$plugin->autocomplete->clearCache($indexHandle);
         }
 
         return [

@@ -39,6 +39,23 @@ final class PendingSyncProcessorBatchingTest extends TestCase
         self::assertStringNotContainsString('->one()', $preloadBody);
     }
 
+    public function testSuccessfulUpsertAndDeletePathsClearSearchCachesOncePerIndex(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/sync/PendingSyncProcessor.php');
+        $this->assertIsString($source);
+
+        $processBody = $this->methodBody($source, 'processIndexRows');
+
+        self::assertStringContainsString('$synced && SearchManager::$plugin->getSettings()->clearCacheOnSave', $processBody);
+        self::assertSame(1, substr_count($processBody, 'SearchManager::$plugin->backend->clearSearchCache($indexHandle);'));
+        self::assertSame(1, substr_count($processBody, 'SearchManager::$plugin->autocomplete->clearCache($indexHandle);'));
+        self::assertGreaterThan(
+            strpos($processBody, 'SearchManager::$plugin->backend->batchDelete($indexHandle, $deleteItems)'),
+            strpos($processBody, 'SearchManager::$plugin->backend->clearSearchCache($indexHandle);'),
+            'cache clear must happen after both batchIndex and batchDelete branches finish.'
+        );
+    }
+
     private function methodBody(string $source, string $method): string
     {
         preg_match(

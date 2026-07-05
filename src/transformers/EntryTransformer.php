@@ -116,8 +116,8 @@ class EntryTransformer extends BaseTransformer
         // Featured image
         try {
             $featuredImage = $element->getFieldValue('featuredImage');
-            if ($featuredImage && $featuredImage->one()) {
-                $image = $featuredImage->one();
+            $image = $featuredImage?->one();
+            if ($image) {
                 $data['featuredImage'] = $image->getUrl();
                 $data['featuredImageAlt'] = $image->title;
             }

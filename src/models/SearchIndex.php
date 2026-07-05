@@ -1352,12 +1352,23 @@ class SearchIndex extends Model
                         'count' => $siteCount,
                     ]);
                 } elseif ($this->skipEntriesWithoutUrl) {
-                    // Fallback for non-entry element types
-                    foreach ($query->all() as $element) {
-                        if ($element->url !== null) {
-                            $totalCount++;
-                        }
+                    $query->andWhere(['not', ['elements_sites.uri' => null]])
+                        ->andWhere(['<>', 'elements_sites.uri', '']);
+
+                    if ($hasClosure) {
+                        $ids = $query->ids();
+                        $siteCount = count($ids);
+                    } else {
+                        $siteCount = (int) $query->count();
                     }
+
+                    $totalCount += $siteCount;
+
+                    $this->logDebug('Expected count result (skip URL non-entry)', [
+                        'indexHandle' => $this->handle,
+                        'siteId' => $siteId,
+                        'count' => $siteCount,
+                    ]);
                 } elseif ($hasClosure) {
                     // Use ids() for Closure criteria to ensure custom query scopes are properly evaluated
                     // Some custom scopes may not work correctly with count() but work with ids()

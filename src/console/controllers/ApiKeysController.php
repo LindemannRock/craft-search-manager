@@ -262,12 +262,15 @@ class ApiKeysController extends Controller
             return [];
         }
 
-        $unknown = [];
-        foreach ($handles as $handle) {
-            if (SearchIndex::findByHandle($handle) === null) {
-                $unknown[] = $handle;
-            }
-        }
+        $knownHandles = array_fill_keys(
+            array_map(static fn(SearchIndex $index): string => $index->handle, SearchIndex::findAll()),
+            true,
+        );
+
+        $unknown = array_values(array_filter(
+            $handles,
+            static fn(string $handle): bool => !isset($knownHandles[$handle])
+        ));
 
         return $unknown;
     }

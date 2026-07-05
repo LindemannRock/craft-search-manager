@@ -136,12 +136,17 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
      */
     private function refreshSyncedIndexCounts(array $indexHandles): void
     {
+        $indicesByHandle = [];
+        foreach (SearchIndex::findAll() as $index) {
+            $indicesByHandle[$index->handle] = $index;
+        }
+
         foreach ($indexHandles as $indexHandle) {
-            $index = SearchIndex::findByHandle($indexHandle);
-            if (!$index) {
+            if (!isset($indicesByHandle[$indexHandle])) {
                 continue;
             }
 
+            $index = $indicesByHandle[$indexHandle];
             $index->updateStats($index->getExpectedCount());
         }
     }
