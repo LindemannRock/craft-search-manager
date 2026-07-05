@@ -301,8 +301,7 @@ class BackendSettings extends Model
      */
     public function save(): bool
     {
-        // Only validate if backend is enabled
-        if ($this->enabled && !$this->validate()) {
+        if (!$this->validate()) {
             $this->logError('Backend settings validation failed', [
                 'backend' => $this->backend,
                 'errors' => $this->getErrors(),
