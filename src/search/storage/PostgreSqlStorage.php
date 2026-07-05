@@ -550,7 +550,7 @@ class PostgreSqlStorage implements StorageInterface
             ->select(['title', 'elementType', 'elementId', 'siteId'])
             ->from('{{%searchmanager_search_elements}}')
             ->where(['indexHandle' => $this->indexHandle])
-            ->andWhere(['like', 'searchText', $searchText . '%', false])
+            ->andWhere(['like', 'searchText', self::escapeLikePrefix($searchText) . '%', false])
             ->limit($limit);
 
         // Filter by siteId if provided (null = all sites)
@@ -798,7 +798,7 @@ class PostgreSqlStorage implements StorageInterface
                 'indexHandle' => $this->indexHandle,
                 'siteId' => $siteId,
             ])
-            ->andWhere(['like', 'term', $prefix . '%', false])
+            ->andWhere(['like', 'term', self::escapeLikePrefix($prefix) . '%', false])
             ->column();
 
         return $terms ?: [];

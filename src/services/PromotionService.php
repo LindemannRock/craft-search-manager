@@ -181,7 +181,7 @@ class PromotionService extends Component
                     continue;
                 }
 
-                $siteIdsByPromotion[$promotion->elementId] = $promotionSiteId;
+                $siteIdsByPromotion[$this->promotionIdentity($promotion)] = $promotionSiteId;
                 $byType[$type][$promotionSiteId][] = $promotion->elementId;
             }
 
@@ -212,7 +212,7 @@ class PromotionService extends Component
 
             if ($resultsAreArrays) {
                 $elementType = $promotion->elementType ?? \craft\elements\Entry::class;
-                $promotionSiteId = $siteIdsByPromotion[$promotion->elementId] ?? null;
+                $promotionSiteId = $siteIdsByPromotion[$this->promotionIdentity($promotion)] ?? null;
                 $element = $promotionSiteId !== null
                     ? ($elements[$elementType][$promotionSiteId][$promotion->elementId] ?? null)
                     : null;
@@ -286,6 +286,11 @@ class PromotionService extends Component
         }
 
         return Craft::$app->getSites()->getPrimarySite()->id ?? null;
+    }
+
+    private function promotionIdentity(Promotion $promotion): int
+    {
+        return $promotion->id ?? spl_object_id($promotion);
     }
 
     // =========================================================================

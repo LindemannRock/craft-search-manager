@@ -1346,7 +1346,7 @@ class SearchIndex extends Model
                 }
 
                 // If skipEntriesWithoutUrl is enabled, filter by URI when possible
-                if ($this->skipEntriesWithoutUrl && $elementType === \craft\elements\Entry::class) {
+                if ($this->skipEntriesWithoutUrl) {
                     $query->andWhere(['not', ['elements_sites.uri' => null]])
                         ->andWhere(['<>', 'elements_sites.uri', '']);
 
@@ -1360,24 +1360,6 @@ class SearchIndex extends Model
                     $totalCount += $siteCount;
 
                     $this->logDebug('Expected count result (skip URL)', [
-                        'indexHandle' => $this->handle,
-                        'siteId' => $siteId,
-                        'count' => $siteCount,
-                    ]);
-                } elseif ($this->skipEntriesWithoutUrl) {
-                    $query->andWhere(['not', ['elements_sites.uri' => null]])
-                        ->andWhere(['<>', 'elements_sites.uri', '']);
-
-                    if ($hasClosure) {
-                        $ids = $query->ids();
-                        $siteCount = count($ids);
-                    } else {
-                        $siteCount = (int) $query->count();
-                    }
-
-                    $totalCount += $siteCount;
-
-                    $this->logDebug('Expected count result (skip URL non-entry)', [
                         'indexHandle' => $this->handle,
                         'siteId' => $siteId,
                         'count' => $siteCount,
