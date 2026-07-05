@@ -191,7 +191,7 @@ See [Redis Backend](../backends/backend-redis.md) for database isolation details
 
 1. **Is analytics enabled?** Check `enableAnalytics` is `true` in settings.
 2. **Is analytics enabled for the index?** Per-index analytics can be disabled with `enableAnalytics: false`.
-3. **Is the IP hash salt configured?** Without a salt, IP hashing and geo-location won't work (but basic analytics still tracks). Generate one:
+3. **Is the IP hash salt configured?** Open **Search Manager → Setup** if the salt is missing. Search still works, but setup remains incomplete and analytics privacy features are limited until the salt is configured. Set the salt with:
 
 ```bash title="PHP"
 php craft search-manager/security/generate-salt
