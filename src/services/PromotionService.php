@@ -2,6 +2,7 @@
 
 namespace lindemannrock\searchmanager\services;
 
+use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
@@ -154,37 +155,53 @@ class PromotionService extends Component
 
         // Collect promoted element IDs for filtering
         $promotedIds = array_map(fn(Promotion $p) => $p->elementId, $promotions);
+        $resultsAreArrays = !empty($results) && is_array($results[0]);
+        $siteIdsByElementId = $resultsAreArrays
+            ? $this->siteIdsByElementId($results, $promotedIds)
+            : [];
 
         // Remove promoted elements from their current positions (if they exist in results)
         $filteredResults = [];
         foreach ($results as $result) {
             $elementId = is_array($result) ? SearchHitIdentityHelper::elementId($result) : $result;
-            if (!in_array($elementId, $promotedIds)) {
+            if (!in_array($elementId, $promotedIds, true)) {
                 $filteredResults[] = $result;
             }
         }
 
         // Batch-fetch promoted elements grouped by type
-        $resultsAreArrays = !empty($results) && is_array($results[0]);
         $elements = [];
+        $siteIdsByPromotion = [];
         if ($resultsAreArrays) {
             $byType = [];
             foreach ($promotions as $promotion) {
                 $type = $promotion->elementType ?? \craft\elements\Entry::class;
-                $byType[$type][] = $promotion->elementId;
+                $promotionSiteId = $this->resolvePromotionSiteId($promotion, $siteId, $siteIdsByElementId);
+                if ($promotionSiteId === null) {
+                    continue;
+                }
+
+                $siteIdsByPromotion[$promotion->elementId] = $promotionSiteId;
+                $byType[$type][$promotionSiteId][] = $promotion->elementId;
             }
 
-            foreach ($byType as $elementClass => $ids) {
+            foreach ($byType as $elementClass => $idsBySite) {
                 if (!is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
                     continue;
                 }
-                $found = $elementClass::find()
-                    ->id($ids)
-                    ->siteId($siteId)
-                    ->status(null)
-                    ->indexBy('id')
-                    ->all();
-                $elements += $found;
+
+                foreach ($idsBySite as $elementSiteId => $ids) {
+                    $found = $elementClass::find()
+                        ->id(array_values(array_unique($ids)))
+                        ->siteId((int)$elementSiteId)
+                        ->status(null)
+                        ->indexBy('id')
+                        ->all();
+
+                    foreach ($found as $elementId => $element) {
+                        $elements[$elementClass][(int)$elementSiteId][(int)$elementId] = $element;
+                    }
+                }
             }
         }
 
@@ -194,7 +211,11 @@ class PromotionService extends Component
             $insertPos = max(0, $promotion->position - 1);
 
             if ($resultsAreArrays) {
-                $element = $elements[$promotion->elementId] ?? null;
+                $elementType = $promotion->elementType ?? \craft\elements\Entry::class;
+                $promotionSiteId = $siteIdsByPromotion[$promotion->elementId] ?? null;
+                $element = $promotionSiteId !== null
+                    ? ($elements[$elementType][$promotionSiteId][$promotion->elementId] ?? null)
+                    : null;
                 $promotedItem = [
                     'objectID' => $promotion->elementId,
                     'id' => $promotion->elementId,
@@ -215,6 +236,56 @@ class PromotionService extends Component
         }
 
         return $finalResults;
+    }
+
+    /**
+     * Preserve site context from existing hits before promoted duplicates are removed.
+     *
+     * @param array<int, array<string, mixed>> $results
+     * @param array<int, int|null> $promotedIds
+     * @return array<int, int>
+     */
+    private function siteIdsByElementId(array $results, array $promotedIds): array
+    {
+        $siteIdsByElementId = [];
+
+        foreach ($results as $result) {
+            if (!is_array($result)) {
+                continue;
+            }
+
+            $elementId = SearchHitIdentityHelper::elementId($result);
+            $siteId = $result['siteId'] ?? null;
+            if ($elementId === null || !in_array($elementId, $promotedIds, true) || !is_numeric($siteId)) {
+                continue;
+            }
+
+            $siteIdsByElementId[$elementId] = (int)$siteId;
+        }
+
+        return $siteIdsByElementId;
+    }
+
+    /**
+     * Pick a deterministic site for promoted element metadata.
+     *
+     * @param array<int, int> $siteIdsByElementId
+     */
+    private function resolvePromotionSiteId(Promotion $promotion, ?int $requestedSiteId, array $siteIdsByElementId): ?int
+    {
+        if (isset($siteIdsByElementId[$promotion->elementId])) {
+            return $siteIdsByElementId[$promotion->elementId];
+        }
+
+        if ($promotion->siteId !== null) {
+            return $promotion->siteId;
+        }
+
+        if ($requestedSiteId !== null) {
+            return $requestedSiteId;
+        }
+
+        return Craft::$app->getSites()->getPrimarySite()->id ?? null;
     }
 
     // =========================================================================

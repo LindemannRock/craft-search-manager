@@ -45,6 +45,20 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertSame([42, 99], $results);
     }
 
+    public function testApplyPromotionsResolvesSiteBeforeFetchingPromotedElementMetadata(): void
+    {
+        $source = $this->methodSource(
+            $this->readPluginFile('src/services/PromotionService.php'),
+            'public function applyPromotions',
+        );
+
+        self::assertStringContainsString('$siteIdsByElementId = $resultsAreArrays', $source);
+        self::assertStringContainsString('$promotionSiteId = $this->resolvePromotionSiteId($promotion, $siteId, $siteIdsByElementId);', $source);
+        self::assertStringContainsString('->siteId((int)$elementSiteId)', $source);
+        self::assertStringNotContainsString('->siteId($siteId)', $source);
+        self::assertStringNotContainsString('$elements += $found;', $source);
+    }
+
     public function testBackendSearchThreadsAlreadyMatchedPromotionsIntoApplicationPath(): void
     {
         $source = $this->readPluginFile('src/services/BackendService.php');
