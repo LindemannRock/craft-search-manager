@@ -37,7 +37,7 @@
 
 		{{ forms.lightswitchField({
             label: 'Enable Analytics'|t('search-manager'),
-            instructions: 'Track search queries, results, and performance metrics'|t('search-manager'),
+            instructions: 'Track search queries, results, and performance metrics. When enabled, Search Manager will track search queries, device types, geographic data, and performance metrics.'|t('search-manager'),
             id: 'enableAnalytics',
             name: 'settings[enableAnalytics]',
             on: settings.enableAnalytics ?? true,
@@ -48,10 +48,6 @@
         }) }}
 
         <div id="analytics-settings" class="{{ not (settings.enableAnalytics ?? true) ? 'hidden' }}">
-            <div class="field">
-                <p class="light">{{ "When enabled, Search Manager will track search queries, device types, geographic data, and performance metrics."|t('search-manager') }}</p>
-            </div>
-
             <hr>
 
         <h2>{{ "Geographic Detection"|t('search-manager') }}</h2>
