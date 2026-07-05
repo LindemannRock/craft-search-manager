@@ -531,7 +531,7 @@ class AnalyticsController extends Controller
             ];
 
             return ExportHelper::dispatchSections($sections, $format, $filename, $payload);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logError('Analytics export failed', ['error' => $e->getMessage()]);
 
             Craft::$app->getSession()->setError(
@@ -910,7 +910,7 @@ class AnalyticsController extends Controller
                 'success' => true,
                 'data' => $data,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return $this->asJson([
                 'success' => false,
                 'error' => Craft::$app->getConfig()->getGeneral()->devMode

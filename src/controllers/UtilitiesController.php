@@ -392,7 +392,7 @@ class UtilitiesController extends Controller
         $type = strtolower($this->request->getRequiredBodyParam('type'));
         $validTypes = ['database', 'redis', 'file'];
 
-        if (!in_array($type, $validTypes)) {
+        if (!in_array($type, $validTypes, true)) {
             return $this->asJson([
                 'success' => false,
                 'error' => Craft::t('search-manager', 'Invalid storage type: {type}', ['type' => $type]),
@@ -855,7 +855,7 @@ class UtilitiesController extends Controller
         foreach ($indices as $index) {
             $indexBackendType = $index->effectiveBackendType ?? $this->getBackendTypeFromHandle($defaultBackendHandle);
 
-            if (in_array($indexBackendType, $typesToMatch)) {
+            if (in_array($indexBackendType, $typesToMatch, true)) {
                 $index->updateStats(0);
                 $this->logDebug('Reset documentCount for index', [
                     'index' => $index->handle,

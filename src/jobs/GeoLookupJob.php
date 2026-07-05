@@ -78,7 +78,7 @@ class GeoLookupJob extends BaseJob implements RetryableJobInterface
                 'country' => $geoData['countryCode'] ?? null,
                 'city' => $geoData['city'] ?? null,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logError('Failed to update analytics with geo data', [
                 'analyticsId' => $this->analyticsId,
                 'error' => $e->getMessage(),
