@@ -383,13 +383,14 @@ class PostgreSqlStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000, ?string $prefix = null): array
     {
         $this->logDebug('getTermsForAutocomplete: Starting query', [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
             'language' => $language,
             'limit' => $limit,
+            'prefix' => $prefix,
         ]);
 
         $query = (new \craft\db\Query())
@@ -405,6 +406,10 @@ class PostgreSqlStorage implements StorageInterface
         // Filter by language if provided
         if ($language !== null) {
             $query->andWhere(['language' => $language]);
+        }
+
+        if ($prefix !== null && $prefix !== '') {
+            $query->andWhere(['like', 'term', self::escapeLikePrefix($prefix) . '%', false]);
         }
 
         $results = $query
@@ -425,6 +430,11 @@ class PostgreSqlStorage implements StorageInterface
         }
 
         return $terms;
+    }
+
+    private static function escapeLikePrefix(string $prefix): string
+    {
+        return addcslashes($prefix, '\\%_');
     }
 
     // =========================================================================

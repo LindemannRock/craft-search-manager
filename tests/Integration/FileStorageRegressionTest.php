@@ -59,6 +59,43 @@ final class FileStorageRegressionTest extends TestCase
         self::assertStringContainsString('ftruncate($handle, 0)', $matches[0]);
     }
 
+    public function testAllSitesAutocompleteRoundTripsUnderscoreTermsWithoutSiteSuffix(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeTermDocument('foo_bar', 1, 101, 1);
+        $storage->storeTermDocument('foo_bar', 2, 201, 1);
+        $storage->storeTermDocument('foo_baz', 1, 102, 1);
+        $storage->storeTermDocument('other_term', 1, 103, 1);
+
+        $terms = $storage->getTermsForAutocomplete(null, null, 10);
+
+        self::assertSame(2, $terms['foo_bar'] ?? null);
+        self::assertSame(1, $terms['foo_baz'] ?? null);
+        self::assertSame(1, $terms['other_term'] ?? null);
+        self::assertArrayNotHasKey('foo_bar_1', $terms);
+        self::assertArrayNotHasKey('foo_bar_2', $terms);
+        self::assertArrayNotHasKey('foo_baz_1', $terms);
+    }
+
+    public function testAutocompletePrefixFilterPreservesRankingAfterScanningMatchingFiles(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeTermDocument('alpha', 1, 101, 1);
+        $storage->storeTermDocument('foo_product', 1, 102, 1);
+        $storage->storeTermDocument('foo_product', 1, 103, 1);
+        $storage->storeTermDocument('foo_protein', 1, 104, 1);
+        $storage->storeTermDocument('foo_protein', 2, 204, 1);
+        $storage->storeTermDocument('foo_profile', 1, 105, 1);
+
+        $terms = $storage->getTermsForAutocomplete(null, null, 2, 'foo_pro');
+
+        self::assertSame(['foo_product' => 2, 'foo_protein' => 2], $terms);
+        self::assertArrayNotHasKey('alpha', $terms);
+        self::assertArrayNotHasKey('foo_profile', $terms);
+        self::assertArrayNotHasKey('foo_product_1', $terms);
+        self::assertArrayNotHasKey('foo_protein_2', $terms);
+    }
+
     private function makeStorage(): FileStorage
     {
         $this->basePath = Craft::getAlias('@storage/search-manager-test-' . StringHelper::UUID());

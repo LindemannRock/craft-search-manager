@@ -73,7 +73,24 @@ final class RedisStorageRegressionTest extends TestCase
         $terms = $storage->getTermsForAutocomplete(null, null, 10);
 
         self::assertSame(['protein' => 1, 'product' => 1], $terms);
-        self::assertSame(['sm:idx:test-index:term:*'], $redis->scanPatterns);
+        self::assertSame(['sm:idx:test-index:term:*:*'], $redis->scanPatterns);
+        self::assertSame(0, $redis->keysCalls);
+    }
+
+    public function testAutocompletePrefixFilterUsesRedisScanPatternAndPreservesRanking(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeTermDocument('alpha', 1, 101, 1);
+        $storage->storeTermDocument('product', 1, 102, 1);
+        $storage->storeTermDocument('product', 1, 103, 1);
+        $storage->storeTermDocument('protein', 1, 104, 1);
+        $storage->storeTermDocument('protein', 2, 204, 1);
+        $storage->storeTermDocument('profile', 1, 105, 1);
+
+        $terms = $storage->getTermsForAutocomplete(null, null, 2, 'pro');
+
+        self::assertSame(['product' => 2, 'protein' => 2], $terms);
+        self::assertSame(['sm:idx:test-index:term:pro*:*'], $redis->scanPatterns);
         self::assertSame(0, $redis->keysCalls);
     }
 
@@ -85,7 +102,7 @@ final class RedisStorageRegressionTest extends TestCase
         $terms = $storage->getTermsForAutocomplete(null, null, 10);
 
         self::assertSame(['protein' => 1], $terms);
-        self::assertSame(['sm:idx:term:term:*'], $redis->scanPatterns);
+        self::assertSame(['sm:idx:term:term:*:*'], $redis->scanPatterns);
         self::assertArrayNotHasKey('term', $terms);
     }
 

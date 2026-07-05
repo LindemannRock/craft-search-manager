@@ -367,15 +367,17 @@ class RedisStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000, ?string $prefix = null): array
     {
+        $termPattern = $prefix !== null && $prefix !== '' ? $prefix . '*' : '*';
+
         // Pattern: {prefix}term:TERM:SITE_ID
         // For all-sites indices (siteId = null), match all siteIds with wildcard
         if ($siteId !== null) {
-            $pattern = $this->keyPrefix . 'term:*:' . $siteId;
+            $pattern = $this->keyPrefix . 'term:' . $termPattern . ':' . $siteId;
         } else {
             // All sites - use wildcard for siteId
-            $pattern = $this->keyPrefix . 'term:*';
+            $pattern = $this->keyPrefix . 'term:' . $termPattern . ':*';
         }
 
         $keys = $this->scanKeys($pattern);
@@ -395,6 +397,10 @@ class RedisStorage implements StorageInterface
             if (($parts[0] ?? null) === 'term' && isset($parts[1], $parts[2])) {
                 $term = $parts[1];
 
+                if ($prefix !== null && $prefix !== '' && !str_starts_with($term, $prefix)) {
+                    continue;
+                }
+
                 // Get document count for this term
                 $count = $this->redis->hLen($key);
 
@@ -405,15 +411,11 @@ class RedisStorage implements StorageInterface
                     $terms[$term] = $count;
                 }
             }
-
-            if (count($terms) >= $limit) {
-                break;
-            }
         }
 
         arsort($terms);
 
-        return $terms;
+        return array_slice($terms, 0, $limit, true);
     }
 
     // =========================================================================

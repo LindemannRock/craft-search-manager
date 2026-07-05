@@ -219,8 +219,9 @@ class AutocompleteService extends Component
     {
         $matches = [];
 
-        // Get all terms from storage (filtered by language and index)
-        $allTerms = $this->getAllTerms($storage, $siteId, $language, $indexHandle);
+        // Get prefix-filtered terms from storage so lower-frequency matches are
+        // not hidden behind a fixed global autocomplete pool.
+        $allTerms = $this->getAllTerms($storage, $siteId, $language, $indexHandle, $query, $limit * 2);
 
         $this->logDebug('getPrefixMatches: Retrieved terms from storage', [
             'termCount' => count($allTerms),
@@ -305,7 +306,7 @@ class AutocompleteService extends Component
      * @param string|null $indexHandle Full index handle (with prefix) to filter by
      * @return array Terms with frequencies [term => frequency]
      */
-    private function getAllTerms($storage, ?int $siteId, ?string $language = null, ?string $indexHandle = null): array
+    private function getAllTerms($storage, ?int $siteId, ?string $language = null, ?string $indexHandle = null, ?string $prefix = null, int $limit = 1000): array
     {
         $this->logDebug('getAllTerms: Starting', [
             'storageClass' => $storage ? get_class($storage) : 'null',
@@ -313,12 +314,14 @@ class AutocompleteService extends Component
             'siteId' => $siteId,
             'language' => $language,
             'indexHandle' => $indexHandle,
+            'prefix' => $prefix,
+            'limit' => $limit,
         ]);
 
         try {
             // Use the StorageInterface method
             if ($storage instanceof StorageInterface) {
-                $terms = $storage->getTermsForAutocomplete($siteId, $language, 1000);
+                $terms = $storage->getTermsForAutocomplete($siteId, $language, $limit, $prefix);
                 $this->logDebug('getAllTerms: Got terms from storage', [
                     'termCount' => count($terms),
                 ]);

@@ -314,7 +314,7 @@ class FileStorage implements StorageInterface
     /**
      * @inheritdoc
      */
-    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000, ?string $prefix = null): array
     {
         $termsPath = $this->basePath . '/terms';
 
@@ -322,13 +322,15 @@ class FileStorage implements StorageInterface
             return [];
         }
 
+        $prefixPattern = $prefix !== null && $prefix !== '' ? $this->sanitizeFilename($prefix) . '*' : '*';
+
         // File storage uses: term_siteId.dat format (e.g., test_1.dat)
         if ($siteId !== null) {
             // Specific site
-            $files = glob($termsPath . '/*_' . $siteId . '.dat');
+            $files = glob($termsPath . '/' . $prefixPattern . '_' . $siteId . '.dat');
         } else {
             // All sites - get all .dat files
-            $files = glob($termsPath . '/*.dat');
+            $files = glob($termsPath . '/' . $prefixPattern . '.dat');
         }
 
         if (!is_array($files)) {
@@ -337,11 +339,7 @@ class FileStorage implements StorageInterface
 
         $terms = [];
         foreach ($files as $file) {
-            $basename = basename($file, '.dat');
-            // Extract term from filename (test_1 → test)
-            $parts = explode('_', $basename);
-            array_pop($parts); // Remove site ID
-            $term = implode('_', $parts);
+            $term = $this->extractTermFromFilename(basename($file), $siteId);
 
             // Read serialized data
             $data = $this->readFile($file);
@@ -355,15 +353,11 @@ class FileStorage implements StorageInterface
                     $terms[$term] = $count;
                 }
             }
-
-            if (count($terms) >= $limit) {
-                break;
-            }
         }
 
         arsort($terms);
 
-        return $terms;
+        return array_slice($terms, 0, $limit, true);
     }
 
     // =========================================================================
@@ -979,7 +973,8 @@ class FileStorage implements StorageInterface
      * suffix added by {@see getTermPath()}.
      *
      * @param string $filename Filename (e.g., "term_name.dat" or "term_name_1.dat")
-     * @param int|null $siteId Site ID suffix to remove for term-document files
+     * @param int|null $siteId Site ID suffix to remove for term-document files.
+     *     When null, strips any trailing numeric site suffix.
      * @return string Persisted term
      */
     private function extractTermFromFilename(string $filename, ?int $siteId = null): string
@@ -992,6 +987,8 @@ class FileStorage implements StorageInterface
             if (str_ends_with($term, $suffix)) {
                 $term = substr($term, 0, -strlen($suffix));
             }
+        } elseif (preg_match('/^(.*)_\d+$/', $term, $matches) === 1) {
+            $term = $matches[1];
         }
 
         return $term;

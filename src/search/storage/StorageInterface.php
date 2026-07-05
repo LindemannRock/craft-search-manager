@@ -154,9 +154,10 @@ interface StorageInterface
      * @param int|null $siteId Site ID (null for all sites)
      * @param string|null $language Language filter (e.g., 'en', 'ar')
      * @param int $limit Maximum terms to return
+     * @param string|null $prefix Optional normalized prefix filter
      * @return array Terms with frequencies [term => frequency]
      */
-    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array;
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000, ?string $prefix = null): array;
 
     // =========================================================================
     // ELEMENT OPERATIONS (for autocomplete suggestions)

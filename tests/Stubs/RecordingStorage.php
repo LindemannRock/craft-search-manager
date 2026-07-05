@@ -68,7 +68,7 @@ final class RecordingStorage implements StorageInterface
     /** @var array<int, array{siteId: int, docLength: int, isAddition: bool}> */
     public array $updateMetadataEvents = [];
 
-    /** @var list<array{siteId: int|null, language: string|null, limit: int}> */
+    /** @var list<array{siteId: int|null, language: string|null, limit: int, prefix: string|null}> */
     public array $getTermsForAutocompleteCalls = [];
 
     /** @var int Times getElementsByIds() was called. */
@@ -98,6 +98,7 @@ final class RecordingStorage implements StorageInterface
         private array $documentLengthsById = [],
         private array $documentLanguagesById = [],
         private array $elementsById = [],
+        private array $autocompleteTerms = ['protein' => 3],
     ) {
     }
 
@@ -220,15 +221,27 @@ final class RecordingStorage implements StorageInterface
         return $out;
     }
 
-    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000): array
+    public function getTermsForAutocomplete(?int $siteId, ?string $language, int $limit = 1000, ?string $prefix = null): array
     {
         $this->getTermsForAutocompleteCalls[] = [
             'siteId' => $siteId,
             'language' => $language,
             'limit' => $limit,
+            'prefix' => $prefix,
         ];
 
-        return ['protein' => 3];
+        $terms = $this->autocompleteTerms;
+        if ($prefix !== null && $prefix !== '') {
+            $terms = array_filter(
+                $terms,
+                static fn (string|int $term): bool => is_string($term) && str_starts_with($term, $prefix),
+                ARRAY_FILTER_USE_KEY,
+            );
+        }
+
+        arsort($terms);
+
+        return array_slice($terms, 0, $limit, true);
     }
 
     public function getElementsByIds(int $siteId, array $elementIds): array
