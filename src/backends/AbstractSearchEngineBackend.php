@@ -142,6 +142,15 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      */
     public function index(string $indexName, array $data): bool
     {
+        return $this->indexWithResult($indexName, $data)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function indexWithResult(string $indexName, array $data): array
+    {
         try {
             $engine = $this->getSearchEngine($indexName);
             $storage = $this->getStorage($indexName);
@@ -162,6 +171,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             if ($elementId === null) {
                 throw new \InvalidArgumentException('Document must have either "elementId", "id", or "objectID" field');
             }
+            $existed = !empty($storage->getDocumentTerms($siteId, $elementId));
 
             // Get element type: from data, or derive from index name
             $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
@@ -183,10 +193,16 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 ]);
             }
 
-            return $success;
+            return [
+                'success' => $success,
+                'wasCreated' => $success ? !$existed : null,
+            ];
         } catch (\Throwable $e) {
             $this->logError("Failed to index in {$this->getBackendLabel()}", ['error' => $e->getMessage()]);
-            return false;
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
         }
     }
 
@@ -241,9 +257,27 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
+        return $this->deleteWithResult($indexName, $elementId, $siteId)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
         try {
             $engine = $this->getSearchEngine($indexName);
+            $storage = $this->getStorage($indexName);
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+            $existed = !empty($storage->getDocumentTerms($siteId, $elementId));
+
+            if (!$existed) {
+                return [
+                    'success' => true,
+                    'existed' => false,
+                ];
+            }
 
             $success = $engine->deleteDocument($siteId, $elementId);
 
@@ -254,10 +288,16 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 ]);
             }
 
-            return $success;
+            return [
+                'success' => $success,
+                'existed' => $success ? true : null,
+            ];
         } catch (\Throwable $e) {
             $this->logError("Failed to delete from {$this->getBackendLabel()}", ['error' => $e->getMessage()]);
-            return false;
+            return [
+                'success' => false,
+                'existed' => null,
+            ];
         }
     }
 

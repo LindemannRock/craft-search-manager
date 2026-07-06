@@ -187,6 +187,14 @@ final class AutocompletePrefixBackend implements BackendInterface
         return true;
     }
 
+    public function indexWithResult(string $indexName, array $data): array
+    {
+        return [
+            'success' => true,
+            'wasCreated' => true,
+        ];
+    }
+
     public function batchIndex(string $indexName, array $items): bool
     {
         return true;
@@ -200,6 +208,14 @@ final class AutocompletePrefixBackend implements BackendInterface
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         return true;
+    }
+
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
+        return [
+            'success' => true,
+            'existed' => true,
+        ];
     }
 
     public function search(string $indexName, string $query, array $options = []): array

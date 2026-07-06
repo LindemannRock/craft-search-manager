@@ -68,6 +68,15 @@ class MeilisearchBackend extends BaseBackend
     /** @inheritdoc */
     public function index(string $indexName, array $data): bool
     {
+        return $this->indexWithResult($indexName, $data)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function indexWithResult(string $indexName, array $data): array
+    {
         try {
             $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -79,6 +88,7 @@ class MeilisearchBackend extends BaseBackend
             $data = $this->prepareDocument($data);
 
             $index = $client->index($fullIndexName);
+            $existed = $this->meilisearchDocumentExists($index, $data['objectID']);
             $index->addDocuments([$data], 'objectID');
 
             $this->logDebug('Document indexed in Meilisearch', [
@@ -86,12 +96,18 @@ class MeilisearchBackend extends BaseBackend
                 'id' => $data['objectID'],
             ]);
 
-            return true;
+            return [
+                'success' => true,
+                'wasCreated' => !$existed,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to index document in Meilisearch', [
                 'error' => $e->getMessage(),
             ]);
-            return false;
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
         }
     }
 
@@ -140,6 +156,15 @@ class MeilisearchBackend extends BaseBackend
     /** @inheritdoc */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
+        return $this->deleteWithResult($indexName, $elementId, $siteId)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
         try {
             $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -148,6 +173,13 @@ class MeilisearchBackend extends BaseBackend
 
             // Use composite key matching the objectID format from transformer
             $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            if (!$this->meilisearchDocumentExists($index, $documentId)) {
+                return [
+                    'success' => true,
+                    'existed' => false,
+                ];
+            }
+
             $index->deleteDocument($documentId);
 
             $this->logDebug('Document deleted from Meilisearch', [
@@ -155,12 +187,33 @@ class MeilisearchBackend extends BaseBackend
                 'id' => $documentId,
             ]);
 
-            return true;
+            return [
+                'success' => true,
+                'existed' => true,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to delete document from Meilisearch', [
                 'error' => $e->getMessage(),
             ]);
-            return false;
+            return [
+                'success' => false,
+                'existed' => null,
+            ];
+        }
+    }
+
+    private function meilisearchDocumentExists(object $index, string $documentId): bool
+    {
+        try {
+            $index->getDocument($documentId, ['objectID']);
+
+            return true;
+        } catch (\Meilisearch\Exceptions\ApiException $e) {
+            if ($e->httpStatus === 404) {
+                return false;
+            }
+
+            throw $e;
         }
     }
 

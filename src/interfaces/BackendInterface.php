@@ -22,6 +22,16 @@ interface BackendInterface
     public function index(string $indexName, array $data): bool;
 
     /**
+     * Index a single document and report whether it was newly created.
+     *
+     * @param string $indexName The index name
+     * @param array $data The document data
+     * @return array{success: bool, wasCreated: bool|null} Success status and creation metadata when the backend can determine it
+     * @since 5.53.0
+     */
+    public function indexWithResult(string $indexName, array $data): array;
+
+    /**
      * Index multiple documents in batch
      *
      * @param string $indexName The index name
@@ -49,6 +59,17 @@ interface BackendInterface
      * @return bool Success status
      */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool;
+
+    /**
+     * Delete a document and report whether it existed before deletion.
+     *
+     * @param string $indexName The index name
+     * @param int $elementId The element ID to delete
+     * @param int|null $siteId The site ID (optional, uses current site if not provided)
+     * @return array{success: bool, existed: bool|null} Success status and existence metadata when the backend can determine it
+     * @since 5.53.0
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array;
 
     /**
      * Perform a search

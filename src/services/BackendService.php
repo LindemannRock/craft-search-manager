@@ -289,13 +289,29 @@ class BackendService extends Component
      */
     public function index(string $indexName, array $data): bool
     {
+        return $this->indexWithResult($indexName, $data)['success'];
+    }
+
+    /**
+     * Index a document and return backend existence metadata.
+     *
+     * @param string $indexName
+     * @param array $data
+     * @return array{success: bool, wasCreated: bool|null}
+     * @since 5.53.0
+     */
+    public function indexWithResult(string $indexName, array $data): array
+    {
         $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
             $this->logError('No backend available for indexing', ['index' => $indexName]);
-            return false;
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
         }
 
-        return $backend->index($indexName, $data);
+        return $backend->indexWithResult($indexName, $data);
     }
 
     /**
@@ -345,13 +361,30 @@ class BackendService extends Component
      */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
+        return $this->deleteWithResult($indexName, $elementId, $siteId)['success'];
+    }
+
+    /**
+     * Delete a document and return backend existence metadata.
+     *
+     * @param string $indexName
+     * @param int $elementId
+     * @param int|null $siteId
+     * @return array{success: bool, existed: bool|null}
+     * @since 5.53.0
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
         $backend = $this->getBackendForIndex($indexName);
         if (!$backend) {
             $this->logError('No backend available for deletion', ['index' => $indexName]);
-            return false;
+            return [
+                'success' => false,
+                'existed' => null,
+            ];
         }
 
-        return $backend->delete($indexName, $elementId, $siteId);
+        return $backend->deleteWithResult($indexName, $elementId, $siteId);
     }
 
     /**

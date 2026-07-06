@@ -25,6 +25,11 @@ use lindemannrock\searchmanager\SearchManager;
 class EnrichmentService extends Component
 {
     /**
+     * @var array<string, SearchIndex|null> Request-local index lookup cache used while enriching one result set.
+     */
+    private array $tokenizeIndexLookupCache = [];
+
+    /**
      * Enrich raw search results with snippets, headings, thumbnails, and metadata
      *
      * @param array $rawHits Raw hits from the search backend
@@ -42,6 +47,7 @@ class EnrichmentService extends Component
      */
     public function enrichResults(array $rawHits, string $query, array $indexHandles, array $options = []): array
     {
+        $this->tokenizeIndexLookupCache = [];
         $snippetMode = $this->resolveSnippetMode($options['snippetMode'] ?? 'balanced');
         $snippetLength = $this->resolveSnippetLength($options['snippetLength'] ?? 150);
         $showCodeSnippets = (bool) ($options['showCodeSnippets'] ?? false);
@@ -58,162 +64,166 @@ class EnrichmentService extends Component
 
         $results = [];
 
-        foreach ($rawHits as $hit) {
-            $elementId = SearchHitIdentityHelper::elementId($hit);
-            if ($elementId === null) {
-                continue;
-            }
-
-            // Per-hit siteId wins over the global option; a null site resolves to
-            // the current site — matching the previous getElementById() call.
-            $hitSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : ($siteId ?? $currentSiteId);
-
-            // Preloaded with CP=any-status / public=live-only. Missing, deleted,
-            // or non-live elements are absent here and skipped, exactly as a null
-            // getElementById() result was.
-            $element = $preloadedElements[$hitSiteId . ':' . $elementId] ?? null;
-
-            if ($element === null) {
-                continue;
-            }
-
-            // Determine URL with proper priority:
-            // 1. Transformer-provided custom URL from hit data
-            // 2. Element's native URL
-            // 3. cpEditUrl only for CP requests (never for frontend)
-            $url = $hit['url'] ?? $element->url ?? null;
-            if ($url === null && Craft::$app->getRequest()->getIsCpRequest()) {
-                $url = $element->cpEditUrl;
-            }
-
-            // Skip results without URL if hideResultsWithoutUrl is enabled
-            if ($hideResultsWithoutUrl && $url === null) {
-                continue;
-            }
-
-            $snippetDebug = $includeDebugMeta ? [] : null;
-            $description = $this->getDescription(
-                $hit,
-                $element,
-                $query,
-                $hit['matchedTerms'] ?? null,
-                $hit['_index'] ?? ($indexHandles[0] ?? ''),
-                $snippetMode,
-                $snippetLength,
-                $showCodeSnippets,
-                $parseMarkdownSnippets,
-                $snippetDebug,
-            );
-
-            $result = [
-                'id' => $elementId,
-                'title' => $hit['title'] ?? $element->title ?? 'Untitled',
-                'url' => $url,
-                'description' => $description,
-                'descriptionSafe' => $description !== null ? \craft\helpers\Html::encode($description) : null,
-                'section' => $hit['section'] ?? $this->getSectionName($element),
-                'type' => $hit['type'] ?? $element::displayName(),
-                'score' => $hit['score'] ?? null,
-            ];
-
-            // Add index handle and backend for multi-index searches (debug only)
-            if ($includeDebugMeta && !empty($hit['_index'])) {
-                $result['_index'] = $hit['_index'];
-                $backend = SearchManager::$plugin->backend->getBackendForIndex($hit['_index']);
-                if ($backend) {
-                    $result['backend'] = $backend->getName();
+        try {
+            foreach ($rawHits as $hit) {
+                $elementId = SearchHitIdentityHelper::elementId($hit);
+                if ($elementId === null) {
+                    continue;
                 }
-            }
 
-            // Add site info (for multi-site debugging)
-            if ($element->siteId) {
-                $result['siteId'] = $element->siteId;
-                $site = Craft::$app->getSites()->getSiteById($element->siteId);
-                if ($site) {
-                    $result['site'] = $site->handle;
-                    $result['language'] = $site->language;
+                // Per-hit siteId wins over the global option; a null site resolves to
+                // the current site — matching the previous getElementById() call.
+                $hitSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : ($siteId ?? $currentSiteId);
+
+                // Preloaded with CP=any-status / public=live-only. Missing, deleted,
+                // or non-live elements are absent here and skipped, exactly as a null
+                // getElementById() result was.
+                $element = $preloadedElements[$hitSiteId . ':' . $elementId] ?? null;
+
+                if ($element === null) {
+                    continue;
                 }
-            }
 
-            // Add thumbnail if available
-            if (method_exists($element, 'getThumbUrl')) {
-                $result['thumbnail'] = $element->getThumbUrl(80);
-            }
+                // Determine URL with proper priority:
+                // 1. Transformer-provided custom URL from hit data
+                // 2. Element's native URL
+                // 3. cpEditUrl only for CP requests (never for frontend)
+                $url = $hit['url'] ?? $element->url ?? null;
+                if ($url === null && Craft::$app->getRequest()->getIsCpRequest()) {
+                    $url = $element->cpEditUrl;
+                }
 
-            // Pass through hierarchy data for hierarchical display
-            // Only expand headings when the match is in the title or a heading
-            // (like Algolia DocSearch — content-only matches show snippets, not headings)
-            $headings = $hit['_headings'] ?? null;
+                // Skip results without URL if hideResultsWithoutUrl is enabled
+                if ($hideResultsWithoutUrl && $url === null) {
+                    continue;
+                }
 
-            if (!empty($headings)) {
-                $result['_headings'] = $headings;
-
-                $indexHandleForMatch = $hit['_index'] ?? ($indexHandles[0] ?? '');
-                $titleMatchTerms = $this->resolveTitleMatchTerms(
+                $snippetDebug = $includeDebugMeta ? [] : null;
+                $description = $this->getDescription(
                     $hit,
-                    $hit['matchedTerms'] ?? null,
-                    $query,
-                    $indexHandleForMatch,
                     $element,
-                );
-                $headingMatchTerms = $this->resolveHeadingMatchTerms(
-                    $hit,
-                    $hit['matchedTerms'] ?? null,
                     $query,
-                    $indexHandleForMatch,
-                    $element,
+                    $hit['matchedTerms'] ?? null,
+                    $hit['_index'] ?? ($indexHandles[0] ?? ''),
+                    $snippetMode,
+                    $snippetLength,
+                    $showCodeSnippets,
+                    $parseMarkdownSnippets,
+                    $snippetDebug,
                 );
 
-                $title = (string) $result['title'];
-                $titleMatches = !empty($title) && $this->textHasAnyTerm($title, $titleMatchTerms);
+                $result = [
+                    'id' => $elementId,
+                    'title' => $hit['title'] ?? $element->title ?? 'Untitled',
+                    'url' => $url,
+                    'description' => $description,
+                    'descriptionSafe' => $description !== null ? \craft\helpers\Html::encode($description) : null,
+                    'section' => $hit['section'] ?? $this->getSectionName($element),
+                    'type' => $hit['type'] ?? $element::displayName(),
+                    'score' => $hit['score'] ?? null,
+                ];
 
-                if ($titleMatches) {
-                    // Title matches: show all headings for navigation
-                    $result['_matchedHeadings'] = array_values($headings);
-                } else {
-                    // Only include headings that actually contain the query
-                    $matchedHeadings = array_filter($headings, function($h) use ($headingMatchTerms) {
-                        return !empty($h['text']) && $this->textHasAnyTerm($h['text'], $headingMatchTerms);
-                    });
-                    if (!empty($matchedHeadings)) {
-                        $result['_matchedHeadings'] = array_values($matchedHeadings);
+                // Add index handle and backend for multi-index searches (debug only)
+                if ($includeDebugMeta && !empty($hit['_index'])) {
+                    $result['_index'] = $hit['_index'];
+                    $backend = SearchManager::$plugin->backend->getBackendForIndex($hit['_index']);
+                    if ($backend) {
+                        $result['backend'] = $backend->getName();
                     }
                 }
-            }
 
-            $category = $hit['category'] ?? null;
-            if (!empty($category)) {
-                $result['category'] = $category;
-            }
+                // Add site info (for multi-site debugging)
+                if ($element->siteId) {
+                    $result['siteId'] = $element->siteId;
+                    $site = Craft::$app->getSites()->getSiteById($element->siteId);
+                    if ($site) {
+                        $result['site'] = $site->handle;
+                        $result['language'] = $site->language;
+                    }
+                }
 
-            // Add matched fields info (which fields contained the search query)
-            if (!empty($hit['matchedIn'])) {
-                $result['matchedIn'] = $hit['matchedIn'];
-            }
+                // Add thumbnail if available
+                if (method_exists($element, 'getThumbUrl')) {
+                    $result['thumbnail'] = $element->getThumbUrl(80);
+                }
 
-            if (!empty($hit['matchedTerms'])) {
-                $result['matchedTerms'] = $hit['matchedTerms'];
-            }
+                // Pass through hierarchy data for hierarchical display
+                // Only expand headings when the match is in the title or a heading
+                // (like Algolia DocSearch — content-only matches show snippets, not headings)
+                $headings = $hit['_headings'] ?? null;
 
-            if (!empty($hit['matchedPhrases'])) {
-                $result['matchedPhrases'] = $hit['matchedPhrases'];
-            }
+                if (!empty($headings)) {
+                    $result['_headings'] = $headings;
 
-            if ($includeDebugMeta && !empty($snippetDebug)) {
-                $result['_snippet'] = $snippetDebug;
-            }
+                    $indexHandleForMatch = $hit['_index'] ?? ($indexHandles[0] ?? '');
+                    $titleMatchTerms = $this->resolveTitleMatchTerms(
+                    $hit,
+                    $hit['matchedTerms'] ?? null,
+                    $query,
+                    $indexHandleForMatch,
+                    $element,
+                );
+                    $headingMatchTerms = $this->resolveHeadingMatchTerms(
+                    $hit,
+                    $hit['matchedTerms'] ?? null,
+                    $query,
+                    $indexHandleForMatch,
+                    $element,
+                );
 
-            // Add promoted flag (result was injected via promotion, not found via search)
-            if (!empty($hit['promoted'])) {
-                $result['promoted'] = true;
-            }
+                    $title = (string) $result['title'];
+                    $titleMatches = !empty($title) && $this->textHasAnyTerm($title, $titleMatchTerms);
 
-            // Add boosted flag (result score was boosted via query rule)
-            if (!empty($hit['boosted'])) {
-                $result['boosted'] = true;
-            }
+                    if ($titleMatches) {
+                        // Title matches: show all headings for navigation
+                        $result['_matchedHeadings'] = array_values($headings);
+                    } else {
+                        // Only include headings that actually contain the query
+                        $matchedHeadings = array_filter($headings, function($h) use ($headingMatchTerms) {
+                            return !empty($h['text']) && $this->textHasAnyTerm($h['text'], $headingMatchTerms);
+                        });
+                        if (!empty($matchedHeadings)) {
+                            $result['_matchedHeadings'] = array_values($matchedHeadings);
+                        }
+                    }
+                }
 
-            $results[] = $result;
+                $category = $hit['category'] ?? null;
+                if (!empty($category)) {
+                    $result['category'] = $category;
+                }
+
+                // Add matched fields info (which fields contained the search query)
+                if (!empty($hit['matchedIn'])) {
+                    $result['matchedIn'] = $hit['matchedIn'];
+                }
+
+                if (!empty($hit['matchedTerms'])) {
+                    $result['matchedTerms'] = $hit['matchedTerms'];
+                }
+
+                if (!empty($hit['matchedPhrases'])) {
+                    $result['matchedPhrases'] = $hit['matchedPhrases'];
+                }
+
+                if ($includeDebugMeta && !empty($snippetDebug)) {
+                    $result['_snippet'] = $snippetDebug;
+                }
+
+                // Add promoted flag (result was injected via promotion, not found via search)
+                if (!empty($hit['promoted'])) {
+                    $result['promoted'] = true;
+                }
+
+                // Add boosted flag (result score was boosted via query rule)
+                if (!empty($hit['boosted'])) {
+                    $result['boosted'] = true;
+                }
+
+                $results[] = $result;
+            }
+        } finally {
+            $this->tokenizeIndexLookupCache = [];
         }
 
         return $results;
@@ -911,7 +921,10 @@ class EnrichmentService extends Component
         $language = null;
 
         if (!empty($indexHandle)) {
-            $searchIndex = SearchIndex::findByHandle($indexHandle);
+            if (!array_key_exists($indexHandle, $this->tokenizeIndexLookupCache)) {
+                $this->tokenizeIndexLookupCache[$indexHandle] = SearchIndex::findByHandle($indexHandle);
+            }
+            $searchIndex = $this->tokenizeIndexLookupCache[$indexHandle];
             if ($searchIndex && !empty($searchIndex->language)) {
                 $language = $searchIndex->language;
             }

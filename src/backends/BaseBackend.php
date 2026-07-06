@@ -178,6 +178,22 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     abstract public function index(string $indexName, array $data): bool;
 
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function indexWithResult(string $indexName, array $data): array
+    {
+        $elementId = \lindemannrock\searchmanager\helpers\SearchHitIdentityHelper::elementId($data);
+        $siteId = isset($data['siteId']) ? (int)$data['siteId'] : null;
+        $exists = $elementId !== null ? $this->documentExists($indexName, $elementId, $siteId) : null;
+
+        return [
+            'success' => $this->index($indexName, $data),
+            'wasCreated' => $exists === null ? null : !$exists,
+        ];
+    }
+
     abstract public function batchIndex(string $indexName, array $items): bool;
 
     /**
@@ -205,6 +221,26 @@ abstract class BaseBackend extends Component implements BackendInterface
     }
 
     abstract public function delete(string $indexName, int $elementId, ?int $siteId = null): bool;
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
+        $exists = $this->documentExists($indexName, $elementId, $siteId);
+        if (!$exists) {
+            return [
+                'success' => true,
+                'existed' => false,
+            ];
+        }
+
+        return [
+            'success' => $this->delete($indexName, $elementId, $siteId),
+            'existed' => true,
+        ];
+    }
 
     abstract public function search(string $indexName, string $query, array $options = []): array;
 

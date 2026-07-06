@@ -30,6 +30,11 @@ final class StubBackend extends BackendService
 
     public bool $failBatchIndex = false;
     public bool $failBatchDelete = false;
+    public bool $failIndex = false;
+    public bool $failDelete = false;
+
+    /** @var array<string, bool> */
+    public array $existingDocuments = [];
 
     /** @var array<string, mixed> */
     public array $searchResponse = [
@@ -55,6 +60,44 @@ final class StubBackend extends BackendService
     }
 
     /**
+     * @param array<string, mixed> $data
+     * @return array{success: bool, wasCreated: bool|null}
+     */
+    public function indexWithResult(string $indexName, array $data): array
+    {
+        $elementId = \lindemannrock\searchmanager\helpers\SearchHitIdentityHelper::elementId($data);
+        $siteId = isset($data['siteId']) ? (int)$data['siteId'] : null;
+        $key = $this->documentKey($indexName, $elementId, $siteId);
+        $existed = $key !== null && ($this->existingDocuments[$key] ?? false);
+
+        $this->calls[] = ['method' => 'indexWithResult', 'indexName' => $indexName, 'items' => [$data]];
+
+        if ($this->failIndex) {
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
+        }
+
+        if ($key !== null) {
+            $this->existingDocuments[$key] = true;
+        }
+
+        return [
+            'success' => true,
+            'wasCreated' => !$existed,
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    public function index(string $indexName, array $data): bool
+    {
+        return $this->indexWithResult($indexName, $data)['success'];
+    }
+
+    /**
      * @param array<int, array{elementId: int, siteId: int}> $items
      */
     public function batchDelete(string $indexName, array $items): bool
@@ -62,6 +105,55 @@ final class StubBackend extends BackendService
         $this->calls[] = ['method' => 'batchDelete', 'indexName' => $indexName, 'items' => $items];
 
         return !$this->failBatchDelete;
+    }
+
+    /**
+     * @return array{success: bool, existed: bool|null}
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
+        $key = $this->documentKey($indexName, $elementId, $siteId);
+        $existed = $key !== null && ($this->existingDocuments[$key] ?? false);
+
+        $this->calls[] = [
+            'method' => 'deleteWithResult',
+            'indexName' => $indexName,
+            'items' => [
+                [
+                    'elementId' => $elementId,
+                    'siteId' => $siteId,
+                    'existed' => $existed,
+                ],
+            ],
+        ];
+
+        if ($this->failDelete) {
+            return [
+                'success' => false,
+                'existed' => null,
+            ];
+        }
+
+        if ($key !== null) {
+            unset($this->existingDocuments[$key]);
+        }
+
+        return [
+            'success' => true,
+            'existed' => $existed,
+        ];
+    }
+
+    public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        return $this->deleteWithResult($indexName, $elementId, $siteId)['success'];
+    }
+
+    public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool
+    {
+        $key = $this->documentKey($indexName, $elementId, $siteId);
+
+        return $key !== null && ($this->existingDocuments[$key] ?? false);
     }
 
     public function clearSearchCache(string $indexName): void
@@ -120,5 +212,14 @@ final class StubBackend extends BackendService
             $this->calls,
             static fn (array $c): bool => $c['method'] === $method,
         ));
+    }
+
+    private function documentKey(string $indexName, ?int $elementId, ?int $siteId): ?string
+    {
+        if ($elementId === null || $elementId <= 0) {
+            return null;
+        }
+
+        return $indexName . ':' . $elementId . ':' . ($siteId ?? 'null');
     }
 }

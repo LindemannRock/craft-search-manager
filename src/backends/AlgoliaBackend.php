@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use Algolia\AlgoliaSearch\Api\SearchClient;
+use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 
 /**
@@ -77,6 +78,15 @@ class AlgoliaBackend extends BaseBackend
     /** @inheritdoc */
     public function index(string $indexName, array $data): bool
     {
+        return $this->indexWithResult($indexName, $data)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function indexWithResult(string $indexName, array $data): array
+    {
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -86,13 +96,20 @@ class AlgoliaBackend extends BaseBackend
 
             // Create composite objectID for multi-site uniqueness
             $data = $this->prepareDocument($data);
+            $existed = $this->algoliaObjectExists($fullIndexName, (string)$data['objectID']);
 
             $client->saveObject($fullIndexName, $data);
             $this->logDebug('Document indexed in Algolia', ['index' => $fullIndexName, 'id' => $data['objectID']]);
-            return true;
+            return [
+                'success' => true,
+                'wasCreated' => !$existed,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to index in Algolia', ['error' => $e->getMessage()]);
-            return false;
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
         }
     }
 
@@ -133,18 +150,50 @@ class AlgoliaBackend extends BaseBackend
     /** @inheritdoc */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
+        return $this->deleteWithResult($indexName, $elementId, $siteId)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
             // Use composite key matching the objectID format
             $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            if (!$this->algoliaObjectExists($fullIndexName, $documentId)) {
+                return [
+                    'success' => true,
+                    'existed' => false,
+                ];
+            }
 
             $client->deleteObject($fullIndexName, $documentId);
             $this->logDebug('Document deleted from Algolia', ['index' => $fullIndexName, 'id' => $documentId]);
-            return true;
+            return [
+                'success' => true,
+                'existed' => true,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to delete from Algolia', ['error' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'existed' => null,
+            ];
+        }
+    }
+
+    private function algoliaObjectExists(string $fullIndexName, string $documentId): bool
+    {
+        try {
+            $this->getClient()->getObject($fullIndexName, $documentId, ['objectID']);
+
+            return true;
+        } catch (NotFoundException) {
             return false;
         }
     }

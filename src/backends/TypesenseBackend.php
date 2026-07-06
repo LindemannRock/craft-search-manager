@@ -77,6 +77,15 @@ class TypesenseBackend extends BaseBackend
     /** @inheritdoc */
     public function index(string $indexName, array $data): bool
     {
+        return $this->indexWithResult($indexName, $data)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function indexWithResult(string $indexName, array $data): array
+    {
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -87,12 +96,25 @@ class TypesenseBackend extends BaseBackend
             // Create composite id for multi-site uniqueness
             $data = $this->prepareDocument($data);
 
-            $client->collections[$fullIndexName]->documents->upsert($data);
+            try {
+                $client->collections[$fullIndexName]->documents->create($data);
+                $wasCreated = true;
+            } catch (\Typesense\Exceptions\ObjectAlreadyExists) {
+                $client->collections[$fullIndexName]->documents->upsert($data);
+                $wasCreated = false;
+            }
+
             $this->logDebug('Document indexed in Typesense', ['index' => $fullIndexName, 'id' => $data['id']]);
-            return true;
+            return [
+                'success' => true,
+                'wasCreated' => $wasCreated,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to index in Typesense', ['error' => $e->getMessage()]);
-            return false;
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
         }
     }
 
@@ -135,6 +157,15 @@ class TypesenseBackend extends BaseBackend
     /** @inheritdoc */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
+        return $this->deleteWithResult($indexName, $elementId, $siteId)['success'];
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.53.0
+     */
+    public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
+    {
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -144,7 +175,10 @@ class TypesenseBackend extends BaseBackend
 
             $client->collections[$fullIndexName]->documents[$documentId]->delete();
             $this->logDebug('Document deleted from Typesense', ['index' => $fullIndexName, 'id' => $documentId]);
-            return true;
+            return [
+                'success' => true,
+                'existed' => true,
+            ];
         } catch (\Typesense\Exceptions\ObjectNotFound $e) {
             // Delete of a missing document is treated as success — the desired
             // post-condition (document absent) already holds. Without this,
@@ -154,10 +188,16 @@ class TypesenseBackend extends BaseBackend
                 'index' => $indexName,
                 'elementId' => $elementId,
             ]);
-            return true;
+            return [
+                'success' => true,
+                'existed' => false,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to delete from Typesense', ['error' => $e->getMessage()]);
-            return false;
+            return [
+                'success' => false,
+                'existed' => null,
+            ];
         }
     }
 

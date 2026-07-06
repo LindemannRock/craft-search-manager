@@ -184,14 +184,9 @@ class IndexingService extends Component
                     'backendName' => $backendName,
                 ]);
 
-                // Check if document already exists (for accurate count tracking)
-                $isNewDocument = !SearchManager::$plugin->backend->documentExists(
-                    $indexHandle,
-                    $element->id,
-                    $element->siteId
-                );
-
-                $result = SearchManager::$plugin->backend->index($indexHandle, $data);
+                $indexResult = SearchManager::$plugin->backend->indexWithResult($indexHandle, $data);
+                $result = $indexResult['success'];
+                $isNewDocument = $indexResult['wasCreated'] === true;
 
                 if ($result) {
                     // Clear caches for this index (if enabled)
@@ -260,12 +255,11 @@ class IndexingService extends Component
             }
 
             try {
-                if (!SearchManager::$plugin->backend->documentExists($index->handle, $element->id, $siteId)) {
-                    continue;
-                }
-
-                if (SearchManager::$plugin->backend->delete($index->handle, $element->id, $siteId)) {
-                    SearchIndex::decrementDocumentCount($index->handle);
+                $deleteResult = SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
+                if ($deleteResult['success']) {
+                    if ($deleteResult['existed'] === true) {
+                        SearchIndex::decrementDocumentCount($index->handle);
+                    }
                     SearchIndex::touchLastIndexedDebounced($index->handle);
                     if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
                         SearchManager::$plugin->backend->clearSearchCache($index->handle);
@@ -319,13 +313,14 @@ class IndexingService extends Component
             }
 
             try {
-                $documentExists = SearchManager::$plugin->backend->documentExists(
-                    $index->handle,
-                    $element->id,
-                    $siteId
-                );
+                $deleteResult = SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
 
-                if (!$documentExists) {
+                if (!$deleteResult['success']) {
+                    $success = false;
+                    continue;
+                }
+
+                if ($deleteResult['existed'] !== true) {
                     $this->logDebug('Document not in index, skipping removal', [
                         'elementId' => $element->id,
                         'siteId' => $siteId,
@@ -334,25 +329,19 @@ class IndexingService extends Component
                     continue;
                 }
 
-                $result = SearchManager::$plugin->backend->delete($index->handle, $element->id, $siteId);
-
-                if ($result) {
-                    if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
-                        SearchManager::$plugin->backend->clearSearchCache($index->handle);
-                        SearchManager::$plugin->autocomplete->clearCache($index->handle);
-                    }
-
-                    SearchIndex::decrementDocumentCount($index->handle);
-                    SearchIndex::touchLastIndexedDebounced($index->handle);
-
-                    $this->logInfo('Element removed from index', [
-                        'elementId' => $element->id,
-                        'siteId' => $siteId,
-                        'indexHandle' => $index->handle,
-                    ]);
-                } else {
-                    $success = false;
+                if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
+                    SearchManager::$plugin->backend->clearSearchCache($index->handle);
+                    SearchManager::$plugin->autocomplete->clearCache($index->handle);
                 }
+
+                SearchIndex::decrementDocumentCount($index->handle);
+                SearchIndex::touchLastIndexedDebounced($index->handle);
+
+                $this->logInfo('Element removed from index', [
+                    'elementId' => $element->id,
+                    'siteId' => $siteId,
+                    'indexHandle' => $index->handle,
+                ]);
             } catch (\Throwable $e) {
                 $this->logError('Failed to remove element from index', [
                     'elementId' => $element->id,
@@ -436,34 +425,36 @@ class IndexingService extends Component
         // Get index config for transformer class and heading levels
         $index = SearchIndex::findByHandle($indexHandle);
 
-        foreach ($elements as $element) {
-            // Transform via TransformerService (fires before/after events)
-            $data = SearchManager::$plugin->transformers->transform(
-                $element,
-                $indexHandle,
-                $index?->transformerClass,
-                $index?->headingLevels,
-            );
+        SearchManager::$plugin->transformers->withTransformerReuse(function() use ($elements, $indexHandle, $index, &$items): void {
+            foreach ($elements as $element) {
+                // Transform via TransformerService (fires before/after events)
+                $data = SearchManager::$plugin->transformers->transform(
+                    $element,
+                    $indexHandle,
+                    $index?->transformerClass,
+                    $index?->headingLevels,
+                );
 
-            if ($data === null) {
-                continue;
+                if ($data === null) {
+                    continue;
+                }
+
+                // Always ensure siteId is set from element (source of truth)
+                // This guarantees backends receive correct siteId for objectID generation
+                if (!isset($data['siteId'])) {
+                    $data['siteId'] = $element->siteId;
+                } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
+                    $this->logWarning('Transformer siteId mismatch in batch; overriding', [
+                        'elementId' => $element->id,
+                        'elementSiteId' => $element->siteId,
+                        'transformerSiteId' => $data['siteId'],
+                    ]);
+                    $data['siteId'] = $element->siteId;
+                }
+
+                $items[] = $data;
             }
-
-            // Always ensure siteId is set from element (source of truth)
-            // This guarantees backends receive correct siteId for objectID generation
-            if (!isset($data['siteId'])) {
-                $data['siteId'] = $element->siteId;
-            } elseif ((int)$data['siteId'] !== (int)$element->siteId) {
-                $this->logWarning('Transformer siteId mismatch in batch; overriding', [
-                    'elementId' => $element->id,
-                    'elementSiteId' => $element->siteId,
-                    'transformerSiteId' => $data['siteId'],
-                ]);
-                $data['siteId'] = $element->siteId;
-            }
-
-            $items[] = $data;
-        }
+        });
 
         if (empty($items)) {
             return true;

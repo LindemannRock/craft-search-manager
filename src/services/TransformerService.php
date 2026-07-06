@@ -50,6 +50,11 @@ class TransformerService extends Component
 
     private array $_transformers = [];
 
+    /**
+     * @var array<string, TransformerInterface>|null Batch-scoped transformer instances.
+     */
+    private ?array $transformerReuseCache = null;
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -105,38 +110,73 @@ class TransformerService extends Component
      * 3. AutoTransformer (fallback - uses Craft's searchable fields)
      *
      */
-    public function getTransformer(ElementInterface $element, ?string $transformerClass = null): ?TransformerInterface
+    public function getTransformer(ElementInterface $element, ?string $transformerClass = null, ?array $headingLevels = null): ?TransformerInterface
     {
-        // If transformer class specified, use it (empty string = null)
+        $resolvedClass = $this->resolveTransformerClass($element, $transformerClass);
+        if ($resolvedClass === null) {
+            return null;
+        }
+
+        if ($this->transformerReuseCache !== null) {
+            $cacheKey = $this->transformerCacheKey($element, $resolvedClass, $headingLevels);
+            if (!array_key_exists($cacheKey, $this->transformerReuseCache)) {
+                $this->transformerReuseCache[$cacheKey] = $this->createTransformer($resolvedClass);
+            }
+
+            return $this->transformerReuseCache[$cacheKey];
+        }
+
         if ($transformerClass && $transformerClass !== '') {
             $this->logDebug('Using transformer from index config', [
                 'transformer' => $transformerClass,
                 'elementType' => get_class($element),
             ]);
-            return $this->createTransformer($transformerClass);
+        }
+
+        return $this->createTransformer($resolvedClass);
+    }
+
+    private function resolveTransformerClass(ElementInterface $element, ?string $transformerClass = null): ?string
+    {
+        if ($transformerClass && $transformerClass !== '') {
+            return $transformerClass;
         }
 
         $elementClass = get_class($element);
 
-        // Check for exact match
         if (isset($this->_transformers[$elementClass])) {
-            return $this->createTransformer($this->_transformers[$elementClass]);
+            return $this->_transformers[$elementClass];
         }
 
-        // Check for parent classes
-        foreach ($this->_transformers as $type => $transformerClass) {
+        foreach ($this->_transformers as $type => $registeredTransformerClass) {
             if ($element instanceof $type) {
-                return $this->createTransformer($transformerClass);
+                return $registeredTransformerClass;
             }
         }
 
-        // Fall back to AutoTransformer (like Bramble Search)
-        // This automatically indexes Craft's searchable fields
         $this->logDebug('Using AutoTransformer for element type', [
             'elementType' => $elementClass,
         ]);
 
-        return new AutoTransformer();
+        return AutoTransformer::class;
+    }
+
+    /**
+     * @param array<int>|null $headingLevels
+     */
+    private function transformerCacheKey(ElementInterface $element, string $transformerClass, ?array $headingLevels): string
+    {
+        $levels = $headingLevels;
+        if (is_array($levels)) {
+            $levels = array_values(array_unique(array_map('intval', $levels)));
+            sort($levels);
+        }
+
+        return implode('|', [
+            $transformerClass,
+            get_class($element),
+            json_encode($levels),
+        ]);
     }
 
     /**
@@ -175,7 +215,7 @@ class TransformerService extends Component
      */
     public function transform(ElementInterface $element, string $indexName = '', ?string $transformerClass = null, ?array $headingLevels = null): ?array
     {
-        $transformer = $this->getTransformer($element, $transformerClass);
+        $transformer = $this->getTransformer($element, $transformerClass, $headingLevels);
 
         if (!$transformer) {
             return null;
@@ -234,5 +274,25 @@ class TransformerService extends Component
         }
 
         return $data;
+    }
+
+    /**
+     * Reuse compatible transformer instances for the duration of one batch.
+     *
+     * @template T
+     * @param callable():T $callback
+     * @return T
+     * @since 5.53.0
+     */
+    public function withTransformerReuse(callable $callback): mixed
+    {
+        $previousCache = $this->transformerReuseCache;
+        $this->transformerReuseCache = [];
+
+        try {
+            return $callback();
+        } finally {
+            $this->transformerReuseCache = $previousCache;
+        }
     }
 }
