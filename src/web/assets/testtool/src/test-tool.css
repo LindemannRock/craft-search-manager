@@ -1,0 +1,7 @@
+#enrichOptions .select {
+    width: 100%;
+}
+
+#enrichOptions .select select {
+    width: 100%;
+}

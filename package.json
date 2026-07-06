@@ -6,6 +6,7 @@
     "build": "npm run build:assets && npm run build:widget",
     "build:assets": "cd src/web/assets && npm run build",
     "build:analytics": "cd src/web/assets && npm run build:analytics",
+    "build:testtool": "cd src/web/assets && npm run build:testtool",
     "build:widgetpreview": "cd src/web/assets && npm run build:widgetpreview",
     "build:widget": "cd src/web/assets/searchwidget && npm run build",
     "dev": "cd src/web/assets/searchwidget && npm run dev",

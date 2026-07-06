@@ -44,11 +44,12 @@ final class TestToolI18nTest extends TestCase
 
     public function testSearchTestToolUsesTranslatedStringsObject(): void
     {
-        // Audit #177: the inline JS result UI must be fed by a translated strings object.
-        $source = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+        // Audit #177: the asset-rendered result UI must be fed by a translated strings object.
+        $twig = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+        $js = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
-        // The strings object exists and routes representative strings through |t().
-        self::assertStringContainsString('const T = {', $source);
+        // The config strings object exists and routes representative strings through |t().
+        self::assertStringContainsString('translations: {', $twig);
         foreach ([
             "promoted: {{ 'Promoted'|t('search-manager')|json_encode|raw }}",
             "boosted: {{ 'Boosted'|t('search-manager')|json_encode|raw }}",
@@ -59,7 +60,7 @@ final class TestToolI18nTest extends TestCase
             "foundResultsSingular: {{ 'Found {count} result'|t('search-manager')|json_encode|raw }}",
             "foundResultsPlural: {{ 'Found {count} results'|t('search-manager')|json_encode|raw }}",
         ] as $needle) {
-            self::assertStringContainsString($needle, $source);
+            self::assertStringContainsString($needle, $twig);
         }
 
         // Render sites reference the strings object, not raw literals.
@@ -69,7 +70,7 @@ final class TestToolI18nTest extends TestCase
             'hit.title || T.untitled',
             'data.error || T.unknownError',
         ] as $needle) {
-            self::assertStringContainsString($needle, $source);
+            self::assertStringContainsString($needle, $js);
         }
     }
 
@@ -79,12 +80,12 @@ final class TestToolI18nTest extends TestCase
         // the test page (not the base badge component). Their uppercase is a CSS concern
         // (text-transform), so the translation value stays normal-case and Disabled is
         // reused — never a forked all-caps key (meaningless for AR/JA, awkward elsewhere).
-        $twig = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+        $js = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
-        self::assertStringContainsString('text-transform: uppercase;">${T.promoted}</span>', $twig);
-        self::assertStringContainsString('text-transform: uppercase;">${T.boosted}</span>', $twig);
-        self::assertStringContainsString('text-transform: uppercase;">${T.disabled}</span>', $twig);
-        self::assertStringNotContainsString('disabledBadge', $twig);
+        self::assertStringContainsString('text-transform: uppercase;">${T.promoted}</span>', $js);
+        self::assertStringContainsString('text-transform: uppercase;">${T.boosted}</span>', $js);
+        self::assertStringContainsString('text-transform: uppercase;">${T.disabled}</span>', $js);
+        self::assertStringNotContainsString('disabledBadge', $js);
 
         // The all-caps keys must not exist in the translation files; normal-case ones do.
         $en = require dirname(__DIR__, 2) . '/src/translations/en/search-manager.php';
@@ -100,7 +101,9 @@ final class TestToolI18nTest extends TestCase
     {
         // Audit #177: the raw English literals (and parenthetical plurals) must be gone
         // from the render sites. The English text now lives only inside the |t() calls.
-        $source = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+        $source = $this->readPluginFile('src/templates/settings/test/_partials/search.twig')
+            . "\n"
+            . $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
         foreach ([
             'promotion(s)',
@@ -135,7 +138,7 @@ final class TestToolI18nTest extends TestCase
         // Audits #202/#203: autocomplete terms must not be embedded in inline
         // handlers, and admin-configured values rendered through innerHTML stay
         // escaped before reaching the DOM.
-        $source = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+        $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
         self::assertStringContainsString('let autocompleteTerms = [];', $source);
         self::assertStringContainsString("autocompleteDropdown.addEventListener('click'", $source);

@@ -27,6 +27,9 @@ src/web/assets/analytics/src/ export-ignore
 # Widget preview: only dist/ is needed
 src/web/assets/widgetpreview/src/ export-ignore
 
+# Test tool: only dist/ is needed
+src/web/assets/testtool/src/ export-ignore
+
 # Docs are available on the website
 docs/ export-ignore
 

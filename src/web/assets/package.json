@@ -4,9 +4,10 @@
   "private": true,
   "description": "Build tools for Search Manager asset packages",
   "scripts": {
-    "build": "npm run build:analytics && npm run build:widgetpreview",
+    "build": "npm run build:analytics && npm run build:widgetpreview && npm run build:testtool",
     "build:analytics": "mkdir -p analytics/dist && terser analytics/src/analytics.js -o analytics/dist/analytics.js -c -m",
-    "build:widgetpreview": "mkdir -p widgetpreview/dist && terser widgetpreview/src/widget-preview.js -o widgetpreview/dist/widget-preview.js -c -m"
+    "build:widgetpreview": "mkdir -p widgetpreview/dist && terser widgetpreview/src/widget-preview.js -o widgetpreview/dist/widget-preview.js -c -m",
+    "build:testtool": "mkdir -p testtool/dist && terser testtool/src/test-tool.js -o testtool/dist/test-tool.js -c -m && cp testtool/src/test-tool.css testtool/dist/test-tool.css"
   },
   "devDependencies": {
     "terser": "^5.46.1"
