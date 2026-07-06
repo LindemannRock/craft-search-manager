@@ -695,7 +695,7 @@ class Install extends Migration
                 'indexHandle' => $this->string(255)->notNull(),
                 'siteId' => $this->integer()->notNull(),
                 'elementId' => $this->integer()->notNull(),
-                'suggestion' => $this->string(255)->notNull()->comment('Normalized display suggestion, e.g. redirect.twig'),
+                'suggestion' => $this->string(255)->notNull()->comment('Display suggestion, e.g. Redirect.twig'),
                 'normalizedSuggestion' => $this->string(255)->notNull()->comment('Prefix-searchable normalized suggestion'),
                 'tokenKey' => $this->string(255)->notNull()->comment('Tokenized compound intent, e.g. redirect twig'),
                 'frequency' => $this->integer()->notNull()->defaultValue(1),

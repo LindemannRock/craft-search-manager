@@ -864,7 +864,7 @@ class PostgreSqlStorage implements StorageInterface
         }
 
         $query = (new Query())
-            ->select(['suggestion', new Expression('SUM([[frequency]]) AS [[totalFrequency]]')])
+            ->select(['suggestion', 'normalizedSuggestion', new Expression('SUM([[frequency]]) AS [[displayFrequency]]')])
             ->from('{{%searchmanager_search_compounds}}')
             ->where(['indexHandle' => $this->indexHandle])
             ->andWhere(['like', 'normalizedSuggestion', self::escapeLikePrefix($normalizedPrefix) . '%', false]);
@@ -878,17 +878,35 @@ class PostgreSqlStorage implements StorageInterface
         }
 
         $rows = $query
-            ->groupBy(['suggestion'])
-            ->orderBy(['totalFrequency' => SORT_DESC, 'suggestion' => SORT_ASC])
-            ->limit($limit)
+            ->groupBy(['normalizedSuggestion', 'suggestion'])
             ->all();
 
-        $suggestions = [];
+        $suggestionsByNormalized = [];
         foreach ($rows as $row) {
-            $suggestions[(string)$row['suggestion']] = (int)$row['totalFrequency'];
+            $normalizedSuggestion = (string)$row['normalizedSuggestion'];
+            $suggestion = (string)$row['suggestion'];
+            $frequency = (int)$row['displayFrequency'];
+            $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
+                ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + $frequency;
+            $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] = $frequency;
         }
 
-        return $suggestions;
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $data) {
+            $displayFrequencies = $data['displayFrequencies'];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+            $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
+        }
+
+        arsort($suggestions);
+
+        return array_slice($suggestions, 0, $limit, true);
     }
 
     // =========================================================================

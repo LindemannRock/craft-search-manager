@@ -743,7 +743,7 @@ class FileStorage implements StorageInterface
             return [];
         }
 
-        $suggestions = [];
+        $suggestionsByNormalized = [];
         foreach ($files as $file) {
             $rows = $this->readFile($file);
             if (!is_array($rows)) {
@@ -768,8 +768,25 @@ class FileStorage implements StorageInterface
                     continue;
                 }
 
-                $suggestions[$suggestion] = ($suggestions[$suggestion] ?? 0) + (int)($row['frequency'] ?? 1);
+                $frequency = (int)($row['frequency'] ?? 1);
+                $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
+                    ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + $frequency;
+                $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] =
+                    ($suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] ?? 0) + $frequency;
             }
+        }
+
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $data) {
+            $displayFrequencies = $data['displayFrequencies'];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+            $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
         }
 
         arsort($suggestions);

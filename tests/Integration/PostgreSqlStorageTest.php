@@ -55,7 +55,7 @@ final class PostgreSqlStorageTest extends TestCase
         self::assertStringContainsString('deleteCompoundSuggestions', $source);
         self::assertStringContainsString('getCompoundSuggestionsForAutocomplete', $source);
         self::assertStringContainsString('{{%searchmanager_search_compounds}}', $source);
-        self::assertStringContainsString("->groupBy(['suggestion'])", $source);
+        self::assertStringContainsString("->groupBy(['normalizedSuggestion', 'suggestion'])", $source);
         self::assertStringContainsString("'normalizedSuggestion'", $source);
     }
 

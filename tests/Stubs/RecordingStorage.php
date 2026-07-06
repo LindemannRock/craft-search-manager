@@ -74,6 +74,9 @@ final class RecordingStorage implements StorageInterface
     /** @var list<array{normalizedPrefix: string, siteId: int|null, language: string|null, limit: int}> */
     public array $getCompoundSuggestionsForAutocompleteCalls = [];
 
+    /** @var array<string, string> Display suggestion => normalized suggestion. */
+    private array $compoundNormalizedBySuggestion = [];
+
     /** @var int Times getElementsByIds() was called. */
     public int $getElementsByIdsCalls = 0;
 
@@ -287,11 +290,27 @@ final class RecordingStorage implements StorageInterface
             'limit' => $limit,
         ];
 
-        $suggestions = [];
+        $suggestionsByNormalized = [];
         foreach ($this->compoundSuggestions as $suggestion => $frequency) {
-            if (str_starts_with((string)$suggestion, $normalizedPrefix)) {
-                $suggestions[(string)$suggestion] = (int)$frequency;
+            $normalizedSuggestion = $this->compoundNormalizedBySuggestion[(string)$suggestion] ?? (string)$suggestion;
+            if (str_starts_with($normalizedSuggestion, $normalizedPrefix)) {
+                $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
+                    ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + (int)$frequency;
+                $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][(string)$suggestion] = (int)$frequency;
             }
+        }
+
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $data) {
+            $displayFrequencies = $data['displayFrequencies'] ?? [];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn (int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+            $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
         }
 
         arsort($suggestions);
@@ -352,6 +371,7 @@ final class RecordingStorage implements StorageInterface
         foreach ($suggestions as $suggestion) {
             $key = (string)$suggestion['suggestion'];
             $this->compoundSuggestions[$key] = ($this->compoundSuggestions[$key] ?? 0) + (int)$suggestion['frequency'];
+            $this->compoundNormalizedBySuggestion[$key] = (string)$suggestion['normalizedSuggestion'];
         }
     }
 

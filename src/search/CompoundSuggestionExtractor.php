@@ -29,7 +29,7 @@ class CompoundSuggestionExtractor
 
         preg_match_all('/[\p{L}\p{N}]+(?:\.[\p{L}\p{N}]+)+/u', $text, $matches);
 
-        $suggestions = [];
+        $suggestionsByNormalized = [];
         foreach ($matches[0] as $match) {
             $normalized = trim(TermNormalizer::normalize($match));
             if ($normalized === '' || mb_strlen($normalized) > self::MAX_LENGTH) {
@@ -46,16 +46,38 @@ class CompoundSuggestionExtractor
                 continue;
             }
 
-            if (!isset($suggestions[$normalized])) {
-                $suggestions[$normalized] = [
-                    'suggestion' => $normalized,
+            $display = mb_substr($match, 0, self::MAX_LENGTH);
+            if (!isset($suggestionsByNormalized[$normalized])) {
+                $suggestionsByNormalized[$normalized] = [
                     'normalizedSuggestion' => $normalized,
                     'tokenKey' => $tokenKey,
-                    'frequency' => 0,
+                    'totalFrequency' => 0,
+                    'displayFrequencies' => [],
                 ];
             }
 
-            $suggestions[$normalized]['frequency']++;
+            $suggestionsByNormalized[$normalized]['totalFrequency']++;
+            $suggestionsByNormalized[$normalized]['displayFrequencies'][$display] =
+                ($suggestionsByNormalized[$normalized]['displayFrequencies'][$display] ?? 0) + 1;
+        }
+
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $normalized => $data) {
+            $displayFrequencies = $data['displayFrequencies'];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+
+            $suggestions[$normalized] = [
+                'suggestion' => $topSuggestions[0],
+                'normalizedSuggestion' => $data['normalizedSuggestion'],
+                'tokenKey' => $data['tokenKey'],
+                'frequency' => $data['totalFrequency'],
+            ];
         }
 
         return $suggestions;

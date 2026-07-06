@@ -387,7 +387,8 @@ class RedisStorage implements StorageInterface
             return [];
         }
 
-        $terms = [];
+        $termKeys = [];
+        $termsByKey = [];
         foreach ($keys as $key) {
             // Key format: {prefix}term:TERM:SITE_ID
             $keyRemainder = str_starts_with($key, $this->keyPrefix)
@@ -402,16 +403,29 @@ class RedisStorage implements StorageInterface
                     continue;
                 }
 
-                // Get document count for this term
-                $count = $this->redis->hLen($key);
-
-                // Aggregate frequencies for all-sites
-                if (isset($terms[$term])) {
-                    $terms[$term] += $count;
-                } else {
-                    $terms[$term] = $count;
-                }
+                $termKeys[] = $key;
+                $termsByKey[] = $term;
             }
+        }
+
+        if (empty($termKeys)) {
+            return [];
+        }
+
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($termKeys as $key) {
+            $this->redis->hGetAll($key);
+        }
+        $termDocuments = $this->redis->exec();
+
+        $terms = [];
+        foreach ($termDocuments as $index => $documents) {
+            if (!is_array($documents)) {
+                continue;
+            }
+
+            $term = $termsByKey[$index];
+            $terms[$term] = ($terms[$term] ?? 0) + array_sum(array_map('intval', $documents));
         }
 
         arsort($terms);
@@ -884,7 +898,7 @@ class RedisStorage implements StorageInterface
             ? $this->keyPrefix . 'compound:' . $siteId . ':*'
             : $this->keyPrefix . 'compound:*';
 
-        $suggestions = [];
+        $suggestionsByNormalized = [];
         foreach ($this->scanKeys($pattern) as $key) {
             $encoded = $this->redis->get($key);
             if (!is_string($encoded) || $encoded === '') {
@@ -914,8 +928,25 @@ class RedisStorage implements StorageInterface
                     continue;
                 }
 
-                $suggestions[$suggestion] = ($suggestions[$suggestion] ?? 0) + (int)($row['frequency'] ?? 1);
+                $frequency = (int)($row['frequency'] ?? 1);
+                $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
+                    ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + $frequency;
+                $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] =
+                    ($suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] ?? 0) + $frequency;
             }
+        }
+
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $data) {
+            $displayFrequencies = $data['displayFrequencies'];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+            $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
         }
 
         arsort($suggestions);

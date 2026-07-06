@@ -849,13 +849,27 @@ class MySqlStorage implements StorageInterface
             ];
         }
 
-        $this->db->createCommand()
-            ->batchInsert(
+        foreach ($rows as $row) {
+            $this->db->createCommand()->upsert(
                 '{{%searchmanager_search_compounds}}',
-                ['indexHandle', 'siteId', 'elementId', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
-                $rows,
-            )
-            ->execute();
+                [
+                    'indexHandle' => $row[0],
+                    'siteId' => $row[1],
+                    'elementId' => $row[2],
+                    'suggestion' => $row[3],
+                    'normalizedSuggestion' => $row[4],
+                    'tokenKey' => $row[5],
+                    'frequency' => $row[6],
+                    'language' => $row[7],
+                ],
+                [
+                    'normalizedSuggestion' => $row[4],
+                    'tokenKey' => $row[5],
+                    'frequency' => $row[6],
+                    'language' => $row[7],
+                ],
+            )->execute();
+        }
     }
 
     /**
@@ -883,7 +897,7 @@ class MySqlStorage implements StorageInterface
         }
 
         $query = (new Query())
-            ->select(['suggestion', new Expression('SUM([[frequency]]) AS [[totalFrequency]]')])
+            ->select(['suggestion', 'normalizedSuggestion', new Expression('SUM([[frequency]]) AS [[displayFrequency]]')])
             ->from('{{%searchmanager_search_compounds}}')
             ->where(['indexHandle' => $this->indexHandle])
             ->andWhere(['like', 'normalizedSuggestion', self::escapeLikePrefix($normalizedPrefix) . '%', false]);
@@ -897,17 +911,35 @@ class MySqlStorage implements StorageInterface
         }
 
         $rows = $query
-            ->groupBy(['suggestion'])
-            ->orderBy(['totalFrequency' => SORT_DESC, 'suggestion' => SORT_ASC])
-            ->limit($limit)
+            ->groupBy(['normalizedSuggestion', 'suggestion'])
             ->all();
 
-        $suggestions = [];
+        $suggestionsByNormalized = [];
         foreach ($rows as $row) {
-            $suggestions[(string)$row['suggestion']] = (int)$row['totalFrequency'];
+            $normalizedSuggestion = (string)$row['normalizedSuggestion'];
+            $suggestion = (string)$row['suggestion'];
+            $frequency = (int)$row['displayFrequency'];
+            $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
+                ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + $frequency;
+            $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] = $frequency;
         }
 
-        return $suggestions;
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $data) {
+            $displayFrequencies = $data['displayFrequencies'];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+            $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
+        }
+
+        arsort($suggestions);
+
+        return array_slice($suggestions, 0, $limit, true);
     }
 
     // =========================================================================

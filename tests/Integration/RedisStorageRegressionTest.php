@@ -72,9 +72,21 @@ final class RedisStorageRegressionTest extends TestCase
 
         $terms = $storage->getTermsForAutocomplete(null, null, 10);
 
-        self::assertSame(['protein' => 1, 'product' => 1], $terms);
+        self::assertSame(['protein' => 3, 'product' => 2], $terms);
         self::assertSame(['sm:idx:test-index:term:*:*'], $redis->scanPatterns);
         self::assertSame(0, $redis->keysCalls);
+    }
+
+    public function testAutocompleteRanksBySummedFrequencyInsteadOfDocumentCount(): void
+    {
+        [$storage] = $this->makeStorage();
+        $storage->storeTermDocument('product', 1, 101, 1);
+        $storage->storeTermDocument('product', 1, 102, 1);
+        $storage->storeTermDocument('protein', 1, 103, 5);
+
+        $terms = $storage->getTermsForAutocomplete(1, null, 10, 'pro');
+
+        self::assertSame(['protein' => 5, 'product' => 2], $terms);
     }
 
     public function testAutocompletePrefixFilterUsesRedisScanPatternAndPreservesRanking(): void
@@ -84,12 +96,12 @@ final class RedisStorageRegressionTest extends TestCase
         $storage->storeTermDocument('product', 1, 102, 1);
         $storage->storeTermDocument('product', 1, 103, 1);
         $storage->storeTermDocument('protein', 1, 104, 1);
-        $storage->storeTermDocument('protein', 2, 204, 1);
+        $storage->storeTermDocument('protein', 2, 204, 3);
         $storage->storeTermDocument('profile', 1, 105, 1);
 
         $terms = $storage->getTermsForAutocomplete(null, null, 2, 'pro');
 
-        self::assertSame(['product' => 2, 'protein' => 2], $terms);
+        self::assertSame(['protein' => 4, 'product' => 2], $terms);
         self::assertSame(['sm:idx:test-index:term:pro*:*'], $redis->scanPatterns);
         self::assertSame(0, $redis->keysCalls);
     }
@@ -143,7 +155,7 @@ final class RedisStorageRegressionTest extends TestCase
 
         $terms = $storage->getTermsForAutocomplete(null, null, 10);
 
-        self::assertSame(['protein' => 1], $terms);
+        self::assertSame(['protein' => 3], $terms);
         self::assertSame(['sm:idx:term:term:*:*'], $redis->scanPatterns);
         self::assertArrayNotHasKey('term', $terms);
     }
