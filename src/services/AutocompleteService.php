@@ -372,7 +372,7 @@ class AutocompleteService extends Component
         } catch (\Throwable $e) {
             $this->logError('Failed to get all terms', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'exception' => get_class($e),
             ]);
         }
 

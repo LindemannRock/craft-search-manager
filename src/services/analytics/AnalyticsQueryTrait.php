@@ -25,6 +25,13 @@ trait AnalyticsQueryTrait
 {
     private static array $analyticsColumnCache = [];
 
+    private const OPTIONAL_ANALYTICS_COLUMNS = [
+        'botCategory' => true,
+        'botProducerName' => true,
+        'isSystemAgent' => true,
+        'trafficType' => true,
+    ];
+
     /**
      * Apply date range filter to query
      *
@@ -87,6 +94,10 @@ trait AnalyticsQueryTrait
      */
     protected function optionalAnalyticsColumn(string $column): string|Expression
     {
+        if (!isset(self::OPTIONAL_ANALYTICS_COLUMNS[$column])) {
+            throw new \InvalidArgumentException("Unsupported optional analytics column: {$column}");
+        }
+
         return $this->hasAnalyticsColumn($column) ? $column : new Expression("NULL AS {$column}");
     }
 

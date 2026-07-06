@@ -445,7 +445,7 @@ return [
     'Minimum similarity required for fuzzy matches (0 = very loose, 1 = exact only). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Learn more</a>' => 'ファジーマッチに必要な最小類似度（0 = 非常に緩い、1 = 完全一致のみ）。<a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">詳細はこちら</a>',
     'Maximum candidates to check for typo corrections. Higher = more accurate but slower.' => 'タイプミス修正のために確認する最大候補数。高い値 = より正確だが遅い。',
     'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.' => '推奨: 速度には 2-3、精度には 3-4。多い = 遅いがより正確。すべてのチェックを外すとファジーマッチングが無効になります。',
-    'Default: 0.50 (balanced). Lower (0.25-0.35) = more typo tolerance but false positives, higher (0.60-0.75) = strict matching.' => 'デフォルト: 0.50（バランス）。低い（0.25-0.35）= タイプミス許容度が高いが誤検出あり、高い（0.60-0.75）= 厳密なマッチング。',
+    'Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.' => 'デフォルト: 0.25（タイプミス許容）。低い値 = タイプミス許容度が高いが誤検出も増える、高い値 = より厳密なマッチング。',
     'Default: 100. Increase for better typo tolerance, decrease for faster search performance.' => 'デフォルト: 100。タイプミス許容度を向上させるには増加、検索パフォーマンスを向上させるには減少。',
     'May be slower but finds suggestions even with typos' => '遅くなる可能性がありますが、タイプミスがあっても候補を見つけます',
     '1-gram - Best for single characters' => '1-gram — 単一文字に最適',

@@ -445,7 +445,7 @@ return [
     'Minimum similarity required for fuzzy matches (0 = very loose, 1 = exact only). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Learn more</a>' => 'الحد الأدنى من التشابه المطلوب للمطابقات التقريبية (0 = فضفاض جداً، 1 = دقيق فقط). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">اعرف المزيد</a>',
     'Maximum candidates to check for typo corrections. Higher = more accurate but slower.' => 'الحد الأقصى للمرشحين للتحقق من تصحيحات الأخطاء المطبعية. أعلى = أكثر دقة ولكن أبطأ.',
     'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.' => 'موصى به: 2-3 للسرعة، و3-4 للدقة. المزيد = أبطأ ولكن أكثر دقة. قم بإلغاء تحديد الكل لتعطيل المطابقة التقريبية.',
-    'Default: 0.50 (balanced). Lower (0.25-0.35) = more typo tolerance but false positives, higher (0.60-0.75) = strict matching.' => 'الافتراضي: 0.50 (متوازن). أقل (0.25-0.35) = تسامح أكبر مع الأخطاء المطبعية ولكن إيجابيات خاطئة، أعلى (0.60-0.75) = مطابقة صارمة.',
+    'Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.' => 'الافتراضي: 0.25 (متسامح مع الأخطاء المطبعية). أقل = تسامح أكبر مع الأخطاء المطبعية ولكن مزيد من الإيجابيات الخاطئة؛ أعلى = مطابقة أكثر صرامة.',
     'Default: 100. Increase for better typo tolerance, decrease for faster search performance.' => 'الافتراضي: 100. قم بالزيادة لتسامح أفضل مع الأخطاء المطبعية، وقم بالتقليل لأداء بحث أسرع.',
     'May be slower but finds suggestions even with typos' => 'قد يكون أبطأ ولكنه يجد اقتراحات حتى مع الأخطاء المطبعية',
     '1-gram - Best for single characters' => '1-gram — الأفضل للأحرف الفردية',

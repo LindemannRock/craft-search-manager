@@ -780,8 +780,7 @@ class BackendService extends Component
         }
 
         $allHits = [];
-        $seenElementIds = [];
-        $total = 0;
+        $hitIndexesByElementId = [];
 
         foreach ($queries as $searchQuery) {
             $queryResults = $backend->search($indexName, $searchQuery, $options);
@@ -790,20 +789,21 @@ class BackendService extends Component
                 foreach ($queryResults['hits'] as $hit) {
                     $elementId = SearchHitIdentityHelper::elementId($hit);
 
-                    // Avoid duplicates - keep highest score
-                    if ($elementId !== null && !isset($seenElementIds[$elementId])) {
-                        $seenElementIds[$elementId] = true;
-                        $allHits[] = $hit;
-                    } elseif ($elementId !== null && isset($seenElementIds[$elementId])) {
-                        // Find existing hit and update score if higher
-                        foreach ($allHits as &$existingHit) {
-                            if (SearchHitIdentityHelper::elementId($existingHit) === $elementId) {
-                                $existingHit['score'] = max($existingHit['score'] ?? 0, $hit['score'] ?? 0);
-                                break;
-                            }
-                        }
-                        unset($existingHit);
+                    if ($elementId === null) {
+                        continue;
                     }
+
+                    $identity = (string)$elementId;
+
+                    // Avoid duplicates - keep highest score
+                    if (!isset($hitIndexesByElementId[$identity])) {
+                        $hitIndexesByElementId[$identity] = count($allHits);
+                        $allHits[] = $hit;
+                        continue;
+                    }
+
+                    $existingIndex = $hitIndexesByElementId[$identity];
+                    $allHits[$existingIndex]['score'] = max($allHits[$existingIndex]['score'] ?? 0, $hit['score'] ?? 0);
                 }
             }
         }

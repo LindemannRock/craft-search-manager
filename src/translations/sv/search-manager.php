@@ -445,7 +445,7 @@ return [
     'Minimum similarity required for fuzzy matches (0 = very loose, 1 = exact only). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Learn more</a>' => 'Minsta likhet som krävs för ungefärliga matchningar (0 = mycket löst, 1 = enbart exakt). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Läs mer</a>',
     'Maximum candidates to check for typo corrections. Higher = more accurate but slower.' => 'Maximalt antal kandidater att kontrollera för stavfelskorrigeringar. Högre = mer exakt men långsammare.',
     'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.' => 'Rekommenderat: 2-3 för hastighet, 3-4 för precision. Fler = långsammare men mer exakt. Avmarkera alla för att inaktivera ungefärlig matchning.',
-    'Default: 0.50 (balanced). Lower (0.25-0.35) = more typo tolerance but false positives, higher (0.60-0.75) = strict matching.' => 'Standard: 0.50 (balanserat). Lägre (0.25-0.35) = mer stavfelstolerans men falska positiva, högre (0.60-0.75) = strikt matchning.',
+    'Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.' => 'Standard: 0.25 (stavfelstolerant). Lägre = mer stavfelstolerans men fler falska positiva; högre = striktare matchning.',
     'Default: 100. Increase for better typo tolerance, decrease for faster search performance.' => 'Standard: 100. Öka för bättre stavfelstolerans, minska för snabbare sökprestanda.',
     'May be slower but finds suggestions even with typos' => 'Kan vara långsammare men hittar förslag även med stavfel',
     '1-gram - Best for single characters' => '1-gram — Bäst för enstaka tecken',

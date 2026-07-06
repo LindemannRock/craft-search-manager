@@ -1220,12 +1220,9 @@ class SearchIndex extends Model
             $lines[] = "    'name' => '{$configData['name']}',";
         }
 
-        // Element type - shorten the class name
+        // Element type
         if (isset($configData['elementType'])) {
-            $elementType = $configData['elementType'];
-            // Show as ::class syntax for readability
-            $shortName = (new \ReflectionClass($elementType))->getShortName();
-            $lines[] = "    'elementType' => \\craft\\elements\\{$shortName}::class,";
+            $lines[] = "    'elementType' => " . self::formatClassConfigValue((string)$configData['elementType']) . ',';
         }
 
         // Site ID
@@ -1278,6 +1275,15 @@ class SearchIndex extends Model
         $lines[] = "],";
 
         return implode("\n", $lines);
+    }
+
+    private static function formatClassConfigValue(string $className): string
+    {
+        if (class_exists($className)) {
+            return '\\' . ltrim($className, '\\') . '::class';
+        }
+
+        return var_export($className, true);
     }
 
     /**

@@ -12,6 +12,7 @@ use craft\base\Component;
 use craft\db\Query;
 use lindemannrock\base\traits\GeoLookupTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\AnalyticsGeoConfigHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\analytics\AnalyticsBreakdownService;
 use lindemannrock\searchmanager\services\analytics\AnalyticsExportService;
@@ -396,12 +397,6 @@ class AnalyticsService extends Component
      */
     protected function getGeoConfig(): array
     {
-        $settings = \lindemannrock\searchmanager\SearchManager::$plugin->getSettings();
-
-        return [
-            'provider' => $settings->geoProvider ?? 'ip-api.com',
-            'apiKey' => $settings->geoApiKey ?? null,
-            'logCategory' => SearchManager::$plugin->id,
-        ];
+        return AnalyticsGeoConfigHelper::config();
     }
 }

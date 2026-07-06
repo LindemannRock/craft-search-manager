@@ -445,7 +445,7 @@ return [
     'Minimum similarity required for fuzzy matches (0 = very loose, 1 = exact only). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Learn more</a>' => 'Minimum similarity required for fuzzy matches (0 = very loose, 1 = exact only). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Learn more</a>',
     'Maximum candidates to check for typo corrections. Higher = more accurate but slower.' => 'Maximum candidates to check for typo corrections. Higher = more accurate but slower.',
     'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.' => 'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.',
-    'Default: 0.50 (balanced). Lower (0.25-0.35) = more typo tolerance but false positives, higher (0.60-0.75) = strict matching.' => 'Default: 0.50 (balanced). Lower (0.25-0.35) = more typo tolerance but false positives, higher (0.60-0.75) = strict matching.',
+    'Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.' => 'Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.',
     'Default: 100. Increase for better typo tolerance, decrease for faster search performance.' => 'Default: 100. Increase for better typo tolerance, decrease for faster search performance.',
     'May be slower but finds suggestions even with typos' => 'May be slower but finds suggestions even with typos',
     '1-gram - Best for single characters' => '1-gram - Best for single characters',

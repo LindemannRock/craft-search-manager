@@ -341,13 +341,11 @@ class SearchEngine
             }
 
             $docScores = [];
-            $allDocIds = [];
             $hasScoreComponent = false;
 
             // Process phrases (exact matches)
             if (!empty($parsed->phrases)) {
                 $docScores = $this->searchPhrases($parsed->phrases, $siteId, $totalDocs, $avgDocLength);
-                $allDocIds = array_keys($docScores);
                 $hasScoreComponent = true;
             }
 
@@ -358,7 +356,6 @@ class SearchEngine
                 $docScores = $hasScoreComponent
                     ? $this->mergeScores($docScores, $termScores, $parsed->operator)
                     : $termScores;
-                $allDocIds = array_unique(array_merge($allDocIds, array_keys($termScores)));
                 $hasScoreComponent = true;
             }
 
@@ -368,7 +365,6 @@ class SearchEngine
                 $docScores = $hasScoreComponent
                     ? $this->mergeScores($docScores, $wildcardScores, $parsed->operator)
                     : $wildcardScores;
-                $allDocIds = array_unique(array_merge($allDocIds, array_keys($wildcardScores)));
                 $hasScoreComponent = true;
             }
 

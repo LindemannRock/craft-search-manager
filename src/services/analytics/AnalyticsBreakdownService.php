@@ -14,6 +14,7 @@ use craft\helpers\App;
 use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\GeoHelper;
 use lindemannrock\base\traits\GeoLookupTrait;
+use lindemannrock\searchmanager\helpers\AnalyticsGeoConfigHelper;
 use lindemannrock\searchmanager\SearchManager;
 use yii\db\Expression;
 
@@ -556,13 +557,7 @@ class AnalyticsBreakdownService
      */
     protected function getGeoConfig(): array
     {
-        $settings = SearchManager::$plugin->getSettings();
-
-        return [
-            'provider' => $settings->geoProvider ?? 'ip-api.com',
-            'apiKey' => $settings->geoApiKey ?? null,
-            'logCategory' => SearchManager::$plugin->id,
-        ];
+        return AnalyticsGeoConfigHelper::config();
     }
 
     /**

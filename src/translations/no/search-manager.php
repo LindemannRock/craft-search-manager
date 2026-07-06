@@ -445,7 +445,7 @@ return [
     'Minimum similarity required for fuzzy matches (0 = very loose, 1 = exact only). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Learn more</a>' => 'Minimum likhet som kreves for omtrentlige treff (0 = veldig løst, 1 = kun eksakt). <a href="https://en.wikipedia.org/wiki/Levenshtein_distance" target="_blank" rel="noopener">Les mer</a>',
     'Maximum candidates to check for typo corrections. Higher = more accurate but slower.' => 'Maksimalt antall kandidater å sjekke for skrivefeilsrettinger. Høyere = mer nøyaktig men tregere.',
     'Recommended: 2-3 for speed, 3-4 for precision. More = slower but more accurate. Uncheck all to disable fuzzy matching.' => 'Anbefalt: 2-3 for hastighet, 3-4 for presisjon. Flere = tregere men mer nøyaktig. Fjern alle markeringer for å deaktivere omtrentlig matching.',
-    'Default: 0.50 (balanced). Lower (0.25-0.35) = more typo tolerance but false positives, higher (0.60-0.75) = strict matching.' => 'Standard: 0.50 (balansert). Lavere (0.25-0.35) = mer skrivefeilstoleranse men falske positiver, høyere (0.60-0.75) = streng matching.',
+    'Default: 0.25 (typo-tolerant). Lower = more typo tolerance but more false positives; higher = stricter matching.' => 'Standard: 0.25 (skrivefeiltolerant). Lavere = mer skrivefeiltoleranse men flere falske positiver; høyere = strengere matching.',
     'Default: 100. Increase for better typo tolerance, decrease for faster search performance.' => 'Standard: 100. Øk for bedre skrivefeilstoleranse, reduser for raskere søkeytelse.',
     'May be slower but finds suggestions even with typos' => 'Kan være tregere men finner forslag selv med skrivefeil',
     '1-gram - Best for single characters' => '1-gram — Best for enkle tegn',
