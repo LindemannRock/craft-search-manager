@@ -12,6 +12,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use craft\helpers\StringHelper;
+use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\FileStorage;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -94,6 +95,71 @@ final class FileStorageRegressionTest extends TestCase
         self::assertArrayNotHasKey('foo_profile', $terms);
         self::assertArrayNotHasKey('foo_product_1', $terms);
         self::assertArrayNotHasKey('foo_protein_2', $terms);
+    }
+
+    public function testUnicodeTermsUseDistinctSafeFilenamesAndSearchIndependently(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+
+        self::assertTrue($engine->indexDocument(1, 101, 'بيت', 'بيت عربي', 'ar'));
+        self::assertTrue($engine->indexDocument(1, 102, 'نور', 'نور عربي', 'ar'));
+
+        self::assertSame(['1:101' => 2], $storage->getTermDocuments('بيت', 1));
+        self::assertSame(['1:102' => 2], $storage->getTermDocuments('نور', 1));
+        self::assertSame([101], array_keys($engine->search('بيت', 1)));
+        self::assertSame([102], array_keys($engine->search('نور', 1)));
+
+        $termFiles = glob($this->basePath . '/file-storage-regression/terms/*.dat');
+        self::assertIsArray($termFiles);
+        self::assertCount(3, $termFiles);
+        self::assertCount(3, array_unique(array_map('basename', $termFiles)));
+    }
+
+    public function testUnicodeAutocompleteAndPrefixScansRecoverOriginalTerms(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeTermDocument('東京', 1, 101, 1);
+        $storage->storeTermDocument('東京', 2, 201, 1);
+        $storage->storeTermDocument('京都', 1, 102, 1);
+        $storage->storeTermDocument('Москва', 1, 103, 1);
+
+        self::assertSame(['東京' => 2], $storage->getTermsForAutocomplete(null, null, 10, '東'));
+        self::assertSame(['京都'], $storage->getTermsByPrefix('京', 1));
+        self::assertArrayHasKey('Москва', $storage->getTermsForAutocomplete(1, null, 10, 'Мос'));
+    }
+
+    public function testUnicodeNgramScansRecoverOriginalTerms(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeTermNgrams('東京', ['東京'], 1);
+        $storage->storeTermNgrams('京都', ['京都'], 1);
+
+        self::assertSame(['東京'], array_keys($storage->getTermsByNgramSimilarity(['東京'], 1, 1.0)));
+        self::assertSame(['京都'], array_keys($storage->getTermsByNgramSimilarity(['京都'], 1, 1.0)));
+    }
+
+    public function testNgramScanDoesNotStripNumericSuffixFromEncodedFilenameSegment(): void
+    {
+        $storage = $this->makeStorage();
+        $encodedTerm = '__utf8_sha256_fixture_3';
+        $originalTerm = '東京';
+        $indexPath = $this->basePath . '/file-storage-regression';
+
+        mkdir($indexPath . '/ngrams/site1', 0755, true);
+        file_put_contents($indexPath . '/keys/' . $encodedTerm . '.dat', json_encode([
+            'value' => $originalTerm,
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+        file_put_contents($indexPath . '/ngrams/site1/' . $encodedTerm . '.dat', json_encode([
+            '東京',
+        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
+
+        self::assertSame(
+            [$originalTerm],
+            array_keys($storage->getTermsByNgramSimilarity(['東京'], 1, 1.0)),
+        );
     }
 
     public function testCompoundSuggestionsAggregateByPrefixAndDeletePerDocumentRows(): void

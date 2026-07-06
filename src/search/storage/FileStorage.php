@@ -26,6 +26,10 @@ class FileStorage implements StorageInterface
 {
     use LoggingTrait;
 
+    private const ENCODED_FILENAME_PREFIX = '__utf8_';
+    private const HASHED_FILENAME_PREFIX = '__utf8_sha256_';
+    private const MAX_FILENAME_SEGMENT_LENGTH = 200;
+
     /**
      * @var string Index handle
      */
@@ -84,6 +88,7 @@ class FileStorage implements StorageInterface
             $this->basePath . '/meta',
             $this->basePath . '/elements',
             $this->basePath . '/compounds',
+            $this->basePath . '/keys',
         ];
 
         foreach ($dirs as $dir) {
@@ -252,6 +257,7 @@ class FileStorage implements StorageInterface
      */
     public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
+        $this->rememberFilenameKey($term);
         $termPath = $this->getTermPath($term, $siteId);
         $data = $this->readFile($termPath) ?: [];
 
@@ -324,15 +330,13 @@ class FileStorage implements StorageInterface
             return [];
         }
 
-        $prefixPattern = $prefix !== null && $prefix !== '' ? $this->sanitizeFilename($prefix) . '*' : '*';
-
         // File storage uses: term_siteId.dat format (e.g., test_1.dat)
         if ($siteId !== null) {
             // Specific site
-            $files = glob($termsPath . '/' . $prefixPattern . '_' . $siteId . '.dat');
+            $files = glob($termsPath . '/*_' . $siteId . '.dat');
         } else {
             // All sites - get all .dat files
-            $files = glob($termsPath . '/' . $prefixPattern . '.dat');
+            $files = glob($termsPath . '/*.dat');
         }
 
         if (!is_array($files)) {
@@ -341,7 +345,14 @@ class FileStorage implements StorageInterface
 
         $terms = [];
         foreach ($files as $file) {
-            $term = $this->extractTermFromFilename(basename($file), $siteId);
+            $term = $this->extractTermFromFilename(
+                basename($file),
+                $siteId,
+                $siteId === null,
+            );
+            if ($prefix !== null && $prefix !== '' && !str_starts_with($term, $prefix)) {
+                continue;
+            }
 
             // Read serialized data
             $data = $this->readFile($file);
@@ -578,6 +589,8 @@ class FileStorage implements StorageInterface
      */
     public function storeTermNgrams(string $term, array $ngrams, int $siteId): void
     {
+        $this->rememberFilenameKey($term);
+
         // Store n-grams in site-specific directory
         $ngramDir = $this->basePath . '/ngrams/site' . $siteId;
         if (!is_dir($ngramDir)) {
@@ -1001,6 +1014,18 @@ class FileStorage implements StorageInterface
         return $result !== false;
     }
 
+    private function rememberFilenameKey(string $filename): void
+    {
+        $safe = $this->sanitizeFilename($filename);
+        if ($safe === $filename) {
+            return;
+        }
+
+        $this->writeFile($this->basePath . '/keys/' . $safe . '.dat', [
+            'value' => $filename,
+        ]);
+    }
+
     /**
      * Update a JSON file while holding an exclusive lock across read/modify/write.
      *
@@ -1042,38 +1067,53 @@ class FileStorage implements StorageInterface
     }
 
     /**
-     * Sanitize filename (make safe for filesystem)
+     * Encode a storage key as a safe deterministic filename segment.
+     *
+     * Simple ASCII keys keep their historical path for compatibility. Any key
+     * that needs escaping uses a reserved reversible UTF-8 base64url form, or
+     * a hashed sidecar entry for very long keys, so file scans can recover the
+     * exact original term without transliteration.
      *
      * @param string $filename Filename
      * @return string Sanitized filename
      */
     private function sanitizeFilename(string $filename): string
     {
-        // Replace unsafe characters with underscore
-        $safe = preg_replace('/[^a-zA-Z0-9_-]/', '_', $filename);
-
-        // Limit length
-        if (strlen($safe) > 200) {
-            $safe = substr($safe, 0, 200) . '_' . md5($filename);
+        if (
+            preg_match('/\A[A-Za-z0-9_-]+\z/', $filename) === 1
+            && !str_starts_with($filename, self::ENCODED_FILENAME_PREFIX)
+            && strlen($filename) <= self::MAX_FILENAME_SEGMENT_LENGTH
+        ) {
+            return $filename;
         }
 
-        return $safe;
+        $encoded = self::ENCODED_FILENAME_PREFIX . rtrim(strtr(base64_encode($filename), '+/', '-_'), '=');
+        if (strlen($encoded) <= self::MAX_FILENAME_SEGMENT_LENGTH) {
+            return $encoded;
+        }
+
+        return self::HASHED_FILENAME_PREFIX . hash('sha256', $filename);
     }
 
     /**
      * Extract term from sanitized filename.
      *
-     * The filename is already the persisted searchable term after filename
-     * sanitization. Preserve literal underscores so underscore-containing terms
+     * Simple ASCII filenames are already the persisted searchable term. Encoded
+     * filenames use the reversible UTF-8 base64url form from
+     * {@see sanitizeFilename()}, with sidecar metadata for very long hashed
+     * keys. Preserve literal underscores so underscore-containing terms
      * round-trip deterministically. For term-document files, strip the site
-     * suffix added by {@see getTermPath()}.
+     * suffix added by {@see getTermPath()} before decoding. All-sites term
+     * scans can explicitly request trailing numeric site suffix removal; n-gram
+     * scans must not, because encoded filename segments can contain underscores.
      *
      * @param string $filename Filename (e.g., "term_name.dat" or "term_name_1.dat")
      * @param int|null $siteId Site ID suffix to remove for term-document files.
-     *     When null, strips any trailing numeric site suffix.
+     * @param bool $stripNumericSiteSuffix Whether to strip a trailing _{siteId}
+     *     suffix when scanning term files across all sites.
      * @return string Persisted term
      */
-    private function extractTermFromFilename(string $filename, ?int $siteId = null): string
+    private function extractTermFromFilename(string $filename, ?int $siteId = null, bool $stripNumericSiteSuffix = false): string
     {
         // Remove .dat extension
         $term = str_replace('.dat', '', $filename);
@@ -1083,8 +1123,28 @@ class FileStorage implements StorageInterface
             if (str_ends_with($term, $suffix)) {
                 $term = substr($term, 0, -strlen($suffix));
             }
-        } elseif (preg_match('/^(.*)_\d+$/', $term, $matches) === 1) {
+        } elseif ($stripNumericSiteSuffix && preg_match('/^(.*)_\d+$/', $term, $matches) === 1) {
             $term = $matches[1];
+        }
+
+        if (str_starts_with($term, self::HASHED_FILENAME_PREFIX)) {
+            $metadata = $this->readFile($this->basePath . '/keys/' . $term . '.dat');
+            if (is_array($metadata) && isset($metadata['value']) && is_string($metadata['value'])) {
+                return $metadata['value'];
+            }
+
+            return $term;
+        }
+
+        if (str_starts_with($term, self::ENCODED_FILENAME_PREFIX)) {
+            $encoded = substr($term, strlen(self::ENCODED_FILENAME_PREFIX));
+            if ($encoded !== '' && preg_match('/\A[A-Za-z0-9_-]+\z/', $encoded) === 1) {
+                $padding = str_repeat('=', (4 - strlen($encoded) % 4) % 4);
+                $decoded = base64_decode(strtr($encoded . $padding, '-_', '+/'), true);
+                if (is_string($decoded)) {
+                    return $decoded;
+                }
+            }
         }
 
         return $term;
