@@ -642,6 +642,10 @@ class SearchIndex extends Model
             return false;
         }
 
+        $db = Craft::$app->getDb();
+        $originalId = $this->id;
+        $transaction = $db->beginTransaction();
+
         try {
             $attributes = [
                 'name' => $this->name,
@@ -665,12 +669,13 @@ class SearchIndex extends Model
 
             if ($this->id) {
                 // Update existing
-                Craft::$app->getDb()
+                $db
                     ->createCommand()
                     ->update('{{%searchmanager_indices}}', $attributes, ['id' => $this->id])
                     ->execute();
 
                 $this->saveIndexSites($this->getSiteIds());
+                $transaction->commit();
                 self::clearCache();
                 return true;
             } else {
@@ -678,18 +683,24 @@ class SearchIndex extends Model
                 $attributes['dateCreated'] = Db::prepareDateForDb(new \DateTime());
                 $attributes['uid'] = StringHelper::UUID();
 
-                Craft::$app->getDb()
+                $db
                     ->createCommand()
                     ->insert('{{%searchmanager_indices}}', $attributes)
                     ->execute();
 
-                $this->id = (int)Craft::$app->getDb()->getLastInsertID();
+                $this->id = (int)$db->getLastInsertID();
 
                 $this->saveIndexSites($this->getSiteIds());
+                $transaction->commit();
                 self::clearCache();
                 return true;
             }
         } catch (\Throwable $e) {
+            if ($transaction->getIsActive()) {
+                $transaction->rollBack();
+            }
+            $this->id = $originalId;
+
             $this->logError('Failed to save index', [
                 'handle' => $this->handle,
                 'error' => $e->getMessage(),
@@ -1467,28 +1478,20 @@ class SearchIndex extends Model
             return;
         }
 
-        try {
-            $db = Craft::$app->getDb();
-            $this->clearIndexSites();
+        $db = Craft::$app->getDb();
+        $this->clearIndexSites();
 
-            if ($siteIds === null) {
-                return;
-            }
+        if ($siteIds === null) {
+            return;
+        }
 
-            foreach ($siteIds as $siteId) {
-                $db->createCommand()
-                    ->insert('{{%searchmanager_index_sites}}', [
-                        'indexId' => $this->id,
-                        'siteId' => (int)$siteId,
-                    ])
-                    ->execute();
-            }
-        } catch (\Throwable $e) {
-            $this->logError('Failed to save index sites', [
-                'id' => $this->id,
-                'handle' => $this->handle,
-                'error' => $e->getMessage(),
-            ]);
+        foreach ($siteIds as $siteId) {
+            $db->createCommand()
+                ->insert('{{%searchmanager_index_sites}}', [
+                    'indexId' => $this->id,
+                    'siteId' => (int)$siteId,
+                ])
+                ->execute();
         }
     }
 
@@ -1501,18 +1504,10 @@ class SearchIndex extends Model
             return;
         }
 
-        try {
-            Craft::$app->getDb()
-                ->createCommand()
-                ->delete('{{%searchmanager_index_sites}}', ['indexId' => $this->id])
-                ->execute();
-        } catch (\Throwable $e) {
-            $this->logError('Failed to clear index sites', [
-                'id' => $this->id,
-                'handle' => $this->handle,
-                'error' => $e->getMessage(),
-            ]);
-        }
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchmanager_index_sites}}', ['indexId' => $this->id])
+            ->execute();
     }
 
     /**

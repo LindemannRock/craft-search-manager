@@ -7,6 +7,7 @@ use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use craft\queue\Queue;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -326,22 +327,46 @@ class PendingSyncRepository extends Component
 
     public function scheduleBatchJob(bool $force = false): void
     {
-        if (!$force) {
-            $existingJob = (new Query())
-                ->from('{{%queue}}')
-                ->where(['like', 'job', 'BatchSyncJob'])
-                ->andWhere(['like', 'job', 'searchmanager'])
-                ->andWhere(['fail' => false])
-                ->andWhere(['timeUpdated' => null])
-                ->exists();
+        $queue = Craft::$app->queue;
 
-            if ($existingJob) {
-                return;
-            }
+        if (!$force && $this->hasExistingDbQueueBatchJob($queue)) {
+            return;
         }
 
         $delay = max(0, SearchManager::$plugin->getSettings()->batchFlushInterval);
-        Craft::$app->queue->delay($delay)->push(new BatchSyncJob());
+        $queue->delay($delay)->push(new BatchSyncJob());
+    }
+
+    private function hasExistingDbQueueBatchJob(mixed $queue): bool
+    {
+        if (!$queue instanceof Queue) {
+            return false;
+        }
+
+        $schema = Craft::$app->getDb()->getSchema();
+        $tableSchema = $schema->getTableSchema($queue->tableName);
+        if ($tableSchema === null) {
+            return false;
+        }
+
+        foreach (['job', 'fail', 'timeUpdated'] as $column) {
+            if (!isset($tableSchema->columns[$column])) {
+                $this->logWarning('Skipping BatchSyncJob queue dedupe because the DB queue schema is not compatible', [
+                    'queue' => get_class($queue),
+                    'table' => $queue->tableName,
+                    'missing_column' => $column,
+                ]);
+                return false;
+            }
+        }
+
+        return (new Query())
+            ->from($queue->tableName)
+            ->where(['like', 'job', 'BatchSyncJob'])
+            ->andWhere(['like', 'job', 'searchmanager'])
+            ->andWhere(['fail' => false])
+            ->andWhere(['timeUpdated' => null])
+            ->exists();
     }
 
     /**

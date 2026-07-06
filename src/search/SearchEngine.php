@@ -147,6 +147,17 @@ class SearchEngine
      */
     public function indexDocument(int $siteId, int $elementId, string $title, string $content, ?string $language = null): bool
     {
+        $lockName = $this->indexDocumentLockName($siteId, $elementId);
+        $lockAcquired = \Craft::$app->getMutex()->acquire($lockName, 30);
+        if (!$lockAcquired) {
+            $this->logError('Failed to acquire indexing lock', [
+                'index' => $this->indexHandle,
+                'site_id' => $siteId,
+                'element_id' => $elementId,
+            ]);
+            return false;
+        }
+
         try {
             $startTime = microtime(true);
 
@@ -245,7 +256,14 @@ class SearchEngine
                 'error' => $e->getMessage(),
             ]);
             return false;
+        } finally {
+            \Craft::$app->getMutex()->release($lockName);
         }
+    }
+
+    private function indexDocumentLockName(int $siteId, int $elementId): string
+    {
+        return sprintf('search-manager:index-document:%s:%d:%d', $this->indexHandle, $siteId, $elementId);
     }
 
     /**
