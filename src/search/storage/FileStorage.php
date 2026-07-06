@@ -83,6 +83,7 @@ class FileStorage implements StorageInterface
             $this->basePath . '/ngrams',
             $this->basePath . '/meta',
             $this->basePath . '/elements',
+            $this->basePath . '/compounds',
         ];
 
         foreach ($dirs as $dir) {
@@ -201,8 +202,9 @@ class FileStorage implements StorageInterface
 
         // Delete element metadata file
         $this->deleteElement($siteId, $elementId);
+        $this->deleteCompoundSuggestions($siteId, $elementId);
 
-        $this->logDebug('Deleted document, title, and element files', [
+        $this->logDebug('Deleted document, title, element, and compound files', [
             'site_id' => $siteId,
             'element_id' => $elementId,
         ]);
@@ -674,6 +676,94 @@ class FileStorage implements StorageInterface
         return $matchingTerms;
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
+    {
+        if (empty($suggestions)) {
+            return;
+        }
+
+        $rows = [];
+        foreach ($suggestions as $suggestion) {
+            $rows[] = [
+                'suggestion' => (string)$suggestion['suggestion'],
+                'normalizedSuggestion' => (string)$suggestion['normalizedSuggestion'],
+                'tokenKey' => (string)$suggestion['tokenKey'],
+                'frequency' => (int)$suggestion['frequency'],
+                'language' => $language,
+            ];
+        }
+
+        $this->writeFile($this->getCompoundPath($siteId, $elementId), $rows);
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function deleteCompoundSuggestions(int $siteId, int $elementId): void
+    {
+        @unlink($this->getCompoundPath($siteId, $elementId));
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getCompoundSuggestionsForAutocomplete(string $normalizedPrefix, ?int $siteId, ?string $language, int $limit = 10): array
+    {
+        if ($normalizedPrefix === '') {
+            return [];
+        }
+
+        $compoundDir = $this->basePath . '/compounds';
+        if (!is_dir($compoundDir)) {
+            return [];
+        }
+
+        $pattern = $siteId !== null
+            ? $compoundDir . '/' . $siteId . '_*.dat'
+            : $compoundDir . '/*.dat';
+
+        $files = glob($pattern);
+        if (!is_array($files)) {
+            return [];
+        }
+
+        $suggestions = [];
+        foreach ($files as $file) {
+            $rows = $this->readFile($file);
+            if (!is_array($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                if ($language !== null && ($row['language'] ?? null) !== $language) {
+                    continue;
+                }
+
+                $normalizedSuggestion = (string)($row['normalizedSuggestion'] ?? '');
+                if (!str_starts_with($normalizedSuggestion, $normalizedPrefix)) {
+                    continue;
+                }
+
+                $suggestion = (string)($row['suggestion'] ?? '');
+                if ($suggestion === '') {
+                    continue;
+                }
+
+                $suggestions[$suggestion] = ($suggestions[$suggestion] ?? 0) + (int)($row['frequency'] ?? 1);
+            }
+        }
+
+        arsort($suggestions);
+
+        return array_slice($suggestions, 0, $limit, true);
+    }
+
     // =========================================================================
     // METADATA OPERATIONS
     // =========================================================================
@@ -746,6 +836,7 @@ class FileStorage implements StorageInterface
             $this->basePath . '/titles/' . $siteId . '_*.dat',
             $this->basePath . '/meta/' . $siteId . '_*.dat',
             $this->basePath . '/elements/' . $siteId . '_*.dat',
+            $this->basePath . '/compounds/' . $siteId . '_*.dat',
         ];
 
         foreach ($patterns as $pattern) {
@@ -839,6 +930,11 @@ class FileStorage implements StorageInterface
     private function getElementPath(int $siteId, int $elementId): string
     {
         return $this->basePath . '/elements/' . $siteId . '_' . $elementId . '.dat';
+    }
+
+    private function getCompoundPath(int $siteId, int $elementId): string
+    {
+        return $this->basePath . '/compounds/' . $siteId . '_' . $elementId . '.dat';
     }
 
     /**

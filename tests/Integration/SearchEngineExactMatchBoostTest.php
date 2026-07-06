@@ -34,6 +34,42 @@ final class SearchEngineExactMatchBoostTest extends TestCase
         self::assertEqualsWithDelta($unboosted[3], $boosted[3], 0.000001, 'reversed all-term match is not exact-boosted');
     }
 
+    public function testFilenameLikeQuerySurvivesSparseStopWordFilteredContentTokens(): void
+    {
+        $engine = new SearchEngine(
+            new RecordingStorage(
+                termDocs: [
+                    'redirect' => ['1:1' => 1, '1:2' => 1],
+                    'twig' => ['1:1' => 1, '1:3' => 1],
+                ],
+                titleByElement: [],
+                docLengths: ['1:1' => 3, '1:2' => 1, '1:3' => 1],
+                totalDocs: 3,
+                avgDocLength: 2.0,
+                elementsById: [
+                    1 => [
+                        'title' => 'Custom templates',
+                        'documentData' => ['content' => 'redirect a twig'],
+                    ],
+                    2 => [
+                        'title' => 'Redirect only',
+                        'documentData' => ['content' => 'redirect'],
+                    ],
+                    3 => [
+                        'title' => 'Twig only',
+                        'documentData' => ['content' => 'twig'],
+                    ],
+                ],
+            ),
+            'test-index',
+        );
+
+        self::assertSame([1, 2], $this->sortedKeys($engine->search('redirect', self::SITE_ID)));
+        self::assertSame([1, 3], $this->sortedKeys($engine->search('twig', self::SITE_ID)));
+        self::assertSame([1, 3], $this->sortedKeys($engine->search('.twig', self::SITE_ID)));
+        self::assertSame([1], $this->sortedKeys($engine->search('redirect.twig', self::SITE_ID)));
+    }
+
     private function makeEngine(float $exactMatchBoost): SearchEngine
     {
         return new SearchEngine(

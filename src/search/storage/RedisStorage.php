@@ -207,8 +207,9 @@ class RedisStorage implements StorageInterface
 
         // Delete element metadata
         $this->deleteElement($siteId, $elementId);
+        $this->deleteCompoundSuggestions($siteId, $elementId);
 
-        $this->logDebug('Deleted document, title terms, and element', [
+        $this->logDebug('Deleted document, title terms, element, and compounds', [
             'site_id' => $siteId,
             'element_id' => $elementId,
         ]);
@@ -836,6 +837,92 @@ class RedisStorage implements StorageInterface
         return array_unique($matchingTerms);
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
+    {
+        if (empty($suggestions)) {
+            return;
+        }
+
+        $rows = [];
+        foreach ($suggestions as $suggestion) {
+            $rows[] = [
+                'suggestion' => (string)$suggestion['suggestion'],
+                'normalizedSuggestion' => (string)$suggestion['normalizedSuggestion'],
+                'tokenKey' => (string)$suggestion['tokenKey'],
+                'frequency' => (int)$suggestion['frequency'],
+                'language' => $language,
+            ];
+        }
+
+        $encoded = json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($encoded !== false) {
+            $this->redis->set($this->getCompoundKey($siteId, $elementId), $encoded);
+        }
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function deleteCompoundSuggestions(int $siteId, int $elementId): void
+    {
+        $this->redis->del($this->getCompoundKey($siteId, $elementId));
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getCompoundSuggestionsForAutocomplete(string $normalizedPrefix, ?int $siteId, ?string $language, int $limit = 10): array
+    {
+        if ($normalizedPrefix === '') {
+            return [];
+        }
+
+        $pattern = $siteId !== null
+            ? $this->keyPrefix . 'compound:' . $siteId . ':*'
+            : $this->keyPrefix . 'compound:*';
+
+        $suggestions = [];
+        foreach ($this->scanKeys($pattern) as $key) {
+            $encoded = $this->redis->get($key);
+            if (!is_string($encoded) || $encoded === '') {
+                continue;
+            }
+
+            $rows = json_decode($encoded, true);
+            if (!is_array($rows)) {
+                continue;
+            }
+
+            foreach ($rows as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                if ($language !== null && ($row['language'] ?? null) !== $language) {
+                    continue;
+                }
+
+                $normalizedSuggestion = (string)($row['normalizedSuggestion'] ?? '');
+                if (!str_starts_with($normalizedSuggestion, $normalizedPrefix)) {
+                    continue;
+                }
+
+                $suggestion = (string)($row['suggestion'] ?? '');
+                if ($suggestion === '') {
+                    continue;
+                }
+
+                $suggestions[$suggestion] = ($suggestions[$suggestion] ?? 0) + (int)($row['frequency'] ?? 1);
+            }
+        }
+
+        arsort($suggestions);
+
+        return array_slice($suggestions, 0, $limit, true);
+    }
+
     // =========================================================================
     // METADATA OPERATIONS
     // =========================================================================
@@ -927,6 +1014,7 @@ LUA;
             $this->keyPrefix . 'meta:' . $siteId . ':*',
             $this->keyPrefix . 'elem:' . $siteId . ':*',
             $this->keyPrefix . 'elemindex:' . $siteId,
+            $this->keyPrefix . 'compound:' . $siteId . ':*',
         ];
 
         foreach ($patterns as $pattern) {
@@ -1034,6 +1122,11 @@ LUA;
     private function getElementKey(int $siteId, int $elementId): string
     {
         return $this->keyPrefix . 'elem:' . $siteId . ':' . $elementId;
+    }
+
+    private function getCompoundKey(int $siteId, int $elementId): string
+    {
+        return $this->keyPrefix . 'compound:' . $siteId . ':' . $elementId;
     }
 
     /**

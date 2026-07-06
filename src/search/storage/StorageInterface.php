@@ -279,6 +279,42 @@ interface StorageInterface
     public function getTermsByPrefix(string $prefix, int $siteId): array;
 
     // =========================================================================
+    // COMPOUND AUTOCOMPLETE OPERATIONS
+    // =========================================================================
+
+    /**
+     * Store filename-like compound suggestions for a document.
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @param array<string, array{suggestion: string, normalizedSuggestion: string, tokenKey: string, frequency: int}> $suggestions
+     * @param string $language Language code
+     */
+    public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void;
+
+    /**
+     * Delete compound suggestions for a document.
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     */
+    public function deleteCompoundSuggestions(int $siteId, int $elementId): void;
+
+    /**
+     * Get compound autocomplete suggestions by normalized prefix.
+     *
+     * Implementations aggregate matching per-element rows by suggestion and
+     * order by summed frequency, scoped to the storage instance's index.
+     *
+     * @param string $normalizedPrefix Normalized compound prefix, e.g. redirect.tw
+     * @param int|null $siteId Site ID, or null for all sites
+     * @param string|null $language Language filter
+     * @param int $limit Maximum suggestions
+     * @return array<string, int> Suggestions keyed by display suggestion with summed frequencies
+     */
+    public function getCompoundSuggestionsForAutocomplete(string $normalizedPrefix, ?int $siteId, ?string $language, int $limit = 10): array;
+
+    // =========================================================================
     // METADATA OPERATIONS
     // =========================================================================
 

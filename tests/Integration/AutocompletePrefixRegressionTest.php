@@ -70,6 +70,97 @@ final class AutocompletePrefixRegressionTest extends TestCase
         self::assertSame(4, $storage->getTermsForAutocompleteCalls[0]['limit'] ?? null);
         self::assertArrayNotHasKey('profile', array_flip($suggestions));
     }
+
+    public function testCompoundAutocompleteUsesStoredCompoundPrefixWithoutLastTokenFallback(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [],
+            docLengths: [],
+            totalDocs: 0,
+            avgDocLength: 0.0,
+            autocompleteTerms: [
+                'twig' => 20,
+                'twiggy' => 10,
+                'redirect' => 5,
+            ],
+            compoundSuggestions: [
+                'redirect.twig' => 7,
+                'redirecttemplate.twig' => 1,
+            ],
+        );
+        $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
+
+        $suggestions = SearchManager::$plugin->autocomplete->suggest('redirect.tw', 'content', [
+            'limit' => 5,
+            'minLength' => 1,
+            'siteId' => 1,
+        ]);
+
+        self::assertSame(['redirect.twig'], $suggestions);
+        self::assertSame('redirect.tw', $storage->getCompoundSuggestionsForAutocompleteCalls[0]['normalizedPrefix'] ?? null);
+        self::assertSame([], $storage->getTermsForAutocompleteCalls);
+    }
+
+    public function testCompoundAutocompleteFullDottedQueryUsesCompoundSuggestions(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [],
+            docLengths: [],
+            totalDocs: 0,
+            avgDocLength: 0.0,
+            autocompleteTerms: ['twig' => 20],
+            compoundSuggestions: ['redirect.twig' => 7],
+        );
+        $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
+
+        $suggestions = SearchManager::$plugin->autocomplete->suggest('redirect.twig', 'content', [
+            'limit' => 5,
+            'minLength' => 1,
+            'siteId' => 1,
+        ]);
+
+        self::assertSame(['redirect.twig'], $suggestions);
+        self::assertSame('redirect.twig', $storage->getCompoundSuggestionsForAutocompleteCalls[0]['normalizedPrefix'] ?? null);
+        self::assertSame([], $storage->getTermsForAutocompleteCalls);
+    }
+
+    public function testLeadingDotAndOrdinaryTermsRemainOnNormalAutocompletePath(): void
+    {
+        $storage = new RecordingStorage(
+            termDocs: [],
+            titleByElement: [],
+            docLengths: [],
+            totalDocs: 0,
+            avgDocLength: 0.0,
+            autocompleteTerms: [
+                'redirect' => 9,
+                'twig' => 8,
+            ],
+            compoundSuggestions: ['redirect.twig' => 7],
+        );
+        $this->swapPluginComponent('search-manager', 'backend', new AutocompletePrefixBackendService($storage));
+
+        self::assertSame(['redirect'], SearchManager::$plugin->autocomplete->suggest('redirect', 'content', [
+            'limit' => 5,
+            'minLength' => 1,
+            'siteId' => 1,
+        ]));
+        self::assertSame(['twig'], SearchManager::$plugin->autocomplete->suggest('twig', 'content', [
+            'limit' => 5,
+            'minLength' => 1,
+            'siteId' => 1,
+        ]));
+        self::assertSame(['twig'], SearchManager::$plugin->autocomplete->suggest('.twig', 'content', [
+            'limit' => 5,
+            'minLength' => 1,
+            'siteId' => 1,
+        ]));
+
+        self::assertSame([], $storage->getCompoundSuggestionsForAutocompleteCalls);
+        self::assertSame(['redirect', 'twig', 'twig'], array_column($storage->getTermsForAutocompleteCalls, 'prefix'));
+    }
 }
 
 final class AutocompletePrefixBackendService extends BackendService

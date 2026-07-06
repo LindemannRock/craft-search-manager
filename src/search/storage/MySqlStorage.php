@@ -227,6 +227,7 @@ class MySqlStorage implements StorageInterface
             '{{%searchmanager_search_terms}}',
             '{{%searchmanager_search_titles}}',
             '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
         ];
 
         foreach ($tables as $table) {
@@ -823,6 +824,92 @@ class MySqlStorage implements StorageInterface
         return $terms ?: [];
     }
 
+    /**
+     * @inheritdoc
+     */
+    public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
+    {
+        $this->deleteCompoundSuggestions($siteId, $elementId);
+
+        if (empty($suggestions)) {
+            return;
+        }
+
+        $rows = [];
+        foreach ($suggestions as $suggestion) {
+            $rows[] = [
+                $this->indexHandle,
+                $siteId,
+                $elementId,
+                (string)$suggestion['suggestion'],
+                (string)$suggestion['normalizedSuggestion'],
+                (string)$suggestion['tokenKey'],
+                (int)$suggestion['frequency'],
+                $language,
+            ];
+        }
+
+        $this->db->createCommand()
+            ->batchInsert(
+                '{{%searchmanager_search_compounds}}',
+                ['indexHandle', 'siteId', 'elementId', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
+                $rows,
+            )
+            ->execute();
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function deleteCompoundSuggestions(int $siteId, int $elementId): void
+    {
+        $this->db->createCommand()->delete(
+            '{{%searchmanager_search_compounds}}',
+            [
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'elementId' => $elementId,
+            ],
+        )->execute();
+    }
+
+    /**
+     * @inheritdoc
+     */
+    public function getCompoundSuggestionsForAutocomplete(string $normalizedPrefix, ?int $siteId, ?string $language, int $limit = 10): array
+    {
+        if ($normalizedPrefix === '') {
+            return [];
+        }
+
+        $query = (new Query())
+            ->select(['suggestion', new Expression('SUM([[frequency]]) AS [[totalFrequency]]')])
+            ->from('{{%searchmanager_search_compounds}}')
+            ->where(['indexHandle' => $this->indexHandle])
+            ->andWhere(['like', 'normalizedSuggestion', self::escapeLikePrefix($normalizedPrefix) . '%', false]);
+
+        if ($siteId !== null) {
+            $query->andWhere(['siteId' => $siteId]);
+        }
+
+        if ($language !== null) {
+            $query->andWhere(['language' => $language]);
+        }
+
+        $rows = $query
+            ->groupBy(['suggestion'])
+            ->orderBy(['totalFrequency' => SORT_DESC, 'suggestion' => SORT_ASC])
+            ->limit($limit)
+            ->all();
+
+        $suggestions = [];
+        foreach ($rows as $row) {
+            $suggestions[(string)$row['suggestion']] = (int)$row['totalFrequency'];
+        }
+
+        return $suggestions;
+    }
+
     // =========================================================================
     // METADATA OPERATIONS
     // =========================================================================
@@ -940,6 +1027,7 @@ class MySqlStorage implements StorageInterface
             '{{%searchmanager_search_ngram_counts}}',
             '{{%searchmanager_search_metadata}}',
             '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
         ];
 
         foreach ($tables as $table) {
@@ -975,6 +1063,7 @@ class MySqlStorage implements StorageInterface
             '{{%searchmanager_search_ngram_counts}}',
             '{{%searchmanager_search_metadata}}',
             '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
         ];
 
         foreach ($tables as $table) {

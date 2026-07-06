@@ -67,6 +67,7 @@ if (fs.existsSync(highlighterFile)) {
     test('Source escapeHtml encodes double quotes', source.includes('.replace(/"/g, \'&quot;\')'));
     test('Source escapeHtml encodes single quotes', source.includes(".replace(/'/g, '&#39;')"));
     test('Source escapeHtml avoids DOM serialization', !source.includes('document.createElement'));
+    test('Source preserves dotted filename-like queries as one highlight term', source.includes('terms.push(word);'));
 }
 
 const widgetBaseFile = path.join(SRC_DIR, 'core', 'SearchWidgetBase.js');
@@ -75,6 +76,7 @@ if (fs.existsSync(widgetBaseFile)) {
     test('Stale search responses are discarded before state updates', source.includes('requestId !== this.searchSequence'));
     test('Stale search failures are discarded before error state', (source.match(/requestId !== this\.searchSequence/g) || []).length >= 2);
     test('Source does not abort in-flight searches', !source.includes('new AbortController'));
+    test('Destination page highlighter can mark code/pre text nodes', !source.includes("parent.closest('script, style, noscript, textarea, code, pre, mark"));
 }
 
 const urlUtilsFile = path.join(SRC_DIR, 'modules', 'UrlUtils.js');

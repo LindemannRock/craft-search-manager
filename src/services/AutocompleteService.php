@@ -5,9 +5,11 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\search\CompoundSuggestionExtractor;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\search\TermNormalizer;
+use lindemannrock\searchmanager\search\Tokenizer;
 use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
@@ -88,6 +90,12 @@ class AutocompleteService extends Component
 
         // Normalize query
         $normalizedQuery = $this->normalizeQuery($query);
+        $compoundSuggestionExtractor = new CompoundSuggestionExtractor();
+        $isCompoundQuery = $compoundSuggestionExtractor->isCompoundQuery($query);
+        $compoundPrefix = $compoundSuggestionExtractor->normalizePrefix($query);
+        if (!$isCompoundQuery) {
+            $normalizedQuery = $this->normalizeSingleTermPrefix($normalizedQuery);
+        }
 
         // Apply index prefix to get full index name (matches how data is stored)
         $fullIndexHandle = $settings->getFullIndexName($indexHandle);
@@ -163,6 +171,39 @@ class AutocompleteService extends Component
         }
 
         $suggestions = [];
+
+        if ($isCompoundQuery) {
+            $suggestions = array_keys($storage->getCompoundSuggestionsForAutocomplete(
+                $compoundPrefix,
+                $siteIdProvided ? $siteId : null,
+                $language,
+                $limit,
+            ));
+
+            if ($settings->enableAutocompleteCache) {
+                $this->saveToCache($cacheKey, $suggestions, $fullIndexHandle);
+            }
+
+            $duration = round((microtime(true) - $startTime) * 1000, 2);
+            $this->logInfo('Compound suggestions generated', [
+                'query' => $query,
+                'count' => count($suggestions),
+                'duration_ms' => $duration,
+            ]);
+
+            if ($includeMeta) {
+                return [
+                    'suggestions' => $suggestions,
+                    'meta' => [
+                        'cached' => false,
+                        'cacheEnabled' => $settings->enableAutocompleteCache,
+                        'cacheDriver' => $this->getCacheDriver(),
+                    ],
+                ];
+            }
+
+            return $suggestions;
+        }
 
         // Method 1: Prefix matching (fast, exact)
         // For all-sites indices (siteId not provided), skip siteId filter
@@ -543,6 +584,13 @@ class AutocompleteService extends Component
     {
         $query = TermNormalizer::normalize($query);
         return trim(preg_replace('/\s+/', ' ', $query));
+    }
+
+    private function normalizeSingleTermPrefix(string $query): string
+    {
+        $tokens = (new Tokenizer())->tokenize($query);
+
+        return count($tokens) === 1 ? $tokens[0] : $query;
     }
 
     /**

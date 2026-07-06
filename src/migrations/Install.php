@@ -61,6 +61,7 @@ class Install extends Migration
         $this->dropTableIfExists('{{%searchmanager_rule_analytics}}');
         $this->dropTableIfExists('{{%searchmanager_query_rules}}');
         $this->dropTableIfExists('{{%searchmanager_promotions}}');
+        $this->dropTableIfExists('{{%searchmanager_search_compounds}}');
         $this->dropTableIfExists('{{%searchmanager_search_elements}}');
         $this->dropTableIfExists('{{%searchmanager_search_metadata}}');
         $this->dropTableIfExists('{{%searchmanager_search_ngram_counts}}');
@@ -682,6 +683,26 @@ class Install extends Migration
             $this->createIndex('idx_elements_search', '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'searchText'], false);
             // Index for filtering by elementType
             $this->createIndex('idx_elements_type', '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementType'], false);
+        }
+
+        // Compound suggestions table: stores filename-like dotted compounds for autocomplete
+        // while the normal term index continues to tokenize them into searchable parts.
+        if (!$this->db->tableExists('{{%searchmanager_search_compounds}}')) {
+            $this->createTable('{{%searchmanager_search_compounds}}', [
+                'indexHandle' => $this->string(255)->notNull(),
+                'siteId' => $this->integer()->notNull(),
+                'elementId' => $this->integer()->notNull(),
+                'suggestion' => $this->string(255)->notNull()->comment('Normalized display suggestion, e.g. redirect.twig'),
+                'normalizedSuggestion' => $this->string(255)->notNull()->comment('Prefix-searchable normalized suggestion'),
+                'tokenKey' => $this->string(255)->notNull()->comment('Tokenized compound intent, e.g. redirect twig'),
+                'frequency' => $this->integer()->notNull()->defaultValue(1),
+                'language' => $this->string(10)->notNull()->defaultValue('en'),
+            ]);
+
+            $this->addPrimaryKey(null, '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'elementId', 'suggestion']);
+            $this->createIndex('idx_compounds_prefix', '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'normalizedSuggestion'], false);
+            $this->createIndex('idx_compounds_token_key', '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'tokenKey'], false);
+            $this->createIndex('idx_compounds_language', '{{%searchmanager_search_compounds}}', ['indexHandle', 'language'], false);
         }
     }
 

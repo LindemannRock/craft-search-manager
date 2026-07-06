@@ -96,6 +96,43 @@ final class FileStorageRegressionTest extends TestCase
         self::assertArrayNotHasKey('foo_protein_2', $terms);
     }
 
+    public function testCompoundSuggestionsAggregateByPrefixAndDeletePerDocumentRows(): void
+    {
+        $storage = $this->makeStorage();
+
+        $storage->storeCompoundSuggestions(1, 101, [
+            'redirect.twig' => [
+                'suggestion' => 'redirect.twig',
+                'normalizedSuggestion' => 'redirect.twig',
+                'tokenKey' => 'redirect twig',
+                'frequency' => 2,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(1, 102, [
+            'redirect.twig' => [
+                'suggestion' => 'redirect.twig',
+                'normalizedSuggestion' => 'redirect.twig',
+                'tokenKey' => 'redirect twig',
+                'frequency' => 1,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(2, 201, [
+            'redirect.twig' => [
+                'suggestion' => 'redirect.twig',
+                'normalizedSuggestion' => 'redirect.twig',
+                'tokenKey' => 'redirect twig',
+                'frequency' => 5,
+            ],
+        ], 'en');
+
+        self::assertSame(['redirect.twig' => 3], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', 1, 'en', 10));
+        self::assertSame(['redirect.twig' => 8], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', null, 'en', 10));
+
+        $storage->deleteCompoundSuggestions(1, 101);
+
+        self::assertSame(['redirect.twig' => 1], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', 1, 'en', 10));
+    }
+
     private function makeStorage(): FileStorage
     {
         $this->basePath = Craft::getAlias('@storage/search-manager-test-' . StringHelper::UUID());

@@ -853,7 +853,7 @@ class SearchWidgetBase extends HTMLElement {
                         return NodeFilter.FILTER_REJECT;
                     }
 
-                    if (parent.closest('script, style, noscript, textarea, code, pre, mark, .sm-highlight, .sm-page-highlight, search-modal')) {
+                    if (parent.closest('script, style, noscript, textarea, mark, .sm-highlight, .sm-page-highlight, search-modal')) {
                         return NodeFilter.FILTER_REJECT;
                     }
 

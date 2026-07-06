@@ -61,6 +61,11 @@ class SearchEngine
     private FuzzyMatcher $fuzzyMatcher;
 
     /**
+     * @var CompoundSuggestionExtractor Filename-like compound extractor
+     */
+    private CompoundSuggestionExtractor $compoundSuggestionExtractor;
+
+    /**
      * @var string Index handle
      */
     private string $indexHandle;
@@ -107,6 +112,8 @@ class SearchEngine
             $config['similarityThreshold'] ?? 0.25,
             $config['maxFuzzyCandidates'] ?? 100
         );
+
+        $this->compoundSuggestionExtractor = new CompoundSuggestionExtractor($this->tokenizer);
 
         $this->logDebug('Initialized SearchEngine', [
             'index' => $this->indexHandle,
@@ -190,6 +197,7 @@ class SearchEngine
             }
             $this->storage->deleteDocument($siteId, $elementId);
             $this->storage->deleteTitleTerms($siteId, $elementId);
+            $this->storage->deleteCompoundSuggestions($siteId, $elementId);
 
             if ($oldDocLength > 0 || !empty($oldTerms)) {
                 $this->storage->updateMetadata($siteId, $oldDocLength, false);
@@ -198,6 +206,12 @@ class SearchEngine
             // Store new document data WITH language
             $this->storage->storeDocument($siteId, $elementId, $termFreqs, $docLength, $language);
             $this->storage->storeTitleTerms($siteId, $elementId, $titleTokens);
+            $this->storage->storeCompoundSuggestions(
+                $siteId,
+                $elementId,
+                $this->compoundSuggestionExtractor->extract($title . ' ' . $content),
+                $language,
+            );
 
             // Update inverted index
             foreach ($termFreqs as $term => $freq) {
@@ -780,7 +794,7 @@ class SearchEngine
                 continue;
             }
 
-            $contentTokens = $this->filterTokens($this->tokenizer->tokenize($searchableText));
+            $contentTokens = array_values($this->filterTokens($this->tokenizer->tokenize($searchableText)));
             if ($this->containsOrderedTokenSequence($contentTokens, $tokens)) {
                 $docScores[$docId] = $this->scorer->applyExactMatchBoost((float) $docScores[$docId]);
             }
@@ -1315,6 +1329,7 @@ class SearchEngine
             // Delete document and title data
             $this->storage->deleteDocument($siteId, $elementId);
             $this->storage->deleteTitleTerms($siteId, $elementId);
+            $this->storage->deleteCompoundSuggestions($siteId, $elementId);
 
             // Missing-document deletes are valid no-ops from the pending-sync
             // path. Only subtract metadata when the document actually existed.

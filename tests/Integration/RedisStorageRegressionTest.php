@@ -94,6 +94,48 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame(0, $redis->keysCalls);
     }
 
+    public function testCompoundSuggestionsAggregateByPrefixAndUseScan(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+
+        $storage->storeCompoundSuggestions(1, 101, [
+            'redirect.twig' => [
+                'suggestion' => 'redirect.twig',
+                'normalizedSuggestion' => 'redirect.twig',
+                'tokenKey' => 'redirect twig',
+                'frequency' => 2,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(1, 102, [
+            'redirect.twig' => [
+                'suggestion' => 'redirect.twig',
+                'normalizedSuggestion' => 'redirect.twig',
+                'tokenKey' => 'redirect twig',
+                'frequency' => 1,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(2, 201, [
+            'redirect.twig' => [
+                'suggestion' => 'redirect.twig',
+                'normalizedSuggestion' => 'redirect.twig',
+                'tokenKey' => 'redirect twig',
+                'frequency' => 5,
+            ],
+        ], 'en');
+
+        self::assertSame(['redirect.twig' => 3], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', 1, 'en', 10));
+        self::assertSame(['sm:idx:test-index:compound:1:*'], $redis->scanPatterns);
+
+        $redis->scanPatterns = [];
+        self::assertSame(['redirect.twig' => 8], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', null, 'en', 10));
+        self::assertSame(['sm:idx:test-index:compound:*'], $redis->scanPatterns);
+        self::assertSame(0, $redis->keysCalls);
+
+        $storage->deleteCompoundSuggestions(1, 101);
+
+        self::assertSame(['redirect.twig' => 1], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', 1, 'en', 10));
+    }
+
     public function testAutocompleteTermExtractionIgnoresIndexHandleNamedTerm(): void
     {
         [$storage, $redis] = $this->makeStorage('term');
@@ -167,6 +209,14 @@ final class RedisStorageRegressionTest extends TestCase
         $storage->storeTermNgrams('protein', ['pr', 'ro'], 1);
         $storage->updateMetadata(1, 8, true);
         $storage->storeElement(1, 101, 'Protein Powder', 'entry');
+        $storage->storeCompoundSuggestions(1, 101, [
+            'protein.powder' => [
+                'suggestion' => 'protein.powder',
+                'normalizedSuggestion' => 'protein.powder',
+                'tokenKey' => 'protein powder',
+                'frequency' => 1,
+            ],
+        ]);
 
         $storage->storeDocument(2, 202, ['protein' => 2], 7);
         $storage->storeTermDocument('protein', 2, 202, 2);
@@ -174,6 +224,14 @@ final class RedisStorageRegressionTest extends TestCase
         $storage->storeTermNgrams('protein', ['pr', 'ro'], 2);
         $storage->updateMetadata(2, 7, true);
         $storage->storeElement(2, 202, 'Protein Bar', 'entry');
+        $storage->storeCompoundSuggestions(2, 202, [
+            'protein.bar' => [
+                'suggestion' => 'protein.bar',
+                'normalizedSuggestion' => 'protein.bar',
+                'tokenKey' => 'protein bar',
+                'frequency' => 1,
+            ],
+        ]);
 
         $storage->clearSite(1);
 
@@ -187,6 +245,7 @@ final class RedisStorageRegressionTest extends TestCase
             'sm:idx:test-index:meta:1:*',
             'sm:idx:test-index:elem:1:*',
             'sm:idx:test-index:elemindex:1',
+            'sm:idx:test-index:compound:1:*',
         ], $redis->scanPatterns);
         self::assertFalse($redis->hasKey('sm:idx:test-index:doc:1:101'));
         self::assertFalse($redis->hasKey('sm:idx:test-index:term:protein:1'));
@@ -196,6 +255,7 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertFalse($redis->hasKey('sm:idx:test-index:meta:1:doc_count'));
         self::assertFalse($redis->hasKey('sm:idx:test-index:elem:1:101'));
         self::assertFalse($redis->hasKey('sm:idx:test-index:elemindex:1'));
+        self::assertFalse($redis->hasKey('sm:idx:test-index:compound:1:101'));
 
         self::assertTrue($redis->hasKey('sm:idx:test-index:doc:2:202'));
         self::assertTrue($redis->hasKey('sm:idx:test-index:term:protein:2'));
@@ -205,6 +265,7 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertTrue($redis->hasKey('sm:idx:test-index:meta:2:doc_count'));
         self::assertTrue($redis->hasKey('sm:idx:test-index:elem:2:202'));
         self::assertTrue($redis->hasKey('sm:idx:test-index:elemindex:2'));
+        self::assertTrue($redis->hasKey('sm:idx:test-index:compound:2:202'));
     }
 
     public function testClearAllUsesScanAndDeletesOnlyCurrentIndexPrefix(): void
@@ -229,7 +290,7 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertIsString($source);
         self::assertStringNotContainsString('->keys(', $source);
 
-        foreach (['getTermsForAutocomplete', 'getElementSuggestions'] as $method) {
+        foreach (['getTermsForAutocomplete', 'getElementSuggestions', 'getCompoundSuggestionsForAutocomplete'] as $method) {
             preg_match('/public function ' . $method . '\(.*?^    }$/ms', $source, $matches);
             self::assertNotEmpty($matches, $method . ' source should be found');
             self::assertStringNotContainsString('->keys(', $matches[0], $method . ' must not use blocking KEYS');
@@ -300,7 +361,7 @@ final class RedisStorageFakeRedis
     /** @var array<string, array<string, float|int>> */
     private array $zsets = [];
 
-    /** @var array<string, int> */
+    /** @var array<string, int|string> */
     private array $strings = [];
 
     /** @var list<callable>|null */
@@ -432,10 +493,10 @@ final class RedisStorageFakeRedis
         return array_map(static fn (callable $operation): mixed => $operation(), $pipeline);
     }
 
-    public function get(string $key): int|false
+    public function get(string $key): string|int|false
     {
         if ($this->pipeline !== null) {
-            $this->pipeline[] = fn (): int|false => $this->strings[$key] ?? false;
+            $this->pipeline[] = fn (): string|int|false => $this->strings[$key] ?? false;
             return false;
         }
 
@@ -447,7 +508,7 @@ final class RedisStorageFakeRedis
         return $this->hasKey($key) ? 1 : 0;
     }
 
-    public function set(string $key, int $value): void
+    public function set(string $key, int|string $value): void
     {
         $this->nonLuaSetCalls++;
         $this->strings[$key] = $value;

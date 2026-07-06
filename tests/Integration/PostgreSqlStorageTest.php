@@ -46,6 +46,19 @@ final class PostgreSqlStorageTest extends TestCase
         self::assertStringContainsString('GREATEST(CAST({{%searchmanager_search_metadata}}."metaValue" AS INTEGER) + :increment, :minimum)', $source);
     }
 
+    public function testPostgreSqlStorageDefinesGroupedCompoundAutocompleteLookup(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/PostgreSqlStorage.php');
+
+        self::assertIsString($source);
+        self::assertStringContainsString('storeCompoundSuggestions', $source);
+        self::assertStringContainsString('deleteCompoundSuggestions', $source);
+        self::assertStringContainsString('getCompoundSuggestionsForAutocomplete', $source);
+        self::assertStringContainsString('{{%searchmanager_search_compounds}}', $source);
+        self::assertStringContainsString("->groupBy(['suggestion'])", $source);
+        self::assertStringContainsString("'normalizedSuggestion'", $source);
+    }
+
     public function testPostgreSqlRuntimeStorageAndSearch(): void
     {
         if (Craft::$app->getDb()->getDriverName() !== 'pgsql') {

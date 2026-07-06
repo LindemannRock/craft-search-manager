@@ -71,6 +71,9 @@ final class RecordingStorage implements StorageInterface
     /** @var list<array{siteId: int|null, language: string|null, limit: int, prefix: string|null}> */
     public array $getTermsForAutocompleteCalls = [];
 
+    /** @var list<array{normalizedPrefix: string, siteId: int|null, language: string|null, limit: int}> */
+    public array $getCompoundSuggestionsForAutocompleteCalls = [];
+
     /** @var int Times getElementsByIds() was called. */
     public int $getElementsByIdsCalls = 0;
 
@@ -99,6 +102,7 @@ final class RecordingStorage implements StorageInterface
         private array $documentLanguagesById = [],
         private array $elementsById = [],
         private array $autocompleteTerms = ['protein' => 3],
+        private array $compoundSuggestions = [],
     ) {
     }
 
@@ -274,6 +278,27 @@ final class RecordingStorage implements StorageInterface
         return [];
     }
 
+    public function getCompoundSuggestionsForAutocomplete(string $normalizedPrefix, ?int $siteId, ?string $language, int $limit = 10): array
+    {
+        $this->getCompoundSuggestionsForAutocompleteCalls[] = [
+            'normalizedPrefix' => $normalizedPrefix,
+            'siteId' => $siteId,
+            'language' => $language,
+            'limit' => $limit,
+        ];
+
+        $suggestions = [];
+        foreach ($this->compoundSuggestions as $suggestion => $frequency) {
+            if (str_starts_with((string)$suggestion, $normalizedPrefix)) {
+                $suggestions[(string)$suggestion] = (int)$frequency;
+            }
+        }
+
+        arsort($suggestions);
+
+        return array_slice($suggestions, 0, $limit, true);
+    }
+
     public function getTotalLength(int $siteId): int
     {
         return (int)($this->avgDocLength * $this->totalDocs);
@@ -319,6 +344,18 @@ final class RecordingStorage implements StorageInterface
     }
 
     public function deleteTitleTerms(int $siteId, int $elementId): void
+    {
+    }
+
+    public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
+    {
+        foreach ($suggestions as $suggestion) {
+            $key = (string)$suggestion['suggestion'];
+            $this->compoundSuggestions[$key] = ($this->compoundSuggestions[$key] ?? 0) + (int)$suggestion['frequency'];
+        }
+    }
+
+    public function deleteCompoundSuggestions(int $siteId, int $elementId): void
     {
     }
 
