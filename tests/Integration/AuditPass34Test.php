@@ -110,6 +110,17 @@ final class AuditPass34Test extends TestCase
         self::assertArrayHasKey('Create a backend', $en);
     }
 
+    public function testIndicesEditReadOnlyMetaFieldsetIsBalanced(): void
+    {
+        $twig = $this->readPluginFile('src/templates/indices/edit.twig');
+
+        self::assertStringContainsString(
+            "\t{% if not isNew %}\n\t\t<hr>\n\t\t<fieldset>\n\t\t<dl class=\"meta read-only\">",
+            $twig,
+        );
+        self::assertSame(substr_count($twig, '<fieldset>'), substr_count($twig, '</fieldset>'));
+    }
+
     private function readPluginFile(string $path): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);

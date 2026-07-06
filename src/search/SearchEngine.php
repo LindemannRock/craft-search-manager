@@ -430,8 +430,7 @@ class SearchEngine
             }
 
             // Tokenize and filter query
-            $tokens = $this->tokenizer->tokenize($query);
-            $tokens = $this->filterTokens($tokens);
+            $tokens = array_values($this->filterTokens($this->tokenizer->tokenize($query)));
 
             if (empty($tokens)) {
                 $this->logDebug('Empty query after filtering', ['query' => $query]);

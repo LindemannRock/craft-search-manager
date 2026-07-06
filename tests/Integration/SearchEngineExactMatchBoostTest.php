@@ -70,6 +70,16 @@ final class SearchEngineExactMatchBoostTest extends TestCase
         self::assertSame([1], $this->sortedKeys($engine->search('redirect.twig', self::SITE_ID)));
     }
 
+    public function testExactMatchBoostSurvivesSparseStopWordFilteredQueryTokens(): void
+    {
+        $unboosted = $this->makeStopWordEngine(1.0)->search('alpha the beta', self::SITE_ID);
+        $boosted = $this->makeStopWordEngine(7.0)->search('alpha the beta', self::SITE_ID);
+
+        self::assertSame($this->sortedKeys($unboosted), $this->sortedKeys($boosted), 'exactMatchBoost must not change result membership');
+        self::assertEqualsWithDelta($unboosted[1] * 7.0, $boosted[1], 0.000001, 'ordered content sequence receives exactMatchBoost after stop-word filtering reindexes query tokens');
+        self::assertEqualsWithDelta($unboosted[2], $boosted[2], 0.000001, 'non-contiguous all-term match is not exact-boosted');
+    }
+
     private function makeEngine(float $exactMatchBoost): SearchEngine
     {
         return new SearchEngine(
@@ -98,6 +108,34 @@ final class SearchEngineExactMatchBoostTest extends TestCase
                     4 => [
                         'title' => 'Alpha beta title',
                         'documentData' => ['content' => 'Gamma'],
+                    ],
+                ],
+            ),
+            'test-index',
+            ['exactMatchBoost' => $exactMatchBoost],
+        );
+    }
+
+    private function makeStopWordEngine(float $exactMatchBoost): SearchEngine
+    {
+        return new SearchEngine(
+            new RecordingStorage(
+                termDocs: [
+                    'alpha' => ['1:1' => 1, '1:2' => 1],
+                    'beta' => ['1:1' => 1, '1:2' => 1],
+                ],
+                titleByElement: [],
+                docLengths: ['1:1' => 2, '1:2' => 3],
+                totalDocs: 2,
+                avgDocLength: 2.5,
+                elementsById: [
+                    1 => [
+                        'title' => 'Ordered document',
+                        'documentData' => ['content' => 'Alpha beta'],
+                    ],
+                    2 => [
+                        'title' => 'Separated document',
+                        'documentData' => ['content' => 'Alpha gamma beta'],
                     ],
                 ],
             ),
