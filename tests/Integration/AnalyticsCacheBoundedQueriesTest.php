@@ -91,7 +91,9 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         self::assertIsString($source);
         self::assertStringContainsString('private function _isQueryPopularForCache', $source);
         self::assertStringContainsString('->limit($rowsNeededBeforeCurrentSearch)', $source);
-        self::assertStringContainsString("->where(['normalizedQuery' => \$normalizedQuery])", $source);
+        self::assertStringContainsString("'normalizedQuery' => \$normalizedQuery", $source);
+        self::assertStringContainsString("'indexHandle' => \$indexName", $source);
+        self::assertStringContainsString("->andFilterWhere(['siteId' => \$siteId])", $source);
         self::assertStringContainsString('QueryNormalizer::forCacheIdentity($query)', $source);
         self::assertStringNotContainsString('private function _getQuerySearchCount', $source);
         self::assertStringNotContainsString('private function _normalizeQueryForCache', $source);
@@ -108,7 +110,7 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         $handle = $this->requireIndex();
         $query = $this->markerQuery('popular');
 
-        $this->seedAnalyticsRows($query, 2);
+        $this->seedAnalyticsRows($query, 2, $handle);
 
         $first = SearchManager::$plugin->backend->search($handle, $query, [
             'limit' => 10,
@@ -145,6 +147,47 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
             'skipAnalytics' => true,
         ]);
         self::assertTrue($second['meta']['cached'], 'mixed-case historical rows should count through normalizedQuery');
+    }
+
+    public function testPopularOnlyCacheEligibilityIsScopedByIndexAndConcreteSite(): void
+    {
+        $handle = $this->requireIndex();
+        $query = $this->markerQuery('scoped');
+        $normalizedQuery = QueryNormalizer::forCacheIdentity($query);
+
+        $this->seedAnalyticsRows($query, 2, $handle . '-other', null, $normalizedQuery, self::TEST_SITE_ID);
+        $this->seedAnalyticsRows($query, 2, $handle, null, $normalizedQuery, self::TEST_SITE_ID + 1);
+
+        self::assertFalse(
+            $this->isQueryPopularForCache($query, 3, $handle, self::TEST_SITE_ID),
+            'rows from another index or another concrete site must not make this search popular',
+        );
+
+        $this->seedAnalyticsRows($query, 2, $handle, null, $normalizedQuery, self::TEST_SITE_ID);
+
+        self::assertTrue(
+            $this->isQueryPopularForCache($query, 3, $handle, self::TEST_SITE_ID),
+            'rows from the same index and same concrete site should count with the pending search',
+        );
+    }
+
+    public function testPopularOnlyCacheEligibilityForAllSitesIsScopedByIndexOnly(): void
+    {
+        $handle = $this->requireIndex();
+        $query = $this->markerQuery('all-sites');
+        $normalizedQuery = QueryNormalizer::forCacheIdentity($query);
+
+        $this->seedAnalyticsRows($query, 2, $handle . '-other', null, $normalizedQuery, self::TEST_SITE_ID);
+
+        self::assertFalse($this->isQueryPopularForCache($query, 3, $handle, null));
+
+        $this->seedAnalyticsRows($query, 1, $handle, null, $normalizedQuery, self::TEST_SITE_ID);
+        $this->seedAnalyticsRows($query, 1, $handle, null, $normalizedQuery, self::TEST_SITE_ID + 1);
+
+        self::assertTrue(
+            $this->isQueryPopularForCache($query, 3, $handle, null),
+            'all-sites searches should count same-index rows across sites',
+        );
     }
 
     public function testAnalyticsTrackingPreservesDisplayQueryAndStoresNormalizedQuery(): void
@@ -189,12 +232,21 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         );
     }
 
+    public function testUnicodeSpaceVariantsShareNormalizedQuery(): void
+    {
+        $base = 'unicode space';
+
+        self::assertSame($base, QueryNormalizer::forCacheIdentity("  Unicode\u{00A0}Space  "));
+        self::assertSame($base, QueryNormalizer::forCacheIdentity("Unicode\u{3000}Space"));
+        self::assertSame($base, QueryNormalizer::forCacheIdentity("Unicode\u{2003}\tSpace"));
+    }
+
     public function testPopularOnlyCacheDoesNotWriteBelowThreshold(): void
     {
         $handle = $this->requireIndex();
         $query = $this->markerQuery('unpopular');
 
-        $this->seedAnalyticsRows($query, 1);
+        $this->seedAnalyticsRows($query, 1, $handle);
 
         $first = SearchManager::$plugin->backend->search($handle, $query, [
             'limit' => 10,
@@ -269,6 +321,7 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         string $indexHandle = self::TEST_INDEX,
         ?\DateTimeInterface $dateCreated = null,
         ?string $normalizedQuery = null,
+        int $siteId = self::TEST_SITE_ID,
     ): void {
         $dateCreated ??= new \DateTime();
         $normalizedQuery ??= QueryNormalizer::forCacheIdentity($query);
@@ -281,7 +334,7 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
                 'resultsCount' => 1,
                 'executionTime' => 1.0,
                 'backend' => self::TEST_BACKEND,
-                'siteId' => self::TEST_SITE_ID,
+                'siteId' => $siteId,
                 'sessionId' => null,
                 'isHit' => 1,
                 'wasRedirected' => 0,
@@ -294,6 +347,14 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
                 'uid' => StringHelper::UUID(),
             ])->execute();
         }
+    }
+
+    private function isQueryPopularForCache(string $query, int $threshold, string $indexHandle, ?int $siteId): bool
+    {
+        $method = new \ReflectionMethod(SearchManager::$plugin->backend, '_isQueryPopularForCache');
+        $method->setAccessible(true);
+
+        return (bool)$method->invoke(SearchManager::$plugin->backend, $query, $threshold, $indexHandle, $siteId);
     }
 
     private function deleteTestAnalyticsRows(): void

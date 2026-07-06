@@ -16,10 +16,20 @@ namespace lindemannrock\searchmanager\helpers;
 class QueryNormalizer
 {
     /**
+     * Collapse Unicode separator/whitespace runs to a single ASCII space.
+     */
+    public static function collapseUnicodeWhitespace(string $text): string
+    {
+        $normalized = preg_replace('/[\s\p{Z}]+/u', ' ', $text);
+
+        return trim($normalized ?? $text);
+    }
+
+    /**
      * Normalize a submitted query to the identity used by search cache keys.
      */
     public static function forCacheIdentity(string $query): string
     {
-        return mb_strtolower(trim(preg_replace('/\s+/', ' ', $query)));
+        return mb_strtolower(self::collapseUnicodeWhitespace($query));
     }
 }

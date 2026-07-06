@@ -620,7 +620,7 @@ class BackendService extends Component
         // This ensures disabled/expired promotions are immediately excluded
         if ($settings->enableCache && !$backendFailed) {
             if ($settings->cachePopularQueriesOnly) {
-                if ($this->_isQueryPopularForCache($query, $settings->popularQueryThreshold)) {
+                if ($this->_isQueryPopularForCache($query, $settings->popularQueryThreshold, $indexName, $siteId)) {
                     $this->_saveToCache($indexName, $query, $options, $results);
                 } else {
                     $this->logDebug('Query not popular enough to cache', [
@@ -1339,7 +1339,7 @@ class BackendService extends Component
      * search is still treated as a pending +1 because analytics is tracked after
      * the cache write decision.
      */
-    private function _isQueryPopularForCache(string $query, int $threshold): bool
+    private function _isQueryPopularForCache(string $query, int $threshold, string $indexName, ?int $siteId): bool
     {
         if ($threshold <= 1) {
             return true;
@@ -1352,7 +1352,11 @@ class BackendService extends Component
             $matchingRows = (new \craft\db\Query())
                 ->select(['id'])
                 ->from('{{%searchmanager_analytics}}')
-                ->where(['normalizedQuery' => $normalizedQuery])
+                ->where([
+                    'normalizedQuery' => $normalizedQuery,
+                    'indexHandle' => $indexName,
+                ])
+                ->andFilterWhere(['siteId' => $siteId])
                 ->limit($rowsNeededBeforeCurrentSearch)
                 ->column();
 

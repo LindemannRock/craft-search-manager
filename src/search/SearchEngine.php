@@ -3,6 +3,7 @@
 namespace lindemannrock\searchmanager\search;
 
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 
 /**
@@ -744,9 +745,7 @@ class SearchEngine
      */
     private function normalizeForPhraseMatch(string $text): string
     {
-        $text = mb_strtolower($text);
-        $text = (string) preg_replace('/\s+/', ' ', $text);
-        return trim($text);
+        return QueryNormalizer::collapseUnicodeWhitespace(mb_strtolower($text));
     }
 
     /**
@@ -755,8 +754,8 @@ class SearchEngine
     private function stripHtmlForPhrase(string $html): string
     {
         $text = strip_tags($html);
-        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        return $text;
+
+        return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
 
     /**
