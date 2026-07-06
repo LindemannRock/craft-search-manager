@@ -29,6 +29,18 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     const unknownLabel = {{ 'Unknown'|t('search-manager')|json_encode|raw }};
 
+    function formatEntries(entries) {
+        if (entries === undefined || entries === null) {
+            return '—';
+        }
+
+        if (typeof entries === 'number' || (typeof entries === 'string' && entries.trim() !== '' && !Number.isNaN(Number(entries)))) {
+            return Number(entries).toLocaleString();
+        }
+
+        return Craft.escapeHtml(String(entries));
+    }
+
     function testConnection() {
         const connectionResult = document.getElementById('connection-result');
         const responseTime = document.getElementById('response-time');
@@ -111,7 +123,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         indices.forEach(function(index) {
             const name = index.name || index.uid || unknownLabel;
-            const entries = index.entries !== undefined ? index.entries.toLocaleString() : '—';
+            const entries = formatEntries(index.entries);
             html += '<tr><td><code>' + Craft.escapeHtml(name) + '</code></td><td>' + entries + '</td>';
             if (hasDataSize) {
                 const dataSize = index.dataSize ? formatBytes(index.dataSize) : '—';

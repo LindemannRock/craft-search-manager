@@ -131,6 +131,9 @@ class AnalyticsController extends Controller
         // when there is keyed traffic.
         $apiKeyBreakdown = SearchManager::$plugin->analytics->getApiKeyBreakdown($effectiveSiteId, $dateRange);
 
+        $queryRulesExist = SearchManager::$plugin->queryRules->getQueryRuleCount() > 0;
+        $promotionsExist = SearchManager::$plugin->promotions->getPromotionCount() > 0;
+
         // Get editable sites for dropdown
         $sites = Craft::$app->getSites()->getEditableSites();
         $settings = SearchManager::$plugin->getSettings();
@@ -145,6 +148,8 @@ class AnalyticsController extends Controller
             'siteId' => $siteId,
             'sites' => $sites,
             'settings' => $settings,
+            'queryRulesExist' => $queryRulesExist,
+            'promotionsExist' => $promotionsExist,
         ]);
     }
 

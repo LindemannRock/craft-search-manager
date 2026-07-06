@@ -1,6 +1,3 @@
-{# Check if any promotions exist #}
-{% set promotionsExist = craft.app.db.createCommand("SELECT COUNT(*) FROM {{%searchmanager_promotions}}").queryScalar() > 0 %}
-
 {% if not promotionsExist %}
     <div class="lr-analytics-empty">
         <div class="lr-empty-icon">

@@ -71,6 +71,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const backendIndexCount = document.getElementById('backend-index-count');
     const backendIndicesList = document.getElementById('backend-indices-list');
 
+    function formatEntries(entries) {
+        if (entries === undefined || entries === null) {
+            return '—';
+        }
+
+        if (typeof entries === 'number' || (typeof entries === 'string' && entries.trim() !== '' && !Number.isNaN(Number(entries)))) {
+            return Number(entries).toLocaleString();
+        }
+
+        return Craft.escapeHtml(String(entries));
+    }
+
     function fetchBackendInfo() {
         const backendHandle = backendSelector.value;
         if (!backendHandle) return;
@@ -128,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     html += '<thead><tr><th style="text-align: left; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">{{ 'Name'|t('search-manager') }}</th><th style="text-align: right; padding: 8px; border-bottom: 1px solid #e5e7eb; color: #6b7280; font-size: 11px; text-transform: uppercase;">{{ 'Entries'|t('search-manager') }}</th></tr></thead><tbody>';
                     indices.forEach(function(idx) {
                         const name = idx.name || idx.uid || {{ 'Unknown'|t('search-manager')|json_encode|raw }};
-                        const entries = idx.entries !== undefined ? idx.entries.toLocaleString() : '—';
+                        const entries = formatEntries(idx.entries);
                         html += '<tr><td style="padding: 8px; border-bottom: 1px solid #f3f4f6;"><code>' + Craft.escapeHtml(name) + '</code></td><td style="text-align: right; padding: 8px; border-bottom: 1px solid #f3f4f6;">' + entries + '</td></tr>';
                     });
                     html += '</tbody></table>';
