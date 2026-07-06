@@ -3,6 +3,7 @@
 {% set selectedSubnavItem = 'setup' %}
 {% set title = "Set up Search Manager"|t('search-manager') %}
 {% set allComplete = ipSaltConfigured %}
+{% set searchFullNameHtml = searchHelper.fullName|e %}
 
 {% set ipSaltIncompleteBody %}
     <p>
@@ -77,11 +78,14 @@
         pluginIconSvg: pluginIconSvg,
         pluginHeroStyle: pluginHeroStyle,
         logoPaths: logoPaths,
+        searchFullNameHtml: searchFullNameHtml,
     } only %}
         {% block summary %}
             {% if allComplete %}
                 {% include 'lindemannrock-base/_components/info-box' with {
-                    message: '<strong>' ~ 'Setup complete.'|t('search-manager') ~ '</strong> ' ~ 'Search Manager is ready to track search analytics.'|t('search-manager'),
+                    message: '<strong>' ~ 'Setup complete.'|t('search-manager') ~ '</strong> ' ~ '{pluginName} is ready to track search analytics.'|t('search-manager', {
+                        pluginName: searchFullNameHtml,
+                    }),
                     type: 'success',
                     variant: 'colored',
                     margin: 'none',

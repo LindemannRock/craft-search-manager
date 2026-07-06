@@ -49,7 +49,7 @@ return [
     'Finish setup before tracking search analytics.' => 'أكمل الإعداد قبل تتبع تحليلات البحث.',
     'Open setup' => 'فتح الإعداد',
     'Setup complete.' => 'اكتمل الإعداد.',
-    'Search Manager is ready to track search analytics.' => 'Search Manager جاهز لتتبع تحليلات البحث.',
+    '{pluginName} is ready to track search analytics.' => '{pluginName} جاهز لتتبع تحليلات البحث.',
 
     // Permissions
     'Access main plugin sections' => 'الوصول إلى الأقسام الرئيسية للإضافة',

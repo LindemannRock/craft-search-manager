@@ -49,7 +49,7 @@ return [
     'Finish setup before tracking search analytics.' => 'Schließen Sie die Einrichtung ab, bevor Sie Such-Analytics verfolgen.',
     'Open setup' => 'Einrichtung öffnen',
     'Setup complete.' => 'Einrichtung abgeschlossen.',
-    'Search Manager is ready to track search analytics.' => 'Search Manager ist bereit, Such-Analytics zu verfolgen.',
+    '{pluginName} is ready to track search analytics.' => '{pluginName} ist bereit, Such-Analytics zu verfolgen.',
 
     // Permissions
     'Access main plugin sections' => 'Auf die Hauptbereiche des Plugins zugreifen',

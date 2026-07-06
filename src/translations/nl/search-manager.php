@@ -49,7 +49,7 @@ return [
     'Finish setup before tracking search analytics.' => 'Voltooi de setup voordat zoekanalyses kunnen worden bijgehouden.',
     'Open setup' => 'Setup openen',
     'Setup complete.' => 'Setup voltooid.',
-    'Search Manager is ready to track search analytics.' => 'Search Manager is gereed om zoekanalyses bij te houden.',
+    '{pluginName} is ready to track search analytics.' => '{pluginName} is gereed om zoekanalyses bij te houden.',
 
     // Permissions
     'Access main plugin sections' => 'Toegang tot de belangrijkste pluginsecties',

@@ -41,4 +41,16 @@ final class SettingsControllerSectionScopeTest extends TestCase
             self::assertSame($attributes, $method->invoke($controller, $section), "Unexpected {$section} settings scope.");
         }
     }
+
+    public function testSetupCompleteInfoBoxUsesConfiguredPluginName(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/templates/setup.twig');
+        self::assertIsString($source);
+
+        self::assertStringContainsString('{% set searchFullNameHtml = searchHelper.fullName|e %}', $source);
+        self::assertStringContainsString('searchFullNameHtml: searchFullNameHtml,', $source);
+        self::assertStringContainsString("'{pluginName} is ready to track search analytics.'|t('search-manager', {", $source);
+        self::assertStringContainsString('pluginName: searchFullNameHtml', $source);
+        self::assertStringNotContainsString("'Search Manager is ready to track search analytics.'|t('search-manager')", $source);
+    }
 }

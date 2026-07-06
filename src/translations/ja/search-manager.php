@@ -49,7 +49,7 @@ return [
     'Finish setup before tracking search analytics.' => '検索アナリティクスのトラッキングを開始する前に、セットアップを完了してください。',
     'Open setup' => 'セットアップを開く',
     'Setup complete.' => 'セットアップが完了しました。',
-    'Search Manager is ready to track search analytics.' => 'Search Manager は検索アナリティクスをトラッキングする準備ができています。',
+    '{pluginName} is ready to track search analytics.' => '{pluginName} は検索アナリティクスをトラッキングする準備ができています。',
 
     // Permissions
     'Access main plugin sections' => 'プラグインのメインセクションにアクセスする',

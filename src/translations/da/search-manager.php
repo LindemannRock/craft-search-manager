@@ -49,7 +49,7 @@ return [
     'Finish setup before tracking search analytics.' => 'Fuldfør opsætningen, før søgeanalyser kan spores.',
     'Open setup' => 'Åbn opsætning',
     'Setup complete.' => 'Opsætning fuldført.',
-    'Search Manager is ready to track search analytics.' => 'Search Manager er klar til at spore søgeanalyser.',
+    '{pluginName} is ready to track search analytics.' => '{pluginName} er klar til at spore søgeanalyser.',
 
     // Permissions
     'Access main plugin sections' => 'Adgang til plugin-programmets hovedafsnit',
