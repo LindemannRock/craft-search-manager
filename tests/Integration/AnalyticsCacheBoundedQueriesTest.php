@@ -13,6 +13,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\jobs\CacheWarmJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -32,6 +33,7 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
     private int $originalPopularThreshold = 5;
     private int $originalAnalyticsRetention = 90;
     private ?string $indexHandle = null;
+    private ?object $originalRequest = null;
 
     /** @var list<string> */
     private array $testQueries = [];
@@ -39,6 +41,8 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->originalRequest = Craft::$app->getRequest();
 
         $settings = SearchManager::$plugin->getSettings();
         $this->originalEnableCache = $settings->enableCache;
@@ -73,6 +77,10 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
 
         $this->deleteTestAnalyticsRows();
 
+        if ($this->originalRequest !== null) {
+            Craft::$app->set('request', $this->originalRequest);
+        }
+
         parent::tearDown();
     }
 
@@ -83,7 +91,10 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         self::assertIsString($source);
         self::assertStringContainsString('private function _isQueryPopularForCache', $source);
         self::assertStringContainsString('->limit($rowsNeededBeforeCurrentSearch)', $source);
+        self::assertStringContainsString("->where(['normalizedQuery' => \$normalizedQuery])", $source);
+        self::assertStringContainsString('QueryNormalizer::forCacheIdentity($query)', $source);
         self::assertStringNotContainsString('private function _getQuerySearchCount', $source);
+        self::assertStringNotContainsString('private function _normalizeQueryForCache', $source);
 
         $methodStart = strpos($source, 'private function _isQueryPopularForCache');
         self::assertIsInt($methodStart);
@@ -110,6 +121,72 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
             'skipAnalytics' => true,
         ]);
         self::assertTrue($second['meta']['cached'], 'query should be cached once stored rows plus pending search meet threshold');
+    }
+
+    public function testPopularOnlyCacheCountsMixedCaseRowsByNormalizedQuery(): void
+    {
+        $handle = $this->requireIndex();
+        $baseQuery = $this->markerQuery('redirect twig');
+        $displayQuery = str_replace('redirect twig', 'Redirect Twig', $baseQuery);
+        $spacedQuery = str_replace('redirect twig', 'REDIRECT   TWIG', $baseQuery);
+        $normalizedQuery = QueryNormalizer::forCacheIdentity($baseQuery);
+
+        $this->seedAnalyticsRows($displayQuery, 1, $handle, null, $normalizedQuery);
+        $this->seedAnalyticsRows($spacedQuery, 1, $handle, null, $normalizedQuery);
+
+        $first = SearchManager::$plugin->backend->search($handle, $displayQuery, [
+            'limit' => 10,
+            'skipAnalytics' => true,
+        ]);
+        self::assertFalse($first['meta']['cached'], 'threshold-crossing search executes before the cache write');
+
+        $second = SearchManager::$plugin->backend->search($handle, $spacedQuery, [
+            'limit' => 10,
+            'skipAnalytics' => true,
+        ]);
+        self::assertTrue($second['meta']['cached'], 'mixed-case historical rows should count through normalizedQuery');
+    }
+
+    public function testAnalyticsTrackingPreservesDisplayQueryAndStoresNormalizedQuery(): void
+    {
+        $handle = $this->requireIndex();
+        $query = $this->markerQuery('Display   Case');
+
+        Craft::$app->set('request', new \craft\web\Request());
+
+        SearchManager::$plugin->analytics->trackSearch(
+            $handle,
+            $query,
+            1,
+            1.0,
+            self::TEST_BACKEND,
+            self::TEST_SITE_ID,
+            ['source' => 'test'],
+            null,
+        );
+
+        $row = (new \craft\db\Query())
+            ->select(['query', 'normalizedQuery'])
+            ->from('{{%searchmanager_analytics}}')
+            ->where(['backend' => self::TEST_BACKEND, 'siteId' => self::TEST_SITE_ID])
+            ->orderBy(['id' => SORT_DESC])
+            ->one();
+
+        self::assertIsArray($row);
+        self::assertSame($query, $row['query']);
+        self::assertSame(QueryNormalizer::forCacheIdentity($query), $row['normalizedQuery']);
+    }
+
+    public function testCaseAndWhitespaceVariantsShareNormalizedQuery(): void
+    {
+        self::assertSame(
+            'redirect twig',
+            QueryNormalizer::forCacheIdentity("  Redirect \n\t Twig  "),
+        );
+        self::assertSame(
+            QueryNormalizer::forCacheIdentity('Redirect Twig'),
+            QueryNormalizer::forCacheIdentity('redirect   twig'),
+        );
     }
 
     public function testPopularOnlyCacheDoesNotWriteBelowThreshold(): void
@@ -186,14 +263,21 @@ final class AnalyticsCacheBoundedQueriesTest extends TestCase
         return $query;
     }
 
-    private function seedAnalyticsRows(string $query, int $count, string $indexHandle = self::TEST_INDEX, ?\DateTimeInterface $dateCreated = null): void
-    {
+    private function seedAnalyticsRows(
+        string $query,
+        int $count,
+        string $indexHandle = self::TEST_INDEX,
+        ?\DateTimeInterface $dateCreated = null,
+        ?string $normalizedQuery = null,
+    ): void {
         $dateCreated ??= new \DateTime();
+        $normalizedQuery ??= QueryNormalizer::forCacheIdentity($query);
 
         for ($i = 0; $i < $count; $i++) {
             Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
                 'indexHandle' => $indexHandle,
                 'query' => $query,
+                'normalizedQuery' => $normalizedQuery,
                 'resultsCount' => 1,
                 'executionTime' => 1.0,
                 'backend' => self::TEST_BACKEND,

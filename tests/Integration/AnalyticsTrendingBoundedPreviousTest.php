@@ -13,6 +13,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use Craft;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -62,6 +63,7 @@ final class AnalyticsTrendingBoundedPreviousTest extends TestCase
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
             'indexHandle' => 'test-index',
             'query' => $query,
+            'normalizedQuery' => QueryNormalizer::forCacheIdentity($query),
             'resultsCount' => 1,
             'executionTime' => 1.0,
             'backend' => 'test-trending-bounded',

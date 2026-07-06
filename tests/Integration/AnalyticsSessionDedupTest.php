@@ -14,6 +14,7 @@ use Craft;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 
@@ -362,6 +363,7 @@ final class AnalyticsSessionDedupTest extends TestCase
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
             'indexHandle' => 'test-index',
             'query' => $query,
+            'normalizedQuery' => QueryNormalizer::forCacheIdentity($query),
             'resultsCount' => $isHit > 0 ? 1 : 0,
             'executionTime' => $executionTime,
             'backend' => 'test',

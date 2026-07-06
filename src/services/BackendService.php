@@ -13,6 +13,7 @@ use lindemannrock\searchmanager\backends\PostgreSqlBackend;
 use lindemannrock\searchmanager\backends\RedisBackend;
 use lindemannrock\searchmanager\backends\TypesenseBackend;
 use lindemannrock\searchmanager\events\SearchEvent;
+use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -1025,21 +1026,6 @@ class BackendService extends Component
     // =========================================================================
 
     /**
-     * Normalize query for cache key generation
-     *
-     * Improves cache hit rate by treating equivalent queries the same:
-     * - "Hello World", "hello world", "  HELLO   WORLD  " all become "hello world"
-     *
-     * @param string $query
-     * @return string
-     */
-    private function _normalizeQueryForCache(string $query): string
-    {
-        // Lowercase, trim, and collapse multiple spaces to single space
-        return mb_strtolower(trim(preg_replace('/\s+/', ' ', $query)));
-    }
-
-    /**
      * Keep late-stage additions, such as promotions, inside the requested type
      * boundary.
      *
@@ -1119,7 +1105,7 @@ class BackendService extends Component
     private function _generateCacheKey(string $indexName, string $query, array $options): string
     {
         // Normalize query to improve cache hit rate
-        $normalizedQuery = $this->_normalizeQueryForCache($query);
+        $normalizedQuery = QueryNormalizer::forCacheIdentity($query);
 
         // Remove analytics-only options that don't affect results
         $cacheOptions = $options;
@@ -1360,13 +1346,13 @@ class BackendService extends Component
         }
 
         try {
-            $normalizedQuery = $this->_normalizeQueryForCache($query);
+            $normalizedQuery = QueryNormalizer::forCacheIdentity($query);
             $rowsNeededBeforeCurrentSearch = $threshold - 1;
 
             $matchingRows = (new \craft\db\Query())
                 ->select(['id'])
                 ->from('{{%searchmanager_analytics}}')
-                ->where(['query' => $normalizedQuery])
+                ->where(['normalizedQuery' => $normalizedQuery])
                 ->limit($rowsNeededBeforeCurrentSearch)
                 ->column();
 

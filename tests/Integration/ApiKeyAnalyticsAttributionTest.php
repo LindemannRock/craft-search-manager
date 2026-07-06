@@ -15,6 +15,7 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\controllers\SearchController;
+use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -439,6 +440,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
             'indexHandle' => 'test-index',
             'query' => 'attr-test',
+            'normalizedQuery' => QueryNormalizer::forCacheIdentity('attr-test'),
             'resultsCount' => 1,
             'executionTime' => $executionTime,
             'backend' => 'test',
@@ -464,6 +466,7 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_analytics}}', [
             'indexHandle' => 'test-index',
             'query' => 'metadata-test',
+            'normalizedQuery' => QueryNormalizer::forCacheIdentity('metadata-test'),
             'resultsCount' => 1,
             'executionTime' => 12.3,
             'backend' => 'test',

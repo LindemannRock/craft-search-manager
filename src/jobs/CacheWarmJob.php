@@ -148,15 +148,16 @@ class CacheWarmJob extends BaseJob implements RetryableJobInterface
         $analyticsWindowDays = $settings->analyticsRetention > 0 ? $settings->analyticsRetention : 90;
         $cutoffDate = (new \DateTime())->modify("-{$analyticsWindowDays} days");
 
-        // Query the analytics table for popular queries
+        // Query the analytics table for popular query identities. Keep a stable
+        // display query so warming preserves original user-entered casing.
         $results = (new \craft\db\Query())
-            ->select(['query', 'siteId', 'COUNT(*) as searchCount'])
+            ->select(['MIN(query) AS query', 'normalizedQuery', 'siteId', 'COUNT(*) as searchCount'])
             ->from('{{%searchmanager_analytics}}')
             ->where(['indexHandle' => $indexHandle])
             ->andWhere(['>=', 'dateCreated', Db::prepareDateForDb($cutoffDate)])
-            ->andWhere(['not', ['query' => null]])
-            ->andWhere(['not', ['query' => '']])
-            ->groupBy(['query', 'siteId'])
+            ->andWhere(['not', ['normalizedQuery' => null]])
+            ->andWhere(['not', ['normalizedQuery' => '']])
+            ->groupBy(['normalizedQuery', 'siteId'])
             ->orderBy(['searchCount' => SORT_DESC])
             ->limit($limit)
             ->all();

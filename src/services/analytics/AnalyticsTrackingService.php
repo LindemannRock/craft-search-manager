@@ -13,6 +13,7 @@ use craft\db\Query;
 use craft\helpers\Db;
 use lindemannrock\base\helpers\AnalyticsIpHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -184,6 +185,7 @@ class AnalyticsTrackingService
 
         // Classify search intent
         $intent = $this->classifyIntent($query);
+        $normalizedQuery = QueryNormalizer::forCacheIdentity($query);
 
         // Insert analytics record directly (geo data will be populated async)
         try {
@@ -191,6 +193,7 @@ class AnalyticsTrackingService
             $insertData = [
                 'indexHandle' => $indexHandle,
                 'query' => $query,
+                'normalizedQuery' => $normalizedQuery,
                 'resultsCount' => $resultsCount,
                 'executionTime' => $executionTime,
                 'backend' => $backend,

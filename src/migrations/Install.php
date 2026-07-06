@@ -491,6 +491,7 @@ class Install extends Migration
             'id' => $this->primaryKey(),
             'indexHandle' => $this->string(255)->notNull(),
             'query' => $this->string(500)->notNull(),
+            'normalizedQuery' => $this->string(500)->notNull(),
             'resultsCount' => $this->integer()->notNull()->defaultValue(0),
             'executionTime' => $this->float()->null(),
             'backend' => $this->string(50)->notNull(),
@@ -552,6 +553,8 @@ class Install extends Migration
         // Create indexes for analytics queries
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['indexHandle'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['query'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['normalizedQuery'], false);
+        $this->createIndex(null, '{{%searchmanager_analytics}}', ['normalizedQuery', 'dateCreated'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['backend'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['intent'], false);
         $this->createIndex(null, '{{%searchmanager_analytics}}', ['source'], false);
