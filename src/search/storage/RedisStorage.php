@@ -17,6 +17,8 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * - sm:idx:{index}:title:{siteId}:{elementId} → SET {terms}
  * - sm:idx:{index}:ngram:{siteId}:{ngram} → SET {terms}
  * - sm:idx:{index}:ngramcount:{siteId}:{term} → STRING (count)
+ * - sm:idx:{index}:compoundidx:{scope}:{language}:{shard}:rank → ZSET {normalizedSuggestion: totalFrequency}
+ * - sm:idx:{index}:compoundidx:{scope}:{language}:{shard}:display:{hash} → HASH {suggestion: frequency}
  * - sm:idx:{index}:meta:{siteId}:{key} → STRING (value)
  *
  * @since 5.0.0
@@ -856,7 +858,13 @@ class RedisStorage implements StorageInterface
      */
     public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
     {
+        $oldRows = $this->readCompoundRows($siteId, $elementId);
+        if (!empty($oldRows)) {
+            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        }
+
         if (empty($suggestions)) {
+            $this->redis->del($this->getCompoundKey($siteId, $elementId));
             return;
         }
 
@@ -874,6 +882,7 @@ class RedisStorage implements StorageInterface
         $encoded = json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($encoded !== false) {
             $this->redis->set($this->getCompoundKey($siteId, $elementId), $encoded);
+            $this->applyCompoundAggregateDelta($siteId, $rows, 1);
         }
     }
 
@@ -882,6 +891,11 @@ class RedisStorage implements StorageInterface
      */
     public function deleteCompoundSuggestions(int $siteId, int $elementId): void
     {
+        $oldRows = $this->readCompoundRows($siteId, $elementId);
+        if (!empty($oldRows)) {
+            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        }
+
         $this->redis->del($this->getCompoundKey($siteId, $elementId));
     }
 
@@ -894,64 +908,7 @@ class RedisStorage implements StorageInterface
             return [];
         }
 
-        $pattern = $siteId !== null
-            ? $this->keyPrefix . 'compound:' . $siteId . ':*'
-            : $this->keyPrefix . 'compound:*';
-
-        $suggestionsByNormalized = [];
-        foreach ($this->scanKeys($pattern) as $key) {
-            $encoded = $this->redis->get($key);
-            if (!is_string($encoded) || $encoded === '') {
-                continue;
-            }
-
-            $rows = json_decode($encoded, true);
-            if (!is_array($rows)) {
-                continue;
-            }
-
-            foreach ($rows as $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-                if ($language !== null && ($row['language'] ?? null) !== $language) {
-                    continue;
-                }
-
-                $normalizedSuggestion = (string)($row['normalizedSuggestion'] ?? '');
-                if (!str_starts_with($normalizedSuggestion, $normalizedPrefix)) {
-                    continue;
-                }
-
-                $suggestion = (string)($row['suggestion'] ?? '');
-                if ($suggestion === '') {
-                    continue;
-                }
-
-                $frequency = (int)($row['frequency'] ?? 1);
-                $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
-                    ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + $frequency;
-                $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] =
-                    ($suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] ?? 0) + $frequency;
-            }
-        }
-
-        $suggestions = [];
-        foreach ($suggestionsByNormalized as $data) {
-            $displayFrequencies = $data['displayFrequencies'];
-            arsort($displayFrequencies);
-            $topFrequency = reset($displayFrequencies);
-            $topSuggestions = array_keys(array_filter(
-                $displayFrequencies,
-                static fn(int $frequency): bool => $frequency === $topFrequency,
-            ));
-            sort($topSuggestions, SORT_STRING);
-            $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
-        }
-
-        arsort($suggestions);
-
-        return array_slice($suggestions, 0, $limit, true);
+        return $this->getIndexedCompoundSuggestionsForAutocomplete($normalizedPrefix, $siteId, $language, $limit);
     }
 
     // =========================================================================
@@ -1035,6 +992,16 @@ LUA;
      */
     public function clearSite(int $siteId): void
     {
+        $compoundKeys = $this->scanKeys($this->keyPrefix . 'compound:' . $siteId . ':*');
+        foreach ($compoundKeys as $key) {
+            if (preg_match('/compound:' . $siteId . ':(\d+)$/', $key, $matches) === 1) {
+                $oldRows = $this->readCompoundRows($siteId, (int)$matches[1]);
+                if (!empty($oldRows)) {
+                    $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+                }
+            }
+        }
+
         // Get all keys for this site
         $patterns = [
             $this->keyPrefix . 'doc:' . $siteId . ':*',
@@ -1045,12 +1012,13 @@ LUA;
             $this->keyPrefix . 'meta:' . $siteId . ':*',
             $this->keyPrefix . 'elem:' . $siteId . ':*',
             $this->keyPrefix . 'elemindex:' . $siteId,
-            $this->keyPrefix . 'compound:' . $siteId . ':*',
+            $this->keyPrefix . 'compoundidx:site' . $siteId . ':*',
         ];
 
         foreach ($patterns as $pattern) {
             $this->deleteKeysInBatches($this->scanKeys($pattern));
         }
+        $this->deleteKeysInBatches($compoundKeys);
 
         $this->logInfo('Cleared site data', [
             'index' => $this->indexHandle,
@@ -1160,6 +1128,25 @@ LUA;
         return $this->keyPrefix . 'compound:' . $siteId . ':' . $elementId;
     }
 
+    private function getCompoundRankKey(string $scope, string $language, string $normalizedSuggestion): string
+    {
+        return $this->keyPrefix . 'compoundidx:' . $scope . ':' . $this->encodeKeySegment($language) . ':' . $this->compoundShard($normalizedSuggestion) . ':rank';
+    }
+
+    private function getCompoundDisplayKey(string $scope, string $language, string $normalizedSuggestion): string
+    {
+        return $this->keyPrefix
+            . 'compoundidx:' . $scope
+            . ':' . $this->encodeKeySegment($language)
+            . ':' . $this->compoundShard($normalizedSuggestion)
+            . ':display:' . hash('sha256', $normalizedSuggestion);
+    }
+
+    private function getCompoundLookupRankKey(string $scope, string $language, string $normalizedPrefix): string
+    {
+        return $this->keyPrefix . 'compoundidx:' . $scope . ':' . $this->encodeKeySegment($language) . ':' . $this->compoundShard($normalizedPrefix) . ':rank';
+    }
+
     /**
      * Get n-gram key
      *
@@ -1182,6 +1169,190 @@ LUA;
     private function getNgramCountKey(int $siteId, string $term): string
     {
         return $this->keyPrefix . 'ngramcount:' . $siteId . ':' . $term;
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function readCompoundRows(int $siteId, int $elementId): array
+    {
+        $encoded = $this->redis->get($this->getCompoundKey($siteId, $elementId));
+        if (!is_string($encoded) || $encoded === '') {
+            return [];
+        }
+
+        $rows = json_decode($encoded, true);
+
+        return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function applyCompoundAggregateDelta(int $siteId, array $rows, int $direction): void
+    {
+        foreach ($rows as $row) {
+            $normalizedSuggestion = (string)($row['normalizedSuggestion'] ?? '');
+            $suggestion = (string)($row['suggestion'] ?? '');
+            if ($normalizedSuggestion === '' || $suggestion === '') {
+                continue;
+            }
+
+            $language = (string)($row['language'] ?? 'en');
+            $frequency = max(0, (int)($row['frequency'] ?? 1)) * $direction;
+            if ($frequency === 0) {
+                continue;
+            }
+
+            foreach (['site' . $siteId, 'all'] as $scope) {
+                $this->updateCompoundAggregate($scope, $language, $normalizedSuggestion, $suggestion, $frequency);
+            }
+        }
+    }
+
+    private function updateCompoundAggregate(
+        string $scope,
+        string $language,
+        string $normalizedSuggestion,
+        string $suggestion,
+        int $frequencyDelta,
+    ): void {
+        $displayKey = $this->getCompoundDisplayKey($scope, $language, $normalizedSuggestion);
+        $displayFrequencies = $this->redis->hGetAll($displayKey) ?: [];
+        $displayFrequencies = array_map('intval', $displayFrequencies);
+
+        $displayFrequencies[$suggestion] = ($displayFrequencies[$suggestion] ?? 0) + $frequencyDelta;
+        if ($displayFrequencies[$suggestion] <= 0) {
+            unset($displayFrequencies[$suggestion]);
+        }
+
+        $rankKey = $this->getCompoundRankKey($scope, $language, $normalizedSuggestion);
+        if (empty($displayFrequencies)) {
+            $this->redis->del($displayKey);
+            $this->redis->zRem($rankKey, $normalizedSuggestion);
+
+            return;
+        }
+
+        $this->redis->del($displayKey);
+        $this->redis->hMSet($displayKey, $displayFrequencies);
+        $this->redis->zAdd($rankKey, array_sum($displayFrequencies), $normalizedSuggestion);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function getIndexedCompoundSuggestionsForAutocomplete(
+        string $normalizedPrefix,
+        ?int $siteId,
+        ?string $language,
+        int $limit,
+    ): array {
+        $scope = $siteId !== null ? 'site' . $siteId : 'all';
+        if (!$this->hasCompoundAggregateIndex($scope)) {
+            return [];
+        }
+
+        $languages = $language !== null ? [$language] : $this->getCompoundIndexedLanguages($scope);
+        if (empty($languages)) {
+            return [];
+        }
+
+        $suggestionsByNormalized = [];
+        foreach ($languages as $lang) {
+            $rankKey = $this->getCompoundLookupRankKey($scope, (string)$lang, $normalizedPrefix);
+            $ranked = $this->redis->zRevRange($rankKey, 0, -1, true);
+            if (!is_array($ranked)) {
+                continue;
+            }
+
+            foreach ($ranked as $normalizedSuggestion => $totalFrequency) {
+                $normalizedSuggestion = (string)$normalizedSuggestion;
+                if (!str_starts_with($normalizedSuggestion, $normalizedPrefix)) {
+                    continue;
+                }
+
+                $displayKey = $this->getCompoundDisplayKey($scope, (string)$lang, $normalizedSuggestion);
+                $displayFrequencies = $this->redis->hGetAll($displayKey);
+                if (!is_array($displayFrequencies) || empty($displayFrequencies)) {
+                    continue;
+                }
+
+                foreach ($displayFrequencies as $suggestion => $frequency) {
+                    $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][(string)$suggestion] =
+                        ($suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][(string)$suggestion] ?? 0) + (int)$frequency;
+                    $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
+                        ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + (int)$frequency;
+                }
+            }
+        }
+
+        return $this->rankCompoundSuggestions($suggestionsByNormalized, $limit);
+    }
+
+    private function hasCompoundAggregateIndex(string $scope): bool
+    {
+        return !empty($this->scanKeys($this->keyPrefix . 'compoundidx:' . $scope . ':*:rank', 1));
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getCompoundIndexedLanguages(string $scope): array
+    {
+        $languages = [];
+        foreach ($this->scanKeys($this->keyPrefix . 'compoundidx:' . $scope . ':*:rank') as $key) {
+            $pattern = '/^' . preg_quote($this->keyPrefix, '/') . 'compoundidx:' . preg_quote($scope, '/') . ':([^:]+):[^:]+:rank$/';
+            if (preg_match($pattern, $key, $matches) === 1) {
+                $languages[] = $this->decodeKeySegment($matches[1]);
+            }
+        }
+
+        return array_values(array_unique($languages));
+    }
+
+    /**
+     * @param array<string, array{totalFrequency?: int, displayFrequencies?: array<string, int>}> $suggestionsByNormalized
+     * @return array<string, int>
+     */
+    private function rankCompoundSuggestions(array $suggestionsByNormalized, int $limit): array
+    {
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $data) {
+            $displayFrequencies = $data['displayFrequencies'] ?? [];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+            if (!empty($topSuggestions)) {
+                $suggestions[$topSuggestions[0]] = (int)($data['totalFrequency'] ?? 0);
+            }
+        }
+
+        arsort($suggestions);
+
+        return array_slice($suggestions, 0, $limit, true);
+    }
+
+    private function compoundShard(string $normalizedSuggestion): string
+    {
+        return $this->encodeKeySegment(mb_substr($normalizedSuggestion, 0, 1) ?: '_');
+    }
+
+    private function encodeKeySegment(string $value): string
+    {
+        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
+
+    private function decodeKeySegment(string $value): string
+    {
+        $padding = str_repeat('=', (4 - strlen($value) % 4) % 4);
+        $decoded = base64_decode(strtr($value . $padding, '-_', '+/'), true);
+
+        return is_string($decoded) ? $decoded : $value;
     }
 
     /**

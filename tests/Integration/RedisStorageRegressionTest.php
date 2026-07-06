@@ -106,7 +106,7 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame(0, $redis->keysCalls);
     }
 
-    public function testCompoundSuggestionsAggregateByPrefixAndUseScan(): void
+    public function testCompoundSuggestionsAggregateByPrefixAndUseAggregateIndex(): void
     {
         [$storage, $redis] = $this->makeStorage();
 
@@ -136,16 +136,73 @@ final class RedisStorageRegressionTest extends TestCase
         ], 'en');
 
         self::assertSame(['redirect.twig' => 3], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', 1, 'en', 10));
-        self::assertSame(['sm:idx:test-index:compound:1:*'], $redis->scanPatterns);
+        self::assertSame(['sm:idx:test-index:compoundidx:site1:*:rank'], $redis->scanPatterns);
 
         $redis->scanPatterns = [];
         self::assertSame(['redirect.twig' => 8], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', null, 'en', 10));
-        self::assertSame(['sm:idx:test-index:compound:*'], $redis->scanPatterns);
+        self::assertSame(['sm:idx:test-index:compoundidx:all:*:rank'], $redis->scanPatterns);
         self::assertSame(0, $redis->keysCalls);
 
         $storage->deleteCompoundSuggestions(1, 101);
 
         self::assertSame(['redirect.twig' => 1], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', 1, 'en', 10));
+        self::assertSame(['redirect.twig' => 6], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', null, 'en', 10));
+    }
+
+    public function testCompoundSuggestionsUpdateAggregatesAndDisplayTieBreaks(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+
+        $storage->storeCompoundSuggestions(1, 101, [
+            'readme.twig' => [
+                'suggestion' => 'readme.twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 2,
+            ],
+            'Readme.Twig' => [
+                'suggestion' => 'Readme.Twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 2,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(2, 201, [
+            'readme.twig' => [
+                'suggestion' => 'readme.twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 3,
+            ],
+        ], 'en');
+
+        self::assertSame(['Readme.Twig' => 4], $storage->getCompoundSuggestionsForAutocomplete('readme', 1, 'en', 10));
+        self::assertSame(['readme.twig' => 7], $storage->getCompoundSuggestionsForAutocomplete('readme', null, 'en', 10));
+
+        $redis->scanPatterns = [];
+        $storage->deleteCompoundSuggestions(1, 101);
+
+        self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('readme', 1, 'en', 10));
+        self::assertSame(['readme.twig' => 3], $storage->getCompoundSuggestionsForAutocomplete('readme', null, 'en', 10));
+        self::assertNotContains('sm:idx:test-index:compound:1:*', $redis->scanPatterns);
+    }
+
+    public function testCompoundLookupRequiresAggregateIndex(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $redis->set('sm:idx:test-index:compound:1:101', json_encode([[
+            'suggestion' => 'legacy.twig',
+            'normalizedSuggestion' => 'legacy.twig',
+            'tokenKey' => 'legacy twig',
+            'frequency' => 5,
+            'language' => 'en',
+        ]], JSON_THROW_ON_ERROR));
+
+        $redis->scanPatterns = [];
+
+        self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('legacy', 1, 'en', 10));
+        self::assertSame(['sm:idx:test-index:compoundidx:site1:*:rank'], $redis->scanPatterns);
+        self::assertSame(0, $redis->keysCalls);
     }
 
     public function testAutocompleteTermExtractionIgnoresIndexHandleNamedTerm(): void
@@ -249,6 +306,7 @@ final class RedisStorageRegressionTest extends TestCase
 
         self::assertSame(0, $redis->keysCalls);
         self::assertSame([
+            'sm:idx:test-index:compound:1:*',
             'sm:idx:test-index:doc:1:*',
             'sm:idx:test-index:term:*:1',
             'sm:idx:test-index:title:1:*',
@@ -257,7 +315,7 @@ final class RedisStorageRegressionTest extends TestCase
             'sm:idx:test-index:meta:1:*',
             'sm:idx:test-index:elem:1:*',
             'sm:idx:test-index:elemindex:1',
-            'sm:idx:test-index:compound:1:*',
+            'sm:idx:test-index:compoundidx:site1:*',
         ], $redis->scanPatterns);
         self::assertFalse($redis->hasKey('sm:idx:test-index:doc:1:101'));
         self::assertFalse($redis->hasKey('sm:idx:test-index:term:protein:1'));
@@ -302,12 +360,18 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertIsString($source);
         self::assertStringNotContainsString('->keys(', $source);
 
-        foreach (['getTermsForAutocomplete', 'getElementSuggestions', 'getCompoundSuggestionsForAutocomplete'] as $method) {
+        foreach (['getTermsForAutocomplete', 'getElementSuggestions'] as $method) {
             preg_match('/public function ' . $method . '\(.*?^    }$/ms', $source, $matches);
             self::assertNotEmpty($matches, $method . ' source should be found');
             self::assertStringNotContainsString('->keys(', $matches[0], $method . ' must not use blocking KEYS');
             self::assertStringContainsString('scanKeys(', $matches[0], $method . ' should use SCAN iteration');
         }
+
+        preg_match('/public function getCompoundSuggestionsForAutocomplete\(.*?^    }$/ms', $source, $matches);
+        self::assertNotEmpty($matches, 'getCompoundSuggestionsForAutocomplete source should be found');
+        self::assertStringNotContainsString('->keys(', $matches[0], 'compound autocomplete must not use blocking KEYS');
+        self::assertStringContainsString('getIndexedCompoundSuggestionsForAutocomplete(', $matches[0]);
+        self::assertStringNotContainsString('compound:*', $matches[0]);
     }
 
     public function testRedisMaintenanceSurfacesDoNotContainBlockingKeysCalls(): void
@@ -414,6 +478,11 @@ final class RedisStorageFakeRedis
         return $this->hashes[$key][$field] ?? false;
     }
 
+    public function hDel(string $key, string $field): void
+    {
+        unset($this->hashes[$key][$field]);
+    }
+
     public function hLen(string $key): int
     {
         return count($this->hashes[$key] ?? []);
@@ -454,6 +523,17 @@ final class RedisStorageFakeRedis
     public function zRem(string $key, string $member): void
     {
         unset($this->zsets[$key][$member]);
+    }
+
+    public function zRevRange(string $key, int $start, int $end, bool $withScores = false): array
+    {
+        $members = $this->zsets[$key] ?? [];
+        arsort($members);
+
+        $length = $end === -1 ? null : $end - $start + 1;
+        $sliced = array_slice($members, $start, $length, true);
+
+        return $withScores ? $sliced : array_keys($sliced);
     }
 
     public function del(array|string $keys): int

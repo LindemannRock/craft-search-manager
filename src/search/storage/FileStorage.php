@@ -18,6 +18,8 @@ use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
  * - terms/     - Inverted index (term -> documents)
  * - titles/    - Title terms per document
  * - ngrams/    - N-grams for fuzzy matching
+ * - ngrams-index/ - N-gram inverted lookup buckets
+ * - compounds-index/ - Aggregated compound autocomplete buckets
  * - meta/      - Global metadata
  *
  * @since 5.0.0
@@ -85,9 +87,11 @@ class FileStorage implements StorageInterface
             $this->basePath . '/terms',
             $this->basePath . '/titles',
             $this->basePath . '/ngrams',
+            $this->basePath . '/ngrams-index',
             $this->basePath . '/meta',
             $this->basePath . '/elements',
             $this->basePath . '/compounds',
+            $this->basePath . '/compounds-index',
             $this->basePath . '/keys',
         ];
 
@@ -591,14 +595,19 @@ class FileStorage implements StorageInterface
     {
         $this->rememberFilenameKey($term);
 
-        // Store n-grams in site-specific directory
         $ngramDir = $this->basePath . '/ngrams/site' . $siteId;
         if (!is_dir($ngramDir)) {
             @mkdir($ngramDir, 0755, true);
         }
 
         $ngramPath = $ngramDir . '/' . $this->sanitizeFilename($term) . '.dat';
+        $oldNgrams = $this->readFile($ngramPath);
+        if (is_array($oldNgrams)) {
+            $this->removeTermFromNgramBuckets($term, $oldNgrams, $siteId);
+        }
+
         $this->writeFile($ngramPath, $ngrams);
+        $this->addTermToNgramBuckets($term, $ngrams, $siteId);
 
         $this->logDebug('Stored n-grams', [
             'term' => $term,
@@ -623,42 +632,15 @@ class FileStorage implements StorageInterface
      */
     public function getTermsByNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit = 100): array
     {
-        $ngramDir = $this->basePath . '/ngrams/site' . $siteId;
-
-        if (!is_dir($ngramDir)) {
+        if (empty($ngrams)) {
             return [];
         }
 
-        $searchNgramCount = count($ngrams);
-        $similarities = [];
-
-        // Scan all term n-gram files
-        $files = glob($ngramDir . '/*.dat');
-
-        foreach ($files as $file) {
-            $termNgrams = $this->readFile($file);
-
-            if (!$termNgrams) {
-                continue;
-            }
-
-            // Calculate Jaccard similarity
-            $intersection = count(array_intersect($ngrams, $termNgrams));
-            $union = count(array_unique(array_merge($ngrams, $termNgrams)));
-
-            $similarity = $union > 0 ? $intersection / $union : 0.0;
-
-            if ($similarity >= $threshold) {
-                $term = $this->extractTermFromFilename(basename($file));
-                $similarities[$term] = $similarity;
-            }
+        if (!is_dir($this->basePath . '/ngrams-index/site' . $siteId)) {
+            return [];
         }
 
-        // Sort by similarity (highest first)
-        arsort($similarities);
-
-        // Apply limit
-        return array_slice($similarities, 0, $limit, true);
+        return $this->getTermsByIndexedNgramSimilarity($ngrams, $siteId, $threshold, $limit);
     }
 
     /**
@@ -694,7 +676,13 @@ class FileStorage implements StorageInterface
      */
     public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
     {
+        $oldRows = $this->readCompoundRows($siteId, $elementId);
+        if (!empty($oldRows)) {
+            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        }
+
         if (empty($suggestions)) {
+            @unlink($this->getCompoundPath($siteId, $elementId));
             return;
         }
 
@@ -710,6 +698,7 @@ class FileStorage implements StorageInterface
         }
 
         $this->writeFile($this->getCompoundPath($siteId, $elementId), $rows);
+        $this->applyCompoundAggregateDelta($siteId, $rows, 1);
     }
 
     /**
@@ -717,6 +706,11 @@ class FileStorage implements StorageInterface
      */
     public function deleteCompoundSuggestions(int $siteId, int $elementId): void
     {
+        $oldRows = $this->readCompoundRows($siteId, $elementId);
+        if (!empty($oldRows)) {
+            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        }
+
         @unlink($this->getCompoundPath($siteId, $elementId));
     }
 
@@ -729,69 +723,7 @@ class FileStorage implements StorageInterface
             return [];
         }
 
-        $compoundDir = $this->basePath . '/compounds';
-        if (!is_dir($compoundDir)) {
-            return [];
-        }
-
-        $pattern = $siteId !== null
-            ? $compoundDir . '/' . $siteId . '_*.dat'
-            : $compoundDir . '/*.dat';
-
-        $files = glob($pattern);
-        if (!is_array($files)) {
-            return [];
-        }
-
-        $suggestionsByNormalized = [];
-        foreach ($files as $file) {
-            $rows = $this->readFile($file);
-            if (!is_array($rows)) {
-                continue;
-            }
-
-            foreach ($rows as $row) {
-                if (!is_array($row)) {
-                    continue;
-                }
-                if ($language !== null && ($row['language'] ?? null) !== $language) {
-                    continue;
-                }
-
-                $normalizedSuggestion = (string)($row['normalizedSuggestion'] ?? '');
-                if (!str_starts_with($normalizedSuggestion, $normalizedPrefix)) {
-                    continue;
-                }
-
-                $suggestion = (string)($row['suggestion'] ?? '');
-                if ($suggestion === '') {
-                    continue;
-                }
-
-                $frequency = (int)($row['frequency'] ?? 1);
-                $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
-                    ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + $frequency;
-                $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] =
-                    ($suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][$suggestion] ?? 0) + $frequency;
-            }
-        }
-
-        $suggestions = [];
-        foreach ($suggestionsByNormalized as $data) {
-            $displayFrequencies = $data['displayFrequencies'];
-            arsort($displayFrequencies);
-            $topFrequency = reset($displayFrequencies);
-            $topSuggestions = array_keys(array_filter(
-                $displayFrequencies,
-                static fn(int $frequency): bool => $frequency === $topFrequency,
-            ));
-            sort($topSuggestions, SORT_STRING);
-            $suggestions[$topSuggestions[0]] = (int)$data['totalFrequency'];
-        }
-
-        arsort($suggestions);
-
-        return array_slice($suggestions, 0, $limit, true);
+        return $this->getIndexedCompoundSuggestionsForAutocomplete($normalizedPrefix, $siteId, $language, $limit);
     }
 
     // =========================================================================
@@ -860,6 +792,16 @@ class FileStorage implements StorageInterface
      */
     public function clearSite(int $siteId): void
     {
+        $compoundFiles = glob($this->basePath . '/compounds/' . $siteId . '_*.dat');
+        if (is_array($compoundFiles)) {
+            foreach ($compoundFiles as $file) {
+                $rows = $this->readFile($file);
+                if (is_array($rows)) {
+                    $this->applyCompoundAggregateDelta($siteId, array_values(array_filter($rows, 'is_array')), -1);
+                }
+            }
+        }
+
         // Clear all files for this site
         $patterns = [
             $this->basePath . '/docs/' . $siteId . '_*.dat',
@@ -880,6 +822,16 @@ class FileStorage implements StorageInterface
         $ngramDir = $this->basePath . '/ngrams/site' . $siteId;
         if (is_dir($ngramDir)) {
             $this->deleteDirectory($ngramDir);
+        }
+
+        $ngramIndexDir = $this->basePath . '/ngrams-index/site' . $siteId;
+        if (is_dir($ngramIndexDir)) {
+            $this->deleteDirectory($ngramIndexDir);
+        }
+
+        $compoundSiteIndexDir = $this->basePath . '/compounds-index/site' . $siteId;
+        if (is_dir($compoundSiteIndexDir)) {
+            $this->deleteDirectory($compoundSiteIndexDir);
         }
 
         // Clear site-specific terms
@@ -967,6 +919,25 @@ class FileStorage implements StorageInterface
         return $this->basePath . '/compounds/' . $siteId . '_' . $elementId . '.dat';
     }
 
+    private function getNgramBucketPath(int $siteId, string $ngram): string
+    {
+        return $this->basePath . '/ngrams-index/site' . $siteId . '/' . $this->sanitizeFilename($ngram) . '.dat';
+    }
+
+    private function getCompoundBucketPath(string $scope, string $language, string $normalizedSuggestion): string
+    {
+        $shard = $this->compoundShard($normalizedSuggestion);
+
+        return $this->basePath . '/compounds-index/' . $scope . '/' . $this->sanitizeFilename($language) . '/' . $shard . '.dat';
+    }
+
+    private function getCompoundLookupBucketPath(string $scope, string $language, string $normalizedPrefix): string
+    {
+        $shard = $this->compoundShard($normalizedPrefix);
+
+        return $this->basePath . '/compounds-index/' . $scope . '/' . $this->sanitizeFilename($language) . '/' . $shard . '.dat';
+    }
+
     /**
      * Get metadata file path
      *
@@ -1020,6 +991,11 @@ class FileStorage implements StorageInterface
      */
     private function writeFile(string $path, $data): bool
     {
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
         $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         if ($json === false) {
@@ -1050,6 +1026,11 @@ class FileStorage implements StorageInterface
      */
     private function updateJsonFile(string $path, callable $update): bool
     {
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0755, true);
+        }
+
         $handle = @fopen($path, 'c+');
         if ($handle === false) {
             return false;
@@ -1165,6 +1146,250 @@ class FileStorage implements StorageInterface
         }
 
         return $term;
+    }
+
+    private function getTermsByIndexedNgramSimilarity(array $ngrams, int $siteId, float $threshold, int $limit): array
+    {
+        $searchNgramCount = count($ngrams);
+        $candidateIntersections = [];
+        $candidateCounts = [];
+
+        foreach (array_values(array_unique($ngrams)) as $ngram) {
+            $bucket = $this->readFile($this->getNgramBucketPath($siteId, (string)$ngram));
+            if (!is_array($bucket)) {
+                continue;
+            }
+
+            foreach ($bucket as $term => $ngramCount) {
+                $term = (string)$term;
+                $candidateIntersections[$term] = ($candidateIntersections[$term] ?? 0) + 1;
+                $candidateCounts[$term] = (int)$ngramCount;
+            }
+        }
+
+        $similarities = [];
+        foreach ($candidateIntersections as $term => $intersection) {
+            $termNgramCount = $candidateCounts[$term] ?? 0;
+            if ($termNgramCount <= 0) {
+                continue;
+            }
+
+            $union = $searchNgramCount + $termNgramCount - $intersection;
+            $similarity = $union > 0 ? $intersection / $union : 0.0;
+            if ($similarity >= $threshold) {
+                $similarities[$term] = $similarity;
+            }
+        }
+
+        arsort($similarities);
+
+        return array_slice($similarities, 0, $limit, true);
+    }
+
+    private function addTermToNgramBuckets(string $term, array $ngrams, int $siteId): void
+    {
+        $ngramCount = count($ngrams);
+        foreach (array_values(array_unique($ngrams)) as $ngram) {
+            $this->updateJsonFile(
+                $this->getNgramBucketPath($siteId, (string)$ngram),
+                static function(mixed $current) use ($term, $ngramCount): array {
+                    $bucket = is_array($current) ? $current : [];
+                    $bucket[$term] = $ngramCount;
+
+                    return $bucket;
+                },
+            );
+        }
+    }
+
+    private function removeTermFromNgramBuckets(string $term, array $ngrams, int $siteId): void
+    {
+        foreach (array_values(array_unique($ngrams)) as $ngram) {
+            $path = $this->getNgramBucketPath($siteId, (string)$ngram);
+            $bucket = $this->readFile($path);
+            if (!is_array($bucket)) {
+                continue;
+            }
+
+            unset($bucket[$term]);
+            if (empty($bucket)) {
+                @unlink($path);
+                continue;
+            }
+
+            $this->writeFile($path, $bucket);
+        }
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function readCompoundRows(int $siteId, int $elementId): array
+    {
+        $rows = $this->readFile($this->getCompoundPath($siteId, $elementId));
+
+        return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
+    }
+
+    /**
+     * @param array<int, array<string, mixed>> $rows
+     */
+    private function applyCompoundAggregateDelta(int $siteId, array $rows, int $direction): void
+    {
+        foreach ($rows as $row) {
+            $normalizedSuggestion = (string)($row['normalizedSuggestion'] ?? '');
+            $suggestion = (string)($row['suggestion'] ?? '');
+            if ($normalizedSuggestion === '' || $suggestion === '') {
+                continue;
+            }
+
+            $language = (string)($row['language'] ?? 'en');
+            $frequency = max(0, (int)($row['frequency'] ?? 1)) * $direction;
+            if ($frequency === 0) {
+                continue;
+            }
+
+            foreach (['site' . $siteId, 'all'] as $scope) {
+                $this->updateCompoundAggregateBucket($scope, $language, $normalizedSuggestion, $suggestion, $frequency);
+            }
+        }
+    }
+
+    private function updateCompoundAggregateBucket(
+        string $scope,
+        string $language,
+        string $normalizedSuggestion,
+        string $suggestion,
+        int $frequencyDelta,
+    ): void {
+        $path = $this->getCompoundBucketPath($scope, $language, $normalizedSuggestion);
+        $this->updateJsonFile(
+            $path,
+            static function(mixed $current) use ($normalizedSuggestion, $suggestion, $frequencyDelta): array {
+                $bucket = is_array($current) ? $current : [];
+                $entry = is_array($bucket[$normalizedSuggestion] ?? null) ? $bucket[$normalizedSuggestion] : [];
+                $displayFrequencies = is_array($entry['displayFrequencies'] ?? null) ? $entry['displayFrequencies'] : [];
+
+                $displayFrequencies[$suggestion] = (int)($displayFrequencies[$suggestion] ?? 0) + $frequencyDelta;
+                if ($displayFrequencies[$suggestion] <= 0) {
+                    unset($displayFrequencies[$suggestion]);
+                }
+
+                $totalFrequency = array_sum(array_map('intval', $displayFrequencies));
+                if ($totalFrequency <= 0 || empty($displayFrequencies)) {
+                    unset($bucket[$normalizedSuggestion]);
+
+                    return $bucket;
+                }
+
+                $bucket[$normalizedSuggestion] = [
+                    'totalFrequency' => $totalFrequency,
+                    'displayFrequencies' => $displayFrequencies,
+                ];
+
+                return $bucket;
+            },
+        );
+
+        $bucket = $this->readFile($path);
+        if (empty($bucket)) {
+            @unlink($path);
+        }
+    }
+
+    private function getIndexedCompoundSuggestionsForAutocomplete(
+        string $normalizedPrefix,
+        ?int $siteId,
+        ?string $language,
+        int $limit,
+    ): array {
+        $scope = $siteId !== null ? 'site' . $siteId : 'all';
+        if (!is_dir($this->basePath . '/compounds-index/' . $scope)) {
+            return [];
+        }
+
+        $languages = $language !== null ? [$language] : $this->getCompoundIndexedLanguages($siteId);
+        if (empty($languages)) {
+            return [];
+        }
+
+        $suggestionsByNormalized = [];
+
+        foreach ($languages as $lang) {
+            $bucket = $this->readFile($this->getCompoundLookupBucketPath($scope, (string)$lang, $normalizedPrefix));
+            if (!is_array($bucket)) {
+                continue;
+            }
+
+            foreach ($bucket as $normalizedSuggestion => $data) {
+                $normalizedSuggestion = (string)$normalizedSuggestion;
+                if (!str_starts_with($normalizedSuggestion, $normalizedPrefix) || !is_array($data)) {
+                    continue;
+                }
+
+                $displayFrequencies = is_array($data['displayFrequencies'] ?? null) ? $data['displayFrequencies'] : [];
+                foreach ($displayFrequencies as $suggestion => $frequency) {
+                    $suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][(string)$suggestion] =
+                        ($suggestionsByNormalized[$normalizedSuggestion]['displayFrequencies'][(string)$suggestion] ?? 0) + (int)$frequency;
+                    $suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] =
+                        ($suggestionsByNormalized[$normalizedSuggestion]['totalFrequency'] ?? 0) + (int)$frequency;
+                }
+            }
+        }
+
+        return $this->rankCompoundSuggestions($suggestionsByNormalized, $limit);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function getCompoundIndexedLanguages(?int $siteId): array
+    {
+        $scope = $siteId !== null ? 'site' . $siteId : 'all';
+        $dir = $this->basePath . '/compounds-index/' . $scope;
+        if (!is_dir($dir)) {
+            return [];
+        }
+
+        $languages = [];
+        foreach (array_diff(scandir($dir) ?: [], ['.', '..']) as $languageDir) {
+            if (is_dir($dir . '/' . $languageDir)) {
+                $languages[] = $this->extractTermFromFilename($languageDir);
+            }
+        }
+
+        return $languages;
+    }
+
+    /**
+     * @param array<string, array{totalFrequency?: int, displayFrequencies?: array<string, int>}> $suggestionsByNormalized
+     * @return array<string, int>
+     */
+    private function rankCompoundSuggestions(array $suggestionsByNormalized, int $limit): array
+    {
+        $suggestions = [];
+        foreach ($suggestionsByNormalized as $data) {
+            $displayFrequencies = $data['displayFrequencies'] ?? [];
+            arsort($displayFrequencies);
+            $topFrequency = reset($displayFrequencies);
+            $topSuggestions = array_keys(array_filter(
+                $displayFrequencies,
+                static fn(int $frequency): bool => $frequency === $topFrequency,
+            ));
+            sort($topSuggestions, SORT_STRING);
+            if (!empty($topSuggestions)) {
+                $suggestions[$topSuggestions[0]] = (int)($data['totalFrequency'] ?? 0);
+            }
+        }
+
+        arsort($suggestions);
+
+        return array_slice($suggestions, 0, $limit, true);
+    }
+
+    private function compoundShard(string $normalizedSuggestion): string
+    {
+        return $this->sanitizeFilename(mb_substr($normalizedSuggestion, 0, 1) ?: '_');
     }
 
     /**

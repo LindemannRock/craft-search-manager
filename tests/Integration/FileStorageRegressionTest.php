@@ -141,19 +141,58 @@ final class FileStorageRegressionTest extends TestCase
         self::assertSame(['京都'], array_keys($storage->getTermsByNgramSimilarity(['京都'], 1, 1.0)));
     }
 
-    public function testNgramScanDoesNotStripNumericSuffixFromEncodedFilenameSegment(): void
+    public function testIndexedNgramLookupDoesNotReadUnrelatedLegacyTermFiles(): void
     {
         $storage = $this->makeStorage();
-        $encodedTerm = '__utf8_sha256_fixture_3';
-        $originalTerm = '東京';
+        $storage->storeTermNgrams('alpha', ['al', 'lp'], 1);
+
+        $indexPath = $this->basePath . '/file-storage-regression';
+        file_put_contents($indexPath . '/ngrams/site1/beta.dat', json_encode([
+            'be',
+            'et',
+        ], JSON_THROW_ON_ERROR));
+
+        self::assertSame([], $storage->getTermsByNgramSimilarity(['be', 'et'], 1, 1.0));
+        self::assertSame(['alpha'], array_keys($storage->getTermsByNgramSimilarity(['al', 'lp'], 1, 1.0)));
+    }
+
+    public function testNgramLookupRequiresIndexedSiteDirectory(): void
+    {
+        $storage = $this->makeStorage();
         $indexPath = $this->basePath . '/file-storage-regression';
 
         mkdir($indexPath . '/ngrams/site1', 0755, true);
-        file_put_contents($indexPath . '/keys/' . $encodedTerm . '.dat', json_encode([
-            'value' => $originalTerm,
-        ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
-        file_put_contents($indexPath . '/ngrams/site1/' . $encodedTerm . '.dat', json_encode([
-            '東京',
+        file_put_contents($indexPath . '/ngrams/site1/legacy.dat', json_encode([
+            'le',
+            'eg',
+        ], JSON_THROW_ON_ERROR));
+
+        self::assertSame([], $storage->getTermsByNgramSimilarity(['le', 'eg'], 1, 1.0));
+    }
+
+    public function testIndexedNgramStaleUpdateRemovesOldBuckets(): void
+    {
+        $storage = $this->makeStorage();
+        $storage->storeTermNgrams('alpha', ['al', 'lp'], 1);
+        $storage->storeTermNgrams('alpha', ['be', 'et'], 1);
+
+        self::assertSame([], $storage->getTermsByNgramSimilarity(['al', 'lp'], 1, 1.0));
+        self::assertSame(['alpha'], array_keys($storage->getTermsByNgramSimilarity(['be', 'et'], 1, 1.0)));
+
+        $indexPath = $this->basePath . '/file-storage-regression';
+        self::assertFileDoesNotExist($indexPath . '/ngrams-index/site1/al.dat');
+    }
+
+    public function testIndexedNgramLookupRecoversHashedSidecarTerm(): void
+    {
+        $storage = $this->makeStorage();
+        $encodedNgram = '__utf8_5p2x5Lqs';
+        $originalTerm = '東京';
+        $indexPath = $this->basePath . '/file-storage-regression';
+
+        mkdir($indexPath . '/ngrams-index/site1', 0755, true);
+        file_put_contents($indexPath . '/ngrams-index/site1/' . $encodedNgram . '.dat', json_encode([
+            $originalTerm => 1,
         ], JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE));
 
         self::assertSame(
@@ -197,6 +236,59 @@ final class FileStorageRegressionTest extends TestCase
         $storage->deleteCompoundSuggestions(1, 101);
 
         self::assertSame(['redirect.twig' => 1], $storage->getCompoundSuggestionsForAutocomplete('redirect.tw', 1, 'en', 10));
+    }
+
+    public function testCompoundSuggestionsUpdateAggregatesAndDisplayTieBreaks(): void
+    {
+        $storage = $this->makeStorage();
+
+        $storage->storeCompoundSuggestions(1, 101, [
+            'readme.twig' => [
+                'suggestion' => 'readme.twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 2,
+            ],
+            'Readme.Twig' => [
+                'suggestion' => 'Readme.Twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 2,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(2, 201, [
+            'readme.twig' => [
+                'suggestion' => 'readme.twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 3,
+            ],
+        ], 'en');
+
+        self::assertSame(['Readme.Twig' => 4], $storage->getCompoundSuggestionsForAutocomplete('readme', 1, 'en', 10));
+        self::assertSame(['readme.twig' => 7], $storage->getCompoundSuggestionsForAutocomplete('readme', null, 'en', 10));
+
+        $storage->deleteCompoundSuggestions(1, 101);
+
+        self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('readme', 1, 'en', 10));
+        self::assertSame(['readme.twig' => 3], $storage->getCompoundSuggestionsForAutocomplete('readme', null, 'en', 10));
+    }
+
+    public function testCompoundLookupRequiresAggregateScope(): void
+    {
+        $storage = $this->makeStorage();
+        $indexPath = $this->basePath . '/file-storage-regression';
+
+        file_put_contents($indexPath . '/compounds/1_101.dat', json_encode([[
+            'suggestion' => 'legacy.twig',
+            'normalizedSuggestion' => 'legacy.twig',
+            'tokenKey' => 'legacy twig',
+            'frequency' => 5,
+            'language' => 'en',
+        ]], JSON_THROW_ON_ERROR));
+
+        self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('legacy', 1, 'en', 10));
+        self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('legacy', null, 'en', 10));
     }
 
     private function makeStorage(): FileStorage
