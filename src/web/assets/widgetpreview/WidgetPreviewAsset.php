@@ -1,5 +1,4 @@
 <?php
-
 /**
  * Search Manager plugin for Craft CMS 5.x
  *

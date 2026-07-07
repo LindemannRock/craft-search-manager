@@ -11,6 +11,9 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\tests\TestCase;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
+use SplFileInfo;
 
 /**
  * Source-level regressions for audit #218, #219, #220, and #223.
@@ -38,18 +41,46 @@ final class AuditRobustnessBatchTest extends TestCase
         self::assertStringNotContainsString('in_array($indexBackendType, $typesToMatch))', $source);
     }
 
-    public function testConsoleControllersHaveFileHeaders(): void
+    public function testSourceFilesHaveStandardFileHeaders(): void
     {
-        foreach ([
-            'src/console/controllers/IndexController.php',
-            'src/console/controllers/MaintenanceController.php',
-            'src/console/controllers/SecurityController.php',
-        ] as $path) {
+        foreach ($this->sourcePhpFiles() as $path) {
+            if ($path === 'src/config.php') {
+                continue;
+            }
+
             $source = $this->readPluginFile($path);
 
-            self::assertStringStartsWith("<?php\n/**\n * Search Manager plugin for Craft CMS 5.x", $source);
-            self::assertStringContainsString('@copyright Copyright (c) 2026 LindemannRock', $source);
+            self::assertMatchesRegularExpression(
+                '/^<\?php\n\/\*\*\n \* Search Manager plugin for Craft CMS 5\.x\n \*\n \* @link      https:\/\/lindemannrock\.com\n \* @copyright Copyright \(c\) \d{4}(?:-\d{4})? LindemannRock\n \*\/\n\n/',
+                $source,
+                $path . ' must start with the standard Search Manager file header.',
+            );
+            self::assertStringNotContainsString('LindemannRock Search Manager', $source, $path);
         }
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function sourcePhpFiles(): array
+    {
+        $root = dirname(__DIR__, 2);
+        $files = [];
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root . '/src', RecursiveDirectoryIterator::SKIP_DOTS),
+        );
+
+        foreach ($iterator as $file) {
+            assert($file instanceof SplFileInfo);
+
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $files[] = substr($file->getPathname(), strlen($root) + 1);
+            }
+        }
+
+        sort($files);
+
+        return $files;
     }
 
     private function readPluginFile(string $path): string
