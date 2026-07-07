@@ -218,6 +218,7 @@ return [
     'Selected backend is disabled.' => 'الواجهة الخلفية المحددة معطلة.',
     'Selected widget does not exist.' => 'الأداة المحددة غير موجودة.',
     'Selected widget is disabled.' => 'الأداة المحددة معطلة.',
+    'Select a valid search API key.' => 'حدد مفتاح API صالحاً للبحث.',
     'Selected style preset not found' => 'الإعداد المسبق للنمط المحدد غير موجود',
     'Promotion saved' => 'تم حفظ العرض الترويجي',
     'Could not save promotion' => 'تعذر حفظ العرض الترويجي',

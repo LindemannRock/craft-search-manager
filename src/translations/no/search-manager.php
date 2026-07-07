@@ -218,6 +218,7 @@ return [
     'Selected backend is disabled.' => 'Valgt backend er deaktivert.',
     'Selected widget does not exist.' => 'Valgt widget finnes ikke.',
     'Selected widget is disabled.' => 'Valgt widget er deaktivert.',
+    'Select a valid search API key.' => 'Velg en gyldig søke-API-nøkkel.',
     'Selected style preset not found' => 'Valgt stilforhåndsinnstilling ikke funnet',
     'Promotion saved' => 'Kampanje lagret',
     'Could not save promotion' => 'Kunne ikke lagre kampanje',

@@ -360,8 +360,9 @@ class WidgetConfigService extends Component
         $settings = $plugin?->getSettings();
         $isDefault = $settings?->defaultWidgetHandle === $config->handle;
 
-        // Don't delete the default config if it's the only one
-        if ($isDefault && $this->getCount() <= 1) {
+        // Do not remove the last enabled effective widget. Config-file widgets
+        // count as alternatives, but are never deleted by this DB path.
+        if ($config->enabled && !$this->hasEnabledConfigAfterDelete($config)) {
             $this->logWarning('Cannot delete the only widget config');
             return false;
         }
@@ -372,29 +373,11 @@ class WidgetConfigService extends Component
 
         // If we deleted the default, set another widget as the default
         if ($isDefault && $settings !== null) {
-            // Find another enabled widget to set as default
-            $first = (new Query())
-                ->select('handle')
-                ->from(self::TABLE)
-                ->where(['enabled' => 1])
-                ->orderBy(['id' => SORT_ASC])
-                ->scalar();
-
-            if ($first) {
+            $first = $this->getFirstEnabledHandle();
+            if ($first !== null) {
                 $settings->defaultWidgetHandle = $first;
                 $settings->saveToDatabase();
                 $this->logInfo('Set new default widget after deletion', ['handle' => $first]);
-            } else {
-                // No database widgets left, check config file widgets
-                $configFileConfigs = $this->getConfigFileConfigs();
-                foreach ($configFileConfigs as $configWidget) {
-                    if ($configWidget->enabled) {
-                        $settings->defaultWidgetHandle = $configWidget->handle;
-                        $settings->saveToDatabase();
-                        $this->logInfo('Set new default widget after deletion', ['handle' => $configWidget->handle]);
-                        break;
-                    }
-                }
             }
         }
 
@@ -418,6 +401,31 @@ class WidgetConfigService extends Component
         }
 
         return $this->delete($config);
+    }
+
+    /**
+     * Whether at least one enabled effective widget remains after deleting a DB widget.
+     */
+    private function hasEnabledConfigAfterDelete(WidgetConfig $deletedConfig): bool
+    {
+        foreach ($this->getAll(true) as $config) {
+            if ($deletedConfig->id !== null && $config->id === $deletedConfig->id) {
+                continue;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get the first enabled effective widget handle after a delete.
+     */
+    private function getFirstEnabledHandle(): ?string
+    {
+        $first = $this->getAll(true)[0] ?? null;
+        return $first?->handle;
     }
 
     // =========================================================================

@@ -218,6 +218,7 @@ return [
     'Selected backend is disabled.' => 'Geselecteerde backend is uitgeschakeld.',
     'Selected widget does not exist.' => 'Geselecteerde widget bestaat niet.',
     'Selected widget is disabled.' => 'Geselecteerde widget is uitgeschakeld.',
+    'Select a valid search API key.' => 'Selecteer een geldige zoek-API-sleutel.',
     'Selected style preset not found' => 'Geselecteerd stijlvoorinstelling niet gevonden',
     'Promotion saved' => 'Promotie opgeslagen',
     'Could not save promotion' => 'Kon promotie niet opslaan',

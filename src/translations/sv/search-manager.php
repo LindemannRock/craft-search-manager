@@ -218,6 +218,7 @@ return [
     'Selected backend is disabled.' => 'Vald backend är inaktiverad.',
     'Selected widget does not exist.' => 'Vald widget finns inte.',
     'Selected widget is disabled.' => 'Vald widget är inaktiverad.',
+    'Select a valid search API key.' => 'Välj en giltig sök-API-nyckel.',
     'Selected style preset not found' => 'Vald stilförinställning hittades inte',
     'Promotion saved' => 'Kampanj sparad',
     'Could not save promotion' => 'Kunde inte spara kampanj',

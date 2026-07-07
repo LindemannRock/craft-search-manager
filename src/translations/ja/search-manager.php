@@ -218,6 +218,7 @@ return [
     'Selected backend is disabled.' => '選択されたバックエンドは無効です。',
     'Selected widget does not exist.' => '選択されたウィジェットは存在しません。',
     'Selected widget is disabled.' => '選択されたウィジェットは無効です。',
+    'Select a valid search API key.' => '有効な検索 API キーを選択してください。',
     'Selected style preset not found' => '選択されたスタイルプリセットが見つかりません',
     'Promotion saved' => 'プロモーションを保存しました',
     'Could not save promotion' => 'プロモーションを保存できませんでした',

@@ -41,7 +41,7 @@ final class WidgetConfigApiKeyValidationTest extends TestCase
         $widget = $this->makeWidgetConfig('sm_srv_' . str_repeat('a', 32));
 
         self::assertFalse($widget->validate(['settings']));
-        self::assertTrue($widget->hasErrors('settings.apiKey'));
+        self::assertSame(['Select a valid search API key.'], $widget->getErrors('settings.apiKey'));
     }
 
     public function testArbitraryApiKeyIsInvalid(): void
@@ -49,7 +49,7 @@ final class WidgetConfigApiKeyValidationTest extends TestCase
         $widget = $this->makeWidgetConfig('not-a-search-manager-public-key');
 
         self::assertFalse($widget->validate(['settings']));
-        self::assertTrue($widget->hasErrors('settings.apiKey'));
+        self::assertSame(['Select a valid search API key.'], $widget->getErrors('settings.apiKey'));
     }
 
     private function makeWidgetConfig(string $apiKey): WidgetConfig

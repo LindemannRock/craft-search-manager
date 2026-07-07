@@ -218,6 +218,7 @@ return [
     'Selected backend is disabled.' => 'O backend selecionado está desativado.',
     'Selected widget does not exist.' => 'O widget selecionado não existe.',
     'Selected widget is disabled.' => 'O widget selecionado está desativado.',
+    'Select a valid search API key.' => 'Selecione uma chave de API de pesquisa válida.',
     'Selected style preset not found' => 'Predefinição de estilo selecionada não encontrada',
     'Promotion saved' => 'Promoção guardada',
     'Could not save promotion' => 'Não foi possível guardar a promoção',

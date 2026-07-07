@@ -705,10 +705,7 @@ class WidgetConfig extends Model
         if (!str_starts_with($value, 'sm_pub_')) {
             $this->addError(
                 'settings.apiKey',
-                Craft::t(
-                    'search-manager',
-                    'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.'
-                )
+                Craft::t('search-manager', 'Select a valid search API key.')
             );
         }
     }
