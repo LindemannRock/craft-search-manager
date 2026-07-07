@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use craft\base\Component;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -48,7 +49,7 @@ class EnrichmentService extends Component
      *   - parseMarkdownSnippets: bool (default: false)
      *   - hideResultsWithoutUrl: bool (default: false)
      *   - includeDebugMeta: bool (default: false)
-     *   - siteId: int|null (default: null)
+     *   - siteId: int|array|null (default: null)
      * @return array Enriched results array
      */
     public function enrichResults(array $rawHits, string $query, array $indexHandles, array $options = []): array
@@ -60,7 +61,7 @@ class EnrichmentService extends Component
         $parseMarkdownSnippets = (bool) ($options['parseMarkdownSnippets'] ?? false);
         $hideResultsWithoutUrl = (bool) ($options['hideResultsWithoutUrl'] ?? false);
         $includeDebugMeta = (bool) ($options['includeDebugMeta'] ?? false);
-        $siteId = isset($options['siteId']) ? (int) $options['siteId'] : null;
+        $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId'] ?? null);
 
         // Batch-load every referenced element up front, grouped by element type
         // and site, so this loop does a map lookup instead of a getElementById()
@@ -252,7 +253,7 @@ class EnrichmentService extends Component
      * per-element getElementById() so no result is silently dropped.
      *
      * @param array $rawHits Raw hits from the search backend
-     * @param int|null $siteId Global siteId option (per-hit siteId overrides it)
+     * @param int|null $siteId Global single-site option (per-hit siteId overrides it)
      * @param string[] $indexHandles Index handles for the search (single-index fallback)
      * @return array<string, \craft\base\ElementInterface> Map keyed by "siteId:elementId"
      */

@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\SearchEngine;
@@ -376,16 +377,15 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     public function search(string $indexName, string $query, array $options = []): array
     {
         try {
-            // Get site ID from options - check raw value first for "all sites" detection
-            $rawSiteId = $options['siteId'] ?? null;
+            $siteScope = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
 
             // Pass language override to get correctly configured SearchEngine
             // Derive language from siteId if no explicit language and a specific siteId is provided
             $languageOverride = isset($options['language']) && is_string($options['language'])
                 ? LanguageNormalizer::normalizeOrNull($options['language'])
                 : null;
-            if ($languageOverride === null && $rawSiteId !== null && $rawSiteId !== '*' && is_numeric($rawSiteId)) {
-                $site = Craft::$app->getSites()->getSiteById((int) $rawSiteId);
+            if ($languageOverride === null && is_int($siteScope)) {
+                $site = Craft::$app->getSites()->getSiteById($siteScope);
                 if ($site && !empty($site->language)) {
                     $languageOverride = LanguageNormalizer::normalize(substr($site->language, 0, 2));
                 }
@@ -404,14 +404,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $searchOptions['language'] = $languageOverride;
             }
 
-            // Handle "all sites" search (siteId = '*' or null/not set)
-            $searchAllSites = $rawSiteId === '*' || $rawSiteId === null;
-            $siteIdOption = $rawSiteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
-
-            if ($searchAllSites) {
+            if ($siteScope === SearchSiteScopeHelper::ALL_SITES) {
                 $result = $this->searchAllSites($engine, $storage, $indexName, $query, $limit, $offset, $typeFilter, $searchOptions);
+            } elseif (is_array($siteScope)) {
+                $result = $this->searchSiteSet($engine, $storage, $indexName, $query, $siteScope, $limit, $offset, $typeFilter, $searchOptions);
             } else {
-                $result = $this->searchSingleSite($engine, $storage, $indexName, $query, (int)$siteIdOption, $limit, $offset, $typeFilter, $searchOptions);
+                $result = $this->searchSingleSite($engine, $storage, $indexName, $query, $siteScope, $limit, $offset, $typeFilter, $searchOptions);
             }
 
             $hits = $result['hits'] ?? [];
@@ -422,7 +420,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 'query' => $query,
                 'result_count' => count($hits),
                 'type_filter' => $typeFilter,
-                'all_sites' => $searchAllSites,
+                'all_sites' => $siteScope === SearchSiteScopeHelper::ALL_SITES,
             ]);
 
             return ['hits' => $hits, 'total' => $total];
@@ -454,17 +452,41 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $typeFilter,
         array $searchOptions,
     ): array {
-        $allResults = [];
         $allSites = Craft::$app->getSites()->getAllSites();
+        $siteIds = array_map(static fn($site): int => (int)$site->id, $allSites);
 
-        foreach ($allSites as $site) {
-            $siteResults = $engine->search($query, $site->id, 0, $searchOptions);
+        return $this->searchSiteSet($engine, $storage, $indexName, $query, $siteIds, $limit, $offset, $typeFilter, $searchOptions);
+    }
+
+    /**
+     * Search exactly the provided site IDs and merge results by score.
+     *
+     * @param array<int, int> $siteIds
+     * @param string|array|null $typeFilter
+     * @return array
+     */
+    protected function searchSiteSet(
+        SearchEngine $engine,
+        StorageInterface $storage,
+        string $indexName,
+        string $query,
+        array $siteIds,
+        int $limit,
+        int $offset,
+        $typeFilter,
+        array $searchOptions,
+    ): array {
+        $allResults = [];
+
+        foreach ($siteIds as $siteId) {
+            $siteId = (int)$siteId;
+            $siteResults = $engine->search($query, $siteId, 0, $searchOptions);
             foreach ($siteResults as $elementId => $score) {
-                $compositeKey = $site->id . ':' . $elementId;
+                $compositeKey = $siteId . ':' . $elementId;
                 $allResults[$compositeKey] = [
                     'elementId' => $elementId,
                     'score' => $score,
-                    'siteId' => $site->id,
+                    'siteId' => $siteId,
                 ];
             }
         }
@@ -520,7 +542,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
         // Add matchedIn field indicating which fields matched the query
         // Use first site's ID as default (helper uses per-hit siteId when available)
-        $defaultSiteId = !empty($allSites) ? $allSites[0]->id : 1;
+        $defaultSiteId = !empty($siteIds) ? (int)$siteIds[0] : 1;
         $hits = $this->addMatchedFieldsToHits($hits, $query, $indexName, $defaultSiteId, $storage, count($hits));
 
         return ['hits' => $hits, 'total' => $total];

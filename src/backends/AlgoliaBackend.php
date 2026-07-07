@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\backends;
 use Algolia\AlgoliaSearch\Api\SearchClient;
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 
 /**
  * Algolia Backend
@@ -205,24 +206,30 @@ class AlgoliaBackend extends BaseBackend
     }
 
     /**
-     * Build the Algolia `filters` expression that scopes results to a single
-     * site, merging with any caller-supplied filter rather than replacing it.
+     * Build the Algolia `filters` expression that scopes results by site,
+     * merging with any caller-supplied filter rather than replacing it.
      *
      * - All-sites (`*` / null): returns `$existing` unchanged (no site filter).
      * - Single site, no existing filter: `siteId:N`.
-     * - Single site + existing filter: `({existing}) AND siteId:N`.
+     * - Multiple sites, no existing filter: `(siteId:N OR siteId:M)`.
+     * - Site scope + existing filter: `({existing}) AND {site filter}`.
      *
      * @since 5.47.0
      */
-    public static function siteIdFilter(int|string|null $siteId, ?string $existing = null): ?string
+    public static function siteIdFilter(int|string|array|null $siteId, ?string $existing = null): ?string
     {
         $existing = ($existing === null || $existing === '') ? null : $existing;
+        $siteScope = SearchSiteScopeHelper::normalize($siteId);
 
-        if ($siteId === null || $siteId === '*') {
+        if ($siteScope === SearchSiteScopeHelper::ALL_SITES) {
             return $existing;
         }
 
-        $site = 'siteId:' . (int)$siteId;
+        if (is_array($siteScope)) {
+            $site = '(' . implode(' OR ', array_map(static fn(int $id): string => 'siteId:' . $id, $siteScope)) . ')';
+        } else {
+            $site = 'siteId:' . $siteScope;
+        }
 
         return $existing === null ? $site : '(' . $existing . ') AND ' . $site;
     }
@@ -548,9 +555,9 @@ class AlgoliaBackend extends BaseBackend
                 'attributesToRetrieve' => ['title', 'id', 'siteId'],
             ];
 
-            // Apply siteId filter if specified
-            if ($siteId !== null && $siteId !== '*') {
-                $searchOptions['filters'] = 'siteId:' . (int)$siteId;
+            $siteFilter = self::siteIdFilter($siteId);
+            if ($siteFilter !== null) {
+                $searchOptions['filters'] = $siteFilter;
             }
 
             $results = $this->search($indexName, $query, $searchOptions);

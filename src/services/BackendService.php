@@ -21,6 +21,7 @@ use lindemannrock\searchmanager\backends\TypesenseBackend;
 use lindemannrock\searchmanager\events\SearchEvent;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
@@ -430,20 +431,8 @@ class BackendService extends Component
 
         $this->normalizeSearchLanguageOption($options);
 
-        // Handle "all sites" option - siteId of '*' or null/not set means search all
-        // Check raw value BEFORE applying default
-        $rawSiteId = $options['siteId'] ?? null;
-        $searchAllSites = $rawSiteId === '*' || $rawSiteId === null;
-
-        // For cache key consistency: use '*' sentinel for all-sites, otherwise keep provided siteId
-        // IMPORTANT: Don't inject current site when siteId was intentionally omitted
-        // Backend receives '*' which AbstractSearchEngineBackend treats as all-sites
-        if ($searchAllSites) {
-            $options['siteId'] = '*';
-            $siteId = null; // Used for analytics/query rules (null = all sites)
-        } else {
-            $siteId = (int) $options['siteId'];
-        }
+        $options['siteId'] = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
+        $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId']);
         $settings = SearchManager::$plugin->getSettings();
 
         // Check if analytics should be skipped (used by cache warming, internal operations)
@@ -536,6 +525,8 @@ class BackendService extends Component
             // Allow listeners to modify query and options
             $query = $beforeEvent->query;
             $options = $beforeEvent->options;
+            $options['siteId'] = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
+            $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId']);
 
             // Allow short-circuit: listener sets handled=true and provides results
             if ($beforeEvent->handled) {
@@ -799,7 +790,9 @@ class BackendService extends Component
                         continue;
                     }
 
-                    $identity = (string)$elementId;
+                    $identity = isset($hit['siteId'])
+                        ? SearchHitIdentityHelper::backendId($elementId, $hit['siteId'])
+                        : (string)$elementId;
 
                     // Avoid duplicates - keep highest score
                     if (!isset($hitIndexesByElementId[$identity])) {
@@ -870,14 +863,9 @@ class BackendService extends Component
 
         $this->normalizeSearchLanguageOption($options);
 
-        // Match search(): if siteId is omitted, search all sites
-        $rawSiteId = $options['siteId'] ?? null;
-        if ($rawSiteId === null || $rawSiteId === '*') {
-            $siteId = null;
-            $options['siteId'] = '*';
-        } else {
-            $siteId = (int)$rawSiteId;
-        }
+        // Match search(): if siteId is omitted, search all sites.
+        $options['siteId'] = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
+        $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId']);
 
         // Check for redirects first across all indexes (including global rules)
         // Global rules (indexHandle = null) apply to all indexes
@@ -1150,6 +1138,9 @@ class BackendService extends Component
         $cacheOptions = $options;
         foreach (['source', 'platform', 'appVersion', 'skipAnalytics', 'sessionId', 'apiKeyId', 'apiKeyPrefix', 'apiKeyType'] as $key) {
             unset($cacheOptions[$key]);
+        }
+        if (array_key_exists('siteId', $cacheOptions)) {
+            $cacheOptions['siteId'] = SearchSiteScopeHelper::normalize($cacheOptions['siteId']);
         }
 
         // Include everything that affects the search results

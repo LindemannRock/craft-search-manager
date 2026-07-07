@@ -238,10 +238,11 @@ class SettingsController extends Controller
 
             $originalQuery = $query;
 
-            // Respect the index's configured siteId for scoping
+            // Respect the index's resolved site scope for scoping.
             $searchOptions = [];
-            if ($index && $index->siteId !== null) {
-                $searchOptions['siteId'] = $index->siteId;
+            $indexSiteIds = $index ? $index->getSiteIds() : null;
+            if ($indexSiteIds !== null) {
+                $searchOptions['siteId'] = count($indexSiteIds) === 1 ? $indexSiteIds[0] : $indexSiteIds;
             }
 
             // Add wildcard support (auto-append * if enabled and no wildcard present)
@@ -274,7 +275,7 @@ class SettingsController extends Controller
                     $originalQuery,
                     [$indexHandle],
                     [
-                        'siteId' => $index ? $index->siteId : null,
+                        'siteId' => $searchOptions['siteId'] ?? null,
                         'snippetMode' => $request->getBodyParam('snippetMode', 'balanced'),
                         'snippetLength' => (int) $request->getBodyParam('snippetLength', 200),
                         'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', false),

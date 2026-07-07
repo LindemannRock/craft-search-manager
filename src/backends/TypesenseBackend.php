@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use Typesense\Client;
 
 /**
@@ -208,25 +209,29 @@ class TypesenseBackend extends BaseBackend
     }
 
     /**
-     * Build the Typesense `filter_by` expression that scopes results to a
-     * single site, merging with any caller-supplied filter rather than
+     * Build the Typesense `filter_by` expression that scopes results by site,
+     * merging with any caller-supplied filter rather than
      * replacing it.
      *
      * - All-sites (`*` / null): returns `$existing` unchanged (no site filter).
      * - Single site, no existing filter: `siteId:=N`.
-     * - Single site + existing filter: `({existing}) && siteId:=N`.
+     * - Multiple sites, no existing filter: `siteId:=[N,M]`.
+     * - Site scope + existing filter: `({existing}) && {site filter}`.
      *
      * @since 5.47.0
      */
-    public static function siteIdFilter(int|string|null $siteId, ?string $existing = null): ?string
+    public static function siteIdFilter(int|string|array|null $siteId, ?string $existing = null): ?string
     {
         $existing = ($existing === null || $existing === '') ? null : $existing;
+        $siteScope = SearchSiteScopeHelper::normalize($siteId);
 
-        if ($siteId === null || $siteId === '*') {
+        if ($siteScope === SearchSiteScopeHelper::ALL_SITES) {
             return $existing;
         }
 
-        $site = 'siteId:=' . (int)$siteId;
+        $site = is_array($siteScope)
+            ? 'siteId:=[' . implode(',', $siteScope) . ']'
+            : 'siteId:=' . $siteScope;
 
         return $existing === null ? $site : '(' . $existing . ') && ' . $site;
     }
@@ -579,8 +584,9 @@ class TypesenseBackend extends BaseBackend
             ];
 
             // Apply siteId filter if specified
-            if ($siteId !== null && $siteId !== '*') {
-                $searchOptions['filter_by'] = 'siteId:=' . (int)$siteId;
+            $siteFilter = self::siteIdFilter($siteId);
+            if ($siteFilter !== null) {
+                $searchOptions['filter_by'] = $siteFilter;
             }
 
             $results = $this->search($indexName, $query, $searchOptions);
