@@ -23,6 +23,7 @@ return [
     '*' => [
         'defaultBackendHandle' => 'my-mysql',
         'enableAnalytics' => true,
+        'trackingAllowedOrigins' => App::env('SEARCH_MANAGER_TRACKING_ALLOWED_ORIGINS') ?: [],
     ],
 
     'dev' => [
@@ -145,6 +146,7 @@ See [Autocomplete](../feature-tour/autocomplete.md) for details.
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enableAnalytics` | `bool` | `true` | Enable search analytics tracking |
+| `trackingAllowedOrigins` | `array|string` | `[]` | Config-only. Exact frontend origins allowed to post browser-based `track-search` / `track-click` requests from headless sites. Same-origin tracking does not need to be listed; wildcards are not supported |
 | `analyticsRetention` | `int` | `90` | Days to keep analytics data (0 = forever) |
 
 Analytics can also be toggled per-index, so you can track searches on your public indices without tracking internal/admin searches. See [Analytics](../feature-tour/analytics.md).
