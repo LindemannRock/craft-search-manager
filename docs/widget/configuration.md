@@ -117,7 +117,7 @@ Override settings per-include:
 | `theme` | `string` | `'light'` | `'light'` or `'dark'` |
 | `siteId` | `int` | — | Specific site to search |
 | `dir` | `string` | — | Text direction: `'ltr'` or `'rtl'` |
-| `apiKey` | `string` | — | **Public** [API key](../feature-tour/api-keys.md) the widget sends as `X-Search-Manager-Key`. Required when **Require API Key** is enabled. A render-time `apiKey` overrides the widget config's saved API Key field. Use a public, referrer-restricted key scoped to the widget's indices — never a server key. |
+| `apiKey` | `string` | — | Optional render-time **public** [API key](../feature-tour/api-keys.md) override. CP widget configs select a public key by name/prefix; a render-time `apiKey` value overrides that saved selection and is emitted into page HTML as `X-Search-Manager-Key` request material. Never use a server key. |
 | `styles` | `object` | `{}` | Override individual [style properties](styles.md) at render time |
 
 ### Behavior

@@ -34,7 +34,9 @@ use yii\web\UnauthorizedHttpException;
  * `securityKey`. Chosen over bcrypt because API keys are already 128-bit
  * CSPRNG random — there's no low-entropy attack surface bcrypt's cost
  * factor exists to slow down, and HMAC is the right primitive for
- * fast constant-time-comparable opaque-token verification.
+ * fast constant-time-comparable opaque-token verification. Public keys also
+ * store encrypted plaintext material for widget rendering; that material is
+ * never used for request authentication.
  *
  * @since 5.46.0
  */
@@ -74,8 +76,9 @@ class ApiKeyService extends Component
 
     /**
      * Generate a fresh plaintext key for the given type, plus its derived
-     * prefix and hash. The plaintext is the caller's only chance to capture
-     * the full value — only the prefix + hash are persisted.
+     * prefix and hash. External callers must capture the plaintext here.
+     * Authentication persists the prefix + hash; public keys may additionally
+     * persist encrypted material for browser-rendered widget selection.
      *
      * @return array{plaintext: string, prefix: string, hash: string}
      * @throws \InvalidArgumentException if $type isn't a recognised ApiKey type
@@ -106,6 +109,69 @@ class ApiKeyService extends Component
     {
         $securityKey = Craft::$app->getConfig()->getGeneral()->securityKey;
         return hash_hmac('sha256', $plaintext, $securityKey);
+    }
+
+    /**
+     * Encrypt a plaintext public key for widget rendering storage.
+     */
+    public function encryptPlaintextKey(string $plaintext): string
+    {
+        return base64_encode(Craft::$app->getSecurity()->encryptByKey($plaintext));
+    }
+
+    /**
+     * Decrypt a widget-renderable public key, or null if it is unavailable.
+     */
+    public function decryptPlaintextKey(ApiKey $key): ?string
+    {
+        if ($key->type !== ApiKey::TYPE_PUBLIC || $key->encryptedKey === null || trim($key->encryptedKey) === '') {
+            return null;
+        }
+
+        $encrypted = base64_decode($key->encryptedKey, true);
+        if ($encrypted === false) {
+            return null;
+        }
+
+        try {
+            $decrypted = Craft::$app->getSecurity()->decryptByKey($encrypted);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        return is_string($decrypted) && str_starts_with($decrypted, 'sm_pub_') ? $decrypted : null;
+    }
+
+    /**
+     * Public keys that can be selected by browser-rendered widget configs.
+     *
+     * @return ApiKey[]
+     */
+    public function widgetUsablePublicKeys(): array
+    {
+        return array_values(array_filter(
+            ApiKey::findAll(ApiKey::TYPE_PUBLIC),
+            fn(ApiKey $key): bool => $key->isWidgetUsable() && $this->decryptPlaintextKey($key) !== null,
+        ));
+    }
+
+    public function widgetKeyLabel(ApiKey $key): string
+    {
+        return trim($key->name) . ' — ' . $key->keyPrefix . '...';
+    }
+
+    public function findWidgetUsablePublicKeyById(?int $id): ?ApiKey
+    {
+        if ($id === null || $id <= 0) {
+            return null;
+        }
+
+        $key = ApiKey::findById($id);
+        if ($key === null || !$key->isWidgetUsable() || $this->decryptPlaintextKey($key) === null) {
+            return null;
+        }
+
+        return $key;
     }
 
     /**
@@ -443,8 +509,9 @@ class ApiKeyService extends Component
     }
 
     /**
-     * Hard-delete a set of keys by id. Destructive — there is no recovery,
-     * because the plaintext is unrecoverable (only the hash is persisted).
+     * Hard-delete a set of keys by id. Destructive — there is no recovery.
+     * Server keys are hash-only, and public-key encrypted widget material is
+     * deleted with the row.
      *
      * @param int[] $ids
      * @return int Number of rows deleted

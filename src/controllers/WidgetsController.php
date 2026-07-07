@@ -15,6 +15,7 @@ use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\models\WidgetStyle;
@@ -288,12 +289,17 @@ class WidgetsController extends Controller
         $indices = SearchIndex::findAll();
         $settings = SearchManager::$plugin->getSettings();
         $widgetStyles = SearchManager::$plugin->widgetStyles->getAll('modal');
+        $widgetApiKeys = SearchManager::$plugin->apiKeys->widgetUsablePublicKeys();
 
         return $this->renderTemplate('search-manager/widgets/edit', [
             'widgetConfig' => $widgetConfig,
             'isNew' => !$configId,
             'indices' => $indices,
             'widgetStyles' => $widgetStyles,
+            'widgetApiKeyOptions' => $this->getWidgetApiKeyOptions($widgetApiKeys),
+            'widgetApiKeyScopes' => $this->getWidgetApiKeyScopes($widgetApiKeys),
+            'selectedApiKey' => $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys),
+            'hasWidgetUsableApiKeys' => !empty($widgetApiKeys),
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             'defaultWidgetHandle' => $settings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
@@ -350,12 +356,16 @@ class WidgetsController extends Controller
                 $mergedSettings['search']['indexHandles'] = $indexHandles ? [$indexHandles] : [];
             }
         }
+        $mergedSettings['apiKeyId'] = isset($mergedSettings['apiKeyId']) && is_numeric($mergedSettings['apiKeyId']) && (int)$mergedSettings['apiKeyId'] > 0
+            ? (int)$mergedSettings['apiKeyId']
+            : null;
 
         $widgetConfig->settings = $mergedSettings;
 
         $pluginSettings = SearchManager::$plugin->getSettings();
         $indices = SearchIndex::findAll();
         $widgetStyles = SearchManager::$plugin->widgetStyles->getAll('modal');
+        $widgetApiKeys = SearchManager::$plugin->apiKeys->widgetUsablePublicKeys();
 
         // Common route params for error returns (template needs all of these)
         $errorRouteParams = [
@@ -363,6 +373,10 @@ class WidgetsController extends Controller
             'isNew' => !$configId,
             'indices' => $indices,
             'widgetStyles' => $widgetStyles,
+            'widgetApiKeyOptions' => $this->getWidgetApiKeyOptions($widgetApiKeys),
+            'widgetApiKeyScopes' => $this->getWidgetApiKeyScopes($widgetApiKeys),
+            'selectedApiKey' => $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys),
+            'hasWidgetUsableApiKeys' => !empty($widgetApiKeys),
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             'defaultWidgetHandle' => $pluginSettings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),
@@ -1026,6 +1040,68 @@ class WidgetsController extends Controller
     }
 
     /**
+     * @param ApiKey[] $keys
+     * @return array<int, array{value: string|int, label: string}>
+     */
+    private function getWidgetApiKeyOptions(array $keys): array
+    {
+        $options = [
+            ['value' => '', 'label' => Craft::t('search-manager', 'None')],
+        ];
+
+        foreach ($keys as $key) {
+            if ($key->id === null) {
+                continue;
+            }
+            $options[] = [
+                'value' => $key->id,
+                'label' => SearchManager::$plugin->apiKeys->widgetKeyLabel($key),
+            ];
+        }
+
+        return $options;
+    }
+
+    /**
+     * @param ApiKey[] $keys
+     * @return array<string, list<string>|string>
+     */
+    private function getWidgetApiKeyScopes(array $keys): array
+    {
+        $scopes = ['' => ApiKey::ALL_INDICES];
+
+        foreach ($keys as $key) {
+            if ($key->id === null) {
+                continue;
+            }
+            $scopes[(string)$key->id] = $key->allowsAllIndices()
+                ? ApiKey::ALL_INDICES
+                : array_values($key->allowedIndices);
+        }
+
+        return $scopes;
+    }
+
+    /**
+     * @param ApiKey[] $keys
+     */
+    private function getSelectedWidgetApiKey(WidgetConfig $widgetConfig, array $keys): ?ApiKey
+    {
+        $apiKeyId = $widgetConfig->getApiKeyId();
+        if ($apiKeyId === null) {
+            return null;
+        }
+
+        foreach ($keys as $key) {
+            if ($key->id === $apiKeyId) {
+                return $key;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Recursively strip keys from $data that don't exist in $allowed
      */
     private function _filterSettingsKeys(array $data, array $allowed): array
@@ -1037,7 +1113,9 @@ class WidgetsController extends Controller
                 continue;
             }
 
-            if (is_array($defaultValue) && is_array($data[$key])) {
+            if ($defaultValue === [] && is_array($data[$key])) {
+                $filtered[$key] = array_values($data[$key]);
+            } elseif (is_array($defaultValue) && is_array($data[$key])) {
                 $filtered[$key] = $this->_filterSettingsKeys($data[$key], $defaultValue);
             } else {
                 $filtered[$key] = $data[$key];

@@ -271,10 +271,10 @@ The heading description is static — it always shows the same text regardless o
 
 **Symptom (also):** The widget's `track-search` / `track-click` pings return `401`/`403`.
 
-**Cause:** With the setting enabled, the search, autocomplete, **and** tracking endpoints require a valid key in the `X-Search-Manager-Key` header. Any caller that doesn't send a valid, active, in-scope key is rejected. The bundled widget sends its configured key automatically — but only if you've set one: give the widget a **public** API key via its **API Key** config field (Search Manager → Widgets → your widget) or a render-time `apiKey` override. Without one, the widget's own requests are rejected.
+**Cause:** With the setting enabled, the search, autocomplete, **and** tracking endpoints require a valid key in the `X-Search-Manager-Key` header. Any caller that doesn't send a valid, active, in-scope key is rejected. The bundled widget sends its configured key automatically — but only if you've selected one: choose a **public** API key via its **API Key** config field (Search Manager → Widgets → your widget) or pass a render-time `apiKey` override. Without one, the widget's own requests are rejected.
 
 **Fix:**
-- **Bundled widget:** set a **public** API key on the widget — the **API Key** field in the widget config, or an inline `apiKey` override on the include tag. Use a public key (referrer-restricted, scoped to the widget's indices), never a server key.
+- **Bundled widget:** select a **public** API key on the widget — the **API Key** field in the widget config, or an inline `apiKey` override on the include tag. Use a public key (referrer-restricted, scoped to the widget's indices), never a server key.
 - For headless / mobile / custom callers: send a valid key in the `X-Search-Manager-Key` header. Check the key is enabled, not expired, and that its allowed indices cover the index you're querying. Public keys must also match their allowed referrers. Browser-based headless frontends that post `track-search` / `track-click` from another origin must also list that exact origin in `trackingAllowedOrigins` in `config/search-manager.php`; same-origin tracking does not need to be listed.
 - `403` on a `siteId` request means the requested site is outside the selected index's site scope; a `400` means the `siteId` isn't a real site.
 - A `429` ("API rate limit exceeded") means the key hit its per-minute `rateLimit`. Raise the key's rate limit, spread requests out, or clear it for no cap. The window resets each minute. (Tracking pings are not rate-limited.)

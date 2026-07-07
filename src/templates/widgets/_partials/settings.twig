@@ -25,29 +25,64 @@
 <hr>
 
 {% set selectedIndexHandles = widgetConfig.getIndexHandles() %}
+{% set availableIndices = (selectedApiKey and not selectedApiKey.allowsAllIndices())
+	? indices|filter(index => selectedApiKey.allowsIndex(index.handle))
+	: indices %}
+{% set allIndexOptions = [] %}
 {% set indexOptions = [] %}
 {% for index in indices %}
-	{% set indexOptions = indexOptions|merge([{
+	{% set option = {
 		label: index.name ~ ' (' ~ index.handle ~ ')',
 		value: index.handle
-	}]) %}
+	} %}
+	{% set allIndexOptions = allIndexOptions|merge([option]) %}
+	{% if index in availableIndices %}
+		{% set indexOptions = indexOptions|merge([option]) %}
+	{% endif %}
 {% endfor %}
+
+{{ forms.selectField({
+	label: 'API Key'|t('search-manager'),
+	instructions: 'Select a public API key for this widget. Only the key name and prefix are shown; the full key is never displayed in the control panel. A render-time `apiKey` override still takes precedence.'|t('search-manager'),
+	id: 'settings-apiKeyId',
+	name: 'settings[apiKeyId]',
+	value: widgetConfig.getApiKeyId(),
+	options: widgetApiKeyOptions,
+	errors: widgetConfig.getErrors('settings.apiKeyId'),
+}) }}
+
+{% if not hasWidgetUsableApiKeys %}
+	{% include 'lindemannrock-base/_components/info-box' with {
+		type: 'warning',
+		message: 'No widget-usable public API keys are available. Create a new public key to use the selector.'|t('search-manager'),
+		margin: 'bottom',
+	} only %}
+{% endif %}
+
+{% if selectedApiKey and not selectedApiKey.allowsAllIndices() %}
+	{% include 'lindemannrock-base/_components/info-box' with {
+		type: 'info',
+		message: 'The selected public key limits which indices this widget can search. Leave Search Indices empty to use the key’s allowed indices. Select indices only to narrow this widget further.'|t('search-manager'),
+		margin: 'bottom',
+	} only %}
+{% endif %}
 
 {{ forms.checkboxSelectField({
 	label: 'Search Indices'|t('search-manager'),
-	instructions: 'Select which indices this widget searches. Leave all unchecked to search all indices.'|t('search-manager'),
+	instructions: selectedApiKey and not selectedApiKey.allowsAllIndices()
+		? 'Leave unchecked to use the selected API key’s allowed indices. Select indices only to narrow this widget further.'|t('search-manager')
+		: 'Select which indices this widget searches. Leave all unchecked to search all indices.'|t('search-manager'),
 	id: 'search-indexHandles',
 	name: 'settings[search][indexHandles]',
 	values: selectedIndexHandles,
 	options: indexOptions,
+	containerAttributes: {
+		data: {
+			inputName: 'settings[search][indexHandles]',
+		},
+	},
 	errors: widgetConfig.getErrors('settings.search.indexHandles'),
 }) }}
 
-{{ forms.textField({
-	label: 'API Key'|t('search-manager'),
-	instructions: 'Public API key this widget sends (as the X-Search-Manager-Key header) when Require API Key is enabled in settings. Use a **public** key only — never a server key — and restrict it by referrer and to this widget\'s indices. Leave empty if Require API Key is off. A render-time `apiKey` override takes precedence over this value.'|t('search-manager'),
-	id: 'settings-apiKey',
-	name: 'settings[apiKey]',
-	value: widgetConfig.getApiKey(),
-	errors: widgetConfig.getErrors('settings.apiKey'),
-}) }}
+<script id="search-manager-widget-index-options" type="application/json">{{ allIndexOptions|json_encode|raw }}</script>
+<script id="search-manager-widget-api-key-scopes" type="application/json">{{ widgetApiKeyScopes|json_encode|raw }}</script>

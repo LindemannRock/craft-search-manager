@@ -1047,13 +1047,6 @@ class SearchManager extends Plugin
             'when' => $hasBackends,
         ];
 
-        $sections[] = [
-            'key' => 'widgets',
-            'label' => Craft::t('search-manager', 'Widgets'),
-            'url' => 'search-manager/widgets',
-            'permissionsAny' => ['searchManager:manageWidgetConfigs', 'searchManager:manageWidgetStyles'],
-        ];
-
         // API Keys is visible without `$hasBackends` so operators can provision
         // keys ahead of the first backend (and so the CI/headless bootstrap
         // command's CP confirmation is reachable on a fresh install).
@@ -1062,6 +1055,13 @@ class SearchManager extends Plugin
             'label' => Craft::t('search-manager', 'API Keys'),
             'url' => 'search-manager/api-keys',
             'permissionsAll' => ['searchManager:manageApiKeys'],
+        ];
+
+        $sections[] = [
+            'key' => 'widgets',
+            'label' => Craft::t('search-manager', 'Widgets'),
+            'url' => 'search-manager/widgets',
+            'permissionsAny' => ['searchManager:manageWidgetConfigs', 'searchManager:manageWidgetStyles'],
         ];
 
         $sections[] = [

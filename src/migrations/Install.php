@@ -966,7 +966,9 @@ class Install extends Migration
      * endpoints when `requireApiKey = true`. Each key declares its restrictions
      * (allowed indices, allowed referrers, max hits per page, expiry, rate
      * limit). The plaintext key is shown to the operator exactly once on
-     * creation; only the hash + 15-char prefix is persisted.
+     * creation. Authentication uses only the hash + 15-char prefix. Public
+     * keys may also store encrypted plaintext material so widgets can send
+     * selected public keys without showing full keys in the control panel.
      *
      * @since 5.46.0
      */
@@ -982,6 +984,7 @@ class Install extends Migration
             'type' => $this->enum('type', ['public', 'server'])->notNull()->defaultValue('public'),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'keyHash' => $this->string(128)->notNull()->comment('HMAC-SHA256 of plaintext key, keyed by Craft securityKey'),
+            'encryptedKey' => $this->text()->null()->comment('Encrypted plaintext for public keys used by browser-rendered widgets'),
             'keyPrefix' => $this->string(32)->notNull()->comment('Unhashed prefix for CP display + lookup (e.g. sm_pub_a1b2c3d4)'),
             'allowedIndices' => $this->text()->null()->comment('JSON array of index handles, or ["*"] for all indices'),
             'allowedReferrers' => $this->text()->null()->comment('JSON array of domain patterns (example.com, *.example.com)'),

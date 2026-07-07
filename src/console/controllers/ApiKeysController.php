@@ -164,6 +164,9 @@ class ApiKeysController extends Controller
 
         $generated = SearchManager::$plugin->apiKeys->generateKey($apiKey->type);
         $apiKey->keyHash = $generated['hash'];
+        $apiKey->encryptedKey = $apiKey->type === ApiKey::TYPE_PUBLIC
+            ? SearchManager::$plugin->apiKeys->encryptPlaintextKey($generated['plaintext'])
+            : null;
         $apiKey->keyPrefix = $generated['prefix'];
 
         if (!$apiKey->save()) {

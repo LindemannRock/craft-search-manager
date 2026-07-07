@@ -21,9 +21,12 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * Represents a hashed API key gating access to public search endpoints.
  *
  * Plaintext keys are generated once via `ApiKeyService::generateKey()` and
- * shown to the operator on creation. Only the hash (HMAC-SHA256 of the
- * plaintext keyed by Craft's `securityKey`) and a 15-char display prefix
- * persist. Lookup on the enforcement hot path is by `keyPrefix` (unique
+ * shown to the operator on creation. Authentication uses only the hash
+ * (HMAC-SHA256 of the plaintext keyed by Craft's `securityKey`) and a 15-char
+ * display prefix. Public keys may also store encrypted plaintext material so
+ * browser-rendered widgets can emit the selected public key without exposing
+ * full values in the control panel. Server keys never store recoverable key
+ * material. Lookup on the enforcement hot path is by `keyPrefix` (unique
  * indexed), then `hash_equals` against `keyHash`.
  *
  * Restrictions are per-key (multi-dimensional model):
@@ -80,6 +83,12 @@ class ApiKey extends Model
     public string $keyHash = '';
 
     /**
+     * @var string|null Base64-encoded encrypted plaintext for public keys that
+     *   can be rendered into browser widgets. Server keys keep this null.
+     */
+    public ?string $encryptedKey = null;
+
+    /**
      * @var string Unhashed prefix of the plaintext key, e.g. `sm_pub_a1b2c3d4` (15 chars).
      *   Stored for CP display + as the lookup index for enforcement.
      */
@@ -131,6 +140,7 @@ class ApiKey extends Model
             [['name', 'keyHash', 'keyPrefix', 'type'], 'required'],
             [['name'], 'string', 'max' => 255],
             [['keyHash'], 'string', 'max' => 128],
+            [['encryptedKey'], 'string'],
             [['keyPrefix'], 'string', 'max' => 32],
             [['type'], 'in', 'range' => self::TYPES],
             [['enabled'], 'boolean'],
@@ -194,6 +204,18 @@ class ApiKey extends Model
             return true;
         }
         return in_array($indexHandle, $this->allowedIndices, true);
+    }
+
+    /**
+     * True when this public key can be used by a browser-rendered widget.
+     */
+    public function isWidgetUsable(): bool
+    {
+        return $this->type === self::TYPE_PUBLIC
+            && $this->enabled
+            && $this->isStillValid()
+            && $this->encryptedKey !== null
+            && trim($this->encryptedKey) !== '';
     }
 
     /**
@@ -336,6 +358,9 @@ class ApiKey extends Model
         $key->type = (string)$row['type'];
         $key->enabled = (bool)($row['enabled'] ?? true);
         $key->keyHash = (string)$row['keyHash'];
+        $key->encryptedKey = isset($row['encryptedKey']) && $row['encryptedKey'] !== ''
+            ? (string)$row['encryptedKey']
+            : null;
         $key->keyPrefix = (string)$row['keyPrefix'];
         $key->allowedIndices = self::decodeJsonArray($row['allowedIndices'] ?? null);
         $key->allowedReferrers = self::decodeJsonArray($row['allowedReferrers'] ?? null);
@@ -393,6 +418,7 @@ class ApiKey extends Model
                 'type' => $this->type,
                 'enabled' => (int)$this->enabled,
                 'keyHash' => $this->keyHash,
+                'encryptedKey' => $this->type === self::TYPE_PUBLIC ? $this->encryptedKey : null,
                 'keyPrefix' => $this->keyPrefix,
                 'allowedIndices' => json_encode(array_values($this->allowedIndices), JSON_THROW_ON_ERROR),
                 'allowedReferrers' => json_encode(array_values($this->allowedReferrers), JSON_THROW_ON_ERROR),

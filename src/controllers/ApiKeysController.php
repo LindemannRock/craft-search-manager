@@ -31,9 +31,11 @@ use yii\web\Response;
  * Plaintext keys are shown exactly once: after a successful create, the
  * plaintext is stashed in the session flash and the operator is redirected
  * to the edit page, which reveals it via a copy-to-clipboard banner. Edit
- * of an existing key never reveals plaintext (we don't have it — only the
- * hash is stored). Rotation is a deliberate non-feature in slice 1; future
- * follow-up may add a separate `rotate` action.
+ * of an existing key never reveals plaintext. Public keys may retain encrypted
+ * key material for browser-rendered widget selection, but the CP never displays
+ * a full key after creation. Server keys remain hash-only. Rotation is a
+ * deliberate non-feature in slice 1; future follow-up may add a separate
+ * `rotate` action.
  *
  * @since 5.46.0
  */
@@ -220,9 +222,13 @@ class ApiKeysController extends Controller
             $apiKey->type = $this->resolveType($request->getBodyParam('type'));
 
             // Generate the plaintext + hash + prefix once. Plaintext goes to
-            // session flash for the reveal on redirect; it is never persisted.
+            // session flash for the reveal on redirect. Public keys also store
+            // encrypted material for widget rendering; server keys stay hash-only.
             $generated = SearchManager::$plugin->apiKeys->generateKey($apiKey->type);
             $apiKey->keyHash = $generated['hash'];
+            $apiKey->encryptedKey = $apiKey->type === ApiKey::TYPE_PUBLIC
+                ? SearchManager::$plugin->apiKeys->encryptPlaintextKey($generated['plaintext'])
+                : null;
             $apiKey->keyPrefix = $generated['prefix'];
         } else {
             $apiKey = ApiKey::findById($keyId);
@@ -235,6 +241,15 @@ class ApiKeysController extends Controller
         }
 
         $this->populateRestrictionsFromRequest($apiKey, $request);
+
+        if (!$isNew && !$this->guardApiKeyWidgetDependenciesForSave($apiKey)) {
+            Craft::$app->getSession()->setError(Craft::t('search-manager', 'Couldn’t save API key'));
+            Craft::$app->getUrlManager()->setRouteParams([
+                'apiKey' => $apiKey,
+                'keyId' => $keyId,
+            ]);
+            return null;
+        }
 
         if (!$apiKey->save()) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Couldn’t save API key'));
@@ -287,6 +302,18 @@ class ApiKeysController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'API key not found'));
         }
 
+        $usedConfigs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey((int)$apiKey->id);
+        if ($usedConfigs !== []) {
+            $errorMessage = Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before deleting it.', [
+                'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs),
+            ]);
+            if ($acceptsJson) {
+                return $this->asJson(['success' => false, 'error' => $errorMessage]);
+            }
+            Craft::$app->getSession()->setError($errorMessage);
+            return $this->redirect('search-manager/api-keys');
+        }
+
         if (!$apiKey->delete()) {
             $errorMessage = Craft::t('search-manager', 'Couldn’t revoke API key');
             if ($acceptsJson) {
@@ -327,6 +354,17 @@ class ApiKeysController extends Controller
         $this->requirePermission('searchManager:revokeApiKeys');
 
         $ids = $this->parseBulkIds(Craft::$app->getRequest()->getBodyParam('ids', []));
+        $usedConfigs = $this->findWidgetConfigsUsingApiKeyIds($ids, false);
+        if ($usedConfigs !== []) {
+            return $this->respondToBulkResult(
+                0,
+                '',
+                Craft::t('search-manager', 'Some selected API keys are used by widget configs ({widgets}). Reassign or remove them from those widgets before deleting them.', [
+                    'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs),
+                ]),
+            );
+        }
+
         $deleted = SearchManager::$plugin->apiKeys->bulkDelete($ids);
 
         return $this->respondToBulkResult(
@@ -342,6 +380,19 @@ class ApiKeysController extends Controller
         $this->requirePermission('searchManager:editApiKeys');
 
         $ids = $this->parseBulkIds(Craft::$app->getRequest()->getBodyParam('ids', []));
+        if (!$enabled) {
+            $usedConfigs = $this->findWidgetConfigsUsingApiKeyIds($ids, true);
+            if ($usedConfigs !== []) {
+                return $this->respondToBulkResult(
+                    0,
+                    '',
+                    Craft::t('search-manager', 'Some selected API keys are used by widget configs ({widgets}). Reassign or remove them from those widgets before disabling them.', [
+                        'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs),
+                    ]),
+                );
+            }
+        }
+
         $affected = SearchManager::$plugin->apiKeys->bulkSetEnabled($ids, $enabled);
 
         $message = $enabled
@@ -402,6 +453,61 @@ class ApiKeysController extends Controller
     {
         $value = is_string($raw) ? $raw : '';
         return in_array($value, ApiKey::TYPES, true) ? $value : ApiKey::TYPE_PUBLIC;
+    }
+
+    private function guardApiKeyWidgetDependenciesForSave(ApiKey $apiKey): bool
+    {
+        if ($apiKey->id === null || $apiKey->type !== ApiKey::TYPE_PUBLIC) {
+            return true;
+        }
+
+        $usedConfigs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey((int)$apiKey->id);
+        if ($usedConfigs === []) {
+            return true;
+        }
+
+        $widgets = SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs);
+        if (!$apiKey->enabled) {
+            $apiKey->addError('enabled', Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before disabling it.', [
+                'widgets' => $widgets,
+            ]));
+        }
+
+        if ($apiKey->validUntil !== null && !$apiKey->isStillValid()) {
+            $apiKey->addError('validUntil', Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before expiring it.', [
+                'widgets' => $widgets,
+            ]));
+        }
+
+        $brokenConfigs = SearchManager::$plugin->widgetConfigs->findConfigsBrokenByApiKeyScope($apiKey);
+        if ($brokenConfigs !== []) {
+            $apiKey->addError('allowedIndices', Craft::t('search-manager', 'Selected widget indices must remain allowed by this API key ({widgets}).', [
+                'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($brokenConfigs),
+            ]));
+        }
+
+        return !$apiKey->hasErrors();
+    }
+
+    /**
+     * @param int[] $ids
+     * @return \lindemannrock\searchmanager\models\WidgetConfig[]
+     */
+    private function findWidgetConfigsUsingApiKeyIds(array $ids, bool $publicOnly): array
+    {
+        $configsByKey = [];
+        foreach ($ids as $id) {
+            $apiKey = ApiKey::findById($id);
+            if ($apiKey === null || ($publicOnly && $apiKey->type !== ApiKey::TYPE_PUBLIC)) {
+                continue;
+            }
+
+            foreach (SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey($id) as $config) {
+                $configsByKey[$config->source . ':' . ($config->id ?? $config->handle)] = $config;
+            }
+        }
+
+        return array_values($configsByKey);
     }
 
     /**

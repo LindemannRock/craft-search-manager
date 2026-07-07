@@ -13,6 +13,7 @@ use craft\base\Model;
 use craft\helpers\Json;
 use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
 /**
@@ -67,6 +68,7 @@ class WidgetConfig extends Model
     public static function defaultSettings(): array
     {
         return [
+            'apiKeyId' => null,
             'search' => [
                 'indexHandles' => [], // Empty = search all indices
                 'placeholder' => 'Search...',
@@ -441,16 +443,37 @@ class WidgetConfig extends Model
         return $this->getSetting('analytics.source', '');
     }
 
+    public function getApiKeyId(): ?int
+    {
+        $value = $this->getSetting('apiKeyId');
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return is_numeric($value) ? (int)$value : null;
+    }
+
+    public function getSelectedApiKey(): ?ApiKey
+    {
+        return SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyById($this->getApiKeyId());
+    }
+
     /**
-     * The saved public API key this widget sends as the `X-Search-Manager-Key`
-     * header. Used when `requireApiKey` is enabled. Public keys only — never a
-     * server key. A render-time `apiKey` override takes precedence over this.
+     * The public API key this widget sends as the `X-Search-Manager-Key`
+     * header. Render-time `apiKey` overrides happen in the Twig include. This
+     * resolves saved `apiKeyId` values first and falls back to direct
+     * `settings.apiKey` values from config-file/runtime data.
      *
      * @since 5.47.0
      */
     public function getApiKey(): string
     {
-        return (string) $this->getSetting('apiKey', '');
+        $selectedKey = $this->getSelectedApiKey();
+        if ($selectedKey !== null) {
+            return SearchManager::$plugin->apiKeys->decryptPlaintextKey($selectedKey) ?? '';
+        }
+
+        return (string)$this->getSetting('apiKey', '');
     }
 
     public function getIdleTimeout(): int
@@ -640,11 +663,12 @@ class WidgetConfig extends Model
     {
         $s = $this->getSettingsArray();
 
-        $this->validateApiKey($s);
+        $selectedApiKey = $this->validateApiKeySelection($s);
+        $this->validateDirectApiKey($s);
 
         // Search settings
         $this->validateStringField($s, 'search', 'placeholder', Craft::t('search-manager', 'Placeholder'), 255);
-        $this->validateIndexHandles($s);
+        $this->validateIndexHandles($s, $selectedApiKey);
 
         // Behavior settings — integers with ranges
         $this->validateIntField($s, 'behavior', 'debounce', Craft::t('search-manager', 'Debounce'), 0, 2000);
@@ -693,9 +717,32 @@ class WidgetConfig extends Model
     }
 
     /**
-     * Validate the widget's saved API key is browser-safe.
+     * Validate the widget's selected API key is usable for rendering.
      */
-    private function validateApiKey(array $settings): void
+    private function validateApiKeySelection(array $settings): ?ApiKey
+    {
+        $raw = $settings['apiKeyId'] ?? null;
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        if (!is_numeric($raw)) {
+            $this->addError('settings.apiKeyId', Craft::t('search-manager', 'Select a valid widget API key.'));
+            return null;
+        }
+
+        $key = SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyById((int)$raw);
+        if ($key === null) {
+            $this->addError('settings.apiKeyId', Craft::t('search-manager', 'Select a valid widget API key.'));
+        }
+
+        return $key;
+    }
+
+    /**
+     * Validate direct API key fallback data remains browser-safe.
+     */
+    private function validateDirectApiKey(array $settings): void
     {
         $value = trim((string)($settings['apiKey'] ?? ''));
         if ($value === '') {
@@ -793,7 +840,7 @@ class WidgetConfig extends Model
     /**
      * Validate selected search index handles exist.
      */
-    private function validateIndexHandles(array $settings): void
+    private function validateIndexHandles(array $settings, ?ApiKey $selectedApiKey = null): void
     {
         $handles = $settings['search']['indexHandles'] ?? [];
         if ($handles === '' || $handles === []) {
@@ -814,6 +861,15 @@ class WidgetConfig extends Model
             if (!is_string($handle) || $handle === '' || !in_array($handle, $validHandles, true)) {
                 $this->addError('settings.search.indexHandles', Craft::t('search-manager', 'One or more selected search indices are invalid.'));
                 return;
+            }
+        }
+
+        if ($selectedApiKey !== null && !$selectedApiKey->allowsAllIndices()) {
+            foreach ($handles as $handle) {
+                if (!$selectedApiKey->allowsIndex((string)$handle)) {
+                    $this->addError('settings.search.indexHandles', Craft::t('search-manager', 'Selected indices must be allowed by the selected API key.'));
+                    return;
+                }
             }
         }
     }

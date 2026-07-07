@@ -222,11 +222,11 @@ On success the command prints the key's metadata followed by the **plaintext val
 
     sm_pub_a1b2c3d4e5f67890abcdef1234567890
 
-Search Manager stores only a hash. If you lose this value you will need to create a new key.
+Search Manager stores authentication hashes for all keys. Public keys also store encrypted material for CP-managed widget selection.
 ```
 
 > [!WARNING]
-> **The plaintext is shown once and never again.** Only its HMAC-SHA256 hash and 15-character display prefix are persisted. There is no retrieval path — losing the plaintext means creating a new key and updating every caller.
+> **The plaintext is shown once and never again.** Server keys remain hash-only and unrecoverable. Public keys store encrypted plaintext only so browser-rendered widgets can use a selected public key without showing the full value in the CP. External callers still need to copy the key once; losing it means creating a new key and updating those callers.
 >
 > The plaintext is written to **stdout only**. It is never written to the plugin's log channel. If you redirect command output to a file, treat that file as a secret.
 

@@ -1,6 +1,7 @@
 {% extends "_layouts/cp" %}
 {% import "_includes/forms" as forms %}
 {% do view.registerAssetBundle('lindemannrock\\base\\web\\assets\\components\\ComponentsAsset') %}
+{% do view.registerAssetBundle('lindemannrock\\searchmanager\\web\\assets\\widgetconfig\\WidgetConfigAsset') %}
 
 {% set title = isNew ? "New Widget Config"|t('search-manager') : widgetConfig.name %}
 {% set fullPageForm = true %}
@@ -117,6 +118,10 @@
 		{% include "search-manager/widgets/_partials/settings" with {
 			widgetConfig: widgetConfig,
 			indices: indices,
+			widgetApiKeyOptions: widgetApiKeyOptions,
+			widgetApiKeyScopes: widgetApiKeyScopes,
+			selectedApiKey: selectedApiKey,
+			hasWidgetUsableApiKeys: hasWidgetUsableApiKeys,
 			isNew: isNew,
 		} %}
 	</div>

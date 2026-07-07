@@ -30,6 +30,9 @@ src/web/assets/widgetpreview/src/ export-ignore
 # Test tool: only dist/ is needed
 src/web/assets/testtool/src/ export-ignore
 
+# Widget config: only dist/ is needed
+src/web/assets/widgetconfig/src/ export-ignore
+
 # Docs are available on the website
 docs/ export-ignore
 

@@ -38,7 +38,7 @@ final class ApiKeysConsoleControllerTest extends TestCase
         parent::tearDown();
     }
 
-    public function testCreatePublicWildcardKeyPersistsHashOnlyAndPrintsPlaintextOnce(): void
+    public function testCreatePublicWildcardKeyPersistsHashAndEncryptedWidgetMaterialAndPrintsPlaintextOnce(): void
     {
         $controller = $this->controller();
         $controller->name = self::TEST_KEY_NAME_PREFIX . '_public';
@@ -63,6 +63,9 @@ final class ApiKeysConsoleControllerTest extends TestCase
         $this->assertSame(120, $key->rateLimit);
         $this->assertSame($key->keyPrefix, substr($matches[0][0], 0, 15));
         $this->assertNotSame($matches[0][0], $key->keyHash);
+        $this->assertNotNull($key->encryptedKey);
+        $this->assertNotSame($matches[0][0], $key->encryptedKey);
+        $this->assertSame($matches[0][0], SearchManager::$plugin->apiKeys->decryptPlaintextKey($key));
         $this->assertSame(64, strlen($key->keyHash));
     }
 
@@ -82,6 +85,7 @@ final class ApiKeysConsoleControllerTest extends TestCase
         $this->assertNotNull($key);
         $this->assertSame(ApiKey::TYPE_SERVER, $key->type);
         $this->assertTrue($key->enabled);
+        $this->assertNull($key->encryptedKey);
     }
 
     public function testDisabledDraftCanBeCreatedWithoutIndices(): void

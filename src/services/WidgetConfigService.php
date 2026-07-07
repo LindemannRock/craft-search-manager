@@ -16,6 +16,7 @@ use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use yii\base\Component;
 
@@ -246,6 +247,84 @@ class WidgetConfigService extends Component
         usort($configs, fn($a, $b) => strcasecmp($a->name, $b->name));
 
         return array_values($configs);
+    }
+
+    /**
+     * Get widget configs that reference a selected API key.
+     *
+     * Config-file widgets count because they participate in runtime rendering
+     * and can be broken by deleting or narrowing the referenced key.
+     *
+     * @return WidgetConfig[]
+     */
+    public function findConfigsUsingApiKey(int $apiKeyId): array
+    {
+        if ($apiKeyId <= 0) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $this->getAll(),
+            static fn(WidgetConfig $config): bool => $config->getApiKeyId() === $apiKeyId,
+        ));
+    }
+
+    /**
+     * Get widget configs whose selected index handles no longer fit the key.
+     *
+     * Empty widget selections remain valid: at runtime they inherit the key's
+     * own allowed index scope.
+     *
+     * @return WidgetConfig[]
+     */
+    public function findConfigsBrokenByApiKeyScope(ApiKey $apiKey): array
+    {
+        if ($apiKey->id === null || $apiKey->allowsAllIndices()) {
+            return [];
+        }
+
+        $broken = [];
+        foreach ($this->findConfigsUsingApiKey((int)$apiKey->id) as $config) {
+            $handles = $config->getSetting('search.indexHandles', []);
+            if ($handles === '' || $handles === [] || !is_array($handles)) {
+                continue;
+            }
+
+            foreach ($handles as $handle) {
+                if (!is_string($handle) || !$apiKey->allowsIndex($handle)) {
+                    $broken[] = $config;
+                    break;
+                }
+            }
+        }
+
+        return $broken;
+    }
+
+    /**
+     * Format widget names for concise dependency errors.
+     *
+     * @param WidgetConfig[] $configs
+     */
+    public function formatWidgetDependencyNames(array $configs): string
+    {
+        $labels = array_map(
+            static fn(WidgetConfig $config): string => trim($config->name) !== ''
+                ? $config->name
+                : $config->handle,
+            $configs,
+        );
+
+        $labels = array_values(array_unique(array_filter($labels, static fn(string $label): bool => $label !== '')));
+        $visible = array_slice($labels, 0, 3);
+        $formatted = implode(', ', $visible);
+        $remaining = count($labels) - count($visible);
+
+        if ($remaining > 0) {
+            $formatted .= Craft::t('search-manager', ' and {count} more', ['count' => $remaining]);
+        }
+
+        return $formatted;
     }
 
     /**
