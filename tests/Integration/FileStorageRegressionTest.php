@@ -60,6 +60,51 @@ final class FileStorageRegressionTest extends TestCase
         self::assertStringContainsString('ftruncate($handle, 0)', $matches[0]);
     }
 
+    public function testConcurrentTermDocumentStoresPreserveBothPostings(): void
+    {
+        $storage = $this->makeStorage();
+        $termPath = $this->indexPath() . '/terms/shared_1.dat';
+        $this->writeJsonFile($termPath, []);
+
+        $this->runMutationWhileFileLockIsHeld(
+            $termPath,
+            fn() => $this->writeJsonFile($termPath, [
+                '1:101' => 1,
+            ]),
+            ['store-term-document', $this->basePath, 'shared', '1', '102', '2'],
+        );
+
+        self::assertSame([
+            '1:101' => 1,
+            '1:102' => 2,
+        ], $storage->getTermDocuments('shared', 1));
+    }
+
+    public function testConcurrentNgramBucketRemovalsPreserveBothRemovals(): void
+    {
+        $storage = $this->makeStorage();
+        $indexPath = $this->indexPath();
+        $sharedBucketPath = $indexPath . '/ngrams-index/site1/sh.dat';
+
+        $this->writeJsonFile($indexPath . '/ngrams/site1/alpha.dat', ['sh']);
+        $this->writeJsonFile($indexPath . '/ngrams/site1/beta.dat', ['sh']);
+        $this->writeJsonFile($sharedBucketPath, [
+            'alpha' => 1,
+            'beta' => 1,
+        ]);
+
+        $this->runMutationWhileFileLockIsHeld(
+            $sharedBucketPath,
+            fn() => $this->writeJsonFile($sharedBucketPath, [
+                'beta' => 1,
+            ]),
+            ['store-term-ngrams', $this->basePath, 'beta', '1', json_encode(['be'], JSON_THROW_ON_ERROR)],
+        );
+
+        self::assertFileDoesNotExist($sharedBucketPath);
+        self::assertSame(['beta'], array_keys($storage->getTermsByNgramSimilarity(['be'], 1, 1.0)));
+    }
+
     public function testAllSitesAutocompleteRoundTripsUnderscoreTermsWithoutSiteSuffix(): void
     {
         $storage = $this->makeStorage();
@@ -296,6 +341,175 @@ final class FileStorageRegressionTest extends TestCase
         $this->basePath = Craft::getAlias('@storage/search-manager-test-' . StringHelper::UUID());
 
         return new FileStorage('file-storage-regression', $this->basePath);
+    }
+
+    private function indexPath(): string
+    {
+        self::assertIsString($this->basePath);
+
+        return $this->basePath . '/file-storage-regression';
+    }
+
+    /**
+     * @param callable(): void $competingWrite
+     * @param array<int, string|null> $workerArguments
+     */
+    private function runMutationWhileFileLockIsHeld(string $lockedPath, callable $competingWrite, array $workerArguments): void
+    {
+        if (!function_exists('proc_open')) {
+            self::markTestSkipped('proc_open is required for FileStorage lock interleaving regression coverage.');
+        }
+
+        $readyPath = $this->indexPath() . '/lock-ready-' . StringHelper::UUID() . '.tmp';
+        $releasePath = $this->indexPath() . '/lock-release-' . StringHelper::UUID() . '.tmp';
+        $lockScript = $this->writePhpScript('lock-holder', <<<'PHP'
+<?php
+[$script, $lockedPath, $readyPath, $releasePath] = $argv;
+$handle = fopen($lockedPath, 'c+');
+if ($handle === false || !flock($handle, LOCK_EX)) {
+    exit(1);
+}
+
+touch($readyPath);
+$started = microtime(true);
+while (!file_exists($releasePath)) {
+    if (microtime(true) - $started > 5.0) {
+        flock($handle, LOCK_UN);
+        fclose($handle);
+        exit(1);
+    }
+
+    usleep(10000);
+}
+
+flock($handle, LOCK_UN);
+fclose($handle);
+exit(0);
+PHP);
+        $workerScript = $this->writePhpScript('file-storage-worker', <<<'PHP'
+<?php
+declare(strict_types=1);
+
+use lindemannrock\searchmanager\search\storage\FileStorage;
+
+require $argv[1];
+
+$operation = $argv[2];
+$basePath = $argv[3];
+$storage = new FileStorage('file-storage-regression', $basePath);
+
+if ($operation === 'store-term-document') {
+    $storage->storeTermDocument($argv[4], (int)$argv[5], (int)$argv[6], (int)$argv[7]);
+    exit(0);
+}
+
+if ($operation === 'store-term-ngrams') {
+    $ngrams = json_decode($argv[6], true, 512, JSON_THROW_ON_ERROR);
+    $storage->storeTermNgrams($argv[4], is_array($ngrams) ? $ngrams : [], (int)$argv[5]);
+    exit(0);
+}
+
+exit(1);
+PHP);
+
+        [$lockProcess, $lockPipes] = $this->startPhpScript($lockScript, [$lockedPath, $readyPath, $releasePath]);
+        $this->waitForFile($readyPath, 'FileStorage lock holder did not acquire the lock.');
+
+        [$workerProcess, $workerPipes] = $this->startPhpScript(
+            $workerScript,
+            array_map(static fn(?string $argument): string => (string)$argument, array_merge([
+                dirname(__DIR__) . '/bootstrap.php',
+            ], $workerArguments)),
+        );
+
+        usleep(200000);
+        $competingWrite();
+        touch($releasePath);
+
+        $this->finishPhpProcess($lockProcess, $lockPipes, 'FileStorage lock holder failed.');
+        $this->finishPhpProcess($workerProcess, $workerPipes, 'FileStorage worker failed.');
+
+        @unlink($readyPath);
+        @unlink($releasePath);
+        @unlink($lockScript);
+        @unlink($workerScript);
+    }
+
+    private function writePhpScript(string $name, string $source): string
+    {
+        $path = $this->indexPath() . '/' . $name . '-' . StringHelper::UUID() . '.php';
+        $this->writeFile($path, $source);
+
+        return $path;
+    }
+
+    private function waitForFile(string $path, string $message): void
+    {
+        $started = microtime(true);
+        while (!file_exists($path)) {
+            if (microtime(true) - $started > 5.0) {
+                self::fail($message);
+            }
+
+            usleep(10000);
+        }
+    }
+
+    /**
+     * @param array<int, string> $arguments
+     * @return array{0: resource, 1: array<int, resource>}
+     */
+    private function startPhpScript(string $scriptPath, array $arguments): array
+    {
+        $command = array_merge([PHP_BINARY, $scriptPath], $arguments);
+        $pipes = [];
+        $process = proc_open($command, [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ], $pipes);
+
+        self::assertIsResource($process, 'Unable to start FileStorage worker process.');
+
+        return [$process, $pipes];
+    }
+
+    /**
+     * @param resource $process
+     * @param array<int, resource> $pipes
+     */
+    private function finishPhpProcess($process, array $pipes, string $message): void
+    {
+        fclose($pipes[0]);
+        $output = stream_get_contents($pipes[1]);
+        $error = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        self::assertSame(0, proc_close($process), trim($message . ' ' . $output . ' ' . $error));
+    }
+
+    /**
+     * @param mixed $data
+     */
+    private function writeJsonFile(string $path, $data): void
+    {
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        file_put_contents($path, json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private function writeFile(string $path, string $contents): void
+    {
+        $dir = dirname($path);
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        file_put_contents($path, $contents);
     }
 
     private function deleteDirectory(string $dir): void

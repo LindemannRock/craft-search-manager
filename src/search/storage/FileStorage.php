@@ -269,13 +269,19 @@ class FileStorage implements StorageInterface
     {
         $this->rememberFilenameKey($term);
         $termPath = $this->getTermPath($term, $siteId);
-        $data = $this->readFile($termPath) ?: [];
 
         $docId = $siteId . ':' . $elementId;
-        $data[$docId] = $frequency;
         // Note: File storage uses siteId for language context, language param not stored separately
 
-        $this->writeFile($termPath, $data);
+        $this->updateJsonFile(
+            $termPath,
+            static function(mixed $current) use ($docId, $frequency): array {
+                $data = is_array($current) ? $current : [];
+                $data[$docId] = $frequency;
+
+                return $data;
+            },
+        );
     }
 
     /**
@@ -1212,18 +1218,19 @@ class FileStorage implements StorageInterface
     {
         foreach (array_values(array_unique($ngrams)) as $ngram) {
             $path = $this->getNgramBucketPath($siteId, (string)$ngram);
-            $bucket = $this->readFile($path);
-            if (!is_array($bucket)) {
-                continue;
-            }
+            $this->updateJsonFile(
+                $path,
+                static function(mixed $current) use ($term): array {
+                    $bucket = is_array($current) ? $current : [];
+                    unset($bucket[$term]);
 
-            unset($bucket[$term]);
-            if (empty($bucket)) {
+                    return $bucket;
+                },
+            );
+
+            if (empty($this->readFile($path))) {
                 @unlink($path);
-                continue;
             }
-
-            $this->writeFile($path, $bucket);
         }
     }
 
