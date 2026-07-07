@@ -31,6 +31,22 @@ final class AuditRobustnessBatchTest extends TestCase
         self::assertStringNotContainsString('catch (\Exception $e)', $geoLookupJob);
     }
 
+    public function testAnalyticsFailureBoundariesCatchThrowable(): void
+    {
+        $tracking = $this->readPluginFile('src/services/analytics/AnalyticsTrackingService.php');
+        $export = $this->readPluginFile('src/services/analytics/AnalyticsExportService.php');
+        $breakdown = $this->readPluginFile('src/services/analytics/AnalyticsBreakdownService.php');
+
+        self::assertSame(3, substr_count($tracking, 'catch (\Throwable $e)'));
+        self::assertStringNotContainsString('catch (\Exception $e)', $tracking);
+        self::assertStringContainsString('public function deleteAnalytic(int $id): bool', $export);
+        self::assertStringContainsString('catch (\Throwable $e)', $export);
+        self::assertStringNotContainsString('catch (\Exception $e)', $export);
+        self::assertStringContainsString('public function getLocationFromIp(string $ip): ?array', $breakdown);
+        self::assertStringContainsString('catch (\Throwable $e)', $breakdown);
+        self::assertStringNotContainsString('catch (\Exception $e)', $breakdown);
+    }
+
     public function testUtilitiesControllerUsesStrictInArrayChecks(): void
     {
         $source = $this->readPluginFile('src/controllers/UtilitiesController.php');

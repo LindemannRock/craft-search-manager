@@ -136,6 +136,18 @@ final class AnalyticsGeoDefaultsTest extends TestCase
         });
     }
 
+    public function testDefaultLocationUsesResolvedSettingsOnly(): void
+    {
+        $source = $this->readPluginFile('src/services/analytics/AnalyticsBreakdownService.php');
+        $method = $this->methodBody($source, 'getDefaultLocation', 'private');
+
+        self::assertStringContainsString('$defaultCountry = $settings->defaultCountry;', $method);
+        self::assertStringContainsString('$defaultCity = $settings->defaultCity;', $method);
+        self::assertStringNotContainsString('App::env(', $method);
+        self::assertStringNotContainsString('SEARCH_MANAGER_DEFAULT_COUNTRY', $method);
+        self::assertStringNotContainsString('SEARCH_MANAGER_DEFAULT_CITY', $method);
+    }
+
     /**
      * @template T
      * @param callable(): T $callback
@@ -216,5 +228,38 @@ final class AnalyticsGeoDefaultsTest extends TestCase
             ->createCommand()
             ->delete('{{%searchmanager_analytics}}', ['backend' => self::TEST_BACKEND])
             ->execute();
+    }
+
+    private function readPluginFile(string $path): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+        $this->assertIsString($source);
+
+        return $source;
+    }
+
+    private function methodBody(string $source, string $methodName, string $visibility): string
+    {
+        $signature = $visibility . ' function ' . $methodName . '(';
+        $start = strpos($source, $signature);
+        $this->assertIsInt($start);
+
+        $brace = strpos($source, '{', $start);
+        $this->assertIsInt($brace);
+
+        $depth = 0;
+        $length = strlen($source);
+        for ($i = $brace; $i < $length; $i++) {
+            if ($source[$i] === '{') {
+                $depth++;
+            } elseif ($source[$i] === '}') {
+                $depth--;
+                if ($depth === 0) {
+                    return substr($source, $brace, $i - $brace + 1);
+                }
+            }
+        }
+
+        self::fail('Unable to extract method body for ' . $methodName);
     }
 }

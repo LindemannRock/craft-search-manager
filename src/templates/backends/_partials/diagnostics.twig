@@ -18,7 +18,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const backendId = '{{ backend.id ?: backend.handle }}';
+    const backendId = {{ (backend.id ?: backend.handle)|json_encode|raw }};
     const statusDots = {
         enabled: {{ include('lindemannrock-base/_components/status-dot', { value: 'enabled', colorSet: 'status' }, false)|json_encode|raw }},
         connected: {{ include('lindemannrock-base/_components/status-dot', { value: 'on', colorSet: 'status' }, false)|json_encode|raw }},

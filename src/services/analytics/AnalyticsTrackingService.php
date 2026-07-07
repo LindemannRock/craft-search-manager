@@ -286,7 +286,7 @@ class AnalyticsTrackingService
             if (!empty($matchedPromotions)) {
                 $this->trackPromotionAnalytics($matchedPromotions, $query, $indexHandle, $siteId);
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logError('Failed to track search query', ['error' => $e->getMessage()]);
         }
     }
@@ -371,7 +371,7 @@ class AnalyticsTrackingService
                         'uid' => \craft\helpers\StringHelper::UUID(),
                     ])
                     ->execute();
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $this->logError('Failed to track rule analytics', [
                     'ruleId' => $rule->id,
                     'error' => $e->getMessage(),
@@ -425,7 +425,7 @@ class AnalyticsTrackingService
                         'uid' => \craft\helpers\StringHelper::UUID(),
                     ])
                     ->execute();
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $this->logError('Failed to track promotion analytics', [
                     'promotionId' => $promo->id,
                     'error' => $e->getMessage(),

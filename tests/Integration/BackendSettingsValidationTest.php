@@ -99,6 +99,17 @@ final class BackendSettingsValidationTest extends TestCase
         self::assertSame($settings->config, json_decode((string)$row['config'], true));
     }
 
+    public function testJsonEncodingFailureFailsWithoutPersistingInvalidConfig(): void
+    {
+        $settings = new BackendSettings();
+        $settings->backend = 'mysql';
+        $settings->enabled = true;
+        $settings->config = ['invalid' => NAN];
+
+        self::assertFalse($settings->save());
+        self::assertSame(0, $this->countBackendSettingsRows('mysql'));
+    }
+
     private function ensureLegacyTable(): void
     {
         $db = Craft::$app->getDb();
@@ -129,15 +140,15 @@ final class BackendSettingsValidationTest extends TestCase
 
         Craft::$app->getDb()
             ->createCommand()
-            ->delete(self::TABLE, ['backend' => ['algolia']])
+            ->delete(self::TABLE, ['backend' => ['algolia', 'mysql']])
             ->execute();
     }
 
-    private function countBackendSettingsRows(): int
+    private function countBackendSettingsRows(string $backend = 'algolia'): int
     {
         return (int)(new Query())
             ->from(self::TABLE)
-            ->where(['backend' => 'algolia'])
+            ->where(['backend' => $backend])
             ->count();
     }
 }

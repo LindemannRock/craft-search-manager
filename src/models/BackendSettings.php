@@ -316,7 +316,15 @@ class BackendSettings extends Model
         }
 
         try {
-            $encodedConfig = json_encode($this->config);
+            try {
+                $encodedConfig = json_encode($this->config, JSON_THROW_ON_ERROR);
+            } catch (\JsonException $e) {
+                $this->logError('Failed to encode backend settings config', [
+                    'backend' => $this->backend,
+                    'error' => $e->getMessage(),
+                ]);
+                return false;
+            }
 
             if ($this->id) {
                 // Update existing

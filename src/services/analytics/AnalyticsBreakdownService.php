@@ -10,7 +10,6 @@ namespace lindemannrock\searchmanager\services\analytics;
 
 use Craft;
 use craft\db\Query;
-use craft\helpers\App;
 use lindemannrock\base\helpers\DateFormatHelper;
 use lindemannrock\base\helpers\GeoHelper;
 use lindemannrock\base\traits\GeoLookupTrait;
@@ -545,7 +544,7 @@ class AnalyticsBreakdownService
                 'lat' => $geoData['latitude'] ?? null,
                 'lon' => $geoData['longitude'] ?? null,
             ];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return null;
         }
     }
@@ -568,8 +567,8 @@ class AnalyticsBreakdownService
     private function getDefaultLocation(): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $defaultCountry = $settings->defaultCountry ?: App::env('SEARCH_MANAGER_DEFAULT_COUNTRY');
-        $defaultCity = $settings->defaultCity ?: App::env('SEARCH_MANAGER_DEFAULT_CITY');
+        $defaultCountry = $settings->defaultCountry;
+        $defaultCity = $settings->defaultCity;
 
         if (!$defaultCountry || !$defaultCity) {
             return null;

@@ -330,7 +330,7 @@ class AnalyticsExportService
                 ->delete('{{%searchmanager_analytics}}', ['id' => $id])
                 ->execute();
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->logError('Failed to delete analytic', ['id' => $id, 'error' => $e->getMessage()]);
             return false;
         }
