@@ -52,12 +52,18 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         }
     }
 
-    private function rebuildSingleIndex($queue, string $indexHandle, ?SearchIndex $preloadedIndex = null): void
-    {
+    private function rebuildSingleIndex(
+        $queue,
+        string $indexHandle,
+        ?SearchIndex $preloadedIndex = null,
+        float $progressStart = 0.0,
+        float $progressEnd = 1.0,
+    ): void {
         $index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);
 
         if (!$index) {
             $this->logError('Index not found', ['handle' => $indexHandle]);
+            $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
             return;
         }
 
@@ -82,6 +88,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
         /** @var string $elementType */
         $elementType = $index->elementType;
         if (!$this->isElementTypeAvailable($elementType, 'rebuild-index')) {
+            $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
             return;
         }
 
@@ -97,6 +104,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
 
         if (empty($sitesToIndex)) {
             $this->logWarning('No sites to index for index', ['handle' => $index->handle]);
+            $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
             return;
         }
 
@@ -144,12 +152,8 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
             // Process in batches
             $batches = array_chunk($elementIds, $batchSize);
 
+            $batchCount = count($batches);
             foreach ($batches as $batchIndex => $batch) {
-                // Calculate overall progress
-                $siteProgress = $siteIndex / count($sitesToIndex);
-                $batchProgress = ($batchIndex / count($batches)) / count($sitesToIndex);
-                $this->setProgress($queue, $siteProgress + $batchProgress);
-
                 $elements = [];
                 $batchElements = $elementType::find()
                     ->id($batch)
@@ -184,6 +188,22 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                     unset($elements, $batchElements);
                     gc_collect_cycles();
                 }
+
+                $this->setRebuildProgress(
+                    $queue,
+                    ($siteIndex + (($batchIndex + 1) / $batchCount)) / count($sitesToIndex),
+                    $progressStart,
+                    $progressEnd,
+                );
+            }
+
+            if ($batchCount === 0) {
+                $this->setRebuildProgress(
+                    $queue,
+                    ($siteIndex + 1) / count($sitesToIndex),
+                    $progressStart,
+                    $progressEnd,
+                );
             }
 
             // Free memory after processing all batches for this site
@@ -214,21 +234,44 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                 'handle' => $indexHandle,
             ]);
         }
+
+        $this->setRebuildProgress($queue, 1.0, $progressStart, $progressEnd);
     }
 
 
     private function rebuildAllIndices($queue): void
     {
-        $indices = SearchIndex::findAll();
+        $indices = array_values(array_filter(
+            SearchIndex::findAll(),
+            static fn(SearchIndex $index): bool => $index->enabled,
+        ));
+        $indexCount = count($indices);
+
+        if ($indexCount === 0) {
+            $this->setProgress($queue, 1.0);
+            return;
+        }
 
         foreach ($indices as $i => $index) {
-            if (!$index->enabled) {
-                continue;
-            }
-
-            $this->setProgress($queue, $i / count($indices));
-            $this->rebuildSingleIndex($queue, $index->handle, $index);
+            $this->rebuildSingleIndex(
+                $queue,
+                $index->handle,
+                $index,
+                $i / $indexCount,
+                ($i + 1) / $indexCount,
+            );
         }
+
+        $this->setProgress($queue, 1.0);
+    }
+
+    private function setRebuildProgress($queue, float $progress, float $start = 0.0, float $end = 1.0): void
+    {
+        $start = max(0.0, min(1.0, $start));
+        $end = max($start, min(1.0, $end));
+        $progress = max(0.0, min(1.0, $progress));
+
+        $this->setProgress($queue, $start + (($end - $start) * $progress));
     }
 
     protected function defaultDescription(): ?string

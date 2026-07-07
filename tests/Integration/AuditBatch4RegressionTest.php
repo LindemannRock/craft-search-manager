@@ -43,7 +43,9 @@ final class AuditBatch4RegressionTest extends TestCase
 
         self::assertStringContainsString('?SearchIndex $preloadedIndex = null', $source);
         self::assertStringContainsString('$index = $preloadedIndex ?? SearchIndex::findByHandle($indexHandle);', $singleBody);
-        self::assertStringContainsString('$this->rebuildSingleIndex($queue, $index->handle, $index);', $allBody);
+        self::assertStringContainsString('$this->rebuildSingleIndex(', $allBody);
+        self::assertStringContainsString('$index->handle,', $allBody);
+        self::assertStringContainsString('$index,', $allBody);
     }
 
     public function testExpectedCountSkipUrlPathDoesNotLoadAllElements(): void
