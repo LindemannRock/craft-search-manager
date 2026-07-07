@@ -13,6 +13,7 @@ use craft\base\Model;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\base\helpers\UrlSafetyHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 
 /**
@@ -187,15 +188,7 @@ class QueryRule extends Model
                 // Validate URL protocol when URL-based redirect
                 if ($hasUrl) {
                     $url = trim($value['url']);
-                    $allowedPrefixes = ['https://', 'http://', '/'];
-                    $isSafe = false;
-                    foreach ($allowedPrefixes as $prefix) {
-                        if (str_starts_with($url, $prefix)) {
-                            $isSafe = true;
-                            break;
-                        }
-                    }
-                    if (!$isSafe) {
+                    if (!UrlSafetyHelper::isSafeRedirectUrl($url)) {
                         $this->addError($attribute, Craft::t('search-manager', 'Redirect URL must start with https://, http://, or / (relative path).'));
                     }
                 }
