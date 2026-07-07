@@ -601,6 +601,18 @@ class AnalyticsBreakdownService
             'FR' => [
                 'Paris' => ['countryCode' => 'FR', 'country' => 'France', 'city' => 'Paris', 'region' => 'Île-de-France', 'lat' => 48.8566, 'lon' => 2.3522],
             ],
+            'NL' => [
+                'Amsterdam' => ['countryCode' => 'NL', 'country' => 'Netherlands', 'city' => 'Amsterdam', 'region' => 'North Holland', 'lat' => 52.3676, 'lon' => 4.9041],
+            ],
+            'SE' => [
+                'Stockholm' => ['countryCode' => 'SE', 'country' => 'Sweden', 'city' => 'Stockholm', 'region' => 'Stockholm County', 'lat' => 59.3293, 'lon' => 18.0686],
+            ],
+            'DK' => [
+                'Copenhagen' => ['countryCode' => 'DK', 'country' => 'Denmark', 'city' => 'Copenhagen', 'region' => 'Capital Region of Denmark', 'lat' => 55.6761, 'lon' => 12.5683],
+            ],
+            'NO' => [
+                'Oslo' => ['countryCode' => 'NO', 'country' => 'Norway', 'city' => 'Oslo', 'region' => 'Oslo', 'lat' => 59.9139, 'lon' => 10.7522],
+            ],
             'CA' => [
                 'Toronto' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Toronto', 'region' => 'Ontario', 'lat' => 43.6532, 'lon' => -79.3832],
                 'Vancouver' => ['countryCode' => 'CA', 'country' => 'Canada', 'city' => 'Vancouver', 'region' => 'British Columbia', 'lat' => 49.2827, 'lon' => -123.1207],

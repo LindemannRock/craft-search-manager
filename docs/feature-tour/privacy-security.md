@@ -82,7 +82,7 @@ These settings only affect private IP addresses (127.0.0.1, 192.168.x.x, 10.x.x.
 
 ### Supported Locations for Local Dev
 
-US, GB, AE, SA, DE, FR, CA, AU, JP, SG, IN — with common cities for each country.
+US, GB, AE, SA, DE, FR, NL, SE, DK, NO, CA, AU, JP, SG, IN — with common cities for each country.
 
 ## Bot Filtering
 

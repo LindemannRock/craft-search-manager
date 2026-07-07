@@ -96,6 +96,26 @@ final class ApiKeyRateLimitTest extends TestCase
         $this->svc()->enforceRateLimit($key); // 4th → 429
     }
 
+    public function testRateLimitCheckAndIncrementAreMutexed(): void
+    {
+        $source = $this->readPluginFile('src/services/ApiKeyService.php');
+        $method = $this->methodBody($source, 'enforceRateLimit');
+
+        $lockPosition = strpos($method, '$mutex->acquire($lockName, 30)');
+        $getPosition = strpos($method, '$cache->get($cacheKey)');
+        $setPosition = strpos($method, '$cache->set($cacheKey, $count + 1, self::RATE_LIMIT_WINDOW)');
+        $releasePosition = strpos($method, '$mutex->release($lockName)');
+
+        self::assertIsInt($lockPosition);
+        self::assertIsInt($getPosition);
+        self::assertIsInt($setPosition);
+        self::assertIsInt($releasePosition);
+        self::assertLessThan($getPosition, $lockPosition, 'The lock must be acquired before reading the current count.');
+        self::assertLessThan($setPosition, $getPosition, 'The count must be checked before writing the increment.');
+        self::assertLessThan($releasePosition, $setPosition, 'The lock must be held until after the increment is written.');
+        self::assertStringNotContainsString('$cache->get($cacheKey);' . PHP_EOL . '        if ($count >= $key->rateLimit)', $method);
+    }
+
     public function testCountersAreIsolatedPerKey(): void
     {
         [$keyA] = $this->seedKey(rateLimit: 2);
@@ -219,5 +239,37 @@ final class ApiKeyRateLimitTest extends TestCase
             ->createCommand()
             ->delete('{{%searchmanager_api_keys}}', ['like', 'name', self::TEST_KEY_NAME_PREFIX . '%', false])
             ->execute();
+    }
+
+    private function readPluginFile(string $path): string
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+        $this->assertIsString($source);
+
+        return $source;
+    }
+
+    private function methodBody(string $source, string $method): string
+    {
+        $needle = 'function ' . $method . '(';
+        $start = strpos($source, $needle);
+        $this->assertIsInt($start, 'Expected method ' . $method . ' to exist.');
+        $open = strpos($source, '{', $start);
+        $this->assertIsInt($open, 'Expected method ' . $method . ' to have a body.');
+
+        $depth = 0;
+        $length = strlen($source);
+        for ($i = $open; $i < $length; $i++) {
+            if ($source[$i] === '{') {
+                $depth++;
+            } elseif ($source[$i] === '}') {
+                $depth--;
+                if ($depth === 0) {
+                    return substr($source, $open, $i - $open + 1);
+                }
+            }
+        }
+
+        $this->fail('Expected method ' . $method . ' body to be balanced.');
     }
 }

@@ -328,9 +328,10 @@ class ApiKeyService extends Component
      * Only authenticated requests reach here (the controller calls this after
      * {@see authenticate()}), so this never applies to anonymous traffic.
      *
-     * Uses Craft's cache (the same primitive the search-result cache uses). The
-     * read-then-write is not atomic, so a burst at the exact window boundary may
-     * allow a couple extra requests — acceptable for a coarse per-minute cap.
+     * Uses Craft's cache (the same primitive the search-result cache uses) with
+     * Craft's mutex around the read/compare/write sequence. Yii cache drivers do
+     * not provide a uniform atomic increment-with-expiry contract, so the mutex
+     * keeps the fixed-window counter precise across configured cache backends.
      *
      * @throws TooManyRequestsHttpException 429 — the per-minute cap is exceeded.
      * @since 5.47.0
@@ -344,14 +345,25 @@ class ApiKeyService extends Component
         $cache = Craft::$app->getCache();
         $window = (int) floor(time() / self::RATE_LIMIT_WINDOW);
         $cacheKey = self::RATE_LIMIT_CACHE_PREFIX . $key->id . ':' . $window;
+        $lockName = $cacheKey . ':lock';
 
-        $count = (int) $cache->get($cacheKey);
-        if ($count >= $key->rateLimit) {
-            // Raw English — JSON API response (see exception-messages.md).
+        $mutex = Craft::$app->getMutex();
+        $lockAcquired = $mutex->acquire($lockName, 30);
+        if (!$lockAcquired) {
             throw new TooManyRequestsHttpException('API rate limit exceeded. Try again in a moment.');
         }
 
-        $cache->set($cacheKey, $count + 1, self::RATE_LIMIT_WINDOW);
+        try {
+            $count = (int) $cache->get($cacheKey);
+            if ($count >= $key->rateLimit) {
+                // Raw English — JSON API response (see exception-messages.md).
+                throw new TooManyRequestsHttpException('API rate limit exceeded. Try again in a moment.');
+            }
+
+            $cache->set($cacheKey, $count + 1, self::RATE_LIMIT_WINDOW);
+        } finally {
+            $mutex->release($lockName);
+        }
     }
 
     /**

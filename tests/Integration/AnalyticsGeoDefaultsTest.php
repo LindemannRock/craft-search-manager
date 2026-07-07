@@ -81,6 +81,29 @@ final class AnalyticsGeoDefaultsTest extends TestCase
         self::assertSame('New York', $location['city']);
     }
 
+    public function testPrivateIpUsesEuropeanLocaleDefaults(): void
+    {
+        $expectedDefaults = [
+            'NL' => ['Amsterdam', 'Netherlands'],
+            'SE' => ['Stockholm', 'Sweden'],
+            'DK' => ['Copenhagen', 'Denmark'],
+            'NO' => ['Oslo', 'Norway'],
+        ];
+
+        foreach ($expectedDefaults as $countryCode => [$city, $country]) {
+            $settings = SearchManager::$plugin->getSettings();
+            $settings->defaultCountry = $countryCode;
+            $settings->defaultCity = $city;
+
+            $location = SearchManager::$plugin->analytics->getLocationFromIp('192.168.1.42');
+
+            self::assertIsArray($location, $countryCode . '/' . $city . ' should resolve to default geo metadata.');
+            self::assertSame($countryCode, $location['countryCode']);
+            self::assertSame($country, $location['country']);
+            self::assertSame($city, $location['city']);
+        }
+    }
+
     public function testPrivateIpHasNoGeoLocationForUnsupportedDefaults(): void
     {
         $settings = SearchManager::$plugin->getSettings();
