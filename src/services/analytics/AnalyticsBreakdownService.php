@@ -563,13 +563,17 @@ class AnalyticsBreakdownService
     /**
      * Get default location for local/private IPs
      *
-     * @return array
+     * @return array|null
      */
-    private function getDefaultLocation(): array
+    private function getDefaultLocation(): ?array
     {
         $settings = SearchManager::$plugin->getSettings();
-        $defaultCountry = $settings->defaultCountry ?: (App::env('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'AE');
-        $defaultCity = $settings->defaultCity ?: (App::env('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai');
+        $defaultCountry = $settings->defaultCountry ?: App::env('SEARCH_MANAGER_DEFAULT_COUNTRY');
+        $defaultCity = $settings->defaultCity ?: App::env('SEARCH_MANAGER_DEFAULT_CITY');
+
+        if (!$defaultCountry || !$defaultCity) {
+            return null;
+        }
 
         // Predefined locations for common cities worldwide
         $locations = [
@@ -623,14 +627,11 @@ class AnalyticsBreakdownService
             return $locations[$defaultCountry][$defaultCity];
         }
 
-        Craft::warning('Configured default analytics location was not found; falling back to Dubai. | ' . json_encode([
+        Craft::warning('Configured default analytics location was not found; leaving local/private IP geo fields empty. | ' . json_encode([
             'configuredCountry' => $defaultCountry,
             'configuredCity' => $defaultCity,
-            'fallbackCountry' => 'AE',
-            'fallbackCity' => 'Dubai',
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE), SearchManager::$plugin->id);
 
-        // Fallback to Dubai if configuration not found
-        return $locations['AE']['Dubai'];
+        return null;
     }
 }

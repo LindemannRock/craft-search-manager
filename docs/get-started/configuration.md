@@ -159,8 +159,8 @@ Analytics can also be toggled per-index, so you can track searches on your publi
 | `enableGeoDetection` | `bool` | `false` | Enable country/city detection |
 | `geoProvider` | `string` | `'ip-api.com'` | Geo provider: `ip-api.com`, `ipapi.co`, `ipinfo.io` |
 | `geoApiKey` | `?string` | `null` | API key for paid provider tiers |
-| `defaultCountry` | `?string` | `null` | Default country for local dev (when IP is private) |
-| `defaultCity` | `?string` | `null` | Default city for local dev |
+| `defaultCountry` | `?string` | `null` | Default country for local dev (when IP is private). Falls back to `SEARCH_MANAGER_DEFAULT_COUNTRY` env var. Requires `defaultCity`; otherwise private/local IP geo fields stay empty |
+| `defaultCity` | `?string` | `null` | Default city for local dev. Falls back to `SEARCH_MANAGER_DEFAULT_CITY` env var. Requires `defaultCountry`; otherwise private/local IP geo fields stay empty |
 
 The IP hash salt is typically set via `.env` as `SEARCH_MANAGER_IP_SALT` — the plugin reads it automatically. See [Privacy & Security](../feature-tour/privacy-security.md).
 
@@ -469,8 +469,8 @@ return [
 
     'dev' => [
         'logLevel' => 'debug',
-        'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'US',
-        'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY') ?: 'New York',
+        'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY'),
+        'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY'),
     ],
 
     'staging' => [

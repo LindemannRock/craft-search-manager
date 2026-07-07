@@ -480,17 +480,17 @@ return [
          * Default country for local development
          * Used when IP address is private/local (127.0.0.1, 192.168.x.x, etc.)
          * 2-letter country code (US, GB, AE, etc.)
-         * Default: 'AE' (Dubai, UAE)
+         * Default: null
          */
-        // 'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY') ?: 'AE',
+        // 'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY'),
 
         /**
          * Default city for local development
          * Used when IP address is private/local
          * Must match a city in the predefined locations list
-         * Default: 'Dubai'
+         * Default: null
          */
-        // 'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY') ?: 'Dubai',
+        // 'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY'),
 
         // ========================================
         // BACKEND CONFIGURATION

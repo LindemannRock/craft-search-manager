@@ -71,7 +71,7 @@ final class AuditFinalBatchRegressionTest extends TestCase
         self::assertSame(3, SearchManager::$plugin->analytics->getUniqueQueriesCount(self::TEST_SITE_ID, 30));
     }
 
-    public function testMissingDefaultLocationLogsWarningAndFallsBackToDubai(): void
+    public function testMissingDefaultLocationLogsWarningAndReturnsNull(): void
     {
         $settings = SearchManager::$plugin->getSettings();
         $settings->defaultCountry = 'ZZ';
@@ -82,9 +82,7 @@ final class AuditFinalBatchRegressionTest extends TestCase
 
         $location = SearchManager::$plugin->analytics->getLocationFromIp('127.0.0.1');
 
-        self::assertIsArray($location);
-        self::assertSame('AE', $location['countryCode']);
-        self::assertSame('Dubai', $location['city']);
+        self::assertNull($location);
 
         $messages = array_slice($logger->messages, $before);
         $warnings = array_filter($messages, static function(array $message): bool {
