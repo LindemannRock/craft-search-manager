@@ -49,6 +49,40 @@ final class WidgetFrontendHardeningTest extends TestCase
         self::assertStringNotContainsString("\n\t\t\tsetInterval(syncAll, 100);", $source);
     }
 
+    public function testWidgetHighlighterNormalizesTagAndClassBeforeRenderingMarkup(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/searchwidget/src/modules/Highlighter.js');
+
+        self::assertStringContainsString("const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'b', 'i', 'span']);", $source);
+        self::assertStringContainsString('const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;', $source);
+        self::assertStringContainsString('const safeTag = normalizeHighlightTag(tag);', $source);
+        self::assertStringContainsString('const classTokens = normalizeClassTokens(className);', $source);
+        self::assertStringContainsString('const classAttr = ` class="${escapeHtml(classes.join(\' \'))}"`;', $source);
+        self::assertStringContainsString('return applyHighlightRanges(text, termList, safeTag, classAttr);', $source);
+        self::assertStringNotContainsString('classes.push(className);', $source);
+        self::assertStringNotContainsString('return applyHighlightRanges(text, termList, tag, classAttr);', $source);
+    }
+
+    public function testPublicWidgetTemplateUsesProductionStyleResolver(): void
+    {
+        $source = $this->readPluginFile('src/templates/_widget/search-modal.twig');
+
+        self::assertStringContainsString('{% set styleOverrides = styles is defined and styles is iterable ? styles : {} %}', $source);
+        self::assertStringContainsString('{% set resolvedStyles = widgetConfig.getStylesForRender(styleOverrides) %}', $source);
+        self::assertStringContainsString('highlight-tag="{{ highlightTag|e(\'html_attr\') }}"', $source);
+        self::assertStringContainsString('{% if highlightClass %}highlight-class="{{ highlightClass|e(\'html_attr\') }}"{% endif %}', $source);
+        self::assertStringNotContainsString('widgetConfig.getStylesForPreview()', $source);
+        self::assertStringNotContainsString('resolvedStyles = resolvedStyles|merge(styles)', $source);
+    }
+
+    public function testCpWidgetPreviewTemplateKeepsPreviewStyleResolver(): void
+    {
+        $source = $this->readPluginFile('src/templates/widgets/_shared/preview.twig');
+
+        self::assertStringContainsString('{% set styles = widgetConfig.getStylesForPreview() %}', $source);
+        self::assertStringNotContainsString('getStylesForRender', $source);
+    }
+
     private function readPluginFile(string $path): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $path);

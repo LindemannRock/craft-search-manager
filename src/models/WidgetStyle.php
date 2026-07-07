@@ -25,6 +25,8 @@ class WidgetStyle extends Model
 {
     use ConfigSourceTrait;
 
+    private const ALLOWED_HIGHLIGHT_TAGS = ['mark', 'em', 'strong', 'b', 'i', 'span'];
+
     public const TYPE_MODAL = 'modal';
 
     public const TYPE_PAGE = 'page';
@@ -138,6 +140,9 @@ class WidgetStyle extends Model
 
         // Keyboard badge
         $this->validateStyleInt($s, 'kbdBorderRadius', 0, 20, Craft::t('search-manager', 'Keyboard Badge Border Radius'));
+
+        $this->validateHighlightTag($s);
+        $this->validateHighlightClass($s);
     }
 
     /**
@@ -157,6 +162,52 @@ class WidgetStyle extends Model
                 'max' => $max,
             ]));
         }
+    }
+
+    /**
+     * Validate highlight markup tag names against the same safe subset as the PHP highlighter.
+     */
+    private function validateHighlightTag(array $styles): void
+    {
+        $value = strtolower(trim((string)($styles['highlightTag'] ?? '')));
+        if ($value === '') {
+            return;
+        }
+
+        if (!in_array($value, self::ALLOWED_HIGHLIGHT_TAGS, true)) {
+            $this->addError('styles.highlightTag', Craft::t('search-manager', '{label} must be one of: {values}.', [
+                'label' => Craft::t('search-manager', 'HTML Tag'),
+                'values' => implode(', ', self::ALLOWED_HIGHLIGHT_TAGS),
+            ]));
+        }
+    }
+
+    /**
+     * Validate highlight class lists as plain CSS class tokens.
+     */
+    private function validateHighlightClass(array $styles): void
+    {
+        $value = trim((string)($styles['highlightClass'] ?? ''));
+        if ($value === '') {
+            return;
+        }
+
+        if (!$this->isValidClassTokenList($value)) {
+            $this->addError('styles.highlightClass', Craft::t('yii', '{attribute} is invalid.', [
+                'attribute' => Craft::t('search-manager', 'CSS Class'),
+            ]));
+        }
+    }
+
+    private function isValidClassTokenList(string $value): bool
+    {
+        foreach (preg_split('/\s+/', $value) ?: [] as $token) {
+            if ($token === '' || preg_match('/^[A-Za-z0-9_-]+$/', $token) !== 1) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function getStyles(): array

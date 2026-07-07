@@ -1070,13 +1070,14 @@ class WidgetsController extends Controller
                 'number' => preg_match('/^\d+(\.\d+)?$/', $value) === 1,
                 'shadow' => $this->_isValidCssShadow($value),
                 'boolean' => BooleanHelper::isBooleanLike($value),
-                'tag' => preg_match('/^[a-z]{1,20}$/', $value) === 1,
-                'class' => preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,50}$/', $value) === 1,
+                'tag' => in_array(strtolower($value), ['mark', 'em', 'strong', 'b', 'i', 'span'], true),
+                'class' => $this->_isValidCssClassTokenList($value),
                 default => false,
             };
 
             $validated[$key] = match (true) {
                 $valid && $type === 'boolean' => BooleanHelper::toStyleValue($value, BooleanHelper::normalize($defaults[$key] ?? false)),
+                $valid && $type === 'tag' => strtolower($value),
                 $valid => $value,
                 default => (string)($defaults[$key] ?? ''),
             };
@@ -1098,6 +1099,20 @@ class WidgetsController extends Controller
             'modalShadow', 'modalShadowDark' => 'shadow',
             default => $this->_inferStyleValueType($key),
         };
+    }
+
+    /**
+     * Validate one or more CSS class tokens for highlight markup.
+     */
+    private function _isValidCssClassTokenList(string $value): bool
+    {
+        foreach (preg_split('/\s+/', trim($value)) ?: [] as $token) {
+            if ($token === '' || preg_match('/^[A-Za-z0-9_-]+$/', $token) !== 1) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

@@ -160,6 +160,83 @@ final class ModelValidationI18nTest extends TestCase
         }
     }
 
+    public function testWidgetStyleHighlightMarkupValidationRejectsUnsafeValues(): void
+    {
+        $style = new WidgetStyle();
+        $style->name = 'Unsafe highlight style';
+        $style->handle = 'unsafe-highlight-style';
+        $style->type = WidgetStyle::TYPE_MODAL;
+        $style->styles = [
+            'highlightTag' => 'img src=x onerror=alert(1)',
+            'highlightClass' => 'x" onmouseover="alert(1)',
+        ];
+
+        self::assertFalse($style->validate(['styles']));
+        self::assertNotSame([], $style->getErrors('styles.highlightTag'));
+        self::assertNotSame([], $style->getErrors('styles.highlightClass'));
+    }
+
+    public function testWidgetStyleHighlightMarkupValidationAllowsNormalValues(): void
+    {
+        $style = new WidgetStyle();
+        $style->name = 'Safe highlight style';
+        $style->handle = 'safe-highlight-style';
+        $style->type = WidgetStyle::TYPE_MODAL;
+        $style->styles = [
+            'highlightTag' => 'span',
+            'highlightClass' => 'search-highlight utility_2',
+        ];
+
+        self::assertTrue($style->validate(['styles']));
+        self::assertSame([], $style->getErrors('styles.highlightTag'));
+        self::assertSame([], $style->getErrors('styles.highlightClass'));
+    }
+
+    public function testWidgetConfigNormalizesUnsafeStoredHighlightMarkupBeforeRendering(): void
+    {
+        $widget = $this->makeWidgetConfig();
+        $widget->settings['styles'] = [
+            'highlightTag' => 'img src=x onerror=alert(1)',
+            'highlightClass' => 'safe x" onmouseover="alert(1)',
+        ];
+
+        $styles = $widget->getStylesForRender();
+
+        self::assertSame('mark', $styles['highlightTag']);
+        self::assertSame('safe', $styles['highlightClass']);
+    }
+
+    public function testWidgetConfigNormalizesUnsafeRenderStyleOverridesAfterFinalMerge(): void
+    {
+        $widget = $this->makeWidgetConfig();
+        $widget->settings['styles'] = [
+            'highlightTag' => 'span',
+            'highlightClass' => 'saved-highlight',
+        ];
+
+        $styles = $widget->getStylesForRender([
+            'highlightTag' => 'img src=x onerror=alert(1)',
+            'highlightClass' => 'override x" onmouseover="alert(1)',
+        ]);
+
+        self::assertSame('mark', $styles['highlightTag']);
+        self::assertSame('override', $styles['highlightClass']);
+    }
+
+    public function testWidgetConfigPreviewStylesUseSameHighlightNormalization(): void
+    {
+        $widget = $this->makeWidgetConfig();
+        $widget->settings['styles'] = [
+            'highlightTag' => 'script',
+            'highlightClass' => 'preview onmouseover=alert(1)',
+        ];
+
+        $styles = $widget->getStylesForPreview();
+
+        self::assertSame('mark', $styles['highlightTag']);
+        self::assertSame('preview', $styles['highlightClass']);
+    }
+
     public function testTargetedModelValidationStringsAreTranslatedAtSource(): void
     {
         $root = dirname(__DIR__, 2);

@@ -17,6 +17,9 @@
  * @property {string[]} [terms] - Explicit terms to highlight (preferred over query)
  */
 
+const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'b', 'i', 'span']);
+const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
+
 /**
  * Escape HTML special characters to prevent XSS
  *
@@ -157,19 +160,32 @@ export function highlightMatches(text, query, options = {}) {
         return escapeHtml(text);
     }
 
+    const safeTag = normalizeHighlightTag(tag);
+    const classTokens = normalizeClassTokens(className);
+
     // Build CSS class attribute
-    const classes = ['sm-highlight'];
-    if (className) {
-        classes.push(className);
-    }
-    const classAttr = ` class="${classes.join(' ')}"`;
+    const classes = ['sm-highlight', ...classTokens];
+    const classAttr = ` class="${escapeHtml(classes.join(' '))}"`;
 
     const termList = buildHighlightTerms(query, terms);
     if (termList.length === 0) {
         return escapeHtml(text);
     }
 
-    return applyHighlightRanges(text, termList, tag, classAttr);
+    return applyHighlightRanges(text, termList, safeTag, classAttr);
+}
+
+export function normalizeHighlightTag(tag) {
+    const normalized = String(tag || 'mark').trim().toLowerCase();
+
+    return ALLOWED_HIGHLIGHT_TAGS.has(normalized) ? normalized : 'mark';
+}
+
+export function normalizeClassTokens(className) {
+    return String(className || '')
+        .trim()
+        .split(/\s+/)
+        .filter(token => token && CSS_CLASS_TOKEN_PATTERN.test(token));
 }
 
 function buildHighlightTerms(query, terms) {

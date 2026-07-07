@@ -55,6 +55,8 @@ if (fs.existsSync(mainFile)) {
     test('Normalizes control characters before URL scheme checks', content.includes('[\\t\\n\\r]'));
     test('Escapes double quotes in rendered HTML', content.includes('&quot;'));
     test('Escapes single quotes in rendered HTML', content.includes('&#39;'));
+    test('Dist normalizes highlight tags before rendering markup', content.includes('ALLOWED_HIGHLIGHT_TAGS') || content.includes('new Set(["mark","em","strong","b","i","span"])'));
+    test('Dist filters highlight class tokens before rendering attributes', content.includes('CSS_CLASS_TOKEN_PATTERN') || content.includes('[A-Za-z0-9_-]'));
     test('Does not render non-JSON error bodies', !content.includes('.text()'));
     test('Search uses stale-response sequence guard', content.includes('searchSequence'));
     test('Search requests are not aborted per keystroke', !content.includes('new AbortController'));
@@ -67,6 +69,11 @@ if (fs.existsSync(highlighterFile)) {
     test('Source escapeHtml encodes double quotes', source.includes('.replace(/"/g, \'&quot;\')'));
     test('Source escapeHtml encodes single quotes', source.includes(".replace(/'/g, '&#39;')"));
     test('Source escapeHtml avoids DOM serialization', !source.includes('document.createElement'));
+    test('Source allowlists highlight tags', source.includes("const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'b', 'i', 'span']);"));
+    test('Source filters highlight class tokens', source.includes('const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;'));
+    test('Source uses normalized highlight tag for markup', source.includes('return applyHighlightRanges(text, termList, safeTag, classAttr);'));
+    test('Source does not render raw className in class attribute', !source.includes('classes.push(className);'));
+    test('Source escapes constructed class attribute', source.includes("const classAttr = ` class=\"${escapeHtml(classes.join(' '))}\"`;"));
     test('Source preserves dotted filename-like queries as one highlight term', source.includes('terms.push(word);'));
 }
 

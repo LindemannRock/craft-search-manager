@@ -26,6 +26,8 @@ use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 class WidgetConfig extends Model
 {
     use ConfigSourceTrait;
+
+    private const SAFE_HIGHLIGHT_TAGS = ['mark', 'em', 'strong', 'b', 'i', 'span'];
     // =========================================================================
     // PROPERTIES
     // =========================================================================
@@ -481,7 +483,44 @@ class WidgetConfig extends Model
      */
     public function getStylesForPreview(): array
     {
-        return array_merge(self::defaultStyleValues(), $this->getStyles());
+        return $this->getStylesForRender();
+    }
+
+    /**
+     * Get normalized styles for public widget rendering.
+     *
+     * @param array<string, mixed> $overrides Render-time style overrides
+     * @return array
+     */
+    public function getStylesForRender(array $overrides = []): array
+    {
+        $styles = array_merge(self::defaultStyleValues(), $this->getStyles(), $overrides);
+        $styles['highlightTag'] = $this->normalizeHighlightTag((string)($styles['highlightTag'] ?? ''));
+        $styles['highlightClass'] = $this->normalizeHighlightClass((string)($styles['highlightClass'] ?? ''));
+
+        return $styles;
+    }
+
+    private function normalizeHighlightTag(string $tag): string
+    {
+        $tag = strtolower(trim($tag));
+        if ($tag === '') {
+            return '';
+        }
+
+        return in_array($tag, self::SAFE_HIGHLIGHT_TAGS, true) ? $tag : 'mark';
+    }
+
+    private function normalizeHighlightClass(string $class): string
+    {
+        $tokens = [];
+        foreach (preg_split('/\s+/', trim($class)) ?: [] as $token) {
+            if ($token !== '' && preg_match('/^[A-Za-z0-9_-]+$/', $token) === 1) {
+                $tokens[] = $token;
+            }
+        }
+
+        return implode(' ', $tokens);
     }
 
     /**
