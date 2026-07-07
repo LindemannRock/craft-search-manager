@@ -865,12 +865,15 @@ class RedisStorage implements StorageInterface
     public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
     {
         $oldRows = $this->readCompoundRows($siteId, $elementId);
-        if (!empty($oldRows)) {
-            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
-        }
 
         if (empty($suggestions)) {
+            $this->redis->multi(\Redis::MULTI);
+            if (!empty($oldRows)) {
+                $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+            }
             $this->redis->del($this->getCompoundKey($siteId, $elementId));
+            $this->redis->exec();
+
             return;
         }
 
@@ -887,8 +890,13 @@ class RedisStorage implements StorageInterface
 
         $encoded = json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         if ($encoded !== false) {
+            $this->redis->multi(\Redis::MULTI);
+            if (!empty($oldRows)) {
+                $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+            }
             $this->redis->set($this->getCompoundKey($siteId, $elementId), $encoded);
             $this->applyCompoundAggregateDelta($siteId, $rows, 1);
+            $this->redis->exec();
         }
     }
 
@@ -898,11 +906,13 @@ class RedisStorage implements StorageInterface
     public function deleteCompoundSuggestions(int $siteId, int $elementId): void
     {
         $oldRows = $this->readCompoundRows($siteId, $elementId);
+        $this->redis->multi(\Redis::MULTI);
         if (!empty($oldRows)) {
             $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
         }
 
         $this->redis->del($this->getCompoundKey($siteId, $elementId));
+        $this->redis->exec();
     }
 
     /**
@@ -1224,25 +1234,43 @@ LUA;
         int $frequencyDelta,
     ): void {
         $displayKey = $this->getCompoundDisplayKey($scope, $language, $normalizedSuggestion);
-        $displayFrequencies = $this->redis->hGetAll($displayKey) ?: [];
-        $displayFrequencies = array_map('intval', $displayFrequencies);
-
-        $displayFrequencies[$suggestion] = ($displayFrequencies[$suggestion] ?? 0) + $frequencyDelta;
-        if ($displayFrequencies[$suggestion] <= 0) {
-            unset($displayFrequencies[$suggestion]);
-        }
-
         $rankKey = $this->getCompoundRankKey($scope, $language, $normalizedSuggestion);
-        if (empty($displayFrequencies)) {
-            $this->redis->del($displayKey);
-            $this->redis->zRem($rankKey, $normalizedSuggestion);
+        $script = <<<'LUA'
+local display = redis.call('HGETALL', KEYS[1])
+local frequencies = {}
 
-            return;
-        }
+for i = 1, #display, 2 do
+    frequencies[display[i]] = tonumber(display[i + 1]) or 0
+end
 
-        $this->redis->del($displayKey);
-        $this->redis->hMSet($displayKey, $displayFrequencies);
-        $this->redis->zAdd($rankKey, array_sum($displayFrequencies), $normalizedSuggestion);
+local suggestion = ARGV[2]
+local updated = (frequencies[suggestion] or 0) + tonumber(ARGV[3])
+if updated <= 0 then
+    frequencies[suggestion] = nil
+    redis.call('HDEL', KEYS[1], suggestion)
+else
+    frequencies[suggestion] = updated
+    redis.call('HSET', KEYS[1], suggestion, updated)
+end
+
+local total = 0
+for _, frequency in pairs(frequencies) do
+    if frequency > 0 then
+        total = total + frequency
+    end
+end
+
+if total <= 0 then
+    redis.call('DEL', KEYS[1])
+    redis.call('ZREM', KEYS[2], ARGV[1])
+else
+    redis.call('ZADD', KEYS[2], total, ARGV[1])
+end
+
+return total
+LUA;
+
+        $this->redis->eval($script, [$displayKey, $rankKey, $normalizedSuggestion, $suggestion, $frequencyDelta], 2);
     }
 
     /**
@@ -1266,20 +1294,35 @@ LUA;
 
         $suggestionsByNormalized = [];
         foreach ($languages as $lang) {
+            $lang = (string)$lang;
             $rankKey = $this->getCompoundLookupRankKey($scope, (string)$lang, $normalizedPrefix);
             $ranked = $this->redis->zRevRange($rankKey, 0, -1, true);
             if (!is_array($ranked)) {
                 continue;
             }
 
+            $displayKeysByNormalized = [];
             foreach ($ranked as $normalizedSuggestion => $totalFrequency) {
                 $normalizedSuggestion = (string)$normalizedSuggestion;
                 if (!str_starts_with($normalizedSuggestion, $normalizedPrefix)) {
                     continue;
                 }
 
-                $displayKey = $this->getCompoundDisplayKey($scope, (string)$lang, $normalizedSuggestion);
-                $displayFrequencies = $this->redis->hGetAll($displayKey);
+                $displayKeysByNormalized[$normalizedSuggestion] = $this->getCompoundDisplayKey($scope, $lang, $normalizedSuggestion);
+            }
+
+            if (empty($displayKeysByNormalized)) {
+                continue;
+            }
+
+            $this->redis->multi(\Redis::PIPELINE);
+            foreach ($displayKeysByNormalized as $displayKey) {
+                $this->redis->hGetAll($displayKey);
+            }
+            $displayResults = $this->redis->exec();
+
+            foreach (array_keys($displayKeysByNormalized) as $index => $normalizedSuggestion) {
+                $displayFrequencies = $displayResults[$index] ?? [];
                 if (!is_array($displayFrequencies) || empty($displayFrequencies)) {
                     continue;
                 }

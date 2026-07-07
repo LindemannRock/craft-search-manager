@@ -187,6 +187,121 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertNotContains('sm:idx:test-index:compound:1:*', $redis->scanPatterns);
     }
 
+    public function testCompoundAggregateUpdatesUseAtomicLuaInsideStoreTransaction(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/RedisStorage.php');
+        self::assertIsString($source);
+
+        preg_match('/public function storeCompoundSuggestions\(.*?^    }$/ms', $source, $storeMatches);
+        self::assertNotEmpty($storeMatches, 'storeCompoundSuggestions source should be found');
+        self::assertStringContainsString('multi(\\Redis::MULTI)', $storeMatches[0]);
+        self::assertStringContainsString('exec()', $storeMatches[0]);
+
+        preg_match('/private function updateCompoundAggregate\(.*?^    }$/ms', $source, $aggregateMatches);
+        self::assertNotEmpty($aggregateMatches, 'updateCompoundAggregate source should be found');
+        self::assertStringContainsString('eval($script', $aggregateMatches[0]);
+        self::assertStringNotContainsString('hGetAll($displayKey)', $aggregateMatches[0]);
+        self::assertStringNotContainsString('hMSet($displayKey', $aggregateMatches[0]);
+        self::assertStringNotContainsString('del($displayKey)', $aggregateMatches[0]);
+
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeCompoundSuggestions(1, 101, [
+            'Readme.Twig' => [
+                'suggestion' => 'Readme.Twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 2,
+            ],
+        ], 'en');
+
+        $storage->storeCompoundSuggestions(1, 101, [
+            'readme.twig' => [
+                'suggestion' => 'readme.twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 3,
+            ],
+        ], 'en');
+
+        self::assertGreaterThanOrEqual(2, $redis->multiCalls);
+        self::assertGreaterThanOrEqual(4, $redis->evalCalls);
+        self::assertSame(['readme.twig' => 3], $storage->getCompoundSuggestionsForAutocomplete('readme', 1, 'en', 10));
+    }
+
+    public function testCompoundDeleteKeepsRankAndDisplayHashesConsistent(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+
+        $storage->storeCompoundSuggestions(1, 101, [
+            'React.js' => [
+                'suggestion' => 'React.js',
+                'normalizedSuggestion' => 'react.js',
+                'tokenKey' => 'react js',
+                'frequency' => 2,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(1, 102, [
+            'react.js' => [
+                'suggestion' => 'react.js',
+                'normalizedSuggestion' => 'react.js',
+                'tokenKey' => 'react js',
+                'frequency' => 1,
+            ],
+        ], 'en');
+
+        $storage->deleteCompoundSuggestions(1, 101);
+
+        $rankKey = $this->compoundRankKey('site1', 'en', 'react.js');
+        $displayKey = $this->compoundDisplayKey('site1', 'en', 'react.js');
+
+        self::assertSame(['react.js' => 1], $storage->getCompoundSuggestionsForAutocomplete('react', 1, 'en', 10));
+        self::assertSame(['react.js' => 1], $redis->zRevRange($rankKey, 0, -1, true));
+        self::assertSame(['react.js' => 1], array_map('intval', $redis->hGetAll($displayKey)));
+
+        $storage->deleteCompoundSuggestions(1, 102);
+
+        self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('react', 1, 'en', 10));
+        self::assertSame([], $redis->zRevRange($rankKey, 0, -1, true));
+        self::assertSame([], $redis->hGetAll($displayKey));
+    }
+
+    public function testCompoundAutocompletePipelinesDisplayHashReadsAndPreservesTieBreaks(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+
+        $storage->storeCompoundSuggestions(1, 101, [
+            'Readme.Twig' => [
+                'suggestion' => 'Readme.Twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 2,
+            ],
+            'readme.twig' => [
+                'suggestion' => 'readme.twig',
+                'normalizedSuggestion' => 'readme.twig',
+                'tokenKey' => 'readme twig',
+                'frequency' => 2,
+            ],
+        ], 'en');
+        $storage->storeCompoundSuggestions(1, 102, [
+            'readme.cache' => [
+                'suggestion' => 'readme.cache',
+                'normalizedSuggestion' => 'readme.cache',
+                'tokenKey' => 'readme cache',
+                'frequency' => 5,
+            ],
+        ], 'en');
+
+        $redis->hGetAllPipelineCalls = 0;
+        $redis->hGetAllSequentialCalls = 0;
+
+        $suggestions = $storage->getCompoundSuggestionsForAutocomplete('readme', 1, 'en', 10);
+
+        self::assertSame(['readme.cache' => 5, 'Readme.Twig' => 4], $suggestions);
+        self::assertSame(2, $redis->hGetAllPipelineCalls);
+        self::assertSame(0, $redis->hGetAllSequentialCalls);
+    }
+
     public function testCompoundLookupRequiresAggregateIndex(): void
     {
         [$storage, $redis] = $this->makeStorage();
@@ -414,6 +529,21 @@ final class RedisStorageRegressionTest extends TestCase
 
         return [$storage, $redis];
     }
+
+    private function compoundRankKey(string $scope, string $language, string $normalizedSuggestion): string
+    {
+        return 'sm:idx:test-index:compoundidx:' . $scope . ':' . $this->encodeKeySegment($language) . ':' . $this->encodeKeySegment(mb_substr($normalizedSuggestion, 0, 1) ?: '_') . ':rank';
+    }
+
+    private function compoundDisplayKey(string $scope, string $language, string $normalizedSuggestion): string
+    {
+        return 'sm:idx:test-index:compoundidx:' . $scope . ':' . $this->encodeKeySegment($language) . ':' . $this->encodeKeySegment(mb_substr($normalizedSuggestion, 0, 1) ?: '_') . ':display:' . hash('sha256', $normalizedSuggestion);
+    }
+
+    private function encodeKeySegment(string $value): string
+    {
+        return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
+    }
 }
 
 final class RedisStorageFakeRedis
@@ -424,6 +554,8 @@ final class RedisStorageFakeRedis
     public int $delCalls = 0;
     public int $multiCalls = 0;
     public int $sMembersPipelineCalls = 0;
+    public int $hGetAllPipelineCalls = 0;
+    public int $hGetAllSequentialCalls = 0;
 
     /** @var list<string> */
     public array $scanPatterns = [];
@@ -453,6 +585,16 @@ final class RedisStorageFakeRedis
      */
     public function hMSet(string $key, array $data): void
     {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = function() use ($key, $data): bool {
+                $this->hMSet($key, $data);
+
+                return true;
+            };
+
+            return;
+        }
+
         foreach ($data as $field => $value) {
             $this->hashes[$key][(string)$field] = $value;
         }
@@ -461,9 +603,12 @@ final class RedisStorageFakeRedis
     public function hGetAll(string $key): array|self
     {
         if ($this->pipeline !== null) {
+            $this->hGetAllPipelineCalls++;
             $this->pipeline[] = fn (): array => $this->hashes[$key] ?? [];
             return $this;
         }
+
+        $this->hGetAllSequentialCalls++;
 
         return $this->hashes[$key] ?? [];
     }
@@ -480,6 +625,16 @@ final class RedisStorageFakeRedis
 
     public function hDel(string $key, string $field): void
     {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = function() use ($key, $field): bool {
+                $this->hDel($key, $field);
+
+                return true;
+            };
+
+            return;
+        }
+
         unset($this->hashes[$key][$field]);
     }
 
@@ -517,11 +672,31 @@ final class RedisStorageFakeRedis
 
     public function zAdd(string $key, int|float $score, string $member): void
     {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = function() use ($key, $score, $member): bool {
+                $this->zAdd($key, $score, $member);
+
+                return true;
+            };
+
+            return;
+        }
+
         $this->zsets[$key][$member] = $score;
     }
 
     public function zRem(string $key, string $member): void
     {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = function() use ($key, $member): bool {
+                $this->zRem($key, $member);
+
+                return true;
+            };
+
+            return;
+        }
+
         unset($this->zsets[$key][$member]);
     }
 
@@ -538,6 +713,14 @@ final class RedisStorageFakeRedis
 
     public function del(array|string $keys): int
     {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = function() use ($keys): int {
+                return $this->del($keys);
+            };
+
+            return 0;
+        }
+
         $this->delCalls++;
         $deleted = 0;
 
@@ -602,6 +785,16 @@ final class RedisStorageFakeRedis
 
     public function set(string $key, int|string $value): void
     {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = function() use ($key, $value): bool {
+                $this->set($key, $value);
+
+                return true;
+            };
+
+            return;
+        }
+
         $this->nonLuaSetCalls++;
         $this->strings[$key] = $value;
     }
@@ -616,9 +809,49 @@ final class RedisStorageFakeRedis
     /**
      * @param array<int, string|int> $args
      */
-    public function eval(string $script, array $args, int $numKeys): array
+    public function eval(string $script, array $args, int $numKeys): array|int|self
+    {
+        if ($this->pipeline !== null) {
+            $this->pipeline[] = fn (): array|int => $this->evalNow($args);
+
+            return $this;
+        }
+
+        return $this->evalNow($args);
+    }
+
+    /**
+     * @param array<int, string|int> $args
+     */
+    private function evalNow(array $args): array|int
     {
         $this->evalCalls++;
+
+        if (count($args) === 5) {
+            [$displayKey, $rankKey, $normalizedSuggestion, $suggestion, $frequencyDelta] = $args;
+            $displayKey = (string)$displayKey;
+            $rankKey = (string)$rankKey;
+            $normalizedSuggestion = (string)$normalizedSuggestion;
+            $suggestion = (string)$suggestion;
+
+            $displayFrequencies = array_map('intval', $this->hashes[$displayKey] ?? []);
+            $updated = ($displayFrequencies[$suggestion] ?? 0) + (int)$frequencyDelta;
+            if ($updated <= 0) {
+                unset($displayFrequencies[$suggestion], $this->hashes[$displayKey][$suggestion]);
+            } else {
+                $displayFrequencies[$suggestion] = $updated;
+                $this->hashes[$displayKey][$suggestion] = $updated;
+            }
+
+            $total = array_sum(array_filter($displayFrequencies, static fn (int $frequency): bool => $frequency > 0));
+            if ($total <= 0) {
+                unset($this->hashes[$displayKey], $this->zsets[$rankKey][$normalizedSuggestion]);
+            } else {
+                $this->zsets[$rankKey][$normalizedSuggestion] = $total;
+            }
+
+            return $total;
+        }
 
         [$docCountKey, $lengthKey, $docCountChange, $lengthChange] = $args;
         $docCount = $this->incrBy((string)$docCountKey, (int)$docCountChange);
