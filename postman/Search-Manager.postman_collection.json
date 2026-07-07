@@ -95,6 +95,70 @@
           ]
         },
         {
+          "name": "Search - headless Origin fallback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "description": "Origin-only headless/browser test. Omit Referer so public-key referrer checks fall back to Origin."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "{{hits_per_page}}"
+                }
+              ]
+            },
+            "description": "Headless browser-style search request with `Origin` and no `Referer`. When Require API Key is enabled, a public key whose allowed referrers match `origin` should authenticate."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('origin-fallback search response has hits array', function () {",
+                  "    pm.expect(json).to.have.property('hits');",
+                  "    pm.expect(json.hits).to.be.an('array');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Search - enriched widget-style response",
           "request": {
             "method": "GET",
@@ -434,6 +498,69 @@
           ]
         },
         {
+          "name": "Autocomplete - headless Origin fallback",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "description": "Origin-only headless/browser test. Omit Referer so public-key referrer checks fall back to Origin."
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/api/autocomplete?q={{query}}&indices={{indices}}&hitsPerPage=10",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "api",
+                "autocomplete"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{query}}"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}"
+                },
+                {
+                  "key": "hitsPerPage",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Headless browser-style autocomplete request with `Origin` and no `Referer`. When Require API Key is enabled, a public key whose allowed referrers match `origin` should authenticate."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 400, 401, 403, 429]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('origin-fallback autocomplete response is JSON', function () {",
+                  "    pm.expect(json).to.be.an('object');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Autocomplete - only suggestions",
           "request": {
             "method": "GET",
@@ -657,6 +784,144 @@
                   "  const json = pm.response.json();",
                   "  pm.test('track-search response has success flag', function () {",
                   "    pm.expect(json).to.have.property('success');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Track search intent - headless Origin fallback",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Origin",
+                "value": "{{origin}}",
+                "description": "Origin-only headless/browser test. Omit Referer so public-key referrer checks fall back to Origin."
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "q",
+                  "value": "{{query}}",
+                  "type": "text"
+                },
+                {
+                  "key": "indices",
+                  "value": "{{indices}}",
+                  "type": "text"
+                },
+                {
+                  "key": "resultsCount",
+                  "value": "{{results_count}}",
+                  "type": "text"
+                },
+                {
+                  "key": "trigger",
+                  "value": "{{trigger}}",
+                  "type": "text"
+                },
+                {
+                  "key": "source",
+                  "value": "{{source}}-headless",
+                  "type": "text"
+                },
+                {
+                  "key": "siteId",
+                  "value": "{{site_id}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/search/track-search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "search",
+                "track-search"
+              ]
+            },
+            "description": "Headless browser-style tracking ping with `Origin` and no `Referer`. The origin must match `trackingAllowedOrigins` for cross-origin browser writes, and public API keys still need allowed referrers matching `origin` when Require API Key is enabled."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is usable for this environment', function () {",
+                  "  pm.expect([200, 401, 403]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "  const json = pm.response.json();",
+                  "  pm.test('origin-fallback track-search response has success flag', function () {",
+                  "    pm.expect(json).to.have.property('success');",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Track search preflight - allowed Origin",
+          "request": {
+            "method": "OPTIONS",
+            "header": [
+              {
+                "key": "Origin",
+                "value": "{{origin}}"
+              },
+              {
+                "key": "Access-Control-Request-Method",
+                "value": "POST"
+              },
+              {
+                "key": "Access-Control-Request-Headers",
+                "value": "Content-Type, Accept, X-Search-Manager-Key"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/actions/search-manager/search/track-search",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "actions",
+                "search-manager",
+                "search",
+                "track-search"
+              ]
+            },
+            "description": "CORS preflight for a trusted headless tracking origin. Expect 204 with non-wildcard CORS headers when `origin` is listed in `trackingAllowedOrigins`; otherwise expect 403."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('preflight status is expected for this environment', function () {",
+                  "  pm.expect([204, 403]).to.include(pm.response.code);",
+                  "});",
+                  "if (pm.response.code === 204) {",
+                  "  pm.test('preflight echoes the configured origin', function () {",
+                  "    pm.expect(pm.response.headers.get('Access-Control-Allow-Origin')).to.eql(pm.environment.get('origin'));",
+                  "  });",
+                  "  pm.test('preflight allows tracking headers', function () {",
+                  "    pm.expect(pm.response.headers.get('Access-Control-Allow-Headers')).to.include('X-Search-Manager-Key');",
                   "  });",
                   "}"
                 ]

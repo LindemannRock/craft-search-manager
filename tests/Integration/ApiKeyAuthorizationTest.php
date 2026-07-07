@@ -169,6 +169,25 @@ final class ApiKeyAuthorizationTest extends TestCase
         $this->assertTrue($this->runApiBeforeAction());
     }
 
+    public function testPublicKeyAllowsMatchingOriginWhenRefererMissing(): void
+    {
+        [, $plaintext] = $this->seedKey(allowedReferrers: ['headless.example.com']);
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+        $this->installRequest($plaintext, null, 'https://headless.example.com');
+
+        $this->assertTrue($this->runApiBeforeAction());
+    }
+
+    public function testRefererTakesPrecedenceOverOrigin(): void
+    {
+        [, $plaintext] = $this->seedKey(allowedReferrers: ['headless.example.com']);
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+        $this->installRequest($plaintext, 'https://evil.example.com', 'https://headless.example.com');
+
+        $this->expectException(ForbiddenHttpException::class);
+        $this->runApiBeforeAction();
+    }
+
     public function testServerKeySkipsReferrerCheck(): void
     {
         // Server key with a referrer list still set — the gate must NOT apply.
@@ -184,18 +203,21 @@ final class ApiKeyAuthorizationTest extends TestCase
         return SearchManager::$plugin->apiKeys;
     }
 
-    private function installRequest(string $apiKey, ?string $referer): void
+    private function installRequest(string $apiKey, ?string $referer, ?string $origin = null): void
     {
-        Craft::$app->set('request', new class($apiKey, $referer, self::API_KEY_HEADER) extends \craft\console\Request {
+        Craft::$app->set('request', new class($apiKey, $referer, $origin, self::API_KEY_HEADER) extends \craft\console\Request {
             private HeaderCollection $headers;
 
-            public function __construct(string $apiKey, ?string $referer, string $headerName)
+            public function __construct(string $apiKey, ?string $referer, ?string $origin, string $headerName)
             {
                 parent::__construct();
                 $this->headers = new HeaderCollection();
                 $this->headers->set($headerName, $apiKey);
                 if ($referer !== null) {
                     $this->headers->set('Referer', $referer);
+                }
+                if ($origin !== null) {
+                    $this->headers->set('Origin', $origin);
                 }
             }
 

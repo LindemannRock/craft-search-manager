@@ -275,7 +275,7 @@ The heading description is static — it always shows the same text regardless o
 
 **Fix:**
 - **Bundled widget:** set a **public** API key on the widget — the **API Key** field in the widget config, or an inline `apiKey` override on the include tag. Use a public key (referrer-restricted, scoped to the widget's indices), never a server key.
-- For headless / mobile / custom callers: send a valid key in the `X-Search-Manager-Key` header. Check the key is enabled, not expired, and that its allowed indices cover the index you're querying. Public keys must also match their allowed referrers.
+- For headless / mobile / custom callers: send a valid key in the `X-Search-Manager-Key` header. Check the key is enabled, not expired, and that its allowed indices cover the index you're querying. Public keys must also match their allowed referrers. Browser-based headless frontends that post `track-search` / `track-click` from another origin must also list that exact origin in `trackingAllowedOrigins` in `config/search-manager.php`; same-origin tracking does not need to be listed.
 - `403` on a `siteId` request means the requested site is outside the selected index's site scope; a `400` means the `siteId` isn't a real site.
 - A `429` ("API rate limit exceeded") means the key hit its per-minute `rateLimit`. Raise the key's rate limit, spread requests out, or clear it for no cap. The window resets each minute. (Tracking pings are not rate-limited.)
 - If you don't need enforcement, leave **Require API Key** off — all four endpoints stay anonymous and the widget keeps working without a key. See [API Keys](../feature-tour/api-keys.md) and [API Endpoints → Authentication](../template-guides/api-endpoints.md#authentication).

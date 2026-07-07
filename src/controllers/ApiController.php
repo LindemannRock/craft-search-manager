@@ -8,6 +8,7 @@ use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\ApiKeyService;
 use yii\web\Response;
@@ -65,13 +66,15 @@ class ApiController extends Controller
             $headers = Craft::$app->getRequest()->getHeaders();
             $header = $headers->get(ApiKeyService::REQUEST_HEADER);
             $referer = $headers->get('Referer');
+            $origin = $headers->get('Origin');
+            $referrerCandidate = SearchManager::$plugin->apiKeys->referrerCandidate($referer, $origin);
 
             // Authenticate + public-key referrer check (shared with the tracking
-            // gate). Read the Referer header directly rather than getReferrer()
-            // so console/test requests work.
+            // gate). Prefer Referer, fall back to Origin for browser requests
+            // where Referrer-Policy suppresses Referer.
             $key = SearchManager::$plugin->apiKeys->authenticateRequest(
                 is_string($header) ? $header : null,
-                is_string($referer) ? $referer : null,
+                $referrerCandidate,
             );
 
             // Per-key request cap (slice 3): 429 when the per-minute limit is hit.
@@ -130,8 +133,10 @@ class ApiController extends Controller
         $typeFilter = Craft::$app->getRequest()->getParam('type', null);
         $siteId = Craft::$app->getRequest()->getParam('siteId');
         $siteId = $siteId ? (int)$siteId : null;
-        // Support both 'language' and 'lang' parameters
-        $language = Craft::$app->getRequest()->getParam('language') ?? Craft::$app->getRequest()->getParam('lang');
+        // Support both 'language' and 'lang' parameters.
+        $language = self::normalizePublicLanguage(
+            Craft::$app->getRequest()->getParam('language') ?? Craft::$app->getRequest()->getParam('lang'),
+        );
 
         if (empty($query)) {
             if ($only === 'suggestions') {
@@ -312,6 +317,11 @@ class ApiController extends Controller
         return $deduped;
     }
 
+    public static function normalizePublicLanguage(mixed $language): ?string
+    {
+        return is_string($language) ? LanguageNormalizer::normalizeOrNull($language) : null;
+    }
+
     /**
      * Perform search
      *
@@ -384,7 +394,7 @@ class ApiController extends Controller
         $typeFilter = $request->getParam('type', null);
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int) $siteId : null;
-        $language = $request->getParam('language', null);
+        $language = self::normalizePublicLanguage($request->getParam('language', null) ?? $request->getParam('lang', null));
 
         // Skip analytics if explicitly requested (e.g., widget passes skipAnalytics=1 to prevent keystroke spam)
         $skipAnalytics = (bool) $request->getParam('skipAnalytics', false);

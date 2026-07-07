@@ -15,6 +15,7 @@ use lindemannrock\base\helpers\GqlHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\ForbiddenHttpException;
 
@@ -107,7 +108,7 @@ class SearchResolver extends Resolver
         if ($siteIds === null && $siteId !== null) {
             $options['siteId'] = $siteId;
         }
-        $language = self::trimmedString($arguments['language'] ?? null);
+        $language = self::normalizePublicLanguage($arguments['language'] ?? $arguments['lang'] ?? null);
         if ($language !== null) {
             $options['language'] = $language;
         }
@@ -195,7 +196,7 @@ class SearchResolver extends Resolver
         if ($siteIds === null && $siteId !== null) {
             $options['siteId'] = $siteId;
         }
-        $language = self::trimmedString($arguments['language'] ?? null);
+        $language = self::normalizePublicLanguage($arguments['language'] ?? $arguments['lang'] ?? null);
         if ($language !== null) {
             $options['language'] = $language;
         }
@@ -256,6 +257,11 @@ class SearchResolver extends Resolver
         }
 
         return $deduped;
+    }
+
+    public static function normalizePublicLanguage(mixed $language): ?string
+    {
+        return is_string($language) ? LanguageNormalizer::normalizeOrNull($language) : null;
     }
 
     /**

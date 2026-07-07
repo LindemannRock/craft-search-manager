@@ -21,6 +21,11 @@ class QueryRule extends Model
 {
     use LoggingTrait;
 
+    private const MAX_REGEX_PATTERN_LENGTH = 500;
+    private const MAX_REGEX_SUBJECT_LENGTH = 256;
+    private const REGEX_MATCH_LIMIT = 10000;
+    private const REGEX_RECURSION_LIMIT = 1000;
+
     // Action types
     public const ACTION_SYNONYM = 'synonym';
 
@@ -204,16 +209,23 @@ class QueryRule extends Model
             return;
         }
 
-        if (mb_strlen($pattern) > 500) {
+        if (mb_strlen($pattern) > self::MAX_REGEX_PATTERN_LENGTH) {
             $this->addError($attribute, Craft::t('search-manager', 'Regex pattern must be 500 characters or less.'));
             return;
         }
 
         // Escape delimiter character and test compile — use a short subject to avoid side effects
-        $escaped = str_replace('~', '\\~', $pattern);
-        if (@preg_match("~$escaped~i", '') === false) {
+        $compiledPattern = self::compileAdminRegex($pattern);
+        if (@preg_match($compiledPattern, '') === false) {
             $this->addError($attribute, Craft::t('search-manager', 'Invalid regex pattern: {error}', [
                 'error' => preg_last_error_msg(),
+            ]));
+            return;
+        }
+
+        if (!self::regexPassesSafetyProbe($compiledPattern)) {
+            $this->addError($attribute, Craft::t('search-manager', 'Invalid regex pattern: {error}', [
+                'error' => preg_last_error_msg() ?: 'pattern exceeds safe complexity limits',
             ]));
         }
     }
@@ -324,7 +336,7 @@ class QueryRule extends Model
             $pattern = trim($this->matchValue);
 
             // Reject excessively long patterns
-            if (mb_strlen($pattern) > 500) {
+            if (mb_strlen($pattern) > self::MAX_REGEX_PATTERN_LENGTH) {
                 $this->logWarning('Query rule regex too long', [
                     'ruleId' => $this->id,
                     'length' => mb_strlen($pattern),
@@ -332,21 +344,14 @@ class QueryRule extends Model
                 return false;
             }
 
-            // Escape delimiter character in pattern to prevent breakout
-            $pattern = str_replace('~', '\\~', $pattern);
-
-            // Guard against ReDoS: temporarily lower backtrack limit
-            $previousLimit = (int) ini_get('pcre.backtrack_limit');
-            ini_set('pcre.backtrack_limit', '10000');
-
-            $result = @preg_match("~$pattern~i", $searchQuery);
-
-            ini_set('pcre.backtrack_limit', (string) $previousLimit);
+            $compiledPattern = self::compileAdminRegex($pattern);
+            $searchQuery = mb_substr($searchQuery, 0, self::MAX_REGEX_SUBJECT_LENGTH);
+            $result = @preg_match($compiledPattern, $searchQuery);
 
             if ($result === false) {
                 $this->logWarning('Query rule regex failed', [
                     'ruleId' => $this->id,
-                    'pattern' => $pattern,
+                    'pattern' => $compiledPattern,
                     'error' => preg_last_error_msg(),
                 ]);
                 return false;
@@ -377,6 +382,30 @@ class QueryRule extends Model
         }
 
         return false;
+    }
+
+    private static function compileAdminRegex(string $pattern): string
+    {
+        $pattern = str_replace('~', '\\~', $pattern);
+
+        return sprintf('~(*LIMIT_MATCH=%d)(*LIMIT_RECURSION=%d)%s~i', self::REGEX_MATCH_LIMIT, self::REGEX_RECURSION_LIMIT, $pattern);
+    }
+
+    private static function regexPassesSafetyProbe(string $compiledPattern): bool
+    {
+        $subjects = [
+            '',
+            str_repeat('a', self::MAX_REGEX_SUBJECT_LENGTH),
+            str_repeat('a', self::MAX_REGEX_SUBJECT_LENGTH) . '!',
+        ];
+
+        foreach ($subjects as $subject) {
+            if (@preg_match($compiledPattern, $subject) === false) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

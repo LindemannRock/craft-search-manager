@@ -29,6 +29,14 @@ Rejections (returned as the endpoint's JSON error, in English):
 
 The `track-search` / `track-click` analytics endpoints are gated the same way when **Require API Key** is on (authenticate + public-key referrer, plus the allowed-indices check when the ping includes `index`/`indices`). They are **not** rate-limited. When the setting is off, they stay anonymous. The bundled widget sends its configured key on these pings automatically.
 
+Tracking pings intentionally remain CSRF-free so they keep working from statically cached pages and the bundled frontend widget. Same-origin browser requests are accepted automatically. If a headless frontend sends tracking pings from another browser origin, add that exact origin in `config/search-manager.php`:
+
+```php
+'trackingAllowedOrigins' => App::env('SEARCH_MANAGER_TRACKING_ALLOWED_ORIGINS') ?: [],
+```
+
+The value may be an array or a comma-separated environment variable. Origins must match exactly by scheme, host, and effective port, for example `https://frontend.example.com` or `http://localhost:3000`. Paths and wildcards are not supported.
+
 ## Search API
 
 ```text

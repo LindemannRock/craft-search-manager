@@ -216,6 +216,15 @@ class ApiKeyService extends Component
         return $key;
     }
 
+    public function referrerCandidate(mixed $referer, mixed $origin): ?string
+    {
+        if (is_string($referer) && trim($referer) !== '') {
+            return $referer;
+        }
+
+        return is_string($origin) && trim($origin) !== '' ? $origin : null;
+    }
+
     /**
      * Apply a key's index permission boundary to the resolved request indices.
      *

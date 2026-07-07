@@ -85,6 +85,11 @@ class SearchQuery extends Query
                         'type' => Type::string(),
                         'description' => 'Optional language code for localized search operators.',
                     ],
+                    'lang' => [
+                        'name' => 'lang',
+                        'type' => Type::string(),
+                        'description' => 'Alias for language.',
+                    ],
                     'source' => [
                         'name' => 'source',
                         'type' => Type::string(),
@@ -186,6 +191,11 @@ class SearchQuery extends Query
                         'name' => 'language',
                         'type' => Type::string(),
                         'description' => 'Optional language code.',
+                    ],
+                    'lang' => [
+                        'name' => 'lang',
+                        'type' => Type::string(),
+                        'description' => 'Alias for language.',
                     ],
                 ],
                 'resolve' => SearchResolver::class . '::resolveAutocomplete',

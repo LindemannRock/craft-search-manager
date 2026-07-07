@@ -121,6 +121,14 @@ class Settings extends Model
     public bool $requireApiKey = false;
 
     /**
+     * @var array<int, string>|string Browser origins allowed to send public
+     *     cross-origin analytics tracking pings. Same-origin pings are always
+     *     allowed. Config-only; not persisted to the settings table.
+     * @since 5.53.0
+     */
+    public array|string $trackingAllowedOrigins = [];
+
+    /**
      * @var bool Enable search analytics tracking
      */
     public bool $enableAnalytics = true;
@@ -451,6 +459,7 @@ class Settings extends Model
             'ipHashSalt',
             'defaultCountry',
             'defaultCity',
+            'trackingAllowedOrigins',
         ];
     }
 
@@ -490,6 +499,7 @@ class Settings extends Model
             [['bm25B', 'similarityThreshold'], 'number', 'min' => 0.0, 'max' => 1.0],
             [['titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor'], 'number', 'min' => 1.0, 'max' => 20.0],
             [['ngramSizes', 'highlightTag'], 'string'],
+            [['trackingAllowedOrigins'], 'safe'],
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
             [['defaultBackendHandle', 'defaultWidgetHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],
             [['defaultBackendHandle'], 'validateDefaultBackendHandle'],

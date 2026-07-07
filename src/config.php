@@ -431,6 +431,19 @@ return [
         // 'anonymizeIpAddress' => false,
 
         /**
+         * Trusted browser origins for cross-origin tracking pings
+         * Same-origin track-search / track-click requests are always allowed.
+         * Add exact headless frontend origins here when they send tracking pings
+         * directly to Craft. Match is scheme + host + effective port; no paths
+         * or wildcards.
+         *
+         * Accepts an array or comma-separated env string.
+         * Example env: https://frontend.example.com,https://app.example.com:8443
+         * Default: []
+         */
+        // 'trackingAllowedOrigins' => App::env('SEARCH_MANAGER_TRACKING_ALLOWED_ORIGINS') ?: [],
+
+        /**
          * Enable geo-location detection
          * Detects country, city, region from IP address
          * Default: false

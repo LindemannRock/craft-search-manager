@@ -28,7 +28,9 @@ Plugin source: <https://github.com/LindemannRock/craft-search-manager>
 5. If **Require API Key** is enabled, also set:
    - `api_key` → a **public** Search Manager key for browser/widget/custom-JS requests.
    - `referrer` → a URL whose host matches that public key's allowed referrers.
+   - `origin` → a browser origin whose host matches that public key's allowed referrers, used by headless Origin-only examples.
    - `server_api_key` → a **server** key only for the server-key example request.
+6. If you test cross-origin headless tracking, add the exact `origin` value to `trackingAllowedOrigins` in `config/search-manager.php`. Same-origin tracking does not need `trackingAllowedOrigins`.
 
 The key values are Postman secret variables in the environment template. The shipped file contains no real keys.
 
@@ -87,7 +89,20 @@ Use the **Enforcement Checks** folder:
 
 Wildcard/all-index keys may make the out-of-scope request return `200`; use a narrowly scoped key to test the `403` path.
 
-### 4. Rate Limit
+### 4. Headless Origin Fallback
+
+Use the headless examples in **Search API**, **Autocomplete API**, and **Analytics Tracking**:
+
+- **Search - headless Origin fallback**
+- **Autocomplete - headless Origin fallback**
+- **Track search intent - headless Origin fallback**
+- **Track search preflight - allowed Origin**
+
+These requests send `Origin` and intentionally omit `Referer`. Public API-key referrer checks prefer `Referer` when it is present, then fall back to `Origin` when `Referer` is absent. This lets Postman simulate browser headless/frontends that suppress `Referer` via Referrer-Policy.
+
+For cross-origin browser tracking pings, `Origin` must also be listed exactly in `trackingAllowedOrigins` in `config/search-manager.php`. Match is scheme + host + effective port. Same-origin tracking does not need that config entry.
+
+### 5. Rate Limit
 
 Set a low per-key rate limit, such as `3` requests per minute, then use Postman Runner on **Enforcement Checks → Rate limit probe - repeat with Runner** with more iterations than the cap.
 
@@ -96,6 +111,8 @@ Expected: the first requests return `200`; later requests return `429` until the
 ## Notes
 
 - The collection sends `X-Search-Manager-Key` when the environment variable is set.
-- Public-key referrer checks use the request's `Referer` header. The collection sets it from `referrer` so browser behavior can be tested from Postman.
+- Public-key referrer checks prefer the request's `Referer` header and fall back to `Origin` when `Referer` is absent. Existing Referer examples are still present because Referer takes precedence when both headers are sent.
+- Browser-based headless tracking from another origin requires that exact origin in `trackingAllowedOrigins`; same-origin tracking does not need `trackingAllowedOrigins`.
+- Postman can test Origin fallback by sending `Origin` with `Referer` omitted.
 - `track-search` records analytics rows when analytics is enabled. `track-click` is gated but currently log-only.
 - The enriched search request mirrors the frontend widget/custom-template request shape.

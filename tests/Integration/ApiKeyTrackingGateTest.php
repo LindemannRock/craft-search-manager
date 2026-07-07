@@ -41,6 +41,7 @@ final class ApiKeyTrackingGateTest extends TestCase
 
     private int $seedCounter = 0;
     private bool $originalRequireApiKey = false;
+    private array|string $originalTrackingAllowedOrigins = [];
     private ?object $originalRequest = null;
 
     protected function setUp(): void
@@ -48,6 +49,7 @@ final class ApiKeyTrackingGateTest extends TestCase
         parent::setUp();
         $this->seedCounter = 0;
         $this->originalRequireApiKey = SearchManager::$plugin->getSettings()->requireApiKey;
+        $this->originalTrackingAllowedOrigins = SearchManager::$plugin->getSettings()->trackingAllowedOrigins;
         $this->originalRequest = Craft::$app->getRequest();
         SearchManager::$plugin->getSettings()->requireApiKey = false;
         $this->purge();
@@ -56,6 +58,7 @@ final class ApiKeyTrackingGateTest extends TestCase
     protected function tearDown(): void
     {
         SearchManager::$plugin->getSettings()->requireApiKey = $this->originalRequireApiKey;
+        SearchManager::$plugin->getSettings()->trackingAllowedOrigins = $this->originalTrackingAllowedOrigins;
         if ($this->originalRequest !== null) {
             Craft::$app->set('request', $this->originalRequest);
         }
@@ -138,6 +141,42 @@ final class ApiKeyTrackingGateTest extends TestCase
         $this->runBeforeAction('track-search');
     }
 
+    public function testPublicKeyAllowsMatchingOriginWhenRefererMissing(): void
+    {
+        [, $plaintext] = $this->seedKey(allowedReferrers: ['headless.example.com']);
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+        SearchManager::$plugin->getSettings()->trackingAllowedOrigins = ['https://headless.example.com'];
+        $this->installRequest(apiKey: $plaintext, origin: 'https://headless.example.com');
+
+        $this->assertTrue($this->runBeforeAction('track-search'));
+    }
+
+    public function testAllowedTrackingOriginStillRequiresApiKeyReferrerMatch(): void
+    {
+        [, $plaintext] = $this->seedKey(allowedReferrers: ['other.example.com']);
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+        SearchManager::$plugin->getSettings()->trackingAllowedOrigins = ['https://headless.example.com'];
+        $this->installRequest(apiKey: $plaintext, origin: 'https://headless.example.com');
+
+        $this->expectException(ForbiddenHttpException::class);
+        $this->runBeforeAction('track-search');
+    }
+
+    public function testRefererTakesPrecedenceOverOrigin(): void
+    {
+        [, $plaintext] = $this->seedKey(allowedReferrers: ['headless.example.com']);
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+        SearchManager::$plugin->getSettings()->trackingAllowedOrigins = ['https://headless.example.com'];
+        $this->installRequest(
+            apiKey: $plaintext,
+            referer: 'https://evil.example.com/search',
+            origin: 'https://headless.example.com',
+        );
+
+        $this->expectException(ForbiddenHttpException::class);
+        $this->runBeforeAction('track-search');
+    }
+
     public function testServerKeySkipsReferrer(): void
     {
         [, $plaintext] = $this->seedKey(type: ApiKey::TYPE_SERVER, allowedReferrers: ['example.com']);
@@ -181,13 +220,13 @@ final class ApiKeyTrackingGateTest extends TestCase
         }
     }
 
-    private function installRequest(string $apiKey = '', ?string $referer = null, array $params = []): void
+    private function installRequest(string $apiKey = '', ?string $referer = null, ?string $origin = null, array $params = []): void
     {
-        Craft::$app->set('request', new class($apiKey, $referer, $params, self::API_KEY_HEADER) extends \craft\console\Request {
+        Craft::$app->set('request', new class($apiKey, $referer, $origin, $params, self::API_KEY_HEADER) extends \craft\console\Request {
             private HeaderCollection $headers;
 
             /** @param array<string,string> $params */
-            public function __construct(string $apiKey, ?string $referer, private array $params, string $headerName)
+            public function __construct(string $apiKey, ?string $referer, ?string $origin, private array $params, string $headerName)
             {
                 parent::__construct();
                 $this->headers = new HeaderCollection();
@@ -196,6 +235,9 @@ final class ApiKeyTrackingGateTest extends TestCase
                 }
                 if ($referer !== null) {
                     $this->headers->set('Referer', $referer);
+                }
+                if ($origin !== null) {
+                    $this->headers->set('Origin', $origin);
                 }
             }
 

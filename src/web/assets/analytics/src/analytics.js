@@ -784,22 +784,24 @@
             let trendIcon = '';
             let trendColor = '';
             let trendText = '';
+            const changePercent = Number(q.changePercent);
+            const safeChangePercent = Number.isFinite(changePercent) ? changePercent : 0;
 
             switch(q.trend) {
                 case 'up':
                     trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="18 15 12 9 6 15"></polyline></svg>';
                     trendColor = '#27ae60';
-                    trendText = '+' + q.changePercent + '%';
+                    trendText = '+' + safeChangePercent + '%';
                     break;
                 case 'down':
                     trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>';
                     trendColor = '#e74c3c';
-                    trendText = '-' + q.changePercent + '%';
+                    trendText = '-' + safeChangePercent + '%';
                     break;
                 case 'new':
                     trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4" fill="currentColor"></circle></svg>';
                     trendColor = '#3498db';
-                    trendText = strings.newLabel;
+                    trendText = Craft.escapeHtml(strings.newLabel);
                     break;
                 default:
                     trendIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
