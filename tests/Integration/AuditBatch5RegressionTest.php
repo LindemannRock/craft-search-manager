@@ -1,6 +1,6 @@
 <?php
 /**
- * LindemannRock Search Manager
+ * Search Manager plugin for Craft CMS 5.x
  *
  * @link      https://lindemannrock.com
  * @copyright Copyright (c) 2026 LindemannRock
@@ -83,10 +83,10 @@ final class AuditBatch5RegressionTest extends TestCase
         }
     }
 
-    public function testIndexDocumentUsesPerDocumentMutexAroundReplacement(): void
+    public function testIndexDocumentWithResultUsesPerDocumentMutexAroundReplacement(): void
     {
         $source = $this->readPluginSource('src/search/SearchEngine.php');
-        $body = $this->methodBody($source, 'indexDocument');
+        $body = $this->methodBody($source, 'indexDocumentWithResult');
 
         self::assertStringContainsString('$lockName = $this->indexDocumentLockName($siteId, $elementId);', $body);
         self::assertStringContainsString('getMutex()->acquire($lockName, 30)', $body);

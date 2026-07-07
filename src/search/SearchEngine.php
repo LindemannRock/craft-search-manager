@@ -153,6 +153,22 @@ class SearchEngine
      */
     public function indexDocument(int $siteId, int $elementId, string $title, string $content, ?string $language = null): bool
     {
+        return $this->indexDocumentWithResult($siteId, $elementId, $title, $content, $language)['success'];
+    }
+
+    /**
+     * Index a document and report whether the storage row was newly created.
+     *
+     * @param int $siteId Site ID
+     * @param int $elementId Element ID
+     * @param string $title Document title
+     * @param string $content Document content (excluding title)
+     * @param string|null $language Language code (null = auto-detect from site)
+     * @return array{success: bool, wasCreated: bool|null}
+     * @since 5.53.0
+     */
+    public function indexDocumentWithResult(int $siteId, int $elementId, string $title, string $content, ?string $language = null): array
+    {
         $lockName = $this->indexDocumentLockName($siteId, $elementId);
         $lockAcquired = \Craft::$app->getMutex()->acquire($lockName, 30);
         if (!$lockAcquired) {
@@ -161,7 +177,10 @@ class SearchEngine
                 'site_id' => $siteId,
                 'element_id' => $elementId,
             ]);
-            return false;
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
         }
 
         try {
@@ -210,6 +229,7 @@ class SearchEngine
             // Delete old document data
             $oldDocLength = $this->storage->getDocumentLength($siteId, $elementId);
             $oldTerms = $this->storage->getDocumentTerms($siteId, $elementId);
+            $wasCreated = $oldDocLength <= 0 && empty($oldTerms);
             foreach (array_keys($oldTerms) as $term) {
                 $this->storage->removeTermDocument($term, $siteId, $elementId);
             }
@@ -254,14 +274,20 @@ class SearchEngine
                 'duration_ms' => $duration,
             ]);
 
-            return true;
+            return [
+                'success' => true,
+                'wasCreated' => $wasCreated,
+            ];
         } catch (\Throwable $e) {
             $this->logError('Failed to index document', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
                 'error' => $e->getMessage(),
             ]);
-            return false;
+            return [
+                'success' => false,
+                'wasCreated' => null,
+            ];
         } finally {
             \Craft::$app->getMutex()->release($lockName);
         }

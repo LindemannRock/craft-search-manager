@@ -1,6 +1,6 @@
 <?php
 /**
- * LindemannRock Search Manager
+ * Search Manager plugin for Craft CMS 5.x
  *
  * @link      https://lindemannrock.com
  * @copyright Copyright (c) 2026 LindemannRock
@@ -340,18 +340,29 @@ final class RecordingStorage implements StorageInterface
 
     public function storeDocument(int $siteId, int $elementId, array $termFreqs, int $docLength, string $language = 'en'): void
     {
+        $docId = $siteId . ':' . $elementId;
+        $this->documentTermsById[$docId] = $termFreqs;
+        $this->documentLengthsById[$docId] = $docLength;
+        $this->documentLanguagesById[$docId] = $language;
     }
 
     public function deleteDocument(int $siteId, int $elementId): void
     {
+        $docId = $siteId . ':' . $elementId;
+        unset($this->documentTermsById[$docId], $this->documentLengthsById[$docId], $this->documentLanguagesById[$docId]);
     }
 
     public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
+        $this->termDocs[$term][$siteId . ':' . $elementId] = $frequency;
     }
 
     public function removeTermDocument(string $term, int $siteId, int $elementId): void
     {
+        unset($this->termDocs[$term][$siteId . ':' . $elementId]);
+        if (($this->termDocs[$term] ?? []) === []) {
+            unset($this->termDocs[$term]);
+        }
     }
 
     public function storeElement(int $siteId, int $elementId, string $title, string $elementType, ?string $documentData = null): void
@@ -360,10 +371,12 @@ final class RecordingStorage implements StorageInterface
 
     public function storeTitleTerms(int $siteId, int $elementId, array $titleTerms): void
     {
+        $this->titleByElement[$elementId] = $titleTerms;
     }
 
     public function deleteTitleTerms(int $siteId, int $elementId): void
     {
+        unset($this->titleByElement[$elementId]);
     }
 
     public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void

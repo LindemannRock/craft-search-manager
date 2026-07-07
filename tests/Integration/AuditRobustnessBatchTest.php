@@ -1,6 +1,6 @@
 <?php
 /**
- * LindemannRock Search Manager
+ * Search Manager plugin for Craft CMS 5.x
  *
  * @link      https://lindemannrock.com
  * @copyright Copyright (c) 2026 LindemannRock
@@ -41,9 +41,9 @@ final class AuditRobustnessBatchTest extends TestCase
         self::assertStringNotContainsString('in_array($indexBackendType, $typesToMatch))', $source);
     }
 
-    public function testSourceFilesHaveStandardFileHeaders(): void
+    public function testSourceAndTestFilesHaveStandardFileHeaders(): void
     {
-        foreach ($this->sourcePhpFiles() as $path) {
+        foreach ($this->headerEligiblePhpFiles() as $path) {
             if ($path === 'src/config.php') {
                 continue;
             }
@@ -55,19 +55,33 @@ final class AuditRobustnessBatchTest extends TestCase
                 $source,
                 $path . ' must start with the standard Search Manager file header.',
             );
-            self::assertStringNotContainsString('LindemannRock Search Manager', $source, $path);
+            self::assertFalse(
+                str_starts_with($source, "<?php\n/**\n * LindemannRock Search Manager\n"),
+                $path . ' must not use the old LindemannRock Search Manager file header.',
+            );
         }
     }
 
     /**
      * @return list<string>
      */
-    private function sourcePhpFiles(): array
+    private function headerEligiblePhpFiles(): array
+    {
+        return array_merge(
+            $this->phpFilesInDirectory('src'),
+            $this->phpFilesInDirectory('tests'),
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function phpFilesInDirectory(string $directory): array
     {
         $root = dirname(__DIR__, 2);
         $files = [];
         $iterator = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($root . '/src', RecursiveDirectoryIterator::SKIP_DOTS),
+            new RecursiveDirectoryIterator($root . '/' . $directory, RecursiveDirectoryIterator::SKIP_DOTS),
         );
 
         foreach ($iterator as $file) {

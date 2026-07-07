@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\backends;
 
+use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use Meilisearch\Client;
@@ -95,18 +96,36 @@ class MeilisearchBackend extends BaseBackend
             $data = $this->prepareDocument($data);
 
             $index = $client->index($fullIndexName);
-            $existed = $this->meilisearchDocumentExists($index, $data['objectID']);
-            $index->addDocuments([$data], 'objectID');
+            $objectId = (string)$data['objectID'];
+            $lockName = $this->indexDocumentLockName($fullIndexName, $objectId);
+            $lockAcquired = Craft::$app->getMutex()->acquire($lockName, 30);
+            if (!$lockAcquired) {
+                $this->logError('Failed to acquire Meilisearch indexing lock', [
+                    'index' => $fullIndexName,
+                    'id' => $objectId,
+                ]);
+                return [
+                    'success' => false,
+                    'wasCreated' => null,
+                ];
+            }
 
-            $this->logDebug('Document indexed in Meilisearch', [
-                'index' => $fullIndexName,
-                'id' => $data['objectID'],
-            ]);
+            try {
+                $existed = $this->meilisearchDocumentExists($index, $objectId);
+                $index->addDocuments([$data], 'objectID');
 
-            return [
-                'success' => true,
-                'wasCreated' => !$existed,
-            ];
+                $this->logDebug('Document indexed in Meilisearch', [
+                    'index' => $fullIndexName,
+                    'id' => $objectId,
+                ]);
+
+                return [
+                    'success' => true,
+                    'wasCreated' => !$existed,
+                ];
+            } finally {
+                Craft::$app->getMutex()->release($lockName);
+            }
         } catch (\Throwable $e) {
             $this->logError('Failed to index document in Meilisearch', [
                 'error' => $e->getMessage(),
@@ -158,6 +177,11 @@ class MeilisearchBackend extends BaseBackend
     private function prepareDocument(array $data): array
     {
         return SearchHitIdentityHelper::prepareObjectIdDocument($data);
+    }
+
+    private function indexDocumentLockName(string $fullIndexName, string $objectId): string
+    {
+        return sprintf('search-manager:index-document:%s:%s', $fullIndexName, $objectId);
     }
 
     /** @inheritdoc */

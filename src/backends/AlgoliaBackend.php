@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use Algolia\AlgoliaSearch\Api\SearchClient;
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
+use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 
@@ -103,14 +104,32 @@ class AlgoliaBackend extends BaseBackend
 
             // Create composite objectID for multi-site uniqueness
             $data = $this->prepareDocument($data);
-            $existed = $this->algoliaObjectExists($fullIndexName, (string)$data['objectID']);
+            $objectId = (string)$data['objectID'];
+            $lockName = $this->indexDocumentLockName($fullIndexName, $objectId);
+            $lockAcquired = Craft::$app->getMutex()->acquire($lockName, 30);
+            if (!$lockAcquired) {
+                $this->logError('Failed to acquire Algolia indexing lock', [
+                    'index' => $fullIndexName,
+                    'id' => $objectId,
+                ]);
+                return [
+                    'success' => false,
+                    'wasCreated' => null,
+                ];
+            }
 
-            $client->saveObject($fullIndexName, $data);
-            $this->logDebug('Document indexed in Algolia', ['index' => $fullIndexName, 'id' => $data['objectID']]);
-            return [
-                'success' => true,
-                'wasCreated' => !$existed,
-            ];
+            try {
+                $existed = $this->algoliaObjectExists($fullIndexName, $objectId);
+
+                $client->saveObject($fullIndexName, $data);
+                $this->logDebug('Document indexed in Algolia', ['index' => $fullIndexName, 'id' => $objectId]);
+                return [
+                    'success' => true,
+                    'wasCreated' => !$existed,
+                ];
+            } finally {
+                Craft::$app->getMutex()->release($lockName);
+            }
         } catch (\Throwable $e) {
             $this->logError('Failed to index in Algolia', ['error' => $e->getMessage()]);
             return [
@@ -152,6 +171,11 @@ class AlgoliaBackend extends BaseBackend
     private function prepareDocument(array $data): array
     {
         return SearchHitIdentityHelper::prepareObjectIdDocument($data);
+    }
+
+    private function indexDocumentLockName(string $fullIndexName, string $objectId): string
+    {
+        return sprintf('search-manager:index-document:%s:%s', $fullIndexName, $objectId);
     }
 
     /** @inheritdoc */

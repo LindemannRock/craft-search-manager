@@ -178,13 +178,13 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             if ($elementId === null) {
                 throw new \InvalidArgumentException('Document must have either "elementId", "id", or "objectID" field');
             }
-            $existed = !empty($storage->getDocumentTerms($siteId, $elementId));
 
             // Get element type: from data, or derive from index name
             $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
 
             // Use SearchEngine to index
-            $success = $engine->indexDocument($siteId, $elementId, $title, $content);
+            $indexResult = $engine->indexDocumentWithResult($siteId, $elementId, $title, $content);
+            $success = $indexResult['success'];
 
             if ($success) {
                 // Build document data JSON for rich search results
@@ -202,7 +202,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
             return [
                 'success' => $success,
-                'wasCreated' => $success ? !$existed : null,
+                'wasCreated' => $indexResult['wasCreated'],
             ];
         } catch (\Throwable $e) {
             $this->logError("Failed to index in {$this->getBackendLabel()}", ['error' => $e->getMessage()]);
