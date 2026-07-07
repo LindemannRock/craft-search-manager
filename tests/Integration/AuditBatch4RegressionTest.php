@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use craft\elements\Entry;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -53,7 +54,7 @@ final class AuditBatch4RegressionTest extends TestCase
         $source = $this->readPluginSource('src/models/SearchIndex.php');
         $body = $this->methodBody($source, 'getExpectedCount', 'public');
 
-        self::assertSame(1, substr_count($body, 'if ($this->skipEntriesWithoutUrl)'));
+        self::assertSame(1, substr_count($body, 'if ($this->skipEntriesWithoutUrl && $elementType === Entry::class)'));
         self::assertStringContainsString('Expected count result (skip URL)', $body);
         self::assertStringNotContainsString('Expected count result (skip URL non-entry)', $body);
         self::assertStringContainsString("->andWhere(['not', ['elements_sites.uri' => null]])", $body);

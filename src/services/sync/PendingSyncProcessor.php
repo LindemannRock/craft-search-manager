@@ -162,7 +162,7 @@ class PendingSyncProcessor extends Component
                 continue;
             }
 
-            if ($index->skipEntriesWithoutUrl && $element->url === null) {
+            if ($index->shouldSkipElementWithoutUrl($element)) {
                 $this->queueDelete($elementId, $siteId, $row, $deleteItems, $deleteRows);
                 continue;
             }

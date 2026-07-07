@@ -171,7 +171,7 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                     // Only index if element exists and is enabled for this site
                     if ($element->enabled && $element->getEnabledForSite()) {
                         // Skip entries without URL if index is configured to do so
-                        if ($index->skipEntriesWithoutUrl && $element->url === null) {
+                        if ($index->shouldSkipElementWithoutUrl($element)) {
                             continue;
                         }
 

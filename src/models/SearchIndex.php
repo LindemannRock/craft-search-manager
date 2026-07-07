@@ -12,6 +12,7 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\base\Model;
 use craft\db\Query;
+use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
@@ -1364,12 +1365,12 @@ class SearchIndex extends Model
                 }
 
                 // For entries, only count live status (matching RebuildIndexJob filtering)
-                if ($elementType === \craft\elements\Entry::class) {
-                    $query->status(\craft\elements\Entry::STATUS_LIVE);
+                if ($elementType === Entry::class) {
+                    $query->status(Entry::STATUS_LIVE);
                 }
 
-                // If skipEntriesWithoutUrl is enabled, filter by URI when possible
-                if ($this->skipEntriesWithoutUrl) {
+                // If skipEntriesWithoutUrl is enabled, filter Entry URI in SQL.
+                if ($this->skipEntriesWithoutUrl && $elementType === Entry::class) {
                     $query->andWhere(['not', ['elements_sites.uri' => null]])
                         ->andWhere(['<>', 'elements_sites.uri', '']);
 
@@ -1569,6 +1570,19 @@ class SearchIndex extends Model
         }
 
         return $this->matchesCriteria($element);
+    }
+
+    /**
+     * Whether the Entry-only "skip entries without URL" rule excludes an element.
+     *
+     * @since 5.53.0
+     */
+    public function shouldSkipElementWithoutUrl(ElementInterface $element): bool
+    {
+        return $this->skipEntriesWithoutUrl
+            && $this->elementType === Entry::class
+            && $element instanceof Entry
+            && $element->url === null;
     }
 
     /**

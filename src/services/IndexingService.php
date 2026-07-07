@@ -142,7 +142,7 @@ class IndexingService extends Component
             try {
                 // Check if index should skip entries without URL
                 $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
-                if ($index && $index->skipEntriesWithoutUrl && $element->url === null) {
+                if ($index && $index->shouldSkipElementWithoutUrl($element)) {
                     $this->logDebug('Skipping element without URL for index', [
                         'elementId' => $element->id,
                         'indexHandle' => $indexHandle,
