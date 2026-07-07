@@ -33,6 +33,8 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
     use QueueTtrTrait;
     use LoggingTrait;
 
+    private const STATUS_SYNC_BATCH_SIZE = 100;
+
     /**
      * @var bool Whether to reschedule after completion
      */
@@ -152,35 +154,29 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
         $rowsQueued = 0;
 
         foreach (array_keys($relevantSiteIds) as $siteId) {
-            $newlyLiveEntries = Entry::find()
-                ->status('live')
-                ->siteId($siteId)
-                ->drafts(false)
-                ->revisions(false)
-                ->withCustomFields(false)
-                ->andWhere(['>=', 'entries.postDate', $lastSyncDb])
-                ->andWhere(['<=', 'entries.postDate', $nowDb])
-                ->all();
+            [$count, $queued] = $this->queueStatusEntries(
+                (int) $siteId,
+                'live',
+                'entries.postDate',
+                $lastSyncDb,
+                $nowDb,
+                PendingSyncRepository::OP_UPSERT,
+                $repository,
+            );
+            $entriesBecameLive += $count;
+            $rowsQueued += $queued;
 
-            foreach ($newlyLiveEntries as $entry) {
-                $rowsQueued += $repository->queueForElement($entry, PendingSyncRepository::OP_UPSERT);
-                $entriesBecameLive++;
-            }
-
-            $newlyExpiredEntries = Entry::find()
-                ->status('expired')
-                ->siteId($siteId)
-                ->drafts(false)
-                ->revisions(false)
-                ->withCustomFields(false)
-                ->andWhere(['>=', 'entries.expiryDate', $lastSyncDb])
-                ->andWhere(['<=', 'entries.expiryDate', $nowDb])
-                ->all();
-
-            foreach ($newlyExpiredEntries as $entry) {
-                $rowsQueued += $repository->queueForElement($entry, PendingSyncRepository::OP_DELETE);
-                $entriesExpired++;
-            }
+            [$count, $queued] = $this->queueStatusEntries(
+                (int) $siteId,
+                'expired',
+                'entries.expiryDate',
+                $lastSyncDb,
+                $nowDb,
+                PendingSyncRepository::OP_DELETE,
+                $repository,
+            );
+            $entriesExpired += $count;
+            $rowsQueued += $queued;
         }
 
         if ($entriesBecameLive > 0 || $entriesExpired > 0) {
@@ -195,6 +191,57 @@ class SyncStatusJob extends BaseJob implements RetryableJobInterface
         if ($this->reschedule) {
             $this->scheduleNextSync($now);
         }
+    }
+
+    /**
+     * Queue matching entries in bounded ID-cursor batches.
+     *
+     * @return array{0: int, 1: int} [entries processed, rows queued]
+     */
+    private function queueStatusEntries(
+        int $siteId,
+        string $status,
+        string $dateColumn,
+        string $lastSyncDb,
+        string $nowDb,
+        string $operation,
+        PendingSyncRepository $repository,
+    ): array {
+        $batchSize = max(1, $this->statusSyncBatchSize());
+        $lastElementId = 0;
+        $entriesProcessed = 0;
+        $rowsQueued = 0;
+
+        do {
+            $entries = Entry::find()
+                ->status($status)
+                ->siteId($siteId)
+                ->drafts(false)
+                ->revisions(false)
+                ->withCustomFields(false)
+                ->andWhere(['>', 'elements.id', $lastElementId])
+                ->andWhere(['>=', $dateColumn, $lastSyncDb])
+                ->andWhere(['<=', $dateColumn, $nowDb])
+                ->orderBy(['elements.id' => SORT_ASC])
+                ->limit($batchSize)
+                ->all();
+
+            foreach ($entries as $entry) {
+                $lastElementId = max($lastElementId, (int) $entry->id);
+                $rowsQueued += $repository->queueForElement($entry, $operation);
+                $entriesProcessed++;
+            }
+        } while (count($entries) === $batchSize);
+
+        return [$entriesProcessed, $rowsQueued];
+    }
+
+    /**
+     * Batch size for status-sync element hydration.
+     */
+    protected function statusSyncBatchSize(): int
+    {
+        return self::STATUS_SYNC_BATCH_SIZE;
     }
 
     /**
