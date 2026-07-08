@@ -22,6 +22,9 @@ When indexing an element, Search Manager resolves the transformer in this order:
 
 In most cases, you don't need to specify a transformer. Leave the field blank for the automatic path above. Set `transformer` / `transformerClass` manually only when you need a project-specific transformer class such as `modules\transformers\ProductTransformer`.
 
+> [!NOTE]
+> `CommerceTransformer` is a built-in integration transformer for Craft Commerce. Do not use it as a custom extension base; start from `BaseTransformer` or `AutoTransformer` instead.
+
 ## When You Need a Custom Transformer
 
 You need a custom transformer when you want to:
@@ -31,6 +34,24 @@ You need a custom transformer when you want to:
 - Format data differently for search
 
 For entries, start with the automatic path. Add a project-specific transformer only when you need fields or metadata that the automatic document does not provide.
+
+## Extension Contract
+
+A configured transformer class must be:
+
+- **Autoloadable** by Craft/PHP. Put the class in a project module, plugin, or Composer-autoloaded namespace.
+- **Constructible without arguments.** Search Manager instantiates the configured class with `new $transformerClass()`, so required constructor dependencies are not supported.
+- **A `TransformerInterface` implementation.** Extending `BaseTransformer` or `AutoTransformer` satisfies this automatically.
+
+Choose one of these extension models:
+
+| Model | Use When | Notes |
+|-------|----------|-------|
+| Extend `BaseTransformer` | You want full control over the indexed document | Recommended for most custom transformers. Includes common identity helpers, HTML stripping, excerpts, `_contentClean` finalization, and heading-level support. |
+| Extend `AutoTransformer` | You want automatic extraction plus a few project fields | Call `parent::transform($element)` and then add, remove, or normalize fields. This keeps Search Manager's automatic field, relation, rich text, and heading extraction. |
+| Implement `TransformerInterface` directly | You need a minimal advanced transformer | Supported, but Base helpers, `_contentClean` finalization, and heading-level behavior are not automatic unless you implement them yourself. |
+
+The `supports(ElementInterface $element)` method is required by `TransformerInterface`, but it is not used as a safety gate for an index-specific configured transformer override. If an index points at your class, Search Manager uses that class for that index. Choose the class carefully and keep one transformer focused on the element type it is assigned to.
 
 ## Creating a Transformer
 
@@ -80,6 +101,34 @@ Assign your transformer to an index in `config/search-manager.php`:
         'transformer' => \modules\transformers\ProductTransformer::class,
     ],
 ],
+```
+
+The same class can be entered in the Control Panel's Transformer Class field. If the class is missing, does not implement `TransformerInterface`, or requires constructor arguments, the index will fail validation before it is saved.
+
+### Extending AutoTransformer
+
+Use `AutoTransformer` when the automatic document is mostly correct and you only need to add project-specific fields:
+
+```php
+<?php
+
+namespace modules\transformers;
+
+use craft\base\ElementInterface;
+use lindemannrock\searchmanager\transformers\AutoTransformer;
+
+class ProductTransformer extends AutoTransformer
+{
+    public function transform(ElementInterface $element): array
+    {
+        $data = parent::transform($element);
+
+        $data['brand'] = $element->brand->one()?->title ?? null;
+        $data['availability'] = $element->inStock ? 'in-stock' : 'out-of-stock';
+
+        return $data;
+    }
+}
 ```
 
 ## Custom Fields in API and GraphQL

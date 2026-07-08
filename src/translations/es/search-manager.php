@@ -336,6 +336,8 @@ return [
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => 'El idioma debe ser un código de idioma válido (p. ej., en, ar, fr-ca)',
     'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'La clase transformadora debe ser un nombre de clase PHP válido (p. ej., modules\\transformers\\MyTransformer).',
     'Transformer class does not exist: {class}' => 'La clase transformadora no existe: {class}',
+    'Transformer class must implement TransformerInterface: {class}' => 'La clase transformadora debe implementar TransformerInterface: {class}',
+    'Transformer class must be constructible without arguments: {class}' => 'La clase transformadora debe poder construirse sin argumentos: {class}',
     'siteId array must contain at least one valid site ID.' => 'El array siteId debe contener al menos un ID de sitio válido.',
     'siteId must be an integer, an array of integers, or null.' => 'siteId debe ser un entero, un array de enteros o null.',
     '{label} must be a whole number.' => '{label} debe ser un número entero.',

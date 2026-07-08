@@ -103,7 +103,7 @@ Config-defined indices show a "Config" badge and cannot be edited in the CP. Dat
 | `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
 | `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
 | `criteria` | `callable` | `null` | Callback to filter elements (receives an ElementQuery) |
-| `transformer` | `string` | `null` | Transformer class for custom document structure |
+| `transformer` | `string` | `null` | Autoloadable zero-argument transformer class for custom document structure |
 | `enabled` | `bool` | `true` | Whether the index is active |
 | `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
 | `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
@@ -182,6 +182,8 @@ For project-specific result data, create a transformer in a module namespace and
 ```php
 'transformer' => \modules\transformers\ProductTransformer::class,
 ```
+
+Custom transformer classes must be autoloadable, constructible without required constructor arguments, and implement `TransformerInterface`. Extending `BaseTransformer` is the recommended route; extending `AutoTransformer` is useful when you want automatic extraction plus project-specific fields. `supports()` is still required by the interface, but Search Manager does not use it to guard an index-specific configured override.
 
 ## Per-Index Settings
 

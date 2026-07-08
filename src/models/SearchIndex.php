@@ -20,6 +20,7 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
+use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
@@ -170,30 +171,90 @@ class SearchIndex extends Model
     }
 
     /**
-     * Validate transformer class exists
+     * Validate transformer class exists and matches the runtime contract.
      */
     public function validateTransformerClass($attribute): void
     {
-        if (empty($this->$attribute)) {
+        $transformerClass = trim((string) $this->$attribute);
+
+        if ($transformerClass === '') {
             return; // Null/empty is allowed
         }
 
         // Validate format: must look like a PHP fully-qualified class name
-        if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*(\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*$/', $this->$attribute)) {
+        if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*(\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*$/', $transformerClass)) {
             $this->addError($attribute, Craft::t('search-manager', 'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).'));
             return;
         }
 
         // Check if class exists
-        if (!class_exists($this->$attribute)) {
+        if (!class_exists($transformerClass)) {
             $this->addError($attribute, Craft::t('search-manager', 'Transformer class does not exist: {class}', [
-                'class' => $this->$attribute,
+                'class' => $transformerClass,
             ]));
             $this->logWarning('Invalid transformer class in config', [
                 'handle' => $this->handle,
-                'transformer' => $this->$attribute,
+                'transformer' => $transformerClass,
+            ]);
+            return;
+        }
+
+        $contractError = self::transformerClassContractError($transformerClass);
+        if ($contractError !== null) {
+            $this->addError($attribute, $contractError);
+            $this->logWarning('Invalid transformer class contract in config', [
+                'handle' => $this->handle,
+                'transformer' => $transformerClass,
             ]);
         }
+    }
+
+    /**
+     * Return the CP-facing validation error for a configured transformer class.
+     */
+    private static function transformerClassContractError(string $transformerClass): ?string
+    {
+        if (!is_subclass_of($transformerClass, TransformerInterface::class)) {
+            return Craft::t('search-manager', 'Transformer class must implement TransformerInterface: {class}', [
+                'class' => $transformerClass,
+            ]);
+        }
+
+        $reflection = new \ReflectionClass($transformerClass);
+        $constructor = $reflection->getConstructor();
+
+        if (!$reflection->isInstantiable() || ($constructor !== null && $constructor->getNumberOfRequiredParameters() > 0)) {
+            return Craft::t('search-manager', 'Transformer class must be constructible without arguments: {class}', [
+                'class' => $transformerClass,
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Validate a config transformer value before storing config metadata.
+     */
+    private function validateConfigTransformerClass(?string $transformerClass): bool
+    {
+        if ($transformerClass === null || trim($transformerClass) === '') {
+            return true;
+        }
+
+        $model = new self();
+        $model->handle = $this->handle;
+        $model->transformerClass = $transformerClass;
+        $model->validateTransformerClass('transformerClass');
+
+        foreach ($model->getErrors('transformerClass') as $error) {
+            $this->logError('Invalid transformer class in config', [
+                'handle' => $this->handle,
+                'transformer' => $transformerClass,
+                'error' => $error,
+            ]);
+        }
+
+        return !$model->hasErrors('transformerClass');
     }
 
     /**
@@ -797,11 +858,7 @@ class SearchIndex extends Model
             $freshDisableStopWords = $configData['disableStopWords'] ?? false;
 
             // Validate transformer class before syncing
-            if ($freshTransformer && !class_exists($freshTransformer)) {
-                $this->logError('Invalid transformer class in config', [
-                    'handle' => $this->handle,
-                    'transformer' => $freshTransformer,
-                ]);
+            if (!$this->validateConfigTransformerClass($freshTransformer)) {
                 return false;
             }
 
@@ -874,11 +931,7 @@ class SearchIndex extends Model
             $freshDisableStopWords = $configData['disableStopWords'] ?? false;
 
             // Validate transformer class before updating stats
-            if ($freshTransformer && !class_exists($freshTransformer)) {
-                $this->logError('Invalid transformer class in config', [
-                    'handle' => $this->handle,
-                    'transformer' => $freshTransformer,
-                ]);
+            if (!$this->validateConfigTransformerClass($freshTransformer)) {
                 return false;
             }
 

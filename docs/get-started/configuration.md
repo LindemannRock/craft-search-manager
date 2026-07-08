@@ -249,6 +249,8 @@ Indices define what content gets indexed and how it's transformed:
 
 See [Indices](../feature-tour/indices.md) for full configuration options.
 
+Leave `transformer` unset for automatic transformer resolution. If you configure a custom class, it must be autoloadable, constructible without required constructor arguments, and implement Search Manager's `TransformerInterface`. Extending `BaseTransformer` is recommended for custom document shapes; extending `AutoTransformer` works well when you want automatic field extraction plus extra project fields.
+
 ## Widgets Configuration
 
 Widget configurations define how the frontend search widget appears and behaves:

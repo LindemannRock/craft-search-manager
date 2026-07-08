@@ -336,6 +336,8 @@ return [
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => 'Språk måste vara en giltig språkkod (t.ex. en, ar, fr-ca)',
     'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'Transformer-klassen måste vara ett giltigt PHP-klassnamn (t.ex. modules\\transformers\\MyTransformer).',
     'Transformer class does not exist: {class}' => 'Transformer-klassen finns inte: {class}',
+    'Transformer class must implement TransformerInterface: {class}' => 'Transformer-klassen måste implementera TransformerInterface: {class}',
+    'Transformer class must be constructible without arguments: {class}' => 'Transformer-klassen måste kunna konstrueras utan argument: {class}',
     'siteId array must contain at least one valid site ID.' => 'siteId-arrayen måste innehålla minst ett giltigt webbplats-ID.',
     'siteId must be an integer, an array of integers, or null.' => 'siteId måste vara ett heltal, en array med heltal eller null.',
     '{label} must be a whole number.' => '{label} måste vara ett heltal.',

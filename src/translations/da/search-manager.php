@@ -336,6 +336,8 @@ return [
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => 'Sprog skal være en gyldig sprogkode (f.eks. en, ar, fr-ca)',
     'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'Transformer-klassen skal være et gyldigt PHP-klassenavn (f.eks. modules\\transformers\\MyTransformer).',
     'Transformer class does not exist: {class}' => 'Transformer-klassen findes ikke: {class}',
+    'Transformer class must implement TransformerInterface: {class}' => 'Transformer-klassen skal implementere TransformerInterface: {class}',
+    'Transformer class must be constructible without arguments: {class}' => 'Transformer-klassen skal kunne konstrueres uden argumenter: {class}',
     'siteId array must contain at least one valid site ID.' => 'siteId-arrayet skal indeholde mindst ét gyldigt site-ID.',
     'siteId must be an integer, an array of integers, or null.' => 'siteId skal være et heltal, et array af heltal eller null.',
     '{label} must be a whole number.' => '{label} skal være et heltal.',

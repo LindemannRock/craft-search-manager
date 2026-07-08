@@ -336,6 +336,8 @@ return [
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => '言語は有効な言語コードである必要があります（例: en, ar, fr-ca）',
     'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'Transformer クラスは有効な PHP クラス名である必要があります（例: modules\\transformers\\MyTransformer）。',
     'Transformer class does not exist: {class}' => 'Transformer クラスが存在しません: {class}',
+    'Transformer class must implement TransformerInterface: {class}' => 'Transformer クラスは TransformerInterface を実装する必要があります: {class}',
+    'Transformer class must be constructible without arguments: {class}' => 'Transformer クラスは引数なしで構築できる必要があります: {class}',
     'siteId array must contain at least one valid site ID.' => 'siteId 配列には少なくとも 1 つの有効なサイト ID が必要です。',
     'siteId must be an integer, an array of integers, or null.' => 'siteId は整数、整数の配列、または null である必要があります。',
     '{label} must be a whole number.' => '{label} は整数である必要があります。',
