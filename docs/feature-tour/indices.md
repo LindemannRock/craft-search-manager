@@ -70,6 +70,26 @@ When creating a SourceDoc index via the Control Panel, a checkbox group lets you
 
 When Craft Commerce is installed and enabled, Product and Variant element types are available for indices in the Control Panel. Commerce Product Types are configuration records rather than searchable Craft elements, so they are not listed as index element types.
 
+For storefront search, create a **Product** index in most cases. Product documents include the product title, slug, URL, product type name/handle, searchable product fields, and variant SKU/title/option text, so a query for a SKU or option can still return the product result shoppers expect.
+
+Use a **Variant** index when the result itself should be a specific variant, such as SKU-heavy parts catalogs, B2B order forms, or workflows where search results need to resolve directly to variant-level data. Variant documents include the variant SKU/title/options plus parent product title, slug, URL, and product type metadata. When variants do not have their own stable URL, Search Manager uses the parent product URL.
+
+```php
+'products' => [
+    'name' => 'Products',
+    'elementType' => \craft\commerce\elements\Product::class,
+    'enabled' => true,
+],
+
+'variants' => [
+    'name' => 'Variants',
+    'elementType' => \craft\commerce\elements\Variant::class,
+    'enabled' => true,
+],
+```
+
+If you leave the transformer blank, Search Manager automatically uses its Commerce transformer for Product and Variant indices. You only need a custom transformer when your storefront needs extra fields, such as brand, availability, catalog-specific facets, or project-specific pricing data.
+
 ### Via Control Panel
 
 Go to Search Manager > Indices and click "New Index". The CP provides a form for all the same options.
@@ -156,7 +176,7 @@ For SourceDoc elements, the `sourceHandle()` method is available to scope by sou
 
 ## Transformers
 
-By default, Search Manager indexes basic element data (title, URL, dates). For custom fields, create a transformer class. See [Custom Transformers](../developers/custom-transformers.md) for details.
+By default, Search Manager indexes common element data and searchable field content. Commerce Product and Variant indices use the built-in Commerce transformer when no transformer is set, while other element types fall back to automatic field extraction. For custom fields or storefront-specific result data, create a transformer class. See [Custom Transformers](../developers/custom-transformers.md) for details.
 
 ```php
 'transformer' => \modules\transformers\EntryTransformer::class,

@@ -41,20 +41,29 @@ final class DedicatedI18nSweepTest extends TestCase
     public function testElementTypeDropdownLabelsAreTranslated(): void
     {
         // #181: index-edit element-type dropdown plural labels.
-        $edit = $this->readPluginFile('src/templates/indices/edit.twig');
+        $controller = $this->readPluginFile('src/controllers/IndicesController.php');
         foreach (['Entries', 'Assets', 'Categories', 'Users'] as $label) {
-            self::assertStringContainsString("'{$label}'|t('search-manager')", $edit);
+            self::assertStringContainsString("Craft::t('search-manager', '{$label}')", $controller);
         }
-        self::assertStringNotContainsString("'craft\\\\elements\\\\Asset': 'Assets',", $edit);
+        self::assertStringNotContainsString("'craft\\\\elements\\\\Asset': 'Assets',", $controller);
     }
 
     public function testElementTypeColumnLabelsUseTranslatedMap(): void
     {
         // Sweep: element-type column / deleted-element fallbacks map class -> translated
         // singular label, falling back to the class basename for unmapped (brand) types.
+        $controller = $this->readPluginFile('src/controllers/IndicesController.php');
+        self::assertStringContainsString("\\craft\\elements\\Entry::class => Craft::t('search-manager', 'Entry')", $controller);
+
         foreach ([
             'src/templates/indices/view.twig',
             'src/templates/indices/index.twig',
+        ] as $path) {
+            $source = $this->readPluginFile($path);
+            self::assertStringContainsString('elementTypeLabels[', $source);
+        }
+
+        foreach ([
             'src/templates/pending-syncs/index.twig',
             'src/templates/pending-syncs/_row.twig',
         ] as $path) {

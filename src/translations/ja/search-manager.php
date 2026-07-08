@@ -1245,10 +1245,17 @@ return [
 
     // Transformer help text
     'Recommended: Leave blank for auto-detection (default)' => '推奨: 自動検出の場合は空白のままにしてください（デフォルト）',
+    'Leave blank for automatic transformer selection.' => 'Transformer の自動選択の場合は空白にしてください。',
+    'AutoTransformer handles Entries, Assets, Categories, and Users.' => 'AutoTransformer はエントリ、アセット、カテゴリ、ユーザーを処理します。',
+    'DocsManagerTransformer handles Doc Pages.' => 'DocsManagerTransformer はドキュメントページを処理します。',
+    'CommerceTransformer handles Commerce Products and Variants.' => 'CommerceTransformer は Commerce 商品とバリアントを処理します。',
+    'Only specify a custom class for advanced requirements.' => '高度な要件の場合のみカスタムクラスを指定してください。',
     'Entries, Assets, Categories, Users' => 'エントリ、アセット、カテゴリ、ユーザー',
     'Indexes all custom fields, relational fields, Matrix blocks, and Table fields' => 'すべてのカスタムフィールド、リレーションフィールド、Matrix ブロック、テーブルフィールドをインデックス',
     'Doc Pages' => 'ドキュメントページ',
     'Indexes full page content, headings, description, and keywords' => 'ページ全体のコンテンツ、見出し、説明、キーワードをインデックス',
+    'Commerce Products and Variants' => 'Commerce 商品とバリアント',
+    'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants' => '商品/バリアントのメタデータ、商品タイプ名/ハンドル、SKU、バリアントタイトル、オプション、バリアントの親商品データをインデックスします',
     'Custom transformer examples' => 'カスタム Transformer の例',
     'Basic entry fields only' => '基本的なエントリフィールドのみ',
     'Your custom transformer class' => 'カスタム Transformer クラス',

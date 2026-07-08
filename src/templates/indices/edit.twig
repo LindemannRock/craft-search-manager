@@ -157,7 +157,7 @@
         }) }}
     </div>
 
-    {% if lrPluginEnabled('docs-manager') %}
+    {% if docsManagerTransformerAvailable %}
         <div id="docpage-criteria" {% if index.elementType != 'lindemannrock\\docsmanager\\elements\\SourceDoc' %}style="display:none;"{% endif %}>
             {% set pluginSources = craft.docsManager.getPlugins() %}
             {% set themeSources = craft.docsManager.getThemes() %}
@@ -290,6 +290,24 @@
         } %}
     </div>
 
+    {% set transformerTipParts = [
+        'Leave blank for automatic transformer selection.'|t('search-manager'),
+        'AutoTransformer handles Entries, Assets, Categories, and Users.'|t('search-manager')
+    ] %}
+    {% if docsManagerTransformerAvailable %}
+        {% set transformerTipParts = transformerTipParts|merge([
+            'DocsManagerTransformer handles Doc Pages.'|t('search-manager')
+        ]) %}
+    {% endif %}
+    {% if commerceTransformerAvailable %}
+        {% set transformerTipParts = transformerTipParts|merge([
+            'CommerceTransformer handles Commerce Products and Variants.'|t('search-manager')
+        ]) %}
+    {% endif %}
+    {% set transformerTipParts = transformerTipParts|merge([
+        'Only specify a custom class for advanced requirements.'|t('search-manager')
+    ]) %}
+
     {{ forms.textField({
         label: "Transformer Class"|t('search-manager'),
         instructions: "Override the default transformer for this index. Leave blank to auto-detect based on element type."|t('search-manager'),
@@ -298,8 +316,8 @@
         value: index.transformerClass,
         required: false,
         class: 'code',
-        placeholder: 'lindemannrock\\searchmanager\\transformers\\AutoTransformer',
-        tip: "Leave blank for automatic transformer selection. The best transformer is chosen based on the element type: AutoTransformer for Entries, Assets, Categories and Users; DocsManagerTransformer for Doc Pages. Only specify a custom class for advanced requirements."|t('search-manager'),
+        placeholder: defaultTransformerPlaceholder,
+        tip: transformerTipParts|join(' '),
         warning: (index.transformerClass and not index.getErrors('transformerClass')) ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
         errors: index.getErrors('transformerClass'),
     }) }}
@@ -339,11 +357,18 @@
                     <span style="color: #8f98a3;"> — {{ 'Entries, Assets, Categories, Users'|t('search-manager') }}</span>
                     <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes all custom fields, relational fields, Matrix blocks, and Table fields'|t('search-manager') }}</div>
                 </div>
-                {% if lrPluginEnabled('docs-manager') %}
+                {% if docsManagerTransformerAvailable %}
                 <div style="margin-bottom: 6px;">
                     <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">DocsManagerTransformer</code>
                     <span style="color: #8f98a3;"> — {{ 'Doc Pages'|t('search-manager') }}</span>
                     <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes full page content, headings, description, and keywords'|t('search-manager') }}</div>
+                </div>
+                {% endif %}
+                {% if commerceTransformerAvailable %}
+                <div style="margin-bottom: 6px;">
+                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">CommerceTransformer</code>
+                    <span style="color: #8f98a3;"> — {{ 'Commerce Products and Variants'|t('search-manager') }}</span>
+                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants'|t('search-manager') }}</div>
                 </div>
                 {% endif %}
             </div>
@@ -503,6 +528,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const docPageCriteria = document.getElementById('docpage-criteria');
 
     const transformerInput = document.getElementById('transformerClass');
+    const defaultTransformerPlaceholder = {{ defaultTransformerPlaceholder|json_encode|raw }};
+    const transformerPlaceholders = {{ transformerPlaceholders|json_encode|raw }};
 
     if (elementTypeSelect) {
         function updateCriteriaVisibility() {
@@ -521,11 +548,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Update transformer placeholder based on element type
             if (transformerInput) {
-                if (elementTypeSelect.value === 'lindemannrock\\docsmanager\\elements\\SourceDoc') {
-                    transformerInput.placeholder = 'lindemannrock\\searchmanager\\transformers\\DocsManagerTransformer';
-                } else {
-                    transformerInput.placeholder = 'lindemannrock\\searchmanager\\transformers\\AutoTransformer';
-                }
+                transformerInput.placeholder = transformerPlaceholders[elementTypeSelect.value] || defaultTransformerPlaceholder;
             }
         }
 

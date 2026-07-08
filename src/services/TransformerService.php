@@ -13,9 +13,11 @@ use craft\base\ElementInterface;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\TransformEvent;
+use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 use lindemannrock\searchmanager\transformers\BaseTransformer;
+use lindemannrock\searchmanager\transformers\CommerceTransformer;
 use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 use yii\base\Component;
 
@@ -85,6 +87,20 @@ class TransformerService extends Component
             $this->registerTransformer(
                 'lindemannrock\docsmanager\elements\SourceDoc',
                 DocsManagerTransformer::class,
+            );
+        }
+
+        if (CommerceElementTypeHelper::productElementTypeAvailable()) {
+            $this->registerTransformer(
+                CommerceElementTypeHelper::productElementType(),
+                CommerceTransformer::class,
+            );
+        }
+
+        if (CommerceElementTypeHelper::variantElementTypeAvailable()) {
+            $this->registerTransformer(
+                CommerceElementTypeHelper::variantElementType(),
+                CommerceTransformer::class,
             );
         }
     }

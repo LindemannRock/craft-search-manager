@@ -11,13 +11,14 @@ Search Manager includes these transformers out of the box:
 | `AutoTransformer` | Entries, Assets, Categories, Users | All custom fields, relational fields, Matrix blocks, Table fields. Default for most element types. |
 | `EntryTransformer` | Entries | Everything from `AutoTransformer` plus entry-specific metadata: `section`, `sectionName`, `entryType`, `slug`, `postDate`, `authorName`. Use when you need to filter or boost by section/type. |
 | `DocsManagerTransformer` | Docs Manager (`SourceDoc`) | Full page content, headings, description, and keywords. Auto-selected when [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed. |
+| `CommerceTransformer` | Craft Commerce Products and Variants | Product and variant metadata, product type name/handle, variant SKUs, variant titles, option labels/values, and parent product data for variants. Auto-selected when Craft Commerce is installed and the index targets Product or Variant elements. |
 
 ### Transformer Resolution Order
 
 When indexing an element, Search Manager resolves the transformer in this order:
 
 1. **Index-specific transformer** — if a `transformer` class is set on the index config
-2. **Registered transformer** — matched by element type (e.g. `DocsManagerTransformer` for `SourceDoc`)
+2. **Registered transformer** — matched by element type (e.g. `DocsManagerTransformer` for `SourceDoc`, `CommerceTransformer` for Commerce Product/Variant elements)
 3. **AutoTransformer** — fallback that works with any element type
 
 In most cases, you don't need to specify a transformer — the right one is selected automatically.

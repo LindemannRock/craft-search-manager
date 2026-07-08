@@ -18,6 +18,9 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\transformers\AutoTransformer;
+use lindemannrock\searchmanager\transformers\CommerceTransformer;
+use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
 
@@ -31,6 +34,7 @@ class IndicesController extends Controller
     use LoggingTrait;
 
     private const PLUGIN_HANDLE = 'search-manager';
+    private const DOCS_MANAGER_SOURCE_DOC_ELEMENT_TYPE = 'lindemannrock\\docsmanager\\elements\\SourceDoc';
 
     /** @inheritdoc */
     public function init(): void
@@ -242,6 +246,10 @@ class IndicesController extends Controller
             'index' => $index,
             'isNew' => !$indexId,
             'elementTypeOptions' => $this->getElementTypeOptions(),
+            'docsManagerTransformerAvailable' => $this->isDocsManagerTransformerAvailable(),
+            'commerceTransformerAvailable' => $this->commerceTransformerAvailable(),
+            'defaultTransformerPlaceholder' => $this->getDefaultTransformerPlaceholder(),
+            'transformerPlaceholders' => $this->getTransformerPlaceholders(),
         ]);
     }
 
@@ -293,6 +301,39 @@ class IndicesController extends Controller
         $labels = array_merge($labels, $this->getTranslatedCommerceElementTypeLabels());
 
         return $labels;
+    }
+
+    private function isDocsManagerTransformerAvailable(): bool
+    {
+        return PluginHelper::isPluginEnabled('docs-manager');
+    }
+
+    private function commerceTransformerAvailable(): bool
+    {
+        return CommerceElementTypeHelper::availableElementTypes() !== [];
+    }
+
+    private function getDefaultTransformerPlaceholder(): string
+    {
+        return AutoTransformer::class;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getTransformerPlaceholders(): array
+    {
+        $placeholders = [];
+
+        if ($this->isDocsManagerTransformerAvailable()) {
+            $placeholders[self::DOCS_MANAGER_SOURCE_DOC_ELEMENT_TYPE] = DocsManagerTransformer::class;
+        }
+
+        foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
+            $placeholders[$elementType] = CommerceTransformer::class;
+        }
+
+        return $placeholders;
     }
 
     /**

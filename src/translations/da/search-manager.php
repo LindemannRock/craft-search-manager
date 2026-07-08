@@ -1245,10 +1245,17 @@ return [
 
     // Transformer help text
     'Recommended: Leave blank for auto-detection (default)' => 'Anbefalet: lad stå tom for automatisk registrering (standard)',
+    'Leave blank for automatic transformer selection.' => 'Lad stå tom for automatisk valg af transformer.',
+    'AutoTransformer handles Entries, Assets, Categories, and Users.' => 'AutoTransformer håndterer poster, filer, kategorier og brugere.',
+    'DocsManagerTransformer handles Doc Pages.' => 'DocsManagerTransformer håndterer dokumentationssider.',
+    'CommerceTransformer handles Commerce Products and Variants.' => 'CommerceTransformer håndterer Commerce-produkter og varianter.',
+    'Only specify a custom class for advanced requirements.' => 'Angiv kun en tilpasset klasse for avancerede behov.',
     'Entries, Assets, Categories, Users' => 'Poster, filer, kategorier, brugere',
     'Indexes all custom fields, relational fields, Matrix blocks, and Table fields' => 'Indekserer alle tilpassede felter, relationsfelter, Matrix-blokke og tabelfelter',
     'Doc Pages' => 'Dokumentationssider',
     'Indexes full page content, headings, description, and keywords' => 'Indekserer fuldt sideindhold, overskrifter, beskrivelse og nøgleord',
+    'Commerce Products and Variants' => 'Commerce-produkter og varianter',
+    'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants' => 'Indekserer produkt-/variantmetadata, produkttypenavn/-handle, SKUs, varianttitler, valgmuligheder og overordnede produktdata for varianter',
     'Custom transformer examples' => 'Tilpassede transformer-eksempler',
     'Basic entry fields only' => 'Kun grundlæggende postfelter',
     'Your custom transformer class' => 'Din tilpassede transformer-klasse',

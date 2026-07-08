@@ -1245,10 +1245,17 @@ return [
 
     // Transformer help text
     'Recommended: Leave blank for auto-detection (default)' => 'Aanbevolen: laat leeg voor automatische detectie (standaard)',
+    'Leave blank for automatic transformer selection.' => 'Laat leeg voor automatische transformerselectie.',
+    'AutoTransformer handles Entries, Assets, Categories, and Users.' => 'AutoTransformer verwerkt items, bestanden, categorieën en gebruikers.',
+    'DocsManagerTransformer handles Doc Pages.' => 'DocsManagerTransformer verwerkt documentatiepagina\'s.',
+    'CommerceTransformer handles Commerce Products and Variants.' => 'CommerceTransformer verwerkt Commerce-producten en varianten.',
+    'Only specify a custom class for advanced requirements.' => 'Specificeer alleen een aangepaste klasse voor geavanceerde vereisten.',
     'Entries, Assets, Categories, Users' => 'Items, bestanden, categorieën, gebruikers',
     'Indexes all custom fields, relational fields, Matrix blocks, and Table fields' => 'Indexeert alle aangepaste velden, relationele velden, Matrix-blokken en tabelvelden',
     'Doc Pages' => 'Documentatiepagina\'s',
     'Indexes full page content, headings, description, and keywords' => 'Indexeert volledige pagina-inhoud, koppen, beschrijving en trefwoorden',
+    'Commerce Products and Variants' => 'Commerce-producten en varianten',
+    'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants' => 'Indexeert product-/variantmetadata, producttypenaam/-handle, SKU\'s, varianttitels, opties en bovenliggende productgegevens voor varianten',
     'Custom transformer examples' => 'Aangepaste transformer-voorbeelden',
     'Basic entry fields only' => 'Alleen basisitemvelden',
     'Your custom transformer class' => 'Uw aangepaste transformer-klasse',

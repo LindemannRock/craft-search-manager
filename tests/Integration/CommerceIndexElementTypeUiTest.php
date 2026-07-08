@@ -15,6 +15,9 @@ use lindemannrock\searchmanager\controllers\IndicesController;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\transformers\AutoTransformer;
+use lindemannrock\searchmanager\transformers\CommerceTransformer;
+use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
@@ -88,10 +91,71 @@ final class CommerceIndexElementTypeUiTest extends TestCase
             $source = $this->readPluginFile($path);
 
             self::assertStringNotContainsString("lrPluginEnabled('commerce')", $source);
+            self::assertStringNotContainsString('CommerceElementTypeHelper', $source);
             self::assertStringNotContainsString('craft\\\\commerce\\\\elements\\\\Product', $source);
             self::assertStringNotContainsString('craft\\\\commerce\\\\elements\\\\Variant', $source);
             self::assertStringNotContainsString('Product Type', $source);
         }
+    }
+
+    public function testIndexEditTemplateGatesBuiltInTransformersThroughControllerData(): void
+    {
+        $source = $this->readPluginFile('src/templates/indices/edit.twig');
+
+        self::assertStringContainsString('{% if docsManagerTransformerAvailable %}', $source);
+        self::assertStringContainsString('{% if commerceTransformerAvailable %}', $source);
+        self::assertStringContainsString('DocsManagerTransformer', $source);
+        self::assertStringContainsString('CommerceTransformer', $source);
+        self::assertStringNotContainsString("lrPluginEnabled('docs-manager')", $source);
+        self::assertStringNotContainsString("lrPluginEnabled('commerce')", $source);
+    }
+
+    public function testIndexEditTemplateUsesControllerPlaceholderMap(): void
+    {
+        $source = $this->readPluginFile('src/templates/indices/edit.twig');
+
+        self::assertStringContainsString('const defaultTransformerPlaceholder = {{ defaultTransformerPlaceholder|json_encode|raw }};', $source);
+        self::assertStringContainsString('const transformerPlaceholders = {{ transformerPlaceholders|json_encode|raw }};', $source);
+        self::assertStringContainsString('transformerPlaceholders[elementTypeSelect.value] || defaultTransformerPlaceholder', $source);
+        self::assertStringNotContainsString("transformerInput.placeholder = 'lindemannrock\\\\searchmanager\\\\transformers\\\\DocsManagerTransformer'", $source);
+        self::assertStringNotContainsString("transformerInput.placeholder = 'lindemannrock\\\\searchmanager\\\\transformers\\\\AutoTransformer'", $source);
+    }
+
+    public function testTransformerPlaceholderDataMapsAvailableCommerceElements(): void
+    {
+        $placeholders = $this->invokeControllerMethod('getTransformerPlaceholders');
+
+        self::assertIsArray($placeholders);
+
+        foreach (CommerceElementTypeHelper::elementTypes() as $elementType) {
+            if (in_array($elementType, CommerceElementTypeHelper::availableElementTypes(), true)) {
+                self::assertSame(CommerceTransformer::class, $placeholders[$elementType] ?? null);
+            } else {
+                self::assertArrayNotHasKey($elementType, $placeholders);
+            }
+        }
+    }
+
+    public function testTransformerPlaceholderDataKeepsDocsManagerGated(): void
+    {
+        $placeholders = $this->invokeControllerMethod('getTransformerPlaceholders');
+        $isAvailable = $this->invokeControllerMethod('isDocsManagerTransformerAvailable');
+        $sourceDocElementType = 'lindemannrock\\docsmanager\\elements\\SourceDoc';
+
+        self::assertIsArray($placeholders);
+
+        if ($isAvailable) {
+            self::assertSame(DocsManagerTransformer::class, $placeholders[$sourceDocElementType] ?? null);
+        } else {
+            self::assertArrayNotHasKey($sourceDocElementType, $placeholders);
+        }
+    }
+
+    public function testDefaultTransformerPlaceholderRemainsAutoTransformer(): void
+    {
+        $placeholder = $this->invokeControllerMethod('getDefaultTransformerPlaceholder');
+
+        self::assertSame(AutoTransformer::class, $placeholder);
     }
 
     public function testControllerUsesCommerceElementTypeHelperInsteadOfDuplicatedCommerceChecks(): void
@@ -121,18 +185,15 @@ final class CommerceIndexElementTypeUiTest extends TestCase
     }
 
     /**
-     * @return array<string, string>
+     * @return mixed
      */
-    private function invokeControllerMethod(string $method): array
+    private function invokeControllerMethod(string $method): mixed
     {
         $controller = new IndicesController('indices', SearchManager::$plugin);
         $reflection = new \ReflectionMethod($controller, $method);
         $reflection->setAccessible(true);
 
-        /** @var array<string, string> $result */
-        $result = $reflection->invoke($controller);
-
-        return $result;
+        return $reflection->invoke($controller);
     }
 
     private function readPluginFile(string $path): string

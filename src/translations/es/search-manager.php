@@ -1245,10 +1245,17 @@ return [
 
     // Transformer help text
     'Recommended: Leave blank for auto-detection (default)' => 'Recomendado: deje vacío para la detección automática (predeterminado)',
+    'Leave blank for automatic transformer selection.' => 'Deje en blanco para la selección automática del transformer.',
+    'AutoTransformer handles Entries, Assets, Categories, and Users.' => 'AutoTransformer gestiona entradas, archivos, categorías y usuarios.',
+    'DocsManagerTransformer handles Doc Pages.' => 'DocsManagerTransformer gestiona páginas de documentación.',
+    'CommerceTransformer handles Commerce Products and Variants.' => 'CommerceTransformer gestiona productos y variantes de Commerce.',
+    'Only specify a custom class for advanced requirements.' => 'Especifique una clase personalizada solo para requisitos avanzados.',
     'Entries, Assets, Categories, Users' => 'Entradas, archivos, categorías, usuarios',
     'Indexes all custom fields, relational fields, Matrix blocks, and Table fields' => 'Indexa todos los campos personalizados, campos relacionales, bloques Matrix y campos de tabla',
     'Doc Pages' => 'Páginas de documentación',
     'Indexes full page content, headings, description, and keywords' => 'Indexa el contenido completo de la página, encabezados, descripción y palabras clave',
+    'Commerce Products and Variants' => 'Productos y variantes de Commerce',
+    'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants' => 'Indexa metadatos de producto/variante, nombre/handle del tipo de producto, SKU, títulos de variantes, opciones y datos del producto principal para variantes',
     'Custom transformer examples' => 'Ejemplos de transformers personalizados',
     'Basic entry fields only' => 'Solo campos de entrada básicos',
     'Your custom transformer class' => 'Su clase de transformer personalizado',

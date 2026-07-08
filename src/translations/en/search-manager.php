@@ -1245,10 +1245,17 @@ return [
 
     // Transformer help text
     'Recommended: Leave blank for auto-detection (default)' => 'Recommended: Leave blank for auto-detection (default)',
+    'Leave blank for automatic transformer selection.' => 'Leave blank for automatic transformer selection.',
+    'AutoTransformer handles Entries, Assets, Categories, and Users.' => 'AutoTransformer handles Entries, Assets, Categories, and Users.',
+    'DocsManagerTransformer handles Doc Pages.' => 'DocsManagerTransformer handles Doc Pages.',
+    'CommerceTransformer handles Commerce Products and Variants.' => 'CommerceTransformer handles Commerce Products and Variants.',
+    'Only specify a custom class for advanced requirements.' => 'Only specify a custom class for advanced requirements.',
     'Entries, Assets, Categories, Users' => 'Entries, Assets, Categories, Users',
     'Indexes all custom fields, relational fields, Matrix blocks, and Table fields' => 'Indexes all custom fields, relational fields, Matrix blocks, and Table fields',
     'Doc Pages' => 'Doc Pages',
     'Indexes full page content, headings, description, and keywords' => 'Indexes full page content, headings, description, and keywords',
+    'Commerce Products and Variants' => 'Commerce Products and Variants',
+    'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants' => 'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants',
     'Custom transformer examples' => 'Custom transformer examples',
     'Basic entry fields only' => 'Basic entry fields only',
     'Your custom transformer class' => 'Your custom transformer class',

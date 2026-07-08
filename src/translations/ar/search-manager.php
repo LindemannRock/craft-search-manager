@@ -1245,10 +1245,17 @@ return [
 
     // Transformer help text
     'Recommended: Leave blank for auto-detection (default)' => 'موصى به: اترك فارغاً للاكتشاف التلقائي (الافتراضي)',
+    'Leave blank for automatic transformer selection.' => 'اترك فارغاً للاختيار التلقائي للـ transformer.',
+    'AutoTransformer handles Entries, Assets, Categories, and Users.' => 'يتعامل AutoTransformer مع الإدخالات والأصول والفئات والمستخدمين.',
+    'DocsManagerTransformer handles Doc Pages.' => 'يتعامل DocsManagerTransformer مع صفحات التوثيق.',
+    'CommerceTransformer handles Commerce Products and Variants.' => 'يتعامل CommerceTransformer مع منتجات ومتغيرات Commerce.',
+    'Only specify a custom class for advanced requirements.' => 'حدد فئة مخصصة فقط للمتطلبات المتقدمة.',
     'Entries, Assets, Categories, Users' => 'إدخالات، أصول، فئات، مستخدمون',
     'Indexes all custom fields, relational fields, Matrix blocks, and Table fields' => 'يفهرس جميع الحقول المخصصة والحقول العلائقية وكتل Matrix وحقول الجدول',
     'Doc Pages' => 'صفحات التوثيق',
     'Indexes full page content, headings, description, and keywords' => 'يفهرس محتوى الصفحة الكامل والعناوين والوصف والكلمات المفتاحية',
+    'Commerce Products and Variants' => 'منتجات ومتغيرات Commerce',
+    'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants' => 'يفهرس بيانات المنتج/المتغير الوصفية، واسم/handle نوع المنتج، وSKUs، وعناوين المتغيرات، والخيارات، وبيانات المنتج الأصل للمتغيرات',
     'Custom transformer examples' => 'أمثلة على Transformer مخصصة',
     'Basic entry fields only' => 'حقول الإدخال الأساسية فقط',
     'Your custom transformer class' => 'فئة Transformer المخصصة الخاصة بك',
