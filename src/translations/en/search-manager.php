@@ -1623,6 +1623,8 @@ return [
     'No intent data available for the selected filters.' => 'No intent data available for the selected filters.',
     'Informational' => 'Informational',
     'Product' => 'Product',
+    'Commerce Product' => 'Product',
+    'Commerce Variant' => 'Variant',
     'Navigational' => 'Navigational',
     'Question' => 'Question',
 

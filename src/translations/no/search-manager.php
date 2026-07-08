@@ -1623,6 +1623,8 @@ return [
     'No intent data available for the selected filters.' => 'Ingen intensjonsdata tilgjengelige for de valgte filtrene.',
     'Informational' => 'Informasjonssøk',
     'Product' => 'Produktsøk',
+    'Commerce Product' => 'Produkt',
+    'Commerce Variant' => 'Variant',
     'Navigational' => 'Navigasjonssøk',
     'Question' => 'Spørsmålssøk',
 

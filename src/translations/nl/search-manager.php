@@ -1623,6 +1623,8 @@ return [
     'No intent data available for the selected filters.' => 'Geen intentiegegevens beschikbaar voor de geselecteerde filters.',
     'Informational' => 'Informatief',
     'Product' => 'Product',
+    'Commerce Product' => 'Product',
+    'Commerce Variant' => 'Variant',
     'Navigational' => 'Navigerend',
     'Question' => 'Vraag',
 

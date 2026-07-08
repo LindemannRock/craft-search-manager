@@ -12,8 +12,10 @@ use Craft;
 use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
+use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use yii\web\NotFoundHttpException;
@@ -147,6 +149,7 @@ class IndicesController extends Controller
             'canRebuild' => Craft::$app->getUser()->checkPermission('searchManager:rebuildIndices'),
             'canClear' => Craft::$app->getUser()->checkPermission('searchManager:clearIndices'),
             'canClearCache' => Craft::$app->getUser()->checkPermission('searchManager:clearCache'),
+            'elementTypeLabels' => $this->getElementTypeLabels(),
         ]);
     }
 
@@ -201,6 +204,7 @@ class IndicesController extends Controller
 
         return $this->renderTemplate('search-manager/indices/view', [
             'index' => $index,
+            'elementTypeLabels' => $this->getElementTypeLabels(),
         ]);
     }
 
@@ -237,7 +241,76 @@ class IndicesController extends Controller
         return $this->renderTemplate('search-manager/indices/edit', [
             'index' => $index,
             'isNew' => !$indexId,
+            'elementTypeOptions' => $this->getElementTypeOptions(),
         ]);
+    }
+
+    /**
+     * Element type options for editable database-backed indices.
+     *
+     * @return array<string, string>
+     */
+    private function getElementTypeOptions(): array
+    {
+        $options = [
+            \craft\elements\Entry::class => Craft::t('search-manager', 'Entries'),
+            \craft\elements\Asset::class => Craft::t('search-manager', 'Assets'),
+            \craft\elements\Category::class => Craft::t('search-manager', 'Categories'),
+            \craft\elements\User::class => Craft::t('search-manager', 'Users'),
+        ];
+
+        $options = array_merge($options, $this->getTranslatedCommerceElementTypeLabels());
+
+        if (PluginHelper::isPluginEnabled('smartlink-manager')) {
+            $options['lindemannrock\\smartlinkmanager\\elements\\SmartLink'] = PluginHelper::getPluginName('smartlink-manager', 'SmartLink Manager');
+        }
+
+        if (PluginHelper::isPluginEnabled('shortlink-manager')) {
+            $options['lindemannrock\\shortlinkmanager\\elements\\ShortLink'] = PluginHelper::getPluginName('shortlink-manager', 'ShortLink Manager');
+        }
+
+        if (PluginHelper::isPluginEnabled('docs-manager')) {
+            $options['lindemannrock\\docsmanager\\elements\\SourceDoc'] = PluginHelper::getPluginName('docs-manager', 'Docs Manager');
+        }
+
+        return $options;
+    }
+
+    /**
+     * Human labels for index element type displays.
+     *
+     * @return array<string, string>
+     */
+    private function getElementTypeLabels(): array
+    {
+        $labels = [
+            \craft\elements\Entry::class => Craft::t('search-manager', 'Entry'),
+            \craft\elements\Asset::class => Craft::t('search-manager', 'Asset'),
+            \craft\elements\Category::class => Craft::t('search-manager', 'Category'),
+            \craft\elements\User::class => Craft::t('search-manager', 'User'),
+        ];
+
+        $labels = array_merge($labels, $this->getTranslatedCommerceElementTypeLabels());
+
+        return $labels;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function getTranslatedCommerceElementTypeLabels(): array
+    {
+        $labelKeys = [
+            'Product' => 'Commerce Product',
+            'Variant' => 'Commerce Variant',
+        ];
+
+        $labels = [];
+        foreach (CommerceElementTypeHelper::availableElementTypeLabels() as $elementType => $label) {
+            $labels[$elementType] = Craft::t('search-manager', $labelKeys[$label] ?? $label);
+        }
+
+        return $labels;
     }
 
     /**

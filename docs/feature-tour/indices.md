@@ -66,6 +66,10 @@ If [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed, 
 
 When creating a SourceDoc index via the Control Panel, a checkbox group lets you select which sources to include. Leave all unchecked to index all sources.
 
+#### Craft Commerce Integration
+
+When Craft Commerce is installed and enabled, Product and Variant element types are available for indices in the Control Panel. Commerce Product Types are configuration records rather than searchable Craft elements, so they are not listed as index element types.
+
 ### Via Control Panel
 
 Go to Search Manager > Indices and click "New Index". The CP provides a form for all the same options.
@@ -77,7 +81,7 @@ Config-defined indices show a "Config" badge and cannot be edited in the CP. Dat
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `name` | `string` | (required) | Display name for the index |
-| `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, etc.) |
+| `elementType` | `string` | (required) | Element class to index (`Entry::class`, `Asset::class`, `SourceDoc::class`, Commerce `Product::class` / `Variant::class`, etc.) |
 | `siteId` | `int\|array\|null` | `null` | Site(s) to index. `null` = all sites |
 | `criteria` | `callable` | `null` | Callback to filter elements (receives an ElementQuery) |
 | `transformer` | `string` | `null` | Transformer class for custom document structure |

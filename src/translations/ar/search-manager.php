@@ -1623,6 +1623,8 @@ return [
     'No intent data available for the selected filters.' => 'لا توجد بيانات نية متاحة للفلاتر المحددة.',
     'Informational' => 'معلوماتي',
     'Product' => 'منتج',
+    'Commerce Product' => 'منتج',
+    'Commerce Variant' => 'متغير',
     'Navigational' => 'تصفحي',
     'Question' => 'سؤال',
 

@@ -1623,6 +1623,8 @@ return [
     'No intent data available for the selected filters.' => '選択されたフィルターに対するインテントデータがありません。',
     'Informational' => '情報収集',
     'Product' => '商品',
+    'Commerce Product' => '商品',
+    'Commerce Variant' => 'バリアント',
     'Navigational' => 'ナビゲーション',
     'Question' => '質問',
 

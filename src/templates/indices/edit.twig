@@ -89,28 +89,6 @@
         errors: index.getErrors('handle'),
     }) }}
 
-    {% set elementTypeOptions = {
-        'craft\\elements\\Entry': 'Entries'|t('search-manager'),
-        'craft\\elements\\Asset': 'Assets'|t('search-manager'),
-        'craft\\elements\\Category': 'Categories'|t('search-manager'),
-        'craft\\elements\\User': 'Users'|t('search-manager'),
-    } %}
-    {% if lrPluginEnabled('smartlink-manager') %}
-        {% set elementTypeOptions = elementTypeOptions|merge({
-            'lindemannrock\\smartlinkmanager\\elements\\SmartLink': lrPluginName('smartlink-manager', 'SmartLink Manager')
-        }) %}
-    {% endif %}
-    {% if lrPluginEnabled('shortlink-manager') %}
-        {% set elementTypeOptions = elementTypeOptions|merge({
-            'lindemannrock\\shortlinkmanager\\elements\\ShortLink': lrPluginName('shortlink-manager', 'ShortLink Manager')
-        }) %}
-    {% endif %}
-    {% if lrPluginEnabled('docs-manager') %}
-        {% set elementTypeOptions = elementTypeOptions|merge({
-            'lindemannrock\\docsmanager\\elements\\SourceDoc': lrPluginName('docs-manager', 'Docs Manager')
-        }) %}
-    {% endif %}
-
     {{ forms.selectField({
         label: "Element Type"|t('search-manager'),
         instructions: "The type of elements to index"|t('search-manager'),

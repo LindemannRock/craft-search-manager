@@ -164,12 +164,6 @@
     </td>
 
     {# Element Type #}
-    {% set elementTypeLabels = {
-        'craft\\elements\\Entry': 'Entry'|t('search-manager'),
-        'craft\\elements\\Asset': 'Asset'|t('search-manager'),
-        'craft\\elements\\Category': 'Category'|t('search-manager'),
-        'craft\\elements\\User': 'User'|t('search-manager'),
-    } %}
     <td data-column="elementType">
         {{ elementTypeLabels[item.elementType] ?? (item.elementType|split('\\')|last) }}
     </td>
