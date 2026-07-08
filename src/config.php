@@ -689,8 +689,9 @@ return [
          * - enabled: Whether the config is active
          * - styleHandle: Handle of a widget style preset (from widgetStyles below or CP)
          * - settings: Widget settings (merged with defaults)
-         *   - apiKeyHandle: CP widget configs store the selected public API key handle
-         *   - apiKey: Direct public key value for config-file/runtime widgets
+         *   - apiKeyHandle: Preferred saved/config reference to a CP-managed public API key by handle
+         *   - apiKey: Raw public key value emitted into widget HTML; use only for render-time overrides
+         *     or config-only widgets that intentionally provide the actual public key value
          *   - search: Search settings
          *     - indexHandles: Array of index handles to search (empty = all, max 5)
          *     - placeholder: Placeholder text in the search input (default: 'Search...')
@@ -741,10 +742,10 @@ return [
             //     'enabled' => true,
             //     'styleHandle' => 'brand-theme', // References a style from widgetStyles below
             //     'settings' => [
-            //         // Config-file public API key sent as X-Search-Manager-Key when Require API Key is enabled.
-            //         // Use a public, referrer-restricted key scoped to this widget's indices.
-            //         // CP widget configs use apiKeyHandle selectors; never use a server key here.
-            //         // This value is emitted into page HTML.
+            //         // Raw public API key sent as X-Search-Manager-Key when Require API Key is enabled.
+            //         // Prefer settings.apiKeyHandle when referencing a CP-managed key by handle.
+            //         // Use apiKey only for config-only widgets that intentionally provide the actual
+            //         // public key value. Never use a server key here; this value is emitted into page HTML.
             //         // You may use App::env('SEARCH_MANAGER_WIDGET_API_KEY') for environment-specific config,
             //         // but the resolved value is still emitted into rendered HTML.
             //         // 'apiKey' => 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
@@ -802,7 +803,7 @@ return [
             //     'type' => 'modal',
             //     'enabled' => true,
             //     'settings' => [
-            //         // Config-file public API key override. CP widgets should select apiKeyHandle instead.
+            //         // Raw public API key value. Prefer apiKeyHandle for CP-managed keys.
             //         // 'apiKey' => 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
             //         'search' => [
             //             'indexHandles' => ['docs-manager'],

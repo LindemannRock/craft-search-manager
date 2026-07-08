@@ -475,11 +475,12 @@ class WidgetConfig extends Model
 
     /**
      * The public API key this widget sends as the `X-Search-Manager-Key`
-     * header. Render-time `apiKey` overrides happen in the Twig include. This
-     * resolves saved `apiKeyHandle` values first and falls back to direct
-     * `settings.apiKey` values from config-file/runtime data. Numeric IDs are
-     * still accepted when reading older database settings from pre-release
-     * test installs, but CP saves write handles.
+     * header. Saved/config references should use `apiKeyHandle` to point at a
+     * CP-managed public API key by handle. Direct `apiKey` values are raw
+     * public keys intended for render-time overrides or config-only widgets
+     * that intentionally provide the actual key value. Numeric IDs are still
+     * accepted when reading older database settings from pre-release test
+     * installs, but CP saves write handles.
      *
      * @since 5.47.0
      */
@@ -767,7 +768,7 @@ class WidgetConfig extends Model
     }
 
     /**
-     * Validate direct API key fallback data remains browser-safe.
+     * Validate raw public API key values remain browser-safe.
      */
     private function validateDirectApiKey(array $settings): void
     {

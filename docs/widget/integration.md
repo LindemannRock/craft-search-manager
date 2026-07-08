@@ -24,7 +24,7 @@ Create a widget configuration in the CP (Search Manager > Widgets) or config fil
 
 ## API Key (when Require API Key is on)
 
-If [**Require API Key**](../feature-tour/api-keys.md) is enabled, the widget must send a valid **public** API key — on search, autocomplete, **and** the analytics tracking pings. Select a public key on the widget config's **API Key** field (Search Manager → Widgets → your widget). The selector shows the key name, handle, and prefix. Config-file widgets can reference the same CP-managed key with `settings.apiKeyHandle`. You can also pass a public key at render time:
+If [**Require API Key**](../feature-tour/api-keys.md) is enabled, the widget must send a valid **public** API key — on search, autocomplete, **and** the analytics tracking pings. Select a public key on the widget config's **API Key** field (Search Manager → Widgets → your widget). The selector shows the key name, handle, and prefix. Saved/config references should use `settings.apiKeyHandle` to point at the CP-managed key by handle. You can also pass the raw public key value at render time:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
@@ -33,7 +33,7 @@ If [**Require API Key**](../feature-tour/api-keys.md) is enabled, the widget mus
 } %}
 ```
 
-A render-time `apiKey` overrides the saved key selection. Use a **public** key only — referrer-restricted and scoped to the widget's indices. Never put a server key in a widget; the value is emitted into the page HTML. When **Require API Key** is off, no key is needed.
+A render-time `apiKey` overrides the saved/config `apiKeyHandle` reference. Use `apiKey` only for render-time overrides or config-only widgets that intentionally provide the actual **public** key value — referrer-restricted and scoped to the widget's indices. Never put a server key in a widget; the value is emitted into the page HTML. When **Require API Key** is off, no key is needed.
 
 Public keys selected by widget configs cannot be deleted, disabled, expired, renamed by handle, or narrowed in a way that breaks those widgets. Remove or reassign the key from the widget configs first.
 

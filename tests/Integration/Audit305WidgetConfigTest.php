@@ -136,6 +136,17 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertSame([$expectedHandle, $expectedHandle . '-1'], $handles);
     }
 
+    public function testApiKeyEditTemplateBindsHandleGenerationToNameField(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../../src/templates/api-keys/edit.twig');
+        self::assertIsString($source);
+
+        self::assertStringContainsString("document.getElementById('name')", $source);
+        self::assertStringContainsString("document.getElementById('handle')", $source);
+        self::assertStringContainsString("var isNew = {{ isNew ? 'true' : 'false' }};", $source);
+        self::assertStringContainsString('window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });', $source);
+    }
+
     public function testFreshInstallApiKeySchemaIncludesHandleAfterNameAndUniqueIndex(): void
     {
         $source = file_get_contents(__DIR__ . '/../../src/migrations/Install.php');

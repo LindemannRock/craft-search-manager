@@ -325,6 +325,14 @@
 {% endblock %}
 
 {% js %}
+    // Handle auto-generation from name
+    (function() {
+        var nameInput = document.getElementById('name');
+        var handleInput = document.getElementById('handle');
+        var isNew = {{ isNew ? 'true' : 'false' }};
+        window.lrIdentifiers.bindSlugHandle(nameInput, handleInput, { isNew });
+    })();
+
     // Keep the key-type guidance aligned with the create-time selection.
     (function() {
         var typeSelect = document.getElementById('type');

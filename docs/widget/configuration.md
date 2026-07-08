@@ -22,8 +22,8 @@ Define widget configs in `config/search-manager.php`:
         'enabled' => true,
         'styleHandle' => 'brand-dark',
         'settings' => [
-            // Reference a CP-managed public API key by handle when Require API Key is enabled.
-            // A render-time apiKey override still takes precedence.
+            // Preferred: reference a CP-managed public API key by handle.
+            // A render-time apiKey value still overrides this saved/config reference.
             'apiKeyHandle' => 'main-widget-key',
             'search' => [
                 'indexHandles' => ['blog', 'products'],
@@ -120,7 +120,7 @@ Override settings per-include:
 | `theme` | `string` | `'light'` | `'light'` or `'dark'` |
 | `siteId` | `int` | — | Specific site to search |
 | `dir` | `string` | — | Text direction: `'ltr'` or `'rtl'` |
-| `apiKey` | `string` | — | Optional render-time **public** [API key](../feature-tour/api-keys.md) override. CP widget configs select a public key by name, handle, and prefix; config-file widgets can set `settings.apiKeyHandle` to reference the same CP-managed key. A render-time `apiKey` value overrides that saved selection and is emitted into page HTML as `X-Search-Manager-Key` request material. Never use a server key. |
+| `apiKey` | `string` | — | Optional raw **public** [API key](../feature-tour/api-keys.md) value emitted into page HTML as `X-Search-Manager-Key` request material. Prefer `settings.apiKeyHandle` for saved/config references to CP-managed public keys by handle. Use `apiKey` only for render-time overrides or config-only widgets that intentionally provide the actual public key value. Never use a server key. |
 | `styles` | `object` | `{}` | Override individual [style properties](styles.md) at render time |
 
 ### Behavior
