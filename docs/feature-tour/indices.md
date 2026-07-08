@@ -26,7 +26,6 @@ Define indices in `config/search-manager.php`:
         'criteria' => function($query) {
             return $query->section(['news', 'blog', 'pages']);
         },
-        'transformer' => \modules\transformers\EntryTransformer::class,
         'enabled' => true,
     ],
     'products' => [
@@ -176,10 +175,12 @@ For SourceDoc elements, the `sourceHandle()` method is available to scope by sou
 
 ## Transformers
 
-By default, Search Manager indexes common element data and searchable field content. Commerce Product and Variant indices use the built-in Commerce transformer when no transformer is set, while other element types fall back to automatic field extraction. For custom fields or storefront-specific result data, create a transformer class. See [Custom Transformers](../developers/custom-transformers.md) for details.
+When the transformer class is blank, Search Manager first uses registered integration transformers where they apply: Docs Manager pages use `DocsManagerTransformer` when Docs Manager is available, and Commerce Product/Variant indices use `CommerceTransformer` when Craft Commerce is available. Everything else falls back to `AutoTransformer`, which handles entries and most other element types generically by indexing searchable attributes, custom fields, relations, rich text, and headings.
+
+For project-specific result data, create a transformer in a module namespace and assign it to the index. See [Custom Transformers](../developers/custom-transformers.md) for details.
 
 ```php
-'transformer' => \modules\transformers\EntryTransformer::class,
+'transformer' => \modules\transformers\ProductTransformer::class,
 ```
 
 ## Per-Index Settings

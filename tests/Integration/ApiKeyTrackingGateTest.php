@@ -318,7 +318,7 @@ final class ApiKeyTrackingGateTest extends TestCase
             'name' => $handle,
             'handle' => $handle,
             'elementType' => Entry::class,
-            'transformerClass' => \lindemannrock\searchmanager\transformers\EntryTransformer::class,
+            'transformerClass' => '',
             'enabled' => 1,
             'source' => 'database',
             'dateCreated' => Db::prepareDateForDb(new \DateTime()),

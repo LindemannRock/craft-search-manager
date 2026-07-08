@@ -1,6 +1,6 @@
 # Custom Transformers
 
-Transformers convert Craft elements into searchable documents. Search Manager automatically selects the best transformer based on element type. Custom transformers let you override this and control exactly what data gets indexed.
+Transformers convert Craft elements into searchable documents. When the index's transformer class is blank, Search Manager resolves a transformer from registered integration-specific transformers first, then falls back to `AutoTransformer`. Create a project-specific transformer class when an index needs a different document shape.
 
 ## Built-in Transformers
 
@@ -8,8 +8,7 @@ Search Manager includes these transformers out of the box:
 
 | Transformer | Element Types | What It Indexes |
 |------------|---------------|-----------------|
-| `AutoTransformer` | Entries, Assets, Categories, Users | All custom fields, relational fields, Matrix blocks, Table fields. Default for most element types. |
-| `EntryTransformer` | Entries | Everything from `AutoTransformer` plus entry-specific metadata: `section`, `sectionName`, `entryType`, `slug`, `postDate`, `authorName`. Use when you need to filter or boost by section/type. |
+| `AutoTransformer` | Most element types | Default fallback. It indexes searchable attributes, custom fields, relations, Matrix/Table fields, rich text, and headings. It handles entries generically itself. |
 | `DocsManagerTransformer` | Docs Manager (`SourceDoc`) | Full page content, headings, description, and keywords. Auto-selected when [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed. |
 | `CommerceTransformer` | Craft Commerce Products and Variants | Product and variant metadata, product type name/handle, variant SKUs, variant titles, option labels/values, and parent product data for variants. Auto-selected when Craft Commerce is installed and the index targets Product or Variant elements. |
 
@@ -21,7 +20,7 @@ When indexing an element, Search Manager resolves the transformer in this order:
 2. **Registered transformer** — matched by element type (e.g. `DocsManagerTransformer` for `SourceDoc`, `CommerceTransformer` for Commerce Product/Variant elements)
 3. **AutoTransformer** — fallback that works with any element type
 
-In most cases, you don't need to specify a transformer — the right one is selected automatically.
+In most cases, you don't need to specify a transformer. Leave the field blank for the automatic path above. Set `transformer` / `transformerClass` manually only when you need a project-specific transformer class such as `modules\transformers\ProductTransformer`.
 
 ## When You Need a Custom Transformer
 
@@ -30,6 +29,8 @@ You need a custom transformer when you want to:
 - Add computed data (reading time, popularity score, etc.)
 - Control which fields are searchable
 - Format data differently for search
+
+For entries, start with the automatic path. Add a project-specific transformer only when you need fields or metadata that the automatic document does not provide.
 
 ## Creating a Transformer
 
@@ -44,7 +45,7 @@ use craft\base\ElementInterface;
 use craft\elements\Entry;
 use lindemannrock\searchmanager\transformers\BaseTransformer;
 
-class EntryTransformer extends BaseTransformer
+class ProductTransformer extends BaseTransformer
 {
     protected function getElementType(): string
     {
@@ -76,7 +77,7 @@ Assign your transformer to an index in `config/search-manager.php`:
         'name' => 'Entries (English)',
         'elementType' => \craft\elements\Entry::class,
         'siteId' => 1,
-        'transformer' => \modules\transformers\EntryTransformer::class,
+        'transformer' => \modules\transformers\ProductTransformer::class,
     ],
 ],
 ```

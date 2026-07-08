@@ -103,11 +103,57 @@ final class CommerceIndexElementTypeUiTest extends TestCase
         $source = $this->readPluginFile('src/templates/indices/edit.twig');
 
         self::assertStringContainsString('{% if docsManagerTransformerAvailable %}', $source);
-        self::assertStringContainsString('{% if commerceTransformerAvailable %}', $source);
-        self::assertStringContainsString('DocsManagerTransformer', $source);
-        self::assertStringContainsString('CommerceTransformer', $source);
+        self::assertStringContainsString('docpage-criteria', $source);
+        self::assertStringNotContainsString('{% if commerceTransformerAvailable %}', $source);
+        self::assertStringNotContainsString('CommerceTransformer', $source);
         self::assertStringNotContainsString("lrPluginEnabled('docs-manager')", $source);
         self::assertStringNotContainsString("lrPluginEnabled('commerce')", $source);
+    }
+
+    public function testIndexEditTemplateUsesBaseInfoBoxForTransformerHelp(): void
+    {
+        $source = $this->readPluginFile('src/templates/indices/edit.twig');
+
+        self::assertStringContainsString("{% include 'lindemannrock-base/_components/info-box' with {", $source);
+        self::assertStringContainsString('transformerHelpMessage', $source);
+        self::assertStringContainsString("<p>{{ 'Leave blank for the recommended setup. Search Manager will choose the built-in transformer for the selected element type.'|t('search-manager') }} {{ 'Only enter a class if this index needs project-specific indexing logic.'|t('search-manager') }}</p>", $source);
+        self::assertStringContainsString("'Example custom class:'|t('search-manager')", $source);
+        self::assertStringContainsString('modules\\transformers\\ProductTransformer', $source);
+        self::assertStringNotContainsString('transformer-placeholder-preview', $source);
+        self::assertStringNotContainsString("'Current auto-detected transformer:'|t('search-manager')", $source);
+        self::assertStringNotContainsString("url('plugins/search-manager/docs/developers/custom-transformers')", $source);
+        self::assertStringNotContainsString('AutoTransformer handles Entries, Assets, Categories, and Users.', $source);
+        self::assertStringNotContainsString('Optional/manual transformers', $source);
+        self::assertStringNotContainsString('Basic entry fields only', $source);
+        self::assertStringNotContainsString('Custom transformer examples', $source);
+    }
+
+    public function testIndexEditTemplateRemovesLegacyTransformerHelpBlock(): void
+    {
+        $source = $this->readPluginFile('src/templates/indices/edit.twig');
+
+        self::assertStringNotContainsString('{# Helpful transformer examples #}', $source);
+        self::assertStringNotContainsString('<details', $source);
+        self::assertStringNotContainsString('</details>', $source);
+        self::assertStringNotContainsString('style="font-size: 0.9em; font-weight: normal; color: #596673;"', $source);
+    }
+
+    public function testIndexEditTemplateKeepsHeadingLevelsAfterTransformerInfoBox(): void
+    {
+        $source = $this->readPluginFile('src/templates/indices/edit.twig');
+
+        $transformerFieldPosition = strpos($source, "id: 'transformerClass'");
+        $infoBoxPosition = strpos($source, "{% include 'lindemannrock-base/_components/info-box' with {", $transformerFieldPosition);
+        $headingLevelsPosition = strpos($source, 'Heading Levels');
+        $advancedSettingsPosition = strpos($source, 'Advanced Settings', $headingLevelsPosition);
+
+        self::assertIsInt($transformerFieldPosition);
+        self::assertIsInt($infoBoxPosition);
+        self::assertIsInt($headingLevelsPosition);
+        self::assertIsInt($advancedSettingsPosition);
+        self::assertGreaterThan($headingLevelsPosition, $advancedSettingsPosition);
+        self::assertGreaterThan($advancedSettingsPosition, $transformerFieldPosition);
+        self::assertGreaterThan($transformerFieldPosition, $infoBoxPosition);
     }
 
     public function testIndexEditTemplateUsesControllerPlaceholderMap(): void
@@ -117,8 +163,26 @@ final class CommerceIndexElementTypeUiTest extends TestCase
         self::assertStringContainsString('const defaultTransformerPlaceholder = {{ defaultTransformerPlaceholder|json_encode|raw }};', $source);
         self::assertStringContainsString('const transformerPlaceholders = {{ transformerPlaceholders|json_encode|raw }};', $source);
         self::assertStringContainsString('transformerPlaceholders[elementTypeSelect.value] || defaultTransformerPlaceholder', $source);
+        self::assertStringNotContainsString('transformerPlaceholderPreview', $source);
         self::assertStringNotContainsString("transformerInput.placeholder = 'lindemannrock\\\\searchmanager\\\\transformers\\\\DocsManagerTransformer'", $source);
         self::assertStringNotContainsString("transformerInput.placeholder = 'lindemannrock\\\\searchmanager\\\\transformers\\\\AutoTransformer'", $source);
+    }
+
+    public function testTransformerDocsDoNotMentionRemovedEntrySpecificClass(): void
+    {
+        $customTransformers = $this->readPluginFile('docs/developers/custom-transformers.md');
+        $indices = $this->readPluginFile('docs/feature-tour/indices.md');
+        $docs = $customTransformers . "\n" . $indices;
+
+        self::assertStringContainsString('Default fallback', $customTransformers);
+        self::assertStringContainsString('It handles entries generically itself.', $customTransformers);
+        self::assertStringContainsString('project-specific transformer class', $customTransformers);
+        self::assertStringContainsString('modules\\transformers\\ProductTransformer', $docs);
+        self::assertStringContainsString('DocsManagerTransformer` for `SourceDoc`', $customTransformers);
+        self::assertStringContainsString('`CommerceTransformer` for Commerce Product/Variant elements', $customTransformers);
+        self::assertStringNotContainsString('Entry' . 'Transformer', $docs);
+        self::assertStringNotContainsString('Everything from `AutoTransformer` plus entry-specific metadata', $docs);
+        self::assertStringNotContainsString('AutoTransformer` | Entries, Assets, Categories, Users', $docs);
     }
 
     public function testTransformerPlaceholderDataMapsAvailableCommerceElements(): void

@@ -290,38 +290,6 @@
         } %}
     </div>
 
-    {% set transformerTipParts = [
-        'Leave blank for automatic transformer selection.'|t('search-manager'),
-        'AutoTransformer handles Entries, Assets, Categories, and Users.'|t('search-manager')
-    ] %}
-    {% if docsManagerTransformerAvailable %}
-        {% set transformerTipParts = transformerTipParts|merge([
-            'DocsManagerTransformer handles Doc Pages.'|t('search-manager')
-        ]) %}
-    {% endif %}
-    {% if commerceTransformerAvailable %}
-        {% set transformerTipParts = transformerTipParts|merge([
-            'CommerceTransformer handles Commerce Products and Variants.'|t('search-manager')
-        ]) %}
-    {% endif %}
-    {% set transformerTipParts = transformerTipParts|merge([
-        'Only specify a custom class for advanced requirements.'|t('search-manager')
-    ]) %}
-
-    {{ forms.textField({
-        label: "Transformer Class"|t('search-manager'),
-        instructions: "Override the default transformer for this index. Leave blank to auto-detect based on element type."|t('search-manager'),
-        id: 'transformerClass',
-        name: 'transformerClass',
-        value: index.transformerClass,
-        required: false,
-        class: 'code',
-        placeholder: defaultTransformerPlaceholder,
-        tip: transformerTipParts|join(' '),
-        warning: (index.transformerClass and not index.getErrors('transformerClass')) ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
-        errors: index.getErrors('transformerClass'),
-    }) }}
-
     {% set headingLevelOptions = [
         { label: 'H1', value: 1 },
         { label: 'H2', value: 2 },
@@ -342,55 +310,31 @@
         errors: index.getErrors('headingLevels'),
     }) }}
 
-    {# Helpful transformer examples #}
-    <div class="field" style="margin-top: -10px;">
-        <div class="heading">
-            <label style="font-size: 0.9em; font-weight: normal; color: #596673;">{{ "Built-in Transformers"|t('search-manager') }}</label>
-        </div>
-        <div style="font-size: 0.85em; color: #596673; line-height: 1.6;">
-            <div style="margin-bottom: 8px;">
-                <strong style="color: #0d78f2;">{{ 'Recommended: Leave blank for auto-detection (default)'|t('search-manager') }}</strong>
-            </div>
-            <div style="padding-left: 20px; border-left: 2px solid #e3e5e8; margin-bottom: 12px;">
-                <div style="margin-bottom: 6px;">
-                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">AutoTransformer</code>
-                    <span style="color: #8f98a3;"> — {{ 'Entries, Assets, Categories, Users'|t('search-manager') }}</span>
-                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes all custom fields, relational fields, Matrix blocks, and Table fields'|t('search-manager') }}</div>
-                </div>
-                {% if docsManagerTransformerAvailable %}
-                <div style="margin-bottom: 6px;">
-                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">DocsManagerTransformer</code>
-                    <span style="color: #8f98a3;"> — {{ 'Doc Pages'|t('search-manager') }}</span>
-                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes full page content, headings, description, and keywords'|t('search-manager') }}</div>
-                </div>
-                {% endif %}
-                {% if commerceTransformerAvailable %}
-                <div style="margin-bottom: 6px;">
-                    <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">CommerceTransformer</code>
-                    <span style="color: #8f98a3;"> — {{ 'Commerce Products and Variants'|t('search-manager') }}</span>
-                    <div style="padding-left: 4px; margin-top: 2px; color: #8f98a3; font-size: 0.95em;">{{ 'Indexes product/variant metadata, product type name/handle, SKUs, variant titles, options, and parent product data for variants'|t('search-manager') }}</div>
-                </div>
-                {% endif %}
-            </div>
-            <details style="margin-top: 10px;">
-                <summary style="cursor: pointer; color: #0d78f2; font-weight: 500;">{{ 'Custom transformer examples'|t('search-manager') }}</summary>
-                <ul style="margin: 8px 0 0 20px; padding: 0;">
-                    <li style="margin-bottom: 6px;">
-                        <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">lindemannrock\searchmanager\transformers\EntryTransformer</code>
-                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">{{ 'Basic entry fields only'|t('search-manager') }}</span>
-                    </li>
-                    <li style="margin-bottom: 6px;">
-                        <code style="background: #f3f7fc; padding: 2px 6px; border-radius: 3px;">modules\transformers\MyCustomTransformer</code>
-                        <span style="display: block; color: #8f98a3; font-size: 0.9em; margin-top: 2px;">{{ 'Your custom transformer class'|t('search-manager') }}</span>
-                    </li>
-                </ul>
-            </details>
-        </div>
-    </div>
-
     <hr style="margin: 25px 0; border: none; border-top: 1px solid #e3e5e8;">
 
     <h2 style="font-size: 1.1em; font-weight: 600; margin-bottom: 15px;">{{ "Advanced Settings"|t('search-manager') }}</h2>
+
+    {{ forms.textField({
+        label: "Transformer Class"|t('search-manager'),
+        instructions: "Optional override for advanced indexing needs."|t('search-manager'),
+        id: 'transformerClass',
+        name: 'transformerClass',
+        value: index.transformerClass,
+        required: false,
+        class: 'code',
+        placeholder: defaultTransformerPlaceholder,
+        warning: (index.transformerClass and not index.getErrors('transformerClass')) ? ("Custom transformer active: " ~ index.transformerClass)|t('search-manager') : null,
+        errors: index.getErrors('transformerClass'),
+    }) }}
+
+    {% set transformerHelpMessage %}
+        <p>{{ 'Leave blank for the recommended setup. Search Manager will choose the built-in transformer for the selected element type.'|t('search-manager') }} {{ 'Only enter a class if this index needs project-specific indexing logic.'|t('search-manager') }}</p>
+        <p><strong>{{ 'Example custom class:'|t('search-manager') }}</strong> <code>modules\transformers\ProductTransformer</code></p>
+    {% endset %}
+    {% include 'lindemannrock-base/_components/info-box' with {
+        type: 'info',
+        message: transformerHelpMessage,
+    } %}
 
     {% set backendOptions = craft.searchManager.getPlugin().backend.getBackendOptions() %}
 
@@ -548,7 +492,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Update transformer placeholder based on element type
             if (transformerInput) {
-                transformerInput.placeholder = transformerPlaceholders[elementTypeSelect.value] || defaultTransformerPlaceholder;
+                const transformerPlaceholder = transformerPlaceholders[elementTypeSelect.value] || defaultTransformerPlaceholder;
+                transformerInput.placeholder = transformerPlaceholder;
             }
         }
 

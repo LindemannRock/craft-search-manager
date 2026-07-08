@@ -536,7 +536,7 @@ final class Audit305WidgetConfigTest extends TestCase
             'elementType' => \craft\elements\Entry::class,
             'siteId' => null,
             'criteria' => '{}',
-            'transformerClass' => \lindemannrock\searchmanager\transformers\EntryTransformer::class,
+            'transformerClass' => '',
             'headingLevels' => null,
             'language' => null,
             'enabled' => 1,

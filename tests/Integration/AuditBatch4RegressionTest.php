@@ -62,15 +62,6 @@ final class AuditBatch4RegressionTest extends TestCase
         self::assertStringNotContainsString('foreach ($query->all() as $element)', $body);
     }
 
-    public function testEntryTransformerOnlyFetchesFeaturedImageOnce(): void
-    {
-        $source = $this->readPluginSource('src/transformers/EntryTransformer.php');
-        $body = $this->methodBody($source, 'transform', 'public');
-
-        self::assertSame(1, substr_count($body, '->one()'));
-        self::assertStringContainsString('$image = $featuredImage?->one();', $body);
-    }
-
     private function readPluginSource(string $relativePath): string
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/' . $relativePath);

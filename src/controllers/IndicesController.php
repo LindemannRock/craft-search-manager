@@ -247,7 +247,6 @@ class IndicesController extends Controller
             'isNew' => !$indexId,
             'elementTypeOptions' => $this->getElementTypeOptions(),
             'docsManagerTransformerAvailable' => $this->isDocsManagerTransformerAvailable(),
-            'commerceTransformerAvailable' => $this->commerceTransformerAvailable(),
             'defaultTransformerPlaceholder' => $this->getDefaultTransformerPlaceholder(),
             'transformerPlaceholders' => $this->getTransformerPlaceholders(),
         ]);
@@ -306,11 +305,6 @@ class IndicesController extends Controller
     private function isDocsManagerTransformerAvailable(): bool
     {
         return PluginHelper::isPluginEnabled('docs-manager');
-    }
-
-    private function commerceTransformerAvailable(): bool
-    {
-        return CommerceElementTypeHelper::availableElementTypes() !== [];
     }
 
     private function getDefaultTransformerPlaceholder(): string
