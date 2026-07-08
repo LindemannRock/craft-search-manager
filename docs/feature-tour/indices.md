@@ -87,7 +87,7 @@ Use a **Variant** index when the result itself should be a specific variant, suc
 ],
 ```
 
-If you leave the transformer blank, Search Manager automatically uses its Commerce transformer for Product and Variant indices. You only need a custom transformer when your storefront needs extra fields, such as brand, availability, catalog-specific facets, or project-specific pricing data.
+Leave the transformer blank for the recommended automatic path. Search Manager automatically uses its Commerce transformer for Product and Variant indices, including Commerce metadata such as product type, variant SKUs, titles, and option values. Use a custom transformer only when your storefront needs project-specific indexing logic. A minimal custom transformer can intentionally reduce the indexed Commerce metadata, which is useful for narrow search records but may remove SKU or option matches shoppers expect.
 
 ### Via Control Panel
 
@@ -180,7 +180,7 @@ When the transformer class is blank, Search Manager first uses registered integr
 For project-specific result data, create a transformer in a module namespace and assign it to the index. See [Custom Transformers](../developers/custom-transformers.md) for details.
 
 ```php
-'transformer' => \modules\searchmanager\transformers\ProductTransformer::class,
+'transformer' => \modules\search\transformers\ProductTransformer::class,
 ```
 
 Custom transformer classes must be autoloadable from your project or module namespace, constructible without required constructor arguments, and implement `TransformerInterface`. Extending `BaseTransformer` is the recommended route for custom document shapes; extending `AutoTransformer` is useful when you want automatic extraction plus project-specific fields. `supports()` is still required by the interface, but Search Manager does not use it to guard an index-specific configured override.

@@ -241,7 +241,6 @@ Indices define what content gets indexed and how it's transformed:
         'criteria' => function($query) {
             return $query->section(['news', 'blog']);
         },
-        'transformer' => \modules\searchmanager\transformers\ProductTransformer::class,
         'enabled' => true,
     ],
 ],
@@ -249,7 +248,13 @@ Indices define what content gets indexed and how it's transformed:
 
 See [Indices](../feature-tour/indices.md) for full configuration options.
 
-Leave `transformer` unset for automatic transformer resolution. If you configure a custom class, it must be autoloadable, constructible without required constructor arguments, and implement Search Manager's `TransformerInterface`. Extending `BaseTransformer` is recommended for custom document shapes; extending `AutoTransformer` works well when you want automatic field extraction plus extra project fields.
+Leave `transformer` unset for automatic transformer resolution. If you configure a custom class, it must be autoloadable, constructible without required constructor arguments, and implement Search Manager's `TransformerInterface`:
+
+```php
+'transformer' => \modules\search\transformers\ProductTransformer::class,
+```
+
+Extending `BaseTransformer` is recommended for custom document shapes; extending `AutoTransformer` works well when you want automatic field extraction plus extra project fields.
 
 ## Widgets Configuration
 
@@ -423,7 +428,8 @@ return [
                 'criteria' => function($query) {
                     return $query->section(['news', 'blog', 'pages']);
                 },
-                'transformer' => \modules\searchmanager\transformers\ProductTransformer::class, // Optional — leave blank for automatic transformer selection
+                // Optional. Leave unset for automatic transformer selection.
+                'transformer' => \modules\search\transformers\ProductTransformer::class,
                 'enabled' => true,
             ],
         ],
