@@ -267,6 +267,12 @@
 				label: 'Edit'|t('search-manager'),
 				url: url('search-manager/widgets/edit/' ~ item.id),
 			}]) %}
+			{% if canCreate %}
+				{% set actionItems = actionItems|merge([{
+					label: 'Duplicate'|t('search-manager'),
+					jsAction: 'duplicate',
+				}]) %}
+			{% endif %}
 			{% if not isDefault and not isDefaultFromConfig %}
 				{% set actionItems = actionItems|merge([{
 					label: 'Set as Default'|t('search-manager'),
@@ -345,6 +351,8 @@
 		deleted: {{ 'Widget config deleted'|t('search-manager')|json_encode|raw }},
 		deleteFailed: {{ 'Failed to delete config'|t('search-manager')|json_encode|raw }},
 		deleteConfirm: {{ 'Delete widget config "{name}"? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+		duplicated: {{ 'Widget config duplicated'|t('search-manager')|json_encode|raw }},
+		duplicateFailed: {{ 'Could not duplicate widget config'|t('search-manager')|json_encode|raw }},
 		defaultUpdated: {{ 'Default config updated'|t('search-manager')|json_encode|raw }},
 		defaultUpdateFailed: {{ 'Failed to update default config'|t('search-manager')|json_encode|raw }},
 		bulkEnabledTemplate: {{ 'Enabled {count} configs'|t('search-manager')|json_encode|raw }},
@@ -367,7 +375,7 @@
 		if (!trigger) return;
 
 		const action = trigger.dataset.action;
-		if (action !== 'delete' && action !== 'set-default') return;
+		if (action !== 'delete' && action !== 'set-default' && action !== 'duplicate') return;
 
 		const id = parseInt(trigger.dataset.id || '0', 10);
 		const name = trigger.dataset.name || '';
@@ -400,6 +408,15 @@
 				}
 			}).catch(function() {
 				Craft.cp.displayError(T.defaultUpdateFailed);
+			});
+		} else if (action === 'duplicate') {
+			Craft.sendActionRequest('POST', 'search-manager/widgets/duplicate', {
+				data: { configId: id },
+			}).then(function(response) {
+				Craft.cp.displayNotice(response.data.message || T.duplicated);
+				setTimeout(function() { window.location.reload(); }, 500);
+			}).catch(function(response) {
+				Craft.cp.displayError(response?.response?.data?.error || T.duplicateFailed);
 			});
 		}
 	});

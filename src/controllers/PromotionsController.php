@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\Promotion;
@@ -337,6 +338,59 @@ class PromotionsController extends Controller
     }
 
     /**
+     * Duplicate a promotion.
+     *
+     * @since 5.53.0
+     */
+    public function actionDuplicate(): Response
+    {
+        $this->requirePermission('searchManager:createPromotions');
+        $this->requirePostRequest();
+
+        $request = Craft::$app->getRequest();
+        $promotionId = $request->getRequiredBodyParam('promotionId');
+        $source = Promotion::findById((int)$promotionId);
+
+        if (!$source) {
+            if ($request->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Promotion not found')]);
+            }
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Promotion not found'));
+        }
+
+        $promotion = new Promotion();
+        $promotion->indexHandle = $source->indexHandle;
+        $promotion->title = $this->uniqueCopyLabel('{{%searchmanager_promotions}}', 'title', (string)$source->title);
+        $promotion->query = $source->query;
+        $promotion->matchType = $source->matchType;
+        $promotion->elementId = $source->elementId;
+        $promotion->elementType = $source->elementType;
+        $promotion->position = $source->position;
+        $promotion->siteId = $source->siteId;
+        $promotion->enabled = false;
+
+        if (!$promotion->save()) {
+            $error = Craft::t('search-manager', 'Could not duplicate promotion');
+            if ($request->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/promotions');
+        }
+
+        SearchManager::$plugin->backend->clearAllSearchCache();
+
+        $message = Craft::t('search-manager', 'Promotion duplicated');
+
+        if ($request->getAcceptsJson()) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
+
+        Craft::$app->getSession()->setNotice($message);
+        return $this->redirect('search-manager/promotions');
+    }
+
+    /**
      * Bulk enable promotions
      */
     public function actionBulkEnable(): Response
@@ -429,5 +483,20 @@ class PromotionsController extends Controller
             'success' => true,
             'count' => $count,
         ]);
+    }
+
+    private function uniqueCopyLabel(string $table, string $column, string $label): string
+    {
+        $base = trim($label) !== '' ? trim($label) : Craft::t('search-manager', 'Untitled');
+        $copyLabel = Craft::t('lindemannrock-base', 'Copy');
+        $candidate = mb_substr($base . ' ' . $copyLabel, 0, 255);
+        $suffix = 2;
+
+        while ((new Query())->from($table)->where([$column => $candidate])->exists()) {
+            $candidate = mb_substr($base . ' ' . $copyLabel . ' ' . $suffix, 0, 255);
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

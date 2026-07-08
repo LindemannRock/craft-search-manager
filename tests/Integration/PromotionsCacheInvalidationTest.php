@@ -27,6 +27,6 @@ class PromotionsCacheInvalidationTest extends TestCase
 
         $this->assertIsString($source);
         $this->assertStringNotContainsString('clearSearchCache(', $source);
-        $this->assertSame(5, substr_count($source, 'clearAllSearchCache()'));
+        $this->assertSame(6, substr_count($source, 'clearAllSearchCache()'));
     }
 }

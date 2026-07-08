@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\QueryRule;
@@ -444,6 +445,59 @@ class QueryRulesController extends Controller
     }
 
     /**
+     * Duplicate a query rule.
+     *
+     * @since 5.53.0
+     */
+    public function actionDuplicate(): Response
+    {
+        $this->requirePermission('searchManager:createQueryRules');
+        $this->requirePostRequest();
+
+        $request = Craft::$app->getRequest();
+        $ruleId = $request->getRequiredBodyParam('ruleId');
+        $source = QueryRule::findById((int)$ruleId);
+
+        if (!$source) {
+            if ($request->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => Craft::t('search-manager', 'Query rule not found')]);
+            }
+            throw new NotFoundHttpException(Craft::t('search-manager', 'Query rule not found'));
+        }
+
+        $rule = new QueryRule();
+        $rule->name = $this->uniqueCopyLabel('{{%searchmanager_query_rules}}', 'name', $source->name);
+        $rule->indexHandle = $source->indexHandle;
+        $rule->matchType = $source->matchType;
+        $rule->matchValue = $source->matchValue;
+        $rule->actionType = $source->actionType;
+        $rule->actionValue = $source->actionValue;
+        $rule->priority = $source->priority;
+        $rule->siteId = $source->siteId;
+        $rule->enabled = false;
+
+        if (!$rule->save()) {
+            $error = Craft::t('search-manager', 'Could not duplicate query rule');
+            if ($request->getAcceptsJson()) {
+                return $this->asJson(['success' => false, 'error' => $error]);
+            }
+            Craft::$app->getSession()->setError($error);
+            return $this->redirect('search-manager/query-rules');
+        }
+
+        SearchManager::$plugin->backend->clearAllSearchCache();
+
+        $message = Craft::t('search-manager', 'Query rule duplicated');
+
+        if ($request->getAcceptsJson()) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
+
+        Craft::$app->getSession()->setNotice($message);
+        return $this->redirect('search-manager/query-rules');
+    }
+
+    /**
      * Bulk enable query rules
      */
     public function actionBulkEnable(): Response
@@ -537,5 +591,20 @@ class QueryRulesController extends Controller
             'success' => true,
             'count' => $count,
         ]);
+    }
+
+    private function uniqueCopyLabel(string $table, string $column, string $label): string
+    {
+        $base = trim($label) !== '' ? trim($label) : Craft::t('search-manager', 'Untitled');
+        $copyLabel = Craft::t('lindemannrock-base', 'Copy');
+        $candidate = mb_substr($base . ' ' . $copyLabel, 0, 255);
+        $suffix = 2;
+
+        while ((new Query())->from($table)->where([$column => $candidate])->exists()) {
+            $candidate = mb_substr($base . ' ' . $copyLabel . ' ' . $suffix, 0, 255);
+            $suffix++;
+        }
+
+        return $candidate;
     }
 }

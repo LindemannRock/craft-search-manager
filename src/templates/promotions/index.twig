@@ -180,8 +180,15 @@
         }]) %}
     {% endif %}
 
+    {% if canCreate %}
+        {% set actionItems = actionItems|merge([{
+            label: 'Duplicate'|t('search-manager'),
+            jsAction: 'duplicate',
+        }]) %}
+    {% endif %}
+
     {% if canDelete %}
-        {% if canEdit %}
+        {% if canEdit or canCreate %}
             {% set actionItems = actionItems|merge([{type: 'divider'}]) %}
         {% endif %}
         {% set actionItems = actionItems|merge([{
@@ -237,6 +244,8 @@
         deleted: {{ 'Promotion deleted'|t('search-manager')|json_encode|raw }},
         deleteFailed: {{ 'Failed to delete promotion'|t('search-manager')|json_encode|raw }},
         deleteConfirm: {{ 'Delete promotion for "{name}"? This cannot be undone.'|t('search-manager')|json_encode|raw }},
+        duplicated: {{ 'Promotion duplicated'|t('search-manager')|json_encode|raw }},
+        duplicateFailed: {{ 'Could not duplicate promotion'|t('search-manager')|json_encode|raw }},
         bulkEnabledTemplate: {{ 'Enabled {count} promotions'|t('search-manager')|json_encode|raw }},
         bulkEnableFailed: {{ 'Failed to enable promotions'|t('search-manager')|json_encode|raw }},
         bulkDisabledTemplate: {{ 'Disabled {count} promotions'|t('search-manager')|json_encode|raw }},
@@ -256,11 +265,23 @@
     document.addEventListener('click', function(e) {
         const trigger = e.target.closest('a[data-action]');
         if (!trigger) return;
-        if (trigger.dataset.action !== 'delete') return;
+        if (trigger.dataset.action !== 'delete' && trigger.dataset.action !== 'duplicate') return;
 
         const id = parseInt(trigger.dataset.id || '0', 10);
         if (!id) return;
         e.preventDefault();
+
+        if (trigger.dataset.action === 'duplicate') {
+            Craft.sendActionRequest('POST', 'search-manager/promotions/duplicate', {
+                data: { promotionId: id },
+            }).then(function(response) {
+                Craft.cp.displayNotice(response.data.message || T.duplicated);
+                setTimeout(function() { window.location.reload(); }, 500);
+            }).catch(function(response) {
+                Craft.cp.displayError(response?.response?.data?.error || T.duplicateFailed);
+            });
+            return;
+        }
 
         const name = trigger.dataset.name || '';
         if (!confirm(T.deleteConfirm.replace('{name}', name))) return;

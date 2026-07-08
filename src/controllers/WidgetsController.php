@@ -491,6 +491,54 @@ class WidgetsController extends Controller
     }
 
     /**
+     * Duplicate a database-backed widget configuration.
+     *
+     * @since 5.53.0
+     */
+    public function actionDuplicate(): Response
+    {
+        $this->requirePostRequest();
+        $this->requirePermission('searchManager:createWidgetConfigs');
+
+        $request = Craft::$app->getRequest();
+        $configId = $request->getRequiredBodyParam('configId');
+        $source = SearchManager::$plugin->widgetConfigs->getById((int)$configId);
+
+        if (!$source) {
+            return $this->duplicateFailure(Craft::t('search-manager', 'Widget config not found'), 'search-manager/widgets');
+        }
+
+        if (!$source->canEdit()) {
+            return $this->duplicateFailure(Craft::t('search-manager', 'Config-backed widget configs cannot be duplicated.'), 'search-manager/widgets');
+        }
+
+        $widgetConfig = new WidgetConfig();
+        $widgetConfig->name = $this->uniqueCopyLabel('{{%searchmanager_widget_configs}}', 'name', $source->name);
+        $widgetConfig->handle = SlugHandleHelper::makeUnique(
+            '{{%searchmanager_widget_configs}}',
+            'handle',
+            SlugHandleHelper::normalizeSlug($source->handle . '-copy', $widgetConfig->name),
+        );
+        $widgetConfig->type = $source->type;
+        $widgetConfig->enabled = false;
+        $widgetConfig->styleHandle = $source->styleHandle;
+        $widgetConfig->settings = $this->sanitizeCopiedWidgetSettings($source->getSettingsArray());
+
+        if (!$widgetConfig->validate() || !SearchManager::$plugin->widgetConfigs->save($widgetConfig)) {
+            return $this->duplicateFailure(Craft::t('search-manager', 'Could not duplicate widget config'), 'search-manager/widgets');
+        }
+
+        $message = Craft::t('search-manager', 'Widget config duplicated');
+
+        if ($request->getAcceptsJson()) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
+
+        Craft::$app->getSession()->setNotice($message);
+        return $this->redirect('search-manager/widgets');
+    }
+
+    /**
      * Set a widget configuration as default
      */
     public function actionSetDefault(): Response
@@ -955,6 +1003,56 @@ class WidgetsController extends Controller
     }
 
     /**
+     * Duplicate a database-backed widget style.
+     *
+     * @since 5.53.0
+     */
+    public function actionDuplicateStyle(): Response
+    {
+        $this->requirePostRequest();
+        $this->requirePermission('searchManager:createWidgetStyles');
+
+        $request = Craft::$app->getRequest();
+        $styleId = $request->getRequiredBodyParam('styleId');
+        $source = SearchManager::$plugin->widgetStyles->getById((int)$styleId);
+
+        if (!$source) {
+            return $this->duplicateFailure(Craft::t('search-manager', 'Widget style not found'), 'search-manager/widgets/styles');
+        }
+
+        if (!$source->canEdit()) {
+            return $this->duplicateFailure(Craft::t('search-manager', 'Config-backed widget styles cannot be duplicated.'), 'search-manager/widgets/styles');
+        }
+
+        $widgetStyle = new WidgetStyle();
+        $widgetStyle->name = $this->uniqueCopyLabel('{{%searchmanager_widget_styles}}', 'name', $source->name);
+        $widgetStyle->handle = SlugHandleHelper::makeUnique(
+            '{{%searchmanager_widget_styles}}',
+            'handle',
+            SlugHandleHelper::normalizeSlug($source->handle . '-copy', $widgetStyle->name),
+        );
+        $widgetStyle->type = $source->type;
+        $widgetStyle->enabled = false;
+
+        $defaults = WidgetConfig::defaultStyleValues();
+        $styles = array_intersect_key($source->getStyles(), $defaults);
+        $widgetStyle->styles = $this->_validateStyleValues($styles, $defaults);
+
+        if (!$widgetStyle->validate() || !SearchManager::$plugin->widgetStyles->save($widgetStyle)) {
+            return $this->duplicateFailure(Craft::t('search-manager', 'Could not duplicate widget style'), 'search-manager/widgets/styles');
+        }
+
+        $message = Craft::t('search-manager', 'Widget style duplicated');
+
+        if ($request->getAcceptsJson()) {
+            return $this->asJson(['success' => true, 'message' => $message]);
+        }
+
+        Craft::$app->getSession()->setNotice($message);
+        return $this->redirect('search-manager/widgets/styles');
+    }
+
+    /**
      * Bulk enable widget styles
      *
      * @since 5.52.0
@@ -1015,6 +1113,46 @@ class WidgetsController extends Controller
     {
         $counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
         return (int) ($counts[$handle] ?? 0);
+    }
+
+    private function duplicateFailure(string $error, string $fallbackUrl): Response
+    {
+        if (Craft::$app->getRequest()->getAcceptsJson()) {
+            return $this->asJson(['success' => false, 'error' => $error]);
+        }
+
+        Craft::$app->getSession()->setError($error);
+        return $this->redirect($fallbackUrl);
+    }
+
+    /**
+     * @param array<string, mixed> $settings
+     * @return array<string, mixed>
+     */
+    private function sanitizeCopiedWidgetSettings(array $settings): array
+    {
+        $defaults = WidgetConfig::defaultSettings();
+        $settings = $this->_filterSettingsKeys(array_replace_recursive($defaults, $settings), $defaults);
+        $settings['apiKeyHandle'] = isset($settings['apiKeyHandle']) && is_string($settings['apiKeyHandle'])
+            ? trim($settings['apiKeyHandle'])
+            : '';
+
+        return $settings;
+    }
+
+    private function uniqueCopyLabel(string $table, string $column, string $label): string
+    {
+        $base = trim($label) !== '' ? trim($label) : Craft::t('search-manager', 'Untitled');
+        $copyLabel = Craft::t('lindemannrock-base', 'Copy');
+        $candidate = mb_substr($base . ' ' . $copyLabel, 0, 255);
+        $suffix = 2;
+
+        while ((new Query())->from($table)->where([$column => $candidate])->exists()) {
+            $candidate = mb_substr($base . ' ' . $copyLabel . ' ' . $suffix, 0, 255);
+            $suffix++;
+        }
+
+        return $candidate;
     }
 
     /**
