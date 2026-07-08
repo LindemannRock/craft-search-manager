@@ -329,7 +329,7 @@
 
     {% set transformerHelpMessage %}
         <p>{{ 'Leave blank for the recommended setup. Search Manager will choose the built-in transformer for the selected element type.'|t('search-manager') }} {{ 'Only enter a class if this index needs project-specific indexing logic.'|t('search-manager') }}</p>
-        <p><strong>{{ 'Example custom class:'|t('search-manager') }}</strong> <code>modules\searchmanager\transformers\ProductTransformer</code></p>
+        <p><strong>{{ 'Example custom class:'|t('search-manager') }}</strong> <code>modules\search\transformers\ProductTransformer</code></p>
     {% endset %}
     {% include 'lindemannrock-base/_components/info-box' with {
         type: 'info',

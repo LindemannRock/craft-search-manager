@@ -32,13 +32,16 @@ final class AuditItem252RegressionTest extends TestCase
 
         self::assertStringContainsString('const url = safeUrlAttribute(hit.url);', $source);
         self::assertStringContainsString('const thumbnail = safeUrlAttribute(hit.thumbnail);', $source);
-        self::assertStringContainsString('${thumbnail ? `<img src="${thumbnail}"', $source);
-        self::assertStringContainsString('${url ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><a href="${url}"', $source);
+        self::assertStringContainsString('${thumbnail ? `<img src="${thumbnail}" class="sm-test-thumb" alt="">` : \'\'}', $source);
+        self::assertStringContainsString('${url ? `<div class="sm-test-url"><a href="${url}" target="_blank">${urlText}</a></div>` : \'\'}', $source);
 
         self::assertStringNotContainsString('const url = hit.url || \'\';', $source);
         self::assertStringNotContainsString('const thumbnail = hit.thumbnail || null;', $source);
         self::assertStringNotContainsString('<img src="${hit.thumbnail}', $source);
         self::assertStringNotContainsString('<a href="${hit.url}', $source);
+        self::assertStringNotContainsString('style=', $source);
+        self::assertStringNotContainsString('onmouseover=', $source);
+        self::assertStringNotContainsString('onmouseout=', $source);
     }
 
     public function testSearchResultMetadataUsesDisplayEscaperBeforeInnerHtmlInsertion(): void
@@ -58,11 +61,13 @@ final class AuditItem252RegressionTest extends TestCase
             'const section = hit.section ? escapeDisplay(hit.section) : \'\';',
             'const siteName = escapeDisplay(hit.siteName || T.unknown);',
             "const language = escapeDisplay(hit.language || '??');",
-            '<a href="${url}" target="_blank" style="color: #0d78f2;">${urlText}</a>',
-            'ID: #${objectIdDisplay} &bull; ${T.typeLabel} ${type}${section ?',
-            '${indexHandle ? \' &bull; \' + T.indexLabel + \' <code>\' + indexHandle + \'</code>\' : \'\'}',
-            '${T.siteLabel} ${siteName} (${language})',
-            '${matchedIn ? `<div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;"><strong>${T.matchedInLabel}</strong> <code>${matchedIn}</code></div>` : \'\'}',
+            '<a href="${url}" target="_blank">${urlText}</a>',
+            '<span class="sm-test-meta-item"><span class="sm-test-meta-label">ID</span> #${objectIdDisplay}</span>',
+            '<span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.typeLabel}</span> ${type}</span>',
+            '${section ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}</span>` : \'\'}',
+            '${indexHandle ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.indexLabel}</span> <code>${indexHandle}</code></span>` : \'\'}',
+            '<span class="sm-test-site-badge"><span class="sm-test-meta-label">${T.siteLabel}</span> ${siteName} (${language})</span>',
+            '${matchedIn ? `<div class="sm-test-match-line"><strong>${T.matchedInLabel}</strong> <code>${matchedIn}</code></div>` : \'\'}',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
@@ -90,7 +95,7 @@ final class AuditItem252RegressionTest extends TestCase
             'return Craft.escapeHtml(text);',
             'SearchManagerHighlighter.highlight(text, query, {',
             "tag: 'mark',",
-            '<strong style="color: #111827; font-size: 15px;">${title}</strong>',
+            '<strong class="sm-test-title">${title}</strong>',
             '${displayText}${rawDisplayText.length > 400 ? \'...\' : \'\'}',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);

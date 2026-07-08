@@ -39,7 +39,7 @@
 } only %}
 
 {# Search Configuration #}
-<div class="pane" style="margin-bottom: 24px;">
+<div class="pane sm-test-pane-spaced">
     <h3 class="first">{{ "Search Configuration"|t('search-manager') }}</h3>
 
     {{ forms.selectField({
@@ -58,40 +58,40 @@
         <div class="instructions">
             <p>{{ "Enter a search query to test. Supports all operators."|t('search-manager') }}</p>
         </div>
-        <div style="position: relative;">
+        <div class="sm-test-query-wrap">
             <input type="text" id="testQuery" name="testQuery" class="text fullwidth" value="" placeholder="Try: 'exact phrase', test NOT spam, title:blog, test*" maxlength="256" autocomplete="off">
             {# Autocomplete dropdown #}
-            <div id="autocomplete-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid #e5e7eb; border-radius: 4px; margin-top: 4px; max-height: 250px; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100;"></div>
+            <div id="autocomplete-dropdown" class="sm-test-autocomplete-dropdown" hidden></div>
         </div>
     </div>
 
     {# Test Feature Toggles #}
-    <div class="field" style="margin-top: 20px;">
+    <div class="field sm-test-feature-field">
         <div class="heading">
             <label>{{ "Test Features"|t('search-manager') }}</label>
         </div>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-top: 8px;">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+        <div class="sm-test-feature-grid">
+            <label class="sm-test-toggle-card">
                 <input type="checkbox" id="enableWildcard" name="enableWildcard">
                 <span>{{ "Auto Wildcards"|t('search-manager') }}</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+            <label class="sm-test-toggle-card">
                 <input type="checkbox" id="showAutocomplete" name="showAutocomplete" {{ settings.enableAutocomplete ? 'checked' : '' }}>
                 <span>{{ "Test Autocomplete"|t('search-manager') }}</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+            <label class="sm-test-toggle-card">
                 <input type="checkbox" id="showPromotions" name="showPromotions">
                 <span>{{ "Test Promotions"|t('search-manager') }}</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+            <label class="sm-test-toggle-card">
                 <input type="checkbox" id="showQueryRules" name="showQueryRules">
                 <span>{{ "Test Query Rules"|t('search-manager') }}</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #f9fafb; border-radius: 4px; border: 1px solid #e5e7eb;">
+            <label class="sm-test-toggle-card">
                 <input type="checkbox" id="showHighlighting" name="showHighlighting" checked>
                 <span>{{ "Show Highlighting"|t('search-manager') }}</span>
             </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px; background: #e0f2fe; border-radius: 4px; border: 1px solid #bae6fd;">
+            <label class="sm-test-toggle-card sm-test-toggle-card--primary">
                 <input type="checkbox" id="enableEnrich" name="enableEnrich" checked>
                 <span>{{ "Enrich Results"|t('search-manager') }}</span>
             </label>
@@ -99,10 +99,10 @@
     </div>
 
     {# Enrichment Options Panel — visible when "Enrich Results" is checked #}
-    <div id="enrichOptions" class="field" style="margin-top: 16px; display: none;">
-        <div style="padding: 16px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;">
-            <h4 style="margin: 0 0 12px; font-size: 14px; color: #0369a1;">{{ "Enrichment Options"|t('search-manager') }}</h4>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div id="enrichOptions" class="field sm-test-enrich-panel" hidden>
+        <div class="sm-test-enrich-card">
+            <h4 class="sm-test-enrich-title">{{ "Enrichment Options"|t('search-manager') }}</h4>
+            <div class="sm-test-enrich-grid">
                 <div>
                     {{ forms.selectField({
                         label: 'Snippet Mode'|t('search-manager'),
@@ -117,24 +117,24 @@
                     }) }}
                 </div>
                 <div>
-                    <label for="snippetLength" style="font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px;">{{ "Snippet Length (50–1000 chars)"|t('search-manager') }}</label>
-                    <input type="number" id="snippetLength" class="text fullwidth" value="200" min="50" max="1000" step="50" style="padding: 6px 8px;">
+                    <label for="snippetLength" class="sm-test-number-label">{{ "Snippet Length (50–1000 chars)"|t('search-manager') }}</label>
+                    <input type="number" id="snippetLength" class="text fullwidth sm-test-number-input" value="200" min="50" max="1000" step="50">
                 </div>
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px;">
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+            <div class="sm-test-enrich-options">
+                <label class="sm-test-enrich-option">
                     <input type="checkbox" id="showCodeSnippets">
                     {{ "Show Code Snippets"|t('search-manager') }}
                 </label>
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+                <label class="sm-test-enrich-option">
                     <input type="checkbox" id="parseMarkdownSnippets">
                     {{ "Parse Markdown"|t('search-manager') }}
                 </label>
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+                <label class="sm-test-enrich-option">
                     <input type="checkbox" id="hideResultsWithoutUrl">
                     {{ "Hide Without URL"|t('search-manager') }}
                 </label>
-                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 12px; background: #fff; border-radius: 4px; border: 1px solid #e5e7eb; font-size: 13px;">
+                <label class="sm-test-enrich-option">
                     <input type="checkbox" id="includeDebugMeta" checked>
                     {{ "Debug Metadata"|t('search-manager') }}
                 </label>
@@ -142,7 +142,7 @@
         </div>
     </div>
 
-    <div style="display: flex; gap: 10px; align-items: center; margin-top: 20px;">
+    <div class="sm-test-actions">
         <button type="button" id="testButton" class="btn submit">{{ "Search"|t('search-manager') }}</button>
         {% if cacheEnabled %}
             <button type="button" id="clearCacheButton" class="btn">{{ "Clear Search Cache"|t('search-manager') }}</button>
@@ -150,15 +150,15 @@
         {% if settings.enableAutocompleteCache %}
             <button type="button" id="clearAutocompleteCacheButton" class="btn">{{ "Clear Autocomplete Cache"|t('search-manager') }}</button>
         {% endif %}
-        <span id="cacheStatus" style="font-size: 0.9em; color: #666;"></span>
+        <span id="cacheStatus" class="sm-test-cache-status"></span>
     </div>
 </div>
 
 {# Quick Operator Tests #}
-<div class="pane" style="margin-bottom: 24px;">
+<div class="pane sm-test-pane-spaced">
     <h3 class="first">{{ "Quick Operator Tests"|t('search-manager') }}</h3>
     <p class="light">{{ "Click to test different search operators"|t('search-manager') }}</p>
-    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <div class="sm-test-quick-tests">
         <button type="button" class="btn small quick-test" data-query="test">{{ "Basic"|t('search-manager') }}</button>
         <button type="button" class="btn small quick-test" data-query='"test entry"'>{{ "Phrase"|t('search-manager') }}</button>
         <button type="button" class="btn small quick-test" data-query="test NOT spam">NOT</button>
@@ -171,7 +171,7 @@
 </div>
 
 {# Autocomplete Preview Section #}
-<div id="autocomplete-section" class="pane" style="margin-bottom: 24px; display: none;">
+<div id="autocomplete-section" class="pane sm-test-pane-spaced" hidden>
     <h3 class="first">{{ "Autocomplete Suggestions"|t('search-manager') }}</h3>
     <div id="autocomplete-results">
         <p class="light">{{ "Type at least {minLength} characters above to see suggestions"|t('search-manager', {minLength: settings.autocompleteMinLength ?? 2}) }}</p>
@@ -179,7 +179,7 @@
 </div>
 
 {# Promotions Preview Section #}
-<div id="promotions-section" class="pane" style="margin-bottom: 24px; display: none;">
+<div id="promotions-section" class="pane sm-test-pane-spaced" hidden>
     <h3 class="first">{{ "Matched Promotions"|t('search-manager') }}</h3>
     <div id="promotions-results">
         <p class="light">{{ "Run a search to see which promotions match"|t('search-manager') }}</p>
@@ -187,7 +187,7 @@
 </div>
 
 {# Query Rules Preview Section #}
-<div id="queryrules-section" class="pane" style="margin-bottom: 24px; display: none;">
+<div id="queryrules-section" class="pane sm-test-pane-spaced" hidden>
     <h3 class="first">{{ "Matched Query Rules"|t('search-manager') }}</h3>
     <div id="queryrules-results">
         <p class="light">{{ "Run a search to see which query rules apply"|t('search-manager') }}</p>
@@ -195,7 +195,7 @@
 </div>
 
 {# Main Results Section #}
-<div id="testResults" style="display: none;">
+<div id="testResults" hidden>
     <div class="pane">
         <h3 id="resultsTitle" class="first"></h3>
         <div id="resultsContent"></div>
@@ -249,6 +249,15 @@ window.lrSearchManagerTestToolInit({
         snippetMode: {{ 'Mode'|t('search-manager')|json_encode|raw }},
         snippetFrom: {{ 'Snippet from'|t('search-manager')|json_encode|raw }},
         snippetContent: {{ 'Content'|t('search-manager')|json_encode|raw }},
+        indexedDocumentLabel: {{ 'Indexed Document'|t('search-manager')|json_encode|raw }},
+        transformerClassLabel: {{ 'Transformer Class'|t('search-manager')|json_encode|raw }},
+        indexElementTypeLabel: {{ 'Index Element Type'|t('search-manager')|json_encode|raw }},
+        documentTypeLabel: {{ 'Document Type'|t('search-manager')|json_encode|raw }},
+        productTypeLabel: {{ 'Product Type'|t('search-manager')|json_encode|raw }},
+        variantSkusLabel: {{ 'Variant SKUs'|t('search-manager')|json_encode|raw }},
+        variantOptionsLabel: {{ 'Variant Options'|t('search-manager')|json_encode|raw }},
+        parentProductLabel: {{ 'Parent Product'|t('search-manager')|json_encode|raw }},
+        customFieldsLabel: {{ 'Custom Fields'|t('search-manager')|json_encode|raw }},
         promoted: {{ 'Promoted'|t('search-manager')|json_encode|raw }},
         boosted: {{ 'Boosted'|t('search-manager')|json_encode|raw }},
         enriched: {{ 'Enriched'|t('search-manager')|json_encode|raw }},

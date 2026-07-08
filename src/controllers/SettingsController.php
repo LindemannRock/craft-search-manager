@@ -17,12 +17,15 @@ use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\helpers\PluginThemeStyleHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\models\QueryRule;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
+use lindemannrock\searchmanager\transformers\CommerceTransformer;
 use yii\web\Response;
 
 /**
@@ -234,7 +237,7 @@ class SettingsController extends Controller
 
         try {
             // Get the index
-            $index = \lindemannrock\searchmanager\models\SearchIndex::findByHandle($indexHandle);
+            $index = SearchIndex::findByHandle($indexHandle);
 
             $originalQuery = $query;
 
@@ -268,6 +271,10 @@ class SettingsController extends Controller
 
             if ($enrich) {
                 $request = Craft::$app->getRequest();
+                $includeDebugMeta = (bool) $request->getBodyParam('includeDebugMeta', true);
+                $indexedDocumentDebug = $includeDebugMeta
+                    ? $this->settingsTestIndexedDocumentDebugByIdentity($results['hits'] ?? [], $index)
+                    : [];
 
                 // Use EnrichmentService for smart snippets, headings, thumbnails
                 $enrichedResults = SearchManager::$plugin->enrichment->enrichResults(
@@ -281,7 +288,7 @@ class SettingsController extends Controller
                         'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', false),
                         'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
                         'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
-                        'includeDebugMeta' => (bool) $request->getBodyParam('includeDebugMeta', true),
+                        'includeDebugMeta' => $includeDebugMeta,
                     ]
                 );
 
@@ -293,6 +300,12 @@ class SettingsController extends Controller
                         if ($site) {
                             $hit['siteName'] = $site->name;
                             $hit['language'] = strtoupper(substr($site->language ?? '', 0, 2));
+                        }
+                    }
+                    if ($includeDebugMeta) {
+                        $debugKey = $this->settingsTestHitDebugKey($hit);
+                        if ($debugKey !== null && isset($indexedDocumentDebug[$debugKey])) {
+                            $hit['_indexedDocument'] = $indexedDocumentDebug[$debugKey];
                         }
                     }
 
@@ -404,6 +417,282 @@ class SettingsController extends Controller
                     : Craft::t('search-manager', 'Search test failed. Check logs for details.'),
             ]);
         }
+    }
+
+    /**
+     * @param array<int, mixed> $hits
+     * @return array<string, array<string, mixed>>
+     */
+    private function settingsTestIndexedDocumentDebugByIdentity(array $hits, ?SearchIndex $index): array
+    {
+        $debugByIdentity = [];
+
+        foreach ($hits as $hit) {
+            if (!is_array($hit)) {
+                continue;
+            }
+
+            $debugKey = $this->settingsTestHitDebugKey($hit);
+            if ($debugKey === null) {
+                continue;
+            }
+
+            $debug = $this->settingsTestIndexedDocumentDebug($hit, $index);
+            if (!empty($debug)) {
+                $debugByIdentity[$debugKey] = $debug;
+            }
+        }
+
+        return $debugByIdentity;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     * @return array<string, mixed>
+     */
+    private function settingsTestIndexedDocumentDebug(array $hit, ?SearchIndex $index): array
+    {
+        $debug = [];
+        $transformerClass = trim((string)($index?->transformerClass ?? ''));
+        if ($transformerClass !== '') {
+            $debug['transformerClass'] = $transformerClass;
+        } elseif ($this->settingsTestHitLooksLikeCommerceDocument($hit)) {
+            $debug['transformerClass'] = CommerceTransformer::class;
+        }
+
+        if (!empty($index?->elementType)) {
+            $debug['indexElementType'] = $index->elementType;
+        }
+
+        $documentType = $this->settingsTestScalarDebugValue($hit['elementType'] ?? $hit['type'] ?? null);
+        if ($documentType !== null) {
+            $debug['documentType'] = $documentType;
+        }
+
+        $commerce = $this->settingsTestCommerceDebug($hit);
+        if (!empty($commerce)) {
+            $debug['commerce'] = $commerce;
+        }
+
+        $customFields = $this->settingsTestCustomIndexedFields($hit);
+        if (!empty($customFields)) {
+            $debug['customFields'] = $customFields;
+        }
+
+        return $debug;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     * @return array<string, mixed>
+     */
+    private function settingsTestCommerceDebug(array $hit): array
+    {
+        $commerce = [];
+        $productTypeName = $this->settingsTestScalarDebugValue($hit['productTypeName'] ?? $hit['productType'] ?? null);
+        $productTypeHandle = $this->settingsTestScalarDebugValue($hit['productTypeHandle'] ?? null);
+        if ($productTypeName !== null || $productTypeHandle !== null) {
+            $commerce['productType'] = array_filter([
+                'name' => $productTypeName,
+                'handle' => $productTypeHandle,
+            ], static fn(?string $value): bool => $value !== null);
+        }
+
+        foreach ([
+            'variantSkus' => 'variantSkus',
+            'variantOptions' => 'variantOptions',
+        ] as $sourceKey => $targetKey) {
+            $values = $this->settingsTestListDebugValue($hit[$sourceKey] ?? null);
+            if (!empty($values)) {
+                $commerce[$targetKey] = $values;
+            }
+        }
+
+        $parentProduct = array_filter([
+            'title' => $this->settingsTestScalarDebugValue($hit['productTitle'] ?? null),
+            'slug' => $this->settingsTestScalarDebugValue($hit['productSlug'] ?? null),
+            'url' => $this->settingsTestScalarDebugValue($hit['productUrl'] ?? null),
+        ], static fn(?string $value): bool => $value !== null);
+        if (!empty($parentProduct)) {
+            $commerce['parentProduct'] = $parentProduct;
+        }
+
+        return $commerce;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     * @return list<array{label: string, value: string}>
+     */
+    private function settingsTestCustomIndexedFields(array $hit): array
+    {
+        $fields = [];
+        foreach ($hit as $key => $value) {
+            if (!$this->settingsTestCanShowCustomIndexedField((string)$key)) {
+                continue;
+            }
+
+            $displayValue = is_array($value)
+                ? implode(', ', $this->settingsTestListDebugValue($value, 6))
+                : $this->settingsTestScalarDebugValue($value);
+
+            if ($displayValue === null || $displayValue === '') {
+                continue;
+            }
+
+            $fields[] = [
+                'label' => $this->settingsTestHumanizeDebugField((string)$key),
+                'value' => $this->settingsTestTruncateDebugValue($displayValue, 140),
+            ];
+
+            if (count($fields) >= 6) {
+                break;
+            }
+        }
+
+        return $fields;
+    }
+
+    private function settingsTestCanShowCustomIndexedField(string $key): bool
+    {
+        $normalized = strtolower($key);
+        if ($key === '' || str_starts_with($key, '_')) {
+            return false;
+        }
+        if (preg_match('/(?:apikey|api_key|token|secret|password|authorization)/i', $key) === 1) {
+            return false;
+        }
+
+        return !in_array($normalized, [
+            'id',
+            'elementid',
+            'objectid',
+            'backendid',
+            'title',
+            'url',
+            'description',
+            'descriptionsafe',
+            'content',
+            'body',
+            'excerpt',
+            'score',
+            'matchedterms',
+            'matchedphrases',
+            'matchedin',
+            'site',
+            'sitename',
+            'siteid',
+            'sitehandle',
+            'language',
+            'elementtype',
+            'type',
+            'section',
+            'thumbnail',
+            'backend',
+            'datecreated',
+            'dateupdated',
+            'promoted',
+            'boosted',
+            'position',
+            'category',
+            'slug',
+            'producttype',
+            'producttypename',
+            'producttypehandle',
+            'variantskus',
+            'varianttitles',
+            'variantoptions',
+            'defaultvariantsku',
+            'defaultvarianttitle',
+            'sku',
+            'varianttitle',
+            'productid',
+            'producttitle',
+            'productslug',
+            'producturl',
+            'searchtext',
+        ], true);
+    }
+
+    /**
+     * @param mixed $value
+     */
+    private function settingsTestScalarDebugValue(mixed $value): ?string
+    {
+        if (is_string($value) || is_numeric($value) || is_bool($value)) {
+            $string = trim((string)$value);
+
+            return $string !== '' ? $this->settingsTestTruncateDebugValue($string, 180) : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param mixed $value
+     * @return list<string>
+     */
+    private function settingsTestListDebugValue(mixed $value, int $limit = 10): array
+    {
+        if (!is_array($value)) {
+            $scalar = $this->settingsTestScalarDebugValue($value);
+
+            return $scalar !== null ? [$scalar] : [];
+        }
+
+        $values = [];
+        foreach ($value as $item) {
+            $scalar = $this->settingsTestScalarDebugValue($item);
+            if ($scalar !== null) {
+                $values[] = $scalar;
+            }
+            if (count($values) >= $limit) {
+                break;
+            }
+        }
+
+        return array_values(array_unique($values));
+    }
+
+    private function settingsTestTruncateDebugValue(string $value, int $limit): string
+    {
+        return mb_strlen($value) > $limit ? mb_substr($value, 0, $limit - 3) . '...' : $value;
+    }
+
+    private function settingsTestHumanizeDebugField(string $key): string
+    {
+        $label = preg_replace('/(?<!^)[A-Z]/', ' $0', $key);
+        $label = str_replace(['_', '-'], ' ', (string)$label);
+        $label = preg_replace('/\s+/', ' ', (string)$label);
+
+        return ucwords(trim((string)$label));
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     */
+    private function settingsTestHitDebugKey(array $hit): ?string
+    {
+        $elementId = SearchHitIdentityHelper::elementId($hit);
+        if ($elementId === null) {
+            return null;
+        }
+
+        return (string)($hit['siteId'] ?? 'site') . ':' . $elementId;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     */
+    private function settingsTestHitLooksLikeCommerceDocument(array $hit): bool
+    {
+        if (isset($hit['productType'], $hit['variantOptions']) || isset($hit['productTypeName']) || isset($hit['productTypeHandle'])) {
+            return true;
+        }
+
+        $type = (string)($hit['elementType'] ?? $hit['type'] ?? '');
+
+        return in_array($type, ['product', 'variant', CommerceElementTypeHelper::productElementType(), CommerceElementTypeHelper::variantElementType()], true);
     }
 
     public function actionTestAutocomplete(): Response

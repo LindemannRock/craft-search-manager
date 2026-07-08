@@ -76,15 +76,17 @@ final class TestToolI18nTest extends TestCase
 
     public function testResultBadgesUseCssUppercaseNotAllCapsKeys(): void
     {
-        // The Promoted/Boosted/Disabled result-card pills are inline-styled badges on
-        // the test page (not the base badge component). Their uppercase is a CSS concern
+        // The Promoted/Boosted/Disabled test page pills are local badges, not
+        // the base badge component. Their uppercase is a CSS concern
         // (text-transform), so the translation value stays normal-case and Disabled is
         // reused — never a forked all-caps key (meaningless for AR/JA, awkward elsewhere).
         $js = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
+        $css = $this->readPluginFile('src/web/assets/testtool/src/test-tool.css');
 
-        self::assertStringContainsString('text-transform: uppercase;">${T.promoted}</span>', $js);
-        self::assertStringContainsString('text-transform: uppercase;">${T.boosted}</span>', $js);
-        self::assertStringContainsString('text-transform: uppercase;">${T.disabled}</span>', $js);
+        self::assertStringContainsString('<span class="sm-test-status sm-test-status--promoted">${T.promoted}</span>', $js);
+        self::assertStringContainsString('<span class="sm-test-status sm-test-status--boosted">${T.boosted}</span>', $js);
+        self::assertStringContainsString('<span class="sm-test-disabled-badge">${T.disabled}</span>', $js);
+        self::assertStringContainsString('text-transform: uppercase;', $css);
         self::assertStringNotContainsString('disabledBadge', $js);
 
         // The all-caps keys must not exist in the translation files; normal-case ones do.
@@ -156,10 +158,14 @@ final class TestToolI18nTest extends TestCase
             '<a href="${redirectUrl}" target="_blank">${redirectUrl}</a>',
             'data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(\', \')',
             'const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);',
+            'function renderStatusLabel(label, colorClass)',
+            '<span class="status-label ${color}">',
+            '<span class="status ${color}"></span>',
+            '<span class="status-label-text">${Craft.escapeHtml(label)}</span>',
             '<td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>',
             'if (index === -1) return Craft.escapeHtml(text);',
             "Craft.escapeHtml(text.substring(0, index)) + '<strong>' + Craft.escapeHtml(text.substring(index, index + query.length))",
-            'resultsContent.innerHTML = `<p style="color: #dc2626;">${Craft.escapeHtml(error.message)}</p>`;',
+            'resultsContent.innerHTML = `<p class="sm-test-error">${Craft.escapeHtml(error.message)}</p>`;',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }

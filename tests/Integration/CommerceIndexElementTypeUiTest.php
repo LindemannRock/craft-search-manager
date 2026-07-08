@@ -118,7 +118,7 @@ final class CommerceIndexElementTypeUiTest extends TestCase
         self::assertStringContainsString('transformerHelpMessage', $source);
         self::assertStringContainsString("<p>{{ 'Leave blank for the recommended setup. Search Manager will choose the built-in transformer for the selected element type.'|t('search-manager') }} {{ 'Only enter a class if this index needs project-specific indexing logic.'|t('search-manager') }}</p>", $source);
         self::assertStringContainsString("'Example custom class:'|t('search-manager')", $source);
-        self::assertStringContainsString('modules\\searchmanager\\transformers\\ProductTransformer', $source);
+        self::assertStringContainsString('modules\\search\\transformers\\ProductTransformer', $source);
         self::assertStringNotContainsString('transformer-placeholder-preview', $source);
         self::assertStringNotContainsString("'Current auto-detected transformer:'|t('search-manager')", $source);
         self::assertStringNotContainsString("url('plugins/search-manager/docs/developers/custom-transformers')", $source);
@@ -177,7 +177,7 @@ final class CommerceIndexElementTypeUiTest extends TestCase
         self::assertStringContainsString('Default fallback', $customTransformers);
         self::assertStringContainsString('It handles entries generically itself.', $customTransformers);
         self::assertStringContainsString('project-specific transformer class', $customTransformers);
-        self::assertStringContainsString('modules\\searchmanager\\transformers\\ProductTransformer', $docs);
+        self::assertStringContainsString('modules\\search\\transformers\\ProductTransformer', $docs);
         self::assertStringContainsString('DocsManagerTransformer` for `SourceDoc`', $customTransformers);
         self::assertStringContainsString('`CommerceTransformer` for Commerce Product/Variant elements', $customTransformers);
         self::assertStringNotContainsString('Entry' . 'Transformer', $docs);

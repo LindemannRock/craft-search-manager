@@ -44,6 +44,13 @@
         return Craft.escapeHtml(raw);
     }
 
+    function truncateDisplay(value, maxLength) {
+        const raw = String(value === undefined || value === null ? '' : value);
+        const limit = maxLength || 80;
+
+        return raw.length > limit ? raw.substring(0, limit - 3) + '...' : raw;
+    }
+
     function postJson(url, csrfToken, body) {
         return fetch(url, {
             method: 'POST',
@@ -91,10 +98,21 @@
                 return indexSiteIds[testIndexSelect.value] || null;
             }
 
+            function setMessageState(element, state) {
+                if (!element) {
+                    return;
+                }
+
+                element.classList.remove('sm-test-message-success', 'sm-test-message-error');
+                if (state) {
+                    element.classList.add(`sm-test-message-${state}`);
+                }
+            }
+
             function updateSectionVisibility() {
-                autocompleteSection.style.display = showAutocomplete.checked ? 'block' : 'none';
-                promotionsSection.style.display = showPromotions.checked ? 'block' : 'none';
-                queryrulesSection.style.display = showQueryRules.checked ? 'block' : 'none';
+                autocompleteSection.hidden = !showAutocomplete.checked;
+                promotionsSection.hidden = !showPromotions.checked;
+                queryrulesSection.hidden = !showQueryRules.checked;
             }
 
             showAutocomplete.addEventListener('change', updateSectionVisibility);
@@ -102,7 +120,7 @@
             showQueryRules.addEventListener('change', updateSectionVisibility);
 
             function updateEnrichPanel() {
-                enrichOptionsPanel.style.display = enableEnrich.checked ? 'block' : 'none';
+                enrichOptionsPanel.hidden = !enableEnrich.checked;
             }
             enableEnrich.addEventListener('change', updateEnrichPanel);
             updateEnrichPanel();
@@ -133,18 +151,18 @@
                             clearCacheButton.textContent = T.clearSearchCache;
                             if (data.success) {
                                 cacheStatus.textContent = data.message;
-                                cacheStatus.style.color = '#059669';
+                                setMessageState(cacheStatus, 'success');
                                 setTimeout(() => { cacheStatus.textContent = ''; }, 3000);
                             } else {
                                 cacheStatus.textContent = data.error || T.failedClearCache;
-                                cacheStatus.style.color = '#dc2626';
+                                setMessageState(cacheStatus, 'error');
                             }
                         })
                         .catch(error => {
                             clearCacheButton.disabled = false;
                             clearCacheButton.textContent = T.clearSearchCache;
                             cacheStatus.textContent = error.message;
-                            cacheStatus.style.color = '#dc2626';
+                            setMessageState(cacheStatus, 'error');
                         });
                 });
             }
@@ -162,29 +180,29 @@
                             clearAutocompleteCacheButton.textContent = T.clearAutocompleteCache;
                             if (data.success) {
                                 cacheStatus.textContent = data.message;
-                                cacheStatus.style.color = '#059669';
+                                setMessageState(cacheStatus, 'success');
                                 setTimeout(() => { cacheStatus.textContent = ''; }, 3000);
                             } else {
                                 cacheStatus.textContent = data.error || T.failedClearAutocompleteCache;
-                                cacheStatus.style.color = '#dc2626';
+                                setMessageState(cacheStatus, 'error');
                             }
                         })
                         .catch(error => {
                             clearAutocompleteCacheButton.disabled = false;
                             clearAutocompleteCacheButton.textContent = T.clearAutocompleteCache;
                             cacheStatus.textContent = error.message;
-                            cacheStatus.style.color = '#dc2626';
+                            setMessageState(cacheStatus, 'error');
                         });
                 });
             }
 
             testQueryInput.addEventListener('input', function() {
-                this.style.boxShadow = '';
+                this.classList.remove('sm-test-input-invalid');
                 const query = this.value.trim();
 
                 if (!showAutocomplete.checked || query.length < autocompleteMinLength) {
                     autocompleteTerms = [];
-                    autocompleteDropdown.style.display = 'none';
+                    autocompleteDropdown.hidden = true;
                     return;
                 }
 
@@ -195,7 +213,7 @@
             });
 
             testQueryInput.addEventListener('blur', function() {
-                setTimeout(() => { autocompleteDropdown.style.display = 'none'; }, 200);
+                setTimeout(() => { autocompleteDropdown.hidden = true; }, 200);
             });
 
             autocompleteDropdown.addEventListener('click', function(event) {
@@ -211,7 +229,7 @@
                 }
 
                 testQueryInput.value = term;
-                autocompleteDropdown.style.display = 'none';
+                autocompleteDropdown.hidden = true;
                 testButton.click();
             });
 
@@ -230,23 +248,20 @@
                     if (suggestions && suggestions.length > 0) {
                         autocompleteTerms = suggestions;
                         autocompleteDropdown.innerHTML = suggestions.map((term, index) => `
-                    <div style="padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f3f4f6; transition: background 0.1s;"
-                         onmouseover="this.style.background='#f9fafb'"
-                         onmouseout="this.style.background='#fff'"
-                         data-autocomplete-index="${index}">
-                        <code style="font-size: 13px;">${highlightMatch(term, query)}</code>
+                    <div class="sm-test-autocomplete-option" data-autocomplete-index="${index}">
+                        <code class="sm-test-autocomplete-code">${highlightMatch(term, query)}</code>
                     </div>
                 `).join('');
-                        autocompleteDropdown.style.display = 'block';
+                        autocompleteDropdown.hidden = false;
                         updateAutocompleteSection(suggestions, query, meta);
                     } else {
                         autocompleteTerms = [];
-                        autocompleteDropdown.style.display = 'none';
+                        autocompleteDropdown.hidden = true;
                         updateAutocompleteSection([], query, meta);
                     }
                 } catch (error) {
                     autocompleteTerms = [];
-                    autocompleteDropdown.style.display = 'none';
+                    autocompleteDropdown.hidden = true;
                 }
             }
 
@@ -292,6 +307,80 @@
                 return combined.length > 0 ? combined : null;
             }
 
+            function renderDebugPill(label, value) {
+                if (value === undefined || value === null || value === '') {
+                    return '';
+                }
+
+                return `<div class="sm-test-indexed-row">
+                    <span class="sm-test-indexed-label">${label}</span>
+                    <strong class="sm-test-indexed-value">${escapeDisplay(truncateDisplay(value, 120))}</strong>
+                </div>`;
+            }
+
+            function renderDebugList(label, values) {
+                if (!Array.isArray(values) || values.length === 0) {
+                    return '';
+                }
+
+                return `<div class="sm-test-indexed-row">
+                    <span class="sm-test-indexed-label">${label}</span>
+                    <strong class="sm-test-indexed-value">${values.map(value => escapeDisplay(truncateDisplay(value, 72))).join(', ')}</strong>
+                </div>`;
+            }
+
+            function renderIndexedDocumentDebug(hit) {
+                const debug = hit._indexedDocument;
+                if (!debug || typeof debug !== 'object') {
+                    return '';
+                }
+
+                const commerce = debug.commerce && typeof debug.commerce === 'object' ? debug.commerce : {};
+                const productType = commerce.productType && typeof commerce.productType === 'object' ? commerce.productType : null;
+                const parentProduct = commerce.parentProduct && typeof commerce.parentProduct === 'object' ? commerce.parentProduct : null;
+                const customFields = Array.isArray(debug.customFields) ? debug.customFields : [];
+                const parentUrl = parentProduct ? safeUrlAttribute(parentProduct.url) : null;
+                const parentUrlText = parentProduct && parentProduct.url ? escapeDisplay(truncateDisplay(parentProduct.url, 64)) : '';
+
+                const rows = [
+                    renderDebugPill(T.transformerClassLabel, debug.transformerClass),
+                    renderDebugPill(T.indexElementTypeLabel, debug.indexElementType),
+                    renderDebugPill(T.documentTypeLabel, debug.documentType),
+                    productType ? renderDebugPill(T.productTypeLabel, [productType.name, productType.handle ? `(${productType.handle})` : ''].filter(Boolean).join(' ')) : '',
+                    renderDebugList(T.variantSkusLabel, commerce.variantSkus),
+                    renderDebugList(T.variantOptionsLabel, commerce.variantOptions),
+                    parentProduct ? `<div class="sm-test-indexed-row">
+                        <span class="sm-test-indexed-label">${T.parentProductLabel}</span>
+                        <span class="sm-test-indexed-value"><strong>${escapeDisplay(truncateDisplay(parentProduct.title || '-', 72))}</strong>${parentProduct.slug ? ` <code>${escapeDisplay(truncateDisplay(parentProduct.slug, 56))}</code>` : ''}${parentUrl ? ` <a class="sm-test-parent-link" href="${parentUrl}" target="_blank">${parentUrlText}</a>` : ''}</span>
+                    </div>` : '',
+                ].filter(Boolean);
+
+                if (customFields.length > 0) {
+                    rows.push(`<div class="sm-test-indexed-row">
+                        <span class="sm-test-indexed-label">${T.customFieldsLabel}</span>
+                        <div class="sm-test-indexed-custom-fields">${customFields.map(field => `<code class="sm-test-indexed-custom-field">${escapeDisplay(truncateDisplay(field.label, 32))}: ${escapeDisplay(truncateDisplay(field.value, 96))}</code>`).join('')}</div>
+                    </div>`);
+                }
+
+                if (rows.length === 0) {
+                    return '';
+                }
+
+                return `<details class="sm-test-indexed-debug">
+                    <summary>${T.indexedDocumentLabel}</summary>
+                    <div class="sm-test-indexed-grid">${rows.join('')}</div>
+                </details>`;
+            }
+
+            function renderStatusLabel(label, colorClass) {
+                const color = /^[a-z]+$/.test(colorClass) ? colorClass : 'gray';
+
+                return `<span class="status-label ${color}">
+                    <span class="status ${color}"></span>
+                    <span class="status-label-text">${Craft.escapeHtml(label)}</span>
+                </span>`;
+            }
+
             function updateAutocompleteSection(suggestions, query, meta) {
                 const container = document.getElementById('autocomplete-results');
                 const cacheLabel = meta && meta.cacheEnabled
@@ -300,19 +389,19 @@
 
                 if (suggestions.length > 0) {
                     container.innerHTML = `
-                <p style="margin-bottom: 12px;">
-                    <strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code> |
-                    <strong>${T.foundLabel}</strong> ${(suggestions.length === 1 ? T.suggestionsSingular : T.suggestionsPlural).replace('{count}', suggestions.length)} |
-                    <strong>${T.cacheLabel}</strong> ${cacheLabel}${meta && meta.cacheDriver ? ' (' + meta.cacheDriver + ')' : ''}
-                </p>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    ${suggestions.map(s => `<span style="background: #f3f4f6; padding: 6px 12px; border-radius: 16px; font-size: 13px;">${Craft.escapeHtml(s)}</span>`).join('')}
+                <div class="sm-test-diagnostic-summary">
+                    <span><strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code></span>
+                    <span><strong>${T.foundLabel}</strong> ${(suggestions.length === 1 ? T.suggestionsSingular : T.suggestionsPlural).replace('{count}', suggestions.length)}</span>
+                    <span><strong>${T.cacheLabel}</strong> ${cacheLabel}${meta && meta.cacheDriver ? ' (' + meta.cacheDriver + ')' : ''}</span>
+                </div>
+                <div class="sm-test-chip-list">
+                    ${suggestions.map(s => `<span class="sm-test-chip">${Craft.escapeHtml(s)}</span>`).join('')}
                 </div>
             `;
                 } else {
                     container.innerHTML = `
                 <p class="light">${T.noSuggestions.replace('{query}', Craft.escapeHtml(query))}</p>
-                <p class="light" style="margin-top: 8px;"><strong>${T.cacheLabel}</strong> ${cacheLabel}${meta && meta.cacheDriver ? ' (' + meta.cacheDriver + ')' : ''}</p>
+                <p class="light sm-test-terms"><strong>${T.cacheLabel}</strong> ${cacheLabel}${meta && meta.cacheDriver ? ' (' + meta.cacheDriver + ')' : ''}</p>
             `;
                 }
             }
@@ -323,13 +412,13 @@
                 const enableWildcard = document.getElementById('enableWildcard').checked;
 
                 if (!query) {
-                    testQueryInput.style.boxShadow = 'inset 0 0 0 1px #dc2626';
+                    testQueryInput.classList.add('sm-test-input-invalid');
                     testQueryInput.focus();
-                    testResults.style.display = 'none';
+                    testResults.hidden = true;
                     return;
                 }
 
-                testQueryInput.style.boxShadow = '';
+                testQueryInput.classList.remove('sm-test-input-invalid');
                 testButton.disabled = true;
                 testButton.textContent = T.searching;
                 updateSectionVisibility();
@@ -366,10 +455,10 @@
                     .catch(error => {
                         testButton.disabled = false;
                         testButton.textContent = T.searchLabel;
-                        testResults.style.display = 'block';
+                        testResults.hidden = false;
                         resultsTitle.innerHTML = T.error;
-                        resultsTitle.style.color = '#dc2626';
-                        resultsContent.innerHTML = `<p style="color: #dc2626;">${Craft.escapeHtml(error.message)}</p>`;
+                        setMessageState(resultsTitle, 'error');
+                        resultsContent.innerHTML = `<p class="sm-test-error">${Craft.escapeHtml(error.message)}</p>`;
                     });
             });
 
@@ -378,8 +467,11 @@
 
                 if (data.success && data.promotions && data.promotions.length > 0) {
                     container.innerHTML = `
-                <p style="margin-bottom: 12px;"><strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>${T.matchedLabel}</strong> ${(data.promotions.length === 1 ? T.promotionsSingular : T.promotionsPlural).replace('{count}', data.promotions.length)}</p>
-                <table class="data fullwidth" style="margin: 0;">
+                <div class="sm-test-diagnostic-summary">
+                    <span><strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code></span>
+                    <span><strong>${T.matchedLabel}</strong> ${(data.promotions.length === 1 ? T.promotionsSingular : T.promotionsPlural).replace('{count}', data.promotions.length)}</span>
+                </div>
+                <table class="data fullwidth sm-test-table">
                     <thead>
                         <tr>
                             <th>${T.position}</th>
@@ -391,25 +483,25 @@
                     </thead>
                     <tbody>
                         ${data.promotions.map(p => `
-                            <tr${!p.enabled ? ' style="opacity: 0.5;"' : ''}>
-                                <td><span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-weight: 600;">#${p.position}</span></td>
+                            <tr${!p.enabled ? ' class="sm-test-row-disabled"' : ''}>
+                                <td><span class="sm-test-position">#${p.position}</span></td>
                                 <td>
                                     <a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
-                                    <span style="color: #9ca3af;">(ID: ${p.elementId})</span>
-                                    ${!p.enabled ? `<span style="background: #fee2e2; color: #dc2626; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-left: 6px; text-transform: uppercase;">${T.disabled}</span>` : ''}
+                                    <span class="sm-test-table-subtext">ID: ${p.elementId}</span>
+                                    ${!p.enabled ? `<span class="sm-test-disabled-badge">${T.disabled}</span>` : ''}
                                 </td>
                                 <td><code>${Craft.escapeHtml(p.matchType)}</code></td>
                                 <td><code>${Craft.escapeHtml(p.query)}</code></td>
-                                <td>
+                                <td class="sm-test-site-list">
                                     ${p.siteStatuses ? p.siteStatuses.map(s => `
-                                        <span style="background: ${s.isLive ? '#dcfce7' : '#fee2e2'}; color: ${s.isLive ? '#166534' : '#dc2626'}; padding: 2px 6px; border-radius: 3px; font-size: 11px; margin-right: 4px;">${Craft.escapeHtml(s.siteName)}</span>
+                                        <span class="${s.isLive ? 'sm-test-live-badge' : 'sm-test-not-live-badge'}">${Craft.escapeHtml(s.siteName)}</span>
                                     `).join('') : '-'}
                                 </td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
-                <p class="light" style="margin-top: 12px; font-size: 12px;">${T.promotionsNote}</p>
+                <p class="sm-test-promo-note">${T.promotionsNote}</p>
             `;
                 } else {
                     container.innerHTML = `<p class="light">${T.noPromotions.replace('{query}', Craft.escapeHtml(query))}</p>`;
@@ -420,13 +512,13 @@
                 const container = document.getElementById('queryrules-results');
 
                 if (data.success && data.rules && data.rules.length > 0) {
-                    const actionColors = {
-                        'synonym': '#dbeafe',
-                        'boost_section': '#dcfce7',
-                        'boost_category': '#dcfce7',
-                        'boost_element': '#dcfce7',
-                        'filter': '#fef3c7',
-                        'redirect': '#fee2e2',
+                    const actionClasses = {
+                        'synonym': 'blue',
+                        'boost_section': 'green',
+                        'boost_category': 'teal',
+                        'boost_element': 'lime',
+                        'filter': 'orange',
+                        'redirect': 'red',
                     };
 
                     let redirectHtml = '';
@@ -436,24 +528,32 @@
                             const el = redirectRule.elementInfo;
                             const elementUrl = Craft.escapeHtml(el.url || '');
                             redirectHtml = `
-                        <div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;">
-                            <strong>&rarr; ${T.redirectLabel}</strong> ${T.redirectsTo}
-                            <strong>${Craft.escapeHtml(el.type)}</strong>:
-                            <a href="${el.cpEditUrl}" target="_blank" style="font-weight: 600;">${Craft.escapeHtml(el.title)}</a>
-                            <span style="color: #9ca3af;">(ID: ${el.id})</span>
-                            <br><span style="color: #6b7280; font-size: 13px;">URL: <a href="${elementUrl}" target="_blank">${elementUrl}</a></span>
+                        <div class="sm-test-redirect-box">
+                            <div class="sm-test-redirect-heading">&rarr; ${T.redirectLabel}</div>
+                            <div class="sm-test-redirect-details">
+                                <div><strong>Target:</strong> <strong>${Craft.escapeHtml(el.type)}</strong> <a href="${el.cpEditUrl}" target="_blank">${Craft.escapeHtml(el.title)}</a> <span class="sm-test-muted">ID: ${el.id}</span></div>
+                                <div class="sm-test-redirect-url"><strong>URL:</strong> <a href="${elementUrl}" target="_blank">${elementUrl}</a></div>
+                            </div>
                         </div>`;
                         } else {
                             const redirectUrl = Craft.escapeHtml(String(data.redirect || ''));
-                            redirectHtml = `<div style="padding: 12px; background: #fee2e2; border-radius: 4px; margin-bottom: 12px;"><strong>&rarr; ${T.redirectLabel}</strong> ${T.redirectsTo} <a href="${redirectUrl}" target="_blank">${redirectUrl}</a></div>`;
+                            redirectHtml = `<div class="sm-test-redirect-url-box">
+                                <div class="sm-test-redirect-heading">&rarr; ${T.redirectLabel}</div>
+                                <div class="sm-test-redirect-details">
+                                    <div class="sm-test-redirect-url"><strong>URL:</strong> <a href="${redirectUrl}" target="_blank">${redirectUrl}</a></div>
+                                </div>
+                            </div>`;
                         }
                     }
 
                     container.innerHTML = `
-                <p style="margin-bottom: 12px;"><strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code> | <strong>${T.matchedLabel}</strong> ${(data.rules.length === 1 ? T.rulesSingular : T.rulesPlural).replace('{count}', data.rules.length)}</p>
+                <div class="sm-test-diagnostic-summary">
+                    <span><strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code></span>
+                    <span><strong>${T.matchedLabel}</strong> ${(data.rules.length === 1 ? T.rulesSingular : T.rulesPlural).replace('{count}', data.rules.length)}</span>
+                </div>
                 ${redirectHtml}
-                ${data.synonyms && data.synonyms.length > 0 ? `<div style="padding: 12px; background: #dbeafe; border-radius: 4px; margin-bottom: 12px;"><strong>${T.expandedQueriesLabel}</strong> ${data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(', ')}</div>` : ''}
-                <table class="data fullwidth" style="margin: 0;">
+                ${data.synonyms && data.synonyms.length > 1 ? `<div class="sm-test-synonyms-box"><strong>${T.expandedQueriesLabel}</strong> ${data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(', ')}</div>` : ''}
+                <table class="data fullwidth sm-test-table">
                     <thead>
                         <tr>
                             <th>${T.ruleName}</th>
@@ -469,10 +569,11 @@
                                 effectHtml = T.redirectToElement.replace('{link}', `<a href="${r.elementInfo.cpEditUrl}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`);
                             }
                             const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);
+                            const actionClass = actionClasses[r.actionType] || 'gray';
                             return `
                                 <tr>
                                     <td><a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a></td>
-                                    <td><span style="background: ${actionColors[r.actionType] || '#f3f4f6'}; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${actionLabel}</span></td>
+                                    <td>${renderStatusLabel(actionLabel, actionClass)}</td>
                                     <td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
                                     <td>${effectHtml}</td>
                                 </tr>
@@ -489,26 +590,26 @@
             function displaySearchResults(data, query) {
                 lastSearchData = data;
                 lastSearchQuery = query;
-                testResults.style.display = 'block';
+                testResults.hidden = false;
 
                 if (data.success) {
                     resultsTitle.innerHTML = (data.total === 1 ? T.foundResultsSingular : T.foundResultsPlural).replace('{count}', data.total);
-                    resultsTitle.style.color = '#059669';
+                    setMessageState(resultsTitle, 'success');
 
                     let html = `
-<div style="padding: 16px; background: #f0fdf4; border-left: 4px solid #059669; margin-bottom: 20px; border-radius: 0 4px 4px 0;">
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 14px;">
+<div class="sm-test-summary">
+    <div class="sm-test-summary-grid">
         <div><strong>${T.backendLabel}</strong> ${Craft.escapeHtml(data.backend)}</div>
         <div><strong>${T.executionLabel}</strong> ${data.executionTime}ms</div>
         <div><strong>${T.cacheLabel}</strong> ${data.cacheEnabled ? (data.cacheHit ? T.hit : T.miss) : T.disabled}${data.cacheDriver ? ' (' + data.cacheDriver + ')' : ''}</div>
         <div><strong>${T.queryUsedLabel}</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
-        <div><strong>${T.modeLabel}</strong> ${data.enriched ? `<span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px;">${T.enriched}</span>` : `<span style="background: #f3f4f6; color: #6b7280; padding: 2px 6px; border-radius: 3px;">${T.raw}</span>`}</div>
+        <div><strong>${T.modeLabel}</strong> ${data.enriched ? T.enriched : T.raw}</div>
     </div>
 </div>
 `;
 
                     if (data.total > 0) {
-                        html += '<div style="display: grid; gap: 12px;">';
+                        html += '<div class="sm-test-results-grid">';
                         data.hits.forEach(hit => {
                             const rawTitle = hit.title || T.untitled;
                             const rawDescription = hit.description || '';
@@ -535,44 +636,50 @@
                             const matchedTerms = hit.matchedTerms || [];
                             const matchedPhrases = hit.matchedPhrases || [];
                             const score = hit.score !== undefined && hit.score !== null ? Number(hit.score).toFixed(2) : T.naValue;
+                            const cardClass = isPromoted ? ' sm-test-result-card--promoted' : (isBoosted ? ' sm-test-result-card--boosted' : '');
 
                             html += `
-<div style="padding: 16px; border: 1px solid ${isPromoted ? '#fbbf24' : (isBoosted ? '#34d399' : '#e5e7eb')}; border-radius: 4px; background: ${isPromoted ? '#fffbeb' : (isBoosted ? '#ecfdf5' : '#fff')};">
-    <div style="display: flex; gap: 12px; align-items: start;">
-        ${thumbnail ? `<img src="${thumbnail}" style="width: 48px; height: 48px; border-radius: 6px; object-fit: cover; flex-shrink: 0; border: 1px solid #e5e7eb;" alt="">` : ''}
-        <div style="flex: 1; min-width: 0;">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                <div style="flex: 1;">
-                    ${isPromoted ? `<span style="background: #fef3c7; color: #92400e; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px; text-transform: uppercase;">${T.promoted}</span>` : ''}
-                    ${isBoosted ? `<span style="background: #d1fae5; color: #065f46; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; margin-right: 8px; text-transform: uppercase;">${T.boosted}</span>` : ''}
-                    <strong style="color: #111827; font-size: 15px;">${title}</strong>
-                    ${url ? `<div style="font-size: 12px; color: #6b7280; margin-top: 4px;"><a href="${url}" target="_blank" style="color: #0d78f2;">${urlText}</a></div>` : ''}
+<div class="sm-test-result-card${cardClass}">
+    <div class="sm-test-result-layout">
+        ${thumbnail ? `<img src="${thumbnail}" class="sm-test-thumb" alt="">` : ''}
+        <div class="sm-test-result-main">
+            <div class="sm-test-result-header">
+                <div class="sm-test-result-title-wrap">
+                    <strong class="sm-test-title">${title}</strong>
+                    ${url ? `<div class="sm-test-url"><a href="${url}" target="_blank">${urlText}</a></div>` : ''}
                 </div>
-                <div style="display: flex; gap: 8px; margin-left: 12px;">
-                    <span style="background: #f3f4f6; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                <div class="sm-test-signals">
+                    ${isPromoted ? `<span class="sm-test-status sm-test-status--promoted">${T.promoted}</span>` : ''}
+                    ${isBoosted ? `<span class="sm-test-status sm-test-status--boosted">${T.boosted}</span>` : ''}
+                    <span class="sm-test-score">
                         ${T.scoreLabel} ${score}
                     </span>
                 </div>
             </div>
-            <div style="font-size: 12px; color: #9ca3af; margin-bottom: 8px;">
-                ID: #${objectIdDisplay} &bull; ${T.typeLabel} ${type}${section ? ' &bull; ' + T.sectionLabel + ' ' + section : ''}${indexHandle ? ' &bull; ' + T.indexLabel + ' <code>' + indexHandle + '</code>' : ''} &bull; <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 3px; font-size: 11px;">${T.siteLabel} ${siteName} (${language})</span>
+            <div class="sm-test-meta">
+                <span class="sm-test-meta-item"><span class="sm-test-meta-label">ID</span> #${objectIdDisplay}</span>
+                <span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.typeLabel}</span> ${type}</span>
+                ${section ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}</span>` : ''}
+                ${indexHandle ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.indexLabel}</span> <code>${indexHandle}</code></span>` : ''}
+                <span class="sm-test-site-badge"><span class="sm-test-meta-label">${T.siteLabel}</span> ${siteName} (${language})</span>
             </div>
-            ${matchedIn ? `<div style="font-size: 12px; color: #6b7280; margin-bottom: 8px;"><strong>${T.matchedInLabel}</strong> <code>${matchedIn}</code></div>` : ''}
-            ${displayText ? `<div style="color: #4b5563; line-height: 1.6; font-size: 14px;">${displayText}${rawDisplayText.length > 400 ? '...' : ''}</div>` : ''}
-            ${matchedHeadings.length > 0 ? `<div style="margin-top: 8px; padding: 8px 12px; background: #f8fafc; border-radius: 4px; border-left: 3px solid #6366f1;">
-                <div style="font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;">${T.matchedHeadings}</div>
-                ${matchedHeadings.map(h => `<div style="font-size: 13px; color: #374151; padding: 2px 0;"><span style="color: #a5b4fc; font-size: 10px; font-weight: 600; margin-right: 6px;">${Craft.escapeHtml(h.tag || 'h2')}</span>${Craft.escapeHtml(h.text)}</div>`).join('')}
+            ${matchedIn ? `<div class="sm-test-match-line"><strong>${T.matchedInLabel}</strong> <code>${matchedIn}</code></div>` : ''}
+            ${displayText ? `<div class="sm-test-description">${displayText}${rawDisplayText.length > 400 ? '...' : ''}</div>` : ''}
+            ${matchedHeadings.length > 0 ? `<div class="sm-test-headings">
+                <div class="sm-test-headings-title">${T.matchedHeadings}</div>
+                ${matchedHeadings.map(h => `<div class="sm-test-heading-row"><span class="sm-test-heading-tag">${Craft.escapeHtml(h.tag || 'h2')}</span>${Craft.escapeHtml(h.text)}</div>`).join('')}
             </div>` : ''}
-            ${matchedTerms.length > 0 || matchedPhrases.length > 0 ? `<div style="font-size: 12px; color: #6b7280; margin-top: 6px;">
-                ${matchedTerms.length > 0 ? `<strong>${T.termsLabel}</strong> ${matchedTerms.map(t => '<code style="background: #fef3c7; padding: 1px 4px; border-radius: 2px;">' + Craft.escapeHtml(t) + '</code>').join(' ')}` : ''}
-                ${matchedPhrases.length > 0 ? `${matchedTerms.length > 0 ? ' &bull; ' : ''}<strong>${T.phrasesLabel}</strong> ${matchedPhrases.map(p => '<code style="background: #dbeafe; padding: 1px 4px; border-radius: 2px;">' + Craft.escapeHtml(p) + '</code>').join(' ')}` : ''}
+            ${matchedTerms.length > 0 || matchedPhrases.length > 0 ? `<div class="sm-test-terms">
+                ${matchedTerms.length > 0 ? `<strong>${T.termsLabel}</strong> ${matchedTerms.map(t => '<code class="sm-test-term">' + Craft.escapeHtml(t) + '</code>').join(' ')}` : ''}
+                ${matchedPhrases.length > 0 ? `${matchedTerms.length > 0 ? ' &bull; ' : ''}<strong>${T.phrasesLabel}</strong> ${matchedPhrases.map(p => '<code class="sm-test-phrase">' + Craft.escapeHtml(p) + '</code>').join(' ')}` : ''}
             </div>` : ''}
-            ${hit._snippet ? `<div style="margin-top: 8px; padding: 8px 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 12px; color: #64748b; display: flex; gap: 16px; flex-wrap: wrap;">
-                <span><span style="color: #94a3b8;">${T.snippetMatchedIn}</span> <strong>${Craft.escapeHtml(hit._snippet.snippetSource || '-')}</strong></span>
-                <span><span style="color: #94a3b8;">${T.snippetMode}</span> <strong>${Craft.escapeHtml(hit._snippet.snippetMode || '-')}</strong></span>
-                <span><span style="color: #94a3b8;">${T.snippetFrom}</span> <strong>${Craft.escapeHtml(hit._snippet.snippetFrom || '-')}</strong></span>
-                ${hit._snippet.fullContentLength ? `<span><span style="color: #94a3b8;">${T.snippetContent}</span> <strong>${(hit._snippet.fullContentLength === 1 ? T.charsSingular : T.charsPlural).replace('{count}', hit._snippet.fullContentLength.toLocaleString())}</strong></span>` : ''}
+            ${hit._snippet ? `<div class="sm-test-debug-strip">
+                <span><span class="sm-test-debug-label">${T.snippetMatchedIn}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetSource || '-')}</strong></span>
+                <span><span class="sm-test-debug-label">${T.snippetMode}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetMode || '-')}</strong></span>
+                <span><span class="sm-test-debug-label">${T.snippetFrom}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetFrom || '-')}</strong></span>
+                ${hit._snippet.fullContentLength ? `<span><span class="sm-test-debug-label">${T.snippetContent}</span> <strong class="sm-test-debug-value">${(hit._snippet.fullContentLength === 1 ? T.charsSingular : T.charsPlural).replace('{count}', hit._snippet.fullContentLength.toLocaleString())}</strong></span>` : ''}
             </div>` : ''}
+            ${renderIndexedDocumentDebug(hit)}
         </div>
     </div>
 </div>
@@ -581,9 +688,9 @@
                         html += '</div>';
                     } else {
                         html += `
-<div style="text-align: center; padding: 40px; color: #9ca3af;">
-    <p style="font-size: 18px; margin: 0;">${T.noResults.replace('{query}', Craft.escapeHtml(query))}</p>
-    <p style="font-size: 14px; margin: 8px 0 0;">${T.tryDifferent}</p>
+<div class="sm-test-empty">
+    <p class="sm-test-empty-title">${T.noResults.replace('{query}', Craft.escapeHtml(query))}</p>
+    <p class="sm-test-empty-copy">${T.tryDifferent}</p>
 </div>
 `;
                     }
@@ -591,15 +698,15 @@
                     resultsContent.innerHTML = html;
                 } else {
                     resultsTitle.innerHTML = T.searchFailed;
-                    resultsTitle.style.color = '#dc2626';
-                    resultsContent.innerHTML = `<p style="color: #dc2626;">${Craft.escapeHtml(data.error || T.unknownError)}</p>`;
+                    setMessageState(resultsTitle, 'error');
+                    resultsContent.innerHTML = `<p class="sm-test-error">${Craft.escapeHtml(data.error || T.unknownError)}</p>`;
                 }
             }
 
             testQueryInput.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    autocompleteDropdown.style.display = 'none';
+                    autocompleteDropdown.hidden = true;
                     testButton.click();
                 }
             });
