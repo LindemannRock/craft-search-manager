@@ -128,6 +128,14 @@ final class ApiKeyAuthenticationTest extends TestCase
         $this->assertTrue($this->runApiBeforeAction());
     }
 
+    public function testApiControllerIgnoresInvalidHeaderWhenRequireApiKeyIsOff(): void
+    {
+        SearchManager::$plugin->getSettings()->requireApiKey = false;
+        $this->installHeaderRequest('sm_pub_' . str_repeat('0', 32));
+
+        $this->assertTrue($this->runApiBeforeAction());
+    }
+
     public function testApiControllerRequiresHeaderWhenRequireApiKeyIsOn(): void
     {
         SearchManager::$plugin->getSettings()->requireApiKey = true;
@@ -144,6 +152,17 @@ final class ApiKeyAuthenticationTest extends TestCase
         $this->installHeaderRequest($plaintext);
 
         $this->assertTrue($this->runApiBeforeAction());
+    }
+
+    public function testApiControllerRejectsServerHeaderWhenRequireApiKeyIsOn(): void
+    {
+        [, $plaintext] = $this->seedKey(ApiKey::TYPE_SERVER);
+        SearchManager::$plugin->getSettings()->requireApiKey = true;
+        $this->installHeaderRequest($plaintext);
+
+        $this->expectException(UnauthorizedHttpException::class);
+        $this->expectExceptionMessage('Invalid API key.');
+        $this->runApiBeforeAction();
     }
 
     public function testApiControllerRejectsDisabledHeaderWhenRequireApiKeyIsOn(): void

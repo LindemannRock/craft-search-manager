@@ -273,23 +273,31 @@ class ApiKeyService extends Component
     }
 
     /**
-     * Authenticate a presented key and apply the public-key referrer check —
+     * Authenticate a presented key for public browser/headless endpoints and
+     * apply the public-key referrer check —
      * the gate shared by the search/autocomplete (ApiController) and tracking
-     * (SearchController) endpoints. Index / siteId / rate-limit checks are NOT
-     * here; they differ per endpoint group and are applied by the caller.
+     * (SearchController) endpoints. Server keys are deliberately rejected here:
+     * they remain valid for trusted server-side integrations that authenticate
+     * through a server-specific gate, but must not authorize public endpoints or
+     * browser-rendered widgets. Index / siteId / rate-limit checks are NOT here;
+     * they differ per endpoint group and are applied by the caller.
      *
      * @throws UnauthorizedHttpException 401 — missing, unknown, or invalid key.
-     * @throws ForbiddenHttpException 403 — disabled/expired key, or a public
-     *   key whose referrer is outside its allowed referrers.
+     * @throws ForbiddenHttpException 403 — disabled/expired key, or a public key
+     *   whose referrer is outside its allowed referrers.
      * @since 5.47.0
      */
     public function authenticateRequest(?string $plaintext, ?string $referer): ApiKey
     {
         $key = $this->authenticate($plaintext);
 
-        // Public keys are referrer-restricted; server keys are trusted
-        // backend-to-backend and skip the check.
-        if ($key->type === ApiKey::TYPE_PUBLIC && !$key->allowsReferrer($referer)) {
+        if ($key->type !== ApiKey::TYPE_PUBLIC) {
+            // Keep public endpoint failures undifferentiated: callers should not
+            // learn whether a presented secret was a valid server key.
+            throw new UnauthorizedHttpException('Invalid API key.');
+        }
+
+        if (!$key->allowsReferrer($referer)) {
             // Raw English — JSON API response (see exception-messages.md).
             throw new ForbiddenHttpException('Referrer not allowed for this API key.');
         }

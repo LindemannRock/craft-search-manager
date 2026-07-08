@@ -18,6 +18,7 @@ use lindemannrock\searchmanager\tests\TestCase;
 use yii\base\Action;
 use yii\web\ForbiddenHttpException;
 use yii\web\HeaderCollection;
+use yii\web\UnauthorizedHttpException;
 
 /**
  * Pins the slice 2b authorization contract: the API key's index permission
@@ -188,14 +189,15 @@ final class ApiKeyAuthorizationTest extends TestCase
         $this->runApiBeforeAction();
     }
 
-    public function testServerKeySkipsReferrerCheck(): void
+    public function testServerKeyIsRejectedBeforeReferrerCheck(): void
     {
-        // Server key with a referrer list still set — the gate must NOT apply.
         [, $plaintext] = $this->seedKey(type: ApiKey::TYPE_SERVER, allowedReferrers: ['example.com']);
         SearchManager::$plugin->getSettings()->requireApiKey = true;
         $this->installRequest($plaintext, 'https://anywhere.example/');
 
-        $this->assertTrue($this->runApiBeforeAction());
+        $this->expectException(UnauthorizedHttpException::class);
+        $this->expectExceptionMessage('Invalid API key.');
+        $this->runApiBeforeAction();
     }
 
     private function svc(): \lindemannrock\searchmanager\services\ApiKeyService

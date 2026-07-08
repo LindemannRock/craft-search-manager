@@ -5,7 +5,7 @@
 A CRUD surface for generating, scoping, and revoking API keys that gate access to the public search, autocomplete, and analytics tracking endpoints.
 
 > [!IMPORTANT]
-> **What keys gate.** When **Require API Key** is enabled (Settings → General → API Access), the public **search** and **autocomplete** endpoints require a valid key in the `X-Search-Manager-Key` header — requests without a valid, active, in-scope key are rejected (`401` for a missing/invalid key, `403` for a disabled or expired key). When the setting is disabled (the default), those endpoints stay anonymous and behave exactly as before.
+> **What keys gate.** When **Require API Key** is enabled (Settings → General → API Access), the public **search** and **autocomplete** endpoints require a valid public key in the `X-Search-Manager-Key` header — requests without a valid, active, in-scope public key are rejected (`401` for a missing/invalid key, including server keys on public endpoints; `403` for a disabled or expired key). When the setting is disabled (the default), those endpoints stay anonymous and behave exactly as before.
 >
 > The `track-search` / `track-click` analytics endpoints are gated too when the setting is on — same key + referrer + allowed-indices checks — so analytics writes also require a valid key. Tracking pings are **not** rate-limited (they're noisy by design). When the setting is off, all four endpoints stay anonymous.
 
@@ -35,7 +35,7 @@ The `type` field describes the **intended exposure**, not a restriction-bypass:
 | **Public** | `sm_pub_…` | Safe to embed in browser-side code (widget selector, config-file widget override, JS fetch). Pair with strict `allowedReferrers`. |
 | **Server** | `sm_srv_…` | Intended for server-to-server calls only. Should never appear in HTML, JS bundles, or mobile-app binaries. |
 
-Both types accept the same restrictions. The distinction exists so operators (and code reviewers) can tell at a glance whether a key was provisioned for the browser or for a backend caller. Type is locked once the key is generated — it's encoded in the prefix and changing it would invalidate the hash.
+Both types accept the same stored restrictions. Public endpoints accept public keys only; server keys are for trusted server-side integrations and should not be sent to browser-facing search, autocomplete, or tracking endpoints. Type is locked once the key is generated — it's encoded in the prefix and changing it would invalidate the hash.
 
 ### Which type should I use?
 
@@ -43,11 +43,11 @@ Both types accept the same restrictions. The distinction exists so operators (an
 |--------|-----|-----|
 | Website search page using browser JavaScript | **Public** key | Browser users can see the key in DevTools and network requests. Scope it to the page's indices and add strict referrer patterns. |
 | Search Manager frontend widget | **Public** key | CP widgets select a public key by name, handle, and prefix; config-file widgets can reference a CP-managed public key by handle or provide a public key override. The widget emits the resolved key into page HTML and sends it from browser-side JavaScript. Never use a server key. |
-| External server or backend service | **Server** key | The key stays server-side and does not rely on a browser `Referer` header. |
-| Mobile app through your own backend | **Server** key on your backend | Recommended. The mobile app calls your backend, and your backend calls Search Manager with the server key. |
+| External server or backend service | **Server** key | The key stays server-side and is reserved for trusted server-side integrations. Do not send it to the public browser endpoints. |
+| Mobile app through your own backend | **Public** key to Search Manager, or a server key for your own trusted integration layer | Recommended. The mobile app calls your backend; if your backend forwards to Search Manager's public REST endpoints, use a narrowly scoped public key there. |
 | Mobile app calling Search Manager directly | **Avoid when possible** | Native apps cannot use browser referrer restrictions reliably. Prefer a backend proxy; if direct calls are unavoidable, scope the key narrowly and use expiry/rate limits. |
 
-Server keys skip the public-key referrer check, but they still respect enabled/disabled state, expiry, allowed indices, max hits per page, and rate limits.
+Server keys are rejected by public search, autocomplete, and tracking endpoints so they cannot be exposed through browser/widget traffic.
 
 ## Restrictions
 
@@ -178,7 +178,7 @@ php craft search-manager/api-keys/create \
 
 The plaintext is printed to stdout exactly once and never logged. See [Console Commands](../developers/console-commands.md#api-keys) for the full option list.
 
-For a backend integration, create a server key and keep the plaintext on the server:
+For a trusted server-side integration, create a server key and keep the plaintext on the server:
 
 ```bash
 php craft search-manager/api-keys/create \
@@ -189,12 +189,7 @@ php craft search-manager/api-keys/create \
   --rate-limit=120
 ```
 
-Then send it from the server-side caller:
-
-```text
-GET /actions/search-manager/api/search?q=test&indices=docs-en
-X-Search-Manager-Key: sm_srv_a1b2c3d4e5f6...
-```
+Do not send server keys to the public REST endpoints. If a backend needs to call Search Manager's public search/autocomplete/tracking endpoints, give that backend a narrowly scoped public key instead.
 
 ## Next steps
 

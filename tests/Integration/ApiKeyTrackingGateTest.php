@@ -75,6 +75,15 @@ final class ApiKeyTrackingGateTest extends TestCase
         $this->assertTrue($this->runBeforeAction('track-click'));
     }
 
+    public function testTrackingIgnoresInvalidKeyWhenRequireApiKeyOff(): void
+    {
+        SearchManager::$plugin->getSettings()->requireApiKey = false;
+        $this->installRequest(apiKey: 'sm_pub_' . str_repeat('0', 32));
+
+        $this->assertTrue($this->runBeforeAction('track-search'));
+        $this->assertTrue($this->runBeforeAction('track-click'));
+    }
+
     public function testMissingKeyThrows401(): void
     {
         SearchManager::$plugin->getSettings()->requireApiKey = true;
@@ -177,13 +186,15 @@ final class ApiKeyTrackingGateTest extends TestCase
         $this->runBeforeAction('track-search');
     }
 
-    public function testServerKeySkipsReferrer(): void
+    public function testServerKeyIsRejected(): void
     {
         [, $plaintext] = $this->seedKey(type: ApiKey::TYPE_SERVER, allowedReferrers: ['example.com']);
         SearchManager::$plugin->getSettings()->requireApiKey = true;
         $this->installRequest(apiKey: $plaintext, referer: 'https://anywhere.example/');
 
-        $this->assertTrue($this->runBeforeAction('track-search'));
+        $this->expectException(UnauthorizedHttpException::class);
+        $this->expectExceptionMessage('Invalid API key.');
+        $this->runBeforeAction('track-search');
     }
 
     public function testAllowsIndexInAllowlist(): void

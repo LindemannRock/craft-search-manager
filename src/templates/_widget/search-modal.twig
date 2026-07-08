@@ -87,6 +87,7 @@
 {# Public API key — render-time override wins over the saved widget setting.
    Sent as the X-Search-Manager-Key header by the widget when requireApiKey is on. #}
 {% set apiKey = apiKey ?? widgetConfig.getApiKey() %}
+{% set apiKey = apiKey is string and apiKey|trim starts with 'sm_pub_' ? apiKey|trim : '' %}
 
 {# Resolve render styles first (needed for highlighting/backdrop defaults) #}
 {% set styleOverrides = styles is defined and styles is iterable ? styles : {} %}

@@ -53,9 +53,10 @@ class ApiController extends Controller
      * @inheritdoc
      *
      * Slice 2 enforcement gate: when the operator enables `requireApiKey`, every
-     * action on this controller requires a valid, active key in the
+     * action on this controller requires a valid, active public key in the
      * `X-Search-Manager-Key` header (401 missing/invalid, 403 disabled/expired).
-     * Public keys are additionally referrer-restricted; server keys are not.
+     * Public keys are referrer-restricted; server keys remain for trusted
+     * server-specific gates, not this public browser/headless gate.
      * When disabled (default), the endpoints stay anonymous — backward
      * compatible. `$allowAnonymous` stays true so the action is reachable; this
      * gate is the real access control (audit #16).

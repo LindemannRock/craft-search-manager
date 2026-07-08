@@ -75,6 +75,14 @@ final class WidgetFrontendHardeningTest extends TestCase
         self::assertStringNotContainsString('resolvedStyles = resolvedStyles|merge(styles)', $source);
     }
 
+    public function testPublicWidgetTemplateOnlyEmitsPublicApiKeys(): void
+    {
+        $source = $this->readPluginFile('src/templates/_widget/search-modal.twig');
+
+        self::assertStringContainsString("{% set apiKey = apiKey is string and apiKey|trim starts with 'sm_pub_' ? apiKey|trim : '' %}", $source);
+        self::assertStringContainsString('{% if apiKey %}api-key="{{ apiKey|e(\'html_attr\') }}"{% endif %}', $source);
+    }
+
     public function testCpWidgetPreviewTemplateKeepsPreviewStyleResolver(): void
     {
         $source = $this->readPluginFile('src/templates/widgets/_shared/preview.twig');
