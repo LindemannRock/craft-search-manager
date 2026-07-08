@@ -14,6 +14,7 @@ use Craft;
 use craft\elements\Entry;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\ConfiguredBackend;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
@@ -88,6 +89,28 @@ final class HandleUniquenessTest extends TestCase
         self::assertFalse($duplicate->validate(['handle']));
         self::assertSame(['Handle must be unique.'], $duplicate->getErrors('handle'));
     }
+
+    public function testApiKeyDuplicateHandleValidationRunsBeforeDbUniqueIndex(): void
+    {
+        $existingId = $this->insertApiKey($this->prefix . '-api-key');
+
+        $duplicate = new ApiKey();
+        $duplicate->name = 'Duplicate API Key';
+        $duplicate->handle = $this->prefix . '-api-key';
+        $duplicate->type = ApiKey::TYPE_PUBLIC;
+
+        self::assertFalse($duplicate->validate(['handle']));
+        self::assertSame(['Handle must be unique.'], $duplicate->getErrors('handle'));
+
+        $existing = new ApiKey();
+        $existing->id = $existingId;
+        $existing->name = 'Existing API Key';
+        $existing->handle = $this->prefix . '-api-key';
+        $existing->type = ApiKey::TYPE_PUBLIC;
+
+        self::assertTrue($existing->validate(['handle']));
+    }
+
 
     public function testWidgetStyleKeepsAutoSuffixPolicyThroughSharedHelper(): void
     {
@@ -203,6 +226,32 @@ final class HandleUniquenessTest extends TestCase
         return (int)Craft::$app->getDb()->getLastInsertID();
     }
 
+    private function insertApiKey(string $handle): int
+    {
+        $now = Db::prepareDateForDb(new \DateTimeImmutable());
+
+        Craft::$app->getDb()->createCommand()->insert('{{%searchmanager_api_keys}}', [
+            'name' => 'Test API Key',
+            'handle' => $handle,
+            'type' => ApiKey::TYPE_PUBLIC,
+            'enabled' => 1,
+            'keyHash' => str_repeat('a', 64),
+            'encryptedKey' => null,
+            'keyPrefix' => 'sm_pub_' . substr(md5($handle), 0, 8),
+            'allowedIndices' => '["*"]',
+            'allowedReferrers' => '[]',
+            'maxHitsPerPage' => null,
+            'validUntil' => null,
+            'rateLimit' => null,
+            'lastUsedAt' => null,
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ])->execute();
+
+        return (int)Craft::$app->getDb()->getLastInsertID();
+    }
+
     private function deleteTestRows(): void
     {
         foreach ([
@@ -210,6 +259,7 @@ final class HandleUniquenessTest extends TestCase
             '{{%searchmanager_indices}}',
             '{{%searchmanager_widget_configs}}',
             '{{%searchmanager_widget_styles}}',
+            '{{%searchmanager_api_keys}}',
         ] as $table) {
             Craft::$app->getDb()
                 ->createCommand()

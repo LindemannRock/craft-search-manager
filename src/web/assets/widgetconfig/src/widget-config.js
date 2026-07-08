@@ -20,8 +20,8 @@
 		}
 	}
 
-	function allowedValues(selectedKeyId, scopes, allOptions) {
-		var scope = scopes[selectedKeyId] || '*';
+	function allowedValues(selectedKeyHandle, scopes, allOptions) {
+		var scope = scopes[selectedKeyHandle] || '*';
 		if (scope === '*') {
 			return allOptions.map(function(option) {
 				return option.value;
@@ -65,7 +65,7 @@
 	}
 
 	function init() {
-		var select = document.getElementById('settings-apiKeyId');
+		var select = document.getElementById('settings-apiKeyHandle');
 		var fieldset = document.getElementById('search-indexHandles');
 		if (!select || !fieldset) {
 			return;

@@ -689,7 +689,7 @@ return [
          * - enabled: Whether the config is active
          * - styleHandle: Handle of a widget style preset (from widgetStyles below or CP)
          * - settings: Widget settings (merged with defaults)
-         *   - apiKeyId: CP widget configs store the selected public API key ID
+         *   - apiKeyHandle: CP widget configs store the selected public API key handle
          *   - apiKey: Direct public key value for config-file/runtime widgets
          *   - search: Search settings
          *     - indexHandles: Array of index handles to search (empty = all, max 5)
@@ -743,7 +743,7 @@ return [
             //     'settings' => [
             //         // Config-file public API key sent as X-Search-Manager-Key when Require API Key is enabled.
             //         // Use a public, referrer-restricted key scoped to this widget's indices.
-            //         // CP widget configs use apiKeyId selectors; never use a server key here.
+            //         // CP widget configs use apiKeyHandle selectors; never use a server key here.
             //         // This value is emitted into page HTML.
             //         // You may use App::env('SEARCH_MANAGER_WIDGET_API_KEY') for environment-specific config,
             //         // but the resolved value is still emitted into rendered HTML.
@@ -802,7 +802,7 @@ return [
             //     'type' => 'modal',
             //     'enabled' => true,
             //     'settings' => [
-            //         // Config-file public API key override. CP widgets should select apiKeyId instead.
+            //         // Config-file public API key override. CP widgets should select apiKeyHandle instead.
             //         // 'apiKey' => 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
             //         'search' => [
             //             'indexHandles' => ['docs-manager'],

@@ -461,6 +461,7 @@ final class ApiKeyServiceTest extends TestCase
         $generated = SearchManager::$plugin->apiKeys->generateKey(ApiKey::TYPE_PUBLIC);
         $key = new ApiKey();
         $key->name = self::TEST_KEY_NAME_PREFIX . '_validate';
+        $key->handle = 'sm-dedup-test-validate';
         $key->type = ApiKey::TYPE_PUBLIC;
         $key->keyHash = $generated['hash'];
         $key->keyPrefix = $generated['prefix'];

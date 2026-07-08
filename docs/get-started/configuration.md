@@ -263,6 +263,7 @@ Widget configurations define how the frontend search widget appears and behaves:
         'enabled' => true,
         'styleHandle' => 'brand-dark',  // Link to a widget style preset
         'settings' => [
+            'apiKeyHandle' => 'main-widget-key', // CP-managed public key handle
             'search' => [
                 'indexHandles' => ['entries-en'],
                 'placeholder' => 'Search...',

@@ -250,22 +250,26 @@ class WidgetConfigService extends Component
     }
 
     /**
-     * Get widget configs that reference a selected API key.
+     * Get widget configs that reference a selected API key handle.
      *
      * Config-file widgets count because they participate in runtime rendering
      * and can be broken by deleting or narrowing the referenced key.
      *
      * @return WidgetConfig[]
      */
-    public function findConfigsUsingApiKey(int $apiKeyId): array
+    public function findConfigsUsingApiKeyHandle(string $handle): array
     {
-        if ($apiKeyId <= 0) {
+        $handle = trim($handle);
+        if ($handle === '') {
             return [];
         }
 
+        $apiKey = ApiKey::findByHandle($handle);
+
         return array_values(array_filter(
             $this->getAll(),
-            static fn(WidgetConfig $config): bool => $config->getApiKeyId() === $apiKeyId,
+            static fn(WidgetConfig $config): bool => $config->getApiKeyHandle() === $handle
+                || ($apiKey !== null && $apiKey->id !== null && $config->getApiKeyId() === $apiKey->id),
         ));
     }
 
@@ -279,12 +283,12 @@ class WidgetConfigService extends Component
      */
     public function findConfigsBrokenByApiKeyScope(ApiKey $apiKey): array
     {
-        if ($apiKey->id === null || $apiKey->allowsAllIndices()) {
+        if ($apiKey->handle === '' || $apiKey->allowsAllIndices()) {
             return [];
         }
 
         $broken = [];
-        foreach ($this->findConfigsUsingApiKey((int)$apiKey->id) as $config) {
+        foreach ($this->findConfigsUsingApiKeyHandle($apiKey->handle) as $config) {
             $handles = $config->getSetting('search.indexHandles', []);
             if ($handles === '' || $handles === [] || !is_array($handles)) {
                 continue;

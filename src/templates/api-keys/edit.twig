@@ -107,6 +107,17 @@
         data: {key: 'name'},
     }) }}
 
+    {{ forms.textField({
+        label: 'Handle'|t('search-manager'),
+        instructions: 'Stable identifier used by widget configs to reference this key.'|t('search-manager'),
+        id: 'handle',
+        name: 'handle',
+        value: apiKey.handle,
+        required: true,
+        errors: apiKey.getErrors('handle'),
+        data: {key: 'handle'},
+    }) }}
+
     {% if isNew %}
         {{ forms.selectField({
             label: 'Type'|t('search-manager'),

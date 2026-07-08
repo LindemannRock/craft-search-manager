@@ -44,11 +44,11 @@
 {{ forms.selectField({
 	label: 'API Key'|t('search-manager'),
 	instructions: 'Select a public API key for this widget. Only the key name and prefix are shown; the full key is never displayed in the control panel. A render-time `apiKey` override still takes precedence.'|t('search-manager'),
-	id: 'settings-apiKeyId',
-	name: 'settings[apiKeyId]',
-	value: widgetConfig.getApiKeyId(),
+	id: 'settings-apiKeyHandle',
+	name: 'settings[apiKeyHandle]',
+	value: widgetConfig.getApiKeyHandle(),
 	options: widgetApiKeyOptions,
-	errors: widgetConfig.getErrors('settings.apiKeyId'),
+	errors: widgetConfig.getErrors('settings.apiKeyHandle'),
 }) }}
 
 {% if not hasWidgetUsableApiKeys %}

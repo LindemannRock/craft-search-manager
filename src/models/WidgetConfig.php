@@ -68,7 +68,7 @@ class WidgetConfig extends Model
     public static function defaultSettings(): array
     {
         return [
-            'apiKeyId' => null,
+            'apiKeyHandle' => '',
             'search' => [
                 'indexHandles' => [], // Empty = search all indices
                 'placeholder' => 'Search...',
@@ -453,16 +453,33 @@ class WidgetConfig extends Model
         return is_numeric($value) ? (int)$value : null;
     }
 
+    public function getApiKeyHandle(): string
+    {
+        $value = $this->getSetting('apiKeyHandle', '');
+        if (is_string($value)) {
+            return trim($value);
+        }
+
+        return '';
+    }
+
     public function getSelectedApiKey(): ?ApiKey
     {
+        $key = SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyByHandle($this->getApiKeyHandle());
+        if ($key !== null) {
+            return $key;
+        }
+
         return SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyById($this->getApiKeyId());
     }
 
     /**
      * The public API key this widget sends as the `X-Search-Manager-Key`
      * header. Render-time `apiKey` overrides happen in the Twig include. This
-     * resolves saved `apiKeyId` values first and falls back to direct
-     * `settings.apiKey` values from config-file/runtime data.
+     * resolves saved `apiKeyHandle` values first and falls back to direct
+     * `settings.apiKey` values from config-file/runtime data. Numeric IDs are
+     * still accepted when reading older database settings from pre-release
+     * test installs, but CP saves write handles.
      *
      * @since 5.47.0
      */
@@ -721,19 +738,29 @@ class WidgetConfig extends Model
      */
     private function validateApiKeySelection(array $settings): ?ApiKey
     {
-        $raw = $settings['apiKeyId'] ?? null;
+        $raw = $settings['apiKeyHandle'] ?? null;
         if ($raw === null || $raw === '') {
+            $idFallback = $settings['apiKeyId'] ?? null;
+            if ($idFallback === null || $idFallback === '') {
+                return null;
+            }
+            $key = is_numeric($idFallback)
+                ? SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyById((int)$idFallback)
+                : null;
+            if ($key === null) {
+                $this->addError('settings.apiKeyHandle', Craft::t('search-manager', 'Select a valid widget API key.'));
+            }
+            return $key;
+        }
+
+        if (!is_string($raw)) {
+            $this->addError('settings.apiKeyHandle', Craft::t('search-manager', 'Select a valid widget API key.'));
             return null;
         }
 
-        if (!is_numeric($raw)) {
-            $this->addError('settings.apiKeyId', Craft::t('search-manager', 'Select a valid widget API key.'));
-            return null;
-        }
-
-        $key = SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyById((int)$raw);
+        $key = SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyByHandle($raw);
         if ($key === null) {
-            $this->addError('settings.apiKeyId', Craft::t('search-manager', 'Select a valid widget API key.'));
+            $this->addError('settings.apiKeyHandle', Craft::t('search-manager', 'Select a valid widget API key.'));
         }
 
         return $key;

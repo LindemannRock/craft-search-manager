@@ -15,6 +15,7 @@
 
 {% set columns = [
     {key: 'name', label: 'Name'|t('search-manager'), sortable: true},
+    {key: 'handle', label: 'Handle'|t('search-manager'), sortable: true, hideable: true},
     {key: 'status', label: 'Status'|t('search-manager'), sortable: true},
     {key: 'type', label: 'Type'|t('search-manager'), sortable: true, hideable: true},
     {key: 'prefix', label: 'Prefix'|t('search-manager'), sortable: false},
@@ -120,6 +121,10 @@
         {% else %}
             {{ item.name }}
         {% endif %}
+    </td>
+
+    <td data-column="handle">
+        <code>{{ item.handle }}</code>
     </td>
 
     <td data-column="status">

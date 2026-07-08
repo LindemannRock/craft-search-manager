@@ -157,7 +157,22 @@ class ApiKeyService extends Component
 
     public function widgetKeyLabel(ApiKey $key): string
     {
-        return trim($key->name) . ' — ' . $key->keyPrefix . '...';
+        return trim($key->name) . ' (' . $key->handle . ') — ' . $key->keyPrefix . '...';
+    }
+
+    public function findWidgetUsablePublicKeyByHandle(?string $handle): ?ApiKey
+    {
+        $handle = trim((string)$handle);
+        if ($handle === '') {
+            return null;
+        }
+
+        $key = ApiKey::findByHandle($handle);
+        if ($key === null || !$key->isWidgetUsable() || $this->decryptPlaintextKey($key) === null) {
+            return null;
+        }
+
+        return $key;
     }
 
     public function findWidgetUsablePublicKeyById(?int $id): ?ApiKey

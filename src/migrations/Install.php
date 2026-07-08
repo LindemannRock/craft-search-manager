@@ -981,6 +981,7 @@ class Install extends Migration
         $this->createTable('{{%searchmanager_api_keys}}', [
             'id' => $this->primaryKey(),
             'name' => $this->string(255)->notNull(),
+            'handle' => $this->string(255)->notNull(),
             'type' => $this->enum('type', ['public', 'server'])->notNull()->defaultValue('public'),
             'enabled' => $this->boolean()->notNull()->defaultValue(true),
             'keyHash' => $this->string(128)->notNull()->comment('HMAC-SHA256 of plaintext key, keyed by Craft securityKey'),
@@ -997,6 +998,8 @@ class Install extends Migration
             'uid' => $this->uid(),
         ]);
 
+        // handle is the stable CP/config reference used by widget configs
+        $this->createIndex('searchmanager_api_keys_handle_unq', '{{%searchmanager_api_keys}}', ['handle'], true);
         // keyPrefix is the lookup column on the enforcement hot path → unique index
         $this->createIndex(null, '{{%searchmanager_api_keys}}', ['keyPrefix'], true);
         // For "show keys expiring soon" CP queries + ad-hoc cleanup

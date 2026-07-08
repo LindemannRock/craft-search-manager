@@ -356,9 +356,9 @@ class WidgetsController extends Controller
                 $mergedSettings['search']['indexHandles'] = $indexHandles ? [$indexHandles] : [];
             }
         }
-        $mergedSettings['apiKeyId'] = isset($mergedSettings['apiKeyId']) && is_numeric($mergedSettings['apiKeyId']) && (int)$mergedSettings['apiKeyId'] > 0
-            ? (int)$mergedSettings['apiKeyId']
-            : null;
+        $mergedSettings['apiKeyHandle'] = isset($mergedSettings['apiKeyHandle']) && is_string($mergedSettings['apiKeyHandle'])
+            ? trim($mergedSettings['apiKeyHandle'])
+            : '';
 
         $widgetConfig->settings = $mergedSettings;
 
@@ -1041,7 +1041,7 @@ class WidgetsController extends Controller
 
     /**
      * @param ApiKey[] $keys
-     * @return array<int, array{value: string|int, label: string}>
+     * @return array<int, array{value: string, label: string}>
      */
     private function getWidgetApiKeyOptions(array $keys): array
     {
@@ -1050,11 +1050,11 @@ class WidgetsController extends Controller
         ];
 
         foreach ($keys as $key) {
-            if ($key->id === null) {
+            if ($key->handle === '') {
                 continue;
             }
             $options[] = [
-                'value' => $key->id,
+                'value' => $key->handle,
                 'label' => SearchManager::$plugin->apiKeys->widgetKeyLabel($key),
             ];
         }
@@ -1071,10 +1071,10 @@ class WidgetsController extends Controller
         $scopes = ['' => ApiKey::ALL_INDICES];
 
         foreach ($keys as $key) {
-            if ($key->id === null) {
+            if ($key->handle === '') {
                 continue;
             }
-            $scopes[(string)$key->id] = $key->allowsAllIndices()
+            $scopes[$key->handle] = $key->allowsAllIndices()
                 ? ApiKey::ALL_INDICES
                 : array_values($key->allowedIndices);
         }
@@ -1087,13 +1087,22 @@ class WidgetsController extends Controller
      */
     private function getSelectedWidgetApiKey(WidgetConfig $widgetConfig, array $keys): ?ApiKey
     {
-        $apiKeyId = $widgetConfig->getApiKeyId();
-        if ($apiKeyId === null) {
+        $apiKeyHandle = $widgetConfig->getApiKeyHandle();
+        if ($apiKeyHandle === '') {
+            $fallbackId = $widgetConfig->getApiKeyId();
+            if ($fallbackId === null) {
+                return null;
+            }
+            foreach ($keys as $key) {
+                if ($key->id === $fallbackId) {
+                    return $key;
+                }
+            }
             return null;
         }
 
         foreach ($keys as $key) {
-            if ($key->id === $apiKeyId) {
+            if ($key->handle === $apiKeyHandle) {
                 return $key;
             }
         }

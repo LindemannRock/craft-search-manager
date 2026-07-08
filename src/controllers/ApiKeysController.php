@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -96,7 +97,7 @@ class ApiKeysController extends Controller
             $search = mb_substr($search, 0, 64);
         }
 
-        $validSortFields = ['name', 'status', 'type', 'allowedIndices', 'validUntil', 'lastUsedAt'];
+        $validSortFields = ['name', 'handle', 'status', 'type', 'allowedIndices', 'validUntil', 'lastUsedAt'];
         $sort = (string)$request->getParam('sort', 'name');
         if (!in_array($sort, $validSortFields, true)) {
             $sort = 'name';
@@ -125,6 +126,7 @@ class ApiKeysController extends Controller
             $needle = mb_strtolower($search);
             $keys = array_values(array_filter($keys, function(ApiKey $k) use ($needle): bool {
                 return str_contains(mb_strtolower($k->name), $needle)
+                    || str_contains(mb_strtolower($k->handle), $needle)
                     || str_contains(mb_strtolower($k->keyPrefix), $needle);
             }));
         }
@@ -241,6 +243,9 @@ class ApiKeysController extends Controller
         }
 
         $this->populateRestrictionsFromRequest($apiKey, $request);
+        if ($isNew && $apiKey->handle !== '') {
+            $apiKey->handle = SlugHandleHelper::makeUnique('{{%searchmanager_api_keys}}', 'handle', $apiKey->handle);
+        }
 
         if (!$isNew && !$this->guardApiKeyWidgetDependenciesForSave($apiKey)) {
             Craft::$app->getSession()->setError(Craft::t('search-manager', 'Couldn’t save API key'));
@@ -302,7 +307,7 @@ class ApiKeysController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'API key not found'));
         }
 
-        $usedConfigs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey((int)$apiKey->id);
+        $usedConfigs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($apiKey->handle);
         if ($usedConfigs !== []) {
             $errorMessage = Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before deleting it.', [
                 'widgets' => SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs),
@@ -461,12 +466,20 @@ class ApiKeysController extends Controller
             return true;
         }
 
-        $usedConfigs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey((int)$apiKey->id);
+        $existingApiKey = ApiKey::findById($apiKey->id);
+        $dependencyHandle = $existingApiKey?->handle ?: $apiKey->handle;
+        $usedConfigs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($dependencyHandle);
         if ($usedConfigs === []) {
             return true;
         }
 
         $widgets = SearchManager::$plugin->widgetConfigs->formatWidgetDependencyNames($usedConfigs);
+        if ($existingApiKey !== null && $existingApiKey->handle !== $apiKey->handle) {
+            $apiKey->addError('handle', Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before changing the handle.', [
+                'widgets' => $widgets,
+            ]));
+        }
+
         if (!$apiKey->enabled) {
             $apiKey->addError('enabled', Craft::t('search-manager', 'This API key is used by widget configs ({widgets}). Reassign or remove it from those widgets before disabling it.', [
                 'widgets' => $widgets,
@@ -502,7 +515,7 @@ class ApiKeysController extends Controller
                 continue;
             }
 
-            foreach (SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey($id) as $config) {
+            foreach (SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($apiKey->handle) as $config) {
                 $configsByKey[$config->source . ':' . ($config->id ?? $config->handle)] = $config;
             }
         }
@@ -518,6 +531,10 @@ class ApiKeysController extends Controller
     private function populateRestrictionsFromRequest(ApiKey $apiKey, \craft\web\Request $request): void
     {
         $apiKey->name = trim((string)$request->getBodyParam('name', ''));
+        $apiKey->handle = SlugHandleHelper::normalizeSlug(
+            (string)$request->getBodyParam('handle'),
+            $apiKey->name,
+        );
         $apiKey->enabled = (bool)$request->getBodyParam('enabled', true);
 
         // Indices: "All indices" toggle (allowAll=1) → ['*']. Otherwise an
@@ -578,6 +595,7 @@ class ApiKeysController extends Controller
         usort($keys, function(ApiKey $a, ApiKey $b) use ($sort, $multiplier): int {
             $cmp = match ($sort) {
                 'status' => strcmp($a->getStatus(), $b->getStatus()),
+                'handle' => strcasecmp($a->handle, $b->handle),
                 'type' => strcmp($a->type, $b->type),
                 'allowedIndices' => count($a->allowedIndices) <=> count($b->allowedIndices),
                 'validUntil' => $this->compareNullableDates($a->validUntil, $b->validUntil),

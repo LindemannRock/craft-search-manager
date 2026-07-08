@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\console\controllers;
 use craft\console\Controller;
 use craft\helpers\Console;
 use craft\helpers\DateTimeHelper;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -140,6 +141,11 @@ class ApiKeysController extends Controller
 
         $apiKey = new ApiKey();
         $apiKey->name = trim($this->name);
+        $apiKey->handle = SlugHandleHelper::makeUnique(
+            '{{%searchmanager_api_keys}}',
+            'handle',
+            SlugHandleHelper::normalizeSlug('', $apiKey->name),
+        );
         $apiKey->type = $this->type;
         $apiKey->enabled = !$this->disabled;
         $apiKey->allowedIndices = $this->parseIndices($this->indices);
@@ -185,6 +191,8 @@ class ApiKeysController extends Controller
         $this->stdout("{$apiKey->id}\n");
         $this->stdout("  Name:             ", Console::FG_GREY);
         $this->stdout("{$apiKey->name}\n");
+        $this->stdout("  Handle:           ", Console::FG_GREY);
+        $this->stdout("{$apiKey->handle}\n");
         $this->stdout("  Type:             ", Console::FG_GREY);
         $this->stdout("{$apiKey->type}\n");
         $this->stdout("  Prefix:           ", Console::FG_GREY);

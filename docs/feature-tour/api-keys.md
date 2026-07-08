@@ -18,7 +18,7 @@ sm_pub_a1b2c3d4e5f6...      (public key, intended for browser code)
 sm_srv_a1b2c3d4e5f6...      (server key, intended for server-side callers)
 ```
 
-All keys store an authentication **hash** and a 15-character **display prefix**. The hash is `HMAC-SHA256(plaintext, Craft.securityKey)` — keyed by your install's security key so a leaked DB dump cannot be replayed against a different install. Public keys can also store encrypted plaintext material so CP-managed widgets can send a selected public key from browser-rendered HTML. Server keys remain hash-only and unrecoverable.
+All keys store a stable **handle**, an authentication **hash**, and a 15-character **display prefix**. The handle is what widget configs use to reference a CP-managed public key; the hash is `HMAC-SHA256(plaintext, Craft.securityKey)` — keyed by your install's security key so a leaked DB dump cannot be replayed against a different install. Public keys can also store encrypted plaintext material so CP-managed widgets can send a selected public key from browser-rendered HTML. Server keys remain hash-only and unrecoverable.
 
 ### Shown once
 
@@ -42,7 +42,7 @@ Both types accept the same restrictions. The distinction exists so operators (an
 | Caller | Use | Why |
 |--------|-----|-----|
 | Website search page using browser JavaScript | **Public** key | Browser users can see the key in DevTools and network requests. Scope it to the page's indices and add strict referrer patterns. |
-| Search Manager frontend widget | **Public** key | CP widgets select a public key by name/prefix; config-file widgets can still provide a public key override. The widget emits the resolved key into page HTML and sends it from browser-side JavaScript. Never use a server key. |
+| Search Manager frontend widget | **Public** key | CP widgets select a public key by name, handle, and prefix; config-file widgets can reference a CP-managed public key by handle or provide a public key override. The widget emits the resolved key into page HTML and sends it from browser-side JavaScript. Never use a server key. |
 | External server or backend service | **Server** key | The key stays server-side and does not rely on a browser `Referer` header. |
 | Mobile app through your own backend | **Server** key on your backend | Recommended. The mobile app calls your backend, and your backend calls Search Manager with the server key. |
 | Mobile app calling Search Manager directly | **Avoid when possible** | Native apps cannot use browser referrer restrictions reliably. Prefer a backend proxy; if direct calls are unavoidable, scope the key narrowly and use expiry/rate limits. |
@@ -117,7 +117,7 @@ The **Enabled** lightswitch on the edit page. Toggling it off **pauses** the key
 
 Use Disable when you want to temporarily block a caller (e.g. a third-party integration is misbehaving) without losing the configuration or forcing the caller to rotate.
 
-Public keys selected by widget configs are dependency-protected. Search Manager blocks disabling, expiring, deleting, or narrowing a public key's allowed indices in a way that would invalidate those widgets. Remove or reassign the key from the widget configs first.
+Public keys selected by widget configs are dependency-protected. Search Manager blocks disabling, expiring, deleting, changing the handle, or narrowing a public key's allowed indices in a way that would invalidate those widgets. Remove or reassign the key from the widget configs first.
 
 ### Revoked (deleted)
 
@@ -162,7 +162,7 @@ See [Permissions](../developers/permissions.md) for the full permission matrix.
 1. Search Manager → API Keys → **New API key**.
 2. Pick the type, name, restrictions, and (optionally) expiry.
 3. Save. The full plaintext key is revealed in a copy-to-clipboard banner.
-4. Copy it into your secrets store or environment file if external callers need the full value. CP widget configs select public keys by name/prefix and do not display the full key. The banner cannot be re-displayed once you leave the page.
+4. Copy it into your secrets store or environment file if external callers need the full value. CP widget configs select public keys by name, handle, and prefix and do not display the full key. The banner cannot be re-displayed once you leave the page.
 
 ### From the command line
 

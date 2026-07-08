@@ -15,6 +15,7 @@ use craft\helpers\Db;
 use craft\web\Request;
 use craft\web\Response;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\searchmanager\controllers\ApiKeysController;
 use lindemannrock\searchmanager\controllers\WidgetsController;
 use lindemannrock\searchmanager\models\ApiKey;
@@ -72,7 +73,7 @@ final class Audit305WidgetConfigTest extends TestCase
         $defaults = WidgetConfig::defaultSettings();
         $data = array_replace_recursive($defaults, [
             'unknownRoot' => 'drop-me',
-            'apiKeyId' => '123',
+            'apiKeyHandle' => 'widget-public',
             'search' => [
                 'indexHandles' => ['docs', 'shortlinks'],
                 'unknownSearch' => 'drop-me',
@@ -86,21 +87,21 @@ final class Audit305WidgetConfigTest extends TestCase
         $filtered = $this->filterSettings($data, $defaults);
 
         self::assertSame(['docs', 'shortlinks'], $filtered['search']['indexHandles']);
-        self::assertSame('123', $filtered['apiKeyId']);
+        self::assertSame('widget-public', $filtered['apiKeyHandle']);
         self::assertSame('20', $filtered['behavior']['maxResults']);
         self::assertArrayNotHasKey('unknownRoot', $filtered);
         self::assertArrayNotHasKey('unknownSearch', $filtered['search']);
         self::assertArrayNotHasKey('unknownBehavior', $filtered['behavior']);
     }
 
-    public function testWidgetConfigSavePersistsSelectedIndexHandlesAndApiKeyId(): void
+    public function testWidgetConfigSavePersistsSelectedIndexHandlesAndApiKeyHandle(): void
     {
         $docs = $this->seedIndex('docs');
         $shortlinks = $this->seedIndex('shortlinks');
         [$key] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [$docs, $shortlinks]);
 
         $settings = WidgetConfig::defaultSettings();
-        $settings['apiKeyId'] = $key->id;
+        $settings['apiKeyHandle'] = $key->handle;
         $settings['search']['indexHandles'] = [$docs, $shortlinks];
 
         $widget = $this->makeWidget('persist');
@@ -112,8 +113,37 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertNotNull($row);
 
         $stored = json_decode((string)$row['settings'], true, 512, JSON_THROW_ON_ERROR);
-        self::assertSame($key->id, $stored['apiKeyId']);
+        self::assertSame($key->handle, $stored['apiKeyHandle']);
+        self::assertArrayNotHasKey('apiKeyId', $stored);
         self::assertSame([$docs, $shortlinks], $stored['search']['indexHandles']);
+    }
+
+    public function testApiKeyCreateNormalizesAndGeneratesUniqueHandleFromName(): void
+    {
+        $name = self::MARKER . 'Duplicate handle source';
+        $expectedHandle = SlugHandleHelper::normalizeSlug('', $name);
+
+        $this->createApiKeyFromName($name);
+        $this->createApiKeyFromName($name);
+
+        $handles = (new \craft\db\Query())
+            ->select(['handle'])
+            ->from('{{%searchmanager_api_keys}}')
+            ->where(['name' => $name])
+            ->orderBy(['id' => SORT_ASC])
+            ->column();
+
+        self::assertSame([$expectedHandle, $expectedHandle . '-1'], $handles);
+    }
+
+    public function testFreshInstallApiKeySchemaIncludesHandleAfterNameAndUniqueIndex(): void
+    {
+        $source = file_get_contents(__DIR__ . '/../../src/migrations/Install.php');
+        self::assertIsString($source);
+
+        self::assertLessThan(strpos($source, "'handle' => \$this->string(255)->notNull(),"), strpos($source, "'name' => \$this->string(255)->notNull(),"));
+        self::assertLessThan(strpos($source, "'type' => \$this->enum('type'"), strpos($source, "'handle' => \$this->string(255)->notNull(),"));
+        self::assertStringContainsString("\$this->createIndex('searchmanager_api_keys_handle_unq', '{{%searchmanager_api_keys}}', ['handle'], true);", $source);
     }
 
     public function testWidgetSelectorListsOnlyWidgetUsablePublicKeysWithPrefixLabels(): void
@@ -129,7 +159,7 @@ final class Audit305WidgetConfigTest extends TestCase
 
         self::assertCount(1, $keys);
         self::assertSame($usablePublic->id, $keys[0]->id);
-        self::assertSame($usablePublic->name . ' — ' . $usablePublic->keyPrefix . '...', SearchManager::$plugin->apiKeys->widgetKeyLabel($usablePublic));
+        self::assertSame($usablePublic->name . ' (' . $usablePublic->handle . ') — ' . $usablePublic->keyPrefix . '...', SearchManager::$plugin->apiKeys->widgetKeyLabel($usablePublic));
     }
 
     public function testWidgetValidationRejectsIndicesOutsideSelectedKeyScope(): void
@@ -139,7 +169,7 @@ final class Audit305WidgetConfigTest extends TestCase
         [$key] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [$docs]);
 
         $settings = WidgetConfig::defaultSettings();
-        $settings['apiKeyId'] = $key->id;
+        $settings['apiKeyHandle'] = $key->handle;
         $settings['search']['indexHandles'] = [$secret];
 
         $widget = $this->makeWidget('scope-reject');
@@ -158,7 +188,7 @@ final class Audit305WidgetConfigTest extends TestCase
         [$key] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [$docs]);
 
         $settings = WidgetConfig::defaultSettings();
-        $settings['apiKeyId'] = $key->id;
+        $settings['apiKeyHandle'] = $key->handle;
         $settings['search']['indexHandles'] = [];
 
         $widget = $this->makeWidget('scope-empty');
@@ -174,7 +204,7 @@ final class Audit305WidgetConfigTest extends TestCase
         [$key] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [$docs]);
 
         $settings = WidgetConfig::defaultSettings();
-        $settings['apiKeyId'] = $key->id;
+        $settings['apiKeyHandle'] = $key->handle;
 
         $widget = $this->makeWidget('filtered-options');
         $widget->settings = $settings;
@@ -189,11 +219,11 @@ final class Audit305WidgetConfigTest extends TestCase
             'indices' => [$docsIndex, $secretIndex],
             'widgetApiKeyOptions' => [
                 ['value' => '', 'label' => 'None'],
-                ['value' => $key->id, 'label' => SearchManager::$plugin->apiKeys->widgetKeyLabel($key)],
+                ['value' => $key->handle, 'label' => SearchManager::$plugin->apiKeys->widgetKeyLabel($key)],
             ],
             'widgetApiKeyScopes' => [
                 '' => ApiKey::ALL_INDICES,
-                (string)$key->id => [$docs],
+                $key->handle => [$docs],
             ],
             'selectedApiKey' => $key,
             'hasWidgetUsableApiKeys' => true,
@@ -206,12 +236,12 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertStringContainsString('search-manager-widget-index-options', $html);
     }
 
-    public function testSelectedApiKeyIdResolvesToRenderedApiKeyAttribute(): void
+    public function testSelectedApiKeyHandleResolvesToRenderedApiKeyAttribute(): void
     {
         [$key, $plaintext] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [ApiKey::ALL_INDICES]);
 
         $settings = WidgetConfig::defaultSettings();
-        $settings['apiKeyId'] = $key->id;
+        $settings['apiKeyHandle'] = $key->handle;
 
         $widget = $this->makeWidget('render-selected');
         $widget->settings = $settings;
@@ -220,13 +250,13 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertStringContainsString('api-key="' . $plaintext . '"', $this->renderWidget($widget));
     }
 
-    public function testRenderTimeApiKeyOverrideWinsOverSelectedApiKeyId(): void
+    public function testRenderTimeApiKeyOverrideWinsOverSelectedApiKeyHandle(): void
     {
         [$key, $plaintext] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [ApiKey::ALL_INDICES]);
         $override = 'sm_pub_' . str_repeat('b', 32);
 
         $settings = WidgetConfig::defaultSettings();
-        $settings['apiKeyId'] = $key->id;
+        $settings['apiKeyHandle'] = $key->handle;
 
         $widget = $this->makeWidget('render-override');
         $widget->settings = $settings;
@@ -257,7 +287,7 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertIsString($source);
 
         self::assertStringContainsString('forms.selectField', $source);
-        self::assertStringContainsString("name: 'settings[apiKeyId]'", $source);
+        self::assertStringContainsString("name: 'settings[apiKeyHandle]'", $source);
         self::assertStringContainsString('widgetApiKeyOptions', $source);
         self::assertStringContainsString('availableIndices', $source);
         self::assertStringContainsString('search-manager-widget-api-key-scopes', $source);
@@ -279,31 +309,49 @@ final class Audit305WidgetConfigTest extends TestCase
         );
     }
 
-    public function testFindConfigsUsingApiKeyFindsDatabaseWidgetConfigs(): void
+    public function testFindConfigsUsingApiKeyHandleFindsDatabaseWidgetConfigs(): void
     {
         [$key] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [ApiKey::ALL_INDICES]);
         $widget = $this->saveWidgetUsingApiKey($key, 'dependency-db');
 
-        $configs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey((int)$key->id);
+        $configs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($key->handle);
 
         self::assertContains($widget->handle, array_map(static fn(WidgetConfig $config): string => $config->handle, $configs));
     }
 
-    public function testFindConfigsUsingApiKeyIncludesConfigFileWidgets(): void
+    public function testFindConfigsUsingApiKeyHandleIncludesConfigFileWidgets(): void
     {
         [$key] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [ApiKey::ALL_INDICES]);
         $this->withConfigFileWidgets([
             self::PREFIX . 'config-dependent' => [
                 'name' => 'Audit 305 config dependent',
                 'settings' => [
-                    'apiKeyId' => $key->id,
+                    'apiKeyHandle' => $key->handle,
                 ],
             ],
         ]);
 
-        $configs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKey((int)$key->id);
+        $configs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($key->handle);
 
         self::assertContains(self::PREFIX . 'config-dependent', array_map(static fn(WidgetConfig $config): string => $config->handle, $configs));
+    }
+
+    public function testExistingApiKeyIdFallbackStillResolvesWidgetConfig(): void
+    {
+        [$key, $plaintext] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [ApiKey::ALL_INDICES]);
+
+        $settings = WidgetConfig::defaultSettings();
+        unset($settings['apiKeyHandle']);
+        $settings['apiKeyId'] = $key->id;
+
+        $widget = $this->makeWidget('id-fallback');
+        $widget->settings = $settings;
+
+        self::assertSame($plaintext, $widget->getApiKey());
+        self::assertTrue(SearchManager::$plugin->widgetConfigs->save($widget), print_r($widget->getErrors(), true));
+
+        $configs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($key->handle);
+        self::assertContains($widget->handle, array_map(static fn(WidgetConfig $config): string => $config->handle, $configs));
     }
 
     public function testFindConfigsBrokenByApiKeyScopeReturnsOnlyWidgetsOutsideRestrictedKey(): void
@@ -371,6 +419,19 @@ final class Audit305WidgetConfigTest extends TestCase
         $fresh = ApiKey::findById((int)$key->id);
         self::assertNotNull($fresh);
         self::assertNull($fresh->validUntil);
+    }
+
+    public function testApiKeySaveBlocksHandleChangeForUsedPublicKey(): void
+    {
+        [$key] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [ApiKey::ALL_INDICES]);
+        $this->saveWidgetUsingApiKey($key, 'save-handle-block');
+        $oldHandle = $key->handle;
+
+        $this->postApiKeySave($key, ['handle' => 'renamed-widget-key']);
+
+        $fresh = ApiKey::findById((int)$key->id);
+        self::assertNotNull($fresh);
+        self::assertSame($oldHandle, $fresh->handle);
     }
 
     public function testApiKeyDeleteBlocksUsedKeyAndAllowsUnusedKey(): void
@@ -513,7 +574,7 @@ final class Audit305WidgetConfigTest extends TestCase
     private function saveWidgetUsingApiKey(ApiKey $key, string $suffix, array $indexHandles = []): WidgetConfig
     {
         $settings = WidgetConfig::defaultSettings();
-        $settings['apiKeyId'] = $key->id;
+        $settings['apiKeyHandle'] = $key->handle;
         $settings['search']['indexHandles'] = $indexHandles;
 
         $widget = $this->makeWidget($suffix);
@@ -550,6 +611,7 @@ final class Audit305WidgetConfigTest extends TestCase
         $params = array_merge([
             'keyId' => $key->id,
             'name' => $key->name,
+            'handle' => $key->handle,
             'enabled' => true,
             'allowAllIndices' => $key->allowsAllIndices(),
             'allowedIndices' => $key->allowsAllIndices() ? [] : $key->allowedIndices,
@@ -572,6 +634,26 @@ final class Audit305WidgetConfigTest extends TestCase
         if ($guard->invoke($controller, $key)) {
             self::assertTrue($key->save(), print_r($key->getErrors(), true));
         }
+    }
+
+    private function createApiKeyFromName(string $name): ApiKey
+    {
+        $generated = SearchManager::$plugin->apiKeys->generateKey(ApiKey::TYPE_PUBLIC);
+        $key = new ApiKey();
+        $key->name = $name;
+        $key->handle = SlugHandleHelper::makeUnique(
+            '{{%searchmanager_api_keys}}',
+            'handle',
+            SlugHandleHelper::normalizeSlug('', $key->name),
+        );
+        $key->type = ApiKey::TYPE_PUBLIC;
+        $key->keyHash = $generated['hash'];
+        $key->keyPrefix = $generated['prefix'];
+        $key->allowedIndices = [ApiKey::ALL_INDICES];
+
+        self::assertTrue($key->save(), print_r($key->getErrors(), true));
+
+        return $key;
     }
 
     private function postApiKeyDelete(ApiKey $key): void

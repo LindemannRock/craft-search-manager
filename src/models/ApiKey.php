@@ -13,6 +13,7 @@ use craft\base\Model;
 use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
+use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 
 /**
@@ -41,6 +42,10 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * public keys; the type only documents whether the key is safe to embed in
  * browser code (public) or strictly server-side (server).
  *
+ * The `handle` is the stable CP/config reference for selecting a public key
+ * from widget configs. The numeric `id` remains internal for DB operations,
+ * analytics attribution, and lifecycle actions.
+ *
  * @since 5.46.0
  */
 class ApiKey extends Model
@@ -65,6 +70,8 @@ class ApiKey extends Model
     public ?int $id = null;
 
     public string $name = '';
+
+    public string $handle = '';
 
     public string $type = self::TYPE_PUBLIC;
 
@@ -137,8 +144,10 @@ class ApiKey extends Model
     public function rules(): array
     {
         return [
-            [['name', 'keyHash', 'keyPrefix', 'type'], 'required'],
-            [['name'], 'string', 'max' => 255],
+            [['name', 'handle', 'keyHash', 'keyPrefix', 'type'], 'required'],
+            [['name', 'handle'], 'string', 'max' => 255],
+            [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.')],
+            [['handle'], 'validateUniqueHandle'],
             [['keyHash'], 'string', 'max' => 128],
             [['encryptedKey'], 'string'],
             [['keyPrefix'], 'string', 'max' => 32],
@@ -149,6 +158,18 @@ class ApiKey extends Model
             [['allowedIndices'], 'validateAllowedIndices', 'skipOnEmpty' => false],
             [['allowedReferrers'], 'validateReferrerPatterns'],
         ];
+    }
+
+    /**
+     * Validate handle is unique among database-backed API keys.
+     */
+    public function validateUniqueHandle(string $attribute): void
+    {
+        if (SlugHandleHelper::exists('{{%searchmanager_api_keys}}', 'handle', $this->handle, [
+            'excludeId' => $this->id,
+        ])) {
+            $this->addError($attribute, Craft::t('search-manager', 'Handle must be unique.'));
+        }
     }
 
     /**
@@ -308,6 +329,19 @@ class ApiKey extends Model
     }
 
     /**
+     * Find a key by its stable CP/config handle.
+     */
+    public static function findByHandle(string $handle): ?self
+    {
+        $row = (new Query())
+            ->from('{{%searchmanager_api_keys}}')
+            ->where(['handle' => $handle])
+            ->one();
+
+        return $row ? self::populateFromRow($row) : null;
+    }
+
+    /**
      * Find a key by its unhashed prefix. Used on the enforcement hot path:
      * client supplies plaintext, we slice off the prefix, look it up here,
      * then verify the rest with `hash_equals` against `keyHash`.
@@ -355,6 +389,7 @@ class ApiKey extends Model
         $key = new self();
         $key->id = (int)$row['id'];
         $key->name = (string)$row['name'];
+        $key->handle = (string)($row['handle'] ?? '');
         $key->type = (string)$row['type'];
         $key->enabled = (bool)($row['enabled'] ?? true);
         $key->keyHash = (string)$row['keyHash'];
@@ -405,6 +440,14 @@ class ApiKey extends Model
 
     public function save(): bool
     {
+        if ($this->handle === '' && trim($this->name) !== '') {
+            $this->handle = SlugHandleHelper::makeUnique(
+                '{{%searchmanager_api_keys}}',
+                'handle',
+                SlugHandleHelper::normalizeSlug('', $this->name),
+            );
+        }
+
         if (!$this->validate()) {
             $this->logError('API key validation failed', [
                 'errors' => $this->getErrors(),
@@ -415,6 +458,7 @@ class ApiKey extends Model
         try {
             $attributes = [
                 'name' => $this->name,
+                'handle' => $this->handle,
                 'type' => $this->type,
                 'enabled' => (int)$this->enabled,
                 'keyHash' => $this->keyHash,
@@ -450,6 +494,7 @@ class ApiKey extends Model
             $this->logInfo('API key saved', [
                 'id' => $this->id,
                 'name' => $this->name,
+                'handle' => $this->handle,
                 'type' => $this->type,
                 'keyPrefix' => $this->keyPrefix,
             ]);
