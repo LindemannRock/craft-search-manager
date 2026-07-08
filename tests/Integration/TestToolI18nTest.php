@@ -57,6 +57,11 @@ final class TestToolI18nTest extends TestCase
             "promotionsNote: {{ 'Note: Promotions only appear in search results on sites where the element is live (green).'|t('search-manager')|json_encode|raw }}",
             "backendLabel: {{ 'Backend:'|t('search-manager')|json_encode|raw }}",
             "redirectToElement: {{ 'Redirect to {link}'|t('search-manager')|json_encode|raw }}",
+            "redirectRuleMatched: {{ 'Redirect rule matched'|t('search-manager')|json_encode|raw }}",
+            "productionRedirectNotice: {{ 'Production search would redirect this query.'|t('search-manager')|json_encode|raw }}",
+            "ruleLabel: {{ 'Rule:'|t('search-manager')|json_encode|raw }}",
+            "targetLabel: {{ 'Target:'|t('search-manager')|json_encode|raw }}",
+            "urlLabel: {{ 'URL:'|t('search-manager')|json_encode|raw }}",
             "foundResultsSingular: {{ 'Found {count} result'|t('search-manager')|json_encode|raw }}",
             "foundResultsPlural: {{ 'Found {count} results'|t('search-manager')|json_encode|raw }}",
         ] as $needle) {
@@ -152,10 +157,9 @@ final class TestToolI18nTest extends TestCase
             '${Craft.escapeHtml(s)}</span>',
             '<td><code>${Craft.escapeHtml(p.matchType)}</code></td>',
             '${Craft.escapeHtml(s.siteName)}</span>',
-            'const elementUrl = Craft.escapeHtml(el.url || \'\');',
-            '<a href="${elementUrl}" target="_blank">${elementUrl}</a>',
-            'const redirectUrl = Craft.escapeHtml(String(data.redirect || \'\'));',
-            '<a href="${redirectUrl}" target="_blank">${redirectUrl}</a>',
+            'function renderSafeLinkOrText(url, label)',
+            'const safeUrl = safeUrlAttribute(url);',
+            'return safeUrl ? `<a href="${safeUrl}" target="_blank">${display}</a>` : display;',
             'data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(\', \')',
             'const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);',
             'function renderStatusLabel(label, colorClass)',
@@ -172,6 +176,30 @@ final class TestToolI18nTest extends TestCase
 
         $backend = $this->readPluginFile('src/templates/settings/test/_partials/backend.twig');
         self::assertStringContainsString("Craft.escapeHtml(response.data.error || {{ 'Failed'|t('search-manager')|json_encode|raw }})", $backend);
+    }
+
+    public function testRedirectNoticeExplainsProductionRedirectWithoutShowingFullPanel(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
+
+        self::assertStringContainsString('const shouldFetchQueryRules = showQueryRules.checked || (searchData && searchData.redirect);', $source);
+        self::assertStringContainsString('if (queryRulesData && showQueryRules.checked) {', $source);
+        self::assertStringContainsString('displayQueryRules(queryRulesData, query);', $source);
+        self::assertStringContainsString('displaySearchResults(searchData, query, queryRulesData);', $source);
+        self::assertStringContainsString('function renderRedirectNotice(searchData, queryRulesData, isCompact)', $source);
+        self::assertStringContainsString('if (!redirectUrl) {', $source);
+        self::assertStringContainsString("return '';", $source);
+        self::assertStringContainsString('const hasRedirect = Boolean(data.redirect || (queryRulesData && queryRulesData.redirect));', $source);
+        self::assertStringContainsString('resultsTitle.innerHTML = hasRedirect ? T.redirectRuleMatched', $source);
+        self::assertStringContainsString('} else if (!hasRedirect) {', $source);
+        self::assertStringContainsString('html += renderRedirectNotice(data, queryRulesData, true);', $source);
+        self::assertStringContainsString('const redirectHtml = renderRedirectNotice(null, data, false);', $source);
+        self::assertStringContainsString("isCompact ? 'sm-test-main-redirect-notice' : 'sm-test-redirect-box'", $source);
+        self::assertStringContainsString('T.productionRedirectNotice', $source);
+        self::assertStringContainsString('T.redirectRuleMatched', $source);
+
+        self::assertStringNotContainsString('showQueryRules.checked ? postJson(urls.testQueryRules', $source);
+        self::assertStringNotContainsString('<a href="${redirectUrl}" target="_blank">${redirectUrl}</a>', $source);
     }
 
     private function readPluginFile(string $path): string

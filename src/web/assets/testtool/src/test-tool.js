@@ -93,6 +93,7 @@
             let autocompleteTerms = [];
             let lastSearchData = null;
             let lastSearchQuery = null;
+            let lastQueryRulesData = null;
 
             function getIndexSiteId() {
                 return indexSiteIds[testIndexSelect.value] || null;
@@ -127,7 +128,7 @@
 
             showHighlighting.addEventListener('change', function() {
                 if (lastSearchData && lastSearchQuery) {
-                    displaySearchResults(lastSearchData, lastSearchQuery);
+                    displaySearchResults(lastSearchData, lastSearchQuery, lastQueryRulesData);
                 }
             });
 
@@ -381,6 +382,54 @@
                 </span>`;
             }
 
+            function renderSafeLinkOrText(url, label) {
+                const display = escapeDisplay(label || url || '');
+                const safeUrl = safeUrlAttribute(url);
+
+                return safeUrl ? `<a href="${safeUrl}" target="_blank">${display}</a>` : display;
+            }
+
+            function getRedirectRule(queryRulesData) {
+                if (!queryRulesData || !Array.isArray(queryRulesData.rules)) {
+                    return null;
+                }
+
+                return queryRulesData.rules.find(rule => rule.actionType === 'redirect') || null;
+            }
+
+            function renderRedirectNotice(searchData, queryRulesData, isCompact) {
+                const redirectUrl = queryRulesData && queryRulesData.redirect ? queryRulesData.redirect : searchData && searchData.redirect;
+                if (!redirectUrl) {
+                    return '';
+                }
+
+                const redirectRule = getRedirectRule(queryRulesData);
+                const elementInfo = redirectRule && redirectRule.elementInfo && typeof redirectRule.elementInfo === 'object' ? redirectRule.elementInfo : null;
+                const targetUrl = elementInfo && elementInfo.url ? elementInfo.url : redirectUrl;
+                const details = [];
+
+                if (redirectRule && redirectRule.name) {
+                    details.push(`<div><strong>${T.ruleLabel}</strong> ${renderSafeLinkOrText(redirectRule.editUrl, redirectRule.name)}</div>`);
+                }
+
+                if (elementInfo) {
+                    const elementId = elementInfo.id ? ` <span class="sm-test-muted">ID: ${escapeDisplay(elementInfo.id)}</span>` : '';
+                    details.push(`<div><strong>${T.targetLabel}</strong> <strong>${escapeDisplay(elementInfo.type || T.element)}</strong> ${renderSafeLinkOrText(elementInfo.cpEditUrl, elementInfo.title || T.untitled)}${elementId}</div>`);
+                } else {
+                    details.push(`<div><strong>${T.targetLabel}</strong> ${renderSafeLinkOrText(redirectUrl, redirectUrl)}</div>`);
+                }
+
+                details.push(`<div class="sm-test-redirect-url"><strong>${T.urlLabel}</strong> ${renderSafeLinkOrText(targetUrl, targetUrl)}</div>`);
+
+                return `<div class="${isCompact ? 'sm-test-main-redirect-notice' : 'sm-test-redirect-box'}">
+                    <div class="sm-test-redirect-heading">&rarr; ${isCompact ? T.redirectRuleMatched : T.redirectLabel}</div>
+                    ${isCompact ? `<div class="sm-test-redirect-copy">${T.productionRedirectNotice}</div>` : ''}
+                    <div class="sm-test-redirect-details">
+                        ${details.join('')}
+                    </div>
+                </div>`;
+            }
+
             function updateAutocompleteSection(suggestions, query, meta) {
                 const container = document.getElementById('autocomplete-results');
                 const cacheLabel = meta && meta.cacheEnabled
@@ -438,11 +487,19 @@
                         includeDebugMeta: document.getElementById('includeDebugMeta').checked,
                     } : {})).then(r => r.json()),
                     showPromotions.checked ? postJson(urls.testPromotions, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json()) : Promise.resolve(null),
-                    showQueryRules.checked ? postJson(urls.testQueryRules, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json()) : Promise.resolve(null),
                 ])
+                    .then(([searchData, promotionsData]) => {
+                        const shouldFetchQueryRules = showQueryRules.checked || (searchData && searchData.redirect);
+
+                        return (shouldFetchQueryRules
+                            ? postJson(urls.testQueryRules, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json())
+                            : Promise.resolve(null)
+                        ).then(queryRulesData => [searchData, promotionsData, queryRulesData]);
+                    })
                     .then(([searchData, promotionsData, queryRulesData]) => {
                         testButton.disabled = false;
                         testButton.textContent = T.searchLabel;
+                        lastQueryRulesData = queryRulesData;
 
                         if (promotionsData && showPromotions.checked) {
                             displayPromotions(promotionsData, query);
@@ -450,7 +507,7 @@
                         if (queryRulesData && showQueryRules.checked) {
                             displayQueryRules(queryRulesData, query);
                         }
-                        displaySearchResults(searchData, query);
+                        displaySearchResults(searchData, query, queryRulesData);
                     })
                     .catch(error => {
                         testButton.disabled = false;
@@ -521,30 +578,7 @@
                         'redirect': 'red',
                     };
 
-                    let redirectHtml = '';
-                    if (data.redirect) {
-                        const redirectRule = data.rules.find(r => r.actionType === 'redirect');
-                        if (redirectRule && redirectRule.elementInfo) {
-                            const el = redirectRule.elementInfo;
-                            const elementUrl = Craft.escapeHtml(el.url || '');
-                            redirectHtml = `
-                        <div class="sm-test-redirect-box">
-                            <div class="sm-test-redirect-heading">&rarr; ${T.redirectLabel}</div>
-                            <div class="sm-test-redirect-details">
-                                <div><strong>Target:</strong> <strong>${Craft.escapeHtml(el.type)}</strong> <a href="${el.cpEditUrl}" target="_blank">${Craft.escapeHtml(el.title)}</a> <span class="sm-test-muted">ID: ${el.id}</span></div>
-                                <div class="sm-test-redirect-url"><strong>URL:</strong> <a href="${elementUrl}" target="_blank">${elementUrl}</a></div>
-                            </div>
-                        </div>`;
-                        } else {
-                            const redirectUrl = Craft.escapeHtml(String(data.redirect || ''));
-                            redirectHtml = `<div class="sm-test-redirect-url-box">
-                                <div class="sm-test-redirect-heading">&rarr; ${T.redirectLabel}</div>
-                                <div class="sm-test-redirect-details">
-                                    <div class="sm-test-redirect-url"><strong>URL:</strong> <a href="${redirectUrl}" target="_blank">${redirectUrl}</a></div>
-                                </div>
-                            </div>`;
-                        }
-                    }
+                    const redirectHtml = renderRedirectNotice(null, data, false);
 
                     container.innerHTML = `
                 <div class="sm-test-diagnostic-summary">
@@ -587,13 +621,14 @@
                 }
             }
 
-            function displaySearchResults(data, query) {
+            function displaySearchResults(data, query, queryRulesData) {
                 lastSearchData = data;
                 lastSearchQuery = query;
                 testResults.hidden = false;
 
                 if (data.success) {
-                    resultsTitle.innerHTML = (data.total === 1 ? T.foundResultsSingular : T.foundResultsPlural).replace('{count}', data.total);
+                    const hasRedirect = Boolean(data.redirect || (queryRulesData && queryRulesData.redirect));
+                    resultsTitle.innerHTML = hasRedirect ? T.redirectRuleMatched : (data.total === 1 ? T.foundResultsSingular : T.foundResultsPlural).replace('{count}', data.total);
                     setMessageState(resultsTitle, 'success');
 
                     let html = `
@@ -607,6 +642,7 @@
     </div>
 </div>
 `;
+                    html += renderRedirectNotice(data, queryRulesData, true);
 
                     if (data.total > 0) {
                         html += '<div class="sm-test-results-grid">';
@@ -686,7 +722,7 @@
 `;
                         });
                         html += '</div>';
-                    } else {
+                    } else if (!hasRedirect) {
                         html += `
 <div class="sm-test-empty">
     <p class="sm-test-empty-title">${T.noResults.replace('{query}', Craft.escapeHtml(query))}</p>

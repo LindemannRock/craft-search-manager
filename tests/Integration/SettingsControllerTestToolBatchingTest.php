@@ -55,6 +55,13 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString('$redirectElements[$this->elementCacheKey(', $body);
     }
 
+    public function testSearchTestToolPassesBackendRedirectToAssetRenderer(): void
+    {
+        $body = $this->controllerMethodBody('actionTestSearch');
+
+        self::assertStringContainsString("'redirect' => \$results['redirect'] ?? null,", $body);
+    }
+
     private function controllerMethodBody(string $method): string
     {
         $sourceFile = dirname(__DIR__, 2) . '/src/controllers/SettingsController.php';

@@ -606,9 +606,23 @@
     color: #1f2937;
 }
 
+.sm-test-main-redirect-notice {
+    padding: 14px 16px;
+    margin: 0 0 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #fff;
+    color: #1f2937;
+}
+
 .sm-test-redirect-heading {
     margin-bottom: 6px;
     font-weight: 700;
+}
+
+.sm-test-redirect-copy {
+    margin-bottom: 10px;
+    color: #4b5563;
 }
 
 .sm-test-redirect-details {

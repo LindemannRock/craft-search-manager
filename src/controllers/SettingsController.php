@@ -406,6 +406,7 @@ class SettingsController extends Controller
                 'originalQuery' => $originalQuery,
                 'enriched' => $enrich,
                 'indexSiteId' => $index->siteId ?? null,
+                'redirect' => $results['redirect'] ?? null,
             ]);
         } catch (\Throwable $e) {
             $this->logError('Test search failed', ['error' => $e->getMessage()]);
