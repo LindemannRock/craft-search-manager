@@ -79,6 +79,8 @@ Element ID: 789
 Multiplier: 3.0
 ```
 
+The element picker supports entries, assets, categories, and users by default. When Craft Commerce is installed and enabled, product and variant targets are available as well.
+
 ### Filter Results
 
 Apply a filter when the query matches:
@@ -96,12 +98,15 @@ Queries containing "buy" only show in-stock items.
 
 ### Redirect
 
-Redirect users to a page instead of showing search results. Four redirect targets are supported:
+Redirect users to a page instead of showing search results. Redirect targets are:
 
 - **Custom URL** — a path (`/contact`) or full URL
 - **Entry** — select any entry via element picker
 - **Category** — select any category
 - **Asset** — select any asset (e.g., a PDF download)
+- **User** — select a user profile target
+- **Commerce Product** — select a product when Craft Commerce is available
+- **Commerce Variant** — select a variant when Craft Commerce is available
 
 ```text
 Name: Contact Redirect
@@ -193,6 +198,6 @@ The `actionValue` format varies by action type:
 - **synonym**: `["notebook", "computer", "laptop"]`
 - **boost_section**: `{"sectionHandle": "products", "multiplier": 2.0}`
 - **boost_category**: `{"categoryId": 5, "multiplier": 1.5}`
-- **boost_element**: `{"elementId": 123, "multiplier": 2.0}`
+- **boost_element**: `{"elementId": 123, "elementType": "craft\\elements\\Entry", "multiplier": 2.0}`
 - **filter**: `{"field": "status", "value": "featured"}`
 - **redirect**: `"/sale-page"`

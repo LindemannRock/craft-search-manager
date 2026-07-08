@@ -9,9 +9,11 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -224,6 +226,9 @@ class PromotionsController extends Controller
             'indexOptions' => $indexOptions,
             'siteOptions' => $siteOptions,
             'matchTypeOptions' => $matchTypeOptions,
+            'targetTypeOptions' => TargetElementTypeHelper::options(),
+            'selectedTargetType' => TargetElementTypeHelper::keyForElementType($this->resolveTargetElementType($promotion->elementId, $promotion->elementType, $promotion->siteId)),
+            'selectedTargetElements' => $this->selectedTargetElements($promotion->elementId, $promotion->elementType, $promotion->siteId),
         ]);
     }
 
@@ -259,8 +264,11 @@ class PromotionsController extends Controller
         $promotion->query = $request->getBodyParam('query');
         $promotion->matchType = $request->getBodyParam('matchType', 'exact');
 
+        $targetType = (string)$request->getBodyParam('promotedElementType', 'entry');
+        $promotion->elementType = TargetElementTypeHelper::elementTypeForKey($targetType);
+
         // Handle element select field (comes as array)
-        $promotedElement = $request->getBodyParam('promotedElement');
+        $promotedElement = $request->getBodyParam('promotedElement' . ucfirst($targetType));
         if (is_array($promotedElement) && !empty($promotedElement)) {
             $promotion->elementId = (int)reset($promotedElement);
         } elseif ($promotedElement) {
@@ -498,5 +506,39 @@ class PromotionsController extends Controller
         }
 
         return $candidate;
+    }
+
+    /**
+     * @return array<string, array<int, ElementInterface>>
+     */
+    private function selectedTargetElements(?int $elementId, ?string $elementType, ?int $siteId): array
+    {
+        $elements = [];
+        if ($elementId === null) {
+            return $elements;
+        }
+
+        $queryElementType = TargetElementTypeHelper::isSupportedElementType($elementType) ? $elementType : null;
+        $element = Craft::$app->getElements()->getElementById($elementId, $queryElementType, $siteId);
+        if ($element instanceof ElementInterface) {
+            $elements[TargetElementTypeHelper::keyForElementType(get_class($element))] = [$element];
+        }
+
+        return $elements;
+    }
+
+    private function resolveTargetElementType(?int $elementId, ?string $elementType, ?int $siteId): ?string
+    {
+        if (TargetElementTypeHelper::isSupportedElementType($elementType)) {
+            return $elementType;
+        }
+
+        if ($elementId === null) {
+            return null;
+        }
+
+        $element = Craft::$app->getElements()->getElementById($elementId, null, $siteId);
+
+        return $element instanceof ElementInterface ? get_class($element) : null;
     }
 }

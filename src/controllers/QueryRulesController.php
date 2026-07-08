@@ -9,9 +9,11 @@
 namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
+use craft\base\ElementInterface;
 use craft\db\Query;
 use craft\web\Controller;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -265,6 +267,11 @@ class QueryRulesController extends Controller
             'actionTypeOptions' => $actionTypeOptions,
             'sectionOptions' => $sectionOptions,
             'categoryGroupOptions' => $categoryGroupOptions,
+            'targetTypeOptions' => TargetElementTypeHelper::options(),
+            'boostElementTargetType' => TargetElementTypeHelper::keyForElementType($this->resolveTargetElementType($rule->actionValue['elementId'] ?? null, $rule->actionValue['elementType'] ?? null, $rule->siteId)),
+            'redirectTargetType' => TargetElementTypeHelper::keyForElementType($this->resolveTargetElementType($rule->actionValue['elementId'] ?? null, $rule->actionValue['elementType'] ?? null, $rule->siteId)),
+            'boostTargetElements' => $this->selectedTargetElements($rule->actionValue['elementId'] ?? null, $rule->actionValue['elementType'] ?? null, $rule->siteId),
+            'redirectTargetElements' => $this->selectedTargetElements($rule->actionValue['elementId'] ?? null, $rule->actionValue['elementType'] ?? null, $rule->siteId),
         ]);
     }
 
@@ -336,10 +343,12 @@ class QueryRulesController extends Controller
 
             case QueryRule::ACTION_BOOST_ELEMENT:
                 // Element selector returns an array of IDs
-                $boostElement = $request->getBodyParam('boostElement');
+                $boostElementType = (string)$request->getBodyParam('boostElementType', 'entry');
+                $boostElement = $request->getBodyParam('boostElement' . ucfirst($boostElementType));
                 $elementId = is_array($boostElement) && !empty($boostElement) ? (int)$boostElement[0] : 0;
                 $actionValue = [
                     'elementId' => $elementId,
+                    'elementType' => TargetElementTypeHelper::elementTypeForKey($boostElementType),
                     'multiplier' => (float)$request->getBodyParam('boostMultiplier', 2.0),
                 ];
                 break;
@@ -363,15 +372,9 @@ class QueryRulesController extends Controller
                     $elementIds = $request->getBodyParam('redirectElement' . ucfirst($redirectType), []);
                     $elementId = is_array($elementIds) ? ($elementIds[0] ?? null) : $elementIds;
 
-                    $elementTypeMap = [
-                        'entry' => \craft\elements\Entry::class,
-                        'category' => \craft\elements\Category::class,
-                        'asset' => \craft\elements\Asset::class,
-                    ];
-
                     $actionValue = [
                         'elementId' => $elementId ? (int)$elementId : null,
-                        'elementType' => $elementTypeMap[$redirectType] ?? null,
+                        'elementType' => TargetElementTypeHelper::elementTypeForKey($redirectType),
                     ];
                 }
                 break;
@@ -606,5 +609,39 @@ class QueryRulesController extends Controller
         }
 
         return $candidate;
+    }
+
+    /**
+     * @return array<string, array<int, ElementInterface>>
+     */
+    private function selectedTargetElements(mixed $elementId, mixed $elementType, ?int $siteId): array
+    {
+        $elements = [];
+        if (!is_numeric($elementId)) {
+            return $elements;
+        }
+
+        $queryElementType = is_string($elementType) && TargetElementTypeHelper::isSupportedElementType($elementType) ? $elementType : null;
+        $element = Craft::$app->getElements()->getElementById((int)$elementId, $queryElementType, $siteId);
+        if ($element instanceof ElementInterface) {
+            $elements[TargetElementTypeHelper::keyForElementType(get_class($element))] = [$element];
+        }
+
+        return $elements;
+    }
+
+    private function resolveTargetElementType(mixed $elementId, mixed $elementType, ?int $siteId): ?string
+    {
+        if (is_string($elementType) && TargetElementTypeHelper::isSupportedElementType($elementType)) {
+            return $elementType;
+        }
+
+        if (!is_numeric($elementId)) {
+            return null;
+        }
+
+        $element = Craft::$app->getElements()->getElementById((int)$elementId, null, $siteId);
+
+        return $element instanceof ElementInterface ? get_class($element) : null;
     }
 }

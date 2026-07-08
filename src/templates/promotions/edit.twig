@@ -187,18 +187,31 @@
 
 		<hr>
 
-		{{ forms.elementSelectField({
-			label: 'Promoted Element'|t('search-manager'),
-			instructions: 'Select the element to pin to the top of search results when the query matches.'|t('search-manager'),
-			id: 'promotedElement',
-			name: 'promotedElement',
-			elementType: 'craft\\elements\\Entry',
-			selectionLabel: 'Select an element'|t('search-manager'),
-			limit: 1,
-			elements: promotion.elementId ? [craft.entries.id(promotion.elementId).status(null).one()] : [],
-			required: true,
-			errors: promotion.getErrors('elementId'),
+		{{ forms.selectField({
+			label: 'Type'|t('search-manager'),
+			id: 'promotedElementType',
+			name: 'promotedElementType',
+			options: targetTypeOptions,
+			value: selectedTargetType,
 		}) }}
+
+		{% for targetTypeOption in targetTypeOptions %}
+			{% set targetType = targetTypeOption.value %}
+			<div id="promoted-element-{{ targetType }}-field" class="promoted-element-field{{ selectedTargetType != targetType ? ' hidden' : '' }}">
+				{{ forms.elementSelectField({
+					label: 'Promoted Element'|t('search-manager'),
+					instructions: 'Select the element to pin to the top of search results when the query matches.'|t('search-manager'),
+					id: 'promotedElement' ~ targetType|capitalize,
+					name: 'promotedElement' ~ targetType|capitalize,
+					elementType: targetTypeOption.elementType ?? null,
+					selectionLabel: 'Select an element'|t('search-manager'),
+					limit: 1,
+					elements: selectedTargetElements[targetType] ?? [],
+					required: selectedTargetType == targetType,
+					errors: selectedTargetType == targetType ? promotion.getErrors('elementId') : [],
+				}) }}
+			</div>
+		{% endfor %}
 
 		<div class="field">
 			<div class="heading">
@@ -335,6 +348,25 @@ function updateMatchTypeUI() {
 
 if (matchTypeSelect) {
 	matchTypeSelect.addEventListener('change', updateMatchTypeUI);
+}
+
+function togglePromotedElementFields() {
+	const typeSelect = document.getElementById('promotedElementType');
+	if (!typeSelect) return;
+
+	document.querySelectorAll('.promoted-element-field').forEach(field => {
+		const active = field.id === 'promoted-element-' + typeSelect.value + '-field';
+		field.classList.toggle('hidden', !active);
+		field.querySelectorAll('input, select, textarea, button').forEach(input => {
+			input.disabled = !active;
+		});
+	});
+}
+
+togglePromotedElementFields();
+const promotedElementTypeSelect = document.getElementById('promotedElementType');
+if (promotedElementTypeSelect) {
+	promotedElementTypeSelect.addEventListener('change', togglePromotedElementFields);
 }
 
 // Set platform-specific keyboard shortcut

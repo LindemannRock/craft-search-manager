@@ -233,7 +233,7 @@ final class CommerceIndexElementTypeUiTest extends TestCase
         self::assertStringNotContainsString('craft\\\\commerce\\\\elements\\\\Variant', $source);
     }
 
-    public function testPromotionsAndQueryRulesDoNotIncludeCommerceBatchOneChanges(): void
+    public function testPromotionsAndQueryRulesDoNotDuplicateCommerceAvailabilityChecks(): void
     {
         foreach ([
             'src/controllers/PromotionsController.php',
@@ -245,6 +245,8 @@ final class CommerceIndexElementTypeUiTest extends TestCase
 
             self::assertStringNotContainsString('CommerceElementTypeHelper', $source);
             self::assertStringNotContainsString('craft\\\\commerce', $source);
+            self::assertStringNotContainsString("isPluginEnabled('commerce')", $source);
+            self::assertStringNotContainsString('class_exists(', $source);
         }
     }
 

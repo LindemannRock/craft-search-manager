@@ -21,7 +21,7 @@ Go to Search Manager > Promotions and click "New Promotion". Each promotion has:
   - **Exact** — query must exactly match one of the patterns
   - **Contains** — query must contain one of the patterns
   - **Prefix** — query must start with one of the patterns
-- **Promoted Element** — the Craft element to promote (entry, asset, category)
+- **Promoted Element** — the Craft element to promote. Entry, asset, category, and user targets are always available; Commerce product and variant targets appear when Craft Commerce is installed and enabled.
 - **Position** — where to place it (1 = first, 2 = second, etc.)
 - **Index** — all indices or a specific index
 - **Site** — all sites or a specific site
@@ -33,7 +33,7 @@ Go to Search Manager > Promotions and click "New Promotion". Each promotion has:
 ```text
 Query Pattern: "laptop"
 Match Type: Exact
-Promoted Element: "MacBook Pro 2024" (Entry #123)
+Promoted Element: "MacBook Pro 2024" (Product #123)
 Position: 1
 
 Result: Searching exactly "laptop" → MacBook Pro appears first

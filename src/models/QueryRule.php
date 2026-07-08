@@ -15,6 +15,7 @@ use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\base\helpers\UrlSafetyHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 
 /**
  * Query Rule Model
@@ -167,6 +168,9 @@ class QueryRule extends Model
                 if (empty($value['elementId'])) {
                     $this->addError($attribute, Craft::t('search-manager', 'Boost element action requires an "elementId".'));
                 }
+                if (!empty($value['elementType']) && !TargetElementTypeHelper::isSupportedElementType((string)$value['elementType'])) {
+                    $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
+                }
                 if (!isset($value['multiplier']) || !is_numeric($value['multiplier'])) {
                     $this->addError($attribute, Craft::t('search-manager', 'Boost element action requires a numeric "multiplier".'));
                 }
@@ -184,6 +188,9 @@ class QueryRule extends Model
                 $hasElement = !empty($value['elementId']) && !empty($value['elementType']);
                 if (!$hasUrl && !$hasElement) {
                     $this->addError($attribute, Craft::t('search-manager', 'Redirect action requires a URL or an element.'));
+                }
+                if ($hasElement && !TargetElementTypeHelper::isSupportedElementType((string)$value['elementType'])) {
+                    $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
                 }
                 // Validate URL protocol when URL-based redirect
                 if ($hasUrl) {

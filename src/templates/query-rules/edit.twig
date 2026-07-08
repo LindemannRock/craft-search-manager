@@ -333,17 +333,30 @@
 
 		{# Boost element fields #}
 		<div id="action-boost_element" class="action-fields" style="{{ rule.actionType != 'boost_element' ? 'display: none;' : '' }}">
-			{{ forms.elementSelectField({
-				label: 'Boost Element'|t('search-manager'),
-				instructions: 'Select the element to boost when this rule matches.'|t('search-manager'),
-				id: 'boostElement',
-				name: 'boostElement',
-				elementType: 'craft\\elements\\Entry',
-				selectionLabel: 'Select an element'|t('search-manager'),
-				limit: 1,
-				elements: (rule.actionValue.elementId ?? null) ? [craft.entries.id(rule.actionValue.elementId).status(null).one()] : [],
-				errors: rule.actionType == 'boost_element' ? rule.getErrors('actionValue') : [],
+			{{ forms.selectField({
+				label: 'Type'|t('search-manager'),
+				id: 'boostElementType',
+				name: 'boostElementType',
+				options: targetTypeOptions,
+				value: boostElementTargetType,
 			}) }}
+
+			{% for targetTypeOption in targetTypeOptions %}
+				{% set targetType = targetTypeOption.value %}
+				<div id="boost-element-{{ targetType }}-field" class="boost-element-field{{ boostElementTargetType != targetType ? ' hidden' : '' }}">
+					{{ forms.elementSelectField({
+						label: 'Boost Element'|t('search-manager'),
+						instructions: 'Select the element to boost when this rule matches.'|t('search-manager'),
+						id: 'boostElement' ~ targetType|capitalize,
+						name: 'boostElement' ~ targetType|capitalize,
+						elementType: targetTypeOption.elementType,
+						selectionLabel: 'Select an element'|t('search-manager'),
+						limit: 1,
+						elements: boostTargetElements[targetType] ?? [],
+						errors: rule.actionType == 'boost_element' and boostElementTargetType == targetType ? rule.getErrors('actionValue') : [],
+					}) }}
+				</div>
+			{% endfor %}
 
 			{{ forms.selectField({
 				label: 'Boost Multiplier'|t('search-manager'),
@@ -381,11 +394,8 @@
 		{# Redirect fields #}
 		<div id="action-redirect" class="action-fields" style="{{ rule.actionType != 'redirect' ? 'display: none;' : '' }}">
 			{# Determine current redirect type #}
-			{% set redirectType = rule.actionValue.elementId is defined and rule.actionValue.elementId and rule.actionValue.elementType is defined ?
-				(rule.actionValue.elementType ends with 'Entry' ? 'entry' :
-				 rule.actionValue.elementType ends with 'Category' ? 'category' :
-				 rule.actionValue.elementType ends with 'Asset' ? 'asset' : 'url')
-				: 'url' %}
+			{% set redirectType = rule.actionValue.elementId is defined and rule.actionValue.elementId and rule.actionValue.elementType is defined ? redirectTargetType : 'url' %}
+			{% set redirectTypeOptions = [{ value: 'url', label: 'Custom URL'|t('search-manager') }]|merge(targetTypeOptions) %}
 
 			{{ forms.selectField({
 				label: 'Redirect To'|t('search-manager'),
@@ -393,12 +403,7 @@
 				id: 'redirectType',
 				name: 'redirectType',
 				value: redirectType,
-				options: [
-					{ value: 'url', label: 'Custom URL'|t('search-manager') },
-					{ value: 'entry', label: 'Entry'|t('search-manager') },
-					{ value: 'category', label: 'Category'|t('search-manager') },
-					{ value: 'asset', label: 'Asset'|t('search-manager') },
-				],
+				options: redirectTypeOptions,
 			}) }}
 
 			{# Custom URL field #}
@@ -414,66 +419,22 @@
 				}) }}
 			</div>
 
-			{# Get linked element if exists #}
-			{% set redirectElement = null %}
-			{% if rule.actionValue.elementId is defined and rule.actionValue.elementId %}
-				{% if redirectType == 'entry' %}
-					{% set redirectElement = craft.entries.id(rule.actionValue.elementId).status(null).one() %}
-				{% elseif redirectType == 'category' %}
-					{% set redirectElement = craft.categories.id(rule.actionValue.elementId).status(null).one() %}
-				{% elseif redirectType == 'asset' %}
-					{% set redirectElement = craft.assets.id(rule.actionValue.elementId).one() %}
-				{% endif %}
-			{% endif %}
-
-			{# Entry picker #}
-			<div id="redirect-entry-field" class="{{ redirectType != 'entry' ? 'hidden' : '' }}">
-				{{ forms.elementSelectField({
-					label: 'Select Entry'|t('search-manager'),
-					instructions: 'Choose an entry to redirect to.'|t('search-manager'),
-					id: 'redirectElementEntry',
-					name: 'redirectElementEntry',
-					elementType: 'craft\\elements\\Entry',
-					selectionLabel: 'Choose an entry'|t('search-manager'),
-					limit: 1,
-					elements: (redirectType == 'entry' and redirectElement) ? [redirectElement] : [],
-					showSiteMenu: true,
-					criteria: { status: ['live', 'pending', 'expired'] },
-					errors: redirectType == 'entry' ? rule.getErrors('actionValue') : [],
-				}) }}
-			</div>
-
-			{# Category picker #}
-			<div id="redirect-category-field" class="{{ redirectType != 'category' ? 'hidden' : '' }}">
-				{{ forms.elementSelectField({
-					label: 'Select Category'|t('search-manager'),
-					instructions: 'Choose a category to redirect to.'|t('search-manager'),
-					id: 'redirectElementCategory',
-					name: 'redirectElementCategory',
-					elementType: 'craft\\elements\\Category',
-					selectionLabel: 'Choose a category'|t('search-manager'),
-					limit: 1,
-					elements: (redirectType == 'category' and redirectElement) ? [redirectElement] : [],
-					showSiteMenu: true,
-					errors: redirectType == 'category' ? rule.getErrors('actionValue') : [],
-				}) }}
-			</div>
-
-			{# Asset picker #}
-			<div id="redirect-asset-field" class="{{ redirectType != 'asset' ? 'hidden' : '' }}">
-				{{ forms.elementSelectField({
-					label: 'Select Asset'|t('search-manager'),
-					instructions: 'Choose an asset to redirect to.'|t('search-manager'),
-					id: 'redirectElementAsset',
-					name: 'redirectElementAsset',
-					elementType: 'craft\\elements\\Asset',
-					selectionLabel: 'Choose an asset'|t('search-manager'),
-					limit: 1,
-					elements: (redirectType == 'asset' and redirectElement) ? [redirectElement] : [],
-					showSiteMenu: true,
-					errors: redirectType == 'asset' ? rule.getErrors('actionValue') : [],
-				}) }}
-			</div>
+			{% for targetTypeOption in targetTypeOptions %}
+				{% set targetType = targetTypeOption.value %}
+				<div id="redirect-{{ targetType }}-field" class="redirect-element-field{{ redirectType != targetType ? ' hidden' : '' }}">
+					{{ forms.elementSelectField({
+						label: 'Element'|t('search-manager'),
+						id: 'redirectElement' ~ targetType|capitalize,
+						name: 'redirectElement' ~ targetType|capitalize,
+						elementType: targetTypeOption.elementType,
+						selectionLabel: 'Select an element'|t('search-manager'),
+						limit: 1,
+						elements: redirectTargetElements[targetType] ?? [],
+						showSiteMenu: true,
+						errors: redirectType == targetType ? rule.getErrors('actionValue') : [],
+					}) }}
+				</div>
+			{% endfor %}
 
 			<p class="notice has-icon" style="margin-top: 10px;">
 				<span class="icon" aria-hidden="true"></span>
@@ -675,15 +636,33 @@ function toggleRedirectFields() {
 
 	const type = redirectTypeSelect.value;
 	document.getElementById('redirect-url-field').classList.toggle('hidden', type !== 'url');
-	document.getElementById('redirect-entry-field').classList.toggle('hidden', type !== 'entry');
-	document.getElementById('redirect-category-field').classList.toggle('hidden', type !== 'category');
-	document.getElementById('redirect-asset-field').classList.toggle('hidden', type !== 'asset');
+	document.querySelectorAll('.redirect-element-field').forEach(field => {
+		const active = field.id === 'redirect-' + type + '-field';
+		field.classList.toggle('hidden', !active);
+		field.querySelectorAll('input, select, textarea, button').forEach(input => {
+			input.disabled = !active;
+		});
+	});
+}
+
+function toggleBoostElementFields() {
+	const boostTypeSelect = document.getElementById('boostElementType');
+	if (!boostTypeSelect) return;
+
+	document.querySelectorAll('.boost-element-field').forEach(field => {
+		const active = field.id === 'boost-element-' + boostTypeSelect.value + '-field';
+		field.classList.toggle('hidden', !active);
+		field.querySelectorAll('input, select, textarea, button').forEach(input => {
+			input.disabled = !active;
+		});
+	});
 }
 
 // Initialize
 toggleActionFields();
 updateMatchTypeUI();
 toggleRedirectFields();
+toggleBoostElementFields();
 
 // Listen for changes
 document.getElementById('actionType').addEventListener('change', toggleActionFields);
@@ -691,6 +670,10 @@ document.getElementById('matchType').addEventListener('change', updateMatchTypeU
 const redirectTypeSelect = document.getElementById('redirectType');
 if (redirectTypeSelect) {
 	redirectTypeSelect.addEventListener('change', toggleRedirectFields);
+}
+const boostElementTypeSelect = document.getElementById('boostElementType');
+if (boostElementTypeSelect) {
+	boostElementTypeSelect.addEventListener('change', toggleBoostElementFields);
 }
 
 // Set platform-specific keyboard shortcut

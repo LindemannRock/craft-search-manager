@@ -14,6 +14,7 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 
 /**
  * Promotion Model
@@ -104,7 +105,13 @@ class Promotion extends Model
             return;
         }
 
-        $element = Craft::$app->getElements()->getElementById($this->elementId, null, $this->siteId);
+        if ($this->elementType !== null && !TargetElementTypeHelper::isSupportedElementType($this->elementType)) {
+            $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
+            return;
+        }
+
+        $elementType = $this->elementType;
+        $element = Craft::$app->getElements()->getElementById($this->elementId, $elementType, $this->siteId);
         if (!$element) {
             $this->addError($attribute, Craft::t('search-manager', 'Element not found.'));
             return;
