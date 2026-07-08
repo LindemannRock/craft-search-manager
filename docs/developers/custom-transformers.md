@@ -20,7 +20,7 @@ When indexing an element, Search Manager resolves the transformer in this order:
 2. **Registered transformer** — matched by element type (e.g. `DocsManagerTransformer` for `SourceDoc`, `CommerceTransformer` for Commerce Product/Variant elements)
 3. **AutoTransformer** — fallback that works with any element type
 
-In most cases, you don't need to specify a transformer. Leave the field blank for the automatic path above. Set `transformer` / `transformerClass` manually only when you need a project-specific transformer class such as `modules\transformers\ProductTransformer`.
+In most cases, you don't need to specify a transformer. Leave the field blank for the automatic path above. Set `transformer` / `transformerClass` manually only when you need a project-specific transformer class such as `modules\searchmanager\transformers\ProductTransformer`. Use your own project or module namespace; the example namespace is not required.
 
 > [!NOTE]
 > `CommerceTransformer` is a built-in integration transformer for Craft Commerce. Do not use it as a custom extension base; start from `BaseTransformer` or `AutoTransformer` instead.
@@ -60,7 +60,7 @@ Create a class that extends `BaseTransformer`:
 ```php
 <?php
 
-namespace modules\transformers;
+namespace modules\searchmanager\transformers;
 
 use craft\base\ElementInterface;
 use craft\elements\Entry;
@@ -98,7 +98,7 @@ Assign your transformer to an index in `config/search-manager.php`:
         'name' => 'Entries (English)',
         'elementType' => \craft\elements\Entry::class,
         'siteId' => 1,
-        'transformer' => \modules\transformers\ProductTransformer::class,
+        'transformer' => \modules\searchmanager\transformers\ProductTransformer::class,
     ],
 ],
 ```
@@ -112,7 +112,7 @@ Use `AutoTransformer` when the automatic document is mostly correct and you only
 ```php
 <?php
 
-namespace modules\transformers;
+namespace modules\searchmanager\transformers;
 
 use craft\base\ElementInterface;
 use lindemannrock\searchmanager\transformers\AutoTransformer;

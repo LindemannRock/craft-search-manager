@@ -183,7 +183,7 @@ class SearchIndex extends Model
 
         // Validate format: must look like a PHP fully-qualified class name
         if (!preg_match('/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*(\\\\[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*)*$/', $transformerClass)) {
-            $this->addError($attribute, Craft::t('search-manager', 'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).'));
+            $this->addError($attribute, Craft::t('search-manager', 'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).'));
             return;
         }
 

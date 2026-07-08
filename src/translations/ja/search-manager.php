@@ -334,7 +334,7 @@ return [
     'Element not found.' => 'エレメントが見つかりません。',
     'Element not found' => 'エレメントが見つかりません',
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => '言語は有効な言語コードである必要があります（例: en, ar, fr-ca）',
-    'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'Transformer クラスは有効な PHP クラス名である必要があります（例: modules\\transformers\\MyTransformer）。',
+    'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).' => 'Transformer クラスは有効な PHP クラス名である必要があります（例: modules\\search\\transformers\\MyTransformer）。',
     'Transformer class does not exist: {class}' => 'Transformer クラスが存在しません: {class}',
     'Transformer class must implement TransformerInterface: {class}' => 'Transformer クラスは TransformerInterface を実装する必要があります: {class}',
     'Transformer class must be constructible without arguments: {class}' => 'Transformer クラスは引数なしで構築できる必要があります: {class}',

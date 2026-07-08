@@ -119,7 +119,7 @@ final class ModelValidationI18nTest extends TestCase
         $index->transformerClass = 'not a php class';
         $index->validateTransformerClass('transformerClass');
         self::assertSame([
-            'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).',
+            'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).',
         ], $index->getErrors('transformerClass'));
 
         $widget = $this->makeWidgetConfig();

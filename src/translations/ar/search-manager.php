@@ -334,7 +334,7 @@ return [
     'Element not found.' => 'لم يتم العثور على العنصر.',
     'Element not found' => 'لم يتم العثور على العنصر',
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => 'يجب أن تكون اللغة رمز لغة صالحاً (مثل en أو ar أو fr-ca)',
-    'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'يجب أن تكون فئة التحويل اسم فئة PHP صالحاً (مثل modules\\transformers\\MyTransformer).',
+    'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).' => 'يجب أن تكون فئة التحويل اسم فئة PHP صالحاً (مثل modules\\search\\transformers\\MyTransformer).',
     'Transformer class does not exist: {class}' => 'فئة التحويل غير موجودة: {class}',
     'Transformer class must implement TransformerInterface: {class}' => 'يجب أن تطبق فئة التحويل TransformerInterface: {class}',
     'Transformer class must be constructible without arguments: {class}' => 'يجب أن تكون فئة التحويل قابلة للإنشاء دون وسيطات: {class}',

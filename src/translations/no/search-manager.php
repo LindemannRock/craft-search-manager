@@ -334,7 +334,7 @@ return [
     'Element not found.' => 'Elementet ble ikke funnet.',
     'Element not found' => 'Elementet ble ikke funnet',
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => 'Språk må være en gyldig språkkode (f.eks. en, ar, fr-ca)',
-    'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'Transformer-klassen må være et gyldig PHP-klassenavn (f.eks. modules\\transformers\\MyTransformer).',
+    'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).' => 'Transformer-klassen må være et gyldig PHP-klassenavn (f.eks. modules\\search\\transformers\\MyTransformer).',
     'Transformer class does not exist: {class}' => 'Transformer-klassen finnes ikke: {class}',
     'Transformer class must implement TransformerInterface: {class}' => 'Transformer-klassen må implementere TransformerInterface: {class}',
     'Transformer class must be constructible without arguments: {class}' => 'Transformer-klassen må kunne konstrueres uten argumenter: {class}',

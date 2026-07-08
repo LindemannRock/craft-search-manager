@@ -334,7 +334,7 @@ return [
     'Element not found.' => 'Elemento non trovato.',
     'Element not found' => 'Elemento non trovato',
     'Language must be a valid language code (e.g., en, ar, fr-ca)' => 'La lingua deve essere un codice lingua valido (ad es. en, ar, fr-ca)',
-    'Transformer class must be a valid PHP class name (e.g., modules\\transformers\\MyTransformer).' => 'La classe transformer deve essere un nome di classe PHP valido (ad es. modules\\transformers\\MyTransformer).',
+    'Transformer class must be a valid PHP class name (e.g., modules\\search\\transformers\\MyTransformer).' => 'La classe transformer deve essere un nome di classe PHP valido (ad es. modules\\search\\transformers\\MyTransformer).',
     'Transformer class does not exist: {class}' => 'La classe transformer non esiste: {class}',
     'Transformer class must implement TransformerInterface: {class}' => 'La classe transformer deve implementare TransformerInterface: {class}',
     'Transformer class must be constructible without arguments: {class}' => 'La classe transformer deve essere costruibile senza argomenti: {class}',

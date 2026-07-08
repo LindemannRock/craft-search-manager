@@ -241,7 +241,7 @@ Indices define what content gets indexed and how it's transformed:
         'criteria' => function($query) {
             return $query->section(['news', 'blog']);
         },
-        'transformer' => \modules\transformers\ProductTransformer::class,
+        'transformer' => \modules\searchmanager\transformers\ProductTransformer::class,
         'enabled' => true,
     ],
 ],
@@ -423,7 +423,7 @@ return [
                 'criteria' => function($query) {
                     return $query->section(['news', 'blog', 'pages']);
                 },
-                'transformer' => \modules\transformers\ProductTransformer::class, // Optional — leave blank for automatic transformer selection
+                'transformer' => \modules\searchmanager\transformers\ProductTransformer::class, // Optional — leave blank for automatic transformer selection
                 'enabled' => true,
             ],
         ],
