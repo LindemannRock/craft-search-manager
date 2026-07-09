@@ -59,6 +59,32 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringNotContainsString('$elements += $found;', $source);
     }
 
+    public function testPromotedEntryMetadataUsesEntryTypeAndSeparateSectionLabel(): void
+    {
+        $source = $this->readPluginFile('src/services/PromotionService.php');
+
+        self::assertStringContainsString("'type' => \$this->resolveElementType(\$element),", $source);
+        self::assertStringContainsString("'section' => \$this->resolveElementSection(\$element),", $source);
+        self::assertStringContainsString('], $this->resolveCommerceMetadata($element));', $source);
+        self::assertStringContainsString("return 'entry';", $source);
+        self::assertStringContainsString('return $element->getSection()?->name;', $source);
+        self::assertStringNotContainsString('return $element->getSection()?->handle;', $source);
+    }
+
+    public function testPromotedCommerceMetadataUsesSearchDocumentTypeAndProductType(): void
+    {
+        $source = $this->readPluginFile('src/services/PromotionService.php');
+
+        self::assertStringContainsString('is_a($element, CommerceElementTypeHelper::productElementType())', $source);
+        self::assertStringContainsString("return 'product';", $source);
+        self::assertStringContainsString('is_a($element, CommerceElementTypeHelper::variantElementType())', $source);
+        self::assertStringContainsString("return 'variant';", $source);
+        self::assertStringContainsString("'productType' => \$productTypeName,", $source);
+        self::assertStringContainsString("'productTypeName' => \$productTypeName,", $source);
+        self::assertStringContainsString("'productTypeHandle' => \$productTypeHandle,", $source);
+        self::assertStringContainsString("'section' => \$productTypeName,", $source);
+    }
+
     public function testBackendSearchThreadsAlreadyMatchedPromotionsIntoApplicationPath(): void
     {
         $source = $this->readPluginFile('src/services/BackendService.php');

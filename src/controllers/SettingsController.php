@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\base\Field;
 use craft\helpers\Db;
 use craft\web\Controller;
 use lindemannrock\base\helpers\ExportHelper;
@@ -475,7 +476,7 @@ class SettingsController extends Controller
             $debug['commerce'] = $commerce;
         }
 
-        $customFields = $this->settingsTestCustomIndexedFields($hit);
+        $customFields = $this->settingsTestCustomIndexedFields($hit, $this->settingsTestDebugElement($hit, $index));
         if (!empty($customFields)) {
             $debug['customFields'] = $customFields;
         }
@@ -523,16 +524,18 @@ class SettingsController extends Controller
 
     /**
      * @param array<string, mixed> $hit
-     * @return list<array{label: string, value: string}>
+     * @return list<array{label: string, value?: string, children?: list<array{label: string, value: string}>}>
      */
-    private function settingsTestCustomIndexedFields(array $hit): array
+    private function settingsTestCustomIndexedFields(array $hit, ?ElementInterface $element = null): array
     {
         $fields = [];
+        $layoutFields = $this->settingsTestLayoutFieldsByHandle($element);
         foreach ($hit as $key => $value) {
             if (!$this->settingsTestCanShowCustomIndexedField((string)$key)) {
                 continue;
             }
 
+            $layoutField = $layoutFields[(string)$key] ?? null;
             $displayValue = is_array($value)
                 ? implode(', ', $this->settingsTestListDebugValue($value, 6))
                 : $this->settingsTestScalarDebugValue($value);
@@ -541,10 +544,21 @@ class SettingsController extends Controller
                 continue;
             }
 
-            $fields[] = [
-                'label' => $this->settingsTestHumanizeDebugField((string)$key),
-                'value' => $this->settingsTestTruncateDebugValue($displayValue, 140),
-            ];
+            $nestedFields = $layoutField instanceof Field
+                ? $this->settingsTestNestedCustomIndexedFields($layoutField, $element)
+                : [];
+
+            if (!empty($nestedFields)) {
+                $fields[] = [
+                    'label' => $this->settingsTestDebugFieldLabel($layoutField, (string)$key),
+                    'children' => $nestedFields,
+                ];
+            } else {
+                $fields[] = [
+                    'label' => $this->settingsTestDebugFieldLabel($layoutField, (string)$key),
+                    'value' => $this->settingsTestTruncateDebugValue($displayValue, 140),
+                ];
+            }
 
             if (count($fields) >= 6) {
                 break;
@@ -552,6 +566,139 @@ class SettingsController extends Controller
         }
 
         return $fields;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     */
+    private function settingsTestDebugElement(array $hit, ?SearchIndex $index): ?ElementInterface
+    {
+        $elementId = SearchHitIdentityHelper::elementId($hit);
+        if ($elementId === null) {
+            return null;
+        }
+
+        $elementType = $index->elementType ?? \craft\elements\Entry::class;
+        if (!$this->isElementTypeAvailable($elementType, 'settings-test-debug')) {
+            return null;
+        }
+
+        $siteId = isset($hit['siteId']) && is_numeric($hit['siteId'])
+            ? (int)$hit['siteId']
+            : ($index?->getSiteIds()[0] ?? Craft::$app->getSites()->getCurrentSite()->id);
+
+        try {
+            return $elementType::find()
+                ->id($elementId)
+                ->siteId($siteId)
+                ->status(null)
+                ->one();
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, Field>
+     */
+    private function settingsTestLayoutFieldsByHandle(?ElementInterface $element): array
+    {
+        $layout = $element?->getFieldLayout();
+        if ($layout === null) {
+            return [];
+        }
+
+        $fields = [];
+        foreach ($layout->getCustomFields() as $field) {
+            if ($field instanceof Field && $field->handle !== null && $field->handle !== '') {
+                $fields[$field->handle] = $field;
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * @return list<array{label: string, value: string}>
+     */
+    private function settingsTestNestedCustomIndexedFields(Field $field, ?ElementInterface $element, int $depth = 0): array
+    {
+        if ($element === null || $field->handle === null || $field->handle === '' || !$this->settingsTestCanShowNestedIndexedFieldGroup($field) || $depth > 1) {
+            return [];
+        }
+
+        $value = $element->getFieldValue($field->handle);
+        $nestedElements = $this->settingsTestNestedDebugElements($value);
+        if (empty($nestedElements)) {
+            return [];
+        }
+
+        $children = [];
+        foreach ($nestedElements as $nestedElement) {
+            foreach ($this->settingsTestLayoutFieldsByHandle($nestedElement) as $nestedField) {
+                if (!$nestedField->searchable || $nestedField->handle === null || !$this->settingsTestCanShowCustomIndexedField($nestedField->handle)) {
+                    continue;
+                }
+
+                try {
+                    $keywords = $this->settingsTestScalarDebugValue($nestedField->getSearchKeywords(
+                        $nestedElement->getFieldValue($nestedField->handle),
+                        $nestedElement,
+                    ));
+                } catch (\Throwable) {
+                    continue;
+                }
+                if ($keywords === null || $keywords === '') {
+                    continue;
+                }
+
+                $children[] = [
+                    'label' => $this->settingsTestDebugFieldLabel($nestedField, $nestedField->handle),
+                    'value' => $this->settingsTestTruncateDebugValue($keywords, 140),
+                ];
+
+                if (count($children) >= 12) {
+                    return $children;
+                }
+            }
+        }
+
+        return $children;
+    }
+
+    private function settingsTestCanShowNestedIndexedFieldGroup(Field $field): bool
+    {
+        return is_a($field, 'craft\\fields\\Matrix') || is_a($field, 'craft\\fields\\ContentBlock');
+    }
+
+    /**
+     * @return list<ElementInterface>
+     */
+    private function settingsTestNestedDebugElements(mixed $value): array
+    {
+        if ($value instanceof ElementInterface) {
+            return [$value];
+        }
+
+        if (is_object($value) && method_exists($value, 'all')) {
+            $value = $value->all();
+        }
+
+        if (!is_iterable($value)) {
+            return [];
+        }
+
+        $elements = [];
+        foreach ($value as $item) {
+            if ($item instanceof ElementInterface) {
+                $elements[] = $item;
+            }
+            if (count($elements) >= 12) {
+                break;
+            }
+        }
+
+        return $elements;
     }
 
     private function settingsTestCanShowCustomIndexedField(string $key): bool
@@ -667,6 +814,13 @@ class SettingsController extends Controller
         $label = preg_replace('/\s+/', ' ', (string)$label);
 
         return ucwords(trim((string)$label));
+    }
+
+    private function settingsTestDebugFieldLabel(?Field $field, string $fallbackKey): string
+    {
+        $label = trim((string)($field?->name ?? ''));
+
+        return $label !== '' ? $label : $this->settingsTestHumanizeDebugField($fallbackKey);
     }
 
     /**

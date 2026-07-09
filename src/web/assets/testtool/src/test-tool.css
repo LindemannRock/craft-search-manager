@@ -449,6 +449,32 @@
     overflow-wrap: anywhere;
 }
 
+.sm-test-indexed-custom-field-label,
+.sm-test-indexed-custom-group-label,
+.sm-test-indexed-custom-child-label {
+    color: #334155;
+    font-weight: 700;
+}
+
+.sm-test-indexed-custom-field-value,
+.sm-test-indexed-custom-child-value {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.sm-test-indexed-custom-group {
+    display: grid;
+    min-width: 0;
+    gap: 4px;
+}
+
+.sm-test-indexed-custom-children {
+    display: grid;
+    min-width: 0;
+    gap: 3px;
+    padding-left: 12px;
+}
+
 .sm-test-empty {
     padding: 40px;
     color: #374151;

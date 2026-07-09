@@ -10,6 +10,14 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use craft\base\Element;
+use craft\base\Field;
+use craft\elements\ElementCollection;
+use craft\fieldlayoutelements\CustomField;
+use craft\fields\Matrix;
+use craft\fields\PlainText;
+use craft\models\FieldLayout;
+use craft\models\FieldLayoutTab;
 use lindemannrock\searchmanager\controllers\SettingsController;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -119,6 +127,77 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertArrayNotHasKey('customFields', $debug);
     }
 
+    public function testServerDebugPayloadCanGroupNestedMatrixCustomFields(): void
+    {
+        $matrixField = new Matrix([
+            'handle' => 'testcommerce',
+            'name' => 'Testcommerce',
+            'searchable' => true,
+        ]);
+        $visibleNestedField = new PlainText([
+            'handle' => 'textArea',
+            'name' => 'Text Area',
+            'searchable' => true,
+        ]);
+        $hiddenNestedField = new PlainText([
+            'handle' => 'passwordToken',
+            'name' => 'Password Token',
+            'searchable' => true,
+        ]);
+        $nonSearchableNestedField = new PlainText([
+            'handle' => 'hiddenNested',
+            'name' => 'Hidden Nested',
+            'searchable' => false,
+        ]);
+
+        $nestedElement = new SearchManagerIndexedDebugTestElement();
+        $nestedElement->setTestFieldLayout($this->fieldLayout([$visibleNestedField, $hiddenNestedField, $nonSearchableNestedField]));
+        $nestedElement->setTestFieldValues([
+            'textArea' => 'THIS IS A TEST TEXT WHAT IS THIS TEXT TEXT AREA',
+            'passwordToken' => 'secret nested token',
+            'hiddenNested' => 'Matrix nested hidden needle',
+        ]);
+
+        $element = new SearchManagerIndexedDebugTestElement();
+        $element->setTestFieldLayout($this->fieldLayout([$matrixField]));
+        $element->setTestFieldValues([
+            'testcommerce' => new ElementCollection([$nestedElement]),
+        ]);
+
+        $fields = $this->invokeSettingsControllerMethod('settingsTestCustomIndexedFields', [[
+            'testcommerce' => 'THIS IS A TEST TEXT WHAT IS THIS TEXT TEXT AREA secret nested token Matrix nested hidden needle',
+            'productDescription' => 'Lorem ipsum dolor sit amet',
+        ], $element]);
+
+        self::assertSame('Testcommerce', $fields[0]['label'] ?? null);
+        self::assertArrayNotHasKey('value', $fields[0]);
+        self::assertSame([
+            [
+                'label' => 'Text Area',
+                'value' => 'THIS IS A TEST TEXT WHAT IS THIS TEXT TEXT AREA',
+            ],
+        ], $fields[0]['children'] ?? null);
+
+        $encoded = json_encode($fields, JSON_THROW_ON_ERROR);
+        self::assertStringNotContainsString('secret nested token', $encoded);
+        self::assertStringNotContainsString('Matrix nested hidden needle', $encoded);
+        self::assertStringNotContainsString('{', (string)($fields[0]['children'][0]['value'] ?? ''));
+    }
+
+    public function testServerDebugPayloadFallsBackToFlatCustomFields(): void
+    {
+        $fields = $this->invokeSettingsControllerMethod('settingsTestCustomIndexedFields', [[
+            'productDescription' => 'Lorem ipsum dolor sit amet',
+        ]]);
+
+        self::assertSame([
+            [
+                'label' => 'Product Description',
+                'value' => 'Lorem ipsum dolor sit amet',
+            ],
+        ], $fields);
+    }
+
     public function testControllerOnlyAttachesPayloadWhenDebugMetadataIsIncluded(): void
     {
         $source = $this->readPluginFile('src/controllers/SettingsController.php');
@@ -139,6 +218,27 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringNotContainsString('_indexedDocument', $searchHitType);
     }
 
+    public function testResultCardUsesProductTypeMetadataLabelForCommerceHits(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
+
+        foreach ([
+            "const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant' || Boolean(hit.productTypeName || hit.productTypeHandle || hit.productType);",
+            "const productType = hit.productTypeName || hit.productType || (isCommerceHit ? hit.section : '');",
+            'const contextLabel = isCommerceHit ? T.productTypeLabel : T.sectionLabel;',
+            'const contextValue = isCommerceHit ? productType : hit.section;',
+            'function formatMetaLabel(label)',
+            '<span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}',
+            '<span class="sm-test-meta-label">${formatMetaLabel(\'ID\')}</span> #${objectIdDisplay}',
+            '${contextMeta}',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $source);
+        }
+
+        self::assertStringNotContainsString('<span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}', $source);
+        self::assertStringContainsString('renderIndexedDocumentDebug(hit)', $source);
+    }
+
     public function testAssetRendererIsAllowlistedEscapedTruncatedAndKeepsUrlHardening(): void
     {
         $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
@@ -155,18 +255,32 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'safeUrlAttribute(parentProduct.url)',
             'escapeDisplay(truncateDisplay(field.label, 32))',
             'escapeDisplay(truncateDisplay(field.value, 96))',
+            'const renderCustomField = (field) => {',
+            'Array.isArray(field.children) ? field.children : []',
+            'class="sm-test-indexed-custom-group"',
+            'class="sm-test-indexed-custom-field-label"',
+            'class="sm-test-indexed-custom-child"',
+            'escapeDisplay(truncateDisplay(child.label, 32))',
+            'escapeDisplay(truncateDisplay(child.value, 96))',
             '<details class="sm-test-indexed-debug">',
             '<summary>${T.indexedDocumentLabel}</summary>',
             'class="sm-test-indexed-row"',
             'class="sm-test-indexed-label"',
             'class="sm-test-indexed-value"',
             '${renderIndexedDocumentDebug(hit)}',
+            "const snippetLengthInput = document.getElementById('snippetLength');",
+            'const snippetLength = Math.min(1000, Math.max(50, parseInt(snippetLengthInput.value, 10) || 200));',
+            'snippetLengthInput.value = snippetLength;',
+            'snippetLength: snippetLength,',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
 
         foreach ([
             '.sm-test-indexed-debug',
+            '.sm-test-indexed-custom-group',
+            '.sm-test-indexed-custom-field-label',
+            '.sm-test-indexed-custom-child-label',
             'grid-template-columns: minmax(140px, max-content) minmax(0, 1fr);',
             'overflow-wrap: anywhere;',
         ] as $needle) {
@@ -227,5 +341,61 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         $this->assertIsString($source);
 
         return $source;
+    }
+
+    /**
+     * @param Field[] $fields
+     */
+    private function fieldLayout(array $fields): FieldLayout
+    {
+        $layout = new FieldLayout(['type' => SearchManagerIndexedDebugTestElement::class]);
+        $tab = new FieldLayoutTab(['name' => 'Content']);
+        $tab->setLayout($layout);
+        $tab->setElements(array_map(
+            static fn(Field $field): CustomField => new CustomField($field),
+            $fields,
+        ));
+
+        $layout->setTabs([$tab]);
+
+        return $layout;
+    }
+}
+
+final class SearchManagerIndexedDebugTestElement extends Element
+{
+    private ?FieldLayout $testFieldLayout = null;
+
+    /**
+     * @var array<string, mixed>
+     */
+    private array $testFieldValues = [];
+
+    public static function displayName(): string
+    {
+        return 'Search Manager Indexed Debug Test Element';
+    }
+
+    public function getFieldLayout(): ?FieldLayout
+    {
+        return $this->testFieldLayout;
+    }
+
+    public function getFieldValue(string $fieldHandle): mixed
+    {
+        return $this->testFieldValues[$fieldHandle] ?? null;
+    }
+
+    public function setTestFieldLayout(FieldLayout $fieldLayout): void
+    {
+        $this->testFieldLayout = $fieldLayout;
+    }
+
+    /**
+     * @param array<string, mixed> $fieldValues
+     */
+    public function setTestFieldValues(array $fieldValues): void
+    {
+        $this->testFieldValues = $fieldValues;
     }
 }

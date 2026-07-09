@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use yii\base\Component;
@@ -222,7 +223,7 @@ class PromotionService extends Component
                 $element = $promotionSiteId !== null
                     ? ($elements[$elementType][$promotionSiteId][$promotion->elementId] ?? null)
                     : null;
-                $promotedItem = [
+                $promotedItem = array_merge([
                     'objectID' => $promotion->elementId,
                     'id' => $promotion->elementId,
                     'elementId' => $promotion->elementId,
@@ -232,8 +233,9 @@ class PromotionService extends Component
                     'position' => $promotion->position,
                     'score' => null,
                     'type' => $this->resolveElementType($element),
+                    'section' => $this->resolveElementSection($element),
                     'title' => $element?->title,
-                ];
+                ], $this->resolveCommerceMetadata($element));
             } else {
                 $promotedItem = $promotion->elementId;
             }
@@ -351,7 +353,7 @@ class PromotionService extends Component
     // =========================================================================
 
     /**
-     * Resolve a human-readable type string for a promoted element
+     * Resolve the broad display type for a promoted element.
      */
     private function resolveElementType(?\craft\base\ElementInterface $element): ?string
     {
@@ -360,18 +362,115 @@ class PromotionService extends Component
         }
 
         if ($element instanceof \craft\elements\Entry) {
-            return $element->getSection()?->handle;
+            return 'entry';
+        }
+
+        if (is_a($element, CommerceElementTypeHelper::productElementType())) {
+            return 'product';
+        }
+
+        if (is_a($element, CommerceElementTypeHelper::variantElementType())) {
+            return 'variant';
         }
 
         if ($element instanceof \craft\elements\Category) {
-            return $element->getGroup()->handle;
+            return 'category';
         }
 
         if ($element instanceof \craft\elements\Asset) {
-            return $element->getVolume()->handle;
+            return 'asset';
         }
 
         // Fallback: use the element's display name (e.g., "User")
         return $element::displayName();
+    }
+
+    /**
+     * Resolve the section/group/volume display label for a promoted element.
+     */
+    private function resolveElementSection(?\craft\base\ElementInterface $element): ?string
+    {
+        if (!$element) {
+            return null;
+        }
+
+        if ($element instanceof \craft\elements\Entry) {
+            return $element->getSection()?->name;
+        }
+
+        if ($element instanceof \craft\elements\Category) {
+            return $element->getGroup()->name;
+        }
+
+        if ($element instanceof \craft\elements\Asset) {
+            return $element->getVolume()->name;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function resolveCommerceMetadata(?\craft\base\ElementInterface $element): array
+    {
+        if (!$element) {
+            return [];
+        }
+
+        $product = is_a($element, CommerceElementTypeHelper::variantElementType())
+            ? $this->objectValue($element, ['getProduct', 'product'])
+            : $element;
+
+        if (!is_a($product, CommerceElementTypeHelper::productElementType())) {
+            return [];
+        }
+
+        $productType = $this->objectValue($product, ['getType', 'getProductType', 'type', 'productType']);
+        $productTypeName = $this->stringValue($productType, ['name', 'getName']);
+        $productTypeHandle = $this->stringValue($productType, ['handle', 'getHandle']);
+
+        return array_filter([
+            'productType' => $productTypeName,
+            'productTypeName' => $productTypeName,
+            'productTypeHandle' => $productTypeHandle,
+            'section' => $productTypeName,
+        ], static fn(?string $value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * @param string[] $names
+     */
+    private function stringValue(mixed $object, array $names): string
+    {
+        if (!is_object($object)) {
+            return '';
+        }
+
+        $value = $this->objectValue($object, $names);
+
+        return is_scalar($value) ? trim((string)$value) : '';
+    }
+
+    /**
+     * @param string[] $names
+     */
+    private function objectValue(object $object, array $names): mixed
+    {
+        foreach ($names as $name) {
+            try {
+                if (method_exists($object, $name)) {
+                    return $object->{$name}();
+                }
+
+                if (isset($object->{$name})) {
+                    return $object->{$name};
+                }
+            } catch (\Throwable) {
+                continue;
+            }
+        }
+
+        return null;
     }
 }

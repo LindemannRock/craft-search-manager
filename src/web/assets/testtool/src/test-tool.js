@@ -342,6 +342,36 @@
                 const customFields = Array.isArray(debug.customFields) ? debug.customFields : [];
                 const parentUrl = parentProduct ? safeUrlAttribute(parentProduct.url) : null;
                 const parentUrlText = parentProduct && parentProduct.url ? escapeDisplay(truncateDisplay(parentProduct.url, 64)) : '';
+                const renderCustomField = (field) => {
+                    if (!field || typeof field !== 'object') {
+                        return '';
+                    }
+
+                    const label = escapeDisplay(truncateDisplay(field.label, 32));
+                    const children = Array.isArray(field.children) ? field.children : [];
+                    if (children.length > 0) {
+                        const childRows = children.map(child => {
+                            if (!child || typeof child !== 'object') {
+                                return '';
+                            }
+
+                            return `<div class="sm-test-indexed-custom-child">
+                                <span class="sm-test-indexed-custom-child-label">${escapeDisplay(truncateDisplay(child.label, 32))}:</span>
+                                <code class="sm-test-indexed-custom-child-value">${escapeDisplay(truncateDisplay(child.value, 96))}</code>
+                            </div>`;
+                        }).filter(Boolean).join('');
+
+                        return childRows ? `<div class="sm-test-indexed-custom-group">
+                            <span class="sm-test-indexed-custom-group-label">${label}:</span>
+                            <div class="sm-test-indexed-custom-children">${childRows}</div>
+                        </div>` : '';
+                    }
+
+                    return `<div class="sm-test-indexed-custom-field">
+                        <span class="sm-test-indexed-custom-field-label">${label}:</span>
+                        <code class="sm-test-indexed-custom-field-value">${escapeDisplay(truncateDisplay(field.value, 96))}</code>
+                    </div>`;
+                };
 
                 const rows = [
                     renderDebugPill(T.transformerClassLabel, debug.transformerClass),
@@ -357,9 +387,10 @@
                 ].filter(Boolean);
 
                 if (customFields.length > 0) {
+                    const customFieldRows = customFields.map(renderCustomField).filter(Boolean).join('');
                     rows.push(`<div class="sm-test-indexed-row">
                         <span class="sm-test-indexed-label">${T.customFieldsLabel}</span>
-                        <div class="sm-test-indexed-custom-fields">${customFields.map(field => `<code class="sm-test-indexed-custom-field">${escapeDisplay(truncateDisplay(field.label, 32))}: ${escapeDisplay(truncateDisplay(field.value, 96))}</code>`).join('')}</div>
+                        <div class="sm-test-indexed-custom-fields">${customFieldRows}</div>
                     </div>`);
                 }
 
@@ -380,6 +411,12 @@
                     <span class="status ${color}"></span>
                     <span class="status-label-text">${Craft.escapeHtml(label)}</span>
                 </span>`;
+            }
+
+            function formatMetaLabel(label) {
+                const value = String(label || '');
+
+                return /[:：]$/.test(value) ? value : `${value}:`;
             }
 
             function renderSafeLinkOrText(url, label) {
@@ -472,6 +509,10 @@
                 testButton.textContent = T.searching;
                 updateSectionVisibility();
 
+                const snippetLengthInput = document.getElementById('snippetLength');
+                const snippetLength = Math.min(1000, Math.max(50, parseInt(snippetLengthInput.value, 10) || 200));
+                snippetLengthInput.value = snippetLength;
+
                 Promise.all([
                     postJson(urls.testSearch, csrfToken, Object.assign({
                         query: query,
@@ -480,7 +521,7 @@
                         enrich: enableEnrich.checked,
                     }, enableEnrich.checked ? {
                         snippetMode: document.getElementById('snippetMode').value,
-                        snippetLength: parseInt(document.getElementById('snippetLength').value, 10) || 200,
+                        snippetLength: snippetLength,
                         showCodeSnippets: document.getElementById('showCodeSnippets').checked,
                         parseMarkdownSnippets: document.getElementById('parseMarkdownSnippets').checked,
                         hideResultsWithoutUrl: document.getElementById('hideResultsWithoutUrl').checked,
@@ -663,8 +704,14 @@
                             const indexHandle = hit._index ? escapeDisplay(hit._index) : null;
                             const objectId = hit.objectID || hit.id;
                             const objectIdDisplay = objectId ? escapeDisplay(objectId) : '';
-                            const type = escapeDisplay(hit.type || T.entry);
-                            const section = hit.section ? escapeDisplay(hit.section) : '';
+                            const rawType = hit.type || T.entry;
+                            const type = escapeDisplay(rawType);
+                            const normalizedType = String(rawType || '').toLowerCase();
+                            const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant' || Boolean(hit.productTypeName || hit.productTypeHandle || hit.productType);
+                            const productType = hit.productTypeName || hit.productType || (isCommerceHit ? hit.section : '');
+                            const contextLabel = isCommerceHit ? T.productTypeLabel : T.sectionLabel;
+                            const contextValue = isCommerceHit ? productType : hit.section;
+                            const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : '';
                             const siteName = escapeDisplay(hit.siteName || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
                             const thumbnail = safeUrlAttribute(hit.thumbnail);
@@ -693,11 +740,11 @@
                 </div>
             </div>
             <div class="sm-test-meta">
-                <span class="sm-test-meta-item"><span class="sm-test-meta-label">ID</span> #${objectIdDisplay}</span>
-                <span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.typeLabel}</span> ${type}</span>
-                ${section ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}</span>` : ''}
-                ${indexHandle ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${T.indexLabel}</span> <code>${indexHandle}</code></span>` : ''}
-                <span class="sm-test-site-badge"><span class="sm-test-meta-label">${T.siteLabel}</span> ${siteName} (${language})</span>
+                <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel('ID')}</span> #${objectIdDisplay}</span>
+                <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.typeLabel)}</span> ${type}</span>
+                ${contextMeta}
+                ${indexHandle ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.indexLabel)}</span> <code>${indexHandle}</code></span>` : ''}
+                <span class="sm-test-site-badge"><span class="sm-test-meta-label">${formatMetaLabel(T.siteLabel)}</span> ${siteName} (${language})</span>
             </div>
             ${matchedIn ? `<div class="sm-test-match-line"><strong>${T.matchedInLabel}</strong> <code>${matchedIn}</code></div>` : ''}
             ${displayText ? `<div class="sm-test-description">${displayText}${rawDisplayText.length > 400 ? '...' : ''}</div>` : ''}
