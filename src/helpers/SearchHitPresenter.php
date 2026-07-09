@@ -22,6 +22,7 @@ class SearchHitPresenter
     public static function present(array $hit): array
     {
         $hit = SearchHitIdentityHelper::normalizeHit($hit);
+        unset($hit['_elementType']);
 
         $ordered = [];
         foreach ([

@@ -85,6 +85,34 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringContainsString("'section' => \$productTypeName,", $source);
     }
 
+    public function testPromotedHitsCarryInternalElementTypeAndPresenterSuppressesIt(): void
+    {
+        $promotionSource = $this->methodSource(
+            $this->readPluginFile('src/services/PromotionService.php'),
+            'public function applyPromotions',
+        );
+        $enrichmentSource = $this->readPluginFile('src/services/EnrichmentService.php');
+        $presenterSource = $this->readPluginFile('src/helpers/SearchHitPresenter.php');
+
+        self::assertStringContainsString("'_elementType' => \$elementType,", $promotionSource);
+        self::assertStringContainsString('$explicitElementClass = is_string($hit[\'_elementType\'] ?? null) ? $hit[\'_elementType\'] : null;', $enrichmentSource);
+        self::assertStringContainsString('$elementClass = $explicitElementClass ?:', $enrichmentSource);
+        self::assertStringContainsString('unset($hit[\'_elementType\']);', $presenterSource);
+    }
+
+    public function testGlobalPromotionsInsertOneDeterministicPromotedHit(): void
+    {
+        $source = $this->methodSource(
+            $this->readPluginFile('src/services/PromotionService.php'),
+            'private function resolvePromotionSiteId',
+        );
+
+        self::assertStringContainsString('if ($promotion->siteId !== null)', $source);
+        self::assertStringContainsString('if ($requestedSiteId !== null)', $source);
+        self::assertStringContainsString('return Craft::$app->getSites()->getPrimarySite()->id ?? null;', $source);
+        self::assertStringNotContainsString('getAllSites()', $source);
+    }
+
     public function testBackendSearchThreadsAlreadyMatchedPromotionsIntoApplicationPath(): void
     {
         $source = $this->readPluginFile('src/services/BackendService.php');

@@ -21,6 +21,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
+use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\Settings;
@@ -988,6 +989,8 @@ class SettingsController extends Controller
                     'elementId' => $promotion->elementId,
                     'elementTitle' => $element ? $element->title : Craft::t('search-manager', 'Element not found'),
                     'elementEditUrl' => $element ? $element->getCpEditUrl() : '#',
+                    'elementType' => $promotion->elementType,
+                    'elementTypeLabel' => $this->promotionElementTypeLabel($promotion->elementType, $element),
                     'enabled' => $promotion->enabled,
                     'siteStatuses' => $siteStatuses,
                 ];
@@ -1034,6 +1037,8 @@ class SettingsController extends Controller
 
             foreach ($matchingRules as $rule) {
                 $elementInfo = null;
+                $targetElementId = null;
+                $targetElementType = null;
 
                 switch ($rule->actionType) {
                     case QueryRule::ACTION_SYNONYM:
@@ -1042,11 +1047,23 @@ class SettingsController extends Controller
                         $synonyms = array_merge($synonyms, $terms);
                         break;
 
+                    case QueryRule::ACTION_BOOST_ELEMENT:
+                        $effectDescription = $rule->getActionDescription();
+                        if (isset($rule->actionValue['elementId']) && is_numeric($rule->actionValue['elementId'])) {
+                            $targetElementId = (int)$rule->actionValue['elementId'];
+                        }
+                        if (isset($rule->actionValue['elementType']) && is_string($rule->actionValue['elementType'])) {
+                            $targetElementType = $rule->actionValue['elementType'];
+                        }
+                        break;
+
                     case QueryRule::ACTION_REDIRECT:
                         $redirect = $rule->getRedirectUrl();
                         $effectDescription = $rule->getActionDescription($redirect);
                         if (!empty($rule->actionValue['elementId']) && !empty($rule->actionValue['elementType'])) {
                             $elementType = (string)$rule->actionValue['elementType'];
+                            $targetElementId = (int)$rule->actionValue['elementId'];
+                            $targetElementType = $elementType;
                             $element = $redirectElements[$this->elementCacheKey($elementType, null, (int)$rule->actionValue['elementId'])] ?? null;
                             if ($element) {
                                 $elementInfo = [
@@ -1073,6 +1090,8 @@ class SettingsController extends Controller
                     'matchValue' => $rule->matchValue,
                     'effectDescription' => $effectDescription,
                     'elementInfo' => $elementInfo ?? null,
+                    'targetElementId' => $targetElementId,
+                    'targetElementType' => $targetElementType,
                     'editUrl' => Craft::$app->getUrlManager()->createUrl('search-manager/query-rules/edit/' . $rule->id),
                 ];
             }
@@ -1314,6 +1333,18 @@ class SettingsController extends Controller
     private function elementCacheKey(string $elementClass, ?int $siteId, int $elementId): string
     {
         return $elementClass . ':' . ($siteId ?? '*') . ':' . $elementId;
+    }
+
+    private function promotionElementTypeLabel(?string $elementClass, ?ElementInterface $element): string
+    {
+        $elementClass ??= $element !== null ? get_class($element) : null;
+        if ($elementClass === null) {
+            return Craft::t('search-manager', 'Unknown');
+        }
+
+        $labels = TargetElementTypeHelper::translatedLabels();
+
+        return $labels[$elementClass] ?? ($this->isElementClass($elementClass) ? $elementClass::displayName() : $elementClass);
     }
 
     /**

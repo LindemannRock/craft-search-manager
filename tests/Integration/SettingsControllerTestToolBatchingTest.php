@@ -44,6 +44,17 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringNotContainsString('$promotion->getElement()', $body);
         self::assertStringContainsString('preloadTestPromotionElements($matchingPromotions)', $body);
         self::assertStringContainsString('preloadTestPromotionLiveElements($matchingPromotions, $promotionElements, $sites)', $body);
+        self::assertStringContainsString("'elementTypeLabel' => \$this->promotionElementTypeLabel(\$promotion->elementType, \$element),", $body);
+    }
+
+    public function testPromotionTestToolDisplaysTargetElementTypeLabel(): void
+    {
+        $controllerSource = $this->readPluginFile('src/controllers/SettingsController.php');
+        $assetSource = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
+
+        self::assertStringContainsString('TargetElementTypeHelper::translatedLabels()', $controllerSource);
+        self::assertStringContainsString('p.elementTypeLabel', $assetSource);
+        self::assertStringContainsString('${T.typeLabel} ${Craft.escapeHtml(p.elementTypeLabel)}', $assetSource);
     }
 
     public function testQueryRuleTestToolDoesNotLoadRedirectElementsOneByOne(): void
@@ -53,6 +64,22 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringNotContainsString('getElementById(', $body);
         self::assertStringContainsString('preloadTestQueryRuleRedirectElements($matchingRules)', $body);
         self::assertStringContainsString('$redirectElements[$this->elementCacheKey(', $body);
+        self::assertStringContainsString("'targetElementId' => \$targetElementId,", $body);
+        self::assertStringContainsString("'targetElementType' => \$targetElementType,", $body);
+    }
+
+    public function testTestToolComparesMatchedDiagnosticsAgainstRenderedResults(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
+
+        self::assertStringContainsString('function resultElementIds(searchData, predicate)', $source);
+        self::assertStringContainsString('displayPromotions(promotionsData, query, searchData);', $source);
+        self::assertStringContainsString('displayQueryRules(queryRulesData, query, searchData);', $source);
+        self::assertStringContainsString('const renderedPromotionIds = resultElementIds(searchData, hit => hit.promoted === true);', $source);
+        self::assertStringContainsString('const boostedElementIds = resultElementIds(searchData, hit => hit.boosted === true);', $source);
+        self::assertStringContainsString('renderedPromotionIds.has(Number(p.elementId)) ? T.yesLabel : T.noLabel', $source);
+        self::assertStringContainsString("r.actionType === 'boost_element' && boostedElementIds.has(Number(r.targetElementId))", $source);
+        self::assertStringContainsString("renderStatusLabel(ruleApplied ? T.yesLabel : T.noLabel, ruleApplied ? 'green' : 'red')", $source);
     }
 
     public function testSearchTestToolPassesBackendRedirectToAssetRenderer(): void
@@ -78,5 +105,13 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertNotSame('', $body, $method . ' body should be captured.');
 
         return $body;
+    }
+
+    private function readPluginFile(string $path): string
+    {
+        $contents = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+        $this->assertIsString($contents);
+
+        return $contents;
     }
 }

@@ -135,6 +135,31 @@ final class EnrichmentBatchLoadTest extends TestCase
         $this->assertSame(0, $counting->getByIdCalls, 'resolved hits load via the batched element query, not per-hit getElementById');
     }
 
+    public function testExplicitHitElementTypeLoadsInBatchBeforeIndexFallback(): void
+    {
+        $found = $this->findLiveEntries(1, 1);
+        if ($found === null) {
+            $this->markTestSkipped('No enabled Entry index with a live entry available.');
+        }
+        [, $entries] = $found;
+        $entry = $entries[0];
+        $siteId = (int) $entry->siteId;
+
+        $hits = [[
+            'id' => $entry->id,
+            'siteId' => $siteId,
+            '_index' => '__sm_no_such_index',
+            '_elementType' => Entry::class,
+        ]];
+
+        $counting = $this->installCountingElements();
+        $results = SearchManager::$plugin->enrichment->enrichResults($hits, '', [], ['siteId' => $siteId]);
+
+        $this->assertCount(1, $results);
+        $this->assertSame((int) $entry->id, $results[0]['id']);
+        $this->assertSame(0, $counting->getByIdCalls, 'explicit hit element type should load through the batched query before index fallback');
+    }
+
     public function testUnresolvedIndexFallsBackToGetElementById(): void
     {
         $found = $this->findLiveEntries(1, 1);

@@ -248,9 +248,11 @@ class EnrichmentService extends Component
      * - Missing / deleted / wrong-status elements are simply absent from the
      *   returned map, so the caller skips them exactly as before.
      *
-     * The element type comes from each hit's index (an index only ever stores
-     * one element type). Hits whose index/type can't be resolved fall back to a
-     * per-element getElementById() so no result is silently dropped.
+     * The element type comes from an explicit internal hit context when one is
+     * present (promoted Commerce variants can be injected while a Product index
+     * is active), then from each hit's index. Hits whose type can't be resolved
+     * fall back to a per-element getElementById() so no result is silently
+     * dropped.
      *
      * @param array $rawHits Raw hits from the search backend
      * @param int|null $siteId Global single-site option (per-hit siteId overrides it)
@@ -288,8 +290,9 @@ class EnrichmentService extends Component
             }
             $resolvedSiteId = isset($hit['siteId']) ? (int) $hit['siteId'] : ($siteId ?? $currentSiteId);
 
+            $explicitElementClass = is_string($hit['_elementType'] ?? null) ? $hit['_elementType'] : null;
             $handle = $hit['_index'] ?? $fallbackHandle;
-            $elementClass = $handle !== '' ? ($elementClassByHandle[$handle] ?? null) : null;
+            $elementClass = $explicitElementClass ?: ($handle !== '' ? ($elementClassByHandle[$handle] ?? null) : null);
 
             if ($elementClass !== null && is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
                 $groups[$elementClass][$resolvedSiteId][$elementId] = true;

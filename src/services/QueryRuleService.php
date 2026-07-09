@@ -429,10 +429,13 @@ class QueryRuleService extends Component
             $resolvedSiteId = is_array($result) && isset($result['siteId'])
                 ? (int)$result['siteId']
                 : ($siteId ?? $currentSiteId);
+            $explicitElementClass = is_array($result) && is_string($result['_elementType'] ?? null)
+                ? $result['_elementType']
+                : null;
             $handle = is_array($result) ? (string)($result['_index'] ?? '') : '';
-            $elementClass = $handle !== ''
+            $elementClass = $explicitElementClass ?: ($handle !== ''
                 ? ($elementClassByHandle[$handle] ?? null)
-                : $fallbackClass;
+                : $fallbackClass);
 
             if ($elementClass !== null && is_subclass_of($elementClass, ElementInterface::class)) {
                 $groups[$elementClass][$resolvedSiteId][$elementId] = true;

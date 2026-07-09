@@ -62,6 +62,9 @@ final class TestToolI18nTest extends TestCase
             "ruleLabel: {{ 'Rule:'|t('search-manager')|json_encode|raw }}",
             "targetLabel: {{ 'Target:'|t('search-manager')|json_encode|raw }}",
             "urlLabel: {{ 'URL:'|t('search-manager')|json_encode|raw }}",
+            "hitLabel: {{ 'Hit'|t('search-manager')|json_encode|raw }}",
+            "yesLabel: {{ 'Yes'|t('search-manager')|json_encode|raw }}",
+            "noLabel: {{ 'No'|t('search-manager')|json_encode|raw }}",
             "foundResultsSingular: {{ 'Found {count} result'|t('search-manager')|json_encode|raw }}",
             "foundResultsPlural: {{ 'Found {count} results'|t('search-manager')|json_encode|raw }}",
         ] as $needle) {
@@ -156,6 +159,7 @@ final class TestToolI18nTest extends TestCase
         foreach ([
             '${Craft.escapeHtml(s)}</span>',
             '<td><code>${Craft.escapeHtml(p.matchType)}</code></td>',
+            'p.siteStatuses.filter(s => s.isLive).map(s => `',
             '${Craft.escapeHtml(s.siteName)}</span>',
             'function renderSafeLinkOrText(url, label)',
             'const safeUrl = safeUrlAttribute(url);',
@@ -184,7 +188,7 @@ final class TestToolI18nTest extends TestCase
 
         self::assertStringContainsString('const shouldFetchQueryRules = showQueryRules.checked || (searchData && searchData.redirect);', $source);
         self::assertStringContainsString('if (queryRulesData && showQueryRules.checked) {', $source);
-        self::assertStringContainsString('displayQueryRules(queryRulesData, query);', $source);
+        self::assertStringContainsString('displayQueryRules(queryRulesData, query, searchData);', $source);
         self::assertStringContainsString('displaySearchResults(searchData, query, queryRulesData);', $source);
         self::assertStringContainsString('function renderRedirectNotice(searchData, queryRulesData, isCompact)', $source);
         self::assertStringContainsString('if (!redirectUrl) {', $source);

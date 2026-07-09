@@ -16,9 +16,13 @@ use craft\elements\Category;
 use craft\elements\Entry;
 use craft\elements\User;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
+use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
+use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\PromotionService;
+use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -107,6 +111,73 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertTrue(true);
     }
 
+    public function testPromotionInjectionCarriesCommerceTargetElementTypeContext(): void
+    {
+        foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
+            $element = $this->findLiveCommerceElement($elementType);
+            if ($element === null) {
+                continue;
+            }
+
+            $promotion = new Promotion();
+            $promotion->id = 987000 + (int)$element->id;
+            $promotion->title = 'Commerce target runtime';
+            $promotion->query = 'commerce runtime';
+            $promotion->matchType = 'exact';
+            $promotion->elementId = (int)$element->id;
+            $promotion->elementType = $elementType;
+            $promotion->position = 1;
+            $promotion->siteId = (int)$element->siteId;
+
+            $results = (new PromotionService())->applyPromotions(
+                [['id' => 2147483000, 'siteId' => (int)$element->siteId, 'score' => 1.0]],
+                'commerce runtime',
+                'products',
+                (int)$element->siteId,
+                [$promotion],
+            );
+
+            self::assertIsArray($results[0]);
+            self::assertSame((int)$element->id, $results[0]['elementId']);
+            self::assertSame($elementType, $results[0]['_elementType']);
+            self::assertSame($elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant', $results[0]['type']);
+            self::assertArrayNotHasKey('_elementType', SearchHitPresenter::present($results[0]));
+        }
+
+        self::assertTrue(true);
+    }
+
+    public function testPromotedCommerceTargetsHydrateFromExplicitElementTypeContext(): void
+    {
+        foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
+            $element = $this->findLiveCommerceElement($elementType);
+            if ($element === null) {
+                continue;
+            }
+
+            $results = SearchManager::$plugin->enrichment->enrichResults(
+                [[
+                    'id' => (int)$element->id,
+                    'siteId' => (int)$element->siteId,
+                    '_index' => '__sm_wrong_or_missing_index',
+                    '_elementType' => $elementType,
+                    'promoted' => true,
+                    'type' => $elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant',
+                ]],
+                '',
+                [],
+                ['siteId' => (int)$element->siteId],
+            );
+
+            self::assertCount(1, $results);
+            self::assertSame((int)$element->id, $results[0]['id']);
+            self::assertTrue($results[0]['promoted']);
+            self::assertSame($elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant', $results[0]['type']);
+        }
+
+        self::assertTrue(true);
+    }
+
     public function testQueryRuleBoostElementAcceptsProductAndVariantTargetTypes(): void
     {
         foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
@@ -122,6 +193,56 @@ final class CommerceTargetElementTypesTest extends TestCase
 
             self::assertTrue($rule->validate(['actionValue']), implode('; ', $rule->getErrors('actionValue')));
         }
+    }
+
+    public function testQueryRuleBoostElementAppliesToCommerceProductAndVariantHitsAtRuntime(): void
+    {
+        foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
+            $element = $this->findLiveCommerceElement($elementType);
+            if ($element === null) {
+                continue;
+            }
+
+            $service = new class((int)$element->id) extends QueryRuleService {
+                public function __construct(private int $boostedElementId)
+                {
+                    parent::__construct();
+                }
+
+                public function getBoostMultipliers(
+                    string $query,
+                    ?string $indexHandle = null,
+                    ?int $siteId = null,
+                    ?array $matchedRules = null,
+                ): array {
+                    return [
+                        'sections' => [],
+                        'categories' => [],
+                        'elements' => [$this->boostedElementId => 4.0],
+                    ];
+                }
+            };
+
+            $results = $service->applyBoosts([
+                [
+                    'id' => (int)$element->id,
+                    'siteId' => (int)$element->siteId,
+                    '_elementType' => $elementType,
+                    'score' => 2.0,
+                ],
+                [
+                    'id' => 2147483000,
+                    'siteId' => (int)$element->siteId,
+                    'score' => 6.0,
+                ],
+            ], 'commerce runtime', 'products', (int)$element->siteId);
+
+            self::assertSame((int)$element->id, $results[0]['id']);
+            self::assertSame(8.0, $results[0]['score']);
+            self::assertTrue($results[0]['boosted']);
+        }
+
+        self::assertTrue(true);
     }
 
     public function testQueryRuleRedirectAcceptsProductAndVariantTargetTypes(): void
@@ -199,5 +320,23 @@ final class CommerceTargetElementTypesTest extends TestCase
     private function readPluginFile(string $path): string
     {
         return (string)file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+    }
+
+    private function findLiveCommerceElement(string $elementType): ?\craft\base\ElementInterface
+    {
+        $siteIds = Craft::$app->getSites()->getAllSiteIds();
+
+        foreach ($siteIds as $siteId) {
+            $element = $elementType::find()
+                ->siteId((int)$siteId)
+                ->status('live')
+                ->one();
+
+            if ($element instanceof \craft\base\ElementInterface) {
+                return $element;
+            }
+        }
+
+        return null;
     }
 }

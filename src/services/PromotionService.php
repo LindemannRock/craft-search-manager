@@ -227,6 +227,7 @@ class PromotionService extends Component
                     'objectID' => $promotion->elementId,
                     'id' => $promotion->elementId,
                     'elementId' => $promotion->elementId,
+                    '_elementType' => $elementType,
                     'backendId' => SearchHitIdentityHelper::backendId($promotion->elementId, $element?->siteId),
                     'siteId' => $element?->siteId,
                     'promoted' => true,

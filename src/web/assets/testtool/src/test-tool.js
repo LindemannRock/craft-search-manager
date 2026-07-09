@@ -426,6 +426,35 @@
                 return safeUrl ? `<a href="${safeUrl}" target="_blank">${display}</a>` : display;
             }
 
+            function hitElementId(hit) {
+                if (!hit || typeof hit !== 'object') {
+                    return null;
+                }
+
+                const raw = hit.elementId || hit.id;
+                const id = Number(raw);
+
+                return Number.isFinite(id) ? id : null;
+            }
+
+            function resultElementIds(searchData, predicate) {
+                const ids = new Set();
+                const hits = searchData && Array.isArray(searchData.hits) ? searchData.hits : [];
+
+                hits.forEach(hit => {
+                    if (!predicate(hit)) {
+                        return;
+                    }
+
+                    const id = hitElementId(hit);
+                    if (id !== null) {
+                        ids.add(id);
+                    }
+                });
+
+                return ids;
+            }
+
             function getRedirectRule(queryRulesData) {
                 if (!queryRulesData || !Array.isArray(queryRulesData.rules)) {
                     return null;
@@ -543,10 +572,10 @@
                         lastQueryRulesData = queryRulesData;
 
                         if (promotionsData && showPromotions.checked) {
-                            displayPromotions(promotionsData, query);
+                            displayPromotions(promotionsData, query, searchData);
                         }
                         if (queryRulesData && showQueryRules.checked) {
-                            displayQueryRules(queryRulesData, query);
+                            displayQueryRules(queryRulesData, query, searchData);
                         }
                         displaySearchResults(searchData, query, queryRulesData);
                     })
@@ -560,8 +589,9 @@
                     });
             });
 
-            function displayPromotions(data, query) {
+            function displayPromotions(data, query, searchData) {
                 const container = document.getElementById('promotions-results');
+                const renderedPromotionIds = resultElementIds(searchData, hit => hit.promoted === true);
 
                 if (data.success && data.promotions && data.promotions.length > 0) {
                     container.innerHTML = `
@@ -576,6 +606,7 @@
                             <th>${T.element}</th>
                             <th>${T.matchType}</th>
                             <th>${T.pattern}</th>
+                            <th>${T.hitLabel}</th>
                             <th>${T.liveOnSites}</th>
                         </tr>
                     </thead>
@@ -586,14 +617,16 @@
                                 <td>
                                     <a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
                                     <span class="sm-test-table-subtext">ID: ${p.elementId}</span>
+                                    ${p.elementTypeLabel ? `<span class="sm-test-table-subtext">${T.typeLabel} ${Craft.escapeHtml(p.elementTypeLabel)}</span>` : ''}
                                     ${!p.enabled ? `<span class="sm-test-disabled-badge">${T.disabled}</span>` : ''}
                                 </td>
                                 <td><code>${Craft.escapeHtml(p.matchType)}</code></td>
                                 <td><code>${Craft.escapeHtml(p.query)}</code></td>
+                                <td>${renderStatusLabel(renderedPromotionIds.has(Number(p.elementId)) ? T.yesLabel : T.noLabel, renderedPromotionIds.has(Number(p.elementId)) ? 'green' : 'red')}</td>
                                 <td class="sm-test-site-list">
-                                    ${p.siteStatuses ? p.siteStatuses.map(s => `
-                                        <span class="${s.isLive ? 'sm-test-live-badge' : 'sm-test-not-live-badge'}">${Craft.escapeHtml(s.siteName)}</span>
-                                    `).join('') : '-'}
+                                    ${p.siteStatuses ? p.siteStatuses.filter(s => s.isLive).map(s => `
+                                        <span class="sm-test-live-badge">${Craft.escapeHtml(s.siteName)}</span>
+                                    `).join('') || '-' : '-'}
                                 </td>
                             </tr>
                         `).join('')}
@@ -606,8 +639,9 @@
                 }
             }
 
-            function displayQueryRules(data, query) {
+            function displayQueryRules(data, query, searchData) {
                 const container = document.getElementById('queryrules-results');
+                const boostedElementIds = resultElementIds(searchData, hit => hit.boosted === true);
 
                 if (data.success && data.rules && data.rules.length > 0) {
                     const actionClasses = {
@@ -635,6 +669,7 @@
                             <th>${T.action}</th>
                             <th>${T.match}</th>
                             <th>${T.effect}</th>
+                            <th>${T.hitLabel}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -645,12 +680,17 @@
                             }
                             const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);
                             const actionClass = actionClasses[r.actionType] || 'gray';
+                            const ruleApplied = r.actionType === 'boost_element' && boostedElementIds.has(Number(r.targetElementId));
+                            const resultStatus = r.actionType === 'boost_element'
+                                ? renderStatusLabel(ruleApplied ? T.yesLabel : T.noLabel, ruleApplied ? 'green' : 'red')
+                                : '';
                             return `
                                 <tr>
                                     <td><a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a></td>
                                     <td>${renderStatusLabel(actionLabel, actionClass)}</td>
                                     <td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
                                     <td>${effectHtml}</td>
+                                    <td>${resultStatus}</td>
                                 </tr>
                             `;
                         }).join('')}
