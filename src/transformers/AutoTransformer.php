@@ -8,9 +8,10 @@
 
 namespace lindemannrock\searchmanager\transformers;
 
-use Craft;
 use craft\base\ElementInterface;
+use craft\base\Field;
 use craft\helpers\ElementHelper;
+use lindemannrock\searchmanager\helpers\NativeFieldKeywordHelper;
 
 /**
  * Auto Transformer
@@ -27,6 +28,14 @@ use craft\helpers\ElementHelper;
  */
 class AutoTransformer extends BaseTransformer
 {
+    private NativeFieldKeywordHelper $nativeFieldKeywordHelper;
+
+    public function init(): void
+    {
+        parent::init();
+        $this->nativeFieldKeywordHelper = new NativeFieldKeywordHelper();
+    }
+
     // =========================================================================
     // ELEMENT TYPE
     // =========================================================================
@@ -103,27 +112,33 @@ class AutoTransformer extends BaseTransformer
             }
         }
 
-        // Process custom fields with automatic type detection
+        // Process custom fields. Craft-native fields follow Craft's own
+        // searchable-field keyword contract; plugin fields keep legacy handling
+        // until they are reviewed in their own focused slice.
         if ($element->getFieldLayout()) {
             foreach ($element->getFieldLayout()->getCustomFields() as $field) {
                 try {
-                    $fieldValue = $element->getFieldValue($field->handle);
+                    if ($field instanceof Field && $this->nativeFieldKeywordHelper->supports($field)) {
+                        $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
+                    } else {
+                        $fieldValue = $element->getFieldValue($field->handle);
 
-                    // Skip empty values
-                    if ($fieldValue === null || $fieldValue === '' || $fieldValue === []) {
-                        continue;
-                    }
-
-                    // Collect raw HTML from CKEditor/Redactor before stripping
-                    if ($this->isRichTextField($field)) {
-                        $rawHtml = (string) $fieldValue;
-                        if (!empty($rawHtml)) {
-                            $richTextContent[] = $rawHtml;
+                        // Skip empty values
+                        if ($fieldValue === null || $fieldValue === '' || $fieldValue === []) {
+                            continue;
                         }
-                    }
 
-                    // Process based on field type
-                    $content = $this->processFieldByType($field, $fieldValue, $element);
+                        // Collect raw HTML from CKEditor/Redactor before stripping
+                        if ($this->isRichTextField($field)) {
+                            $rawHtml = (string) $fieldValue;
+                            if (!empty($rawHtml)) {
+                                $richTextContent[] = $rawHtml;
+                            }
+                        }
+
+                        // Process plugin/custom fields with legacy type handling.
+                        $content = $this->processFieldByType($field, $fieldValue, $element);
+                    }
 
                     if (!empty($content)) {
                         if (is_array($content)) {
@@ -327,10 +342,6 @@ class AutoTransformer extends BaseTransformer
             return $this->processTableField($fieldValue);
         }
 
-        if (is_a($field, 'lindemannrock\iconmanager\fields\IconManagerField')) {
-            return $this->processIconManagerField($fieldValue);
-        }
-
         if ($field->searchable) {
             $keywords = $field->getSearchKeywords($fieldValue, $element);
             return !empty($keywords) ? $keywords : null;
@@ -445,44 +456,5 @@ class AutoTransformer extends BaseTransformer
         }
 
         return $content;
-    }
-
-    /**
-     * Process Icon Manager field
-     * Extracts display labels from icons
-     *
-     * @param mixed $fieldValue Icon or array of icons
-     * @return array Array of icon labels
-     */
-    protected function processIconManagerField($fieldValue): array
-    {
-        $labels = [];
-
-        try {
-            // Handle both array (multi) and object (single)
-            $icons = [];
-            if (is_array($fieldValue)) {
-                $icons = $fieldValue;
-            } elseif (is_object($fieldValue)) {
-                if (method_exists($fieldValue, 'all')) {
-                    $icons = $fieldValue->all();
-                } else {
-                    $icons = [$fieldValue];
-                }
-            }
-
-            foreach ($icons as $icon) {
-                if ($icon && is_object($icon) && method_exists($icon, 'getDisplayLabel')) {
-                    $label = $icon->getDisplayLabel();
-                    if ($label) {
-                        $labels[] = $label;
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            // Return empty array on error
-        }
-
-        return $labels;
     }
 }
