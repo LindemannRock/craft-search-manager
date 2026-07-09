@@ -369,7 +369,9 @@ class SettingsController extends Controller
                         if ($element) {
                             $hit['title'] = $element->title ?? 'Untitled';
                             $hit['url'] = $element->url ?? '';
-                            $hit['type'] = (new \ReflectionClass($element))->getShortName();
+                            $documentType = $this->settingsTestDocumentTypeForElement($element);
+                            $hit['type'] = $documentType;
+                            $hit['elementType'] = $documentType;
 
                             // Use site info from the element (which was loaded for the correct site)
                             $site = $element->getSite();
@@ -379,7 +381,10 @@ class SettingsController extends Controller
                             $hit['language'] = strtoupper(substr($site->language, 0, 2));
 
                             if (method_exists($element, 'getSection') && $element->getSection()) {
-                                $hit['section'] = $element->getSection()->name;
+                                $section = $element->getSection();
+                                $hit['section'] = $section->name;
+                                $hit['sectionHandle'] = $section->handle;
+                                $hit['sectionType'] = $section->type;
                             }
                         }
                     }
@@ -850,6 +855,35 @@ class SettingsController extends Controller
         $type = (string)($hit['elementType'] ?? $hit['type'] ?? '');
 
         return in_array($type, ['product', 'variant', CommerceElementTypeHelper::productElementType(), CommerceElementTypeHelper::variantElementType()], true);
+    }
+
+    private function settingsTestDocumentTypeForElement(ElementInterface $element): string
+    {
+        if ($element instanceof \craft\elements\Entry) {
+            return 'entry';
+        }
+
+        if (is_a($element, CommerceElementTypeHelper::productElementType())) {
+            return 'product';
+        }
+
+        if (is_a($element, CommerceElementTypeHelper::variantElementType())) {
+            return 'variant';
+        }
+
+        if ($element instanceof \craft\elements\Category) {
+            return 'category';
+        }
+
+        if ($element instanceof \craft\elements\Asset) {
+            return 'asset';
+        }
+
+        if ($element instanceof \craft\elements\User) {
+            return 'user';
+        }
+
+        return strtolower($element::displayName());
     }
 
     public function actionTestAutocomplete(): Response

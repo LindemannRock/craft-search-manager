@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\transformers;
 use Craft;
 use craft\base\ElementInterface;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use yii\base\Component;
@@ -118,18 +119,72 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     protected function getCommonData(ElementInterface $element): array
     {
         $backendId = SearchHitIdentityHelper::backendId($element->id, $element->siteId);
+        $documentType = $this->resolveDocumentType($element);
 
         return [
             'objectID' => $element->id,
             'id' => $element->id,
             'elementId' => $element->id,
             'backendId' => $backendId,
+            'type' => $documentType,
+            'elementType' => $documentType,
             'title' => $element->title ?? '',
             'url' => $element->url ?? '',
             'siteId' => $element->siteId,
             'dateCreated' => $element->dateCreated?->getTimestamp(),
             'dateUpdated' => $element->dateUpdated?->getTimestamp(),
         ];
+    }
+
+    protected function resolveDocumentType(ElementInterface $element): string
+    {
+        if ($element instanceof \craft\elements\Entry) {
+            return 'entry';
+        }
+
+        if (is_a($element, CommerceElementTypeHelper::productElementType())) {
+            return 'product';
+        }
+
+        if (is_a($element, CommerceElementTypeHelper::variantElementType())) {
+            return 'variant';
+        }
+
+        if ($element instanceof \craft\elements\Category) {
+            return 'category';
+        }
+
+        if ($element instanceof \craft\elements\Asset) {
+            return 'asset';
+        }
+
+        if ($element instanceof \craft\elements\User) {
+            return 'user';
+        }
+
+        if (method_exists($element, 'refHandle')) {
+            $refHandle = $element::refHandle();
+            if (is_string($refHandle) && $refHandle !== '') {
+                return $this->normalizeDocumentType($refHandle);
+            }
+        }
+
+        $className = get_class($element);
+        $shortName = basename(str_replace('\\', '/', $className));
+        if ($shortName !== '') {
+            return $this->normalizeDocumentType($shortName);
+        }
+
+        return $this->normalizeDocumentType($element::displayName());
+    }
+
+    private function normalizeDocumentType(string $value): string
+    {
+        $normalized = preg_replace('/(?<!^)[A-Z]/', '-$0', trim($value));
+        $normalized = strtolower((string)$normalized);
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized);
+
+        return trim((string)$normalized, '-') ?: 'element';
     }
 
     /**

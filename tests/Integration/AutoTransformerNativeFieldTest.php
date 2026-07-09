@@ -80,6 +80,29 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertStringContainsString('Plain text needle', $data['content']);
     }
 
+    public function testEntryDocumentTypeUsesStableKindAndSeparateSectionMetadata(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        self::assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [, $entry] = $pair;
+        self::assertInstanceOf(Entry::class, $entry);
+
+        $section = $entry->getSection();
+        self::assertNotNull($section);
+
+        $data = (new AutoTransformer())->transform($entry);
+
+        self::assertSame('entry', $data['type'] ?? null);
+        self::assertSame('entry', $data['elementType'] ?? null);
+        self::assertSame($section->name, $data['section'] ?? null);
+        self::assertSame($section->handle, $data['sectionHandle'] ?? null);
+        self::assertSame($section->type, $data['sectionType'] ?? null);
+        self::assertNotSame($section->handle, $data['type'] ?? null);
+        self::assertNotSame($section->handle, $data['elementType'] ?? null);
+        self::assertNotSame($section->type, $data['type'] ?? null);
+    }
+
     public function testNonSearchablePlainTextFieldIsExcluded(): void
     {
         $data = $this->transformWithField(

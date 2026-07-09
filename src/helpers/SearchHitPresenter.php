@@ -38,6 +38,8 @@ class SearchHitPresenter
             'elementType',
             'type',
             'section',
+            'sectionHandle',
+            'sectionType',
             '_slug',
             '_title',
             'promoted',

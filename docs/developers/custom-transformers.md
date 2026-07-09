@@ -47,7 +47,7 @@ Choose one of these extension models:
 
 | Model | Use When | Notes |
 |-------|----------|-------|
-| Extend `BaseTransformer` | You want full control over the indexed document | Recommended for most custom transformers. Includes common identity helpers, HTML stripping, excerpts, `_contentClean` finalization, and heading-level support. |
+| Extend `BaseTransformer` | You want full control over the indexed document | Recommended for most custom transformers. Includes common identity fields, stable `type` / `elementType` defaults, HTML stripping, excerpts, `_contentClean` finalization, and heading-level support. |
 | Extend `AutoTransformer` | You want automatic extraction plus a few project fields | Call `parent::transform($element)` and then add, remove, or normalize fields. This keeps Search Manager's automatic field, relation, rich text, and heading extraction. |
 | Implement `TransformerInterface` directly | You need a minimal advanced transformer | Supported, but Base helpers, `_contentClean` finalization, and heading-level behavior are not automatic unless you implement them yourself. |
 
@@ -57,9 +57,9 @@ The `supports(ElementInterface $element)` method is required by `TransformerInte
 
 The extension path controls how much Search Manager does for you:
 
-- **`BaseTransformer`** is for a full custom document shape. You decide which fields become searchable, so the indexed content can be much narrower than Search Manager's automatic documents.
+- **`BaseTransformer`** is for a full custom document shape. You decide which fields become searchable, so the indexed content can be much narrower than Search Manager's automatic documents. Starting with `$this->getCommonData($element)` gives you identity fields plus stable `type` and `elementType` values.
 - **`AutoTransformer`** is for automatic extraction plus project-specific additions. Start with `parent::transform($element)`, then add fields such as brand, availability, or catalog metadata.
-- **`TransformerInterface` directly** is an advanced/minimal path. It passes validation when the class is autoloadable and zero-argument constructible, but it does not receive BaseTransformer helpers, `_contentClean` finalization, or heading-level behavior unless you implement those pieces yourself.
+- **`TransformerInterface` directly** is an advanced/minimal path. It passes validation when the class is autoloadable and zero-argument constructible, but it does not receive BaseTransformer helpers, stable document-kind defaults, `_contentClean` finalization, or heading-level behavior unless you implement those pieces yourself.
 - **`CommerceTransformer`** is built-in Commerce integration code. Product and Variant indices use it automatically when the transformer is blank. If you need a different Commerce document shape, prefer `BaseTransformer`, `AutoTransformer`, or `EVENT_AFTER_TRANSFORM`; extend `CommerceTransformer` only when you intentionally want to post-process its internal Commerce metadata output.
 
 ## Creating a Transformer
@@ -84,7 +84,7 @@ class ProductTransformer extends BaseTransformer
 
     public function transform(ElementInterface $element): array
     {
-        // Start with common data (id, elementId, backendId, objectID, siteId, title, url, dates)
+        // Start with common data (identity, type, elementType, site, title, URL, dates)
         $data = $this->getCommonData($element);
 
         // Add custom fields
@@ -174,6 +174,8 @@ Returns a base array with standard element fields:
     'id' => 123,
     'elementId' => 123,
     'backendId' => '123_1',
+    'type' => 'entry',
+    'elementType' => 'entry',
     'title' => 'My Entry',
     'url' => 'https://example.com/my-entry',
     'siteId' => 1,
@@ -182,7 +184,7 @@ Returns a base array with standard element fields:
 ]
 ```
 
-Always start with `$this->getCommonData($element)` to ensure required fields are present.
+Always start with `$this->getCommonData($element)` to ensure required fields and stable document-kind metadata are present.
 
 ### `stripHtml(?string $html)`
 
@@ -220,9 +222,10 @@ Your `transform()` method **must** return an array containing:
 | Field | Required | Source |
 |-------|----------|--------|
 | `id`, `elementId`, or `objectID` | Yes | Craft element identifier |
+| `type` and `elementType` | Yes | Stable lowercase document kind |
 | `siteId` | Recommended | Required for multi-site to prevent ID collisions |
 
-Using `$this->getCommonData($element)` includes all required fields automatically.
+Using `$this->getCommonData($element)` includes all required fields automatically when extending `BaseTransformer`. Direct `TransformerInterface` implementations must return a complete document themselves, including `type` and `elementType`.
 
 If you build your own array instead:
 
@@ -232,6 +235,8 @@ public function transform(ElementInterface $element): array
     return [
         'id' => $element->id,
         'siteId' => $element->siteId,
+        'type' => 'entry',
+        'elementType' => 'entry',
         'title' => $element->title,
         // ... your custom fields
     ];
@@ -243,12 +248,38 @@ public function transform(ElementInterface $element): array
 - **With `siteId`**: Documents use composite IDs (`123_1`) preventing collisions across sites
 - **Without `siteId`**: Documents use simple IDs (`123`) — only safe for single-site setups
 
-## Element Type Detection
+## Document Type Fields
 
-The `type` field in API responses is auto-detected from the entry's section handle (singularized). You can override it:
+Search Manager treats `type` and `elementType` as the same stable lowercase document kind. Built-in documents use:
+
+- `entry`
+- `product`
+- `variant`
+- `asset`
+- `category`
+- `user`
+
+Do not put an Entry section handle or Entry section type in `type` or `elementType`. Keep section-specific metadata in separate fields:
+
+```php
+$data['type'] = 'entry';
+$data['elementType'] = 'entry';
+$data['section'] = $element->getSection()?->name;
+$data['sectionHandle'] = $element->getSection()?->handle;
+$data['sectionType'] = $element->getSection()?->type;
+```
+
+Commerce product type metadata follows the same rule: `type`/`elementType` stay `product` or `variant`, while product type details use `productTypeName` and `productTypeHandle`.
+
+If your transformer extends `BaseTransformer` and starts with `$this->getCommonData($element)`, Search Manager sets these document-kind fields for Craft Entries, Categories, Assets, Users, and Commerce Products/Variants automatically.
+
+After changing `type`, `elementType`, or related metadata in a transformer, rebuild the affected index so stored search documents match the current code.
+
+If you intentionally index a custom element kind, set both fields to the same lowercase machine value:
 
 ```php
 $data['elementType'] = 'custom-type';
+$data['type'] = 'custom-type';
 ```
 
 ## Examples

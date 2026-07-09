@@ -239,6 +239,18 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringContainsString('renderIndexedDocumentDebug(hit)', $source);
     }
 
+    public function testRawSettingsSearchHydrationKeepsCanonicalDocumentType(): void
+    {
+        $source = $this->readPluginFile('src/controllers/SettingsController.php');
+
+        self::assertStringContainsString('$documentType = $this->settingsTestDocumentTypeForElement($element);', $source);
+        self::assertStringContainsString('$hit[\'type\'] = $documentType;', $source);
+        self::assertStringContainsString('$hit[\'elementType\'] = $documentType;', $source);
+        self::assertStringContainsString('$hit[\'sectionHandle\'] = $section->handle;', $source);
+        self::assertStringContainsString('$hit[\'sectionType\'] = $section->type;', $source);
+        self::assertStringNotContainsString('$hit[\'type\'] = (new \ReflectionClass($element))->getShortName();', $source);
+    }
+
     public function testAssetRendererIsAllowlistedEscapedTruncatedAndKeepsUrlHardening(): void
     {
         $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');

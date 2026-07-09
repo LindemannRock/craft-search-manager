@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\services;
 
 use Craft;
 use craft\base\Component;
+use craft\base\ElementInterface;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -119,6 +120,7 @@ class EnrichmentService extends Component
                     $snippetDebug,
                 );
 
+                $documentType = strtolower((string)($hit['type'] ?? $hit['elementType'] ?? $this->documentTypeForElement($element)));
                 $result = [
                     'id' => $elementId,
                     'title' => $hit['title'] ?? $element->title ?? 'Untitled',
@@ -126,9 +128,20 @@ class EnrichmentService extends Component
                     'description' => $description,
                     'descriptionSafe' => $description !== null ? \craft\helpers\Html::encode($description) : null,
                     'section' => $hit['section'] ?? $this->getSectionName($element),
-                    'type' => $hit['type'] ?? $element::displayName(),
+                    'type' => $documentType,
+                    'elementType' => $documentType,
                     'score' => $hit['score'] ?? null,
                 ];
+
+                $sectionHandle = $hit['sectionHandle'] ?? $this->getSectionHandle($element);
+                if ($sectionHandle !== null && $sectionHandle !== '') {
+                    $result['sectionHandle'] = $sectionHandle;
+                }
+
+                $sectionType = $hit['sectionType'] ?? $this->getSectionType($element);
+                if ($sectionType !== null && $sectionType !== '') {
+                    $result['sectionType'] = $sectionType;
+                }
 
                 // Add index handle and backend for multi-index searches (debug only)
                 if ($includeDebugMeta && !empty($hit['_index'])) {
@@ -198,6 +211,12 @@ class EnrichmentService extends Component
                 $category = $hit['category'] ?? null;
                 if (!empty($category)) {
                     $result['category'] = $category;
+                }
+
+                foreach (['productTypeName', 'productTypeHandle', 'productType'] as $commerceKey) {
+                    if (isset($hit[$commerceKey]) && $hit[$commerceKey] !== '') {
+                        $result[$commerceKey] = $hit[$commerceKey];
+                    }
                 }
 
                 // Add matched fields info (which fields contained the search query)
@@ -798,6 +817,53 @@ class EnrichmentService extends Component
 
         // For other elements, use the display name
         return $element::displayName();
+    }
+
+    private function getSectionHandle(ElementInterface $element): ?string
+    {
+        if ($element instanceof \craft\elements\Entry) {
+            return $element->getSection()?->handle;
+        }
+
+        return null;
+    }
+
+    private function getSectionType(ElementInterface $element): ?string
+    {
+        if ($element instanceof \craft\elements\Entry) {
+            return $element->getSection()?->type;
+        }
+
+        return null;
+    }
+
+    private function documentTypeForElement(ElementInterface $element): string
+    {
+        if ($element instanceof \craft\elements\Entry) {
+            return 'entry';
+        }
+
+        if (is_a($element, \lindemannrock\searchmanager\helpers\CommerceElementTypeHelper::productElementType())) {
+            return 'product';
+        }
+
+        if (is_a($element, \lindemannrock\searchmanager\helpers\CommerceElementTypeHelper::variantElementType())) {
+            return 'variant';
+        }
+
+        if ($element instanceof \craft\elements\Category) {
+            return 'category';
+        }
+
+        if ($element instanceof \craft\elements\Asset) {
+            return 'asset';
+        }
+
+        if ($element instanceof \craft\elements\User) {
+            return 'user';
+        }
+
+        return strtolower($element::displayName());
     }
 
     /**

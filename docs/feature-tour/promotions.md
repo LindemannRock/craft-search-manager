@@ -98,14 +98,21 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
             "promoted": true,
             "position": 1,
             "score": null,
+            "elementType": "product",
             "type": "product",
+            "productTypeName": "Clothing",
+            "productTypeHandle": "clothing",
             "title": "Featured Product"
         },
         {
             "objectID": 456,
             "id": 456,
             "score": 45.23,
-            "type": "product"
+            "elementType": "entry",
+            "type": "entry",
+            "section": "Blog",
+            "sectionHandle": "blog",
+            "sectionType": "channel"
         }
     ],
     "total": 150,

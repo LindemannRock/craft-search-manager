@@ -223,6 +223,7 @@ class PromotionService extends Component
                 $element = $promotionSiteId !== null
                     ? ($elements[$elementType][$promotionSiteId][$promotion->elementId] ?? null)
                     : null;
+                $documentType = $this->resolveElementType($element);
                 $promotedItem = array_merge([
                     'objectID' => $promotion->elementId,
                     'id' => $promotion->elementId,
@@ -233,10 +234,11 @@ class PromotionService extends Component
                     'promoted' => true,
                     'position' => $promotion->position,
                     'score' => null,
-                    'type' => $this->resolveElementType($element),
+                    'type' => $documentType,
+                    'elementType' => $documentType,
                     'section' => $this->resolveElementSection($element),
                     'title' => $element?->title,
-                ], $this->resolveCommerceMetadata($element));
+                ], $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));
             } else {
                 $promotedItem = $promotion->elementId;
             }
@@ -382,8 +384,11 @@ class PromotionService extends Component
             return 'asset';
         }
 
-        // Fallback: use the element's display name (e.g., "User")
-        return $element::displayName();
+        if ($element instanceof \craft\elements\User) {
+            return 'user';
+        }
+
+        return strtolower($element::displayName());
     }
 
     /**
@@ -408,6 +413,23 @@ class PromotionService extends Component
         }
 
         return null;
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function resolveEntryMetadata(?\craft\base\ElementInterface $element): array
+    {
+        if (!$element instanceof \craft\elements\Entry) {
+            return [];
+        }
+
+        $section = $element->getSection();
+
+        return array_filter([
+            'sectionHandle' => $section?->handle,
+            'sectionType' => $section?->type,
+        ], static fn(?string $value): bool => $value !== null && $value !== '');
     }
 
     /**

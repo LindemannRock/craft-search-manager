@@ -506,26 +506,22 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $siteId = (int)$data['siteId'];
             $elementInfo = $elementInfoBySite[$siteId] ?? [];
             $info = $elementInfo[$elementId] ?? null;
-            $elementType = $info['elementType'] ?? 'entry';
+            $elementType = $this->documentTypeFromElementInfo($info);
 
             if ($typeFilter !== null && !$this->matchesTypeFilter($elementType, $typeFilter)) {
                 continue;
             }
 
-            $hit = [
+            $hit = $this->buildSearchHit($info, [
                 'objectID' => $elementId,
                 'id' => $elementId,
                 'elementId' => $elementId,
                 'backendId' => SearchHitIdentityHelper::backendId($elementId, $data['siteId']),
                 'score' => $data['score'],
                 'type' => $elementType,
+                'elementType' => $elementType,
                 'siteId' => $siteId,
-            ];
-
-            // Merge stored document data into hit (provides section, _headings, category, etc.)
-            if (!empty($info['documentData'])) {
-                $hit = array_merge($info['documentData'], $hit);
-            }
+            ]);
 
             $hits[] = SearchHitIdentityHelper::normalizeHit($hit);
         }
@@ -581,7 +577,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $results,
                 function(float $score, int|string $elementId) use ($elementInfo, $typeFilter): bool {
                     $info = $elementInfo[$elementId] ?? null;
-                    $elementType = $info['elementType'] ?? 'entry';
+                    $elementType = $this->documentTypeFromElementInfo($info);
 
                     return $this->matchesTypeFilter($elementType, $typeFilter);
                 },
@@ -603,21 +599,17 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $hits = [];
         foreach ($results as $elementId => $score) {
             $info = $elementInfo[$elementId] ?? null;
-            $elementType = $info['elementType'] ?? 'entry';
+            $elementType = $this->documentTypeFromElementInfo($info);
 
-            $hit = [
+            $hit = $this->buildSearchHit($info, [
                 'objectID' => $elementId,
                 'id' => $elementId,
                 'elementId' => $elementId,
                 'backendId' => SearchHitIdentityHelper::backendId($elementId, $siteId),
                 'score' => $score,
                 'type' => $elementType,
-            ];
-
-            // Merge stored document data into hit (provides section, _headings, category, etc.)
-            if (!empty($info['documentData'])) {
-                $hit = array_merge($info['documentData'], $hit);
-            }
+                'elementType' => $elementType,
+            ]);
 
             $hits[] = SearchHitIdentityHelper::normalizeHit($hit);
         }
@@ -638,7 +630,44 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     protected function matchesTypeFilter(string $elementType, $typeFilter): bool
     {
         $allowedTypes = is_array($typeFilter) ? $typeFilter : explode(',', $typeFilter);
+        $allowedTypes = array_map(static fn($type): string => strtolower(trim((string)$type)), $allowedTypes);
+
         return in_array($elementType, $allowedTypes, true);
+    }
+
+    /**
+     * @param array<string, mixed>|null $elementInfo
+     */
+    private function documentTypeFromElementInfo(?array $elementInfo): string
+    {
+        $documentData = is_array($elementInfo !== null ? ($elementInfo['documentData'] ?? null) : null)
+            ? $elementInfo['documentData']
+            : [];
+
+        foreach ([$documentData['type'] ?? null, $documentData['elementType'] ?? null, $elementInfo['elementType'] ?? null] as $candidate) {
+            if (is_string($candidate) && trim($candidate) !== '') {
+                return strtolower(trim($candidate));
+            }
+        }
+
+        return 'entry';
+    }
+
+    /**
+     * @param array<string, mixed>|null $elementInfo
+     * @param array<string, mixed> $baseHit
+     * @return array<string, mixed>
+     */
+    private function buildSearchHit(?array $elementInfo, array $baseHit): array
+    {
+        $documentData = is_array($elementInfo['documentData'] ?? null) ? $elementInfo['documentData'] : [];
+        $hit = array_merge($baseHit, $documentData);
+        $documentType = $this->documentTypeFromElementInfo(['elementType' => $baseHit['elementType'] ?? null, 'documentData' => $hit]);
+
+        $hit['type'] = $documentType;
+        $hit['elementType'] = $documentType;
+
+        return $hit;
     }
 
     // =========================================================================

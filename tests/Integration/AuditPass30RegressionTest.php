@@ -63,11 +63,15 @@ final class AuditPass30RegressionTest extends TestCase
     {
         $source = $this->readPluginFile('src/services/PromotionService.php');
 
-        self::assertStringContainsString("'type' => \$this->resolveElementType(\$element),", $source);
+        self::assertStringContainsString("\$documentType = \$this->resolveElementType(\$element);", $source);
+        self::assertStringContainsString("'type' => \$documentType,", $source);
+        self::assertStringContainsString("'elementType' => \$documentType,", $source);
         self::assertStringContainsString("'section' => \$this->resolveElementSection(\$element),", $source);
-        self::assertStringContainsString('], $this->resolveCommerceMetadata($element));', $source);
+        self::assertStringContainsString('], $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));', $source);
         self::assertStringContainsString("return 'entry';", $source);
         self::assertStringContainsString('return $element->getSection()?->name;', $source);
+        self::assertStringContainsString("'sectionHandle' => \$section?->handle,", $source);
+        self::assertStringContainsString("'sectionType' => \$section?->type,", $source);
         self::assertStringNotContainsString('return $element->getSection()?->handle;', $source);
     }
 

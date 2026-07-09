@@ -46,7 +46,8 @@ class DocsManagerTransformer extends BaseTransformer
             return $data;
         }
 
-        $data['type'] = 'sourceDoc';
+        $data['type'] = $this->resolveDocumentType($element);
+        $data['elementType'] = $data['type'];
         $data['section'] = $this->getSourceName($element->sourceId);
         $data['slug'] = $element->slug;
         $data['category'] = $element->category;

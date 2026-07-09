@@ -361,7 +361,7 @@ class ApiController extends Controller
      * - debug: Include debug metadata in response (default: devMode setting)
      *
      * Response format:
-     * - Raw (default): {hits: [{objectID, id, score, type}, ...], total, page, hitsPerPage, totalPages}
+     * - Raw (default): {hits: [{objectID, id, score, type, elementType}, ...], total, page, hitsPerPage, totalPages}
      * - Enriched (enrich=1): {hits: [{id, title, url, description, section, type, score, ...}, ...],
      *   total, page, hitsPerPage, totalPages, query}
      *

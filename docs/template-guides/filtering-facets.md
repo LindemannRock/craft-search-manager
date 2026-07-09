@@ -59,9 +59,10 @@ Combine filters with a search query:
 }) %}
 ```
 
-## Element Type Filtering
+## Document Type Filtering
 
-The API supports filtering by element type (derived from section handle):
+The API supports filtering by stable document kind. Use lowercase values:
+`entry`, `product`, `variant`, `asset`, `category`, or `user`.
 
 ```twig
 {# Search API - filter by type #}
@@ -74,25 +75,30 @@ const response = await fetch(
 );
 ```
 
-### Element Type Mapping
+Entry section metadata is separate from the document kind:
 
-| Section Handle | Type Value |
-|----------------|------------|
-| `products` | `product` |
-| `categories` | `category` |
-| `stores` | `store` |
-| `blog-posts` | `blog-post` |
+| Field | Meaning |
+|-------|---------|
+| `type` / `elementType` | Stable document kind, for example `entry` |
+| `section` | Human-readable section name |
+| `sectionHandle` | Entry section handle |
+| `sectionType` | Entry section type: `single`, `channel`, or `structure` |
 
-Non-Entry elements:
-- Categories → `category`
-- Assets → `asset`
-- Users → `user`
-- Tags → `tag`
+Commerce metadata is also separate from the document kind:
 
-You can override the type in your transformer:
+| Field | Meaning |
+|-------|---------|
+| `type` / `elementType` | `product` or `variant` |
+| `productTypeName` | Human-readable Commerce product type name |
+| `productTypeHandle` | Commerce product type handle |
+
+When changing a transformer document type or metadata shape, rebuild the affected index so stored search documents match the current contract.
+
+You can override the document kind in a custom transformer, but keep `type` and `elementType` aligned:
 
 ```php
 $data['elementType'] = 'custom-type';
+$data['type'] = 'custom-type';
 ```
 
 ## Site Filtering

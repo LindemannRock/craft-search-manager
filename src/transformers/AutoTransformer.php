@@ -67,24 +67,19 @@ class AutoTransformer extends BaseTransformer
         // Start with common data
         $data = $this->getCommonData($element);
 
-        // Derive element type from section handle (for Entries) or element class
-        $data['elementType'] = $this->deriveElementType($element);
-
-        // Set section and type for grouping (hierarchical layout, groupResults)
+        // Set section metadata for grouping (hierarchical layout, groupResults).
         if ($element instanceof \craft\elements\Entry && $element->getSection() !== null) {
-            $data['type'] = 'entry';
-            $data['section'] = $element->getSection()->name ?? $element->getSection()->handle;
+            $section = $element->getSection();
+            $data['section'] = $section->name ?? $section->handle;
+            $data['sectionHandle'] = $section->handle;
+            $data['sectionType'] = $section->type;
         } elseif ($element instanceof \craft\elements\Category) {
-            $data['type'] = 'category';
             $data['section'] = $element->getGroup()?->name ?? 'Categories';
         } elseif ($element instanceof \craft\elements\Asset) {
-            $data['type'] = 'asset';
             $data['section'] = $element->getVolume()?->name ?? 'Assets';
         } elseif ($element instanceof \craft\elements\User) {
-            $data['type'] = 'user';
             $data['section'] = 'Users';
         } else {
-            $data['type'] = $data['elementType'];
             $data['section'] = ucfirst($data['elementType']);
         }
 
@@ -190,11 +185,12 @@ class AutoTransformer extends BaseTransformer
     // =========================================================================
 
     /**
-     * Derive element type from section handle (for Entries) or element class
+     * Derive stable document kind from element class.
      *
-     * For Entries: uses section handle, singularized (products → product)
+     * For Entries: returns 'entry'
      * For Categories: returns 'category'
      * For Assets: returns 'asset'
+     * For Users: returns 'user'
      * For other elements: derives from class name
      *
      * @param ElementInterface $element
@@ -202,42 +198,7 @@ class AutoTransformer extends BaseTransformer
      */
     protected function deriveElementType(ElementInterface $element): string
     {
-        // For Entries: use section handle (singularized)
-        if ($element instanceof \craft\elements\Entry && $element->getSection() !== null) {
-            return $this->singularize($element->getSection()->handle);
-        }
-
-        // For Categories: return 'category'
-        if ($element instanceof \craft\elements\Category) {
-            return 'category';
-        }
-
-        // For Assets: return 'asset'
-        if ($element instanceof \craft\elements\Asset) {
-            return 'asset';
-        }
-
-        // For Users: return 'user'
-        if ($element instanceof \craft\elements\User) {
-            return 'user';
-        }
-
-        // For Tags: return 'tag'
-        if ($element instanceof \craft\elements\Tag) {
-            return 'tag';
-        }
-
-        if (method_exists($element, 'refHandle')) {
-            $refHandle = $element::refHandle();
-            if (is_string($refHandle) && $refHandle !== '') {
-                return $refHandle;
-            }
-        }
-
-        // Fallback: derive from class name
-        $className = get_class($element);
-        $shortName = basename(str_replace('\\', '/', $className));
-        return strtolower($shortName);
+        return $this->resolveDocumentType($element);
     }
 
     /**

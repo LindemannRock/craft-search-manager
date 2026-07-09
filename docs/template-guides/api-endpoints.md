@@ -52,7 +52,7 @@ GET /actions/search-manager/api/search
 | `index` | (all indices) | Single index handle (legacy — prefer `indices`). |
 | `hitsPerPage` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
 | `page` | `0` | Page number (0-based) |
-| `type` | (none) | Filter by element type (e.g., `product`, `product,category`) |
+| `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, or `user` |
 | `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
 | `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
@@ -87,7 +87,10 @@ These parameters only apply when `enrich=1`:
             "promoted": true,
             "position": 1,
             "score": null,
+            "elementType": "product",
             "type": "product",
+            "productTypeName": "Clothing",
+            "productTypeHandle": "clothing",
             "title": "Featured Product"
         },
         {
@@ -96,7 +99,11 @@ These parameters only apply when `enrich=1`:
             "backendId": "456_1",
             "objectID": 456,
             "score": 45.23,
-            "type": "product"
+            "elementType": "entry",
+            "type": "entry",
+            "section": "Blog",
+            "sectionHandle": "blog",
+            "sectionType": "channel"
         }
     ],
     "total": 150,
@@ -126,7 +133,10 @@ When `enrich=1`, results are resolved to full element data with snippets and hea
             "url": "/docs/getting-started",
             "description": "A snippet with <mark>matched</mark> terms...",
             "section": "Documentation",
-            "type": "page",
+            "sectionHandle": "documentation",
+            "sectionType": "structure",
+            "elementType": "entry",
+            "type": "entry",
             "score": 45.23,
             "promoted": false,
             "headings": [
@@ -167,7 +177,13 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 | `backendId` | `string` | Search Manager backend document ID, usually `{elementId}_{siteId}`. |
 | `objectID` | `int\|string` | Raw backend compatibility field. Prefer `elementId` and `backendId` in new code. |
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
-| `type` | `string` | Element type (product, category, entry, etc.) |
+| `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
+| `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
+| `section` | `string` | Human-readable Entry section name when available. Commerce hits may use product type name here for legacy display context; prefer `productTypeName` / `productTypeHandle` for Commerce metadata. |
+| `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
+| `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `productTypeName` | `string` | Commerce product type name when the hit is a Product or Variant. |
+| `productTypeHandle` | `string` | Commerce product type handle when the hit is a Product or Variant. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |
 | `title` | `string` | Element title (for promoted items) |
@@ -268,7 +284,7 @@ https://your-site.com/actions/search-manager/api/autocomplete?q=test&index=entri
 const response = await fetch('/actions/search-manager/api/autocomplete?q=test&index=entries-en');
 const data = await response.json();
 // data.suggestions = ["test", "testing"]
-// data.results = [{text: "Test Page", type: "page", id: 1, siteId: 1}]
+// data.results = [{text: "Test Entry", type: "entry", id: 1, siteId: 1}]
 
 // Only suggestions
 const response = await fetch('/actions/search-manager/api/autocomplete?q=test&only=suggestions');

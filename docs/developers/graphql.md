@@ -37,6 +37,8 @@ query {
       siteId
       elementType
       section
+      sectionHandle
+      sectionType
       slug
       matchedIn
       promoted
@@ -58,7 +60,7 @@ Search arguments:
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
 | `hitsPerPage` | `Int` | Defaults to `20`, capped at `200`. |
 | `page` | `Int` | Zero-based page number. |
-| `type` | `String` | Optional element type filter. |
+| `type` | `String` | Optional stable document-kind filter, for example `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
 | `filters` | `String` | Optional backend-specific filter expression. Requires a single `index`. |
 | `language` | `String` | Optional language code for localized operators. |
 | `source` | `String` | Analytics source. Defaults to `graphql`. |
@@ -79,9 +81,12 @@ Common hit fields:
 | `backendId` | Search Manager's backend document ID, usually `{elementId}_{siteId}` for multi-site-safe documents. |
 | `objectID` | Raw backend compatibility field. Algolia and Meilisearch use this as their primary key; Typesense keeps the primary key in its reserved `id` field. Prefer `elementId` and `backendId` in new code. |
 | `siteId` / `site` | Site ID and site handle. |
-| `elementType` | Indexed element type or section handle, depending on backend/index data. |
-| `type` | Search result type used by Search Manager filters and widgets. |
-| `section` | Human-readable section/type label when indexed. |
+| `elementType` | Stable lowercase document kind. Matches `type`. |
+| `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, and `user`. |
+| `section` | Human-readable Entry section name when indexed. |
+| `sectionHandle` | Entry section handle when the hit is an Entry. |
+| `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `productTypeName` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |
 | `slug` | Indexed slug from `_slug`/`slug`. |
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
@@ -92,7 +97,7 @@ Scores are useful for debug displays and single-backend ordering, but they are n
 
 ## Filters
 
-Use `type` for portable element-type filtering:
+Use `type` for portable document-kind filtering:
 
 ```graphql
 query {
@@ -113,7 +118,7 @@ query {
   searchManagerSearch(
     query: "test"
     index: "products-typesense"
-    filters: "elementType:=`entry` && siteId:=`1`"
+    filters: "type:=`entry` && siteId:=`1`"
   ) {
     total
     hits {
@@ -133,9 +138,9 @@ Backend filter examples:
 
 | Backend | `filters` example |
 |---------|-------------------|
-| Algolia | `elementType:"entry" AND siteId:1` |
-| Meilisearch | `elementType = "entry" AND siteId = 1` |
-| Typesense | `elementType:=\`entry\` && siteId:=\`1\`` |
+| Algolia | `type:"entry" AND siteId:1` |
+| Meilisearch | `type = "entry" AND siteId = 1` |
+| Typesense | `type:=\`entry\` && siteId:=\`1\`` |
 
 ## Backend Examples
 
