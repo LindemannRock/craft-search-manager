@@ -132,15 +132,16 @@
 .sm-test-summary {
     padding: 16px;
     margin-bottom: 20px;
-    background: #f0fdf4;
-    border-left: 4px solid #059669;
-    border-radius: 0 4px 4px 0;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #fff;
+    color: #1f2937;
 }
 
 .sm-test-summary-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px 16px;
     font-size: 14px;
 }
 
@@ -539,38 +540,97 @@
     font-weight: 600;
 }
 
-.sm-test-table {
-    margin: 0;
-    table-layout: auto;
-}
-
-.sm-test-table th,
-.sm-test-table td {
-    padding-top: 8px;
-    padding-bottom: 8px;
-    vertical-align: top;
-    font-size: 13px;
-    line-height: 1.35;
-}
-
-.sm-test-table-subtext {
-    display: block;
-    margin-top: 2px;
-    color: #4b5563;
-    font-size: 12px;
-}
-
 .sm-test-row-disabled {
     opacity: 0.5;
 }
 
-.sm-test-position {
-    display: inline-block;
-    padding: 4px 8px;
+.sm-test-diagnostic-list {
+    display: grid;
+    gap: 12px;
+}
+
+.sm-test-diagnostic-card {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
     background: #fff;
+}
+
+.sm-test-diagnostic-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.sm-test-diagnostic-primary {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.sm-test-diagnostic-title {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
     color: #111827;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.sm-test-diagnostic-title a {
+    overflow-wrap: anywhere;
+}
+
+.sm-test-diagnostic-subtext {
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.sm-test-diagnostic-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.sm-test-diagnostic-hit {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-end;
+    min-width: max-content;
+}
+
+.sm-test-diagnostic-grid {
+    display: grid;
+    grid-template-columns: minmax(140px, 0.7fr) minmax(140px, 0.7fr) minmax(260px, 1.6fr);
+    gap: 12px;
+    align-items: start;
+}
+
+.sm-test-diagnostic-field {
+    display: grid;
+    gap: 5px;
+    min-width: 0;
+}
+
+.sm-test-diagnostic-field--wide {
+    grid-column: auto;
+}
+
+.sm-test-diagnostic-label {
+    color: #4b5563;
+    font-size: 12px;
     font-weight: 700;
 }
 
@@ -589,6 +649,9 @@
 }
 
 .sm-test-live-badge {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
     padding: 4px 8px;
     border: 1px solid #047857;
     border-radius: 4px;
@@ -599,6 +662,9 @@
 }
 
 .sm-test-not-live-badge {
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
     padding: 4px 8px;
     border: 1px solid #d1d5db;
     border-radius: 4px;
@@ -608,10 +674,22 @@
     font-weight: 600;
 }
 
-.sm-test-site-list {
+.sm-test-site-list-items {
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.sm-test-diagnostic-card .status-label {
+    display: inline-flex;
+    width: auto;
+    max-width: 100%;
+    align-items: center;
+    justify-content: flex-start;
+    justify-self: start;
+    flex: 0 0 auto;
 }
 
 .sm-test-promo-note {
@@ -620,6 +698,32 @@
     border-top: 1px solid #d1d5db;
     color: #4b5563;
     font-size: 13px;
+}
+
+@media (max-width: 640px) {
+    .sm-test-diagnostic-card-header,
+    .sm-test-diagnostic-primary,
+    .sm-test-diagnostic-hit {
+        display: grid;
+        justify-content: stretch;
+    }
+
+    .sm-test-diagnostic-hit {
+        justify-items: start;
+        min-width: 0;
+    }
+
+    .sm-test-diagnostic-card-header {
+        padding-bottom: 10px;
+    }
+
+    .sm-test-diagnostic-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sm-test-diagnostic-field--wide {
+        grid-column: 1;
+    }
 }
 
 .sm-test-redirect-box,

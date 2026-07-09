@@ -158,9 +158,11 @@ final class TestToolI18nTest extends TestCase
 
         foreach ([
             '${Craft.escapeHtml(s)}</span>',
-            '<td><code>${Craft.escapeHtml(p.matchType)}</code></td>',
+            '<article class="sm-test-diagnostic-card${!p.enabled ? \' sm-test-row-disabled\' : \'\'}">',
+            '<code>${Craft.escapeHtml(p.matchType)}</code>',
             'p.siteStatuses.filter(s => s.isLive).map(s => `',
             '${Craft.escapeHtml(s.siteName)}</span>',
+            '<span class="sm-test-site-list-items">',
             'function renderSafeLinkOrText(url, label)',
             'const safeUrl = safeUrlAttribute(url);',
             'return safeUrl ? `<a href="${safeUrl}" target="_blank">${display}</a>` : display;',
@@ -170,7 +172,8 @@ final class TestToolI18nTest extends TestCase
             '<span class="status-label ${color}">',
             '<span class="status ${color}"></span>',
             '<span class="status-label-text">${Craft.escapeHtml(label)}</span>',
-            '<td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>',
+            '<article class="sm-test-diagnostic-card">',
+            '<span><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></span>',
             'if (index === -1) return Craft.escapeHtml(text);',
             "Craft.escapeHtml(text.substring(0, index)) + '<strong>' + Craft.escapeHtml(text.substring(index, index + query.length))",
             'resultsContent.innerHTML = `<p class="sm-test-error">${Craft.escapeHtml(error.message)}</p>`;',

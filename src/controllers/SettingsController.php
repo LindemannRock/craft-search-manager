@@ -19,6 +19,7 @@ use lindemannrock\base\helpers\PluginThemeStyleHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
+use lindemannrock\searchmanager\helpers\PromotionLiveElementQueryHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
@@ -1268,11 +1269,10 @@ class SettingsController extends Controller
         foreach ($idsByTypeAndSite as $group) {
             /** @var class-string<ElementInterface> $elementClass */
             $elementClass = $group['class'];
-            foreach ($elementClass::find()
+            $elementQuery = $elementClass::find()
                 ->id(array_values($group['ids']))
-                ->siteId($group['siteId'])
-                ->status('live')
-                ->all() as $element) {
+                ->siteId($group['siteId']);
+            foreach (PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all() as $element) {
                 if ($element instanceof ElementInterface) {
                     $elements[$this->elementCacheKey($elementClass, $group['siteId'], (int)$element->id)] = $element;
                 }

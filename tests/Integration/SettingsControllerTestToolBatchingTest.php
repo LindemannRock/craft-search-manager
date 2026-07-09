@@ -45,6 +45,7 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString('preloadTestPromotionElements($matchingPromotions)', $body);
         self::assertStringContainsString('preloadTestPromotionLiveElements($matchingPromotions, $promotionElements, $sites)', $body);
         self::assertStringContainsString("'elementTypeLabel' => \$this->promotionElementTypeLabel(\$promotion->elementType, \$element),", $body);
+        self::assertStringContainsString('PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all()', $this->readPluginFile('src/controllers/SettingsController.php'));
     }
 
     public function testPromotionTestToolDisplaysTargetElementTypeLabel(): void

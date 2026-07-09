@@ -599,39 +599,47 @@
                     <span><strong>${T.queryLabel}</strong> <code>${Craft.escapeHtml(query)}</code></span>
                     <span><strong>${T.matchedLabel}</strong> ${(data.promotions.length === 1 ? T.promotionsSingular : T.promotionsPlural).replace('{count}', data.promotions.length)}</span>
                 </div>
-                <table class="data fullwidth sm-test-table">
-                    <thead>
-                        <tr>
-                            <th>${T.position}</th>
-                            <th>${T.element}</th>
-                            <th>${T.matchType}</th>
-                            <th>${T.pattern}</th>
-                            <th>${T.hitLabel}</th>
-                            <th>${T.liveOnSites}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.promotions.map(p => `
-                            <tr${!p.enabled ? ' class="sm-test-row-disabled"' : ''}>
-                                <td><span class="sm-test-position">#${p.position}</span></td>
-                                <td>
-                                    <a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
-                                    <span class="sm-test-table-subtext">ID: ${p.elementId}</span>
-                                    ${p.elementTypeLabel ? `<span class="sm-test-table-subtext">${T.typeLabel} ${Craft.escapeHtml(p.elementTypeLabel)}</span>` : ''}
-                                    ${!p.enabled ? `<span class="sm-test-disabled-badge">${T.disabled}</span>` : ''}
-                                </td>
-                                <td><code>${Craft.escapeHtml(p.matchType)}</code></td>
-                                <td><code>${Craft.escapeHtml(p.query)}</code></td>
-                                <td>${renderStatusLabel(renderedPromotionIds.has(Number(p.elementId)) ? T.yesLabel : T.noLabel, renderedPromotionIds.has(Number(p.elementId)) ? 'green' : 'red')}</td>
-                                <td class="sm-test-site-list">
-                                    ${p.siteStatuses ? p.siteStatuses.filter(s => s.isLive).map(s => `
-                                        <span class="sm-test-live-badge">${Craft.escapeHtml(s.siteName)}</span>
-                                    `).join('') || '-' : '-'}
-                                </td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
+                <div class="sm-test-diagnostic-list">
+                    ${data.promotions.map(p => `
+                        <article class="sm-test-diagnostic-card${!p.enabled ? ' sm-test-row-disabled' : ''}">
+                            <div class="sm-test-diagnostic-card-header">
+                                <div class="sm-test-diagnostic-primary">
+                                    <div class="sm-test-diagnostic-title">
+                                        <a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
+                                        <span class="sm-test-diagnostic-meta">
+                                            <span>${T.position}: #${p.position}</span>
+                                            <span>ID: ${p.elementId}</span>
+                                            ${p.elementTypeLabel ? `<span>${T.typeLabel} ${Craft.escapeHtml(p.elementTypeLabel)}</span>` : ''}
+                                        </span>
+                                        ${!p.enabled ? `<span class="sm-test-disabled-badge">${T.disabled}</span>` : ''}
+                                    </div>
+                                </div>
+                                <div class="sm-test-diagnostic-hit">
+                                    <span class="sm-test-diagnostic-label">${T.hitLabel}</span>
+                                    ${renderStatusLabel(renderedPromotionIds.has(Number(p.elementId)) ? T.yesLabel : T.noLabel, renderedPromotionIds.has(Number(p.elementId)) ? 'green' : 'red')}
+                                </div>
+                            </div>
+                            <div class="sm-test-diagnostic-grid">
+                                <div class="sm-test-diagnostic-field">
+                                    <span class="sm-test-diagnostic-label">${T.matchType}</span>
+                                    <code>${Craft.escapeHtml(p.matchType)}</code>
+                                </div>
+                                <div class="sm-test-diagnostic-field">
+                                    <span class="sm-test-diagnostic-label">${T.pattern}</span>
+                                    <code>${Craft.escapeHtml(p.query)}</code>
+                                </div>
+                                <div class="sm-test-diagnostic-field sm-test-diagnostic-field--wide">
+                                    <span class="sm-test-diagnostic-label">${T.liveOnSites}</span>
+                                    <span class="sm-test-site-list-items">
+                                        ${p.siteStatuses ? p.siteStatuses.filter(s => s.isLive).map(s => `
+                                            <span class="sm-test-live-badge">${Craft.escapeHtml(s.siteName)}</span>
+                                        `).join('') || '-' : '-'}
+                                    </span>
+                                </div>
+                            </div>
+                        </article>
+                    `).join('')}
+                </div>
                 <p class="sm-test-promo-note">${T.promotionsNote}</p>
             `;
                 } else {
@@ -662,40 +670,49 @@
                 </div>
                 ${redirectHtml}
                 ${data.synonyms && data.synonyms.length > 1 ? `<div class="sm-test-synonyms-box"><strong>${T.expandedQueriesLabel}</strong> ${data.synonyms.map(s => `<code>${Craft.escapeHtml(s)}</code>`).join(', ')}</div>` : ''}
-                <table class="data fullwidth sm-test-table">
-                    <thead>
-                        <tr>
-                            <th>${T.ruleName}</th>
-                            <th>${T.action}</th>
-                            <th>${T.match}</th>
-                            <th>${T.effect}</th>
-                            <th>${T.hitLabel}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${data.rules.map(r => {
-                            let effectHtml = Craft.escapeHtml(r.effectDescription);
-                            if (r.actionType === 'redirect' && r.elementInfo) {
-                                effectHtml = T.redirectToElement.replace('{link}', `<a href="${r.elementInfo.cpEditUrl}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`);
-                            }
-                            const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);
-                            const actionClass = actionClasses[r.actionType] || 'gray';
-                            const ruleApplied = r.actionType === 'boost_element' && boostedElementIds.has(Number(r.targetElementId));
-                            const resultStatus = r.actionType === 'boost_element'
-                                ? renderStatusLabel(ruleApplied ? T.yesLabel : T.noLabel, ruleApplied ? 'green' : 'red')
-                                : '';
-                            return `
-                                <tr>
-                                    <td><a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a></td>
-                                    <td>${renderStatusLabel(actionLabel, actionClass)}</td>
-                                    <td><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></td>
-                                    <td>${effectHtml}</td>
-                                    <td>${resultStatus}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
+                <div class="sm-test-diagnostic-list">
+                    ${data.rules.map(r => {
+                        let effectHtml = Craft.escapeHtml(r.effectDescription);
+                        if (r.actionType === 'redirect' && r.elementInfo) {
+                            effectHtml = T.redirectToElement.replace('{link}', `<a href="${r.elementInfo.cpEditUrl}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`);
+                        }
+                        const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);
+                        const actionClass = actionClasses[r.actionType] || 'gray';
+                        const ruleApplied = r.actionType === 'boost_element' && boostedElementIds.has(Number(r.targetElementId));
+                        const resultStatus = r.actionType === 'boost_element'
+                            ? renderStatusLabel(ruleApplied ? T.yesLabel : T.noLabel, ruleApplied ? 'green' : 'red')
+                            : '';
+                        const targetMeta = [
+                            r.targetElementId ? `ID: ${Craft.escapeHtml(r.targetElementId)}` : '',
+                            r.targetElementType ? `${T.typeLabel} ${Craft.escapeHtml(r.targetElementType)}` : '',
+                        ].filter(Boolean).join(' · ');
+                        return `
+                            <article class="sm-test-diagnostic-card">
+                                <div class="sm-test-diagnostic-card-header">
+                                    <div class="sm-test-diagnostic-title">
+                                        <a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a>
+                                        ${targetMeta ? `<span class="sm-test-diagnostic-meta"><span>${targetMeta}</span></span>` : ''}
+                                    </div>
+                                    ${resultStatus ? `<div class="sm-test-diagnostic-hit"><span class="sm-test-diagnostic-label">${T.hitLabel}</span>${resultStatus}</div>` : ''}
+                                </div>
+                                <div class="sm-test-diagnostic-grid">
+                                    <div class="sm-test-diagnostic-field">
+                                        <span class="sm-test-diagnostic-label">${T.action}</span>
+                                        ${renderStatusLabel(actionLabel, actionClass)}
+                                    </div>
+                                    <div class="sm-test-diagnostic-field">
+                                        <span class="sm-test-diagnostic-label">${T.match}</span>
+                                        <span><code>${Craft.escapeHtml(r.matchType)}</code>: <code>${Craft.escapeHtml(r.matchValue)}</code></span>
+                                    </div>
+                                    <div class="sm-test-diagnostic-field sm-test-diagnostic-field--wide">
+                                        <span class="sm-test-diagnostic-label">${T.effect}</span>
+                                        <span>${effectHtml}</span>
+                                    </div>
+                                </div>
+                            </article>
+                        `;
+                    }).join('')}
+                </div>
             `;
                 } else {
                     container.innerHTML = `<p class="light">${T.noQueryRules.replace('{query}', Craft.escapeHtml(query))}</p>`;
@@ -710,7 +727,7 @@
                 if (data.success) {
                     const hasRedirect = Boolean(data.redirect || (queryRulesData && queryRulesData.redirect));
                     resultsTitle.innerHTML = hasRedirect ? T.redirectRuleMatched : (data.total === 1 ? T.foundResultsSingular : T.foundResultsPlural).replace('{count}', data.total);
-                    setMessageState(resultsTitle, 'success');
+                    setMessageState(resultsTitle, null);
 
                     let html = `
 <div class="sm-test-summary">

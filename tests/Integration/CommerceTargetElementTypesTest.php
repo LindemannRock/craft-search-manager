@@ -16,6 +16,7 @@ use craft\elements\Category;
 use craft\elements\Entry;
 use craft\elements\User;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
+use lindemannrock\searchmanager\helpers\PromotionLiveElementQueryHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\Promotion;
@@ -32,6 +33,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @since 5.53.0
  */
 #[CoversClass(TargetElementTypeHelper::class)]
+#[CoversClass(PromotionLiveElementQueryHelper::class)]
 #[CoversClass(Promotion::class)]
 #[CoversClass(QueryRule::class)]
 final class CommerceTargetElementTypesTest extends TestCase
@@ -145,6 +147,42 @@ final class CommerceTargetElementTypesTest extends TestCase
         }
 
         self::assertTrue(true);
+    }
+
+    public function testVariantPromotionMatchesWhenVariantEnabledAndProductLive(): void
+    {
+        if (!CommerceElementTypeHelper::variantElementTypeAvailable()) {
+            self::assertTrue(true);
+            return;
+        }
+
+        $variant = $this->findPromotionLiveCommerceElement(CommerceElementTypeHelper::variantElementType());
+        if ($variant === null) {
+            self::assertTrue(true);
+            return;
+        }
+
+        $query = 'variant promotion live regression ' . bin2hex(random_bytes(4));
+        $promotion = new Promotion();
+        $promotion->title = 'Variant promotion live regression';
+        $promotion->query = $query;
+        $promotion->matchType = 'exact';
+        $promotion->indexHandle = 'commerce-variants';
+        $promotion->elementId = (int)$variant->id;
+        $promotion->elementType = CommerceElementTypeHelper::variantElementType();
+        $promotion->position = 1;
+        $promotion->siteId = (int)$variant->siteId;
+
+        self::assertTrue($promotion->save(), implode('; ', $promotion->getFirstErrors()));
+
+        try {
+            $matches = Promotion::findMatching($query, 'commerce-variants', (int)$variant->siteId);
+
+            self::assertCount(1, $matches);
+            self::assertSame((int)$promotion->id, (int)$matches[0]->id);
+        } finally {
+            $promotion->delete();
+        }
     }
 
     public function testPromotedCommerceTargetsHydrateFromExplicitElementTypeContext(): void
@@ -317,6 +355,20 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertStringContainsString('class_exists(self::VARIANT_ELEMENT_TYPE)', $helperSource);
     }
 
+    public function testPromotionLiveLookupUsesVariantProductStatus(): void
+    {
+        $helperSource = $this->readPluginFile('src/helpers/PromotionLiveElementQueryHelper.php');
+        $promotionSource = $this->readPluginFile('src/models/Promotion.php');
+        $settingsSource = $this->readPluginFile('src/controllers/SettingsController.php');
+
+        self::assertStringContainsString('CommerceElementTypeHelper::variantElementType()', $helperSource);
+        self::assertStringContainsString("->status('enabled')", $helperSource);
+        self::assertStringContainsString("->productStatus('live')", $helperSource);
+        self::assertStringContainsString("->status('live')", $helperSource);
+        self::assertStringContainsString('PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all()', $promotionSource);
+        self::assertStringContainsString('PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all()', $settingsSource);
+    }
+
     private function readPluginFile(string $path): string
     {
         return (string)file_get_contents(dirname(__DIR__, 2) . '/' . $path);
@@ -331,6 +383,24 @@ final class CommerceTargetElementTypesTest extends TestCase
                 ->siteId((int)$siteId)
                 ->status('live')
                 ->one();
+
+            if ($element instanceof \craft\base\ElementInterface) {
+                return $element;
+            }
+        }
+
+        return null;
+    }
+
+    private function findPromotionLiveCommerceElement(string $elementType): ?\craft\base\ElementInterface
+    {
+        $siteIds = Craft::$app->getSites()->getAllSiteIds();
+
+        foreach ($siteIds as $siteId) {
+            $query = $elementType::find()
+                ->siteId((int)$siteId)
+                ->limit(1);
+            $element = PromotionLiveElementQueryHelper::apply($query, $elementType)->one();
 
             if ($element instanceof \craft\base\ElementInterface) {
                 return $element;
