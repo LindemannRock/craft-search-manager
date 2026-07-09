@@ -224,7 +224,7 @@ class PromotionService extends Component
                     ? ($elements[$elementType][$promotionSiteId][$promotion->elementId] ?? null)
                     : null;
                 $documentType = $this->resolveElementType($element);
-                $promotedItem = array_merge([
+                $promotedItem = [
                     'objectID' => $promotion->elementId,
                     'id' => $promotion->elementId,
                     'elementId' => $promotion->elementId,
@@ -236,9 +236,15 @@ class PromotionService extends Component
                     'score' => null,
                     'type' => $documentType,
                     'elementType' => $documentType,
-                    'section' => $this->resolveElementSection($element),
                     'title' => $element?->title,
-                ], $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));
+                ];
+
+                $section = $this->resolveElementSection($element);
+                if ($section !== null && $section !== '') {
+                    $promotedItem['section'] = $section;
+                }
+
+                $promotedItem = array_merge($promotedItem, $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));
             } else {
                 $promotedItem = $promotion->elementId;
             }
@@ -450,14 +456,12 @@ class PromotionService extends Component
         }
 
         $productType = $this->objectValue($product, ['getType', 'getProductType', 'type', 'productType']);
-        $productTypeName = $this->stringValue($productType, ['name', 'getName']);
+        $productTypeDisplayName = $this->stringValue($productType, ['name', 'getName']);
         $productTypeHandle = $this->stringValue($productType, ['handle', 'getHandle']);
 
         return array_filter([
-            'productType' => $productTypeName,
-            'productTypeName' => $productTypeName,
+            'productType' => $productTypeDisplayName,
             'productTypeHandle' => $productTypeHandle,
-            'section' => $productTypeName,
         ], static fn(?string $value): bool => $value !== null && $value !== '');
     }
 

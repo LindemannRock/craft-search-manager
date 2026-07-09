@@ -85,6 +85,35 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame('structure', $hit['sectionType'] ?? null);
     }
 
+    public function testLocalBackendRawHitShapeUsesPublicSlugWithoutUnderscoreMirrors(): void
+    {
+        $backend = $this->localBackend();
+        $method = new \ReflectionMethod($backend, 'buildSearchHit');
+        $method->setAccessible(true);
+
+        $hit = $method->invoke($backend, [
+            'elementType' => 'entry',
+            'documentData' => [
+                'elementId' => 123,
+                'elementType' => 'entry',
+                'type' => 'entry',
+                'title' => 'Public title',
+                'slug' => 'public-slug',
+            ],
+        ], [
+            'id' => 123,
+            'elementId' => 123,
+            'siteId' => 1,
+            'type' => 'entry',
+            'elementType' => 'entry',
+        ]);
+
+        self::assertSame('Public title', $hit['title'] ?? null);
+        self::assertSame('public-slug', $hit['slug'] ?? null);
+        self::assertArrayNotHasKey('_title', $hit);
+        self::assertArrayNotHasKey('_slug', $hit);
+    }
+
     public function testTypeFilterUsesCanonicalLowercaseDocumentKind(): void
     {
         $backend = $this->localBackend();
@@ -103,8 +132,30 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame('The stable lowercase document kind.', $fields['elementType']['description'] ?? null);
         self::assertArrayHasKey('sectionHandle', $fields);
         self::assertArrayHasKey('sectionType', $fields);
-        self::assertArrayHasKey('productTypeName', $fields);
+        self::assertArrayHasKey('productType', $fields);
         self::assertArrayHasKey('productTypeHandle', $fields);
+        self::assertArrayNotHasKey('productTypeName', $fields);
+    }
+
+    public function testGraphQlSlugResolvesFromPublicSlugOnly(): void
+    {
+        $type = new SearchHitType([
+            'name' => 'SearchManagerSearchHitTest',
+            'fields' => SearchHitType::getFieldDefinitions(),
+        ]);
+        $method = new \ReflectionMethod($type, 'resolve');
+        $method->setAccessible(true);
+
+        $resolveInfo = $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class);
+        $resolveInfo->fieldName = 'slug';
+
+        self::assertSame('public-slug', $method->invoke($type, [
+            'slug' => 'public-slug',
+            '_slug' => 'legacy-slug',
+        ], [], null, $resolveInfo));
+        self::assertNull($method->invoke($type, [
+            '_slug' => 'legacy-slug',
+        ], [], null, $resolveInfo));
     }
 
     private function localBackend(): AbstractSearchEngineBackend

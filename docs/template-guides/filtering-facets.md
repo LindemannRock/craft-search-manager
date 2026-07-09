@@ -89,7 +89,7 @@ Commerce metadata is also separate from the document kind:
 | Field | Meaning |
 |-------|---------|
 | `type` / `elementType` | `product` or `variant` |
-| `productTypeName` | Human-readable Commerce product type name |
+| `productType` | Human-readable Commerce product type name |
 | `productTypeHandle` | Commerce product type handle |
 
 When changing a transformer document type or metadata shape, rebuild the affected index so stored search documents match the current contract.

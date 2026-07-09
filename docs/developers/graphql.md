@@ -39,6 +39,8 @@ query {
       section
       sectionHandle
       sectionType
+      productType
+      productTypeHandle
       slug
       matchedIn
       promoted
@@ -86,8 +88,8 @@ Common hit fields:
 | `section` | Human-readable Entry section name when indexed. |
 | `sectionHandle` | Entry section handle when the hit is an Entry. |
 | `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
-| `productTypeName` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |
-| `slug` | Indexed slug from `_slug`/`slug`. |
+| `productType` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |
+| `slug` | Public indexed slug when the element or transformer provides one. |
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
 | `matchedTerms` | Matched query terms grouped into `title` and `content` lists when the backend provides them. |

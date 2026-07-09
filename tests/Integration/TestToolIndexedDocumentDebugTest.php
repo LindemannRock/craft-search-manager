@@ -57,7 +57,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'siteName' => 'Default',
             'language' => 'en-US',
             'elementType' => 'product',
-            'productTypeName' => 'Clothing',
+            'productType' => 'Clothing',
             'productTypeHandle' => 'clothing',
             'variantSkus' => ['SKU-1', 'SKU-2'],
             'variantOptions' => ['Size: M', 'Color: Blue'],
@@ -108,7 +108,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'id' => 456,
             'siteId' => 1,
             'elementType' => 'variant',
-            'productTypeName' => 'Clothing',
+            'productType' => 'Clothing',
             'productTypeHandle' => 'clothing',
             'variantOptions' => ['Size: L'],
             'productTitle' => 'Blue Shirt',
@@ -223,8 +223,8 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
         foreach ([
-            "const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant' || Boolean(hit.productTypeName || hit.productTypeHandle || hit.productType);",
-            "const productType = hit.productTypeName || hit.productType || (isCommerceHit ? hit.section : '');",
+            "const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant';",
+            "const productType = hit.productType || '';",
             'const contextLabel = isCommerceHit ? T.productTypeLabel : T.sectionLabel;',
             'const contextValue = isCommerceHit ? productType : hit.section;',
             'function formatMetaLabel(label)',
@@ -236,6 +236,8 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         }
 
         self::assertStringNotContainsString('<span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}', $source);
+        self::assertStringNotContainsString('hit.productTypeName', $source);
+        self::assertStringNotContainsString("isCommerceHit ? hit.section : ''", $source);
         self::assertStringContainsString('renderIndexedDocumentDebug(hit)', $source);
     }
 

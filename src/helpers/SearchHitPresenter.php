@@ -32,6 +32,7 @@ class SearchHitPresenter
             'backendId',
             'objectID',
             'title',
+            'slug',
             'url',
             'dateCreated',
             'dateUpdated',
@@ -40,8 +41,6 @@ class SearchHitPresenter
             'section',
             'sectionHandle',
             'sectionType',
-            '_slug',
-            '_title',
             'promoted',
             'position',
         ] as $key) {

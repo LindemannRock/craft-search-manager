@@ -129,11 +129,18 @@ abstract class BaseTransformer extends Component implements TransformerInterface
             'type' => $documentType,
             'elementType' => $documentType,
             'title' => $element->title ?? '',
+            'slug' => $this->elementStringValue($element, 'slug'),
             'url' => $element->url ?? '',
             'siteId' => $element->siteId,
             'dateCreated' => $element->dateCreated?->getTimestamp(),
             'dateUpdated' => $element->dateUpdated?->getTimestamp(),
         ];
+    }
+
+    private function elementStringValue(ElementInterface $element, string $property): string
+    {
+        $value = $element->{$property} ?? null;
+        return is_scalar($value) ? trim((string)$value) : '';
     }
 
     protected function resolveDocumentType(ElementInterface $element): string

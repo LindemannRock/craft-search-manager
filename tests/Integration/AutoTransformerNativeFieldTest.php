@@ -103,6 +103,27 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertNotSame($section->type, $data['type'] ?? null);
     }
 
+    public function testEntrySearchableAttributesDoNotCreateUnderscoreMirrorFields(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        self::assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [, $entry] = $pair;
+        self::assertInstanceOf(Entry::class, $entry);
+
+        $data = (new AutoTransformer())->transform($entry);
+
+        self::assertSame($entry->title, $data['title'] ?? null);
+        self::assertSame($entry->slug, $data['slug'] ?? null);
+        self::assertStringContainsString($entry->title, $data['content']);
+        if ($entry->slug !== '') {
+            self::assertStringContainsString($entry->slug, $data['content']);
+        }
+
+        self::assertArrayNotHasKey('_title', $data);
+        self::assertArrayNotHasKey('_slug', $data);
+    }
+
     public function testNonSearchablePlainTextFieldIsExcluded(): void
     {
         $data = $this->transformWithField(

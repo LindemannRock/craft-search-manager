@@ -89,7 +89,7 @@ These parameters only apply when `enrich=1`:
             "score": null,
             "elementType": "product",
             "type": "product",
-            "productTypeName": "Clothing",
+            "productType": "Clothing",
             "productTypeHandle": "clothing",
             "title": "Featured Product"
         },
@@ -179,10 +179,10 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
 | `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
 | `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
-| `section` | `string` | Human-readable Entry section name when available. Commerce hits may use product type name here for legacy display context; prefer `productTypeName` / `productTypeHandle` for Commerce metadata. |
+| `section` | `string` | Human-readable Entry section name when the hit is an Entry. Commerce hits use `productType` / `productTypeHandle` for Commerce metadata. |
 | `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
 | `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
-| `productTypeName` | `string` | Commerce product type name when the hit is a Product or Variant. |
+| `productType` | `string` | Commerce product type name when the hit is a Product or Variant. |
 | `productTypeHandle` | `string` | Commerce product type handle when the hit is a Product or Variant. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |

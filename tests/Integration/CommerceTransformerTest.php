@@ -91,8 +91,10 @@ final class CommerceTransformerTest extends TestCase
         self::assertSame('Trail Sneaker', $data['title']);
         self::assertSame('trail-sneaker', $data['slug']);
         self::assertSame('https://example.test/products/trail-sneaker', $data['url']);
-        self::assertSame('Shoes', $data['productTypeName']);
+        self::assertSame('Shoes', $data['productType']);
         self::assertSame('shoes', $data['productTypeHandle']);
+        self::assertArrayNotHasKey('productTypeName', $data);
+        self::assertArrayNotHasKey('section', $data);
         self::assertSame(['SKU-RED', 'SKU-BLUE'], $data['variantSkus']);
         self::assertSame(['Red Sneaker', 'Blue Sneaker'], $data['variantTitles']);
         self::assertContains('Color Red', $data['variantOptions']);
@@ -101,6 +103,9 @@ final class CommerceTransformerTest extends TestCase
         self::assertSame('Red Sneaker', $data['defaultVariantTitle']);
         self::assertStringContainsString('SKU-BLUE', $data['content']);
         self::assertStringContainsString('Color Red', $data['content']);
+        self::assertArrayNotHasKey('_title', $data);
+        self::assertArrayNotHasKey('_slug', $data);
+        self::assertArrayNotHasKey('_defaultSku', $data);
     }
 
     public function testVariantTransformIncludesVariantDataAndParentProductMetadata(): void
@@ -128,11 +133,16 @@ final class CommerceTransformerTest extends TestCase
         self::assertSame('Trail Sneaker', $data['productTitle']);
         self::assertSame('trail-sneaker', $data['productSlug']);
         self::assertSame('https://example.test/products/trail-sneaker', $data['url']);
-        self::assertSame('Shoes', $data['productTypeName']);
+        self::assertSame('Shoes', $data['productType']);
         self::assertSame('shoes', $data['productTypeHandle']);
+        self::assertArrayNotHasKey('productTypeName', $data);
+        self::assertArrayNotHasKey('section', $data);
         self::assertContains('Color Red', $data['variantOptions']);
         self::assertStringContainsString('SKU-RED', $data['content']);
         self::assertStringContainsString('Trail Sneaker', $data['content']);
+        self::assertArrayNotHasKey('_title', $data);
+        self::assertArrayNotHasKey('_slug', $data);
+        self::assertArrayNotHasKey('_sku', $data);
     }
 
     public function testProductTypeIsMetadataNotElementType(): void
@@ -144,8 +154,10 @@ final class CommerceTransformerTest extends TestCase
         $data = (new CommerceTransformer())->transform($product);
 
         self::assertSame('product', $data['elementType']);
-        self::assertSame('Shoes', $data['productTypeName']);
+        self::assertSame('Shoes', $data['productType']);
         self::assertSame('shoes', $data['productTypeHandle']);
+        self::assertArrayNotHasKey('productTypeName', $data);
+        self::assertArrayNotHasKey('section', $data);
         self::assertStringNotContainsString('ProductType', implode(' ', array_keys($data)));
     }
 

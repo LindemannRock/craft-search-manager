@@ -60,10 +60,10 @@ class SearchHitType extends ObjectType
             'url' => ['name' => 'url', 'type' => Type::string(), 'description' => 'The result URL.'],
             'uri' => ['name' => 'uri', 'type' => Type::string(), 'description' => 'The result URI.'],
             'description' => ['name' => 'description', 'type' => Type::string(), 'description' => 'The result description or snippet.'],
-            'section' => ['name' => 'section', 'type' => Type::string(), 'description' => 'The result section label.'],
+            'section' => ['name' => 'section', 'type' => Type::string(), 'description' => 'The Entry section name, when the hit is an Entry.'],
             'sectionHandle' => ['name' => 'sectionHandle', 'type' => Type::string(), 'description' => 'The Entry section handle, when the hit is an Entry.'],
             'sectionType' => ['name' => 'sectionType', 'type' => Type::string(), 'description' => 'The Entry section type, when the hit is an Entry.'],
-            'productTypeName' => ['name' => 'productTypeName', 'type' => Type::string(), 'description' => 'The Commerce product type name, when the hit is a Product or Variant.'],
+            'productType' => ['name' => 'productType', 'type' => Type::string(), 'description' => 'The Commerce product type display name, when the hit is a Product or Variant.'],
             'productTypeHandle' => ['name' => 'productTypeHandle', 'type' => Type::string(), 'description' => 'The Commerce product type handle, when the hit is a Product or Variant.'],
             'type' => ['name' => 'type', 'type' => Type::string(), 'description' => 'The stable lowercase document kind.'],
             'score' => ['name' => 'score', 'type' => Type::float(), 'description' => 'The result score.'],
@@ -105,7 +105,7 @@ class SearchHitType extends ObjectType
             }
 
             if ($fieldName === 'slug') {
-                return GqlHelper::nullIfEmptyString($source['_slug'] ?? $source['slug'] ?? null);
+                return GqlHelper::nullIfEmptyString($source['slug'] ?? null);
             }
 
             if ($fieldName === 'site') {

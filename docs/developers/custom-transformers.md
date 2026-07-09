@@ -90,7 +90,10 @@ class ProductTransformer extends BaseTransformer
         // Add custom fields
         $data['content'] = $this->stripHtml($element->body ?? '');
         $data['excerpt'] = $this->getExcerpt($element->body ?? '', 200);
-        $data['section'] = $element->section->handle;
+        $section = $element->getSection();
+        $data['section'] = $section?->name;
+        $data['sectionHandle'] = $section?->handle;
+        $data['sectionType'] = $section?->type;
 
         return $data;
     }
@@ -269,7 +272,7 @@ $data['sectionHandle'] = $element->getSection()?->handle;
 $data['sectionType'] = $element->getSection()?->type;
 ```
 
-Commerce product type metadata follows the same rule: `type`/`elementType` stay `product` or `variant`, while product type details use `productTypeName` and `productTypeHandle`.
+Commerce product type metadata follows the same rule: `type`/`elementType` stay `product` or `variant`, while product type details use `productType` and `productTypeHandle`.
 
 If your transformer extends `BaseTransformer` and starts with `$this->getCommonData($element)`, Search Manager sets these document-kind fields for Craft Entries, Categories, Assets, Users, and Commerce Products/Variants automatically.
 
@@ -357,7 +360,10 @@ class ArticleTransformer extends BaseTransformer
 
         $data['content'] = $this->stripHtml($element->body ?? '');
         $data['excerpt'] = $this->getExcerpt($element->body ?? '', 200);
-        $data['section'] = $element->section->handle;
+        $section = $element->getSection();
+        $data['section'] = $section?->name;
+        $data['sectionHandle'] = $section?->handle;
+        $data['sectionType'] = $section?->type;
 
         // Related categories
         $categories = $element->categories->all();

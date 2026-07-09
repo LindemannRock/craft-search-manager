@@ -80,9 +80,8 @@ class CommerceTransformer extends AutoTransformer
         $data['elementType'] = 'product';
         $data['slug'] = $this->stringValue($product, ['slug']);
         $data['productType'] = $this->stringValue($productType, ['name', 'getName']);
-        $data['productTypeName'] = $data['productType'];
         $data['productTypeHandle'] = $this->stringValue($productType, ['handle', 'getHandle']);
-        $data['section'] = $data['productTypeName'] !== '' ? $data['productTypeName'] : 'Products';
+        unset($data['section']);
 
         if (!empty($variantSkus)) {
             $data['variantSkus'] = array_values(array_unique($variantSkus));
@@ -104,7 +103,7 @@ class CommerceTransformer extends AutoTransformer
         return $this->appendSearchableContent($data, [
             $data['title'] ?? '',
             $data['slug'],
-            $data['productTypeName'],
+            $data['productType'],
             $data['productTypeHandle'],
             $data['variantSkus'] ?? [],
             $data['variantTitles'] ?? [],
@@ -129,10 +128,9 @@ class CommerceTransformer extends AutoTransformer
         $data['sku'] = $this->stringValue($variant, ['sku', 'getSku']);
         $data['variantTitle'] = $this->stringValue($variant, ['title', 'getTitle']);
         $data['variantOptions'] = $variantOptions;
-        $data['section'] = $this->stringValue($productType, ['name', 'getName']);
-        $data['productType'] = $data['section'];
-        $data['productTypeName'] = $data['section'];
+        $data['productType'] = $this->stringValue($productType, ['name', 'getName']);
         $data['productTypeHandle'] = $this->stringValue($productType, ['handle', 'getHandle']);
+        unset($data['section']);
 
         if ($product instanceof ElementInterface) {
             $data['productId'] = $product->id;
@@ -145,10 +143,6 @@ class CommerceTransformer extends AutoTransformer
             }
         }
 
-        if ($data['section'] === '') {
-            $data['section'] = 'Variants';
-        }
-
         return $this->appendSearchableContent($data, [
             $data['title'] ?? '',
             $data['sku'],
@@ -156,7 +150,7 @@ class CommerceTransformer extends AutoTransformer
             $data['variantOptions'],
             $data['productTitle'] ?? '',
             $data['productSlug'] ?? '',
-            $data['productTypeName'],
+            $data['productType'],
             $data['productTypeHandle'],
         ]);
     }

@@ -121,17 +121,21 @@ class EnrichmentService extends Component
                 );
 
                 $documentType = strtolower((string)($hit['type'] ?? $hit['elementType'] ?? $this->documentTypeForElement($element)));
+                $isCommerceHit = in_array($documentType, ['product', 'variant'], true);
                 $result = [
                     'id' => $elementId,
                     'title' => $hit['title'] ?? $element->title ?? 'Untitled',
                     'url' => $url,
                     'description' => $description,
                     'descriptionSafe' => $description !== null ? \craft\helpers\Html::encode($description) : null,
-                    'section' => $hit['section'] ?? $this->getSectionName($element),
                     'type' => $documentType,
                     'elementType' => $documentType,
                     'score' => $hit['score'] ?? null,
                 ];
+
+                if (!$isCommerceHit) {
+                    $result['section'] = $hit['section'] ?? $this->getSectionName($element);
+                }
 
                 $sectionHandle = $hit['sectionHandle'] ?? $this->getSectionHandle($element);
                 if ($sectionHandle !== null && $sectionHandle !== '') {
@@ -213,7 +217,7 @@ class EnrichmentService extends Component
                     $result['category'] = $category;
                 }
 
-                foreach (['productTypeName', 'productTypeHandle', 'productType'] as $commerceKey) {
+                foreach (['productType', 'productTypeHandle'] as $commerceKey) {
                     if (isset($hit[$commerceKey]) && $hit[$commerceKey] !== '') {
                         $result[$commerceKey] = $hit[$commerceKey];
                     }

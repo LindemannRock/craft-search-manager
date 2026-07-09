@@ -498,11 +498,11 @@ class SettingsController extends Controller
     private function settingsTestCommerceDebug(array $hit): array
     {
         $commerce = [];
-        $productTypeName = $this->settingsTestScalarDebugValue($hit['productTypeName'] ?? $hit['productType'] ?? null);
+        $productTypeDisplayName = $this->settingsTestScalarDebugValue($hit['productType'] ?? null);
         $productTypeHandle = $this->settingsTestScalarDebugValue($hit['productTypeHandle'] ?? null);
-        if ($productTypeName !== null || $productTypeHandle !== null) {
+        if ($productTypeDisplayName !== null || $productTypeHandle !== null) {
             $commerce['productType'] = array_filter([
-                'name' => $productTypeName,
+                'name' => $productTypeDisplayName,
                 'handle' => $productTypeHandle,
             ], static fn(?string $value): bool => $value !== null);
         }
@@ -752,7 +752,6 @@ class SettingsController extends Controller
             'category',
             'slug',
             'producttype',
-            'producttypename',
             'producttypehandle',
             'variantskus',
             'varianttitles',
@@ -848,7 +847,7 @@ class SettingsController extends Controller
      */
     private function settingsTestHitLooksLikeCommerceDocument(array $hit): bool
     {
-        if (isset($hit['productType'], $hit['variantOptions']) || isset($hit['productTypeName']) || isset($hit['productTypeHandle'])) {
+        if (isset($hit['productType'], $hit['variantOptions']) || isset($hit['productTypeHandle'])) {
             return true;
         }
 

@@ -66,8 +66,9 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringContainsString("\$documentType = \$this->resolveElementType(\$element);", $source);
         self::assertStringContainsString("'type' => \$documentType,", $source);
         self::assertStringContainsString("'elementType' => \$documentType,", $source);
-        self::assertStringContainsString("'section' => \$this->resolveElementSection(\$element),", $source);
-        self::assertStringContainsString('], $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));', $source);
+        self::assertStringContainsString('$section = $this->resolveElementSection($element);', $source);
+        self::assertStringContainsString("\$promotedItem['section'] = \$section;", $source);
+        self::assertStringContainsString('$promotedItem = array_merge($promotedItem, $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));', $source);
         self::assertStringContainsString("return 'entry';", $source);
         self::assertStringContainsString('return $element->getSection()?->name;', $source);
         self::assertStringContainsString("'sectionHandle' => \$section?->handle,", $source);
@@ -83,10 +84,10 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringContainsString("return 'product';", $source);
         self::assertStringContainsString('is_a($element, CommerceElementTypeHelper::variantElementType())', $source);
         self::assertStringContainsString("return 'variant';", $source);
-        self::assertStringContainsString("'productType' => \$productTypeName,", $source);
-        self::assertStringContainsString("'productTypeName' => \$productTypeName,", $source);
+        self::assertStringContainsString("'productType' => \$productTypeDisplayName,", $source);
         self::assertStringContainsString("'productTypeHandle' => \$productTypeHandle,", $source);
-        self::assertStringContainsString("'section' => \$productTypeName,", $source);
+        self::assertStringNotContainsString('productTypeName', $source);
+        self::assertStringNotContainsString("'section' => \$productTypeDisplayName,", $source);
     }
 
     public function testPromotedHitsCarryInternalElementTypeAndPresenterSuppressesIt(): void

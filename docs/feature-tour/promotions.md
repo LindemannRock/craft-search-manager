@@ -100,7 +100,7 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
             "score": null,
             "elementType": "product",
             "type": "product",
-            "productTypeName": "Clothing",
+            "productType": "Clothing",
             "productTypeHandle": "clothing",
             "title": "Featured Product"
         },

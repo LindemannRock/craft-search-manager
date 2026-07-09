@@ -100,7 +100,6 @@ class AutoTransformer extends BaseTransformer
                 $value = $element->getSearchKeywords($attribute);
                 if (!empty($value)) {
                     $searchableContent[] = $value;
-                    $data['_' . $attribute] = $value;
                 }
             } catch (\Throwable $e) {
                 continue;

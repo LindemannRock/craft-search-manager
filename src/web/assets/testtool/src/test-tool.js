@@ -763,8 +763,8 @@
                             const rawType = hit.type || T.entry;
                             const type = escapeDisplay(rawType);
                             const normalizedType = String(rawType || '').toLowerCase();
-                            const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant' || Boolean(hit.productTypeName || hit.productTypeHandle || hit.productType);
-                            const productType = hit.productTypeName || hit.productType || (isCommerceHit ? hit.section : '');
+                            const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant';
+                            const productType = hit.productType || '';
                             const contextLabel = isCommerceHit ? T.productTypeLabel : T.sectionLabel;
                             const contextValue = isCommerceHit ? productType : hit.section;
                             const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : '';
