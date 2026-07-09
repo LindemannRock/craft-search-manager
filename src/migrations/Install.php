@@ -749,7 +749,7 @@ class Install extends Migration
 
     /**
      * Create query rules table
-     * Stores rules for synonyms, category boosts, filters, etc.
+     * Stores rules for synonyms, category boosts, redirects, etc.
      */
     private function createQueryRulesTable(): void
     {
@@ -763,7 +763,7 @@ class Install extends Migration
             'indexHandle' => $this->string(255)->null()->comment('null = applies to all indices'),
             'matchType' => $this->enum('matchType', ['exact', 'contains', 'prefix', 'regex'])->notNull()->defaultValue('exact'),
             'matchValue' => $this->string(500)->notNull()->comment('Query pattern to match'),
-            'actionType' => $this->enum('actionType', ['synonym', 'boost_section', 'boost_category', 'boost_element', 'filter', 'redirect'])->notNull(),
+            'actionType' => $this->enum('actionType', ['synonym', 'boost_section', 'boost_category', 'boost_element', 'redirect'])->notNull(),
             'actionValue' => $this->text()->notNull()->comment('JSON config for the action'),
             'priority' => $this->integer()->notNull()->defaultValue(0)->comment('Higher = applied first'),
             'siteId' => $this->integer()->null(),
@@ -794,7 +794,7 @@ class Install extends Migration
             'id' => $this->primaryKey(),
             'queryRuleId' => $this->integer()->notNull()->comment('FK to query_rules.id'),
             'ruleName' => $this->string(255)->notNull()->comment('Denormalized for reporting after rule deletion'),
-            'actionType' => $this->enum('actionType', ['synonym', 'boost_section', 'boost_category', 'boost_element', 'filter', 'redirect'])->notNull(),
+            'actionType' => $this->enum('actionType', ['synonym', 'boost_section', 'boost_category', 'boost_element', 'redirect'])->notNull(),
             'query' => $this->string(500)->notNull()->comment('The search query that triggered this rule'),
             'indexHandle' => $this->string(255)->null(),
             'siteId' => $this->integer()->null(),

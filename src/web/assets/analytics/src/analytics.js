@@ -1104,7 +1104,6 @@
             'boost_section': '#2ecc71',
             'boost_category': '#27ae60',
             'boost_element': '#1abc9c',
-            'filter': '#f39c12',
             'redirect': '#e74c3c'
         };
 

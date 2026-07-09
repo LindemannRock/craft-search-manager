@@ -25,7 +25,7 @@ use yii\base\Component;
 /**
  * Query Rule Service
  *
- * Manages query rules for synonyms, boosts, filters, and redirects.
+ * Manages query rules for synonyms, boosts, and redirects.
  *
  * @since 5.10.0
  */
@@ -291,29 +291,6 @@ class QueryRuleService extends Component
         }
 
         return $idsByHandle;
-    }
-
-    /**
-     * Get filters for a query
-     * Returns array of [field => value] pairs
-     *
-     */
-    public function getFilters(string $query, ?string $indexHandle = null, ?int $siteId = null): array
-    {
-        $rules = $this->getMatchingRules($query, $indexHandle, $siteId);
-        $filters = [];
-
-        foreach ($rules as $rule) {
-            if ($rule->actionType === QueryRule::ACTION_FILTER) {
-                $field = $rule->actionValue['field'] ?? null;
-                $value = $rule->actionValue['value'] ?? null;
-                if ($field !== null && $value !== null) {
-                    $filters[$field] = $value;
-                }
-            }
-        }
-
-        return $filters;
     }
 
     /**

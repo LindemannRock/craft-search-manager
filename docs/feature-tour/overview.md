@@ -23,7 +23,7 @@ You can use it alongside Craft's native search, or replace it entirely.
 
 - **[Autocomplete](autocomplete.md)** — Search-as-you-type suggestions based on indexed terms, with separate caching and fuzzy matching.
 
-- **[Query Rules](query-rules.md)** — Modify search behavior based on query patterns: synonyms, section/category/element boosting, result filtering, and redirects.
+- **[Query Rules](query-rules.md)** — Modify search behavior based on query patterns: synonyms, section/category/element boosting, and redirects.
 
 - **[Promotions](promotions.md)** — Pin specific elements to fixed positions in search results for merchandising and editorial control.
 

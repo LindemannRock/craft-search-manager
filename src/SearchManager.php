@@ -179,7 +179,6 @@ class SearchManager extends Plugin
                         'boost_section' => ColorHelper::getPaletteColor('green'),
                         'boost_category' => ColorHelper::getPaletteColor('teal'),
                         'boost_element' => ColorHelper::getPaletteColor('lime'),
-                        'filter' => ColorHelper::getPaletteColor('orange'),
                         'redirect' => ColorHelper::getPaletteColor('red'),
                     ],
                     'widgetType' => [

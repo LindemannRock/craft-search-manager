@@ -127,6 +127,7 @@ final class AnalyticsAssetI18nTest extends TestCase
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
+        self::assertStringNotContainsString('\'filter\': \'Filter\'|t(\'search-manager\')', $source);
     }
 
     public function testAnalyticsSourceMapsEnumLabelsToTranslationsWithFallback(): void
@@ -136,6 +137,7 @@ final class AnalyticsAssetI18nTest extends TestCase
 
         self::assertStringContainsString('const actionTypeLabels = config.actionTypeLabels || {};', $source);
         self::assertStringContainsString('actionTypeLabels[l] || l.replace(\'_\', \' \')', $source);
+        self::assertStringNotContainsString('\'filter\': \'#f39c12\'', $source);
 
         self::assertStringContainsString('strings.intentInformational', $source);
         self::assertStringContainsString('strings.intentProduct', $source);

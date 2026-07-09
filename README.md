@@ -28,7 +28,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **Commerce Indexing** — Index Craft Commerce Products and Variants when Commerce is installed
 - **Highlighting & Snippets** — Highlight matched terms and show contextual excerpts
 - **Autocomplete** — Search-as-you-type suggestions with separate caching
-- **Query Rules** — Synonyms, section/category/element boosting, filtering, redirects
+- **Query Rules** — Synonyms, section/category/element boosting, redirects
 - **Promotions** — Pin elements to fixed positions in search results
 - **Analytics** — Track queries, devices, geo-location, performance, content gaps
 - **Caching** — Multi-layer caching with cache warming after rebuilds

@@ -657,7 +657,6 @@
                         'boost_section': 'green',
                         'boost_category': 'teal',
                         'boost_element': 'lime',
-                        'filter': 'orange',
                         'redirect': 'red',
                     };
 

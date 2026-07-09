@@ -218,8 +218,6 @@
 							{{ 'Boost results in a specific category - multiply their scores.'|t('search-manager') }}
 						{% elseif rule.actionType == 'boost_element' %}
 							{{ 'Boost a specific element - multiply its score.'|t('search-manager') }}
-						{% elseif rule.actionType == 'filter' %}
-							{{ 'Filter results to only show entries matching a specific field value.'|t('search-manager') }}
 						{% elseif rule.actionType == 'redirect' %}
 							{{ 'Redirect to a URL instead of showing search results.'|t('search-manager') }}
 						{% else %}
@@ -235,7 +233,6 @@
 						<option value="boost_section" {% if rule.actionType == 'boost_section' %} selected {% endif %}>{{ 'Boost Section'|t('search-manager') }}</option>
 						<option value="boost_category" {% if rule.actionType == 'boost_category' %} selected {% endif %}>{{ 'Boost Category'|t('search-manager') }}</option>
 						<option value="boost_element" {% if rule.actionType == 'boost_element' %} selected {% endif %}>{{ 'Boost Element'|t('search-manager') }}</option>
-						<option value="filter" {% if rule.actionType == 'filter' %} selected {% endif %}>{{ 'Filter Results'|t('search-manager') }}</option>
 						<option value="redirect" {% if rule.actionType == 'redirect' %} selected {% endif %}>{{ 'Redirect'|t('search-manager') }}</option>
 					</select>
 				</div>
@@ -301,7 +298,7 @@
 				label: 'Boost Multiplier'|t('search-manager'),
 				instructions: 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager'),
 				id: 'boostMultiplier-section',
-				name: 'boostMultiplier',
+				name: 'boostSectionMultiplier',
 				options: boostMultiplierOptions,
 				value: (rule.actionValue.multiplier ?? 2.0)|number_format(1),
 			}) }}
@@ -325,7 +322,7 @@
 				label: 'Boost Multiplier'|t('search-manager'),
 				instructions: 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager'),
 				id: 'boostMultiplier-category',
-				name: 'boostMultiplier',
+				name: 'boostCategoryMultiplier',
 				options: boostMultiplierOptions,
 				value: (rule.actionValue.multiplier ?? 2.0)|number_format(1),
 			}) }}
@@ -362,32 +359,9 @@
 				label: 'Boost Multiplier'|t('search-manager'),
 				instructions: 'Score multiplier for matching results. Higher values push results higher in the rankings.'|t('search-manager'),
 				id: 'boostMultiplier-element',
-				name: 'boostMultiplier',
+				name: 'boostElementMultiplier',
 				options: boostMultiplierOptions,
 				value: (rule.actionValue.multiplier ?? 2.0)|number_format(1),
-			}) }}
-		</div>
-
-		{# Filter fields #}
-		<div id="action-filter" class="action-fields" style="{{ rule.actionType != 'filter' ? 'display: none;' : '' }}">
-			{{ forms.textField({
-				label: 'Field Handle'|t('search-manager'),
-				instructions: 'The field handle to filter on.'|t('search-manager'),
-				id: 'filterField',
-				name: 'filterField',
-				value: rule.actionValue.field ?? '',
-				placeholder: 'productType',
-				errors: rule.actionType == 'filter' ? rule.getErrors('actionValue') : [],
-			}) }}
-
-			{{ forms.textField({
-				label: 'Field Value'|t('search-manager'),
-				instructions: 'The value to filter by.'|t('search-manager'),
-				id: 'filterValue',
-				name: 'filterValue',
-				value: rule.actionValue.value ?? '',
-				placeholder: 'accessories',
-				errors: rule.actionType == 'filter' ? rule.getErrors('actionValue') : [],
 			}) }}
 		</div>
 
@@ -577,9 +551,6 @@ function toggleActionFields() {
 				break;
 			case 'boost_element':
 				actionTypeInstructions.textContent = '{{ 'Boost a specific element - multiply its score.'|t('search-manager') }}';
-				break;
-			case 'filter':
-				actionTypeInstructions.textContent = '{{ 'Filter results to only show entries matching a specific field value.'|t('search-manager') }}';
 				break;
 			case 'redirect':
 				actionTypeInstructions.textContent = '{{ 'Redirect to a URL instead of showing search results.'|t('search-manager') }}';

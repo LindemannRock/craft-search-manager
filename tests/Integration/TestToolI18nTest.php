@@ -70,6 +70,7 @@ final class TestToolI18nTest extends TestCase
         ] as $needle) {
             self::assertStringContainsString($needle, $twig);
         }
+        self::assertStringNotContainsString("filter: {{ 'Filter'|t('search-manager')|json_encode|raw }}", $twig);
 
         // Render sites reference the strings object, not raw literals.
         foreach ([
@@ -80,6 +81,42 @@ final class TestToolI18nTest extends TestCase
         ] as $needle) {
             self::assertStringContainsString($needle, $js);
         }
+    }
+
+    public function testQueryRuleEditUiDoesNotOfferFilterResultsAction(): void
+    {
+        $source = $this->readPluginFile('src/templates/query-rules/edit.twig');
+
+        foreach ([
+            'Filter Results',
+            'value="filter"',
+            'id="action-filter"',
+            'filterField',
+            'filterValue',
+            'Filter results to only show entries matching a specific field value.',
+        ] as $needle) {
+            self::assertStringNotContainsString($needle, $source);
+        }
+
+        foreach ([
+            '<option value="synonym"',
+            '<option value="boost_section"',
+            '<option value="boost_category"',
+            '<option value="boost_element"',
+            '<option value="redirect"',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $source);
+        }
+    }
+
+    public function testQueryRuleEditUiUsesActionSpecificBoostMultiplierFields(): void
+    {
+        $source = $this->readPluginFile('src/templates/query-rules/edit.twig');
+
+        self::assertStringContainsString("name: 'boostSectionMultiplier'", $source);
+        self::assertStringContainsString("name: 'boostCategoryMultiplier'", $source);
+        self::assertStringContainsString("name: 'boostElementMultiplier'", $source);
+        self::assertStringNotContainsString("name: 'boostMultiplier'", $source);
     }
 
     public function testResultBadgesUseCssUppercaseNotAllCapsKeys(): void
@@ -125,6 +162,7 @@ final class TestToolI18nTest extends TestCase
             ">BOOSTED</span>",
             ">DISABLED</span>",
             '|| \'Unknown error\')',
+            "'filter': 'orange'",
         ] as $needle) {
             self::assertStringNotContainsString($needle, $source);
         }

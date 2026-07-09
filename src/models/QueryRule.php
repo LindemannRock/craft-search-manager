@@ -20,7 +20,7 @@ use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 /**
  * Query Rule Model
  *
- * Represents a query rule for synonyms, boosts, filters, and redirects.
+ * Represents a query rule for synonyms, boosts, and redirects.
  * Rules modify search behavior when queries match specific patterns.
  *
  * @since 5.10.0
@@ -42,8 +42,6 @@ class QueryRule extends Model
     public const ACTION_BOOST_CATEGORY = 'boost_category';
 
     public const ACTION_BOOST_ELEMENT = 'boost_element';
-
-    public const ACTION_FILTER = 'filter';
 
     public const ACTION_REDIRECT = 'redirect';
 
@@ -115,7 +113,6 @@ class QueryRule extends Model
                 self::ACTION_BOOST_SECTION,
                 self::ACTION_BOOST_CATEGORY,
                 self::ACTION_BOOST_ELEMENT,
-                self::ACTION_FILTER,
                 self::ACTION_REDIRECT,
             ]],
             [['priority', 'siteId'], 'integer'],
@@ -173,12 +170,6 @@ class QueryRule extends Model
                 }
                 if (!isset($value['multiplier']) || !is_numeric($value['multiplier'])) {
                     $this->addError($attribute, Craft::t('search-manager', 'Boost element action requires a numeric "multiplier".'));
-                }
-                break;
-
-            case self::ACTION_FILTER:
-                if (empty($value['field']) || !isset($value['value'])) {
-                    $this->addError($attribute, Craft::t('search-manager', 'Filter action requires "field" and "value".'));
                 }
                 break;
 
@@ -640,10 +631,6 @@ class QueryRule extends Model
                 'elementId' => $this->actionValue['elementId'] ?? '',
                 'multiplier' => $this->getBoostMultiplier(),
             ]),
-            self::ACTION_FILTER => Craft::t('search-manager', 'Filter: {field} = {value}', [
-                'field' => $this->actionValue['field'] ?? '',
-                'value' => $this->actionValue['value'] ?? '',
-            ]),
             self::ACTION_REDIRECT => Craft::t('search-manager', 'Redirect to {url}', [
                 'url' => $redirectUrl ?? $this->getRedirectUrl(),
             ]),
@@ -663,7 +650,6 @@ class QueryRule extends Model
             self::ACTION_BOOST_SECTION => Craft::t('search-manager', 'Boost Section'),
             self::ACTION_BOOST_CATEGORY => Craft::t('search-manager', 'Boost Category'),
             self::ACTION_BOOST_ELEMENT => Craft::t('search-manager', 'Boost Element'),
-            self::ACTION_FILTER => Craft::t('search-manager', 'Filter Results'),
             self::ACTION_REDIRECT => Craft::t('search-manager', 'Redirect'),
         ];
     }

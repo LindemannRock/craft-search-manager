@@ -1,6 +1,6 @@
 # Query Rules @since(5.10.0)
 
-Query rules modify search behavior when a user's query matches a specific pattern. They support synonyms, boosting, filtering, and redirects.
+Query rules modify search behavior when a user's query matches a specific pattern. They support synonyms, boosting, and redirects.
 
 ## What Are Query Rules?
 
@@ -80,21 +80,6 @@ Multiplier: 3.0
 ```
 
 The element picker supports entries, assets, categories, and users by default. When Craft Commerce is installed and enabled, product and variant targets are available as well.
-
-### Filter Results
-
-Apply a filter when the query matches:
-
-```text
-Name: Filter to In-Stock Only
-Match Value: buy
-Match Type: Contains
-Action: Filter
-Field: inStock
-Value: true
-```
-
-Queries containing "buy" only show in-stock items.
 
 ### Redirect
 
@@ -199,5 +184,4 @@ The `actionValue` format varies by action type:
 - **boost_section**: `{"sectionHandle": "products", "multiplier": 2.0}`
 - **boost_category**: `{"categoryId": 5, "multiplier": 1.5}`
 - **boost_element**: `{"elementId": 123, "elementType": "craft\\elements\\Entry", "multiplier": 2.0}`
-- **filter**: `{"field": "status", "value": "featured"}`
 - **redirect**: `"/sale-page"`

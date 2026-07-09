@@ -13,6 +13,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\models\WidgetConfig;
 use lindemannrock\searchmanager\models\WidgetStyle;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -22,6 +23,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @since 5.53.0
  */
 #[CoversClass(QueryRule::class)]
+#[CoversClass(SearchManager::class)]
 #[CoversClass(Promotion::class)]
 #[CoversClass(SearchIndex::class)]
 #[CoversClass(WidgetConfig::class)]
@@ -51,15 +53,75 @@ final class ModelValidationI18nTest extends TestCase
             QueryRule::ACTION_BOOST_SECTION => 'Boost Section',
             QueryRule::ACTION_BOOST_CATEGORY => 'Boost Category',
             QueryRule::ACTION_BOOST_ELEMENT => 'Boost Element',
-            QueryRule::ACTION_FILTER => 'Filter Results',
             QueryRule::ACTION_REDIRECT => 'Redirect',
         ], QueryRule::getActionTypes());
+        self::assertArrayNotHasKey('filter', QueryRule::getActionTypes());
         self::assertSame([
             QueryRule::MATCH_EXACT => 'Exact Match',
             QueryRule::MATCH_CONTAINS => 'Contains',
             QueryRule::MATCH_PREFIX => 'Starts With',
             QueryRule::MATCH_REGEX => 'Regex',
         ], QueryRule::getMatchTypes());
+    }
+
+    public function testQueryRuleControllerReadsActionSpecificBoostMultiplierParams(): void
+    {
+        $source = (string)file_get_contents(dirname(__DIR__, 2) . '/src/controllers/QueryRulesController.php');
+
+        self::assertStringContainsString("'multiplier' => (float)\$request->getBodyParam('boostSectionMultiplier', 2.0)", $source);
+        self::assertStringContainsString("'multiplier' => (float)\$request->getBodyParam('boostCategoryMultiplier', 2.0)", $source);
+        self::assertStringContainsString("'multiplier' => (float)\$request->getBodyParam('boostElementMultiplier', 2.0)", $source);
+        self::assertStringNotContainsString("getBodyParam('boostMultiplier'", $source);
+    }
+
+    public function testQueryRuleBoostMultiplierActionValueShapeStaysStable(): void
+    {
+        $rule = new QueryRule();
+        $rule->name = 'Custom boost section';
+        $rule->matchValue = 'sale';
+        $rule->actionType = QueryRule::ACTION_BOOST_SECTION;
+        $rule->actionValue = [
+            'sectionHandle' => 'news',
+            'multiplier' => 10.0,
+        ];
+
+        self::assertTrue($rule->validate(['actionValue']), implode('; ', $rule->getErrors('actionValue')));
+        self::assertSame(10.0, $rule->actionValue['multiplier']);
+        self::assertArrayNotHasKey('boostSectionMultiplier', $rule->actionValue);
+        self::assertSame(10.0, $rule->getBoostMultiplier());
+    }
+
+    public function testFilterIsNotAValidQueryRuleActionType(): void
+    {
+        $rule = new QueryRule();
+        $rule->name = 'Legacy filter';
+        $rule->matchValue = 'sale';
+        $rule->actionType = 'filter';
+        $rule->actionValue = [
+            'field' => 'status',
+            'value' => 'featured',
+        ];
+
+        self::assertFalse($rule->validate(['actionType', 'actionValue']));
+        self::assertNotSame([], $rule->getErrors('actionType'));
+        self::assertSame([], $rule->getErrors('actionValue'));
+    }
+
+    public function testQueryRuleActionTypeColorSetDoesNotIncludeFilter(): void
+    {
+        $source = (string)file_get_contents(dirname(__DIR__, 2) . '/src/SearchManager.php');
+        $start = strpos($source, "'actionType' => [");
+        self::assertIsInt($start);
+        $end = strpos($source, '],', $start);
+        self::assertIsInt($end);
+        $actionTypeColorSet = substr($source, $start, $end - $start);
+
+        self::assertStringContainsString("'synonym' => ColorHelper::getPaletteColor('blue')", $actionTypeColorSet);
+        self::assertStringContainsString("'boost_section' => ColorHelper::getPaletteColor('green')", $actionTypeColorSet);
+        self::assertStringContainsString("'boost_category' => ColorHelper::getPaletteColor('teal')", $actionTypeColorSet);
+        self::assertStringContainsString("'boost_element' => ColorHelper::getPaletteColor('lime')", $actionTypeColorSet);
+        self::assertStringContainsString("'redirect' => ColorHelper::getPaletteColor('red')", $actionTypeColorSet);
+        self::assertStringNotContainsString("'filter' =>", $actionTypeColorSet);
     }
 
     /**

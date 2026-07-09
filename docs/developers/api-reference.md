@@ -342,7 +342,7 @@ $enabled = SearchManager::$plugin->promotions->getPromotionCount(true);
 
 ## QueryRuleService @since(5.10.0)
 
-Manages query rules — synonyms, boosts, filters, and redirects triggered by search queries.
+Manages query rules — synonyms, boosts, and redirects triggered by search queries.
 
 ### `getAll(indexHandle)`
 

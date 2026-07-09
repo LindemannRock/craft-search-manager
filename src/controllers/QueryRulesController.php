@@ -23,7 +23,7 @@ use yii\web\Response;
 /**
  * Query Rules Controller
  *
- * Manages query rules (synonyms, boosts, filters, redirects) in the CP
+ * Manages query rules (synonyms, boosts, redirects) in the CP
  *
  * @since 5.10.0
  */
@@ -76,7 +76,7 @@ class QueryRulesController extends Controller
         }
 
         $actionTypeFilter = (string) $request->getQueryParam('actionType', 'all');
-        $validActionTypes = ['all', 'synonym', 'boost_section', 'boost_category', 'boost_element', 'filter', 'redirect'];
+        $validActionTypes = ['all', 'synonym', 'boost_section', 'boost_category', 'boost_element', 'redirect'];
         if (!in_array($actionTypeFilter, $validActionTypes, true)) {
             $actionTypeFilter = 'all';
         }
@@ -327,7 +327,7 @@ class QueryRulesController extends Controller
             case QueryRule::ACTION_BOOST_SECTION:
                 $actionValue = [
                     'sectionHandle' => $request->getBodyParam('boostSectionHandle'),
-                    'multiplier' => (float)$request->getBodyParam('boostMultiplier', 2.0),
+                    'multiplier' => (float)$request->getBodyParam('boostSectionMultiplier', 2.0),
                 ];
                 break;
 
@@ -337,7 +337,7 @@ class QueryRulesController extends Controller
                 $categoryId = is_array($boostCategory) && !empty($boostCategory) ? (int)$boostCategory[0] : 0;
                 $actionValue = [
                     'categoryId' => $categoryId,
-                    'multiplier' => (float)$request->getBodyParam('boostMultiplier', 2.0),
+                    'multiplier' => (float)$request->getBodyParam('boostCategoryMultiplier', 2.0),
                 ];
                 break;
 
@@ -349,14 +349,7 @@ class QueryRulesController extends Controller
                 $actionValue = [
                     'elementId' => $elementId,
                     'elementType' => TargetElementTypeHelper::elementTypeForKey($boostElementType),
-                    'multiplier' => (float)$request->getBodyParam('boostMultiplier', 2.0),
-                ];
-                break;
-
-            case QueryRule::ACTION_FILTER:
-                $actionValue = [
-                    'field' => $request->getBodyParam('filterField'),
-                    'value' => $request->getBodyParam('filterValue'),
+                    'multiplier' => (float)$request->getBodyParam('boostElementMultiplier', 2.0),
                 ];
                 break;
 
