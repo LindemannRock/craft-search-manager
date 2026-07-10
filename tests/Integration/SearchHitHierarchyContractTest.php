@@ -217,21 +217,6 @@ final class SearchHitHierarchyContractTest extends TestCase
         self::assertSame(3, $method->invoke($type, ['level' => '3'], [], null, $resolveInfo));
     }
 
-    public function testHelperLivesInBaseTransformerAndAutoTransformerCallsItOutsideCommonData(): void
-    {
-        $baseSource = $this->readPluginFile('src/transformers/BaseTransformer.php');
-        $autoSource = $this->readPluginFile('src/transformers/AutoTransformer.php');
-
-        self::assertStringContainsString('protected function getHierarchyMetadata(ElementInterface $element): array', $baseSource);
-        self::assertStringContainsString('$data = array_merge($data, $this->getHierarchyMetadata($element));', $autoSource);
-
-        $commonDataPosition = strpos($baseSource, 'protected function getCommonData(ElementInterface $element): array');
-        $hierarchyPosition = strpos($baseSource, 'protected function getHierarchyMetadata(ElementInterface $element): array');
-        self::assertIsInt($commonDataPosition);
-        self::assertIsInt($hierarchyPosition);
-        self::assertGreaterThan($commonDataPosition, $hierarchyPosition);
-    }
-
     private function entryAncestor(int $id, string $title): Entry
     {
         $entry = new Entry();

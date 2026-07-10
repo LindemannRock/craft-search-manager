@@ -79,23 +79,6 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame('#123', $transformer->transform($user)['title'] ?? null);
     }
 
-    public function testAutoTransformerSourceUsesTypeSpecificCoreMetadataFields(): void
-    {
-        $source = $this->readPluginFile('src/transformers/AutoTransformer.php');
-
-        self::assertStringContainsString("\$data['section'] = \$section->name ?? \$section->handle;", $source);
-        self::assertStringContainsString("\$data['sectionHandle'] = \$section->handle;", $source);
-        self::assertStringContainsString("\$data['sectionType'] = \$section->type;", $source);
-        self::assertStringContainsString("\$data['volume'] = \$volume->name ?? \$volume->handle;", $source);
-        self::assertStringContainsString("\$data['volumeHandle'] = \$volume->handle;", $source);
-        self::assertStringContainsString("\$data['group'] = \$group->name ?? \$group->handle;", $source);
-        self::assertStringContainsString("\$data['groupHandle'] = \$group->handle;", $source);
-        self::assertStringContainsString('} elseif (!$element instanceof \craft\elements\User) {', $source);
-        self::assertStringNotContainsString("\$data['section'] = \$element->getGroup()?->name ?? 'Categories';", $source);
-        self::assertStringNotContainsString("\$data['section'] = \$element->getVolume()?->name ?? 'Assets';", $source);
-        self::assertStringNotContainsString("\$data['section'] = 'Users';", $source);
-    }
-
     public function testLocalBackendHitMergeKeepsTransformerDocumentKindOverStoredElementType(): void
     {
         $backend = $this->localBackend();

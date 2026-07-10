@@ -9,9 +9,12 @@
 namespace lindemannrock\searchmanager\transformers;
 
 use craft\base\ElementInterface;
-use craft\base\Field;
-use craft\helpers\ElementHelper;
 use lindemannrock\searchmanager\helpers\NativeFieldKeywordHelper;
+use lindemannrock\searchmanager\helpers\SearchAutoContentHelper;
+use lindemannrock\searchmanager\helpers\SearchContentBuilderHelper;
+use lindemannrock\searchmanager\helpers\SearchElementKindMetadataHelper;
+use lindemannrock\searchmanager\helpers\SearchFieldTypeContentHelper;
+use lindemannrock\searchmanager\helpers\SearchHeadingHelper;
 
 /**
  * Auto Transformer
@@ -28,12 +31,18 @@ use lindemannrock\searchmanager\helpers\NativeFieldKeywordHelper;
  */
 class AutoTransformer extends BaseTransformer
 {
-    private NativeFieldKeywordHelper $nativeFieldKeywordHelper;
+    private SearchFieldTypeContentHelper $fieldTypeContentHelper;
+
+    private SearchAutoContentHelper $autoContentHelper;
 
     public function init(): void
     {
         parent::init();
-        $this->nativeFieldKeywordHelper = new NativeFieldKeywordHelper();
+        $this->fieldTypeContentHelper = new SearchFieldTypeContentHelper($this->contentCleaner());
+        $this->autoContentHelper = new SearchAutoContentHelper(
+            new NativeFieldKeywordHelper(),
+            $this->fieldTypeContentHelper,
+        );
     }
 
     // =========================================================================
@@ -68,89 +77,15 @@ class AutoTransformer extends BaseTransformer
         $data = $this->getCommonData($element);
 
         // Set element-kind metadata for grouping (hierarchical layout, groupResults).
-        if ($element instanceof \craft\elements\Entry && $element->getSection() !== null) {
-            $section = $element->getSection();
-            $data['section'] = $section->name ?? $section->handle;
-            $data['sectionHandle'] = $section->handle;
-            $data['sectionType'] = $section->type;
-        } elseif ($element instanceof \craft\elements\Category) {
-            $group = $element->getGroup();
-            $data['group'] = $group->name ?? $group->handle;
-            $data['groupHandle'] = $group->handle;
-        } elseif ($element instanceof \craft\elements\Asset) {
-            $volume = $element->getVolume();
-            $data['volume'] = $volume->name ?? $volume->handle;
-            $data['volumeHandle'] = $volume->handle;
-        } elseif (!$element instanceof \craft\elements\User) {
-            $data['section'] = ucfirst($data['elementType']);
-        }
+        $data = array_merge($data, SearchElementKindMetadataHelper::metadata($element, $data['elementType']));
 
         $data = array_merge($data, $this->getHierarchyMetadata($element));
 
-        // Collect searchable content
-        $searchableContent = [];
-
-        // Collect raw HTML from rich text fields for heading extraction
-        $richTextContent = [];
-
-        // Add title
-        if ($element->title) {
-            $searchableContent[] = $element->title;
-        }
-
-        // Process all searchable attributes (Craft's built-in searchable fields)
-        foreach (ElementHelper::searchableAttributes($element) as $attribute) {
-            try {
-                $value = $element->getSearchKeywords($attribute);
-                if (!empty($value)) {
-                    $searchableContent[] = $value;
-                }
-            } catch (\Throwable $e) {
-                continue;
-            }
-        }
-
-        // Process custom fields. Craft-native fields follow Craft's own
-        // searchable-field keyword contract; plugin fields keep legacy handling
-        // until they are reviewed in their own focused slice.
-        if ($element->getFieldLayout()) {
-            foreach ($element->getFieldLayout()->getCustomFields() as $field) {
-                try {
-                    if ($field instanceof Field && $this->nativeFieldKeywordHelper->supports($field)) {
-                        $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
-                    } else {
-                        $fieldValue = $element->getFieldValue($field->handle);
-
-                        // Skip empty values
-                        if ($fieldValue === null || $fieldValue === '' || $fieldValue === []) {
-                            continue;
-                        }
-
-                        // Collect raw HTML from CKEditor/Redactor before stripping
-                        if ($this->isRichTextField($field)) {
-                            $rawHtml = (string) $fieldValue;
-                            if (!empty($rawHtml)) {
-                                $richTextContent[] = $rawHtml;
-                            }
-                        }
-
-                        // Process plugin/custom fields with legacy type handling.
-                        $content = $this->processFieldByType($field, $fieldValue, $element);
-                    }
-
-                    if (!empty($content)) {
-                        if (is_array($content)) {
-                            $searchableContent = array_merge($searchableContent, $content);
-                        } else {
-                            $searchableContent[] = $content;
-                        }
-                        $data['_fields'][$field->handle] = is_array($content) ? implode(' ', $content) : $content;
-                    }
-                } catch (\Throwable $e) {
-                    // Skip fields that error
-                    continue;
-                }
-            }
+        $contentBag = $this->autoContentHelper->collect($element);
+        $searchableContent = $contentBag['parts'];
+        $richTextContent = $contentBag['richText'];
+        if ($contentBag['fields'] !== []) {
+            $data['_fields'] = $contentBag['fields'];
         }
 
         // Extract headings from rich text fields
@@ -159,8 +94,7 @@ class AutoTransformer extends BaseTransformer
             $headings = $this->extractHeadings($allRichText);
             if (!empty($headings)) {
                 $data['_headings'] = $headings;
-                $headingTexts = array_map(fn($h) => $h['text'], $headings);
-                $data['headings'] = implode(' ', $headingTexts);
+                $data['headings'] = SearchHeadingHelper::headingText($headings);
                 $searchableContent[] = $data['headings'];
             }
         }
@@ -171,95 +105,12 @@ class AutoTransformer extends BaseTransformer
             $headings = $this->extractHeadings($contentForMarkdown);
             if (!empty($headings)) {
                 $data['_headings'] = $headings;
-                $headingTexts = array_map(fn($h) => $h['text'], $headings);
-                $data['headings'] = implode(' ', $headingTexts);
+                $data['headings'] = SearchHeadingHelper::headingText($headings);
             }
         }
 
         // Combine all searchable content
-        $data['content'] = implode(' ', array_filter($searchableContent));
-        $data['excerpt'] = $this->getExcerpt($data['content'], 200);
-
-        return $data;
-    }
-
-    // =========================================================================
-    // ELEMENT TYPE DERIVATION
-    // =========================================================================
-
-    /**
-     * Derive stable document kind from element class.
-     *
-     * For Entries: returns 'entry'
-     * For Categories: returns 'category'
-     * For Assets: returns 'asset'
-     * For Users: returns 'user'
-     * For other elements: derives from class name
-     *
-     * @param ElementInterface $element
-     * @return string Element type for search results
-     */
-    protected function deriveElementType(ElementInterface $element): string
-    {
-        return $this->resolveDocumentType($element);
-    }
-
-    /**
-     * Singularize a word (simple English rules)
-     *
-     * products → product
-     * categories → category
-     * entries → entry
-     * stores → store
-     *
-     * @param string $word
-     * @return string
-     */
-    protected function singularize(string $word): string
-    {
-        $word = strtolower($word);
-
-        // Common irregular plurals
-        $irregulars = [
-            'categories' => 'category',
-            'entries' => 'entry',
-            'stories' => 'story',
-            'series' => 'series',
-            'news' => 'news',
-        ];
-
-        if (isset($irregulars[$word])) {
-            return $irregulars[$word];
-        }
-
-        // Words ending in 'ies' → 'y' (but not 'ies' at start)
-        if (strlen($word) > 3 && str_ends_with($word, 'ies')) {
-            return substr($word, 0, -3) . 'y';
-        }
-
-        // Words ending in 'es' after s, x, z, ch, sh → remove 'es'
-        if (str_ends_with($word, 'ses') || str_ends_with($word, 'xes') ||
-            str_ends_with($word, 'zes') || str_ends_with($word, 'ches') ||
-            str_ends_with($word, 'shes')) {
-            return substr($word, 0, -2);
-        }
-
-        // Words ending in 's' → remove 's'
-        if (strlen($word) > 1
-            && str_ends_with($word, 's')
-            && !str_ends_with($word, 'ss')
-            && !str_ends_with($word, 'us')
-            && !str_ends_with($word, 'is')
-            && !str_ends_with($word, 'os')) {
-            return substr($word, 0, -1);
-        }
-
-        return $word;
-    }
-
-    private function isRichTextField(object $field): bool
-    {
-        return is_a($field, 'craft\ckeditor\Field') || is_a($field, 'craft\redactor\Field');
+        return SearchContentBuilderHelper::apply($data, $searchableContent);
     }
 
     // =========================================================================
@@ -277,41 +128,7 @@ class AutoTransformer extends BaseTransformer
      */
     protected function processFieldByType($field, $fieldValue, ElementInterface $element)
     {
-        if (is_a($field, 'craft\fields\PlainText')
-            || is_a($field, 'craft\fields\Dropdown')
-            || is_a($field, 'craft\fields\Url')
-            || is_a($field, 'craft\fields\Email')
-            || is_a($field, 'craft\fields\Number')
-            || is_a($field, 'craft\fields\Color')) {
-            return (string)$fieldValue;
-        }
-
-        if ($this->isRichTextField($field)) {
-            return $this->stripHtml((string)$fieldValue);
-        }
-
-        if (is_a($field, 'craft\fields\Entries')
-            || is_a($field, 'craft\fields\Categories')
-            || is_a($field, 'craft\fields\Tags')
-            || is_a($field, 'craft\fields\Assets')
-            || is_a($field, 'craft\fields\Users')) {
-            return $this->processRelationalField($fieldValue);
-        }
-
-        if (is_a($field, 'craft\fields\Matrix')) {
-            return $this->processMatrixField($fieldValue);
-        }
-
-        if (is_a($field, 'craft\fields\Table')) {
-            return $this->processTableField($fieldValue);
-        }
-
-        if ($field->searchable) {
-            $keywords = $field->getSearchKeywords($fieldValue, $element);
-            return !empty($keywords) ? $keywords : null;
-        }
-
-        return null;
+        return $this->fieldTypeContentHelper->process($field, $fieldValue, $element);
     }
 
     /**
@@ -323,28 +140,7 @@ class AutoTransformer extends BaseTransformer
      */
     protected function processRelationalField($fieldValue): array
     {
-        $titles = [];
-
-        if (!is_object($fieldValue) && !is_array($fieldValue)) {
-            return $titles;
-        }
-
-        // Handle ElementQuery objects (have ->all() method)
-        if (is_object($fieldValue) && method_exists($fieldValue, 'all')) {
-            $elements = $fieldValue->all();
-        } elseif (is_array($fieldValue)) {
-            $elements = $fieldValue;
-        } else {
-            return $titles;
-        }
-
-        foreach ($elements as $relatedElement) {
-            if ($relatedElement && isset($relatedElement->title) && $relatedElement->title) {
-                $titles[] = $relatedElement->title;
-            }
-        }
-
-        return $titles;
+        return $this->fieldTypeContentHelper->processRelational($fieldValue);
     }
 
     /**
@@ -356,44 +152,7 @@ class AutoTransformer extends BaseTransformer
      */
     protected function processMatrixField($fieldValue): array
     {
-        $content = [];
-
-        if (!is_object($fieldValue) && !is_array($fieldValue)) {
-            return $content;
-        }
-
-        // Handle MatrixBlockQuery objects (have ->all() method)
-        if (is_object($fieldValue) && method_exists($fieldValue, 'all')) {
-            $blocks = $fieldValue->all();
-        } elseif (is_array($fieldValue)) {
-            $blocks = $fieldValue;
-        } else {
-            return $content;
-        }
-
-        foreach ($blocks as $block) {
-            if (!is_object($block) || !method_exists($block, 'getFieldLayout') || !method_exists($block, 'getFieldValue')) {
-                continue;
-            }
-
-            $fieldLayout = $block->getFieldLayout();
-            if (!$fieldLayout) {
-                continue;
-            }
-
-            foreach ($fieldLayout->getCustomFields() as $blockField) {
-                try {
-                    $blockValue = $block->getFieldValue($blockField->handle);
-                    if ($blockValue && is_string($blockValue)) {
-                        $content[] = $this->stripHtml($blockValue);
-                    }
-                } catch (\Throwable $e) {
-                    continue;
-                }
-            }
-        }
-
-        return $content;
+        return $this->fieldTypeContentHelper->processMatrix($fieldValue);
     }
 
     /**
@@ -405,20 +164,6 @@ class AutoTransformer extends BaseTransformer
      */
     protected function processTableField($fieldValue): array
     {
-        $content = [];
-
-        if (!is_array($fieldValue)) {
-            return $content;
-        }
-
-        foreach ($fieldValue as $row) {
-            foreach ($row as $cell) {
-                if ($cell) {
-                    $content[] = (string)$cell;
-                }
-            }
-        }
-
-        return $content;
+        return $this->fieldTypeContentHelper->processTable($fieldValue);
     }
 }

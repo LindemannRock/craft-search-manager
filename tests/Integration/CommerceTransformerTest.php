@@ -62,13 +62,14 @@ final class CommerceTransformerTest extends TestCase
 
     public function testCommerceTransformerSourceHasNoHardCommerceImports(): void
     {
-        $source = $this->readPluginFile('src/transformers/CommerceTransformer.php');
+        $transformerSource = $this->readPluginFile('src/transformers/CommerceTransformer.php');
+        $helperSource = $this->readPluginFile('src/helpers/SearchCommerceDocumentHelper.php');
 
-        self::assertStringNotContainsString('use craft\\commerce', $source);
-        self::assertStringNotContainsString('\\Product::class', $source);
-        self::assertStringNotContainsString('\\Variant::class', $source);
-        self::assertStringContainsString('CommerceElementTypeHelper::productElementType()', $source);
-        self::assertStringContainsString('CommerceElementTypeHelper::variantElementType()', $source);
+        self::assertStringNotContainsString('use craft\\commerce', $transformerSource . $helperSource);
+        self::assertStringNotContainsString('\\Product::class', $transformerSource . $helperSource);
+        self::assertStringNotContainsString('\\Variant::class', $transformerSource . $helperSource);
+        self::assertStringContainsString('CommerceElementTypeHelper::productElementType()', $helperSource);
+        self::assertStringContainsString('CommerceElementTypeHelper::variantElementType()', $helperSource);
     }
 
     public function testProductTransformIncludesProductMetadataAndVariantSearchData(): void

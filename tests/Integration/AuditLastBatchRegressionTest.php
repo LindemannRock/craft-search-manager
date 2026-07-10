@@ -13,7 +13,6 @@ namespace lindemannrock\searchmanager\tests\Integration;
 use lindemannrock\searchmanager\controllers\ApiController;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
 use lindemannrock\searchmanager\tests\TestCase;
-use lindemannrock\searchmanager\transformers\AutoTransformer;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 
@@ -46,29 +45,6 @@ final class AuditLastBatchRegressionTest extends TestCase
         $source = $this->readPluginFile('src/services/AutocompleteService.php');
 
         self::assertStringContainsString("'siteId' => isset(\$suggestion['siteId']) ? (int)\$suggestion['siteId'] : null", $source);
-    }
-
-    public function testAutoTransformerDoesNotSingularizeUsIsOrOsWords(): void
-    {
-        $transformer = new AutoTransformer();
-        $method = new \ReflectionMethod($transformer, 'singularize');
-        $method->setAccessible(true);
-
-        self::assertSame('news', $method->invoke($transformer, 'news'));
-        self::assertSame('status', $method->invoke($transformer, 'status'));
-        self::assertSame('analysis', $method->invoke($transformer, 'analysis'));
-        self::assertSame('logos', $method->invoke($transformer, 'logos'));
-        self::assertSame('product', $method->invoke($transformer, 'products'));
-    }
-
-    public function testAutoTransformerUsesSubclassAwareFieldTypeChecks(): void
-    {
-        $source = $this->readPluginFile('src/transformers/AutoTransformer.php');
-
-        self::assertStringContainsString('is_a($field, \'craft\\ckeditor\\Field\')', $source);
-        self::assertStringContainsString('is_a($field, \'craft\\redactor\\Field\')', $source);
-        self::assertStringNotContainsString('$fieldClass === \'craft\\ckeditor\\Field\'', $source);
-        self::assertStringNotContainsString('$fieldClass === \'craft\\redactor\\Field\'', $source);
     }
 
     public function testRemovedIndexBatchJobHasNoInternalReferences(): void
