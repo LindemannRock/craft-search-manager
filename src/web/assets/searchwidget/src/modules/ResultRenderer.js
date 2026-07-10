@@ -35,7 +35,7 @@ import { appendQueryParam } from './UrlUtils.js';
  * @typedef {Object} SearchResult
  * @property {string|number} id - Result ID
  * @property {string} title - Result title
- * @property {string} [description] - Result description/excerpt
+ * @property {string} [snippet] - Result match snippet
  * @property {string} [url] - Result URL
  * @property {string} [section] - Section/type for grouping
  * @property {string} [type] - Element type
@@ -118,7 +118,7 @@ export function renderResultItem(result, index, query, options = {}) {
     } = options;
 
     const title = result.title || result.name || 'Untitled';
-    const description = result.description || result.excerpt || result.snippet || '';
+    const description = result.snippet || result.excerpt || '';
     const rawUrl = result.url || result.href || '#';
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const type = result.section || result.type || '';
@@ -138,7 +138,7 @@ export function renderResultItem(result, index, query, options = {}) {
     });
     const highlightedDesc = description ? highlightMatches(description, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'description'),
+        terms: getHighlightTerms(result, 'snippet'),
     }) : '';
 
     // Build promoted badge HTML
@@ -260,7 +260,7 @@ function getHighlightTerms(result, area) {
     if (matchedTerms) {
         if (area === 'title' && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
             terms = matchedTerms.title;
-        } else if (area === 'description' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
+        } else if (area === 'snippet' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
             terms = matchedTerms.content;
         } else {
             terms = [
@@ -477,7 +477,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
     } = options;
 
     const title = result.title || result.name || 'Untitled';
-    const description = result.description || result.excerpt || '';
+    const description = result.snippet || result.excerpt || '';
     const rawUrl = result.url || '#';
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const optionId = getOptionId(listboxId, index);
@@ -494,7 +494,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
     });
     const highlightedDesc = description ? highlightMatches(description, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'description'),
+        terms: getHighlightTerms(result, 'snippet'),
     }) : '';
 
     const debugInfo = debug ? renderDebugInfo(result) : '';

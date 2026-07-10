@@ -139,7 +139,7 @@ When `enrich=1`, results are resolved to full element data with snippets and hea
             "id": 123,
             "title": "Getting Started with Craft CMS",
             "url": "/docs/getting-started",
-            "description": "A snippet with <mark>matched</mark> terms...",
+            "snippet": "A snippet with <mark>matched</mark> terms...",
             "section": "Documentation",
             "sectionHandle": "documentation",
             "sectionType": "structure",

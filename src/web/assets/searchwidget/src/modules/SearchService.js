@@ -19,7 +19,7 @@
  * @param {string} options.siteId - Optional site ID
  * @param {number} options.maxResults - Maximum results to return
  * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
- * @param {boolean} options.showCodeSnippets - Allow code snippets in descriptions
+ * @param {boolean} options.showCodeSnippets - Allow code in result snippets
  * @param {string} options.snippetMode - Snippet mode: early | balanced | deep
  * @param {number} options.snippetLength - Max snippet length
  * @param {boolean} options.parseMarkdownSnippets - Parse markdown before snippets

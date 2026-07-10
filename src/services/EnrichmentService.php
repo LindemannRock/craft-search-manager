@@ -128,7 +128,7 @@ class EnrichmentService extends Component
                     'id' => $elementId,
                     'title' => $this->resultTitle($hit, $element),
                     'url' => $url,
-                    'description' => $description,
+                    'snippet' => $description,
                     'type' => $documentType,
                     'elementType' => $documentType,
                     'fields' => SearchFieldValueHelper::fieldsFromHit($hit),

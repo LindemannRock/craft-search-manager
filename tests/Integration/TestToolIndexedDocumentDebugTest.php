@@ -43,7 +43,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'siteId' => 1,
             'title' => 'Presenter title',
             'url' => 'https://example.test/product',
-            'description' => 'Presenter description',
+            'snippet' => 'Presenter description',
             'content' => 'Long content',
             'excerpt' => 'Excerpt',
             'score' => 9.8,

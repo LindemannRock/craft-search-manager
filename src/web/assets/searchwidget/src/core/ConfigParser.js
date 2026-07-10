@@ -31,7 +31,7 @@
  * @property {string} highlightTag - HTML tag for highlights
  * @property {string} highlightClass - CSS class for highlights
  * @property {boolean} hideResultsWithoutUrl - Hide URL-less results
- * @property {boolean} showCodeSnippets - Allow code snippets in descriptions
+ * @property {boolean} showCodeSnippets - Allow code in result snippets
  * @property {string} snippetMode - Snippet mode: early | balanced | deep
  * @property {Object} styles - Custom style values
  * @property {Object} promotions - Promotion display config

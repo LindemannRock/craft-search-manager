@@ -53,6 +53,7 @@ final class SearchHitFieldsContractTest extends TestCase
             '_fields' => [
                 'intro' => 'Intro field value',
                 'category' => 'One Another one',
+                'description' => 'Metadata snippet value',
             ],
         ];
 
@@ -62,7 +63,10 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame([
             'intro' => 'Intro field value',
             'category' => 'One Another one',
+            'description' => 'Metadata snippet value',
         ], $results[0]['fields'] ?? null);
+        self::assertSame('Metadata snippet value', $results[0]['snippet'] ?? null);
+        self::assertArrayNotHasKey('description', $results[0]);
         self::assertArrayNotHasKey('intro', $results[0]);
         self::assertArrayNotHasKey('category', $results[0]);
         self::assertSame('Metadata title', $results[0]['title'] ?? null);
@@ -173,6 +177,31 @@ final class SearchHitFieldsContractTest extends TestCase
                 'values' => ['Sugar', 'Salt'],
             ],
         ], $fields);
+    }
+
+    public function testGraphQlHitTypeExposesSnippetWithoutDescriptionAlias(): void
+    {
+        $fields = SearchHitType::getFieldDefinitions();
+
+        self::assertArrayHasKey('snippet', $fields);
+        self::assertSame('snippet', $fields['snippet']['name'] ?? null);
+        self::assertSame('The query-centered match snippet, when there is a match to excerpt.', $fields['snippet']['description'] ?? null);
+        self::assertArrayNotHasKey('description', $fields);
+
+        $type = new SearchHitType([
+            'name' => 'SearchManagerSearchHitSnippetTest',
+            'fields' => $fields,
+        ]);
+        $method = new \ReflectionMethod($type, 'resolve');
+        $method->setAccessible(true);
+
+        $resolveInfo = $this->createMock(ResolveInfo::class);
+        $resolveInfo->fieldName = 'snippet';
+
+        self::assertSame('Snippet text', $method->invoke($type, [
+            'snippet' => 'Snippet text',
+            'description' => 'Legacy description text',
+        ], [], null, $resolveInfo));
     }
 
     public function testGraphQlRawResolverReturnsFieldsMapForHitTypeResolver(): void

@@ -154,7 +154,7 @@ Override settings per-include:
 |-----------|------|---------|-------------|
 | `snippetMode` | `string` | `'balanced'` | Snippet extraction: `'early'`, `'balanced'`, or `'deep'` |
 | `snippetLength` | `int` | `150` | Maximum snippet length in characters (50-500) |
-| `showCodeSnippets` | `bool` | `false` | Show code snippets in descriptions |
+| `showCodeSnippets` | `bool` | `false` | Show code in result snippets |
 | `parseMarkdownSnippets` | `bool` | `false` | Parse markdown before building snippets |
 | `resultTitleLines` | `int` | `1` | Title line clamp count (1-5) |
 | `resultDescLines` | `int` | `1` | Description line clamp count (1-5) |

@@ -149,13 +149,13 @@ Per-call options override these defaults.
 
 ## Code Snippets @since(5.39.0)
 
-By default, code blocks (`<pre>` elements) in your content are included in search results but excluded from snippet descriptions. The `showCodeSnippets` setting controls this behavior.
+By default, code blocks (`<pre>` elements) in your content are included in search results but excluded from result snippets. The `showCodeSnippets` setting controls this behavior.
 
 ### How It Works
 
 When content is indexed, the transformer automatically detects `<pre>` blocks and stores a second version of the content (`_contentClean`) with code removed. At display time, the enrichment service chooses which version to use for snippets:
 
-- **`showCodeSnippets: false`** (default) — snippets are generated from `_contentClean`, so code blocks never appear in result descriptions
+- **`showCodeSnippets: false`** (default) — snippets are generated from `_contentClean`, so code blocks never appear in result snippets
 - **`showCodeSnippets: true`** — snippets are generated from the full content, including code
 
 Code is always fully indexed and searchable regardless of this setting. A search for `querySelector` will find pages containing that term in code blocks — the setting only controls whether code appears in the snippet text shown to the user.
@@ -193,7 +193,7 @@ GET /actions/search-manager/api/search?q=querySelector&enrich=1&showCodeSnippets
 
 ### When to Enable
 
-Enable `showCodeSnippets` when code is the primary content users are searching for — API references, code snippet libraries, or developer tools where seeing the matching code in the result description is more useful than seeing the surrounding prose.
+Enable `showCodeSnippets` when code is the primary content users are searching for — API references, code snippet libraries, or developer tools where seeing the matching code in the result snippet is more useful than seeing the surrounding prose.
 
 Keep it disabled (the default) for documentation sites, blogs, and general content where code blocks are supplementary and prose snippets provide better context.
 

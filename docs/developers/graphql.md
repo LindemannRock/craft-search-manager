@@ -233,7 +233,7 @@ query {
       backendId
       objectID
       title
-      description
+      snippet
       url
       score
       matchedIn
@@ -335,7 +335,7 @@ query {
       id
       title
       url
-      description
+      snippet
       section
       type
       headings {

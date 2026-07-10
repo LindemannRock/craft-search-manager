@@ -250,7 +250,7 @@ In hierarchical search results, heading children show a description extracted fr
 - **Content starts with a code block**: The description is extracted from the first `<p>` tag after the heading. If the content starts with `<pre>` or `<code>` instead, the description may show raw code or be empty.
 - **Content not re-indexed**: Heading descriptions are extracted at index time. After editing content, rebuild the index for changes to appear.
 
-The heading description is static — it always shows the same text regardless of the search query. The parent result's description is query-aware and centers around the matched term (controlled by `snippetMode` and `snippetLength`).
+The heading description is static — it always shows the same text regardless of the search query. The parent result's snippet is query-aware and centers around the matched term (controlled by `snippetMode` and `snippetLength`).
 
 ## Config File Overrides CP Settings
 

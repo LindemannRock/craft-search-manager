@@ -60,7 +60,7 @@ class SearchHitType extends ObjectType
             'slug' => ['name' => 'slug', 'type' => Type::string(), 'description' => 'The result slug.'],
             'url' => ['name' => 'url', 'type' => Type::string(), 'description' => 'The result URL.'],
             'uri' => ['name' => 'uri', 'type' => Type::string(), 'description' => 'The result URI.'],
-            'description' => ['name' => 'description', 'type' => Type::string(), 'description' => 'The result description or snippet.'],
+            'snippet' => ['name' => 'snippet', 'type' => Type::string(), 'description' => 'The query-centered match snippet, when there is a match to excerpt.'],
             'section' => ['name' => 'section', 'type' => Type::string(), 'description' => 'The Entry section name, when the hit is an Entry.'],
             'sectionHandle' => ['name' => 'sectionHandle', 'type' => Type::string(), 'description' => 'The Entry section handle, when the hit is an Entry.'],
             'sectionType' => ['name' => 'sectionType', 'type' => Type::string(), 'description' => 'The Entry section type, when the hit is an Entry.'],

@@ -295,7 +295,7 @@
                 if (matchedTerms) {
                     if (area === 'title' && Array.isArray(matchedTerms.title) && matchedTerms.title.length > 0) {
                         terms = matchedTerms.title;
-                    } else if (area === 'description' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
+                    } else if (area === 'snippet' && Array.isArray(matchedTerms.content) && matchedTerms.content.length > 0) {
                         terms = matchedTerms.content;
                     } else {
                         terms = [
@@ -827,12 +827,12 @@
                         html += '<div class="sm-test-results-grid">';
                         data.hits.forEach(hit => {
                             const rawTitle = hit.title || T.untitled;
-                            const rawDescription = hit.description || '';
+                            const rawSnippet = hit.snippet || '';
                             const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');
                             const titleTerms = getHitTerms(hit, 'title');
-                            const descTerms = getHitTerms(hit, 'description');
+                            const descTerms = getHitTerms(hit, 'snippet');
                             const title = smHighlight(rawTitle, query, titleTerms);
-                            const rawDisplayText = rawDescription || rawExcerpt;
+                            const rawDisplayText = rawSnippet || rawExcerpt;
                             const displayText = rawDisplayText ? smHighlight(rawDisplayText.substring(0, 400), query, descTerms) : '';
                             const url = safeUrlAttribute(hit.url);
                             const urlText = hit.url ? escapeDisplay(hit.url) : '';

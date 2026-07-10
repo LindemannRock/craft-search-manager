@@ -298,7 +298,7 @@ $enriched = SearchManager::$plugin->enrichment->enrichResults(
     ],
 );
 
-// $enriched = [['id' => 123, 'title' => '...', 'url' => '...', 'description' => '...', 'headings' => [...]], ...]
+// $enriched = [['id' => 123, 'title' => '...', 'url' => '...', 'snippet' => '...', 'headings' => [...]], ...]
 ```
 
 ## PromotionService @since(5.10.0)

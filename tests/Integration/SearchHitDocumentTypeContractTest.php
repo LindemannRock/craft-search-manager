@@ -171,6 +171,8 @@ final class SearchHitDocumentTypeContractTest extends TestCase
 
         self::assertSame('The stable lowercase document kind.', $fields['type']['description'] ?? null);
         self::assertSame('The stable lowercase document kind.', $fields['elementType']['description'] ?? null);
+        self::assertArrayHasKey('snippet', $fields);
+        self::assertArrayNotHasKey('description', $fields);
         self::assertArrayHasKey('sectionHandle', $fields);
         self::assertArrayHasKey('sectionType', $fields);
         self::assertArrayHasKey('volume', $fields);
