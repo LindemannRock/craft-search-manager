@@ -128,7 +128,7 @@ abstract class BaseTransformer extends Component implements TransformerInterface
             'backendId' => $backendId,
             'type' => $documentType,
             'elementType' => $documentType,
-            'title' => $element->title ?? '',
+            'title' => $this->elementTitle($element),
             'slug' => $this->elementStringValue($element, 'slug'),
             'url' => $element->url ?? '',
             'siteId' => $element->siteId,
@@ -141,6 +141,22 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     {
         $value = $element->{$property} ?? null;
         return is_scalar($value) ? trim((string)$value) : '';
+    }
+
+    protected function elementTitle(ElementInterface $element): string
+    {
+        if ($element instanceof \craft\elements\User) {
+            foreach (['fullName', 'username', 'email'] as $property) {
+                $value = $this->elementStringValue($element, $property);
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+
+            return $element->id !== null ? '#' . $element->id : '';
+        }
+
+        return $this->elementStringValue($element, 'title');
     }
 
     protected function resolveDocumentType(ElementInterface $element): string

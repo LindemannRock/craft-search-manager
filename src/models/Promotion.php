@@ -14,7 +14,7 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\PromotionLiveElementQueryHelper;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 
 /**
@@ -237,9 +237,11 @@ class Promotion extends Model
             $typeIds = array_map(fn($p) => $p->elementId, $typePromotions);
             $elementQuery = $elementClass::find()
                 ->id($typeIds)
-                ->siteId($checkSiteId)
                 ->indexBy('id');
-            $found = PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all();
+            if (!SearchElementAvailabilityHelper::isSiteIndependent($elementClass)) {
+                $elementQuery->siteId($checkSiteId);
+            }
+            $found = SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all();
             $liveElements += $found;
         }
 

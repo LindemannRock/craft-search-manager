@@ -13,6 +13,7 @@ use craft\gql\GqlEntityRegistry;
 use GraphQL\Type\Definition\ResolveInfo;
 use GraphQL\Type\Definition\Type;
 use lindemannrock\base\helpers\GqlHelper;
+use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 
 /**
@@ -63,8 +64,17 @@ class SearchHitType extends ObjectType
             'section' => ['name' => 'section', 'type' => Type::string(), 'description' => 'The Entry section name, when the hit is an Entry.'],
             'sectionHandle' => ['name' => 'sectionHandle', 'type' => Type::string(), 'description' => 'The Entry section handle, when the hit is an Entry.'],
             'sectionType' => ['name' => 'sectionType', 'type' => Type::string(), 'description' => 'The Entry section type, when the hit is an Entry.'],
+            'volume' => ['name' => 'volume', 'type' => Type::string(), 'description' => 'The Asset volume name, when the hit is an Asset.'],
+            'volumeHandle' => ['name' => 'volumeHandle', 'type' => Type::string(), 'description' => 'The Asset volume handle, when the hit is an Asset.'],
+            'group' => ['name' => 'group', 'type' => Type::string(), 'description' => 'The Category group name, when the hit is a Category.'],
+            'groupHandle' => ['name' => 'groupHandle', 'type' => Type::string(), 'description' => 'The Category group handle, when the hit is a Category.'],
             'productType' => ['name' => 'productType', 'type' => Type::string(), 'description' => 'The Commerce product type display name, when the hit is a Product or Variant.'],
             'productTypeHandle' => ['name' => 'productTypeHandle', 'type' => Type::string(), 'description' => 'The Commerce product type handle, when the hit is a Product or Variant.'],
+            'fields' => [
+                'name' => 'fields',
+                'type' => Type::nonNull(Type::listOf(Type::nonNull(SearchFieldValueType::getType()))),
+                'description' => 'Indexed custom field values for this hit.',
+            ],
             'type' => ['name' => 'type', 'type' => Type::string(), 'description' => 'The stable lowercase document kind.'],
             'score' => ['name' => 'score', 'type' => Type::float(), 'description' => 'The result score.'],
             'matchedIn' => ['name' => 'matchedIn', 'type' => Type::listOf(Type::string()), 'description' => 'Indexed fields that matched the query.'],
@@ -132,6 +142,14 @@ class SearchHitType extends ObjectType
 
             if ($fieldName === 'matchedTerms') {
                 return is_array($source['matchedTerms'] ?? null) ? $source['matchedTerms'] : null;
+            }
+
+            if ($fieldName === 'fields') {
+                $fields = is_array($source['fields'] ?? null)
+                    ? $source['fields']
+                    : SearchFieldValueHelper::fieldsFromHit($source);
+
+                return SearchFieldValueHelper::toGraphqlList($fields);
             }
 
             return GqlHelper::nullIfEmptyString($source[$fieldName] ?? null);

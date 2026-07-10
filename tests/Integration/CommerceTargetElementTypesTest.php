@@ -11,12 +11,13 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
+use craft\base\Element;
 use craft\elements\Asset;
 use craft\elements\Category;
 use craft\elements\Entry;
 use craft\elements\User;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
-use lindemannrock\searchmanager\helpers\PromotionLiveElementQueryHelper;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\Promotion;
@@ -33,7 +34,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @since 5.53.0
  */
 #[CoversClass(TargetElementTypeHelper::class)]
-#[CoversClass(PromotionLiveElementQueryHelper::class)]
+#[CoversClass(SearchElementAvailabilityHelper::class)]
 #[CoversClass(Promotion::class)]
 #[CoversClass(QueryRule::class)]
 final class CommerceTargetElementTypesTest extends TestCase
@@ -144,6 +145,9 @@ final class CommerceTargetElementTypesTest extends TestCase
             self::assertSame($elementType, $results[0]['_elementType']);
             self::assertSame($elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant', $results[0]['type']);
             self::assertArrayNotHasKey('_elementType', SearchHitPresenter::present($results[0]));
+            $results[0]['_queryRuleDebug'] = ['boosts' => [['ruleId' => 123]]];
+            self::assertArrayNotHasKey('_queryRuleDebug', SearchHitPresenter::present($results[0]));
+            self::assertArrayHasKey('_queryRuleDebug', SearchHitPresenter::present($results[0], true));
         }
 
         self::assertTrue(true);
@@ -214,6 +218,130 @@ final class CommerceTargetElementTypesTest extends TestCase
         }
 
         self::assertTrue(true);
+    }
+
+    public function testActiveUserPromotionMatchesSiteIndependently(): void
+    {
+        $user = User::find()->status(User::STATUS_ACTIVE)->one();
+        if (!$user instanceof User) {
+            self::markTestSkipped('No active user available for user promotion coverage.');
+        }
+
+        $query = 'active user promotion regression ' . bin2hex(random_bytes(4));
+        $promotion = new Promotion();
+        $promotion->title = 'Active user promotion regression';
+        $promotion->query = $query;
+        $promotion->matchType = 'exact';
+        $promotion->indexHandle = 'users';
+        $promotion->elementId = (int)$user->id;
+        $promotion->elementType = User::class;
+        $promotion->position = 1;
+
+        self::assertTrue($promotion->save(), implode('; ', $promotion->getFirstErrors()));
+
+        try {
+            $matches = Promotion::findMatching($query, 'users', (int)Craft::$app->getSites()->getPrimarySite()->id);
+
+            self::assertCount(1, $matches);
+            self::assertSame((int)$promotion->id, (int)$matches[0]->id);
+        } finally {
+            $promotion->delete();
+        }
+    }
+
+    public function testActiveUserPromotionInjectsPromotedHit(): void
+    {
+        $user = User::find()->status(User::STATUS_ACTIVE)->one();
+        if (!$user instanceof User) {
+            self::markTestSkipped('No active user available for user promotion insertion coverage.');
+        }
+
+        $promotion = new Promotion();
+        $promotion->id = 2147483001;
+        $promotion->title = 'Active user promotion insertion regression';
+        $promotion->query = 'user insertion';
+        $promotion->matchType = 'exact';
+        $promotion->elementId = (int)$user->id;
+        $promotion->elementType = User::class;
+        $promotion->position = 1;
+
+        $results = SearchManager::$plugin->promotions->applyPromotions(
+            [['id' => 2147483000, 'siteId' => (int)Craft::$app->getSites()->getPrimarySite()->id, 'score' => 1.0]],
+            'user insertion',
+            'users',
+            (int)Craft::$app->getSites()->getPrimarySite()->id,
+            [$promotion],
+        );
+
+        self::assertSame((int)$user->id, $results[0]['id']);
+        self::assertSame('user', $results[0]['type']);
+        self::assertTrue($results[0]['promoted']);
+        self::assertNotSame('', $results[0]['title']);
+        self::assertArrayNotHasKey('section', $results[0]);
+    }
+
+    public function testAssetPromotionInjectsVolumeMetadataWithoutSection(): void
+    {
+        $asset = Asset::find()->status(Element::STATUS_ENABLED)->one();
+        if (!$asset instanceof Asset) {
+            self::markTestSkipped('No asset available for asset promotion insertion coverage.');
+        }
+
+        $promotion = new Promotion();
+        $promotion->id = 2147483002;
+        $promotion->title = 'Asset promotion insertion regression';
+        $promotion->query = 'asset insertion';
+        $promotion->matchType = 'exact';
+        $promotion->elementId = (int)$asset->id;
+        $promotion->elementType = Asset::class;
+        $promotion->position = 1;
+        $promotion->siteId = (int)$asset->siteId;
+
+        $results = SearchManager::$plugin->promotions->applyPromotions(
+            [['id' => 2147483000, 'siteId' => (int)$asset->siteId, 'score' => 1.0]],
+            'asset insertion',
+            'assets',
+            (int)$asset->siteId,
+            [$promotion],
+        );
+
+        self::assertSame((int)$asset->id, $results[0]['id']);
+        self::assertSame('asset', $results[0]['type']);
+        self::assertSame($asset->getVolume()->name, $results[0]['volume'] ?? null);
+        self::assertSame($asset->getVolume()->handle, $results[0]['volumeHandle'] ?? null);
+        self::assertArrayNotHasKey('section', $results[0]);
+    }
+
+    public function testCategoryPromotionInjectsGroupMetadataWithoutSection(): void
+    {
+        $category = Category::find()->status(Element::STATUS_ENABLED)->one();
+        if (!$category instanceof Category) {
+            self::markTestSkipped('No category available for category promotion insertion coverage.');
+        }
+
+        $promotion = new Promotion();
+        $promotion->id = 2147483003;
+        $promotion->title = 'Category promotion insertion regression';
+        $promotion->query = 'category insertion';
+        $promotion->matchType = 'exact';
+        $promotion->elementId = (int)$category->id;
+        $promotion->elementType = Category::class;
+        $promotion->position = 1;
+        $promotion->siteId = (int)$category->siteId;
+
+        $results = SearchManager::$plugin->promotions->applyPromotions(
+            [['id' => 2147483000, 'siteId' => (int)$category->siteId, 'score' => 1.0]],
+            'category insertion',
+            'categories',
+            (int)$category->siteId,
+            [$promotion],
+        );
+
+        self::assertSame((int)$category->id, $results[0]['id']);
+        self::assertSame('category', $results[0]['type']);
+        self::assertSame($category->getGroup()->name, $results[0]['group'] ?? null);
+        self::assertSame($category->getGroup()->handle, $results[0]['groupHandle'] ?? null);
+        self::assertArrayNotHasKey('section', $results[0]);
     }
 
     public function testQueryRuleBoostElementAcceptsProductAndVariantTargetTypes(): void
@@ -357,16 +485,27 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     public function testPromotionLiveLookupUsesVariantProductStatus(): void
     {
-        $helperSource = $this->readPluginFile('src/helpers/PromotionLiveElementQueryHelper.php');
+        $helperSource = $this->readPluginFile('src/helpers/SearchElementAvailabilityHelper.php');
         $promotionSource = $this->readPluginFile('src/models/Promotion.php');
         $settingsSource = $this->readPluginFile('src/controllers/SettingsController.php');
+        $promotionServiceSource = $this->readPluginFile('src/services/PromotionService.php');
+        $enrichmentSource = $this->readPluginFile('src/services/EnrichmentService.php');
+        $indexingSource = $this->readPluginFile('src/services/IndexingService.php');
 
         self::assertStringContainsString('CommerceElementTypeHelper::variantElementType()', $helperSource);
-        self::assertStringContainsString("->status('enabled')", $helperSource);
-        self::assertStringContainsString("->productStatus('live')", $helperSource);
-        self::assertStringContainsString("->status('live')", $helperSource);
-        self::assertStringContainsString('PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all()', $promotionSource);
-        self::assertStringContainsString('PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all()', $settingsSource);
+        self::assertStringContainsString('Element::STATUS_ENABLED', $helperSource);
+        self::assertStringContainsString('->productStatus(self::liveStatusFor($elementClass))', $helperSource);
+        self::assertStringContainsString('Entry::STATUS_LIVE', $helperSource);
+        self::assertStringContainsString('User::STATUS_ACTIVE', $helperSource);
+        self::assertStringContainsString('isSiteIndependent($elementClass)', $promotionSource);
+        self::assertStringContainsString('isSiteIndependent($elementClass)', $settingsSource);
+        self::assertStringContainsString("'siteIndependent' =>", $settingsSource);
+        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $promotionSource);
+        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $settingsSource);
+        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $promotionServiceSource);
+        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($query, $elementClass);', $enrichmentSource);
+        self::assertStringContainsString('return SearchElementAvailabilityHelper::isSearchable($element);', $indexingSource);
+        self::assertStringNotContainsString('PromotionLiveElementQueryHelper', $promotionSource . $settingsSource . $promotionServiceSource . $enrichmentSource);
     }
 
     private function readPluginFile(string $path): string
@@ -400,7 +539,7 @@ final class CommerceTargetElementTypesTest extends TestCase
             $query = $elementType::find()
                 ->siteId((int)$siteId)
                 ->limit(1);
-            $element = PromotionLiveElementQueryHelper::apply($query, $elementType)->one();
+            $element = SearchElementAvailabilityHelper::applyToQuery($query, $elementType)->one();
 
             if ($element instanceof \craft\base\ElementInterface) {
                 return $element;

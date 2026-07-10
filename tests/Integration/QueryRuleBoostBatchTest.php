@@ -12,7 +12,9 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\elements\Category;
 use craft\elements\Entry;
+use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -101,12 +103,12 @@ final class QueryRuleBoostBatchTest extends TestCase
 
         self::assertStringContainsString('preloadBoostElements', $source);
         self::assertStringContainsString('Table::RELATIONS', $source);
-        self::assertStringContainsString('preloadCategoryBoosts', $source);
+        self::assertStringContainsString('preloadCategoryBoostMatches', $source);
         self::assertStringNotContainsString('getElementById($elementId, null, $siteId)', $source);
         self::assertStringNotContainsString('getFieldValue($field->handle)', $source);
 
-        preg_match('/private function preloadCategoryBoosts\(.*?^    \}/ms', $source, $matches);
-        $this->assertNotEmpty($matches, 'preloadCategoryBoosts source should be found');
+        preg_match('/private function preloadCategoryBoostMatches\(.*?^    \}/ms', $source, $matches);
+        $this->assertNotEmpty($matches, 'preloadCategoryBoostMatches source should be found');
         self::assertStringNotContainsString('->all() as $category', $matches[0]);
     }
 
@@ -124,9 +126,167 @@ final class QueryRuleBoostBatchTest extends TestCase
 
         self::assertStringContainsString('resolveCategoryHandleBoostIds($rules, $siteId)', $matches[0]);
         self::assertStringNotContainsString('Category::find()', $matches[0]);
-        self::assertSame(1, substr_count($source, 'Category::find()'));
+        self::assertSame(2, substr_count($source, 'Category::find()'));
         self::assertStringContainsString('->slug(array_keys($handles))', $source);
+        self::assertStringContainsString('->id(array_keys($ids))', $source);
         self::assertStringContainsString('$handles[$categoryHandle] = true', $source);
+    }
+
+    public function testCategoryBoostAppliesToDirectCategoryHits(): void
+    {
+        $category = Category::find()->status(null)->one();
+        if (!$category instanceof Category) {
+            self::markTestSkipped('No category available for direct category boost coverage.');
+        }
+
+        $siteId = (int)$category->siteId;
+        $service = $this->serviceWithBoosts([
+            'sections' => [],
+            'categories' => [(int)$category->id => 4.0],
+            'elements' => [],
+        ]);
+
+        $results = $service->applyBoosts([
+            [
+                'id' => (int)$category->id,
+                'siteId' => $siteId,
+                '_elementType' => Category::class,
+                'score' => 2.0,
+            ],
+            [
+                'id' => 2147483000,
+                'siteId' => $siteId,
+                '_elementType' => Category::class,
+                'score' => 7.0,
+            ],
+        ], 'query', null, $siteId);
+
+        self::assertSame((int)$category->id, $results[0]['id']);
+        self::assertSame(8.0, $results[0]['score']);
+        self::assertTrue($results[0]['boosted']);
+    }
+
+    public function testBoostAttributionIsAbsentByDefault(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [$index, $entry] = $pair;
+        $rule = $this->queryRule(501, QueryRule::ACTION_BOOST_ELEMENT, [
+            'elementId' => (int)$entry->id,
+            'elementType' => Entry::class,
+            'multiplier' => 3.0,
+        ]);
+
+        $results = (new QueryRuleService())->applyBoosts([
+            ['id' => (int)$entry->id, 'siteId' => (int)$entry->siteId, '_index' => $index->handle, 'score' => 2.0],
+        ], 'query', $index->handle, (int)$entry->siteId, [$rule]);
+
+        self::assertTrue($results[0]['boosted']);
+        self::assertArrayNotHasKey('_queryRuleDebug', $results[0]);
+    }
+
+    public function testBoostElementAttributionIncludesRuleAndTarget(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [$index, $entry] = $pair;
+        $rule = $this->queryRule(502, QueryRule::ACTION_BOOST_ELEMENT, [
+            'elementId' => (int)$entry->id,
+            'elementType' => Entry::class,
+            'multiplier' => 3.0,
+        ]);
+
+        $results = (new QueryRuleService())->applyBoosts([
+            ['id' => (int)$entry->id, 'siteId' => (int)$entry->siteId, '_index' => $index->handle, 'score' => 2.0],
+        ], 'query', $index->handle, (int)$entry->siteId, [$rule], true);
+
+        self::assertSame(6.0, $results[0]['score']);
+        self::assertSame([
+            [
+                'ruleId' => 502,
+                'actionType' => QueryRule::ACTION_BOOST_ELEMENT,
+                'multiplier' => 3.0,
+                'elementId' => (int)$entry->id,
+                'elementType' => Entry::class,
+            ],
+        ], $results[0]['_queryRuleDebug']['boosts'] ?? null);
+    }
+
+    public function testBoostSectionAttributionIncludesSectionHandle(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [$index, $entry] = $pair;
+        self::assertInstanceOf(Entry::class, $entry);
+        $sectionHandle = $entry->getSection()->handle;
+        $rule = $this->queryRule(503, QueryRule::ACTION_BOOST_SECTION, [
+            'sectionHandle' => $sectionHandle,
+            'multiplier' => 2.0,
+        ]);
+
+        $results = (new QueryRuleService())->applyBoosts([
+            ['id' => (int)$entry->id, 'siteId' => (int)$entry->siteId, '_index' => $index->handle, 'score' => 3.0],
+        ], 'query', $index->handle, (int)$entry->siteId, [$rule], true);
+
+        self::assertSame(6.0, $results[0]['score']);
+        self::assertSame($sectionHandle, $results[0]['_queryRuleDebug']['boosts'][0]['sectionHandle'] ?? null);
+        self::assertSame(503, $results[0]['_queryRuleDebug']['boosts'][0]['ruleId'] ?? null);
+        self::assertSame(QueryRule::ACTION_BOOST_SECTION, $results[0]['_queryRuleDebug']['boosts'][0]['actionType'] ?? null);
+    }
+
+    public function testDirectCategoryBoostAttributionIncludesCategoryTarget(): void
+    {
+        $category = Category::find()->status(null)->one();
+        if (!$category instanceof Category) {
+            self::markTestSkipped('No category available for direct category boost attribution coverage.');
+        }
+
+        $rule = $this->queryRule(504, QueryRule::ACTION_BOOST_CATEGORY, [
+            'categoryId' => (int)$category->id,
+            'multiplier' => 4.0,
+        ]);
+
+        $results = (new QueryRuleService())->applyBoosts([
+            ['id' => (int)$category->id, 'siteId' => (int)$category->siteId, '_elementType' => Category::class, 'score' => 2.0],
+        ], 'query', null, (int)$category->siteId, [$rule], true);
+
+        self::assertSame(8.0, $results[0]['score']);
+        self::assertSame(504, $results[0]['_queryRuleDebug']['boosts'][0]['ruleId'] ?? null);
+        self::assertSame(QueryRule::ACTION_BOOST_CATEGORY, $results[0]['_queryRuleDebug']['boosts'][0]['actionType'] ?? null);
+        self::assertSame((int)$category->id, $results[0]['_queryRuleDebug']['boosts'][0]['categoryId'] ?? null);
+        self::assertSame((string)$category->slug, $results[0]['_queryRuleDebug']['boosts'][0]['categoryHandle'] ?? null);
+    }
+
+    public function testRelatedCategoryBoostAttributionIncludesCategoryTarget(): void
+    {
+        $category = Category::find()->status(null)->one();
+        if (!$category instanceof Category) {
+            self::markTestSkipped('No category available for related category boost attribution coverage.');
+        }
+
+        $entry = Entry::find()->status(null)->relatedTo($category)->one();
+        if (!$entry instanceof Entry) {
+            self::markTestSkipped('No entry related to a category available for related category boost attribution coverage.');
+        }
+
+        $rule = $this->queryRule(505, QueryRule::ACTION_BOOST_CATEGORY, [
+            'categoryId' => (int)$category->id,
+            'categoryHandle' => (string)$category->slug,
+            'multiplier' => 2.0,
+        ]);
+
+        $results = (new QueryRuleService())->applyBoosts([
+            ['id' => (int)$entry->id, 'siteId' => (int)$entry->siteId, '_elementType' => Entry::class, 'score' => 3.0],
+        ], 'query', null, (int)$entry->siteId, [$rule], true);
+
+        self::assertSame(6.0, $results[0]['score']);
+        self::assertSame(505, $results[0]['_queryRuleDebug']['boosts'][0]['ruleId'] ?? null);
+        self::assertSame(QueryRule::ACTION_BOOST_CATEGORY, $results[0]['_queryRuleDebug']['boosts'][0]['actionType'] ?? null);
+        self::assertSame((int)$category->id, $results[0]['_queryRuleDebug']['boosts'][0]['categoryId'] ?? null);
+        self::assertSame((string)$category->slug, $results[0]['_queryRuleDebug']['boosts'][0]['categoryHandle'] ?? null);
     }
 
     private function installCountingElements(): object
@@ -173,5 +333,20 @@ final class QueryRuleBoostBatchTest extends TestCase
                 return $this->testBoosts;
             }
         };
+    }
+
+    /**
+     * @param array<string, mixed> $actionValue
+     */
+    private function queryRule(int $id, string $actionType, array $actionValue): QueryRule
+    {
+        $rule = new QueryRule();
+        $rule->id = $id;
+        $rule->name = 'Boost attribution';
+        $rule->matchValue = 'query';
+        $rule->actionType = $actionType;
+        $rule->actionValue = $actionValue;
+
+        return $rule;
     }
 }

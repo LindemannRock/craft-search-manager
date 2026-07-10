@@ -39,10 +39,19 @@ query {
       section
       sectionHandle
       sectionType
+      volume
+      volumeHandle
+      group
+      groupHandle
       productType
       productTypeHandle
       slug
       matchedIn
+      fields {
+        handle
+        value
+        values
+      }
       promoted
       boosted
       index
@@ -73,7 +82,7 @@ Search arguments:
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
-GraphQL exposes stable typed hit fields. Arbitrary indexed custom fields from custom transformers are not exposed directly because GraphQL requires a fixed schema; use enriched fields, `matchedIn`, `matchedTerms`, and normal Craft element queries when the frontend needs full custom field data. The REST API can return transformer-specific fields because JSON responses do not need a fixed GraphQL type.
+GraphQL exposes custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data.
 
 Common hit fields:
 
@@ -85,10 +94,13 @@ Common hit fields:
 | `siteId` / `site` | Site ID and site handle. |
 | `elementType` | Stable lowercase document kind. Matches `type`. |
 | `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, and `user`. |
-| `section` | Human-readable Entry section name when indexed. |
+| `section` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | Entry section handle when the hit is an Entry. |
 | `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `volume` / `volumeHandle` | Asset volume metadata when the hit is an Asset. |
+| `group` / `groupHandle` | Category group metadata when the hit is a Category. |
 | `productType` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |
+| `fields` | Searchable custom field values as `SearchManagerSearchFieldValue` objects with `handle`, `value`, and `values`. |
 | `slug` | Public indexed slug when the element or transformer provides one. |
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
@@ -148,7 +160,7 @@ Backend filter examples:
 
 The GraphQL response shape stays the same across backends. The index handle selects the backend, and backend-specific differences mainly show up in `score`, filter syntax, and raw provider behavior that GraphQL intentionally keeps behind typed fields.
 
-Custom transformer fields can still be searched or filtered by the selected backend when the backend is configured for them. GraphQL simply keeps the search response typed; use `elementId` and `siteId` for a follow-up Craft GraphQL element query when you need entry fields that are not part of the search hit type.
+Custom transformer fields can still be searched or filtered by the selected backend when the backend is configured for them. Values intended for API consumers should be written to the transformer's `_fields` map so REST returns them as a `fields` object and GraphQL returns them as `fields { handle value values }`.
 
 ### Algolia
 

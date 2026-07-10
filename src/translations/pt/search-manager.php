@@ -1758,6 +1758,8 @@ return [
     'Score:' => 'Pontuação:',
     'Type:' => 'Tipo:',
     'Section:' => 'Secção:',
+    'Volume:' => 'Volume:',
+    'Group:' => 'Grupo:',
     'Index:' => 'Índice:',
     'Site:' => 'Site:',
     'Redirect:' => 'Redirecionamento:',

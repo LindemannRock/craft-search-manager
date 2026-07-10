@@ -45,7 +45,7 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString('preloadTestPromotionElements($matchingPromotions)', $body);
         self::assertStringContainsString('preloadTestPromotionLiveElements($matchingPromotions, $promotionElements, $sites)', $body);
         self::assertStringContainsString("'elementTypeLabel' => \$this->promotionElementTypeLabel(\$promotion->elementType, \$element),", $body);
-        self::assertStringContainsString('PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all()', $this->readPluginFile('src/controllers/SettingsController.php'));
+        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $this->readPluginFile('src/controllers/SettingsController.php'));
     }
 
     public function testPromotionTestToolDisplaysTargetElementTypeLabel(): void
@@ -56,6 +56,7 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString('TargetElementTypeHelper::translatedLabels()', $controllerSource);
         self::assertStringContainsString('p.elementTypeLabel', $assetSource);
         self::assertStringContainsString('${T.typeLabel} ${Craft.escapeHtml(p.elementTypeLabel)}', $assetSource);
+        self::assertStringContainsString('p.siteIndependent ? \'\' : `<div class="sm-test-diagnostic-field sm-test-diagnostic-field--wide">', $assetSource);
     }
 
     public function testQueryRuleTestToolDoesNotLoadRedirectElementsOneByOne(): void
@@ -67,6 +68,9 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString('$redirectElements[$this->elementCacheKey(', $body);
         self::assertStringContainsString("'targetElementId' => \$targetElementId,", $body);
         self::assertStringContainsString("'targetElementType' => \$targetElementType,", $body);
+        self::assertStringContainsString("'targetSectionHandle' => \$targetSectionHandle,", $body);
+        self::assertStringContainsString("'targetCategoryId' => \$targetCategoryId,", $body);
+        self::assertStringContainsString("'targetCategoryHandle' => \$targetCategoryHandle,", $body);
     }
 
     public function testTestToolComparesMatchedDiagnosticsAgainstRenderedResults(): void
@@ -77,10 +81,17 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString('displayPromotions(promotionsData, query, searchData);', $source);
         self::assertStringContainsString('displayQueryRules(queryRulesData, query, searchData);', $source);
         self::assertStringContainsString('const renderedPromotionIds = resultElementIds(searchData, hit => hit.promoted === true);', $source);
-        self::assertStringContainsString('const boostedElementIds = resultElementIds(searchData, hit => hit.boosted === true);', $source);
         self::assertStringContainsString('renderedPromotionIds.has(Number(p.elementId)) ? T.yesLabel : T.noLabel', $source);
-        self::assertStringContainsString("r.actionType === 'boost_element' && boostedElementIds.has(Number(r.targetElementId))", $source);
-        self::assertStringContainsString("renderStatusLabel(ruleApplied ? T.yesLabel : T.noLabel, ruleApplied ? 'green' : 'red')", $source);
+        self::assertStringContainsString('function countAppliedBoostRule(rule, searchData)', $source);
+        self::assertStringContainsString("const isBoostRule = ['boost_section', 'boost_category', 'boost_element'].includes(r.actionType);", $source);
+        self::assertStringContainsString("const debug = hit._queryRuleDebug && typeof hit._queryRuleDebug === 'object' ? hit._queryRuleDebug : null;", $source);
+        self::assertStringContainsString('const boosts = debug && Array.isArray(debug.boosts) ? debug.boosts : [];', $source);
+        self::assertStringContainsString('boosts.some(boost => Number(boost.ruleId) === ruleId)', $source);
+        self::assertStringContainsString('const appliedCount = isBoostRule ? countAppliedBoostRule(r, searchData) : null;', $source);
+        self::assertStringContainsString("renderStatusLabel(appliedCount > 0 ? T.yesLabel : T.noLabel, appliedCount > 0 ? 'green' : 'red')", $source);
+        self::assertStringContainsString('includeQueryRuleDebug: showQueryRules.checked,', $source);
+        self::assertStringNotContainsString('const boostedCount = boostedElementIds.size;', $source);
+        self::assertStringNotContainsString('renderStatusLabel(String(appliedCount)', $source);
     }
 
     public function testSearchTestToolPassesBackendRedirectToAssetRenderer(): void
@@ -88,6 +99,10 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         $body = $this->controllerMethodBody('actionTestSearch');
 
         self::assertStringContainsString("'redirect' => \$results['redirect'] ?? null,", $body);
+        self::assertStringContainsString("\$includeQueryRuleDebug = (bool)Craft::\$app->getRequest()->getBodyParam('includeQueryRuleDebug', false);", $body);
+        self::assertStringContainsString("\$searchOptions['includeQueryRuleDebug'] = true;", $body);
+        self::assertStringContainsString("'includeQueryRuleDebug' => \$includeQueryRuleDebug,", $body);
+        self::assertStringContainsString('SearchHitPresenter::present($hit, $includeQueryRuleDebug)', $body);
     }
 
     private function controllerMethodBody(string $method): string

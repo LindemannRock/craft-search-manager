@@ -135,8 +135,8 @@ class ProductTransformer extends AutoTransformer
     {
         $data = parent::transform($element);
 
-        $data['brand'] = $element->brand->one()?->title ?? null;
-        $data['availability'] = $element->inStock ? 'in-stock' : 'out-of-stock';
+        $data['_fields']['brand'] = $element->brand->one()?->title ?? null;
+        $data['_fields']['availability'] = $element->inStock ? 'in-stock' : 'out-of-stock';
 
         return $data;
     }
@@ -147,17 +147,25 @@ class ProductTransformer extends AutoTransformer
 
 The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, sorted, and returned by the REST API depending on backend configuration.
 
-For example, a transformer can add frontend-specific fields:
+For values that should be returned to API and GraphQL consumers as custom field data, write them to `_fields`:
 
 ```php
-$data['price'] = (float)($element->price ?? 0);
-$data['brand'] = $element->brand->one()?->title ?? null;
-$data['availability'] = $element->inStock ? 'in-stock' : 'out-of-stock';
+$data['_fields']['price'] = (string)($element->price ?? 0);
+$data['_fields']['brand'] = $element->brand->one()?->title ?? null;
+$data['_fields']['availability'] = $element->inStock ? 'in-stock' : 'out-of-stock';
 ```
 
-Those fields are part of the indexed document and can appear in `/actions/search-manager/api/search` responses. This is useful when replacing older Scout, Algolia-only, or script-based indexing setups where custom code shaped records directly for a search provider.
+Those values appear in `/actions/search-manager/api/search` as `hit.fields.price`, `hit.fields.brand`, and `hit.fields.availability`. GraphQL exposes the same data as a typed list:
 
-GraphQL is different: `searchManagerSearch` exposes a stable typed result shape and does not dynamically expose arbitrary transformer fields. Use GraphQL search for identity and ranking fields such as `elementId`, `siteId`, `backendId`, `title`, `url`, `score`, and `matchedIn`; then query Craft's native GraphQL element fields with `elementId` and `siteId` when the frontend needs full entry data.
+```graphql
+fields {
+  handle
+  value
+  values
+}
+```
+
+Keep Search Manager metadata at the top level. Fields such as `title`, `url`, `section`, `productType`, and `score` have reserved response meanings, while `_fields` is the collision-safe namespace for user-defined field handles.
 
 Provider-specific setup still applies to custom transformer fields:
 
@@ -274,6 +282,8 @@ $data['sectionType'] = $element->getSection()?->type;
 
 Commerce product type metadata follows the same rule: `type`/`elementType` stay `product` or `variant`, while product type details use `productType` and `productTypeHandle`.
 
+Non-entry Craft elements also keep their own metadata fields. Assets use `volume` and `volumeHandle`; Categories use `group` and `groupHandle`; Users do not get a fake `section`.
+
 If your transformer extends `BaseTransformer` and starts with `$this->getCommonData($element)`, Search Manager sets these document-kind fields for Craft Entries, Categories, Assets, Users, and Commerce Products/Variants automatically.
 
 After changing `type`, `elementType`, or related metadata in a transformer, rebuild the affected index so stored search documents match the current code.
@@ -336,6 +346,9 @@ class AssetTransformer extends BaseTransformer
         $data['filename'] = $element->filename;
         $data['kind'] = $element->kind;
         $data['extension'] = $element->extension;
+        $volume = $element->getVolume();
+        $data['volume'] = $volume?->name;
+        $data['volumeHandle'] = $volume?->handle;
         $data['alt'] = $element->alt ?? '';
         $data['content'] = $this->stripHtml($element->description ?? '');
 

@@ -12,6 +12,7 @@ use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use yii\base\Component;
@@ -198,12 +199,13 @@ class PromotionService extends Component
                 }
 
                 foreach ($idsBySite as $elementSiteId => $ids) {
-                    $found = $elementClass::find()
+                    $elementQuery = $elementClass::find()
                         ->id(array_values(array_unique($ids)))
-                        ->siteId((int)$elementSiteId)
-                        ->status(null)
-                        ->indexBy('id')
-                        ->all();
+                        ->indexBy('id');
+                    if (!SearchElementAvailabilityHelper::isSiteIndependent($elementClass)) {
+                        $elementQuery->siteId((int)$elementSiteId);
+                    }
+                    $found = SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all();
 
                     foreach ($found as $elementId => $element) {
                         $elements[$elementClass][(int)$elementSiteId][(int)$elementId] = $element;
@@ -236,15 +238,16 @@ class PromotionService extends Component
                     'score' => null,
                     'type' => $documentType,
                     'elementType' => $documentType,
-                    'title' => $element?->title,
+                    'title' => $this->resolveElementTitle($element),
                 ];
 
-                $section = $this->resolveElementSection($element);
-                if ($section !== null && $section !== '') {
-                    $promotedItem['section'] = $section;
-                }
-
-                $promotedItem = array_merge($promotedItem, $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));
+                $promotedItem = array_merge(
+                    $promotedItem,
+                    $this->resolveEntryMetadata($element),
+                    $this->resolveAssetMetadata($element),
+                    $this->resolveCategoryMetadata($element),
+                    $this->resolveCommerceMetadata($element),
+                );
             } else {
                 $promotedItem = $promotion->elementId;
             }
@@ -397,28 +400,33 @@ class PromotionService extends Component
         return strtolower($element::displayName());
     }
 
-    /**
-     * Resolve the section/group/volume display label for a promoted element.
-     */
-    private function resolveElementSection(?\craft\base\ElementInterface $element): ?string
+    private function resolveElementTitle(?\craft\base\ElementInterface $element): ?string
     {
         if (!$element) {
             return null;
         }
 
-        if ($element instanceof \craft\elements\Entry) {
-            return $element->getSection()?->name;
+        if ($element instanceof \craft\elements\User) {
+            foreach (['fullName', 'username', 'email'] as $property) {
+                $value = $this->stringProperty($element, $property);
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+
+            return $element->id !== null ? '#' . $element->id : null;
         }
 
-        if ($element instanceof \craft\elements\Category) {
-            return $element->getGroup()->name;
-        }
+        $title = $this->stringProperty($element, 'title');
 
-        if ($element instanceof \craft\elements\Asset) {
-            return $element->getVolume()->name;
-        }
+        return $title !== '' ? $title : null;
+    }
 
-        return null;
+    private function stringProperty(object $object, string $property): string
+    {
+        $value = $object->{$property} ?? null;
+
+        return is_scalar($value) ? trim((string)$value) : '';
     }
 
     /**
@@ -433,8 +441,43 @@ class PromotionService extends Component
         $section = $element->getSection();
 
         return array_filter([
+            'section' => $section?->name,
             'sectionHandle' => $section?->handle,
             'sectionType' => $section?->type,
+        ], static fn(?string $value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function resolveAssetMetadata(?\craft\base\ElementInterface $element): array
+    {
+        if (!$element instanceof \craft\elements\Asset) {
+            return [];
+        }
+
+        $volume = $element->getVolume();
+
+        return array_filter([
+            'volume' => $volume->name,
+            'volumeHandle' => $volume->handle,
+        ], static fn(?string $value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function resolveCategoryMetadata(?\craft\base\ElementInterface $element): array
+    {
+        if (!$element instanceof \craft\elements\Category) {
+            return [];
+        }
+
+        $group = $element->getGroup();
+
+        return array_filter([
+            'group' => $group->name,
+            'groupHandle' => $group->handle,
         ], static fn(?string $value): bool => $value !== null && $value !== '');
     }
 

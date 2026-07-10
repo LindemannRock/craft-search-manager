@@ -76,7 +76,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
             'Plain text needle',
         );
 
-        self::assertSame('Plain text needle', $data['body'] ?? null);
+        self::assertSame('Plain text needle', $data['_fields']['body'] ?? null);
         self::assertStringContainsString('Plain text needle', $data['content']);
     }
 
@@ -147,7 +147,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
 
         $data = $this->transformWithField($field, $field->normalizeValue('canonical-value', null));
 
-        self::assertSame('canonical-value Friendly Label', $data['topic'] ?? null);
+        self::assertSame('canonical-value Friendly Label', $data['_fields']['topic'] ?? null);
         self::assertStringContainsString('canonical-value Friendly Label', $data['content']);
     }
 
@@ -180,7 +180,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
             new ElementCollection([$related]),
         );
 
-        self::assertSame('Related entry needle', $data['relatedEntries'] ?? null);
+        self::assertSame('Related entry needle', $data['_fields']['relatedEntries'] ?? null);
         self::assertStringContainsString('Related entry needle', $data['content']);
     }
 
@@ -219,7 +219,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
             ],
         );
 
-        self::assertSame('Table text needle', $data['specs'] ?? null);
+        self::assertSame('Table text needle', $data['_fields']['specs'] ?? null);
         self::assertStringContainsString('Table text needle', $data['content']);
         self::assertStringNotContainsString('2026-07-09', $data['content']);
     }
@@ -261,7 +261,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
             'unused matrix value',
         );
 
-        self::assertSame('Nested Block Title Matrix nested searchable needle', $data['matrixContent'] ?? null);
+        self::assertSame('Nested Block Title Matrix nested searchable needle', $data['_fields']['matrixContent'] ?? null);
         self::assertStringContainsString('Matrix nested searchable needle', $data['content']);
         self::assertStringNotContainsString('Matrix nested hidden needle', $data['content']);
     }

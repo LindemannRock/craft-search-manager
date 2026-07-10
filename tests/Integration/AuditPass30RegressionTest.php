@@ -66,13 +66,19 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringContainsString("\$documentType = \$this->resolveElementType(\$element);", $source);
         self::assertStringContainsString("'type' => \$documentType,", $source);
         self::assertStringContainsString("'elementType' => \$documentType,", $source);
-        self::assertStringContainsString('$section = $this->resolveElementSection($element);', $source);
-        self::assertStringContainsString("\$promotedItem['section'] = \$section;", $source);
-        self::assertStringContainsString('$promotedItem = array_merge($promotedItem, $this->resolveEntryMetadata($element), $this->resolveCommerceMetadata($element));', $source);
+        self::assertStringContainsString('$this->resolveEntryMetadata($element),', $source);
+        self::assertStringContainsString('$this->resolveAssetMetadata($element),', $source);
+        self::assertStringContainsString('$this->resolveCategoryMetadata($element),', $source);
+        self::assertStringContainsString('$this->resolveCommerceMetadata($element),', $source);
         self::assertStringContainsString("return 'entry';", $source);
-        self::assertStringContainsString('return $element->getSection()?->name;', $source);
+        self::assertStringNotContainsString('resolveElementSection', $source);
+        self::assertStringContainsString("'section' => \$section?->name,", $source);
         self::assertStringContainsString("'sectionHandle' => \$section?->handle,", $source);
         self::assertStringContainsString("'sectionType' => \$section?->type,", $source);
+        self::assertStringContainsString("'volume' => \$volume->name,", $source);
+        self::assertStringContainsString("'volumeHandle' => \$volume->handle,", $source);
+        self::assertStringContainsString("'group' => \$group->name,", $source);
+        self::assertStringContainsString("'groupHandle' => \$group->handle,", $source);
         self::assertStringNotContainsString('return $element->getSection()?->handle;', $source);
     }
 

@@ -44,7 +44,6 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'title' => 'Presenter title',
             'url' => 'https://example.test/product',
             'description' => 'Presenter description',
-            'descriptionSafe' => 'Presenter safe description',
             'content' => 'Long content',
             'excerpt' => 'Excerpt',
             'score' => 9.8,
@@ -63,8 +62,10 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'variantOptions' => ['Size: M', 'Color: Blue'],
             'apiKey' => 'secret-api-key',
             'authorization' => 'Bearer secret-token',
-            'projectTransformer' => 'commerce-post-processor',
-            'customRelevanceNote' => str_repeat('safe ', 40),
+            '_fields' => [
+                'projectTransformer' => 'commerce-post-processor',
+                'customRelevanceNote' => str_repeat('safe ', 40),
+            ],
         ];
 
         $debug = $this->invokeSettingsControllerMethod('settingsTestIndexedDocumentDebug', [$hit, $index]);
@@ -92,7 +93,6 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'Internal prose-only content',
             'matchedTerms',
             '_snippet',
-            'descriptionSafe',
             'score',
         ] as $forbidden) {
             self::assertStringNotContainsString($forbidden, $encoded);
@@ -165,8 +165,10 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         ]);
 
         $fields = $this->invokeSettingsControllerMethod('settingsTestCustomIndexedFields', [[
-            'testcommerce' => 'THIS IS A TEST TEXT WHAT IS THIS TEXT TEXT AREA secret nested token Matrix nested hidden needle',
-            'productDescription' => 'Lorem ipsum dolor sit amet',
+            '_fields' => [
+                'testcommerce' => 'THIS IS A TEST TEXT WHAT IS THIS TEXT TEXT AREA secret nested token Matrix nested hidden needle',
+                'productDescription' => 'Lorem ipsum dolor sit amet',
+            ],
         ], $element]);
 
         self::assertSame('Testcommerce', $fields[0]['label'] ?? null);
@@ -187,7 +189,9 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
     public function testServerDebugPayloadFallsBackToFlatCustomFields(): void
     {
         $fields = $this->invokeSettingsControllerMethod('settingsTestCustomIndexedFields', [[
-            'productDescription' => 'Lorem ipsum dolor sit amet',
+            '_fields' => [
+                'productDescription' => 'Lorem ipsum dolor sit amet',
+            ],
         ]]);
 
         self::assertSame([
@@ -218,19 +222,26 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringNotContainsString('_indexedDocument', $searchHitType);
     }
 
-    public function testResultCardUsesProductTypeMetadataLabelForCommerceHits(): void
+    public function testResultCardUsesTypeSpecificContextMetadataLabels(): void
     {
         $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
         foreach ([
-            "const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant';",
-            "const productType = hit.productType || '';",
-            'const contextLabel = isCommerceHit ? T.productTypeLabel : T.sectionLabel;',
-            'const contextValue = isCommerceHit ? productType : hit.section;',
+            'function resultContext(hit, normalizedType)',
+            "normalizedType === 'entry' && hit.section",
+            "normalizedType === 'asset' && hit.volume",
+            "normalizedType === 'category' && hit.group",
+            "normalizedType === 'product' || normalizedType === 'variant'",
+            'return {label: T.sectionLabel, value: hit.section};',
+            'return {label: T.volumeLabel, value: hit.volume};',
+            'return {label: T.groupLabel, value: hit.group};',
+            'return {label: T.productTypeLabel, value: hit.productType};',
+            'const context = resultContext(hit, normalizedType);',
             'function formatMetaLabel(label)',
             '<span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}',
             '<span class="sm-test-meta-label">${formatMetaLabel(\'ID\')}</span> #${objectIdDisplay}',
             '${contextMeta}',
+            "const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');",
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
@@ -238,7 +249,35 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringNotContainsString('<span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}', $source);
         self::assertStringNotContainsString('hit.productTypeName', $source);
         self::assertStringNotContainsString("isCommerceHit ? hit.section : ''", $source);
+        self::assertStringNotContainsString('const contextValue = isCommerceHit ? productType : hit.section;', $source);
+        self::assertStringNotContainsString("const rawDisplayText = rawDescription || hit.excerpt || hit.content || '';", $source);
         self::assertStringContainsString('renderIndexedDocumentDebug(hit)', $source);
+    }
+
+    public function testIndexedDocumentDebugUsesTypeSpecificContractMetadata(): void
+    {
+        $controllerSource = $this->readPluginFile('src/controllers/SettingsController.php');
+        $assetSource = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
+
+        foreach ([
+            'private function settingsTestElementKindDebug(array $hit): array',
+            "'section' => \$this->settingsTestScalarDebugValue(\$hit['section'] ?? null),",
+            "'volume' => \$this->settingsTestScalarDebugValue(\$hit['volume'] ?? null),",
+            "'group' => \$this->settingsTestScalarDebugValue(\$hit['group'] ?? null),",
+            "'volumehandle',",
+            "'grouphandle',",
+        ] as $needle) {
+            self::assertStringContainsString($needle, $controllerSource);
+        }
+
+        foreach ([
+            'const elementKind = debug.elementKind && typeof debug.elementKind === \'object\' ? debug.elementKind : {};',
+            'renderDebugPill(T.sectionLabel, [elementKind.section',
+            'renderDebugPill(T.volumeLabel, [elementKind.volume',
+            'renderDebugPill(T.groupLabel, [elementKind.group',
+        ] as $needle) {
+            self::assertStringContainsString($needle, $assetSource);
+        }
     }
 
     public function testRawSettingsSearchHydrationKeepsCanonicalDocumentType(): void
@@ -269,13 +308,17 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'safeUrlAttribute(parentProduct.url)',
             'escapeDisplay(truncateDisplay(field.label, 32))',
             'escapeDisplay(truncateDisplay(field.value, 96))',
-            'const renderCustomField = (field) => {',
+            'function renderCustomField(field)',
+            'function fieldRowsFromFields(fields)',
+            'function renderHitFields(hit)',
             'Array.isArray(field.children) ? field.children : []',
             'class="sm-test-indexed-custom-group"',
             'class="sm-test-indexed-custom-field-label"',
             'class="sm-test-indexed-custom-child"',
             'escapeDisplay(truncateDisplay(child.label, 32))',
             'escapeDisplay(truncateDisplay(child.value, 96))',
+            'const customFields = fieldRowsFromFields(hit.fields);',
+            '${renderHitFields(hit)}',
             '<details class="sm-test-indexed-debug">',
             '<summary>${T.indexedDocumentLabel}</summary>',
             'class="sm-test-indexed-row"',
@@ -304,7 +347,6 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         foreach ([
             'Object.keys(hit)',
             'JSON.stringify(hit',
-            'descriptionSafe',
             'backendId',
             'apiKey',
             'authorization',

@@ -91,6 +91,10 @@ These parameters only apply when `enrich=1`:
             "type": "product",
             "productType": "Clothing",
             "productTypeHandle": "clothing",
+            "fields": {
+                "intro": "Soft cotton with recycled trim",
+                "category": "Shirts Summer"
+            },
             "title": "Featured Product"
         },
         {
@@ -103,7 +107,11 @@ These parameters only apply when `enrich=1`:
             "type": "entry",
             "section": "Blog",
             "sectionHandle": "blog",
-            "sectionType": "channel"
+            "sectionType": "channel",
+            "fields": {
+                "intro": "A short article introduction",
+                "iconSingle": "search"
+            }
         }
     ],
     "total": 150,
@@ -116,9 +124,9 @@ These parameters only apply when `enrich=1`:
 > [!NOTE]
 > The raw response does not return internal metadata (synonyms expanded, rules matched, promotions matched). Use the `?debug=1` parameter with the `searchManager:viewDebug` permission to inspect query internals during development.
 
-Custom transformer fields are part of the indexed document and can appear in REST search hits. For example, if your transformer adds `price`, `brand`, `availability`, or `vehicleModel`, those keys can be returned by this endpoint alongside the standard identity fields. This makes the REST API the right choice when a headless frontend needs the search document shape you defined in a transformer.
+Searchable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills this object automatically from searchable custom fields. A custom transformer can add response-ready custom field values by writing to the internal `_fields` map before indexing.
 
-GraphQL search uses a fixed typed schema and does not dynamically expose those custom transformer fields. Use GraphQL for stable search fields and native Craft element follow-up queries; use the REST API when you want the raw/custom search document payload.
+Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `section`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
 
 ### Enriched Response
 
@@ -137,6 +145,10 @@ When `enrich=1`, results are resolved to full element data with snippets and hea
             "sectionType": "structure",
             "elementType": "entry",
             "type": "entry",
+            "fields": {
+                "intro": "Install and configure the plugin",
+                "category": "Documentation"
+            },
             "score": 45.23,
             "promoted": false,
             "headings": [
@@ -179,11 +191,16 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
 | `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
 | `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
-| `section` | `string` | Human-readable Entry section name when the hit is an Entry. Commerce hits use `productType` / `productTypeHandle` for Commerce metadata. |
+| `section` | `string` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
 | `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `volume` | `string` | Asset volume name when the hit is an Asset. |
+| `volumeHandle` | `string` | Asset volume handle when the hit is an Asset. |
+| `group` | `string` | Category group name when the hit is a Category. |
+| `groupHandle` | `string` | Category group handle when the hit is a Category. |
 | `productType` | `string` | Commerce product type name when the hit is a Product or Variant. |
 | `productTypeHandle` | `string` | Commerce product type handle when the hit is a Product or Variant. |
+| `fields` | `object` | Searchable custom field values keyed by field handle. Values are indexed content, not translated UI labels. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |
 | `title` | `string` | Element title (for promoted items) |

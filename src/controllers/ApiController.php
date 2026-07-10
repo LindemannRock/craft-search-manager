@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
+use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
@@ -594,7 +595,10 @@ class ApiController extends Controller
 
         if (!empty($results['hits'])) {
             foreach ($results['hits'] as &$hit) {
-                unset($hit['content'], $hit['body'], $hit['excerpt']);
+                if (is_array($hit)) {
+                    $hit = SearchFieldValueHelper::exposeFields($hit);
+                    unset($hit['content'], $hit['body'], $hit['excerpt']);
+                }
             }
             unset($hit);
         }

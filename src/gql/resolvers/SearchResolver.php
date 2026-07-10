@@ -12,6 +12,7 @@ use Craft;
 use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
+use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -452,6 +453,7 @@ class SearchResolver extends Resolver
 
         foreach ($results['hits'] as &$hit) {
             if (is_array($hit)) {
+                $hit = SearchFieldValueHelper::exposeFields($hit);
                 unset($hit['content'], $hit['body'], $hit['excerpt']);
             }
         }

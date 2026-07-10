@@ -434,6 +434,7 @@ class BackendService extends Component
         $options['siteId'] = SearchSiteScopeHelper::normalize($options['siteId'] ?? null);
         $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId']);
         $settings = SearchManager::$plugin->getSettings();
+        $includeQueryRuleDebug = (bool)($options['includeQueryRuleDebug'] ?? false);
 
         // Check if analytics should be skipped (used by cache warming, internal operations)
         $skipAnalytics = $options['skipAnalytics'] ?? false;
@@ -537,7 +538,7 @@ class BackendService extends Component
         // 1. Check cache first (if caching enabled)
         // Note: Cache stores RAW backend results. Promotions are applied fresh each time
         // to ensure disabled/expired promotions are immediately excluded.
-        if ($settings->enableCache) {
+        if ($settings->enableCache && !$includeQueryRuleDebug) {
             $cached = $this->_getFromCache($indexName, $query, $options);
             if ($cached !== null) {
                 // Apply promotions fresh (not from cache) so disabled promotions are excluded
@@ -639,6 +640,7 @@ class BackendService extends Component
                 $indexName,
                 $siteId,
                 $matchedRules,
+                $includeQueryRuleDebug,
             );
         }
 
@@ -648,7 +650,7 @@ class BackendService extends Component
 
         // 3. Cache RAW results (BEFORE promotions) so promotions can be applied fresh
         // This ensures disabled/expired promotions are immediately excluded
-        if ($settings->enableCache && !$backendFailed) {
+        if ($settings->enableCache && !$backendFailed && !$includeQueryRuleDebug) {
             if ($settings->cachePopularQueriesOnly) {
                 if ($this->_isQueryPopularForCache($query, $settings->popularQueryThreshold, $indexName, $siteId)) {
                     $this->_saveToCache($indexName, $query, $options, $results);

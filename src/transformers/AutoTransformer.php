@@ -67,19 +67,21 @@ class AutoTransformer extends BaseTransformer
         // Start with common data
         $data = $this->getCommonData($element);
 
-        // Set section metadata for grouping (hierarchical layout, groupResults).
+        // Set element-kind metadata for grouping (hierarchical layout, groupResults).
         if ($element instanceof \craft\elements\Entry && $element->getSection() !== null) {
             $section = $element->getSection();
             $data['section'] = $section->name ?? $section->handle;
             $data['sectionHandle'] = $section->handle;
             $data['sectionType'] = $section->type;
         } elseif ($element instanceof \craft\elements\Category) {
-            $data['section'] = $element->getGroup()?->name ?? 'Categories';
+            $group = $element->getGroup();
+            $data['group'] = $group->name ?? $group->handle;
+            $data['groupHandle'] = $group->handle;
         } elseif ($element instanceof \craft\elements\Asset) {
-            $data['section'] = $element->getVolume()?->name ?? 'Assets';
-        } elseif ($element instanceof \craft\elements\User) {
-            $data['section'] = 'Users';
-        } else {
+            $volume = $element->getVolume();
+            $data['volume'] = $volume->name ?? $volume->handle;
+            $data['volumeHandle'] = $volume->handle;
+        } elseif (!$element instanceof \craft\elements\User) {
             $data['section'] = ucfirst($data['elementType']);
         }
 
@@ -140,7 +142,7 @@ class AutoTransformer extends BaseTransformer
                         } else {
                             $searchableContent[] = $content;
                         }
-                        $data[$field->handle] = is_array($content) ? implode(' ', $content) : $content;
+                        $data['_fields'][$field->handle] = is_array($content) ? implode(' ', $content) : $content;
                     }
                 } catch (\Throwable $e) {
                     // Skip fields that error

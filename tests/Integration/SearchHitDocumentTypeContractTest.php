@@ -19,6 +19,7 @@ use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\gql\types\SearchHitType;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\transformers\AutoTransformer;
 use lindemannrock\searchmanager\transformers\BaseTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -28,6 +29,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @since 5.53.0
  */
 #[CoversClass(AbstractSearchEngineBackend::class)]
+#[CoversClass(AutoTransformer::class)]
 #[CoversClass(BaseTransformer::class)]
 #[CoversClass(SearchHitType::class)]
 final class SearchHitDocumentTypeContractTest extends TestCase
@@ -53,6 +55,45 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame('category', $transformer->publicResolveDocumentType(new Category()));
         self::assertSame('asset', $transformer->publicResolveDocumentType(new Asset()));
         self::assertSame('user', $transformer->publicResolveDocumentType(new User()));
+    }
+
+    public function testBaseTransformerUsesUserDisplayTitleFallbacks(): void
+    {
+        $transformer = new DocumentTypeContractBaseTransformer();
+        $user = new User();
+        $user->id = 123;
+        $user->siteId = 1;
+        $user->fullName = 'Ada Lovelace';
+        $user->username = 'ada';
+        $user->email = 'ada@example.test';
+
+        self::assertSame('Ada Lovelace', $transformer->transform($user)['title'] ?? null);
+
+        $user->fullName = '';
+        self::assertSame('ada', $transformer->transform($user)['title'] ?? null);
+
+        $user->username = '';
+        self::assertSame('ada@example.test', $transformer->transform($user)['title'] ?? null);
+
+        $user->email = '';
+        self::assertSame('#123', $transformer->transform($user)['title'] ?? null);
+    }
+
+    public function testAutoTransformerSourceUsesTypeSpecificCoreMetadataFields(): void
+    {
+        $source = $this->readPluginFile('src/transformers/AutoTransformer.php');
+
+        self::assertStringContainsString("\$data['section'] = \$section->name ?? \$section->handle;", $source);
+        self::assertStringContainsString("\$data['sectionHandle'] = \$section->handle;", $source);
+        self::assertStringContainsString("\$data['sectionType'] = \$section->type;", $source);
+        self::assertStringContainsString("\$data['volume'] = \$volume->name ?? \$volume->handle;", $source);
+        self::assertStringContainsString("\$data['volumeHandle'] = \$volume->handle;", $source);
+        self::assertStringContainsString("\$data['group'] = \$group->name ?? \$group->handle;", $source);
+        self::assertStringContainsString("\$data['groupHandle'] = \$group->handle;", $source);
+        self::assertStringContainsString('} elseif (!$element instanceof \craft\elements\User) {', $source);
+        self::assertStringNotContainsString("\$data['section'] = \$element->getGroup()?->name ?? 'Categories';", $source);
+        self::assertStringNotContainsString("\$data['section'] = \$element->getVolume()?->name ?? 'Assets';", $source);
+        self::assertStringNotContainsString("\$data['section'] = 'Users';", $source);
     }
 
     public function testLocalBackendHitMergeKeepsTransformerDocumentKindOverStoredElementType(): void
@@ -132,6 +173,10 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame('The stable lowercase document kind.', $fields['elementType']['description'] ?? null);
         self::assertArrayHasKey('sectionHandle', $fields);
         self::assertArrayHasKey('sectionType', $fields);
+        self::assertArrayHasKey('volume', $fields);
+        self::assertArrayHasKey('volumeHandle', $fields);
+        self::assertArrayHasKey('group', $fields);
+        self::assertArrayHasKey('groupHandle', $fields);
         self::assertArrayHasKey('productType', $fields);
         self::assertArrayHasKey('productTypeHandle', $fields);
         self::assertArrayNotHasKey('productTypeName', $fields);
@@ -186,6 +231,14 @@ final class SearchHitDocumentTypeContractTest extends TestCase
                 return ['available' => true];
             }
         };
+    }
+
+    private function readPluginFile(string $path): string
+    {
+        $contents = file_get_contents(dirname(__DIR__, 2) . '/' . ltrim($path, '/'));
+        self::assertIsString($contents, sprintf('Expected to read plugin file: %s', $path));
+
+        return $contents;
     }
 }
 

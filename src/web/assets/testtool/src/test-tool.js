@@ -330,6 +330,67 @@
                 </div>`;
             }
 
+            function fieldRowsFromFields(fields) {
+                if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
+                    return [];
+                }
+
+                return Object.entries(fields).map(([handle, value]) => {
+                    const displayValue = Array.isArray(value) ? value.join(', ') : value;
+                    if (displayValue === undefined || displayValue === null || displayValue === '') {
+                        return null;
+                    }
+
+                    return {
+                        label: handle,
+                        value: displayValue,
+                    };
+                }).filter(Boolean);
+            }
+
+            function renderCustomField(field) {
+                if (!field || typeof field !== 'object') {
+                    return '';
+                }
+
+                const label = escapeDisplay(truncateDisplay(field.label, 32));
+                const children = Array.isArray(field.children) ? field.children : [];
+                if (children.length > 0) {
+                    const childRows = children.map(child => {
+                        if (!child || typeof child !== 'object') {
+                            return '';
+                        }
+
+                        return `<div class="sm-test-indexed-custom-child">
+                            <span class="sm-test-indexed-custom-child-label">${escapeDisplay(truncateDisplay(child.label, 32))}:</span>
+                            <code class="sm-test-indexed-custom-child-value">${escapeDisplay(truncateDisplay(child.value, 96))}</code>
+                        </div>`;
+                    }).filter(Boolean).join('');
+
+                    return childRows ? `<div class="sm-test-indexed-custom-group">
+                        <span class="sm-test-indexed-custom-group-label">${label}:</span>
+                        <div class="sm-test-indexed-custom-children">${childRows}</div>
+                    </div>` : '';
+                }
+
+                return `<div class="sm-test-indexed-custom-field">
+                    <span class="sm-test-indexed-custom-field-label">${label}:</span>
+                    <code class="sm-test-indexed-custom-field-value">${escapeDisplay(truncateDisplay(field.value, 96))}</code>
+                </div>`;
+            }
+
+            function renderHitFields(hit) {
+                const fieldRows = fieldRowsFromFields(hit.fields).map(renderCustomField).filter(Boolean).join('');
+                if (!fieldRows) {
+                    return '';
+                }
+
+                return `<div class="sm-test-indexed-row">
+                    <span class="sm-test-indexed-label">${T.customFieldsLabel}</span>
+                    <div class="sm-test-indexed-custom-fields">${fieldRows}</div>
+                </div>`;
+            }
+
             function renderIndexedDocumentDebug(hit) {
                 const debug = hit._indexedDocument;
                 if (!debug || typeof debug !== 'object') {
@@ -337,46 +398,20 @@
                 }
 
                 const commerce = debug.commerce && typeof debug.commerce === 'object' ? debug.commerce : {};
+                const elementKind = debug.elementKind && typeof debug.elementKind === 'object' ? debug.elementKind : {};
                 const productType = commerce.productType && typeof commerce.productType === 'object' ? commerce.productType : null;
                 const parentProduct = commerce.parentProduct && typeof commerce.parentProduct === 'object' ? commerce.parentProduct : null;
-                const customFields = Array.isArray(debug.customFields) ? debug.customFields : [];
+                const customFields = fieldRowsFromFields(hit.fields);
                 const parentUrl = parentProduct ? safeUrlAttribute(parentProduct.url) : null;
                 const parentUrlText = parentProduct && parentProduct.url ? escapeDisplay(truncateDisplay(parentProduct.url, 64)) : '';
-                const renderCustomField = (field) => {
-                    if (!field || typeof field !== 'object') {
-                        return '';
-                    }
-
-                    const label = escapeDisplay(truncateDisplay(field.label, 32));
-                    const children = Array.isArray(field.children) ? field.children : [];
-                    if (children.length > 0) {
-                        const childRows = children.map(child => {
-                            if (!child || typeof child !== 'object') {
-                                return '';
-                            }
-
-                            return `<div class="sm-test-indexed-custom-child">
-                                <span class="sm-test-indexed-custom-child-label">${escapeDisplay(truncateDisplay(child.label, 32))}:</span>
-                                <code class="sm-test-indexed-custom-child-value">${escapeDisplay(truncateDisplay(child.value, 96))}</code>
-                            </div>`;
-                        }).filter(Boolean).join('');
-
-                        return childRows ? `<div class="sm-test-indexed-custom-group">
-                            <span class="sm-test-indexed-custom-group-label">${label}:</span>
-                            <div class="sm-test-indexed-custom-children">${childRows}</div>
-                        </div>` : '';
-                    }
-
-                    return `<div class="sm-test-indexed-custom-field">
-                        <span class="sm-test-indexed-custom-field-label">${label}:</span>
-                        <code class="sm-test-indexed-custom-field-value">${escapeDisplay(truncateDisplay(field.value, 96))}</code>
-                    </div>`;
-                };
 
                 const rows = [
                     renderDebugPill(T.transformerClassLabel, debug.transformerClass),
                     renderDebugPill(T.indexElementTypeLabel, debug.indexElementType),
                     renderDebugPill(T.documentTypeLabel, debug.documentType),
+                    elementKind.section ? renderDebugPill(T.sectionLabel, [elementKind.section, elementKind.sectionHandle ? `(${elementKind.sectionHandle})` : '', elementKind.sectionType ? `[${elementKind.sectionType}]` : ''].filter(Boolean).join(' ')) : '',
+                    elementKind.volume ? renderDebugPill(T.volumeLabel, [elementKind.volume, elementKind.volumeHandle ? `(${elementKind.volumeHandle})` : ''].filter(Boolean).join(' ')) : '',
+                    elementKind.group ? renderDebugPill(T.groupLabel, [elementKind.group, elementKind.groupHandle ? `(${elementKind.groupHandle})` : ''].filter(Boolean).join(' ')) : '',
                     productType ? renderDebugPill(T.productTypeLabel, [productType.name, productType.handle ? `(${productType.handle})` : ''].filter(Boolean).join(' ')) : '',
                     renderDebugList(T.variantSkusLabel, commerce.variantSkus),
                     renderDebugList(T.variantOptionsLabel, commerce.variantOptions),
@@ -419,6 +454,26 @@
                 return /[:：]$/.test(value) ? value : `${value}:`;
             }
 
+            function resultContext(hit, normalizedType) {
+                if (normalizedType === 'entry' && hit.section) {
+                    return {label: T.sectionLabel, value: hit.section};
+                }
+
+                if (normalizedType === 'asset' && hit.volume) {
+                    return {label: T.volumeLabel, value: hit.volume};
+                }
+
+                if (normalizedType === 'category' && hit.group) {
+                    return {label: T.groupLabel, value: hit.group};
+                }
+
+                if ((normalizedType === 'product' || normalizedType === 'variant') && hit.productType) {
+                    return {label: T.productTypeLabel, value: hit.productType};
+                }
+
+                return null;
+            }
+
             function renderSafeLinkOrText(url, label) {
                 const display = escapeDisplay(label || url || '');
                 const safeUrl = safeUrlAttribute(url);
@@ -453,6 +508,32 @@
                 });
 
                 return ids;
+            }
+
+            function countAppliedBoostRule(rule, searchData) {
+                if (!rule || !rule.id || !searchData || !Array.isArray(searchData.hits)) {
+                    return null;
+                }
+
+                const ruleId = Number(rule.id);
+                if (!Number.isFinite(ruleId)) {
+                    return null;
+                }
+
+                let count = 0;
+                searchData.hits.forEach(hit => {
+                    if (!hit || typeof hit !== 'object') {
+                        return;
+                    }
+
+                    const debug = hit._queryRuleDebug && typeof hit._queryRuleDebug === 'object' ? hit._queryRuleDebug : null;
+                    const boosts = debug && Array.isArray(debug.boosts) ? debug.boosts : [];
+                    if (boosts.some(boost => Number(boost.ruleId) === ruleId)) {
+                        count++;
+                    }
+                });
+
+                return count;
             }
 
             function getRedirectRule(queryRulesData) {
@@ -548,6 +629,7 @@
                         indexHandle: indexHandle,
                         wildcard: enableWildcard,
                         enrich: enableEnrich.checked,
+                        includeQueryRuleDebug: showQueryRules.checked,
                     }, enableEnrich.checked ? {
                         snippetMode: document.getElementById('snippetMode').value,
                         snippetLength: snippetLength,
@@ -628,14 +710,14 @@
                                     <span class="sm-test-diagnostic-label">${T.pattern}</span>
                                     <code>${Craft.escapeHtml(p.query)}</code>
                                 </div>
-                                <div class="sm-test-diagnostic-field sm-test-diagnostic-field--wide">
+                                ${p.siteIndependent ? '' : `<div class="sm-test-diagnostic-field sm-test-diagnostic-field--wide">
                                     <span class="sm-test-diagnostic-label">${T.liveOnSites}</span>
                                     <span class="sm-test-site-list-items">
                                         ${p.siteStatuses ? p.siteStatuses.filter(s => s.isLive).map(s => `
                                             <span class="sm-test-live-badge">${Craft.escapeHtml(s.siteName)}</span>
                                         `).join('') || '-' : '-'}
                                     </span>
-                                </div>
+                                </div>`}
                             </div>
                         </article>
                     `).join('')}
@@ -649,7 +731,6 @@
 
             function displayQueryRules(data, query, searchData) {
                 const container = document.getElementById('queryrules-results');
-                const boostedElementIds = resultElementIds(searchData, hit => hit.boosted === true);
 
                 if (data.success && data.rules && data.rules.length > 0) {
                     const actionClasses = {
@@ -677,9 +758,10 @@
                         }
                         const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);
                         const actionClass = actionClasses[r.actionType] || 'gray';
-                        const ruleApplied = r.actionType === 'boost_element' && boostedElementIds.has(Number(r.targetElementId));
-                        const resultStatus = r.actionType === 'boost_element'
-                            ? renderStatusLabel(ruleApplied ? T.yesLabel : T.noLabel, ruleApplied ? 'green' : 'red')
+                        const isBoostRule = ['boost_section', 'boost_category', 'boost_element'].includes(r.actionType);
+                        const appliedCount = isBoostRule ? countAppliedBoostRule(r, searchData) : null;
+                        const resultStatus = appliedCount !== null
+                            ? renderStatusLabel(appliedCount > 0 ? T.yesLabel : T.noLabel, appliedCount > 0 ? 'green' : 'red')
                             : '';
                         const targetMeta = [
                             r.targetElementId ? `ID: ${Craft.escapeHtml(r.targetElementId)}` : '',
@@ -746,7 +828,7 @@
                         data.hits.forEach(hit => {
                             const rawTitle = hit.title || T.untitled;
                             const rawDescription = hit.description || '';
-                            const rawExcerpt = hit.excerpt || hit.content || '';
+                            const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');
                             const titleTerms = getHitTerms(hit, 'title');
                             const descTerms = getHitTerms(hit, 'description');
                             const title = smHighlight(rawTitle, query, titleTerms);
@@ -763,10 +845,9 @@
                             const rawType = hit.type || T.entry;
                             const type = escapeDisplay(rawType);
                             const normalizedType = String(rawType || '').toLowerCase();
-                            const isCommerceHit = normalizedType === 'product' || normalizedType === 'variant';
-                            const productType = hit.productType || '';
-                            const contextLabel = isCommerceHit ? T.productTypeLabel : T.sectionLabel;
-                            const contextValue = isCommerceHit ? productType : hit.section;
+                            const context = resultContext(hit, normalizedType);
+                            const contextLabel = context ? context.label : '';
+                            const contextValue = context ? context.value : '';
                             const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : '';
                             const siteName = escapeDisplay(hit.siteName || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
@@ -812,6 +893,7 @@
                 ${matchedTerms.length > 0 ? `<strong>${T.termsLabel}</strong> ${matchedTerms.map(t => '<code class="sm-test-term">' + Craft.escapeHtml(t) + '</code>').join(' ')}` : ''}
                 ${matchedPhrases.length > 0 ? `${matchedTerms.length > 0 ? ' &bull; ' : ''}<strong>${T.phrasesLabel}</strong> ${matchedPhrases.map(p => '<code class="sm-test-phrase">' + Craft.escapeHtml(p) + '</code>').join(' ')}` : ''}
             </div>` : ''}
+            ${renderHitFields(hit)}
             ${hit._snippet ? `<div class="sm-test-debug-strip">
                 <span><span class="sm-test-debug-label">${T.snippetMatchedIn}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetSource || '-')}</strong></span>
                 <span><span class="sm-test-debug-label">${T.snippetMode}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetMode || '-')}</strong></span>

@@ -11,6 +11,8 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use craft\base\Component;
 use craft\base\ElementInterface;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
+use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -62,6 +64,7 @@ class EnrichmentService extends Component
         $parseMarkdownSnippets = (bool) ($options['parseMarkdownSnippets'] ?? false);
         $hideResultsWithoutUrl = (bool) ($options['hideResultsWithoutUrl'] ?? false);
         $includeDebugMeta = (bool) ($options['includeDebugMeta'] ?? false);
+        $includeQueryRuleDebug = (bool) ($options['includeQueryRuleDebug'] ?? false);
         $siteId = SearchSiteScopeHelper::scopedSiteId($options['siteId'] ?? null);
 
         // Batch-load every referenced element up front, grouped by element type
@@ -121,31 +124,18 @@ class EnrichmentService extends Component
                 );
 
                 $documentType = strtolower((string)($hit['type'] ?? $hit['elementType'] ?? $this->documentTypeForElement($element)));
-                $isCommerceHit = in_array($documentType, ['product', 'variant'], true);
                 $result = [
                     'id' => $elementId,
-                    'title' => $hit['title'] ?? $element->title ?? 'Untitled',
+                    'title' => $this->resultTitle($hit, $element),
                     'url' => $url,
                     'description' => $description,
-                    'descriptionSafe' => $description !== null ? \craft\helpers\Html::encode($description) : null,
                     'type' => $documentType,
                     'elementType' => $documentType,
+                    'fields' => SearchFieldValueHelper::fieldsFromHit($hit),
                     'score' => $hit['score'] ?? null,
                 ];
 
-                if (!$isCommerceHit) {
-                    $result['section'] = $hit['section'] ?? $this->getSectionName($element);
-                }
-
-                $sectionHandle = $hit['sectionHandle'] ?? $this->getSectionHandle($element);
-                if ($sectionHandle !== null && $sectionHandle !== '') {
-                    $result['sectionHandle'] = $sectionHandle;
-                }
-
-                $sectionType = $hit['sectionType'] ?? $this->getSectionType($element);
-                if ($sectionType !== null && $sectionType !== '') {
-                    $result['sectionType'] = $sectionType;
-                }
+                $result = array_merge($result, $this->elementKindMetadata($hit, $element, $documentType));
 
                 // Add index handle and backend for multi-index searches (debug only)
                 if ($includeDebugMeta && !empty($hit['_index'])) {
@@ -212,11 +202,6 @@ class EnrichmentService extends Component
                     }
                 }
 
-                $category = $hit['category'] ?? null;
-                if (!empty($category)) {
-                    $result['category'] = $category;
-                }
-
                 foreach (['productType', 'productTypeHandle'] as $commerceKey) {
                     if (isset($hit[$commerceKey]) && $hit[$commerceKey] !== '') {
                         $result[$commerceKey] = $hit[$commerceKey];
@@ -248,6 +233,10 @@ class EnrichmentService extends Component
                 // Add boosted flag (result score was boosted via query rule)
                 if (!empty($hit['boosted'])) {
                     $result['boosted'] = true;
+                }
+
+                if ($includeQueryRuleDebug && isset($hit['_queryRuleDebug']) && is_array($hit['_queryRuleDebug'])) {
+                    $result['_queryRuleDebug'] = $hit['_queryRuleDebug'];
                 }
 
                 $results[] = $result;
@@ -285,7 +274,6 @@ class EnrichmentService extends Component
     private function preloadElements(array $rawHits, ?int $siteId, array $indexHandles): array
     {
         $isCpRequest = Craft::$app->getRequest()->getIsCpRequest();
-        $status = $isCpRequest ? null : 'live';
         $currentSiteId = Craft::$app->getSites()->getCurrentSite()->id;
 
         $fallbackHandle = $indexHandles[0] ?? '';
@@ -331,9 +319,16 @@ class EnrichmentService extends Component
             foreach ($bySite as $resolvedSiteId => $idSet) {
                 /** @var \craft\elements\db\ElementQuery $query */
                 $query = $elementClass::find()
-                    ->id(array_keys($idSet))
-                    ->siteId($resolvedSiteId)
-                    ->status($status);
+                    ->id(array_keys($idSet));
+                if ($isCpRequest) {
+                    $query->status(null);
+                } else {
+                    SearchElementAvailabilityHelper::applyToQuery($query, $elementClass);
+                }
+
+                if (!SearchElementAvailabilityHelper::isSiteIndependent($elementClass)) {
+                    $query->siteId($resolvedSiteId);
+                }
 
                 foreach ($query->all() as $element) {
                     $map[$resolvedSiteId . ':' . $element->id] = $element;
@@ -343,11 +338,10 @@ class EnrichmentService extends Component
 
         // Defensive fallback: hits whose index/element type couldn't be resolved
         // keep the original per-element load so behaviour is never lost.
-        $criteria = $isCpRequest ? [] : ['status' => 'live'];
         foreach ($unresolved as $resolvedSiteId => $idSet) {
             foreach (array_keys($idSet) as $elementId) {
-                $element = Craft::$app->elements->getElementById($elementId, null, $resolvedSiteId, $criteria);
-                if ($element !== null) {
+                $element = Craft::$app->elements->getElementById($elementId, null, $resolvedSiteId);
+                if ($element !== null && ($isCpRequest || SearchElementAvailabilityHelper::isSearchable($element))) {
                     $map[$resolvedSiteId . ':' . $element->id] = $element;
                 }
             }
@@ -375,47 +369,16 @@ class EnrichmentService extends Component
         bool $parseMarkdownSnippets,
         ?array &$debugMeta = null,
     ): ?string {
-        // Collect candidate text sources in priority order
-        $candidates = [];
-        $snippetCandidates = [];
-        $snippetFrom = 'fallback';
+        // Collect safe display text separately from flattened search text.
+        // Transformer-generated excerpt/content can contain title, SKU, slug,
+        // and other metadata; only use it for content-match snippets.
+        $safeCandidates = $this->safeProseCandidates($hit, $element, $showCodeSnippets, $parseMarkdownSnippets);
+        $shortSnippetCandidates = $safeCandidates;
         $fullContentLen = null;
 
-        if (!empty($hit['description'])) {
-            $candidates[] = $hit['description'];
-            $snippetCandidates[] = $hit['description'];
-        }
-        if (!empty($hit['excerpt'])) {
-            $candidates[] = $hit['excerpt'];
-            $snippetCandidates[] = $hit['excerpt'];
-        }
         // Resolve which content field to use for snippets:
         // prose-only _contentClean when code snippets are disabled, full content otherwise
         $snippetContentField = (!$showCodeSnippets && !empty($hit['_contentClean'])) ? '_contentClean' : 'content';
-
-        if (!empty($hit[$snippetContentField])) {
-            $candidates[] = $this->htmlToPlainText($hit[$snippetContentField], false, $parseMarkdownSnippets);
-            $snippetCandidates[] = $this->htmlToPlainText($hit[$snippetContentField], false, $parseMarkdownSnippets);
-        }
-
-        // Try element fields (short description fields first)
-        if ($element !== null) {
-            $descriptionFields = ['description', 'excerpt', 'summary', 'intro', 'teaser'];
-            foreach ($descriptionFields as $fieldHandle) {
-                if (isset($element->$fieldHandle) && !empty($element->$fieldHandle)) {
-                    $value = $element->$fieldHandle;
-                    if (is_string($value) || $value instanceof \Stringable) {
-                        $plain = $this->htmlToPlainText((string) $value, false, $parseMarkdownSnippets);
-                        $candidates[] = $plain;
-                        $snippetCandidates[] = $plain;
-                    }
-                }
-            }
-        }
-
-        if (empty($candidates)) {
-            return null;
-        }
 
         $snippetSource = $this->resolveSnippetSource($hit);
         $snippetTerms = $this->resolveSnippetTerms($hit, $matchedTerms, $query, $indexHandle, $element, $snippetSource);
@@ -446,8 +409,8 @@ class EnrichmentService extends Component
                     }
                 }
             } else {
-                // Fall back to short candidates (description, excerpt)
-                foreach ($snippetCandidates as $text) {
+                // For title/metadata matches, only use safe prose fields.
+                foreach ($shortSnippetCandidates as $text) {
                     $snippet = $this->findSnippet($text, $snippetTerms, $snippetLength, $snippetMode);
                     if ($snippet !== null) {
                         $snippetFrom = 'short';
@@ -455,25 +418,234 @@ class EnrichmentService extends Component
                         return $snippet;
                     }
                 }
-
-                // If still not found, try full content from documentData
-                $fullContent = !empty($hit[$snippetContentField]) ? $this->htmlToPlainText($hit[$snippetContentField], false, $parseMarkdownSnippets) : null;
-                $fullContentLen = $fullContent !== null ? mb_strlen($fullContent) : null;
-                if ($fullContent !== null) {
-                    $snippet = $this->findSnippet($fullContent, $snippetTerms, $snippetLength, $snippetMode);
-                    if ($snippet !== null) {
-                        $snippetFrom = 'content';
-                        $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, $snippetFrom, $fullContentLen);
-                        return $snippet;
-                    }
-                }
             }
         }
 
-        // Fallback: return the first candidate truncated
-        $snippetFrom = 'fallback';
+        if (empty($safeCandidates)) {
+            $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, 'none', $fullContentLen);
+            return null;
+        }
+
+        // Description fallback: return the first safe readable description candidate truncated.
+        $snippetFrom = 'description';
         $this->setSnippetDebugMeta($debugMeta, $snippetSource, $snippetMode, $snippetFrom, $fullContentLen);
-        return $this->truncate(trim($candidates[0]), $snippetLength);
+        return $this->truncate(trim($safeCandidates[0]), $snippetLength);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function safeProseCandidates(array $hit, mixed $element, bool $showCodeSnippets, bool $parseMarkdownSnippets): array
+    {
+        $candidates = [];
+
+        $fieldDescription = is_array($hit['_fields'] ?? null) ? ($hit['_fields']['description'] ?? null) : null;
+        if (!empty($fieldDescription) && is_string($fieldDescription) && $this->isSafeHitDescription($fieldDescription, $hit, $parseMarkdownSnippets)) {
+            $candidates[] = $this->htmlToPlainText($fieldDescription, $showCodeSnippets, $parseMarkdownSnippets);
+        }
+
+        if ($element instanceof ElementInterface) {
+            $candidates = array_merge($candidates, $this->elementProseCandidates($element, $showCodeSnippets, $parseMarkdownSnippets));
+
+            $parentProduct = $this->parentProductForProse($element);
+            if ($parentProduct !== null) {
+                $candidates = array_merge($candidates, $this->elementProseCandidates($parentProduct, $showCodeSnippets, $parseMarkdownSnippets));
+            }
+        }
+
+        return $this->uniqueNonEmptyCandidates($candidates);
+    }
+
+    /**
+     * @return string[]
+     */
+    private function elementProseCandidates(ElementInterface $element, bool $showCodeSnippets, bool $parseMarkdownSnippets): array
+    {
+        $candidates = [];
+        $layoutFields = $this->layoutFieldsByHandle($element);
+        $preferredHandles = [
+            'description',
+            'excerpt',
+            'summary',
+            'intro',
+            'teaser',
+            'body',
+            'copy',
+            'alt',
+            'altText',
+            'alternativeText',
+            'alternative',
+            'caption',
+        ];
+
+        foreach ($preferredHandles as $handle) {
+            $candidate = $this->elementFieldProse($element, $handle, $layoutFields[$handle] ?? null, $showCodeSnippets, $parseMarkdownSnippets, true);
+            if ($candidate !== null) {
+                $candidates[] = $candidate;
+            }
+        }
+
+        foreach ($layoutFields as $handle => $field) {
+            if (in_array($handle, $preferredHandles, true) || !$this->isSearchableProseField($field, $handle)) {
+                continue;
+            }
+
+            $candidate = $this->elementFieldProse($element, $handle, $field, $showCodeSnippets, $parseMarkdownSnippets, false);
+            if ($candidate !== null) {
+                $candidates[] = $candidate;
+            }
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * @return array<string, \craft\base\Field>
+     */
+    private function layoutFieldsByHandle(ElementInterface $element): array
+    {
+        $layout = $element->getFieldLayout();
+        if ($layout === null) {
+            return [];
+        }
+
+        $fields = [];
+        foreach ($layout->getCustomFields() as $field) {
+            if ($field instanceof \craft\base\Field && $field->handle !== null && $field->handle !== '') {
+                $fields[$field->handle] = $field;
+            }
+        }
+
+        return $fields;
+    }
+
+    private function elementFieldProse(
+        ElementInterface $element,
+        string $handle,
+        ?\craft\base\Field $field,
+        bool $showCodeSnippets,
+        bool $parseMarkdownSnippets,
+        bool $preferred,
+    ): ?string {
+        if ($this->isNoisyProseFieldHandle($handle)) {
+            return null;
+        }
+
+        try {
+            $value = $field !== null ? $element->getFieldValue($handle) : ($element->{$handle} ?? null);
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (!is_string($value) && !$value instanceof \Stringable) {
+            return null;
+        }
+
+        $plain = $this->htmlToPlainText((string)$value, $showCodeSnippets, $parseMarkdownSnippets);
+        if (!$this->looksLikeProse($plain, $preferred)) {
+            return null;
+        }
+
+        return $plain;
+    }
+
+    private function isSearchableProseField(\craft\base\Field $field, string $handle): bool
+    {
+        if (!$field->searchable || $this->isNoisyProseFieldHandle($handle)) {
+            return false;
+        }
+
+        return is_a($field, 'craft\\fields\\PlainText')
+            || is_a($field, 'craft\\ckeditor\\Field')
+            || is_a($field, 'craft\\redactor\\Field')
+            || str_contains(strtolower($field::class), 'markdown');
+    }
+
+    private function isNoisyProseFieldHandle(string $handle): bool
+    {
+        return preg_match('/(?:^|_|\b)(title|slug|uri|url|handle|sku|code|id|type|variant|option|price|stock|status|enabled|available|weight|height|width|color|size|email|phone|date)(?:$|_|\b)/i', $handle) === 1;
+    }
+
+    private function looksLikeProse(string $text, bool $preferred): bool
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return false;
+        }
+
+        if (preg_match('/^(?:https?:\/\/|\/|[A-Z0-9][A-Z0-9_-]{2,})$/i', $text) === 1) {
+            return false;
+        }
+
+        if ($preferred) {
+            return true;
+        }
+
+        return str_word_count($text) >= 4 || mb_strlen($text) >= 40;
+    }
+
+    private function parentProductForProse(ElementInterface $element): ?ElementInterface
+    {
+        foreach (['getProduct', 'product'] as $name) {
+            try {
+                $value = method_exists($element, $name) ? $element->{$name}() : ($element->{$name} ?? null);
+            } catch (\Throwable) {
+                continue;
+            }
+
+            if ($value instanceof ElementInterface && $value !== $element) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param string[] $candidates
+     * @return string[]
+     */
+    private function uniqueNonEmptyCandidates(array $candidates): array
+    {
+        $unique = [];
+        foreach ($candidates as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            $unique[$this->normalizedSnippetText($candidate)] = $candidate;
+        }
+
+        return array_values($unique);
+    }
+
+    private function isSafeHitDescription(string $description, array $hit, bool $parseMarkdownSnippets): bool
+    {
+        $description = $this->htmlToPlainText($description, false, $parseMarkdownSnippets);
+        if ($description === '') {
+            return false;
+        }
+
+        foreach (['content', '_contentClean', 'excerpt'] as $field) {
+            if (empty($hit[$field]) || !is_string($hit[$field])) {
+                continue;
+            }
+
+            $candidate = $this->htmlToPlainText($hit[$field], false, $parseMarkdownSnippets);
+            if ($this->normalizedSnippetText($description) === $this->normalizedSnippetText($candidate)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function normalizedSnippetText(string $text): string
+    {
+        $text = mb_strtolower(trim($text));
+
+        return (string) preg_replace('/\s+/', ' ', $text);
     }
 
     private function setSnippetDebugMeta(
@@ -809,36 +981,85 @@ class EnrichmentService extends Component
         return $length;
     }
 
+    private function resultTitle(array $hit, ElementInterface $element): string
+    {
+        $hitTitle = $this->stringValueFromMixed($hit['title'] ?? null);
+        if ($hitTitle !== '') {
+            return $hitTitle;
+        }
+
+        if ($element instanceof \craft\elements\User) {
+            foreach (['fullName', 'username', 'email'] as $property) {
+                $value = $this->stringValueFromMixed($element->{$property} ?? null);
+                if ($value !== '') {
+                    return $value;
+                }
+            }
+
+            return $element->id !== null ? '#' . $element->id : '';
+        }
+
+        $elementTitle = $this->stringValueFromMixed($element->title ?? null);
+
+        return $elementTitle !== '' ? $elementTitle : 'Untitled';
+    }
+
+    private function stringValueFromMixed(mixed $value): string
+    {
+        return is_scalar($value) ? trim((string)$value) : '';
+    }
+
     /**
-     * Get section/type name for grouping
+     * @return array<string, string>
      */
-    private function getSectionName(mixed $element): string
+    private function elementKindMetadata(array $hit, ElementInterface $element, string $documentType): array
     {
-        // For entries, get the section name (use explicit getter to avoid throw on deleted sections)
-        if ($element instanceof \craft\elements\Entry) {
-            return $element->getSection()?->name ?? 'Entries';
-        }
-
-        // For other elements, use the display name
-        return $element::displayName();
+        return match ($documentType) {
+            'entry' => $this->entryMetadata($hit, $element),
+            'asset' => $this->assetMetadata($hit, $element),
+            'category' => $this->categoryMetadata($hit, $element),
+            default => [],
+        };
     }
 
-    private function getSectionHandle(ElementInterface $element): ?string
+    /**
+     * @return array<string, string>
+     */
+    private function entryMetadata(array $hit, ElementInterface $element): array
     {
-        if ($element instanceof \craft\elements\Entry) {
-            return $element->getSection()?->handle;
-        }
+        $section = $element instanceof \craft\elements\Entry ? $element->getSection() : null;
 
-        return null;
+        return array_filter([
+            'section' => $this->stringValueFromMixed($hit['section'] ?? null) ?: $section?->name,
+            'sectionHandle' => $this->stringValueFromMixed($hit['sectionHandle'] ?? null) ?: $section?->handle,
+            'sectionType' => $this->stringValueFromMixed($hit['sectionType'] ?? null) ?: $section?->type,
+        ], static fn(?string $value): bool => $value !== null && $value !== '');
     }
 
-    private function getSectionType(ElementInterface $element): ?string
+    /**
+     * @return array<string, string>
+     */
+    private function assetMetadata(array $hit, ElementInterface $element): array
     {
-        if ($element instanceof \craft\elements\Entry) {
-            return $element->getSection()?->type;
-        }
+        $volume = $element instanceof \craft\elements\Asset ? $element->getVolume() : null;
 
-        return null;
+        return array_filter([
+            'volume' => $this->stringValueFromMixed($hit['volume'] ?? null) ?: $volume?->name,
+            'volumeHandle' => $this->stringValueFromMixed($hit['volumeHandle'] ?? null) ?: $volume?->handle,
+        ], static fn(?string $value): bool => $value !== null && $value !== '');
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function categoryMetadata(array $hit, ElementInterface $element): array
+    {
+        $group = $element instanceof \craft\elements\Category ? $element->getGroup() : null;
+
+        return array_filter([
+            'group' => $this->stringValueFromMixed($hit['group'] ?? null) ?: $group?->name,
+            'groupHandle' => $this->stringValueFromMixed($hit['groupHandle'] ?? null) ?: $group?->handle,
+        ], static fn(?string $value): bool => $value !== null && $value !== '');
     }
 
     private function documentTypeForElement(ElementInterface $element): string
@@ -932,6 +1153,12 @@ class EnrichmentService extends Component
     {
         if (!empty($hit['matchedIn']) && is_array($hit['matchedIn'])) {
             if (in_array('content', $hit['matchedIn'], true)) {
+                $contentTerms = $hit['matchedTerms']['content'] ?? [];
+                $titleTerms = $hit['matchedTerms']['title'] ?? [];
+                if ($this->contentTermsOnlyRepeatTitle($hit, is_array($contentTerms) ? $contentTerms : [], is_array($titleTerms) ? $titleTerms : [])) {
+                    return 'title';
+                }
+
                 return 'content';
             }
             if (in_array('title', $hit['matchedIn'], true)) {
@@ -940,6 +1167,38 @@ class EnrichmentService extends Component
         }
 
         return 'content';
+    }
+
+    /**
+     * Flattened transformer content includes title/native identity values for
+     * searchability. When those same terms also appear in title, treat the hit as
+     * a title match so description fallback uses safe prose, not the content bag.
+     *
+     * @param string[] $contentTerms
+     * @param string[] $titleTerms
+     */
+    private function contentTermsOnlyRepeatTitle(array $hit, array $contentTerms, array $titleTerms): bool
+    {
+        if (empty($contentTerms)) {
+            return !empty($titleTerms);
+        }
+
+        $title = $this->stringValueFromMixed($hit['title'] ?? null);
+        if ($title === '') {
+            return false;
+        }
+
+        foreach ($contentTerms as $term) {
+            if (!is_string($term) || $term === '') {
+                continue;
+            }
+
+            if (!in_array($term, $titleTerms, true) && mb_stripos($title, $term) === false) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function resolveTitleMatchTerms(

@@ -19,7 +19,8 @@ use lindemannrock\base\helpers\PluginThemeStyleHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
-use lindemannrock\searchmanager\helpers\PromotionLiveElementQueryHelper;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
+use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
@@ -250,6 +251,10 @@ class SettingsController extends Controller
             if ($indexSiteIds !== null) {
                 $searchOptions['siteId'] = count($indexSiteIds) === 1 ? $indexSiteIds[0] : $indexSiteIds;
             }
+            $includeQueryRuleDebug = (bool)Craft::$app->getRequest()->getBodyParam('includeQueryRuleDebug', false);
+            if ($includeQueryRuleDebug) {
+                $searchOptions['includeQueryRuleDebug'] = true;
+            }
 
             // Add wildcard support (auto-append * if enabled and no wildcard present)
             if ($wildcard && !str_contains($query, '*')) {
@@ -292,6 +297,7 @@ class SettingsController extends Controller
                         'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
                         'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
                         'includeDebugMeta' => $includeDebugMeta,
+                        'includeQueryRuleDebug' => $includeQueryRuleDebug,
                     ]
                 );
 
@@ -312,7 +318,7 @@ class SettingsController extends Controller
                         }
                     }
 
-                    $enhancedHits[] = SearchHitPresenter::present($hit);
+                    $enhancedHits[] = SearchHitPresenter::present($hit, $includeQueryRuleDebug);
                 }
             } else {
                 // Manual hydration — load elements for raw backend hit display
@@ -395,7 +401,8 @@ class SettingsController extends Controller
                 $enhancedHits = [];
                 foreach ($results['hits'] ?? [] as $hit) {
                     if (is_array($hit)) {
-                        $enhancedHits[] = SearchHitPresenter::present($hit);
+                        $hit = SearchFieldValueHelper::exposeFields($hit);
+                        $enhancedHits[] = SearchHitPresenter::present($hit, $includeQueryRuleDebug);
                     }
                 }
             }
@@ -478,6 +485,11 @@ class SettingsController extends Controller
             $debug['documentType'] = $documentType;
         }
 
+        $elementKind = $this->settingsTestElementKindDebug($hit);
+        if (!empty($elementKind)) {
+            $debug['elementKind'] = $elementKind;
+        }
+
         $commerce = $this->settingsTestCommerceDebug($hit);
         if (!empty($commerce)) {
             $debug['commerce'] = $commerce;
@@ -489,6 +501,39 @@ class SettingsController extends Controller
         }
 
         return $debug;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     * @return array<string, mixed>
+     */
+    private function settingsTestElementKindDebug(array $hit): array
+    {
+        $type = strtolower((string)($hit['elementType'] ?? $hit['type'] ?? ''));
+
+        if ($type === 'entry') {
+            return array_filter([
+                'section' => $this->settingsTestScalarDebugValue($hit['section'] ?? null),
+                'sectionHandle' => $this->settingsTestScalarDebugValue($hit['sectionHandle'] ?? null),
+                'sectionType' => $this->settingsTestScalarDebugValue($hit['sectionType'] ?? null),
+            ], static fn(?string $value): bool => $value !== null);
+        }
+
+        if ($type === 'asset') {
+            return array_filter([
+                'volume' => $this->settingsTestScalarDebugValue($hit['volume'] ?? null),
+                'volumeHandle' => $this->settingsTestScalarDebugValue($hit['volumeHandle'] ?? null),
+            ], static fn(?string $value): bool => $value !== null);
+        }
+
+        if ($type === 'category') {
+            return array_filter([
+                'group' => $this->settingsTestScalarDebugValue($hit['group'] ?? null),
+                'groupHandle' => $this->settingsTestScalarDebugValue($hit['groupHandle'] ?? null),
+            ], static fn(?string $value): bool => $value !== null);
+        }
+
+        return [];
     }
 
     /**
@@ -537,7 +582,7 @@ class SettingsController extends Controller
     {
         $fields = [];
         $layoutFields = $this->settingsTestLayoutFieldsByHandle($element);
-        foreach ($hit as $key => $value) {
+        foreach (SearchFieldValueHelper::fieldsFromHit($hit) as $key => $value) {
             if (!$this->settingsTestCanShowCustomIndexedField((string)$key)) {
                 continue;
             }
@@ -742,6 +787,12 @@ class SettingsController extends Controller
             'elementtype',
             'type',
             'section',
+            'sectionhandle',
+            'sectiontype',
+            'volume',
+            'volumehandle',
+            'group',
+            'grouphandle',
             'thumbnail',
             'backend',
             'datecreated',
@@ -1004,14 +1055,16 @@ class SettingsController extends Controller
                 // Get element status per site for display
                 $siteStatuses = [];
                 if ($element) {
-                    foreach ($sites as $site) {
-                        $elementClass = $promotion->elementType ?? get_class($element);
-                        $cacheKey = $this->elementCacheKey($elementClass, $site->id, (int)$promotion->elementId);
-                        $siteStatuses[] = [
-                            'siteId' => $site->id,
-                            'siteName' => $site->name,
-                            'isLive' => isset($promotionLiveElements[$cacheKey]),
-                        ];
+                    $elementClass = $promotion->elementType ?? get_class($element);
+                    if (!SearchElementAvailabilityHelper::isSiteIndependent($elementClass)) {
+                        foreach ($sites as $site) {
+                            $cacheKey = $this->elementCacheKey($elementClass, $site->id, (int)$promotion->elementId);
+                            $siteStatuses[] = [
+                                'siteId' => $site->id,
+                                'siteName' => $site->name,
+                                'isLive' => isset($promotionLiveElements[$cacheKey]),
+                            ];
+                        }
                     }
                 }
 
@@ -1021,11 +1074,12 @@ class SettingsController extends Controller
                     'matchType' => $promotion->matchType,
                     'position' => $promotion->position,
                     'elementId' => $promotion->elementId,
-                    'elementTitle' => $element ? $element->title : Craft::t('search-manager', 'Element not found'),
+                    'elementTitle' => $element ? $this->elementDisplayTitle($element) : Craft::t('search-manager', 'Element not found'),
                     'elementEditUrl' => $element ? $element->getCpEditUrl() : '#',
                     'elementType' => $promotion->elementType,
                     'elementTypeLabel' => $this->promotionElementTypeLabel($promotion->elementType, $element),
                     'enabled' => $promotion->enabled,
+                    'siteIndependent' => $element ? SearchElementAvailabilityHelper::isSiteIndependent($promotion->elementType ?? get_class($element)) : false,
                     'siteStatuses' => $siteStatuses,
                 ];
             }
@@ -1073,12 +1127,32 @@ class SettingsController extends Controller
                 $elementInfo = null;
                 $targetElementId = null;
                 $targetElementType = null;
+                $targetSectionHandle = null;
+                $targetCategoryId = null;
+                $targetCategoryHandle = null;
 
                 switch ($rule->actionType) {
                     case QueryRule::ACTION_SYNONYM:
                         $effectDescription = $rule->getActionDescription();
                         $terms = $rule->getSynonyms();
                         $synonyms = array_merge($synonyms, $terms);
+                        break;
+
+                    case QueryRule::ACTION_BOOST_SECTION:
+                        $effectDescription = $rule->getActionDescription();
+                        if (isset($rule->actionValue['sectionHandle']) && is_string($rule->actionValue['sectionHandle'])) {
+                            $targetSectionHandle = $rule->actionValue['sectionHandle'];
+                        }
+                        break;
+
+                    case QueryRule::ACTION_BOOST_CATEGORY:
+                        $effectDescription = $rule->getActionDescription();
+                        if (isset($rule->actionValue['categoryId']) && is_numeric($rule->actionValue['categoryId'])) {
+                            $targetCategoryId = (int)$rule->actionValue['categoryId'];
+                        }
+                        if (isset($rule->actionValue['categoryHandle']) && is_string($rule->actionValue['categoryHandle'])) {
+                            $targetCategoryHandle = $rule->actionValue['categoryHandle'];
+                        }
                         break;
 
                     case QueryRule::ACTION_BOOST_ELEMENT:
@@ -1126,6 +1200,9 @@ class SettingsController extends Controller
                     'elementInfo' => $elementInfo ?? null,
                     'targetElementId' => $targetElementId,
                     'targetElementType' => $targetElementType,
+                    'targetSectionHandle' => $targetSectionHandle,
+                    'targetCategoryId' => $targetCategoryId,
+                    'targetCategoryHandle' => $targetCategoryHandle,
                     'editUrl' => Craft::$app->getUrlManager()->createUrl('search-manager/query-rules/edit/' . $rule->id),
                 ];
             }
@@ -1290,6 +1367,14 @@ class SettingsController extends Controller
                 continue;
             }
 
+            if (SearchElementAvailabilityHelper::isSiteIndependent($elementClass)) {
+                $groupKey = $elementClass . ':*';
+                $idsByTypeAndSite[$groupKey]['class'] = $elementClass;
+                $idsByTypeAndSite[$groupKey]['siteId'] = null;
+                $idsByTypeAndSite[$groupKey]['ids'][(int)$promotion->elementId] = (int)$promotion->elementId;
+                continue;
+            }
+
             foreach ($sites as $site) {
                 $groupKey = $elementClass . ':' . $site->id;
                 $idsByTypeAndSite[$groupKey]['class'] = $elementClass;
@@ -1303,11 +1388,13 @@ class SettingsController extends Controller
             /** @var class-string<ElementInterface> $elementClass */
             $elementClass = $group['class'];
             $elementQuery = $elementClass::find()
-                ->id(array_values($group['ids']))
-                ->siteId($group['siteId']);
-            foreach (PromotionLiveElementQueryHelper::apply($elementQuery, $elementClass)->all() as $element) {
+                ->id(array_values($group['ids']));
+            if ($group['siteId'] !== null) {
+                $elementQuery->siteId($group['siteId']);
+            }
+            foreach (SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all() as $element) {
                 if ($element instanceof ElementInterface) {
-                    $elements[$this->elementCacheKey($elementClass, $group['siteId'], (int)$element->id)] = $element;
+                    $elements[$this->elementCacheKey($elementClass, $group['siteId'] ?? null, (int)$element->id)] = $element;
                 }
             }
         }
@@ -1378,6 +1465,26 @@ class SettingsController extends Controller
         $labels = TargetElementTypeHelper::translatedLabels();
 
         return $labels[$elementClass] ?? ($this->isElementClass($elementClass) ? $elementClass::displayName() : $elementClass);
+    }
+
+    private function elementDisplayTitle(ElementInterface $element): string
+    {
+        if ($element instanceof \craft\elements\User) {
+            foreach (['fullName', 'username', 'email'] as $property) {
+                $value = $element->{$property} ?? null;
+                if (is_scalar($value) && trim((string)$value) !== '') {
+                    return trim((string)$value);
+                }
+            }
+
+            return $element->id !== null ? '#' . $element->id : '';
+        }
+
+        $title = $element->title ?? null;
+
+        return is_scalar($title) && trim((string)$title) !== ''
+            ? trim((string)$title)
+            : Craft::t('search-manager', 'Untitled');
     }
 
     /**

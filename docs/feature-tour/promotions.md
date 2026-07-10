@@ -128,6 +128,8 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
 }
 ```
 
+Promoted hits use the same metadata contract as indexed hits. Entries include `section`, `sectionHandle`, and `sectionType`; Assets include `volume` and `volumeHandle`; Categories include `group` and `groupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include a fake `section`.
+
 ## Analytics
 
 When analytics is enabled, Search Manager tracks promotion impressions, positions, and which queries triggered each promotion. This data appears in the Analytics > Promotions tab. See [Analytics](analytics.md).

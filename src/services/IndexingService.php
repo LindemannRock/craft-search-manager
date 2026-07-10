@@ -12,6 +12,7 @@ use Craft;
 use craft\base\ElementInterface;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\IndexEvent;
+use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\jobs\IndexElementJob;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -376,41 +377,7 @@ class IndexingService extends Component
      */
     public function shouldIndexElementForSite(ElementInterface $element): bool
     {
-        // Skip drafts and revisions
-        if ($element->getIsDraft() || $element->getIsRevision()) {
-            return false;
-        }
-
-        // Must be enabled globally AND for this site
-        if (!$element->enabled || !$element->getEnabledForSite()) {
-            return false;
-        }
-
-        // Check status based on element type
-        $status = $element->getStatus();
-
-        // Entries: must be live (not disabled, pending, or expired)
-        if ($element instanceof \craft\elements\Entry) {
-            return $status === \craft\elements\Entry::STATUS_LIVE;
-        }
-
-        // Assets: must be enabled
-        if ($element instanceof \craft\elements\Asset) {
-            return $status === \craft\base\Element::STATUS_ENABLED;
-        }
-
-        // Categories: must be enabled
-        if ($element instanceof \craft\elements\Category) {
-            return $status === \craft\base\Element::STATUS_ENABLED;
-        }
-
-        // Users: must be active
-        if ($element instanceof \craft\elements\User) {
-            return $status === \craft\elements\User::STATUS_ACTIVE;
-        }
-
-        // Default: check if enabled status
-        return $status === \craft\base\Element::STATUS_ENABLED;
+        return SearchElementAvailabilityHelper::isSearchable($element);
     }
 
     // =========================================================================

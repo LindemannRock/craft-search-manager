@@ -19,10 +19,14 @@ class SearchHitPresenter
      * @param array<string, mixed> $hit
      * @return array<string, mixed>
      */
-    public static function present(array $hit): array
+    public static function present(array $hit, bool $includeQueryRuleDebug = false): array
     {
         $hit = SearchHitIdentityHelper::normalizeHit($hit);
+        $hit = SearchFieldValueHelper::exposeFields($hit);
         unset($hit['_elementType']);
+        if (!$includeQueryRuleDebug) {
+            unset($hit['_queryRuleDebug']);
+        }
 
         $ordered = [];
         foreach ([
@@ -41,6 +45,12 @@ class SearchHitPresenter
             'section',
             'sectionHandle',
             'sectionType',
+            'volume',
+            'volumeHandle',
+            'group',
+            'groupHandle',
+            'productType',
+            'productTypeHandle',
             'promoted',
             'position',
         ] as $key) {
@@ -70,7 +80,7 @@ class SearchHitPresenter
      * @param array<string, mixed> $results
      * @return array<string, mixed>
      */
-    public static function presentResults(array $results): array
+    public static function presentResults(array $results, bool $includeQueryRuleDebug = false): array
     {
         if (empty($results['hits']) || !is_array($results['hits'])) {
             return $results;
@@ -78,7 +88,7 @@ class SearchHitPresenter
 
         foreach ($results['hits'] as &$hit) {
             if (is_array($hit)) {
-                $hit = self::present($hit);
+                $hit = self::present($hit, $includeQueryRuleDebug);
             }
         }
         unset($hit);

@@ -294,6 +294,129 @@ class QueryRuleService extends Component
     }
 
     /**
+     * Build settings-test attribution targets for boost rules.
+     *
+     * @param QueryRule[]|null $matchedRules
+     * @return array{sections: array<string, array<int, array<string, mixed>>>, categories: array<int, array<int, array<string, mixed>>>, elements: array<int, array<int, array<string, mixed>>>}
+     */
+    private function getDebugBoostTargets(
+        string $query,
+        ?string $indexHandle,
+        ?int $siteId,
+        ?array $matchedRules,
+    ): array {
+        $rules = $matchedRules ?? $this->getMatchingRules($query, $indexHandle, $siteId);
+        $categoryHandleIds = $this->resolveCategoryHandleBoostIds($rules, $siteId);
+        $categoryHandlesById = $this->resolveCategoryHandlesById($rules, $categoryHandleIds, $siteId);
+
+        $targets = [
+            'sections' => [],
+            'categories' => [],
+            'elements' => [],
+        ];
+
+        foreach ($rules as $rule) {
+            switch ($rule->actionType) {
+                case QueryRule::ACTION_BOOST_SECTION:
+                    $sectionHandle = $rule->actionValue['sectionHandle'] ?? null;
+                    if (is_string($sectionHandle) && $sectionHandle !== '') {
+                        $targets['sections'][$sectionHandle][] = [
+                            'ruleId' => (int)$rule->id,
+                            'actionType' => $rule->actionType,
+                            'multiplier' => $rule->getBoostMultiplier(),
+                            'sectionHandle' => $sectionHandle,
+                        ];
+                    }
+                    break;
+
+                case QueryRule::ACTION_BOOST_CATEGORY:
+                    $categoryId = null;
+                    $categoryHandle = $rule->actionValue['categoryHandle'] ?? null;
+                    if (isset($rule->actionValue['categoryId']) && is_numeric($rule->actionValue['categoryId'])) {
+                        $categoryId = (int)$rule->actionValue['categoryId'];
+                    } elseif (is_string($categoryHandle) && $categoryHandle !== '') {
+                        $categoryId = $categoryHandleIds[$categoryHandle] ?? null;
+                    }
+
+                    if ($categoryId !== null) {
+                        $targets['categories'][$categoryId][] = [
+                            'ruleId' => (int)$rule->id,
+                            'actionType' => $rule->actionType,
+                            'multiplier' => $rule->getBoostMultiplier(),
+                            'categoryId' => $categoryId,
+                            'categoryHandle' => is_string($categoryHandle) && $categoryHandle !== ''
+                                ? $categoryHandle
+                                : ($categoryHandlesById[$categoryId] ?? null),
+                        ];
+                    }
+                    break;
+
+                case QueryRule::ACTION_BOOST_ELEMENT:
+                    $elementId = $rule->actionValue['elementId'] ?? null;
+                    if (is_numeric($elementId)) {
+                        $debug = [
+                            'ruleId' => (int)$rule->id,
+                            'actionType' => $rule->actionType,
+                            'multiplier' => $rule->getBoostMultiplier(),
+                            'elementId' => (int)$elementId,
+                        ];
+                        if (isset($rule->actionValue['elementType']) && is_string($rule->actionValue['elementType'])) {
+                            $debug['elementType'] = $rule->actionValue['elementType'];
+                        }
+                        $targets['elements'][(int)$elementId][] = $debug;
+                    }
+                    break;
+            }
+        }
+
+        return $targets;
+    }
+
+    /**
+     * @param QueryRule[] $rules
+     * @param array<string, int> $categoryHandleIds
+     * @return array<int, string>
+     */
+    private function resolveCategoryHandlesById(array $rules, array $categoryHandleIds, ?int $siteId): array
+    {
+        $ids = [];
+        foreach ($rules as $rule) {
+            if ($rule->actionType !== QueryRule::ACTION_BOOST_CATEGORY) {
+                continue;
+            }
+
+            if (isset($rule->actionValue['categoryId']) && is_numeric($rule->actionValue['categoryId'])) {
+                $ids[(int)$rule->actionValue['categoryId']] = true;
+                continue;
+            }
+
+            $categoryHandle = $rule->actionValue['categoryHandle'] ?? null;
+            if (is_string($categoryHandle) && isset($categoryHandleIds[$categoryHandle])) {
+                $ids[$categoryHandleIds[$categoryHandle]] = true;
+            }
+        }
+
+        if (empty($ids)) {
+            return [];
+        }
+
+        $query = Category::find()
+            ->id(array_keys($ids))
+            ->status(null);
+
+        if ($siteId !== null) {
+            $query->siteId($siteId);
+        }
+
+        $handles = [];
+        foreach ($query->all() as $category) {
+            $handles[(int)$category->id] = (string)$category->slug;
+        }
+
+        return $handles;
+    }
+
+    /**
      * Apply score boosts to search results
      *
      * @param array $results Array of results with 'elementId' and 'score' keys
@@ -309,8 +432,16 @@ class QueryRuleService extends Component
         ?string $indexHandle = null,
         ?int $siteId = null,
         ?array $matchedRules = null,
+        bool $includeDebugAttribution = false,
     ): array {
         $boosts = $this->getBoostMultipliers($query, $indexHandle, $siteId, $matchedRules);
+        $debugBoosts = $includeDebugAttribution
+            ? $this->getDebugBoostTargets($query, $indexHandle, $siteId, $matchedRules)
+            : [
+                'sections' => [],
+                'categories' => [],
+                'elements' => [],
+            ];
 
         if (empty($boosts['sections']) && empty($boosts['categories']) && empty($boosts['elements'])) {
             return $results;
@@ -326,7 +457,7 @@ class QueryRuleService extends Component
             ? $this->preloadBoostElements($results, $indexHandle, $siteId)
             : [];
         $categoryBoostsByElement = !empty($boosts['categories'])
-            ? $this->preloadCategoryBoosts($elementMap, $boosts['categories'])
+            ? $this->preloadCategoryBoostMatches($elementMap, $boosts['categories'])
             : [];
 
         foreach ($results as &$result) {
@@ -336,10 +467,17 @@ class QueryRuleService extends Component
             }
 
             $multiplier = 1.0;
+            $debugAttributions = [];
 
             // Check element-specific boost
             if (isset($boosts['elements'][$elementId])) {
-                $multiplier *= $boosts['elements'][$elementId];
+                $elementMultiplier = (float)$boosts['elements'][$elementId];
+                $multiplier *= $elementMultiplier;
+                if ($includeDebugAttribution && isset($debugBoosts['elements'][$elementId])) {
+                    foreach ($debugBoosts['elements'][$elementId] as $debugBoost) {
+                        $debugAttributions[] = $debugBoost;
+                    }
+                }
             }
 
             // Check section/category boosts (requires loading element)
@@ -352,13 +490,36 @@ class QueryRuleService extends Component
                     if (!empty($boosts['sections']) && $element instanceof Entry) {
                         $sectionHandle = $element->getSection()->handle ?? null;
                         if ($sectionHandle && isset($boosts['sections'][$sectionHandle])) {
-                            $multiplier *= $boosts['sections'][$sectionHandle];
+                            $sectionMultiplier = (float)$boosts['sections'][$sectionHandle];
+                            $multiplier *= $sectionMultiplier;
+                            if ($includeDebugAttribution && isset($debugBoosts['sections'][$sectionHandle])) {
+                                foreach ($debugBoosts['sections'][$sectionHandle] as $debugBoost) {
+                                    $debugAttributions[] = $debugBoost;
+                                }
+                            }
                         }
                     }
 
                     // Category boost - check if element is in a boosted category
+                    if (!empty($boosts['categories']) && $element instanceof Category && isset($boosts['categories'][$elementId])) {
+                        $categoryMultiplier = (float)$boosts['categories'][$elementId];
+                        $multiplier *= $categoryMultiplier;
+                        if ($includeDebugAttribution && isset($debugBoosts['categories'][$elementId])) {
+                            foreach ($debugBoosts['categories'][$elementId] as $debugBoost) {
+                                $debugAttributions[] = $this->withCategoryHandle($debugBoost, $element);
+                            }
+                        }
+                    }
+
+                    // Category boost - check if element is related to a boosted category
                     if (isset($categoryBoostsByElement[$elementKey])) {
-                        $multiplier *= $categoryBoostsByElement[$elementKey];
+                        $categoryMatch = $categoryBoostsByElement[$elementKey];
+                        $multiplier *= $categoryMatch['multiplier'];
+                        if ($includeDebugAttribution && isset($debugBoosts['categories'][$categoryMatch['categoryId']])) {
+                            foreach ($debugBoosts['categories'][$categoryMatch['categoryId']] as $debugBoost) {
+                                $debugAttributions[] = $debugBoost;
+                            }
+                        }
                     }
                 }
             }
@@ -367,6 +528,9 @@ class QueryRuleService extends Component
             if ($multiplier !== 1.0 && is_array($result) && isset($result['score'])) {
                 $result['score'] *= $multiplier;
                 $result['boosted'] = true;
+                if ($includeDebugAttribution && !empty($debugAttributions)) {
+                    $result['_queryRuleDebug']['boosts'] = array_values($debugAttributions);
+                }
             }
         }
 
@@ -477,13 +641,13 @@ class QueryRuleService extends Component
     }
 
     /**
-     * Preload the first matching category boost multiplier per element.
+     * Preload the first matching category boost target per element.
      *
      * @param array<string, ElementInterface> $elements
      * @param array<int|string, float|int> $categoryBoosts
-     * @return array<string, float>
+     * @return array<string, array{categoryId: int, multiplier: float}>
      */
-    private function preloadCategoryBoosts(array $elements, array $categoryBoosts): array
+    private function preloadCategoryBoostMatches(array $elements, array $categoryBoosts): array
     {
         if (empty($elements)) {
             return [];
@@ -541,13 +705,29 @@ class QueryRuleService extends Component
         foreach ($matches as $elementKey => $categoryMatches) {
             foreach ($categoryBoosts as $categoryId => $boost) {
                 if (isset($categoryMatches[(int)$categoryId])) {
-                    $boostsByElement[$elementKey] = (float)$boost;
+                    $boostsByElement[$elementKey] = [
+                        'categoryId' => (int)$categoryId,
+                        'multiplier' => (float)$boost,
+                    ];
                     break;
                 }
             }
         }
 
         return $boostsByElement;
+    }
+
+    /**
+     * @param array<string, mixed> $debugBoost
+     * @return array<string, mixed>
+     */
+    private function withCategoryHandle(array $debugBoost, Category $category): array
+    {
+        if (empty($debugBoost['categoryHandle'])) {
+            $debugBoost['categoryHandle'] = (string)$category->slug;
+        }
+
+        return $debugBoost;
     }
 
     /**
