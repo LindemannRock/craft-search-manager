@@ -10,6 +10,13 @@ namespace lindemannrock\searchmanager\transformers;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\elements\Asset;
+use craft\elements\Category;
+use craft\elements\db\ElementQueryInterface;
+use craft\elements\ElementCollection;
+use craft\elements\Entry;
+use craft\models\Section;
+use craft\models\VolumeFolder;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
@@ -135,6 +142,152 @@ abstract class BaseTransformer extends Component implements TransformerInterface
             'dateCreated' => $element->dateCreated?->getTimestamp(),
             'dateUpdated' => $element->dateUpdated?->getTimestamp(),
         ];
+    }
+
+    /**
+     * Get source-backed hierarchy/path metadata for element kinds that have a tree context.
+     *
+     * @param ElementInterface $element
+     * @return array<string, mixed>
+     */
+    protected function getHierarchyMetadata(ElementInterface $element): array
+    {
+        if ($element instanceof Entry) {
+            $section = $element->getSection();
+            if ($section?->type !== Section::TYPE_STRUCTURE) {
+                return [];
+            }
+
+            return $this->structuredElementHierarchyMetadata($element);
+        }
+
+        if ($element instanceof Category) {
+            return $this->structuredElementHierarchyMetadata($element);
+        }
+
+        if ($element instanceof Asset) {
+            return $this->assetHierarchyMetadata($element);
+        }
+
+        return [];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function structuredElementHierarchyMetadata(ElementInterface $element): array
+    {
+        $level = $element->level ?? null;
+
+        return $this->filterHierarchyMetadata([
+            'ancestors' => $this->ancestorItemsFromElementSource($element->getAncestors()),
+            'level' => is_numeric($level) ? (int)$level : null,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function assetHierarchyMetadata(Asset $element): array
+    {
+        if ($this->elementStringValue($element, 'url') === '') {
+            return [];
+        }
+
+        try {
+            $rootUrl = $element->getVolume()->getRootUrl();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        if (!is_string($rootUrl) || trim($rootUrl) === '') {
+            return [];
+        }
+
+        try {
+            $folder = $element->getFolder();
+        } catch (\Throwable) {
+            return [];
+        }
+
+        return $this->filterHierarchyMetadata([
+            'ancestors' => $this->ancestorItemsFromFolder($folder),
+            'folderPath' => trim((string)$folder->path),
+        ]);
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string}>
+     */
+    private function ancestorItemsFromElementSource(ElementQueryInterface|ElementCollection $source): array
+    {
+        return $this->ancestorItemsFromElements($source->all());
+    }
+
+    /**
+     * @param iterable<ElementInterface> $ancestors
+     * @return array<int, array{id: int, title: string}>
+     */
+    private function ancestorItemsFromElements(iterable $ancestors): array
+    {
+        $items = [];
+
+        foreach ($ancestors as $ancestor) {
+            $id = $ancestor->id ?? null;
+            $title = $this->elementTitle($ancestor);
+            if (!is_numeric($id) || $title === '') {
+                continue;
+            }
+
+            $items[] = [
+                'id' => (int)$id,
+                'title' => $title,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string}>
+     */
+    private function ancestorItemsFromFolder(VolumeFolder $folder): array
+    {
+        $folders = [];
+        for ($current = $folder; $current !== null; $current = $current->getParent()) {
+            array_unshift($folders, $current);
+        }
+
+        $items = [];
+        foreach ($folders as $ancestor) {
+            $id = $ancestor->id ?? null;
+            $title = trim((string)($ancestor->name ?? ''));
+            if (!is_numeric($id) || $title === '') {
+                continue;
+            }
+
+            $items[] = [
+                'id' => (int)$id,
+                'title' => $title,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param array<string, mixed> $metadata
+     * @return array<string, mixed>
+     */
+    private function filterHierarchyMetadata(array $metadata): array
+    {
+        return array_filter($metadata, static function(mixed $value): bool {
+            if ($value === null || $value === '') {
+                return false;
+            }
+
+            return !is_array($value) || $value !== [];
+        });
     }
 
     private function elementStringValue(ElementInterface $element, string $property): string

@@ -62,6 +62,9 @@ final class TestToolI18nTest extends TestCase
             "ruleLabel: {{ 'Rule:'|t('search-manager')|json_encode|raw }}",
             "targetLabel: {{ 'Target:'|t('search-manager')|json_encode|raw }}",
             "urlLabel: {{ 'URL:'|t('search-manager')|json_encode|raw }}",
+            "breadcrumbLabel: {{ 'Breadcrumb'|t('search-manager')|json_encode|raw }}",
+            "levelLabel: {{ 'Level'|t('search-manager')|json_encode|raw }}",
+            "folderPathLabel: {{ 'Folder Path'|t('search-manager')|json_encode|raw }}",
             "hitLabel: {{ 'Hit'|t('search-manager')|json_encode|raw }}",
             "yesLabel: {{ 'Yes'|t('search-manager')|json_encode|raw }}",
             "noLabel: {{ 'No'|t('search-manager')|json_encode|raw }}",
@@ -78,6 +81,8 @@ final class TestToolI18nTest extends TestCase
             'T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType)',
             'hit.title || T.untitled',
             'data.error || T.unknownError',
+            'formatMetaLabel(T.breadcrumbLabel)',
+            'formatMetaLabel(T.folderPathLabel)',
         ] as $needle) {
             self::assertStringContainsString($needle, $js);
         }

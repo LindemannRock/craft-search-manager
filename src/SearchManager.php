@@ -45,6 +45,7 @@ use lindemannrock\searchmanager\gql\types\AutocompleteResponseType as GqlAutocom
 use lindemannrock\searchmanager\gql\types\AutocompleteResultType as GqlAutocompleteResultType;
 use lindemannrock\searchmanager\gql\types\IndexCountType as GqlIndexCountType;
 use lindemannrock\searchmanager\gql\types\MatchedTermsType as GqlMatchedTermsType;
+use lindemannrock\searchmanager\gql\types\SearchAncestorType as GqlSearchAncestorType;
 use lindemannrock\searchmanager\gql\types\SearchFieldValueType as GqlSearchFieldValueType;
 use lindemannrock\searchmanager\gql\types\SearchHeadingType as GqlSearchHeadingType;
 use lindemannrock\searchmanager\gql\types\SearchHitType as GqlSearchHitType;
@@ -351,6 +352,7 @@ class SearchManager extends Plugin
                 $event->types[] = GqlAutocompleteResultType::class;
                 $event->types[] = GqlIndexCountType::class;
                 $event->types[] = GqlMatchedTermsType::class;
+                $event->types[] = GqlSearchAncestorType::class;
                 $event->types[] = GqlSearchFieldValueType::class;
                 $event->types[] = GqlSearchHeadingType::class;
                 $event->types[] = GqlSearchHitType::class;

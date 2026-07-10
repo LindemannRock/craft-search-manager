@@ -47,7 +47,7 @@ Choose one of these extension models:
 
 | Model | Use When | Notes |
 |-------|----------|-------|
-| Extend `BaseTransformer` | You want full control over the indexed document | Recommended for most custom transformers. Includes common identity fields, stable `type` / `elementType` defaults, HTML stripping, excerpts, `_contentClean` finalization, and heading-level support. |
+| Extend `BaseTransformer` | You want full control over the indexed document | Recommended for most custom transformers. Includes common identity fields, stable `type` / `elementType` defaults, optional hierarchy/path metadata helpers, HTML stripping, excerpts, `_contentClean` finalization, and heading-level support. |
 | Extend `AutoTransformer` | You want automatic extraction plus a few project fields | Call `parent::transform($element)` and then add, remove, or normalize fields. This keeps Search Manager's automatic field, relation, rich text, and heading extraction. |
 | Implement `TransformerInterface` directly | You need a minimal advanced transformer | Supported, but Base helpers, `_contentClean` finalization, and heading-level behavior are not automatic unless you implement them yourself. |
 
@@ -284,9 +284,11 @@ Commerce product type metadata follows the same rule: `type`/`elementType` stay 
 
 Non-entry Craft elements also keep their own metadata fields. Assets use `volume` and `volumeHandle`; Categories use `group` and `groupHandle`; Users do not get a fake `section`.
 
-If your transformer extends `BaseTransformer` and starts with `$this->getCommonData($element)`, Search Manager sets these document-kind fields for Craft Entries, Categories, Assets, Users, and Commerce Products/Variants automatically.
+Hierarchy and path context is also top-level kind metadata. `AutoTransformer` writes it at index time for Structure Entries (`ancestors`, `level`), Categories (`ancestors`, `level`), and public Assets (`ancestors`, `folderPath`). Channel/Single Entries, Users, Commerce Products/Variants, source docs, and private-volume Assets omit these keys. `folderPath` is Craft's canonical folder path string, not a join of folder display titles.
 
-After changing `type`, `elementType`, or related metadata in a transformer, rebuild the affected index so stored search documents match the current code.
+If your transformer extends `AutoTransformer`, the built-in section/group/volume and hierarchy/path metadata is included automatically. If your transformer extends `BaseTransformer` directly and wants the same hierarchy contract, merge `$this->getHierarchyMetadata($element)` into the indexed document at transform time. Do not resolve ancestors or folder chains later during result enrichment.
+
+After changing `type`, `elementType`, or related metadata in a transformer, rebuild the affected index so stored search documents match the current code. Adding or changing hierarchy/path metadata also requires a full reindex because the values are stored in each backend document.
 
 If you intentionally index a custom element kind, set both fields to the same lowercase machine value:
 

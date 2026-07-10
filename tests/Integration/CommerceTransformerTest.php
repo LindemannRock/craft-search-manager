@@ -95,6 +95,9 @@ final class CommerceTransformerTest extends TestCase
         self::assertSame('shoes', $data['productTypeHandle']);
         self::assertArrayNotHasKey('productTypeName', $data);
         self::assertArrayNotHasKey('section', $data);
+        self::assertArrayNotHasKey('ancestors', $data);
+        self::assertArrayNotHasKey('level', $data);
+        self::assertArrayNotHasKey('folderPath', $data);
         self::assertSame(['SKU-RED', 'SKU-BLUE'], $data['variantSkus']);
         self::assertSame(['Red Sneaker', 'Blue Sneaker'], $data['variantTitles']);
         self::assertContains('Color Red', $data['variantOptions']);
@@ -137,6 +140,9 @@ final class CommerceTransformerTest extends TestCase
         self::assertSame('shoes', $data['productTypeHandle']);
         self::assertArrayNotHasKey('productTypeName', $data);
         self::assertArrayNotHasKey('section', $data);
+        self::assertArrayNotHasKey('ancestors', $data);
+        self::assertArrayNotHasKey('level', $data);
+        self::assertArrayNotHasKey('folderPath', $data);
         self::assertContains('Color Red', $data['variantOptions']);
         self::assertStringContainsString('SKU-RED', $data['content']);
         self::assertStringContainsString('Trail Sneaker', $data['content']);

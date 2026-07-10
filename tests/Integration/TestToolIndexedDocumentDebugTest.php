@@ -264,6 +264,9 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             "'section' => \$this->settingsTestScalarDebugValue(\$hit['section'] ?? null),",
             "'volume' => \$this->settingsTestScalarDebugValue(\$hit['volume'] ?? null),",
             "'group' => \$this->settingsTestScalarDebugValue(\$hit['group'] ?? null),",
+            "'ancestors' => \$this->settingsTestAncestorsDebugValue(\$hit['ancestors'] ?? null),",
+            "'level' => \$this->settingsTestIntegerDebugValue(\$hit['level'] ?? null),",
+            "'folderPath' => \$this->settingsTestScalarDebugValue(\$hit['folderPath'] ?? null),",
             "'volumehandle',",
             "'grouphandle',",
         ] as $needle) {
@@ -275,6 +278,11 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'renderDebugPill(T.sectionLabel, [elementKind.section',
             'renderDebugPill(T.volumeLabel, [elementKind.volume',
             'renderDebugPill(T.groupLabel, [elementKind.group',
+            'renderDebugPill(T.levelLabel, elementKind.level)',
+            'renderDebugAncestors(T.breadcrumbLabel, elementKind.ancestors)',
+            'renderDebugPill(T.folderPathLabel, elementKind.folderPath)',
+            'const hierarchyMeta = renderHitHierarchyMeta(hit);',
+            '${hierarchyMeta}',
         ] as $needle) {
             self::assertStringContainsString($needle, $assetSource);
         }

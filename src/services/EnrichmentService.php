@@ -1010,7 +1010,7 @@ class EnrichmentService extends Component
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function elementKindMetadata(array $hit, ElementInterface $element, string $documentType): array
     {
@@ -1023,43 +1023,99 @@ class EnrichmentService extends Component
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function entryMetadata(array $hit, ElementInterface $element): array
     {
         $section = $element instanceof \craft\elements\Entry ? $element->getSection() : null;
 
-        return array_filter([
+        return $this->filterElementKindMetadata([
             'section' => $this->stringValueFromMixed($hit['section'] ?? null) ?: $section?->name,
             'sectionHandle' => $this->stringValueFromMixed($hit['sectionHandle'] ?? null) ?: $section?->handle,
             'sectionType' => $this->stringValueFromMixed($hit['sectionType'] ?? null) ?: $section?->type,
-        ], static fn(?string $value): bool => $value !== null && $value !== '');
+            'ancestors' => $this->ancestorsFromHit($hit['ancestors'] ?? null),
+            'level' => $this->integerValueFromMixed($hit['level'] ?? null),
+        ]);
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function assetMetadata(array $hit, ElementInterface $element): array
     {
         $volume = $element instanceof \craft\elements\Asset ? $element->getVolume() : null;
 
-        return array_filter([
+        return $this->filterElementKindMetadata([
             'volume' => $this->stringValueFromMixed($hit['volume'] ?? null) ?: $volume?->name,
             'volumeHandle' => $this->stringValueFromMixed($hit['volumeHandle'] ?? null) ?: $volume?->handle,
-        ], static fn(?string $value): bool => $value !== null && $value !== '');
+            'ancestors' => $this->ancestorsFromHit($hit['ancestors'] ?? null),
+            'folderPath' => $this->stringValueFromMixed($hit['folderPath'] ?? null),
+        ]);
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, mixed>
      */
     private function categoryMetadata(array $hit, ElementInterface $element): array
     {
         $group = $element instanceof \craft\elements\Category ? $element->getGroup() : null;
 
-        return array_filter([
+        return $this->filterElementKindMetadata([
             'group' => $this->stringValueFromMixed($hit['group'] ?? null) ?: $group?->name,
             'groupHandle' => $this->stringValueFromMixed($hit['groupHandle'] ?? null) ?: $group?->handle,
-        ], static fn(?string $value): bool => $value !== null && $value !== '');
+            'ancestors' => $this->ancestorsFromHit($hit['ancestors'] ?? null),
+            'level' => $this->integerValueFromMixed($hit['level'] ?? null),
+        ]);
+    }
+
+    private function integerValueFromMixed(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int)$value : null;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string}>
+     */
+    private function ancestorsFromHit(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $ancestors = [];
+        foreach ($value as $ancestor) {
+            if (!is_array($ancestor)) {
+                continue;
+            }
+
+            $id = $ancestor['id'] ?? null;
+            $title = $this->stringValueFromMixed($ancestor['title'] ?? null);
+            if (!is_numeric($id) || $title === '') {
+                continue;
+            }
+
+            $ancestors[] = [
+                'id' => (int)$id,
+                'title' => $title,
+            ];
+        }
+
+        return $ancestors;
+    }
+
+    /**
+     * @param array<string, mixed> $metadata
+     * @return array<string, mixed>
+     */
+    private function filterElementKindMetadata(array $metadata): array
+    {
+        return array_filter($metadata, static function(mixed $value): bool {
+            if ($value === null || $value === '') {
+                return false;
+            }
+
+            return !is_array($value) || $value !== [];
+        });
     }
 
     private function documentTypeForElement(ElementInterface $element): string

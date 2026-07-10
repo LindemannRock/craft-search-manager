@@ -85,6 +85,8 @@ class AutoTransformer extends BaseTransformer
             $data['section'] = ucfirst($data['elementType']);
         }
 
+        $data = array_merge($data, $this->getHierarchyMetadata($element));
+
         // Collect searchable content
         $searchableContent = [];
 

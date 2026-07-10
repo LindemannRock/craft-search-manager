@@ -330,6 +330,45 @@
                 </div>`;
             }
 
+            function normalizedAncestors(value) {
+                if (!Array.isArray(value)) {
+                    return [];
+                }
+
+                return value
+                    .filter(ancestor => ancestor && typeof ancestor === 'object' && ancestor.title)
+                    .map(ancestor => ({
+                        id: ancestor.id,
+                        title: String(ancestor.title),
+                    }));
+            }
+
+            function ancestorBreadcrumb(value) {
+                const ancestors = normalizedAncestors(value);
+
+                return ancestors.length > 0 ? ancestors.map(ancestor => ancestor.title).join(' > ') : '';
+            }
+
+            function renderDebugAncestors(label, value) {
+                const breadcrumb = ancestorBreadcrumb(value);
+
+                return breadcrumb ? renderDebugPill(label, breadcrumb) : '';
+            }
+
+            function renderHitHierarchyMeta(hit) {
+                const rows = [];
+                const breadcrumb = ancestorBreadcrumb(hit.ancestors);
+                if (breadcrumb) {
+                    rows.push(`<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.breadcrumbLabel)}</span> ${escapeDisplay(truncateDisplay(breadcrumb, 96))}</span>`);
+                }
+
+                if (hit.folderPath) {
+                    rows.push(`<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.folderPathLabel)}</span> <code>${escapeDisplay(truncateDisplay(hit.folderPath, 96))}</code></span>`);
+                }
+
+                return rows.join('');
+            }
+
             function fieldRowsFromFields(fields) {
                 if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
                     return [];
@@ -412,6 +451,9 @@
                     elementKind.section ? renderDebugPill(T.sectionLabel, [elementKind.section, elementKind.sectionHandle ? `(${elementKind.sectionHandle})` : '', elementKind.sectionType ? `[${elementKind.sectionType}]` : ''].filter(Boolean).join(' ')) : '',
                     elementKind.volume ? renderDebugPill(T.volumeLabel, [elementKind.volume, elementKind.volumeHandle ? `(${elementKind.volumeHandle})` : ''].filter(Boolean).join(' ')) : '',
                     elementKind.group ? renderDebugPill(T.groupLabel, [elementKind.group, elementKind.groupHandle ? `(${elementKind.groupHandle})` : ''].filter(Boolean).join(' ')) : '',
+                    renderDebugPill(T.levelLabel, elementKind.level),
+                    renderDebugAncestors(T.breadcrumbLabel, elementKind.ancestors),
+                    renderDebugPill(T.folderPathLabel, elementKind.folderPath),
                     productType ? renderDebugPill(T.productTypeLabel, [productType.name, productType.handle ? `(${productType.handle})` : ''].filter(Boolean).join(' ')) : '',
                     renderDebugList(T.variantSkusLabel, commerce.variantSkus),
                     renderDebugList(T.variantOptionsLabel, commerce.variantOptions),
@@ -849,6 +891,7 @@
                             const contextLabel = context ? context.label : '';
                             const contextValue = context ? context.value : '';
                             const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : '';
+                            const hierarchyMeta = renderHitHierarchyMeta(hit);
                             const siteName = escapeDisplay(hit.siteName || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
                             const thumbnail = safeUrlAttribute(hit.thumbnail);
@@ -880,6 +923,7 @@
                 <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel('ID')}</span> #${objectIdDisplay}</span>
                 <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.typeLabel)}</span> ${type}</span>
                 ${contextMeta}
+                ${hierarchyMeta}
                 ${indexHandle ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.indexLabel)}</span> <code>${indexHandle}</code></span>` : ''}
                 <span class="sm-test-site-badge"><span class="sm-test-meta-label">${formatMetaLabel(T.siteLabel)}</span> ${siteName} (${language})</span>
             </div>

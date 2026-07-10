@@ -128,7 +128,7 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
 }
 ```
 
-Promoted hits use the same metadata contract as indexed hits. Entries include `section`, `sectionHandle`, and `sectionType`; Assets include `volume` and `volumeHandle`; Categories include `group` and `groupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include a fake `section`.
+Promoted hits use the same metadata contract as indexed hits. Entries include `section`, `sectionHandle`, and `sectionType`; Assets include `volume` and `volumeHandle`; Categories include `group` and `groupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include a fake `section`. When the indexed document has source-backed hierarchy context, promoted hits can also include `ancestors`, Entry/Category `level`, and public Asset `folderPath`. Existing promoted documents need a full reindex before the hierarchy fields appear.
 
 ## Analytics
 

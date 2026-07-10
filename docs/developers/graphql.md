@@ -39,6 +39,12 @@ query {
       section
       sectionHandle
       sectionType
+      ancestors {
+        id
+        title
+      }
+      level
+      folderPath
       volume
       volumeHandle
       group
@@ -84,6 +90,8 @@ Like the REST search endpoint, GraphQL search records analytics unless `skipAnal
 
 GraphQL exposes custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data.
 
+GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields until a full reindex writes source-backed values.
+
 Common hit fields:
 
 | Field | Notes |
@@ -97,6 +105,9 @@ Common hit fields:
 | `section` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | Entry section handle when the hit is an Entry. |
 | `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `ancestors` | Breadcrumb ancestors as `SearchManagerSearchAncestor` objects, ordered root to parent. Present for nested Structure Entries, nested Categories, and public Asset folders when indexed. |
+| `level` | Structure depth for Entry and Category hits when indexed. |
+| `folderPath` | Craft's canonical containing-folder path for public Asset hits when indexed. It uses folder path segments rather than folder display titles. |
 | `volume` / `volumeHandle` | Asset volume metadata when the hit is an Asset. |
 | `group` / `groupHandle` | Category group metadata when the hit is a Category. |
 | `productType` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |

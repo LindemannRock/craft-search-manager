@@ -512,28 +512,84 @@ class SettingsController extends Controller
         $type = strtolower((string)($hit['elementType'] ?? $hit['type'] ?? ''));
 
         if ($type === 'entry') {
-            return array_filter([
+            return $this->settingsTestFilterElementKindDebug([
                 'section' => $this->settingsTestScalarDebugValue($hit['section'] ?? null),
                 'sectionHandle' => $this->settingsTestScalarDebugValue($hit['sectionHandle'] ?? null),
                 'sectionType' => $this->settingsTestScalarDebugValue($hit['sectionType'] ?? null),
-            ], static fn(?string $value): bool => $value !== null);
+                'ancestors' => $this->settingsTestAncestorsDebugValue($hit['ancestors'] ?? null),
+                'level' => $this->settingsTestIntegerDebugValue($hit['level'] ?? null),
+            ]);
         }
 
         if ($type === 'asset') {
-            return array_filter([
+            return $this->settingsTestFilterElementKindDebug([
                 'volume' => $this->settingsTestScalarDebugValue($hit['volume'] ?? null),
                 'volumeHandle' => $this->settingsTestScalarDebugValue($hit['volumeHandle'] ?? null),
-            ], static fn(?string $value): bool => $value !== null);
+                'ancestors' => $this->settingsTestAncestorsDebugValue($hit['ancestors'] ?? null),
+                'folderPath' => $this->settingsTestScalarDebugValue($hit['folderPath'] ?? null),
+            ]);
         }
 
         if ($type === 'category') {
-            return array_filter([
+            return $this->settingsTestFilterElementKindDebug([
                 'group' => $this->settingsTestScalarDebugValue($hit['group'] ?? null),
                 'groupHandle' => $this->settingsTestScalarDebugValue($hit['groupHandle'] ?? null),
-            ], static fn(?string $value): bool => $value !== null);
+                'ancestors' => $this->settingsTestAncestorsDebugValue($hit['ancestors'] ?? null),
+                'level' => $this->settingsTestIntegerDebugValue($hit['level'] ?? null),
+            ]);
         }
 
         return [];
+    }
+
+    private function settingsTestIntegerDebugValue(mixed $value): ?int
+    {
+        return is_numeric($value) ? (int)$value : null;
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string}>
+     */
+    private function settingsTestAncestorsDebugValue(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $ancestors = [];
+        foreach ($value as $ancestor) {
+            if (!is_array($ancestor)) {
+                continue;
+            }
+
+            $id = $ancestor['id'] ?? null;
+            $title = $this->settingsTestScalarDebugValue($ancestor['title'] ?? null);
+            if (!is_numeric($id) || $title === null) {
+                continue;
+            }
+
+            $ancestors[] = [
+                'id' => (int)$id,
+                'title' => $title,
+            ];
+        }
+
+        return $ancestors;
+    }
+
+    /**
+     * @param array<string, mixed> $debug
+     * @return array<string, mixed>
+     */
+    private function settingsTestFilterElementKindDebug(array $debug): array
+    {
+        return array_filter($debug, static function(mixed $value): bool {
+            if ($value === null || $value === '') {
+                return false;
+            }
+
+            return !is_array($value) || $value !== [];
+        });
     }
 
     /**

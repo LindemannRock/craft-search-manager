@@ -128,6 +128,8 @@ Searchable custom field values are returned under each hit's `fields` object. Th
 
 Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `section`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
 
+Structure Entries, Categories, and public Assets can also return breadcrumb metadata at the top level. `ancestors` is ordered from root to parent; Entries and Categories can include `level`; public Assets can include `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, and private-volume Assets omit these keys. Existing indexed documents need a full reindex before the hierarchy keys appear.
+
 ### Enriched Response
 
 When `enrich=1`, results are resolved to full element data with snippets and heading expansion:
@@ -143,6 +145,10 @@ When `enrich=1`, results are resolved to full element data with snippets and hea
             "section": "Documentation",
             "sectionHandle": "documentation",
             "sectionType": "structure",
+            "ancestors": [
+                { "id": 10, "title": "Guides" }
+            ],
+            "level": 2,
             "elementType": "entry",
             "type": "entry",
             "fields": {
@@ -194,6 +200,9 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 | `section` | `string` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
 | `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `ancestors` | `array` | Breadcrumb ancestors as `{id, title}` objects, ordered root to parent. Present for nested Structure Entries, nested Categories, and public Asset folders when indexed. |
+| `level` | `int` | Structure depth for Entry and Category hits when indexed. |
+| `folderPath` | `string` | Craft's canonical containing-folder path for public Asset hits when indexed. This can differ from joining `ancestors[].title` because it uses folder path segments, not display names. |
 | `volume` | `string` | Asset volume name when the hit is an Asset. |
 | `volumeHandle` | `string` | Asset volume handle when the hit is an Asset. |
 | `group` | `string` | Category group name when the hit is a Category. |

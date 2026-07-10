@@ -64,6 +64,13 @@ class SearchHitType extends ObjectType
             'section' => ['name' => 'section', 'type' => Type::string(), 'description' => 'The Entry section name, when the hit is an Entry.'],
             'sectionHandle' => ['name' => 'sectionHandle', 'type' => Type::string(), 'description' => 'The Entry section handle, when the hit is an Entry.'],
             'sectionType' => ['name' => 'sectionType', 'type' => Type::string(), 'description' => 'The Entry section type, when the hit is an Entry.'],
+            'ancestors' => [
+                'name' => 'ancestors',
+                'type' => Type::listOf(Type::nonNull(SearchAncestorType::getType())),
+                'description' => 'Breadcrumb ancestors ordered from root to parent or containing folder.',
+            ],
+            'level' => ['name' => 'level', 'type' => Type::int(), 'description' => 'The structure depth for Entry and Category hits.'],
+            'folderPath' => ['name' => 'folderPath', 'type' => Type::string(), 'description' => 'The canonical Craft folder path for public Asset hits.'],
             'volume' => ['name' => 'volume', 'type' => Type::string(), 'description' => 'The Asset volume name, when the hit is an Asset.'],
             'volumeHandle' => ['name' => 'volumeHandle', 'type' => Type::string(), 'description' => 'The Asset volume handle, when the hit is an Asset.'],
             'group' => ['name' => 'group', 'type' => Type::string(), 'description' => 'The Category group name, when the hit is a Category.'],
@@ -152,9 +159,49 @@ class SearchHitType extends ObjectType
                 return SearchFieldValueHelper::toGraphqlList($fields);
             }
 
+            if ($fieldName === 'ancestors') {
+                $ancestors = self::ancestorsFromSource($source['ancestors'] ?? null);
+
+                return $ancestors !== [] ? $ancestors : null;
+            }
+
+            if ($fieldName === 'level') {
+                return isset($source['level']) && is_numeric($source['level']) ? (int)$source['level'] : null;
+            }
+
             return GqlHelper::nullIfEmptyString($source[$fieldName] ?? null);
         }
 
         return parent::resolve($source, $arguments, $context, $resolveInfo);
+    }
+
+    /**
+     * @return array<int, array{id: int, title: string}>
+     */
+    private static function ancestorsFromSource(mixed $value): array
+    {
+        if (!is_array($value)) {
+            return [];
+        }
+
+        $ancestors = [];
+        foreach ($value as $ancestor) {
+            if (!is_array($ancestor)) {
+                continue;
+            }
+
+            $id = $ancestor['id'] ?? null;
+            $title = GqlHelper::nullIfEmptyString($ancestor['title'] ?? null);
+            if (!is_numeric($id) || $title === null) {
+                continue;
+            }
+
+            $ancestors[] = [
+                'id' => (int)$id,
+                'title' => $title,
+            ];
+        }
+
+        return $ancestors;
     }
 }
