@@ -124,7 +124,7 @@ These parameters only apply when `enrich=1`:
 > [!NOTE]
 > The raw response does not return internal metadata (synonyms expanded, rules matched, promotions matched). Use the `?debug=1` parameter with the `searchManager:viewDebug` permission to inspect query internals during development.
 
-Searchable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills this object automatically from searchable custom fields. A custom transformer can add response-ready custom field values by writing to the internal `_fields` map before indexing.
+Searchable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills this object automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. A custom transformer can add response-ready custom field values by writing to the internal `_fields` map before indexing.
 
 Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `section`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
 

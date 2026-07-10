@@ -8,7 +8,7 @@ Search Manager includes these transformers out of the box:
 
 | Transformer | Element Types | What It Indexes |
 |------------|---------------|-----------------|
-| `AutoTransformer` | Most element types | Default fallback. It indexes searchable attributes, custom fields, relations, Matrix/Table fields, rich text, and headings. It handles entries generically itself. |
+| `AutoTransformer` | Most element types | Default fallback. It indexes searchable attributes, custom fields marked searchable in Craft, relations, Matrix/Table fields, rich text, and headings. It handles entries generically itself. |
 | `DocsManagerTransformer` | Docs Manager (`SourceDoc`) | Full page content, headings, description, and keywords. Auto-selected when [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed. |
 | `CommerceTransformer` | Craft Commerce Products and Variants | Product and variant metadata, product type name/handle, variant SKUs, variant titles, option labels/values, and parent product data for variants. Auto-selected when Craft Commerce is installed and the index targets Product or Variant elements. |
 
@@ -146,6 +146,8 @@ class ProductTransformer extends AutoTransformer
 ## Custom Fields in API and GraphQL
 
 The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, sorted, and returned by the REST API depending on backend configuration.
+
+For automatic documents, `AutoTransformer` includes Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. Fields with that setting disabled are excluded from the searchable content and from the internal `_fields` map.
 
 For values that should be returned to API and GraphQL consumers as custom field data, write them to `_fields`:
 

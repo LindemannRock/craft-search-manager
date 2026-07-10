@@ -52,6 +52,10 @@ class SearchAutoContentHelper
         if ($element->getFieldLayout()) {
             foreach ($element->getFieldLayout()->getCustomFields() as $field) {
                 try {
+                    if ($field instanceof Field && !$field->searchable) {
+                        continue;
+                    }
+
                     if ($field instanceof Field && $this->nativeFieldKeywordHelper->supports($field)) {
                         $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
                     } else {

@@ -165,12 +165,39 @@ final class TransformerCharacterizationTest extends TestCase
             'section' => 'News',
             'sectionHandle' => 'news',
             'sectionType' => 'channel',
-            '_fields' => [
-                'hiddenBody' => 'Hidden searchable gap',
-            ],
-            'content' => 'Channel Entry channel-entry Channel Entry Hidden searchable gap',
-            'excerpt' => 'Channel Entry channel-entry Channel Entry Hidden searchable gap',
+            'content' => 'Channel Entry channel-entry Channel Entry',
+            'excerpt' => 'Channel Entry channel-entry Channel Entry',
         ], (new AutoTransformer())->transform($entry));
+    }
+
+    public function testNonSearchableRichTextFieldIsExcludedFromDocumentData(): void
+    {
+        $fieldClass = 'craft\\ckeditor\\Field';
+        $field = new $fieldClass(['handle' => 'hiddenBody', 'searchable' => false]);
+        $entry = new TransformerCharacterizationEntry();
+        $entry->id = 302;
+        $entry->siteId = 1;
+        $entry->title = 'Hidden Rich Text Entry';
+        $entry->slug = 'hidden-rich-text-entry';
+        $entry->testSection = new Section(['name' => 'News', 'handle' => 'news', 'type' => Section::TYPE_CHANNEL]);
+        $entry->testAncestors = new ElementCollection();
+        $entry->setTestFieldLayout($this->fieldLayout([$field], TransformerCharacterizationEntry::class));
+        $entry->setTestFieldValues([
+            'hiddenBody' => '<h2 id="hidden-heading">Hidden Heading</h2><p>Hidden rich needle.</p><pre><code>hidden code needle</code></pre>',
+        ]);
+
+        $data = (new TransformerService())->transform($entry);
+
+        self::assertArrayNotHasKey('_fields', $data);
+        self::assertArrayNotHasKey('_headings', $data);
+        self::assertArrayNotHasKey('headings', $data);
+        self::assertArrayNotHasKey('_contentClean', $data);
+        self::assertStringNotContainsString('Hidden Heading', $data['content']);
+        self::assertStringNotContainsString('Hidden rich needle', $data['content']);
+        self::assertStringNotContainsString('hidden code needle', $data['content']);
+        self::assertStringNotContainsString('Hidden Heading', $data['excerpt']);
+        self::assertStringNotContainsString('Hidden rich needle', $data['excerpt']);
+        self::assertStringNotContainsString('hidden code needle', $data['excerpt']);
     }
 
     public function testCategoryDocumentDataIsByteIdentical(): void
@@ -436,7 +463,7 @@ final class TransformerCharacterizationTest extends TestCase
     public function testPreContentCleanFinalizesAndResetsByteIdentically(): void
     {
         $fieldClass = 'craft\\ckeditor\\Field';
-        $field = new $fieldClass(['handle' => 'body', 'searchable' => false]);
+        $field = new $fieldClass(['handle' => 'body', 'searchable' => true]);
         $entry = new TransformerCharacterizationEntry();
         $entry->id = 801;
         $entry->siteId = 1;

@@ -88,7 +88,7 @@ Search arguments:
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
-GraphQL exposes custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data.
+GraphQL exposes custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer includes Craft custom fields in this list only when the field's **Use this field's values as search keywords** setting is enabled.
 
 GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields until a full reindex writes source-backed values.
 
@@ -111,7 +111,7 @@ Common hit fields:
 | `volume` / `volumeHandle` | Asset volume metadata when the hit is an Asset. |
 | `group` / `groupHandle` | Category group metadata when the hit is a Category. |
 | `productType` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |
-| `fields` | Searchable custom field values as `SearchManagerSearchFieldValue` objects with `handle`, `value`, and `values`. |
+| `fields` | Searchable custom field values as `SearchManagerSearchFieldValue` objects with `handle`, `value`, and `values`. AutoTransformer includes Craft custom fields only when the field is marked searchable in Craft. |
 | `slug` | Public indexed slug when the element or transformer provides one. |
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |

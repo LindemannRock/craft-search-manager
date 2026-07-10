@@ -175,7 +175,7 @@ For SourceDoc elements, the `sourceHandle()` method is available to scope by sou
 
 ## Transformers
 
-When the transformer class is blank, Search Manager first uses registered integration transformers where they apply: Docs Manager pages use `DocsManagerTransformer` when Docs Manager is available, and Commerce Product/Variant indices use `CommerceTransformer` when Craft Commerce is available. Everything else falls back to `AutoTransformer`, which handles entries and most other element types generically by indexing searchable attributes, custom fields, relations, rich text, and headings.
+When the transformer class is blank, Search Manager first uses registered integration transformers where they apply: Docs Manager pages use `DocsManagerTransformer` when Docs Manager is available, and Commerce Product/Variant indices use `CommerceTransformer` when Craft Commerce is available. Everything else falls back to `AutoTransformer`, which handles entries and most other element types generically by indexing searchable attributes, custom fields marked searchable in Craft, relations, rich text, and headings.
 
 For project-specific result data, create a transformer in a module namespace and assign it to the index. See [Custom Transformers](../developers/custom-transformers.md) for details.
 

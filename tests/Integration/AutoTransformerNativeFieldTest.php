@@ -132,6 +132,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
         );
 
         self::assertArrayNotHasKey('body', $data);
+        self::assertArrayNotHasKey('body', $data['_fields'] ?? []);
         self::assertStringNotContainsString('Hidden plain text needle', $data['content']);
     }
 
@@ -164,6 +165,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
         $data = $this->transformWithField($field, $field->normalizeValue('hidden-canonical', null));
 
         self::assertArrayNotHasKey('topic', $data);
+        self::assertArrayNotHasKey('topic', $data['_fields'] ?? []);
         self::assertStringNotContainsString('hidden-canonical', $data['content']);
         self::assertStringNotContainsString('Hidden Friendly Label', $data['content']);
     }
@@ -197,6 +199,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
         );
 
         self::assertArrayNotHasKey('relatedEntries', $data);
+        self::assertArrayNotHasKey('relatedEntries', $data['_fields'] ?? []);
         self::assertStringNotContainsString('Hidden related entry needle', $data['content']);
     }
 
@@ -240,6 +243,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
         );
 
         self::assertArrayNotHasKey('specs', $data);
+        self::assertArrayNotHasKey('specs', $data['_fields'] ?? []);
         self::assertStringNotContainsString('Hidden table text needle', $data['content']);
     }
 
