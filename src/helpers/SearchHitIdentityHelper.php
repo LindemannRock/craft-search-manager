@@ -20,6 +20,14 @@ class SearchHitIdentityHelper
      */
     public static function backendId(int|string $elementId, int|string|null $siteId = null): string
     {
+        return self::pageDocumentId($elementId, $siteId);
+    }
+
+    /**
+     * Return the backend document ID for a whole-page element record.
+     */
+    public static function pageDocumentId(int|string $elementId, int|string|null $siteId = null): string
+    {
         $elementId = (string)$elementId;
 
         if ($siteId === null || $siteId === '') {
@@ -27,6 +35,38 @@ class SearchHitIdentityHelper
         }
 
         return $elementId . '_' . (string)$siteId;
+    }
+
+    /**
+     * Return the backend document ID for a section record that belongs to an element.
+     */
+    public static function sectionDocumentId(int|string $elementId, int|string|null $siteId, int|string $sectionId): string
+    {
+        return self::pageDocumentId($elementId, $siteId) . '_' . (string)$sectionId;
+    }
+
+    /**
+     * Return the backend document ID for the given hit/document shape.
+     *
+     * @param array<string, mixed> $hit
+     */
+    public static function documentId(array $hit): ?string
+    {
+        $backendId = self::rawBackendId($hit);
+        if ($backendId !== null) {
+            return $backendId;
+        }
+
+        $elementId = self::elementId($hit);
+        if ($elementId === null) {
+            return null;
+        }
+
+        if (isset($hit['sectionId']) && (string)$hit['sectionId'] !== '') {
+            return self::sectionDocumentId($elementId, self::siteId($hit), (string)$hit['sectionId']);
+        }
+
+        return self::pageDocumentId($elementId, self::siteId($hit));
     }
 
     /**
@@ -42,8 +82,10 @@ class SearchHitIdentityHelper
             throw new \InvalidArgumentException('Document must have either "elementId", "id", or "objectID" field');
         }
 
-        $siteId = self::siteId($data);
-        $backendId = self::backendId($elementId, $siteId);
+        $backendId = self::documentId($data);
+        if ($backendId === null) {
+            throw new \InvalidArgumentException('Document backend ID could not be derived');
+        }
 
         $data['elementId'] = $elementId;
         $data['backendId'] = $backendId;
@@ -66,8 +108,10 @@ class SearchHitIdentityHelper
             throw new \InvalidArgumentException('Document must have either "elementId", "id", or "objectID" field');
         }
 
-        $siteId = self::siteId($data);
-        $backendId = self::backendId($elementId, $siteId);
+        $backendId = self::documentId($data);
+        if ($backendId === null) {
+            throw new \InvalidArgumentException('Document backend ID could not be derived');
+        }
 
         $data['elementId'] = $elementId;
         $data['backendId'] = $backendId;
@@ -91,10 +135,7 @@ class SearchHitIdentityHelper
             $hit['id'] = $elementId;
         }
 
-        $backendId = self::rawBackendId($hit);
-        if ($backendId === null && $elementId !== null) {
-            $backendId = self::backendId($elementId, self::siteId($hit));
-        }
+        $backendId = self::documentId($hit);
         if ($backendId !== null) {
             $hit['backendId'] = $backendId;
         }

@@ -26,6 +26,7 @@ This plugin is in active development and not yet available on the Craft Plugin S
 - **Fuzzy Matching** — Typo tolerance with n-gram similarity
 - **Multi-Language** — Stop words and localized boolean operators in 12 languages (EN, PT, IT, ES, FR, NO, NL, SV, DE, DA, JA, AR)
 - **Commerce Indexing** — Index Craft Commerce Products and Variants when Commerce is installed
+- **Docs Section Search** — SourceDoc indices can opt into flat intro/heading section hits with unique backend IDs
 - **Highlighting & Snippets** — Highlight matched terms and show contextual excerpts
 - **Autocomplete** — Search-as-you-type suggestions with separate caching
 - **Query Rules** — Synonyms, section/category/element boosting, redirects

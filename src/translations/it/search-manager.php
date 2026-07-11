@@ -983,6 +983,8 @@ return [
     'Which category groups to index (leave all unchecked for all groups)' => 'Quali gruppi di categorie indicizzare (lascia tutto deselezionato per tutti i gruppi)',
     'Heading Levels' => 'Livelli di intestazione',
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => 'Quali livelli di intestazione estrarre per la ricerca gerarchica e i link di ancoraggio. Predefinito: H2–H4.',
+    'Split Sections' => 'Dividi sezioni',
+    'Index the page intro and each heading section as separate search hits.' => 'Indicizza l’introduzione della pagina e ogni sezione con intestazione come risultati di ricerca separati.',
     'Transformer Class' => 'Classe transformer',
     'Optional override for advanced indexing needs.' => 'Override facoltativo per esigenze di indicizzazione avanzate.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'Sovrascrivi il backend di ricerca globale per questo indice. Lascia \'Default\' per utilizzare il backend configurato nelle impostazioni del plugin.',

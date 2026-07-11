@@ -51,7 +51,7 @@ class SearchHitType extends ObjectType
         return [
             'id' => ['name' => 'id', 'type' => Type::int(), 'description' => 'The element ID.'],
             'objectID' => ['name' => 'objectID', 'type' => Type::string(), 'description' => 'The backend object ID.'],
-            'backendId' => ['name' => 'backendId', 'type' => Type::string(), 'description' => 'The backend-native hit ID, which may be composite.'],
+            'backendId' => ['name' => 'backendId', 'type' => Type::string(), 'description' => 'The unique backend-native hit ID. Split section hits share element id but keep distinct backend ids.'],
             'elementId' => ['name' => 'elementId', 'type' => Type::int(), 'description' => 'The element ID.'],
             'elementType' => ['name' => 'elementType', 'type' => Type::string(), 'description' => 'The stable lowercase document kind.'],
             'siteId' => ['name' => 'siteId', 'type' => Type::int(), 'description' => 'The site ID.'],
@@ -65,7 +65,13 @@ class SearchHitType extends ObjectType
             'snippet' => ['name' => 'snippet', 'type' => Type::string(), 'description' => 'The query-centered match snippet, when there is a match to excerpt.'],
             'section' => ['name' => 'section', 'type' => Type::string(), 'description' => 'The Entry section name, when the hit is an Entry.'],
             'sectionHandle' => ['name' => 'sectionHandle', 'type' => Type::string(), 'description' => 'The Entry section handle, when the hit is an Entry.'],
-            'sectionType' => ['name' => 'sectionType', 'type' => Type::string(), 'description' => 'The Entry section type, when the hit is an Entry.'],
+            'sectionType' => ['name' => 'sectionType', 'type' => Type::string(), 'description' => 'The section-hit type (heading, intro, or promoted-page) for split hits, or the Entry section type when the hit is an Entry.'],
+            'sectionId' => ['name' => 'sectionId', 'type' => Type::string(), 'description' => 'The section document ID within the parent element, when this is a split section hit.'],
+            'sectionTitle' => ['name' => 'sectionTitle', 'type' => Type::string(), 'description' => 'The heading title for a split section hit.'],
+            'sectionLevel' => ['name' => 'sectionLevel', 'type' => Type::int(), 'description' => 'The heading level for a split section hit.'],
+            'sectionAnchor' => ['name' => 'sectionAnchor', 'type' => Type::string(), 'description' => 'The URL anchor for a split section hit.'],
+            'sectionUrl' => ['name' => 'sectionUrl', 'type' => Type::string(), 'description' => 'The URL for the split section hit, including its anchor when available.'],
+            'sectionIndex' => ['name' => 'sectionIndex', 'type' => Type::int(), 'description' => 'The zero-based section order within the parent element.'],
             'ancestors' => [
                 'name' => 'ancestors',
                 'type' => Type::listOf(Type::nonNull(SearchAncestorType::getType())),
@@ -177,6 +183,10 @@ class SearchHitType extends ObjectType
 
             if ($fieldName === 'level') {
                 return isset($source['level']) && is_numeric($source['level']) ? (int)$source['level'] : null;
+            }
+
+            if ($fieldName === 'sectionLevel' || $fieldName === 'sectionIndex') {
+                return isset($source[$fieldName]) && is_numeric($source[$fieldName]) ? (int)$source[$fieldName] : null;
             }
 
             return GqlHelper::nullIfEmptyString($source[$fieldName] ?? null);

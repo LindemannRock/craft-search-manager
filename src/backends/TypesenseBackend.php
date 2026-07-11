@@ -177,8 +177,7 @@ class TypesenseBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
-            // Use composite key matching the id format
-            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            $documentId = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
             $client->collections[$fullIndexName]->documents[$documentId]->delete();
             $this->logDebug('Document deleted from Typesense', ['index' => $fullIndexName, 'id' => $documentId]);
@@ -371,8 +370,7 @@ class TypesenseBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
-            // Use composite key matching the id format
-            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            $documentId = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
             // Try to retrieve the document - if it exists, return true
             $client->collections[$fullIndexName]->documents[$documentId]->retrieve();
@@ -386,6 +384,28 @@ class TypesenseBackend extends BaseBackend
                 'elementId' => $elementId,
                 'error' => $e->getMessage(),
             ]);
+            return false;
+        }
+    }
+
+    protected function deleteByBackendId(string $indexName, string $backendId): bool
+    {
+        try {
+            $this->getClient()
+                ->collections[$this->getFullIndexName($indexName)]
+                ->documents[$backendId]
+                ->delete();
+
+            return true;
+        } catch (\Typesense\Exceptions\ObjectNotFound) {
+            return true;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to delete Typesense document by backend ID', [
+                'index' => $indexName,
+                'backendId' => $backendId,
+                'error' => $e->getMessage(),
+            ]);
+
             return false;
         }
     }

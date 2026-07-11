@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\search\storage;
 use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use yii\db\Expression;
 
 /**
@@ -34,6 +35,11 @@ class PostgreSqlStorage implements StorageInterface
      * @var \yii\db\Connection Database connection
      */
     private $db;
+
+    /**
+     * @var array<string, bool>
+     */
+    private array $columnExists = [];
 
     /**
      * Constructor
@@ -60,6 +66,13 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function storeDocument(int $siteId, int $elementId, array $termFreqs, int $docLength, string $language = 'en'): void
     {
+        $this->storeDocumentByKey($siteId, $elementId, $this->pageDocumentKey($siteId, $elementId), $termFreqs, $docLength, $language);
+    }
+
+    public function storeDocumentByKey(int $siteId, int $elementId, string $documentKey, array $termFreqs, int $docLength, string $language = 'en'): void
+    {
+        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey');
+
         // Store term frequencies
         $values = [];
         foreach ($termFreqs as $term => $frequency) {
@@ -67,6 +80,7 @@ class PostgreSqlStorage implements StorageInterface
                 $this->indexHandle,
                 $siteId,
                 $elementId,
+                $documentKey,
                 $term,
                 $frequency,
                 $language,
@@ -78,6 +92,7 @@ class PostgreSqlStorage implements StorageInterface
             $this->indexHandle,
             $siteId,
             $elementId,
+            $documentKey,
             '_length',
             $docLength,
             $language,
@@ -88,16 +103,26 @@ class PostgreSqlStorage implements StorageInterface
             $this->indexHandle,
             $siteId,
             $elementId,
+            $documentKey,
             '_language',
             0,
             $language,
         ];
 
+        $columns = $hasDocumentKey
+            ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'term', 'frequency', 'language']
+            : ['indexHandle', 'siteId', 'elementId', 'term', 'frequency', 'language'];
+        if (!$hasDocumentKey) {
+            $values = array_map(static fn(array $row): array => [$row[0], $row[1], $row[2], $row[4], $row[5], $row[6]], $values);
+        }
+
         $this->upsertRows(
             '{{%searchmanager_search_documents}}',
-            ['indexHandle', 'siteId', 'elementId', 'term', 'frequency', 'language'],
+            $columns,
             $values,
-            ['indexHandle', 'siteId', 'elementId', 'term'],
+            $hasDocumentKey
+                ? ['indexHandle', 'siteId', 'documentKey', 'term']
+                : ['indexHandle', 'siteId', 'elementId', 'term'],
             ['frequency', 'language'],
         );
 
@@ -157,19 +182,59 @@ class PostgreSqlStorage implements StorageInterface
         return $byElement;
     }
 
+    public function getDocumentLanguagesBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        if (!$this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
+            return $this->getDocumentLanguagesBatch($siteId, array_map('intval', $documentKeys));
+        }
+
+        $rows = (new Query())
+            ->select(['documentKey', 'language'])
+            ->from('{{%searchmanager_search_documents}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'documentKey' => array_values(array_unique(array_map('strval', $documentKeys))),
+                'term' => '_language',
+            ])
+            ->all();
+
+        $byDocument = [];
+        foreach ($rows as $row) {
+            $byDocument[(string)$row['documentKey']] = (string)($row['language'] ?: 'en');
+        }
+
+        return $byDocument;
+    }
+
     /**
      * @inheritdoc
      */
     public function getDocumentTerms(int $siteId, int $elementId): array
     {
+        return $this->getDocumentTermsByKey($siteId, $this->pageDocumentKey($siteId, $elementId));
+    }
+
+    public function getDocumentTermsByKey(int $siteId, string $documentKey): array
+    {
+        $where = [
+            'indexHandle' => $this->indexHandle,
+            'siteId' => $siteId,
+        ];
+        if ($this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
+            $where['documentKey'] = $documentKey;
+        } else {
+            $where['elementId'] = (int)$documentKey;
+        }
+
         $rows = (new Query())
             ->select(['term', 'frequency'])
             ->from('{{%searchmanager_search_documents}}')
-            ->where([
-                'indexHandle' => $this->indexHandle,
-                'siteId' => $siteId,
-                'elementId' => $elementId,
-            ])
+            ->where($where)
             ->andWhere(['!=', 'term', '_length'])
             ->andWhere(['!=', 'term', '_language'])
             ->all();
@@ -211,10 +276,45 @@ class PostgreSqlStorage implements StorageInterface
         return $byElement;
     }
 
+    public function getDocumentTermsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        if (!$this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
+            return $this->getDocumentTermsBatch($siteId, array_map('intval', $documentKeys));
+        }
+
+        $rows = (new Query())
+            ->select(['documentKey', 'term', 'frequency'])
+            ->from('{{%searchmanager_search_documents}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'documentKey' => array_values(array_unique(array_map('strval', $documentKeys))),
+            ])
+            ->andWhere(['!=', 'term', '_length'])
+            ->andWhere(['!=', 'term', '_language'])
+            ->all();
+
+        $byDocument = [];
+        foreach ($rows as $row) {
+            $byDocument[(string)$row['documentKey']][(string)$row['term']] = (int)$row['frequency'];
+        }
+
+        return $byDocument;
+    }
+
     /**
      * @inheritdoc
      */
     public function deleteDocument(int $siteId, int $elementId): void
+    {
+        $this->deleteDocumentByKey($siteId, $this->pageDocumentKey($siteId, $elementId));
+    }
+
+    public function deleteDocumentByKey(int $siteId, string $documentKey): void
     {
         // Delete from all tables that have elementId-specific data
         $tables = [
@@ -226,19 +326,25 @@ class PostgreSqlStorage implements StorageInterface
         ];
 
         foreach ($tables as $table) {
+            $condition = [
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+            ];
+            if ($this->hasColumn($table, 'documentKey')) {
+                $condition['documentKey'] = $documentKey;
+            } else {
+                $condition['elementId'] = (int)$documentKey;
+            }
+
             $this->db->createCommand()->delete(
                 $table,
-                [
-                    'indexHandle' => $this->indexHandle,
-                    'siteId' => $siteId,
-                    'elementId' => $elementId,
-                ]
+                $condition
             )->execute();
         }
 
         $this->logDebug('Deleted document from all tables', [
             'site_id' => $siteId,
-            'element_id' => $elementId,
+            'document_key' => $documentKey,
         ]);
     }
 
@@ -247,15 +353,26 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function getDocumentLength(int $siteId, int $elementId): int
     {
+        return $this->getDocumentLengthByKey($siteId, $this->pageDocumentKey($siteId, $elementId));
+    }
+
+    public function getDocumentLengthByKey(int $siteId, string $documentKey): int
+    {
+        $where = [
+            'indexHandle' => $this->indexHandle,
+            'siteId' => $siteId,
+            'term' => '_length',
+        ];
+        if ($this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
+            $where['documentKey'] = $documentKey;
+        } else {
+            $where['elementId'] = (int)$documentKey;
+        }
+
         $result = (new Query())
             ->select(['frequency'])
             ->from('{{%searchmanager_search_documents}}')
-            ->where([
-                'indexHandle' => $this->indexHandle,
-                'siteId' => $siteId,
-                'elementId' => $elementId,
-                'term' => '_length',
-            ])
+            ->where($where)
             ->scalar();
 
         return $result ? (int)$result : 0;
@@ -267,21 +384,22 @@ class PostgreSqlStorage implements StorageInterface
     public function getDocumentLengthsBatch(array $docIds): array
     {
         $lengths = [];
+        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey');
 
-        foreach ($docIds as $siteId => $elementIds) {
+        foreach ($docIds as $siteId => $documentIds) {
             $rows = (new Query())
-                ->select(['siteId', 'elementId', 'frequency'])
+                ->select($hasDocumentKey ? ['siteId', 'documentKey', 'frequency'] : ['siteId', 'elementId', 'frequency'])
                 ->from('{{%searchmanager_search_documents}}')
                 ->where([
                     'indexHandle' => $this->indexHandle,
                     'siteId' => $siteId,
-                    'elementId' => $elementIds,
+                    $hasDocumentKey ? 'documentKey' : 'elementId' => $documentIds,
                     'term' => '_length',
                 ])
                 ->all();
 
             foreach ($rows as $row) {
-                $docId = $row['siteId'] . ':' . $row['elementId'];
+                $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
                 $lengths[$docId] = (int)$row['frequency'];
             }
         }
@@ -298,17 +416,27 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function storeTermDocument(string $term, int $siteId, int $elementId, int $frequency, string $language = 'en'): void
     {
+        $this->storeTermDocumentByKey($term, $siteId, $elementId, $this->pageDocumentKey($siteId, $elementId), $frequency, $language);
+    }
+
+    public function storeTermDocumentByKey(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language = 'en'): void
+    {
+        $values = [
+            'indexHandle' => $this->indexHandle,
+            'term' => $term,
+            'siteId' => $siteId,
+            'elementId' => $elementId,
+            'frequency' => $frequency,
+            'language' => $language,
+        ];
+        if ($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')) {
+            $values['documentKey'] = $documentKey;
+        }
+
         // Upsert avoids duplicate-key failures when collation-equivalent terms collide.
         $this->db->createCommand()->upsert(
             '{{%searchmanager_search_terms}}',
-            [
-                'indexHandle' => $this->indexHandle,
-                'term' => $term,
-                'siteId' => $siteId,
-                'elementId' => $elementId,
-                'frequency' => $frequency,
-                'language' => $language,
-            ],
+            $values,
             [
                 // Keep the larger frequency to avoid inflating BM25 from equivalent variants.
                 'frequency' => new Expression('GREATEST([[frequency]], :incomingFrequency)', [
@@ -325,7 +453,9 @@ class PostgreSqlStorage implements StorageInterface
     public function getTermDocuments(string $term, int $siteId): array
     {
         $rows = (new Query())
-            ->select(['siteId', 'elementId', 'frequency'])
+            ->select($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')
+                ? ['siteId', 'documentKey', 'frequency']
+                : ['siteId', 'elementId', 'frequency'])
             ->from('{{%searchmanager_search_terms}}')
             ->where([
                 'indexHandle' => $this->indexHandle,
@@ -336,7 +466,7 @@ class PostgreSqlStorage implements StorageInterface
 
         $docs = [];
         foreach ($rows as $row) {
-            $docId = $row['siteId'] . ':' . $row['elementId'];
+            $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
             $docs[$docId] = (int)$row['frequency'];
         }
 
@@ -353,7 +483,9 @@ class PostgreSqlStorage implements StorageInterface
         }
 
         $rows = (new Query())
-            ->select(['term', 'siteId', 'elementId', 'frequency'])
+            ->select($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')
+                ? ['term', 'siteId', 'documentKey', 'frequency']
+                : ['term', 'siteId', 'elementId', 'frequency'])
             ->from('{{%searchmanager_search_terms}}')
             ->where([
                 'indexHandle' => $this->indexHandle,
@@ -364,7 +496,7 @@ class PostgreSqlStorage implements StorageInterface
 
         $byTerm = [];
         foreach ($rows as $row) {
-            $docId = $row['siteId'] . ':' . $row['elementId'];
+            $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
             $byTerm[$row['term']][$docId] = (int)$row['frequency'];
         }
 
@@ -376,14 +508,25 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function removeTermDocument(string $term, int $siteId, int $elementId): void
     {
+        $this->removeTermDocumentByKey($term, $siteId, $this->pageDocumentKey($siteId, $elementId));
+    }
+
+    public function removeTermDocumentByKey(string $term, int $siteId, string $documentKey): void
+    {
+        $condition = [
+            'indexHandle' => $this->indexHandle,
+            'term' => $term,
+            'siteId' => $siteId,
+        ];
+        if ($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')) {
+            $condition['documentKey'] = $documentKey;
+        } else {
+            $condition['elementId'] = (int)$documentKey;
+        }
+
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_terms}}',
-            [
-                'indexHandle' => $this->indexHandle,
-                'term' => $term,
-                'siteId' => $siteId,
-                'elementId' => $elementId,
-            ]
+            $condition
         )->execute();
     }
 
@@ -460,22 +603,33 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function storeElement(int $siteId, int $elementId, string $title, string $elementType, ?string $documentData = null): void
     {
+        $this->storeElementByKey($siteId, $elementId, $this->pageDocumentKey($siteId, $elementId), $title, $elementType, $documentData);
+    }
+
+    public function storeElementByKey(int $siteId, int $elementId, string $documentKey, string $title, string $elementType, ?string $documentData = null): void
+    {
         // Normalize searchText for prefix matching (lowercase)
         $searchText = mb_strtolower(trim($title));
+        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey');
 
         $this->upsertRows(
             '{{%searchmanager_search_elements}}',
-            ['indexHandle', 'siteId', 'elementId', 'title', 'elementType', 'searchText', 'documentData'],
+            $hasDocumentKey
+                ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'title', 'elementType', 'searchText', 'documentData']
+                : ['indexHandle', 'siteId', 'elementId', 'title', 'elementType', 'searchText', 'documentData'],
             [[
                 $this->indexHandle,
                 $siteId,
                 $elementId,
+                ...($hasDocumentKey ? [$documentKey] : []),
                 $title,
                 $elementType,
                 $searchText,
                 $documentData,
             ]],
-            ['indexHandle', 'siteId', 'elementId'],
+            $hasDocumentKey
+                ? ['indexHandle', 'siteId', 'documentKey']
+                : ['indexHandle', 'siteId', 'elementId'],
             ['title', 'elementType', 'searchText', 'documentData'],
         );
 
@@ -540,6 +694,39 @@ class PostgreSqlStorage implements StorageInterface
         return $result;
     }
 
+    public function getElementsByDocumentKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        if (!$this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey')) {
+            return $this->getElementsByIds($siteId, array_map('intval', $documentKeys));
+        }
+
+        $rows = (new Query())
+            ->select(['documentKey', 'elementId', 'title', 'elementType', 'documentData'])
+            ->from('{{%searchmanager_search_elements}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'documentKey' => $documentKeys,
+            ])
+            ->all();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[(string)$row['documentKey']] = [
+                'elementId' => (int)$row['elementId'],
+                'title' => $row['title'],
+                'elementType' => $row['elementType'],
+                'documentData' => !empty($row['documentData']) ? json_decode($row['documentData'], true) : null,
+            ];
+        }
+
+        return $result;
+    }
+
     /**
      * Get element suggestions by prefix
      *
@@ -581,18 +768,28 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function storeTitleTerms(int $siteId, int $elementId, array $titleTerms): void
     {
+        $this->storeTitleTermsByKey($siteId, $elementId, $this->pageDocumentKey($siteId, $elementId), $titleTerms);
+    }
+
+    public function storeTitleTermsByKey(int $siteId, int $elementId, string $documentKey, array $titleTerms): void
+    {
         if (empty($titleTerms)) {
             return;
         }
 
         $rows = [];
+        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey');
         foreach ($titleTerms as $term) {
-            $rows[] = [$this->indexHandle, $siteId, $elementId, $term];
+            $rows[] = $hasDocumentKey
+                ? [$this->indexHandle, $siteId, $elementId, $documentKey, $term]
+                : [$this->indexHandle, $siteId, $elementId, $term];
         }
 
         $this->insertRowsOnConflictDoNothing(
             '{{%searchmanager_search_titles}}',
-            ['indexHandle', 'siteId', 'elementId', 'term'],
+            $hasDocumentKey
+                ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'term']
+                : ['indexHandle', 'siteId', 'elementId', 'term'],
             $rows,
         );
 
@@ -646,18 +843,57 @@ class PostgreSqlStorage implements StorageInterface
         return $byElement;
     }
 
+    public function getTitleTermsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        if (!$this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey')) {
+            return $this->getTitleTermsBatch($siteId, array_map('intval', $documentKeys));
+        }
+
+        $rows = (new Query())
+            ->select(['documentKey', 'term'])
+            ->from('{{%searchmanager_search_titles}}')
+            ->where([
+                'indexHandle' => $this->indexHandle,
+                'siteId' => $siteId,
+                'documentKey' => $documentKeys,
+            ])
+            ->all();
+
+        $byDocument = [];
+        foreach ($rows as $row) {
+            $byDocument[(string)$row['documentKey']][] = $row['term'];
+        }
+
+        return $byDocument;
+    }
+
     /**
      * @inheritdoc
      */
     public function deleteTitleTerms(int $siteId, int $elementId): void
     {
+        $this->deleteTitleTermsByKey($siteId, $this->pageDocumentKey($siteId, $elementId));
+    }
+
+    public function deleteTitleTermsByKey(int $siteId, string $documentKey): void
+    {
+        $condition = [
+            'indexHandle' => $this->indexHandle,
+            'siteId' => $siteId,
+        ];
+        if ($this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey')) {
+            $condition['documentKey'] = $documentKey;
+        } else {
+            $condition['elementId'] = (int)$documentKey;
+        }
+
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_titles}}',
-            [
-                'indexHandle' => $this->indexHandle,
-                'siteId' => $siteId,
-                'elementId' => $elementId,
-            ]
+            $condition
         )->execute();
     }
 
@@ -816,33 +1052,66 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function storeCompoundSuggestions(int $siteId, int $elementId, array $suggestions, string $language = 'en'): void
     {
-        $this->deleteCompoundSuggestions($siteId, $elementId);
+        $this->storeCompoundSuggestionsByKey($siteId, $elementId, $this->pageDocumentKey($siteId, $elementId), $suggestions, $language);
+    }
+
+    public function storeCompoundSuggestionsByKey(int $siteId, int $elementId, string $documentKey, array $suggestions, string $language = 'en'): void
+    {
+        $this->deleteCompoundSuggestionsByKey($siteId, $documentKey);
 
         if (empty($suggestions)) {
             return;
         }
 
+        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_compounds}}', 'documentKey');
         $rows = [];
         foreach ($suggestions as $suggestion) {
-            $rows[] = [
+            $row = [
                 $this->indexHandle,
                 $siteId,
                 $elementId,
+            ];
+            if ($hasDocumentKey) {
+                $row[] = $documentKey;
+            }
+            $rows[] = array_merge($row, [
                 (string)$suggestion['suggestion'],
                 (string)$suggestion['normalizedSuggestion'],
                 (string)$suggestion['tokenKey'],
                 (int)$suggestion['frequency'],
                 $language,
-            ];
+            ]);
         }
 
         $this->upsertRows(
             '{{%searchmanager_search_compounds}}',
-            ['indexHandle', 'siteId', 'elementId', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
+            $hasDocumentKey
+                ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language']
+                : ['indexHandle', 'siteId', 'elementId', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
             $rows,
-            ['indexHandle', 'siteId', 'elementId', 'suggestion'],
+            $hasDocumentKey
+                ? ['indexHandle', 'siteId', 'documentKey', 'suggestion']
+                : ['indexHandle', 'siteId', 'elementId', 'suggestion'],
             ['normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
         );
+    }
+
+    private function pageDocumentKey(int $siteId, int $elementId): string
+    {
+        return SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+    }
+
+    private function hasColumn(string $table, string $column): bool
+    {
+        $key = $table . ':' . $column;
+        if (array_key_exists($key, $this->columnExists)) {
+            return $this->columnExists[$key];
+        }
+
+        $tableSchema = $this->db->getTableSchema($this->db->getSchema()->getRawTableName($table), true)
+            ?? $this->db->getTableSchema($table, true);
+
+        return $this->columnExists[$key] = $tableSchema !== null && isset($tableSchema->columns[$column]);
     }
 
     /**
@@ -850,14 +1119,45 @@ class PostgreSqlStorage implements StorageInterface
      */
     public function deleteCompoundSuggestions(int $siteId, int $elementId): void
     {
+        $this->deleteCompoundSuggestionsByKey($siteId, $this->pageDocumentKey($siteId, $elementId));
+    }
+
+    public function deleteCompoundSuggestionsByKey(int $siteId, string $documentKey): void
+    {
+        $condition = [
+            'indexHandle' => $this->indexHandle,
+            'siteId' => $siteId,
+        ];
+        if ($this->hasColumn('{{%searchmanager_search_compounds}}', 'documentKey')) {
+            $condition['documentKey'] = $documentKey;
+        } else {
+            $condition['elementId'] = (int)$documentKey;
+        }
+
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_compounds}}',
-            [
+            $condition,
+        )->execute();
+    }
+
+    /**
+     * @return string[]
+     */
+    public function getDocumentKeysByParent(int $siteId, int $elementId): array
+    {
+        if (!$this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey')) {
+            return [$this->pageDocumentKey($siteId, $elementId)];
+        }
+
+        return array_map('strval', (new Query())
+            ->select(['documentKey'])
+            ->from('{{%searchmanager_search_elements}}')
+            ->where([
                 'indexHandle' => $this->indexHandle,
                 'siteId' => $siteId,
                 'elementId' => $elementId,
-            ],
-        )->execute();
+            ])
+            ->column());
     }
 
     /**

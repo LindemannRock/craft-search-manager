@@ -11,6 +11,8 @@ namespace lindemannrock\searchmanager\services\sync;
 use craft\base\ElementInterface;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\IndexEvent;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SourceDocSectionSplitter;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\IndexingService;
@@ -124,6 +126,8 @@ class PendingSyncProcessor extends Component
         $docs = [];
         $docRows = [];
         $docElements = [];
+        $docEventDocuments = [];
+        $docParents = [];
         $deleteItems = [];
         $deleteRows = [];
         $successIds = [];
@@ -210,13 +214,43 @@ class PendingSyncProcessor extends Component
                 $data['siteId'] = $siteId;
             }
 
-            $docs[] = $data;
+            $documents = $this->documentsForIndex($index, $element, $data);
+            foreach ($documents as $document) {
+                $docs[] = $document;
+            }
             $docRows[] = $row;
             $docElements[] = $element;
+            $docEventDocuments[] = $index->usesSplitSections() ? $documents : $data;
+            if ($index->usesSplitSections()) {
+                $docParents[$this->elementCacheKey($siteId, $elementId)] = [
+                    'elementId' => $elementId,
+                    'siteId' => $siteId,
+                    'keepBackendIds' => $this->backendIdsFromDocuments($documents),
+                ];
+            }
         }
 
         if (!empty($docs)) {
             if (SearchManager::$plugin->backend->batchIndex($indexHandle, $docs)) {
+                $orphanDeletesSucceeded = true;
+                foreach ($docParents as $parent) {
+                    if (!SearchManager::$plugin->backend->deleteOrphanDocuments(
+                        $indexHandle,
+                        (int)$parent['elementId'],
+                        (int)$parent['siteId'],
+                        $parent['keepBackendIds'],
+                    )) {
+                        $orphanDeletesSucceeded = false;
+                    }
+                }
+
+                if (!$orphanDeletesSucceeded) {
+                    $failures[] = [
+                        'ids' => $this->rowIds($docRows),
+                        'error' => "Orphan delete failed for {$indexHandle}.",
+                    ];
+                }
+
                 SearchIndex::touchLastIndexedDebounced($indexHandle);
                 $synced = true;
 
@@ -226,12 +260,14 @@ class PendingSyncProcessor extends Component
                 foreach ($docRows as $i => $docRow) {
                     $indexing->trigger(IndexingService::EVENT_AFTER_INDEX, new IndexEvent([
                         'element' => $docElements[$i],
-                        'document' => $docs[$i],
+                        'document' => $docEventDocuments[$i],
                         'indexHandle' => $indexHandle,
                     ]));
                 }
 
-                $successIds = array_merge($successIds, $this->rowIds($docRows));
+                if ($orphanDeletesSucceeded) {
+                    $successIds = array_merge($successIds, $this->rowIds($docRows));
+                }
             } else {
                 $failures[] = [
                     'ids' => $this->rowIds($docRows),
@@ -241,7 +277,11 @@ class PendingSyncProcessor extends Component
         }
 
         if (!empty($deleteItems)) {
-            if (SearchManager::$plugin->backend->batchDelete($indexHandle, $deleteItems)) {
+            $deleted = $index->usesSplitSections()
+                ? $this->deleteSplitParents($indexHandle, $deleteItems)
+                : SearchManager::$plugin->backend->batchDelete($indexHandle, $deleteItems);
+
+            if ($deleted) {
                 SearchIndex::touchLastIndexedDebounced($indexHandle);
                 $synced = true;
                 $successIds = array_merge($successIds, $this->rowIds($deleteRows));
@@ -263,6 +303,26 @@ class PendingSyncProcessor extends Component
             'failures' => $failures,
             'synced' => $synced,
         ];
+    }
+
+    /**
+     * @param array<int, array{elementId: int, siteId: int}> $deleteItems
+     */
+    private function deleteSplitParents(string $indexHandle, array $deleteItems): bool
+    {
+        $success = true;
+        foreach ($deleteItems as $item) {
+            if (!SearchManager::$plugin->backend->deleteOrphanDocuments(
+                $indexHandle,
+                (int)$item['elementId'],
+                (int)$item['siteId'],
+                [],
+            )) {
+                $success = false;
+            }
+        }
+
+        return $success;
     }
 
     /**
@@ -337,6 +397,38 @@ class PendingSyncProcessor extends Component
             'siteId' => $siteId,
         ];
         $deleteRows[] = $row;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return list<array<string, mixed>>
+     */
+    private function documentsForIndex(SearchIndex $index, ElementInterface $element, array $data): array
+    {
+        if (!$index->usesSplitSections() || !($element instanceof \lindemannrock\docsmanager\elements\SourceDoc)) {
+            return [$data];
+        }
+
+        $documents = SourceDocSectionSplitter::split($element, $data, $index->headingLevels ?? [2, 3, 4]);
+
+        return $documents !== [] ? $documents : [$data];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $documents
+     * @return list<string>
+     */
+    private function backendIdsFromDocuments(array $documents): array
+    {
+        $ids = [];
+        foreach ($documents as $document) {
+            $documentId = SearchHitIdentityHelper::documentId($document);
+            if ($documentId !== null) {
+                $ids[] = $documentId;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

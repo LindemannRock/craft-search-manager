@@ -983,6 +983,8 @@ return [
     'Which category groups to index (leave all unchecked for all groups)' => 'Welke categoriegroepen te indexeren (laat alles uitgevinkt voor alle groepen)',
     'Heading Levels' => 'Kopniveaus',
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => 'Welke kopniveaus te extraheren voor hiërarchisch zoeken en ankerlinks. Standaard is H2–H4.',
+    'Split Sections' => 'Secties opsplitsen',
+    'Index the page intro and each heading section as separate search hits.' => 'Indexeer de pagina-intro en elke kopsectie als afzonderlijke zoekresultaten.',
     'Transformer Class' => 'Transformerklasse',
     'Optional override for advanced indexing needs.' => 'Optionele overschrijving voor geavanceerde indexeringsbehoeften.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'Overschrijf de globale zoekbackend voor deze index. Laat op \'Default\' staan om de backend te gebruiken die in de plugininstellingen is geconfigureerd.',

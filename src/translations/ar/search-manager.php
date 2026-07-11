@@ -983,6 +983,8 @@ return [
     'Which category groups to index (leave all unchecked for all groups)' => 'مجموعات الفئات المراد فهرستها (اترك الكل بدون تحديد لجميع المجموعات)',
     'Heading Levels' => 'مستويات العناوين',
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => 'مستويات العناوين المراد استخراجها للبحث الهرمي وروابط الإرساء. الافتراضي هو H2–H4.',
+    'Split Sections' => 'تقسيم الأقسام',
+    'Index the page intro and each heading section as separate search hits.' => 'افهرس مقدمة الصفحة وكل قسم عنوان كنتائج بحث منفصلة.',
     'Transformer Class' => 'فئة Transformer',
     'Optional override for advanced indexing needs.' => 'تجاوز اختياري لاحتياجات الفهرسة المتقدمة.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'تجاوز الواجهة الخلفية العامة للبحث لهذا الفهرس. اترك كـ \'Default\' لاستخدام الواجهة الخلفية المكونة في إعدادات الإضافة.',

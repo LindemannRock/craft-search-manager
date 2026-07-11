@@ -13,6 +13,8 @@ use craft\base\ElementInterface;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\IndexEvent;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SourceDocSectionSplitter;
 use lindemannrock\searchmanager\jobs\IndexElementJob;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -191,9 +193,21 @@ class IndexingService extends Component
                     'backendName' => $backendName,
                 ]);
 
-                $indexResult = SearchManager::$plugin->backend->indexWithResult($indexHandle, $data);
-                $result = $indexResult['success'];
-                $isNewDocument = $indexResult['wasCreated'] === true;
+                $documents = $this->documentsForIndex($index, $element, $data);
+                if ($index?->usesSplitSections()) {
+                    $result = SearchManager::$plugin->backend->batchIndex($indexHandle, $documents)
+                        && SearchManager::$plugin->backend->deleteOrphanDocuments(
+                            $indexHandle,
+                            (int)$element->id,
+                            (int)$element->siteId,
+                            $this->backendIdsFromDocuments($documents),
+                        );
+                    $isNewDocument = false;
+                } else {
+                    $indexResult = SearchManager::$plugin->backend->indexWithResult($indexHandle, $data);
+                    $result = $indexResult['success'];
+                    $isNewDocument = $indexResult['wasCreated'] === true;
+                }
 
                 if ($result) {
                     // Clear caches for this index (if enabled)
@@ -211,7 +225,7 @@ class IndexingService extends Component
                     // Trigger after event
                     $this->trigger(self::EVENT_AFTER_INDEX, new IndexEvent([
                         'element' => $element,
-                        'document' => $data,
+                        'document' => $index?->usesSplitSections() ? $documents : $data,
                         'indexHandle' => $indexHandle,
                     ]));
 
@@ -262,7 +276,12 @@ class IndexingService extends Component
             }
 
             try {
-                $deleteResult = SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
+                $deleteResult = $index->usesSplitSections()
+                    ? [
+                        'success' => SearchManager::$plugin->backend->deleteOrphanDocuments($index->handle, (int)$element->id, $siteId, []),
+                        'existed' => null,
+                    ]
+                    : SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
                 if ($deleteResult['success']) {
                     if ($deleteResult['existed'] === true) {
                         SearchIndex::decrementDocumentCount($index->handle);
@@ -320,7 +339,12 @@ class IndexingService extends Component
             }
 
             try {
-                $deleteResult = SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
+                $deleteResult = $index->usesSplitSections()
+                    ? [
+                        'success' => SearchManager::$plugin->backend->deleteOrphanDocuments($index->handle, (int)$element->id, $siteId, []),
+                        'existed' => null,
+                    ]
+                    : SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
 
                 if (!$deleteResult['success']) {
                     $success = false;
@@ -425,7 +449,9 @@ class IndexingService extends Component
                     $data['siteId'] = $element->siteId;
                 }
 
-                $items[] = $data;
+                foreach ($this->documentsForIndex($index, $element, $data) as $document) {
+                    $items[] = $document;
+                }
             }
         });
 
@@ -573,6 +599,46 @@ class IndexingService extends Component
         ]);
 
         return $handles;
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     * @return list<array<string, mixed>>
+     */
+    private function documentsForIndex(?SearchIndex $index, ElementInterface $element, array $data): array
+    {
+        if (!$index?->usesSplitSections()) {
+            return [$data];
+        }
+
+        if (!($element instanceof \lindemannrock\docsmanager\elements\SourceDoc)) {
+            return [$data];
+        }
+
+        $documents = SourceDocSectionSplitter::split(
+            $element,
+            $data,
+            $index->headingLevels ?? [2, 3, 4],
+        );
+
+        return $documents !== [] ? $documents : [$data];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $documents
+     * @return list<string>
+     */
+    private function backendIdsFromDocuments(array $documents): array
+    {
+        $ids = [];
+        foreach ($documents as $document) {
+            $documentId = SearchHitIdentityHelper::documentId($document);
+            if ($documentId !== null) {
+                $ids[] = $documentId;
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**

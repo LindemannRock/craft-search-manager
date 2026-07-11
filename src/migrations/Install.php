@@ -228,6 +228,7 @@ class Install extends Migration
             'enableAnalytics' => $this->boolean()->notNull()->defaultValue(true),
             'disableStopWords' => $this->boolean()->notNull()->defaultValue(false),
             'skipEntriesWithoutUrl' => $this->boolean()->notNull()->defaultValue(false),
+            'splitSections' => $this->boolean()->notNull()->defaultValue(false),
             'source' => $this->enum('source', ['config', 'database'])->notNull()->defaultValue('database'),
             'backend' => $this->string(255)->null()->comment('Handle of configured backend to use'),
             'lastIndexed' => $this->dateTime()->null(),
@@ -592,13 +593,15 @@ class Install extends Migration
                 'indexHandle' => $this->string(255)->notNull(),
                 'siteId' => $this->integer()->notNull(),
                 'elementId' => $this->integer()->notNull(),
+                'documentKey' => $this->string(255)->notNull()->comment('Backend document ID, unique per indexed page or section'),
                 'term' => $this->string(255)->notNull(),
                 'frequency' => $this->integer()->notNull(),
                 'language' => $this->string(10)->notNull()->defaultValue('en'),
             ]);
 
-            $this->addPrimaryKey(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'elementId', 'term']);
+            $this->addPrimaryKey(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'documentKey', 'term']);
             $this->createIndex(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'elementId'], false);
+            $this->createIndex(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'documentKey'], false);
             $this->createIndex(null, '{{%searchmanager_search_documents}}', ['indexHandle', 'language'], false);
             // Performance index for term lookups (search queries)
             $this->createIndex('idx_term_lookup', '{{%searchmanager_search_documents}}', ['indexHandle', 'siteId', 'term'], false);
@@ -611,12 +614,15 @@ class Install extends Migration
                 'term' => $this->string(255)->notNull(),
                 'siteId' => $this->integer()->notNull(),
                 'elementId' => $this->integer()->notNull(),
+                'documentKey' => $this->string(255)->notNull()->comment('Backend document ID, unique per indexed page or section'),
                 'frequency' => $this->integer()->notNull(),
                 'language' => $this->string(10)->notNull()->defaultValue('en'),
             ]);
 
-            $this->addPrimaryKey(null, '{{%searchmanager_search_terms}}', ['indexHandle', 'term', 'siteId', 'elementId']);
+            $this->addPrimaryKey(null, '{{%searchmanager_search_terms}}', ['indexHandle', 'term', 'siteId', 'documentKey']);
             $this->createIndex(null, '{{%searchmanager_search_terms}}', ['indexHandle', 'term', 'siteId'], false);
+            $this->createIndex(null, '{{%searchmanager_search_terms}}', ['indexHandle', 'siteId', 'elementId'], false);
+            $this->createIndex(null, '{{%searchmanager_search_terms}}', ['indexHandle', 'siteId', 'documentKey'], false);
             $this->createIndex(null, '{{%searchmanager_search_terms}}', ['indexHandle', 'language'], false);
         }
 
@@ -626,10 +632,13 @@ class Install extends Migration
                 'indexHandle' => $this->string(255)->notNull(),
                 'siteId' => $this->integer()->notNull(),
                 'elementId' => $this->integer()->notNull(),
+                'documentKey' => $this->string(255)->notNull()->comment('Backend document ID, unique per indexed page or section'),
                 'term' => $this->string(255)->notNull(),
             ]);
 
-            $this->addPrimaryKey(null, '{{%searchmanager_search_titles}}', ['indexHandle', 'siteId', 'elementId', 'term']);
+            $this->addPrimaryKey(null, '{{%searchmanager_search_titles}}', ['indexHandle', 'siteId', 'documentKey', 'term']);
+            $this->createIndex(null, '{{%searchmanager_search_titles}}', ['indexHandle', 'siteId', 'elementId'], false);
+            $this->createIndex(null, '{{%searchmanager_search_titles}}', ['indexHandle', 'siteId', 'documentKey'], false);
             $this->createIndex(null, '{{%searchmanager_search_titles}}', ['indexHandle', 'term', 'siteId'], false);
         }
 
@@ -681,13 +690,15 @@ class Install extends Migration
                 'indexHandle' => $this->string(255)->notNull(),
                 'siteId' => $this->integer()->notNull(),
                 'elementId' => $this->integer()->notNull(),
+                'documentKey' => $this->string(255)->notNull()->comment('Backend document ID, unique per indexed page or section'),
                 'title' => $this->string(500)->notNull(),
                 'elementType' => $this->string(50)->notNull()->comment('product, category, etc.'),
                 'searchText' => $this->string(500)->notNull()->comment('Normalized lowercase for prefix matching'),
                 'documentData' => $this->mediumText()->null()->comment('JSON transformer output for rich results'),
             ]);
 
-            $this->addPrimaryKey(null, '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementId']);
+            $this->addPrimaryKey(null, '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'documentKey']);
+            $this->createIndex(null, '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'elementId'], false);
             // Index for prefix search on searchText
             $this->createIndex('idx_elements_search', '{{%searchmanager_search_elements}}', ['indexHandle', 'siteId', 'searchText'], false);
             // Index for filtering by elementType
@@ -701,6 +712,7 @@ class Install extends Migration
                 'indexHandle' => $this->string(255)->notNull(),
                 'siteId' => $this->integer()->notNull(),
                 'elementId' => $this->integer()->notNull(),
+                'documentKey' => $this->string(255)->notNull()->comment('Backend document ID, unique per indexed page or section'),
                 'suggestion' => $this->string(255)->notNull()->comment('Display suggestion, e.g. Redirect.twig'),
                 'normalizedSuggestion' => $this->string(255)->notNull()->comment('Prefix-searchable normalized suggestion'),
                 'tokenKey' => $this->string(255)->notNull()->comment('Tokenized compound intent, e.g. redirect twig'),
@@ -708,7 +720,8 @@ class Install extends Migration
                 'language' => $this->string(10)->notNull()->defaultValue('en'),
             ]);
 
-            $this->addPrimaryKey(null, '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'elementId', 'suggestion']);
+            $this->addPrimaryKey(null, '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'documentKey', 'suggestion']);
+            $this->createIndex(null, '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'elementId'], false);
             $this->createIndex('idx_compounds_prefix', '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'normalizedSuggestion'], false);
             $this->createIndex('idx_compounds_token_key', '{{%searchmanager_search_compounds}}', ['indexHandle', 'siteId', 'tokenKey'], false);
             $this->createIndex('idx_compounds_language', '{{%searchmanager_search_compounds}}', ['indexHandle', 'language'], false);

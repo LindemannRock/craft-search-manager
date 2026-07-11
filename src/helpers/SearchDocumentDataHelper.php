@@ -27,7 +27,7 @@ class SearchDocumentDataHelper
      */
     public static function commonData(ElementInterface $element): array
     {
-        $backendId = SearchHitIdentityHelper::backendId($element->id, $element->siteId);
+        $backendId = SearchHitIdentityHelper::pageDocumentId($element->id, $element->siteId);
         $documentType = self::documentType($element);
         $site = Craft::$app->getSites()->getSiteById((int)$element->siteId);
 

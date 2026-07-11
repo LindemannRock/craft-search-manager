@@ -26,7 +26,7 @@ final class AuditItem293RegressionTest extends TestCase
         $source = $this->readPluginSource('src/backends/AbstractSearchEngineBackend.php');
         $body = $this->methodBody($source, 'indexWithResult', 'public');
 
-        self::assertStringContainsString('->indexDocumentWithResult($siteId, $elementId, $title, $content)', $body);
+        self::assertStringContainsString('->indexDocumentWithKeyResult($siteId, $elementId, $documentKey, $title, $content)', $body);
         self::assertStringNotContainsString('getDocumentTerms($siteId, $elementId)', $body);
         self::assertStringNotContainsString('$existed', $body);
     }
@@ -34,10 +34,10 @@ final class AuditItem293RegressionTest extends TestCase
     public function testSearchEngineChecksCreationInsideTheMutexedReplacementPath(): void
     {
         $source = $this->readPluginSource('src/search/SearchEngine.php');
-        $body = $this->methodBody($source, 'indexDocumentWithResult', 'public');
+        $body = $this->methodBody($source, 'indexDocumentWithKeyResult', 'public');
 
         $lockPosition = strpos($body, 'getMutex()->acquire($lockName, 30)');
-        $termsPosition = strpos($body, '$oldTerms = $this->storage->getDocumentTerms($siteId, $elementId);');
+        $termsPosition = strpos($body, '$oldTerms = $this->documentTerms($siteId, $elementId, $documentKey);');
         $createdPosition = strpos($body, '$wasCreated = $oldDocLength <= 0 && empty($oldTerms);');
 
         self::assertIsInt($lockPosition);

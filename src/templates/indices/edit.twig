@@ -470,13 +470,16 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Show/hide criteria based on element type
     const docPageCriteria = document.getElementById('docpage-criteria');
-
+    const splitSectionsField = document.getElementById('splitSections-field');
+    const splitSectionsInput = splitSectionsField ? splitSectionsField.querySelector('input[name="splitSections"]') : null;
     const transformerInput = document.getElementById('transformerClass');
     const defaultTransformerPlaceholder = {{ defaultTransformerPlaceholder|json_encode|raw }};
     const transformerPlaceholders = {{ transformerPlaceholders|json_encode|raw }};
 
     if (elementTypeSelect) {
         function updateCriteriaVisibility() {
+            const isSourceDoc = elementTypeSelect.value === 'lindemannrock\\docsmanager\\elements\\SourceDoc';
+
             if (entryCriteria) {
                 entryCriteria.style.display = elementTypeSelect.value === 'craft\\elements\\Entry' ? 'block' : 'none';
             }
@@ -487,9 +490,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 categoryCriteria.style.display = elementTypeSelect.value === 'craft\\elements\\Category' ? 'block' : 'none';
             }
             if (docPageCriteria) {
-                docPageCriteria.style.display = elementTypeSelect.value === 'lindemannrock\\docsmanager\\elements\\SourceDoc' ? 'block' : 'none';
+                docPageCriteria.style.display = isSourceDoc ? 'block' : 'none';
             }
-
+            if (splitSectionsField) {
+                splitSectionsField.classList.toggle('hidden', !isSourceDoc);
+            }
+            if (splitSectionsInput) {
+                splitSectionsInput.disabled = !isSourceDoc;
+            }
             // Update transformer placeholder based on element type
             if (transformerInput) {
                 const transformerPlaceholder = transformerPlaceholders[elementTypeSelect.value] || defaultTransformerPlaceholder;
@@ -564,6 +572,17 @@ document.addEventListener('DOMContentLoaded', function() {
 			name: 'skipEntriesWithoutUrl',
 			on: index.skipEntriesWithoutUrl ?? false
 		}) }}
+
+		{% if docsManagerTransformerAvailable %}
+			{{ forms.lightswitchField({
+				label: 'Split Sections'|t('search-manager'),
+				instructions: 'Index the page intro and each heading section as separate search hits.'|t('search-manager'),
+				id: 'splitSections',
+				name: 'splitSections',
+				on: index.splitSections ?? false,
+				fieldClass: index.elementType == 'lindemannrock\\docsmanager\\elements\\SourceDoc' ? [] : ['hidden']
+			}) }}
+		{% endif %}
 
 		{{ forms.lightswitchField({
 			label: 'Disable Stop Words'|t('search-manager'),

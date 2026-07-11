@@ -65,6 +65,20 @@ If [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed, 
 
 When creating a SourceDoc index via the Control Panel, a checkbox group lets you select which sources to include. Leave all unchecked to index all sources.
 
+Long structured SourceDoc indices can opt into section records:
+
+```php
+'search-manager-docs' => [
+    'name' => 'Search Manager Docs',
+    'elementType' => \lindemannrock\docsmanager\elements\SourceDoc::class,
+    'splitSections' => true,
+    'headingLevels' => [2, 3, 4],
+    'enabled' => true,
+],
+```
+
+Split mode is only available for SourceDoc indices that use the built-in Docs Manager transformer. Each intro or heading section is indexed as its own backend record with the parent page identity plus section metadata. Public search results stay flat: `total` counts section hits, `backendId` is unique per section, and `id` / `elementId` stay equal to the parent page ID. Rebuild the affected index after enabling or disabling split mode.
+
 #### Craft Commerce Integration
 
 When Craft Commerce is installed and enabled, Product and Variant element types are available for indices in the Control Panel. Commerce Product Types are configuration records rather than searchable Craft elements, so they are not listed as index element types.
@@ -108,6 +122,7 @@ Config-defined indices show a "Config" badge and cannot be edited in the CP. Dat
 | `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
 | `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
 | `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) |
+| `splitSections` | `bool` | `false` | For SourceDoc indices using the built-in Docs Manager transformer, index intro and heading sections as separate hits |
 | `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
 | `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |
 | `enableAnalytics` | `bool` | `true` | Whether to track analytics for searches on this index |

@@ -194,8 +194,7 @@ class AlgoliaBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
-            // Use composite key matching the objectID format
-            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            $documentId = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
             if (!$this->algoliaObjectExists($fullIndexName, $documentId)) {
                 return [
                     'success' => true,
@@ -225,6 +224,25 @@ class AlgoliaBackend extends BaseBackend
 
             return true;
         } catch (NotFoundException) {
+            return false;
+        }
+    }
+
+    protected function deleteByBackendId(string $indexName, string $backendId): bool
+    {
+        try {
+            $this->getClient()->deleteObject($this->getFullIndexName($indexName), $backendId);
+
+            return true;
+        } catch (NotFoundException) {
+            return true;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to delete Algolia object by backend ID', [
+                'index' => $indexName,
+                'backendId' => $backendId,
+                'error' => $e->getMessage(),
+            ]);
+
             return false;
         }
     }
@@ -491,8 +509,7 @@ class AlgoliaBackend extends BaseBackend
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
 
-            // Use composite key matching the objectID format
-            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            $documentId = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
             // Try to get the object - if it exists, return true
             $client->getObject($fullIndexName, $documentId);

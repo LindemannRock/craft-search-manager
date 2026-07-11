@@ -181,7 +181,10 @@ class IndexedSnippetService extends Component
      */
     private function bodySnippetText(array $hit, bool $parseMarkdownSnippets): string
     {
-        $body = $this->stringValueFromMixed($hit['_bodyClean'] ?? null);
+        $body = $this->stringValueFromMixed($hit['sectionBody'] ?? null);
+        if ($body === '') {
+            $body = $this->stringValueFromMixed($hit['_bodyClean'] ?? null);
+        }
         if ($body === '') {
             return '';
         }

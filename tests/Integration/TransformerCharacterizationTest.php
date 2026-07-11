@@ -72,6 +72,7 @@ use craft\models\Volume;
 use craft\models\VolumeFolder;
 use lindemannrock\docsmanager\elements\SourceDoc;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
+use lindemannrock\searchmanager\helpers\SourceDocSectionSplitter;
 use lindemannrock\searchmanager\services\TransformerService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
@@ -87,6 +88,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(AutoTransformer::class)]
 #[CoversClass(CommerceTransformer::class)]
 #[CoversClass(DocsManagerTransformer::class)]
+#[CoversClass(SourceDocSectionSplitter::class)]
 final class TransformerCharacterizationTest extends TestCase
 {
     public static function setUpBeforeClass(): void
@@ -460,6 +462,58 @@ final class TransformerCharacterizationTest extends TestCase
             'content' => 'Quickstart Install and configure Search Manager. InstallRun Composer install.DeployUse the indexing command after deployment. Install Deploy setup deployment',
             'excerpt' => 'Quickstart Install and configure Search Manager. InstallRun Composer install.DeployUse the indexing command after deployment. Install Deploy setup deployment',
         ], (new DocsManagerTransformer())->transform($sourceDoc));
+    }
+
+    public function testSourceDocSplitSectionsCreateIntroAndHeadingDocuments(): void
+    {
+        $sourceDoc = new SourceDoc();
+        $sourceDoc->id = 702;
+        $sourceDoc->siteId = 1;
+        $sourceDoc->title = 'Guide';
+        $sourceDoc->slug = 'guide';
+        $sourceDoc->category = 'Guides';
+        $sourceDoc->description = 'Learn the workflow.';
+        $sourceDoc->htmlContent = '<p>Intro overview before headings.</p><h2 id="install">Install</h2><p>Run Composer install.</p><h3>Deploy</h3><p>Rebuild the index.</p>';
+        $sourceDoc->keywords = ['setup', 'deployment'];
+
+        $pageData = (new DocsManagerTransformer())->transform($sourceDoc);
+        $sections = SourceDocSectionSplitter::split($sourceDoc, $pageData, [2, 3]);
+
+        self::assertCount(3, $sections);
+        self::assertSame([702, 702, 702], array_column($sections, 'id'));
+        self::assertSame(['702_1_intro', '702_1_install', '702_1_deploy'], array_column($sections, 'backendId'));
+        self::assertCount(3, array_unique(array_column($sections, 'backendId')));
+
+        self::assertSame('intro', $sections[0]['sectionType']);
+        self::assertSame('intro', $sections[0]['sectionId']);
+        self::assertSame('Guide', $sections[0]['sectionTitle']);
+        self::assertNull($sections[0]['sectionLevel']);
+        self::assertNull($sections[0]['sectionAnchor']);
+        self::assertSame('', $sections[0]['sectionUrl']);
+        self::assertSame('Intro overview before headings.', $sections[0]['sectionBody']);
+        self::assertSame('Intro overview before headings.', $sections[0]['_bodyClean']);
+
+        self::assertSame('heading', $sections[1]['sectionType']);
+        self::assertSame('install', $sections[1]['sectionId']);
+        self::assertSame('Install', $sections[1]['sectionTitle']);
+        self::assertSame(2, $sections[1]['sectionLevel']);
+        self::assertSame('install', $sections[1]['sectionAnchor']);
+        self::assertSame('#install', $sections[1]['sectionUrl']);
+        self::assertSame('Run Composer install.', $sections[1]['sectionBody']);
+        self::assertSame('Run Composer install.', $sections[1]['_bodyClean']);
+
+        self::assertSame('heading', $sections[2]['sectionType']);
+        self::assertSame('deploy', $sections[2]['sectionId']);
+        self::assertSame('Deploy', $sections[2]['sectionTitle']);
+        self::assertSame(3, $sections[2]['sectionLevel']);
+        self::assertSame('deploy', $sections[2]['sectionAnchor']);
+        self::assertSame('#deploy', $sections[2]['sectionUrl']);
+        self::assertSame('Rebuild the index.', $sections[2]['sectionBody']);
+
+        foreach ($sections as $section) {
+            self::assertSame([], $section['_headings']);
+            self::assertSame('', $section['headings']);
+        }
     }
 
     public function testPreContentCleanFinalizesAndResetsByteIdentically(): void

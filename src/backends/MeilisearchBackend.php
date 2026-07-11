@@ -202,8 +202,7 @@ class MeilisearchBackend extends BaseBackend
 
             $index = $client->index($fullIndexName);
 
-            // Use composite key matching the objectID format from transformer
-            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            $documentId = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
             if (!$this->meilisearchDocumentExists($index, $documentId)) {
                 return [
                     'success' => true,
@@ -245,6 +244,27 @@ class MeilisearchBackend extends BaseBackend
             }
 
             throw $e;
+        }
+    }
+
+    protected function deleteByBackendId(string $indexName, string $backendId): bool
+    {
+        try {
+            $this->getAdminClient()
+                ->index($this->getFullIndexName($indexName))
+                ->deleteDocument($backendId);
+
+            return true;
+        } catch (\Meilisearch\Exceptions\ApiException $e) {
+            return $e->httpStatus === 404;
+        } catch (\Throwable $e) {
+            $this->logError('Failed to delete Meilisearch document by backend ID', [
+                'index' => $indexName,
+                'backendId' => $backendId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
     }
 
@@ -412,8 +432,7 @@ class MeilisearchBackend extends BaseBackend
 
             $index = $client->index($fullIndexName);
 
-            // Use composite key matching the objectID format from transformer
-            $documentId = $siteId !== null ? $elementId . '_' . $siteId : (string)$elementId;
+            $documentId = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
             // Try to get the document - if it exists, return true
             $index->getDocument($documentId);

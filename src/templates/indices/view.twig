@@ -49,6 +49,16 @@
 			disabled: true
 		}) }}
 
+		{% if index.elementType == 'lindemannrock\\docsmanager\\elements\\SourceDoc' %}
+			{{ forms.lightswitchField({
+				label: 'Split Sections'|t('search-manager'),
+				instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),
+				id: 'splitSections',
+				on: index.splitSections ?? false,
+				disabled: true
+			}) }}
+		{% endif %}
+
 		{{ forms.lightswitchField({
 			label: 'Disable Stop Words'|t('search-manager'),
 			instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),

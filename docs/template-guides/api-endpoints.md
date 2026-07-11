@@ -172,12 +172,14 @@ Search returns one canonical hit shape:
 
 `snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in `fields`, then from the indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
 
+For split SourceDoc indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
+
 ### Response Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `hits` | `array` | Array of hit objects (see below) |
-| `total` | `int` | Total number of matching results |
+| `total` | `int` | Backend-native number of matching hits. For split SourceDoc indices, this counts matching section hits, not parent pages. |
 | `page` | `int` | Current page number (0-based) |
 | `hitsPerPage` | `int` | Results per page |
 | `totalPages` | `int` | Total number of pages |
@@ -192,17 +194,23 @@ Search returns one canonical hit shape:
 | `site` | `string` | Indexed Craft site handle. |
 | `language` | `string` | Indexed Craft site language. |
 | `index` | `string` | Source search index handle when the backend reports it. |
-| `backendId` | `string` | Search Manager backend document ID, usually `{elementId}_{siteId}`. |
+| `backendId` | `string` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`, not by `id`; split section hits share `id`/`elementId` with their parent page. |
 | `objectID` | `int\|string` | Raw backend compatibility field. Prefer `elementId` and `backendId` in new code. |
 | `slug` | `string` | Indexed element or document slug when available. |
 | `dateCreated` | `int` | Indexed creation timestamp when available. |
 | `dateUpdated` | `int` | Indexed update timestamp when available. |
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
 | `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
-| `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
+| `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, `user`, or `source-doc`. Split SourceDoc section hits keep `type: "source-doc"`. |
 | `section` | `string` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
-| `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) for Entry hits. For split SourceDoc hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
+| `sectionId` | `string` | Section identity within the parent element for split section hits. |
+| `sectionTitle` | `string` | Heading title for split `heading` hits. |
+| `sectionLevel` | `int` | Heading level for split `heading` hits. |
+| `sectionAnchor` | `string` | URL anchor for split section hits. |
+| `sectionUrl` | `string` | Section URL, including the anchor when available. |
+| `sectionIndex` | `int` | Zero-based section order within the parent element. |
 | `ancestors` | `array` | Breadcrumb ancestors as `{id, title}` objects, ordered root to parent. Present for nested Structure Entries, nested Categories, and public Asset folders when indexed. |
 | `level` | `int` | Structure depth for Entry and Category hits when indexed. |
 | `folderPath` | `string` | Craft's canonical containing-folder path for public Asset hits when indexed. This can differ from joining `ancestors[].title` because it uses folder path segments, not display names. |
@@ -216,7 +224,7 @@ Search returns one canonical hit shape:
 | `sourceId` | `int` | Source document or transformer-provided source ID when available. |
 | `fields` | `object` | Searchable custom field values keyed by field handle. Values are indexed content, not translated UI labels. |
 | `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body. `null` when no eligible snippet source contains the query. |
-| `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects. Heading snippets use the same query-centered plain-text generation as the top-level snippet. |
+| `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects for whole-page records. Split SourceDoc section hits return an empty array. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |
 | `title` | `string` | Element title (for promoted items) |

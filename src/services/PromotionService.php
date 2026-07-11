@@ -15,6 +15,7 @@ use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\Promotion;
+use lindemannrock\searchmanager\models\SearchIndex;
 use yii\base\Component;
 
 /**
@@ -160,6 +161,7 @@ class PromotionService extends Component
             'query' => $query,
             'promotedCount' => count($promotions),
         ]);
+        $splitSections = SearchIndex::findByHandle($indexHandle)?->usesSplitSections() ?? false;
 
         // Collect promoted element IDs for filtering
         $promotedIds = array_map(fn(Promotion $p) => $p->elementId, $promotions);
@@ -231,7 +233,9 @@ class PromotionService extends Component
                     'id' => $promotion->elementId,
                     'elementId' => $promotion->elementId,
                     '_elementType' => $elementType,
-                    'backendId' => SearchHitIdentityHelper::backendId($promotion->elementId, $element?->siteId),
+                    'backendId' => $splitSections
+                        ? SearchHitIdentityHelper::sectionDocumentId($promotion->elementId, $element?->siteId, 'promoted-page')
+                        : SearchHitIdentityHelper::pageDocumentId($promotion->elementId, $element?->siteId),
                     'siteId' => $element?->siteId,
                     'promoted' => true,
                     'position' => $promotion->position,
@@ -240,6 +244,18 @@ class PromotionService extends Component
                     'elementType' => $documentType,
                     'title' => $this->resolveElementTitle($element),
                 ];
+
+                if ($splitSections) {
+                    $promotedItem['sectionType'] = 'promoted-page';
+                    $promotedItem['sectionId'] = 'promoted-page';
+                    $promotedItem['sectionTitle'] = $promotedItem['title'];
+                    $promotedItem['sectionLevel'] = null;
+                    $promotedItem['sectionAnchor'] = null;
+                    $promotedItem['sectionUrl'] = $element?->url;
+                    $promotedItem['sectionIndex'] = 0;
+                    $promotedItem['snippet'] = null;
+                    $promotedItem['headings'] = [];
+                }
 
                 $promotedItem = array_merge(
                     $promotedItem,

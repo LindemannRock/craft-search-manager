@@ -23,6 +23,7 @@ use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
+use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 
 /**
  * Search Index Model
@@ -97,6 +98,11 @@ class SearchIndex extends Model
      */
     public bool $skipEntriesWithoutUrl = false;
 
+    /**
+     * @var bool Whether eligible SourceDoc pages are indexed as section records.
+     */
+    public bool $splitSections = false;
+
     public ?\DateTime $lastIndexed = null;
 
     public ?\DateTime $dateCreated = null;
@@ -148,7 +154,7 @@ class SearchIndex extends Model
             [['language'], 'match', 'pattern' => '/^[a-z]{2}(-[a-z]{2})?$/i', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Language must be a valid language code (e.g., en, ar, fr-ca)')],
             [['backend'], 'string', 'max' => 255],
             [['backend'], 'validateBackendHandle'],
-            [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl'], 'boolean'],
+            [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl', 'splitSections'], 'boolean'],
             [['documentCount'], 'integer'],
             [['siteId'], 'validateSiteId'],
             [['source'], 'in', 'range' => ['config', 'database']],
@@ -391,6 +397,7 @@ class SearchIndex extends Model
             $model->enableAnalytics = $configData['enableAnalytics'] ?? true;
             $model->disableStopWords = $configData['disableStopWords'] ?? false;
             $model->skipEntriesWithoutUrl = $configData['skipEntriesWithoutUrl'] ?? false;
+            $model->splitSections = (bool)($configData['splitSections'] ?? false);
             $model->source = 'config';
 
             // Load stats from database if metadata record exists
@@ -561,6 +568,7 @@ class SearchIndex extends Model
                 $model->enableAnalytics = $indexConfig['enableAnalytics'] ?? true;
                 $model->disableStopWords = $indexConfig['disableStopWords'] ?? false;
                 $model->skipEntriesWithoutUrl = $indexConfig['skipEntriesWithoutUrl'] ?? false;
+                $model->splitSections = (bool)($indexConfig['splitSections'] ?? false);
                 $model->source = 'config';
 
                 // Check if database metadata exists for this config index (array lookup)
@@ -662,6 +670,7 @@ class SearchIndex extends Model
         $model->enableAnalytics = (bool)($row['enableAnalytics'] ?? true);
         $model->disableStopWords = (bool)($row['disableStopWords'] ?? false);
         $model->skipEntriesWithoutUrl = (bool)($row['skipEntriesWithoutUrl'] ?? false);
+        $model->splitSections = (bool)($row['splitSections'] ?? false);
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
         $model->dateCreated = self::parseDate($row['dateCreated'] ?? null);
@@ -725,6 +734,7 @@ class SearchIndex extends Model
                 'enableAnalytics' => (int)$this->enableAnalytics,
                 'disableStopWords' => (int)$this->disableStopWords,
                 'skipEntriesWithoutUrl' => (int)$this->skipEntriesWithoutUrl,
+                'splitSections' => (int)$this->splitSections,
                 'source' => $this->source,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
                 'documentCount' => $this->documentCount,
@@ -1153,6 +1163,10 @@ class SearchIndex extends Model
             $config['disableStopWords'] = true;
         }
 
+        if ($this->splitSections) {
+            $config['splitSections'] = true;
+        }
+
         // Only include backend if set (optional override)
         if ($this->backend) {
             $config['backend'] = $this->backend;
@@ -1167,6 +1181,21 @@ class SearchIndex extends Model
     public function isFromConfig(): bool
     {
         return $this->source === 'config';
+    }
+
+    public function usesSplitSections(): bool
+    {
+        if (!$this->splitSections) {
+            return false;
+        }
+
+        if ($this->elementType !== 'lindemannrock\\docsmanager\\elements\\SourceDoc') {
+            return false;
+        }
+
+        $transformerClass = trim((string)$this->transformerClass);
+
+        return $transformerClass === '' || $transformerClass === DocsManagerTransformer::class;
     }
 
     /**
@@ -1311,6 +1340,10 @@ class SearchIndex extends Model
         // Disable stop words
         if (!empty($configData['disableStopWords'])) {
             $lines[] = "    'disableStopWords' => true,";
+        }
+
+        if (!empty($configData['splitSections'])) {
+            $lines[] = "    'splitSections' => true,";
         }
 
         // Criteria - show as closure placeholder if it's a closure

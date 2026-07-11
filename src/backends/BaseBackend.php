@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use Craft;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -211,6 +212,13 @@ abstract class BaseBackend extends Component implements BackendInterface
         $success = true;
 
         foreach ($items as $item) {
+            if (isset($item['backendId']) && is_string($item['backendId']) && $item['backendId'] !== '') {
+                if (!$this->deleteByBackendId($indexName, $item['backendId'])) {
+                    $success = false;
+                }
+                continue;
+            }
+
             $elementId = (int)($item['elementId'] ?? $item['id'] ?? 0);
             if ($elementId <= 0) {
                 $success = false;
@@ -224,6 +232,45 @@ abstract class BaseBackend extends Component implements BackendInterface
         }
 
         return $success;
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.55.0
+     */
+    public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
+    {
+        $keep = array_flip(array_map('strval', $keepBackendIds));
+        $deleteItems = [];
+
+        foreach ($this->browse($indexName) as $hit) {
+            if (!is_array($hit)) {
+                continue;
+            }
+
+            $hit = SearchHitIdentityHelper::normalizeHit($hit);
+            if (SearchHitIdentityHelper::elementId($hit) !== $elementId) {
+                continue;
+            }
+
+            if ($siteId !== null && isset($hit['siteId']) && (int)$hit['siteId'] !== $siteId) {
+                continue;
+            }
+
+            $backendId = SearchHitIdentityHelper::rawBackendId($hit);
+            if ($backendId === null || isset($keep[$backendId])) {
+                continue;
+            }
+
+            $deleteItems[] = ['backendId' => $backendId];
+        }
+
+        return $deleteItems === [] || $this->batchDelete($indexName, $deleteItems);
+    }
+
+    protected function deleteByBackendId(string $indexName, string $backendId): bool
+    {
+        return false;
     }
 
     abstract public function delete(string $indexName, int $elementId, ?int $siteId = null): bool;

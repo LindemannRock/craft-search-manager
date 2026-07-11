@@ -57,6 +57,18 @@ interface BackendInterface
     public function batchDelete(string $indexName, array $items): bool;
 
     /**
+     * Delete documents for one parent element except the supplied backend IDs.
+     *
+     * @param string $indexName The index name
+     * @param int $elementId Parent element ID
+     * @param int|null $siteId Site ID
+     * @param string[] $keepBackendIds Backend document IDs that must remain
+     * @return bool Success status
+     * @since 5.55.0
+     */
+    public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool;
+
+    /**
      * Delete a document from the index
      *
      * @param string $indexName The index name

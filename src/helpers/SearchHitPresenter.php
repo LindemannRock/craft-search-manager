@@ -34,11 +34,13 @@ class SearchHitPresenter
             $hit['description'],
             $hit['excerpt'],
             $hit['highlights'],
+            $hit['sectionBody'],
             $hit['thumbnail'],
             $hit['_index'],
             $hit['_elementType'],
             $hit['_bodyClean'],
             $hit['_contentClean'],
+            $hit['_sectionBody'],
         );
         if (!$includeQueryRuleDebug) {
             unset($hit['_queryRuleDebug']);
@@ -64,6 +66,12 @@ class SearchHitPresenter
             'section',
             'sectionHandle',
             'sectionType',
+            'sectionId',
+            'sectionTitle',
+            'sectionLevel',
+            'sectionAnchor',
+            'sectionUrl',
+            'sectionIndex',
             'ancestors',
             'level',
             'folderPath',

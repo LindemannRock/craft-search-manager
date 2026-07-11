@@ -107,6 +107,21 @@ final class StubBackend extends BackendService
         return !$this->failBatchDelete;
     }
 
+    public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
+    {
+        $this->calls[] = [
+            'method' => 'deleteOrphanDocuments',
+            'indexName' => $indexName,
+            'items' => [[
+                'elementId' => $elementId,
+                'siteId' => $siteId,
+                'keepBackendIds' => $keepBackendIds,
+            ]],
+        ];
+
+        return !$this->failBatchDelete;
+    }
+
     /**
      * @return array{success: bool, existed: bool|null}
      */

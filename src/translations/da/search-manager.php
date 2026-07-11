@@ -983,6 +983,8 @@ return [
     'Which category groups to index (leave all unchecked for all groups)' => 'Hvilke kategorigrupper der skal indekseres (lad alle være umarkerede for alle grupper)',
     'Heading Levels' => 'Overskriftsniveauer',
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => 'Hvilke overskriftsniveauer der skal udtrækkes til hierarkisk søgning og ankerlinks. Standard er H2–H4.',
+    'Split Sections' => 'Opdel sektioner',
+    'Index the page intro and each heading section as separate search hits.' => 'Indekser sidens introduktion og hver overskriftssektion som separate søgeresultater.',
     'Transformer Class' => 'Transformerklasse',
     'Optional override for advanced indexing needs.' => 'Valgfri tilsidesættelse til avancerede indekseringsbehov.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'Tilsidesæt den globale søgebackend for dette indeks. Lad stå som \'Default\' for at bruge backend konfigureret i pluginindstillingerne.',

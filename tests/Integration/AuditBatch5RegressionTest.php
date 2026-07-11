@@ -86,14 +86,14 @@ final class AuditBatch5RegressionTest extends TestCase
     public function testIndexDocumentWithResultUsesPerDocumentMutexAroundReplacement(): void
     {
         $source = $this->readPluginSource('src/search/SearchEngine.php');
-        $body = $this->methodBody($source, 'indexDocumentWithResult');
+        $body = $this->methodBody($source, 'indexDocumentWithKeyResult');
 
-        self::assertStringContainsString('$lockName = $this->indexDocumentLockName($siteId, $elementId);', $body);
+        self::assertStringContainsString('$lockName = $this->indexDocumentLockName($siteId, $documentKey);', $body);
         self::assertStringContainsString('getMutex()->acquire($lockName, 30)', $body);
         self::assertStringContainsString('finally', $body);
         self::assertStringContainsString('getMutex()->release($lockName)', $body);
         $lockPosition = strpos($body, 'getMutex()->acquire($lockName, 30)');
-        $replacementPosition = strpos($body, '$oldDocLength = $this->storage->getDocumentLength($siteId, $elementId);');
+        $replacementPosition = strpos($body, '$oldDocLength = $this->documentLength($siteId, $elementId, $documentKey);');
         self::assertIsInt($lockPosition);
         self::assertIsInt($replacementPosition);
         self::assertLessThan(
@@ -103,7 +103,7 @@ final class AuditBatch5RegressionTest extends TestCase
         );
 
         $lockBody = $this->methodBody($source, 'indexDocumentLockName');
-        self::assertStringContainsString('search-manager:index-document:%s:%d:%d', $lockBody);
+        self::assertStringContainsString('search-manager:index-document:%s:%d:%s', $lockBody);
         self::assertStringContainsString('$this->indexHandle', $lockBody);
     }
 

@@ -983,6 +983,8 @@ return [
     'Which category groups to index (leave all unchecked for all groups)' => 'Which category groups to index (leave all unchecked for all groups)',
     'Heading Levels' => 'Heading Levels',
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => 'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.',
+    'Split Sections' => 'Split Sections',
+    'Index the page intro and each heading section as separate search hits.' => 'Index the page intro and each heading section as separate search hits.',
     'Transformer Class' => 'Transformer Class',
     'Optional override for advanced indexing needs.' => 'Optional override for advanced indexing needs.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.',

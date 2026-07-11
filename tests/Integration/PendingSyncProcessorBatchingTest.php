@@ -56,6 +56,27 @@ final class PendingSyncProcessorBatchingTest extends TestCase
         );
     }
 
+    public function testSplitSyncUpsertsBeforeDeletingOrphanSectionDocuments(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/sync/PendingSyncProcessor.php');
+        $this->assertIsString($source);
+
+        $processBody = $this->methodBody($source, 'processIndexRows');
+        self::assertStringContainsString('$docParents = [];', $processBody);
+        self::assertStringContainsString('SearchManager::$plugin->backend->batchIndex($indexHandle, $docs)', $processBody);
+        self::assertStringContainsString('SearchManager::$plugin->backend->deleteOrphanDocuments(', $processBody);
+        self::assertLessThan(
+            strpos($processBody, 'SearchManager::$plugin->backend->deleteOrphanDocuments('),
+            strpos($processBody, 'SearchManager::$plugin->backend->batchIndex($indexHandle, $docs)'),
+            'pending sync must upsert section documents before deleting stale section IDs.',
+        );
+
+        $deleteBody = $this->methodBody($source, 'deleteSplitParents');
+        self::assertStringContainsString('deleteOrphanDocuments(', $deleteBody);
+        self::assertStringContainsString('$indexHandle,', $deleteBody);
+        self::assertStringContainsString('[]', $deleteBody);
+    }
+
     private function methodBody(string $source, string $method): string
     {
         preg_match(

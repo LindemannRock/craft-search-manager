@@ -30,12 +30,28 @@ final class AuditBatch6PerformanceTest extends TestCase
         self::assertStringNotContainsString('->documentExists(', $body);
     }
 
+    public function testSplitIndexElementNowUpsertsBeforeDeletingOrphanSectionDocuments(): void
+    {
+        $source = $this->readPluginSource('src/services/IndexingService.php');
+        $body = $this->methodBody($source, 'indexElementNow', 'public');
+
+        self::assertStringContainsString('if ($index?->usesSplitSections()) {', $body);
+        self::assertStringContainsString('->batchIndex($indexHandle, $documents)', $body);
+        self::assertStringContainsString('->deleteOrphanDocuments(', $body);
+        self::assertLessThan(
+            strpos($body, '->deleteOrphanDocuments('),
+            strpos($body, '->batchIndex($indexHandle, $documents)'),
+            'split indexing must upsert the new section set before deleting orphan backend IDs.',
+        );
+    }
+
     public function testRemoveElementUsesDeleteResultContractInsteadOfDocumentExistsProbe(): void
     {
         $source = $this->readPluginSource('src/services/IndexingService.php');
         $body = $this->methodBody($source, 'removeElement', 'public');
 
         self::assertStringContainsString('->deleteWithResult($index->handle, $element->id, $siteId)', $body);
+        self::assertStringContainsString('->deleteOrphanDocuments($index->handle, (int)$element->id, $siteId, [])', $body);
         self::assertStringNotContainsString('->documentExists(', $body);
         self::assertStringNotContainsString('->delete($index->handle, $element->id, $siteId)', $body);
     }

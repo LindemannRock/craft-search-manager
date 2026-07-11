@@ -41,6 +41,12 @@ query {
       section
       sectionHandle
       sectionType
+      sectionId
+      sectionTitle
+      sectionLevel
+      sectionAnchor
+      sectionUrl
+      sectionIndex
       ancestors {
         id
         title
@@ -99,19 +105,27 @@ GraphQL exposes custom field values through a typed key/value list because Graph
 
 GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields.
 
+For split SourceDoc indices, GraphQL returns the same flat section hits as REST. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `total` counts section hits, `snippet` is generated only from the section's own indexed body, and `headings` is empty because the hit is already the section.
+
 Common hit fields:
 
 | Field | Notes |
 |-------|-------|
-| `id` / `elementId` | Numeric Craft element ID. Use this for Craft element queries and URLs. |
-| `backendId` | Search Manager's backend document ID, usually `{elementId}_{siteId}` for multi-site-safe documents. |
+| `id` / `elementId` | Numeric Craft element ID. Use this for Craft element queries and URLs. Split section hits share this parent page identity. |
+| `backendId` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`, not by `id`. |
 | `objectID` | Raw backend compatibility field. Algolia and Meilisearch use this as their primary key; Typesense keeps the primary key in its reserved `id` field. Prefer `elementId` and `backendId` in new code. |
 | `siteId` / `site` / `language` | Site ID, site handle, and site language from the indexed document. |
 | `elementType` | Stable lowercase document kind. Matches `type`. |
-| `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, and `user`. |
+| `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, `user`, and `source-doc`. Split SourceDoc section hits keep `type: "source-doc"`. |
 | `section` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | Entry section handle when the hit is an Entry. |
-| `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. |
+| `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. For split SourceDoc hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
+| `sectionId` | Section identity within the parent element for split section hits. |
+| `sectionTitle` | Heading title for split `heading` hits. |
+| `sectionLevel` | Heading level for split `heading` hits. |
+| `sectionAnchor` | URL anchor for split section hits. |
+| `sectionUrl` | Section URL, including the anchor when available. |
+| `sectionIndex` | Zero-based section order within the parent element. |
 | `ancestors` | Breadcrumb ancestors as `SearchManagerSearchAncestor` objects, ordered root to parent. Present for nested Structure Entries, nested Categories, and public Asset folders when indexed. |
 | `level` | Structure depth for Entry and Category hits when indexed. |
 | `folderPath` | Craft's canonical containing-folder path for public Asset hits when indexed. It uses folder path segments rather than folder display titles. |
@@ -124,7 +138,7 @@ Common hit fields:
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
 | `matchedTerms` | Matched query terms grouped into `title` and `content` lists when the backend provides them. |
 | `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body; `null` when no eligible snippet source contains the query. |
-| `headings` | List of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. |
+| `headings` | List of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split SourceDoc section hits return an empty list. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
 
 Scores are useful for debug displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.

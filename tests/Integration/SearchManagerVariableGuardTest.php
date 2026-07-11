@@ -264,6 +264,11 @@ final class SearchManagerVariableRecordingBackend implements BackendInterface
         return true;
     }
 
+    public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
+    {
+        return true;
+    }
+
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
         return true;

@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\backends;
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\SearchEngine;
@@ -181,9 +182,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
             // Get element type: from data, or derive from index name
             $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
+            $documentKey = SearchHitIdentityHelper::documentId($data) ?? SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
             // Use SearchEngine to index
-            $indexResult = $engine->indexDocumentWithResult($siteId, $elementId, $title, $content);
+            $indexResult = $engine->indexDocumentWithKeyResult($siteId, $elementId, $documentKey, $title, $content);
             $success = $indexResult['success'];
 
             if ($success) {
@@ -191,7 +193,11 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $documentData = $this->buildDocumentData($indexName, $data);
 
                 // Store element metadata for rich autocomplete suggestions
-                $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+                if (method_exists($storage, 'storeElementByKey')) {
+                    $storage->storeElementByKey($siteId, $elementId, $documentKey, $title, $elementType, $documentData);
+                } else {
+                    $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+                }
 
                 $this->logDebug('Document indexed with SearchEngine', [
                     'index' => $indexName,
@@ -238,10 +244,15 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                     continue;
                 }
                 $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
+                $documentKey = SearchHitIdentityHelper::documentId($data) ?? SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
-                if ($engine->indexDocument($siteId, $elementId, $title, $content)) {
+                if ($engine->indexDocumentWithKeyResult($siteId, $elementId, $documentKey, $title, $content)['success']) {
                     $documentData = $this->buildDocumentData($indexName, $data);
-                    $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+                    if (method_exists($storage, 'storeElementByKey')) {
+                        $storage->storeElementByKey($siteId, $elementId, $documentKey, $title, $elementType, $documentData);
+                    } else {
+                        $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+                    }
                     $successCount++;
                 }
             }
@@ -305,6 +316,63 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 'success' => false,
                 'existed' => null,
             ];
+        }
+    }
+
+    protected function deleteByBackendId(string $indexName, string $backendId): bool
+    {
+        try {
+            $siteId = Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+            if (preg_match('/^(\d+)_(\d+)(?:_|$)/', $backendId, $match)) {
+                $elementId = (int)$match[1];
+                $siteId = (int)$match[2];
+            } else {
+                $elementId = (int)$backendId;
+            }
+
+            return $this->getSearchEngine($indexName)->deleteDocumentByKey((int)$siteId, $elementId, $backendId);
+        } catch (\Throwable $e) {
+            $this->logError("Failed to delete {$this->getBackendLabel()} document by backend ID", [
+                'index' => $indexName,
+                'backendId' => $backendId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
+        }
+    }
+
+    public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
+    {
+        try {
+            $storage = $this->getStorage($indexName);
+            $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
+            if (!method_exists($storage, 'getDocumentKeysByParent')) {
+                return true;
+            }
+
+            $keep = array_flip(array_map('strval', $keepBackendIds));
+            $success = true;
+            foreach ($storage->getDocumentKeysByParent((int)$siteId, $elementId) as $documentKey) {
+                if (isset($keep[(string)$documentKey])) {
+                    continue;
+                }
+
+                if (!$this->getSearchEngine($indexName)->deleteDocumentByKey((int)$siteId, $elementId, (string)$documentKey)) {
+                    $success = false;
+                }
+            }
+
+            return $success;
+        } catch (\Throwable $e) {
+            $this->logError("Failed to delete {$this->getBackendLabel()} orphan documents", [
+                'index' => $indexName,
+                'elementId' => $elementId,
+                'siteId' => $siteId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return false;
         }
     }
 
@@ -477,14 +545,20 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         array $searchOptions,
     ): array {
         $allResults = [];
+        $splitSections = SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false;
+        if ($splitSections) {
+            $searchOptions['returnDocumentKeys'] = true;
+        }
 
         foreach ($siteIds as $siteId) {
             $siteId = (int)$siteId;
             $siteResults = $engine->search($query, $siteId, 0, $searchOptions);
-            foreach ($siteResults as $elementId => $score) {
-                $compositeKey = $siteId . ':' . $elementId;
+            foreach ($siteResults as $documentKey => $score) {
+                $elementId = $splitSections ? $this->elementIdFromDocumentKey((string)$documentKey) : (int)$documentKey;
+                $compositeKey = $siteId . ':' . $documentKey;
                 $allResults[$compositeKey] = [
                     'elementId' => $elementId,
+                    'documentKey' => (string)$documentKey,
                     'score' => $score,
                     'siteId' => $siteId,
                 ];
@@ -494,10 +568,16 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $elementInfoBySite = [];
         $elementIdsBySite = [];
         foreach ($allResults as $data) {
-            $elementIdsBySite[(int)$data['siteId']][(int)$data['elementId']] = true;
+            if ($splitSections) {
+                $elementIdsBySite[(int)$data['siteId']][(string)$data['documentKey']] = true;
+            } else {
+                $elementIdsBySite[(int)$data['siteId']][(int)$data['elementId']] = true;
+            }
         }
         foreach ($elementIdsBySite as $siteId => $idSet) {
-            $elementInfoBySite[$siteId] = $storage->getElementsByIds($siteId, array_keys($idSet));
+            $elementInfoBySite[$siteId] = $splitSections && method_exists($storage, 'getElementsByDocumentKeys')
+                ? $storage->getElementsByDocumentKeys($siteId, array_keys($idSet))
+                : $storage->getElementsByIds($siteId, array_keys($idSet));
         }
 
         $hits = [];
@@ -505,8 +585,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $elementId = $data['elementId'];
             $siteId = (int)$data['siteId'];
             $elementInfo = $elementInfoBySite[$siteId] ?? [];
-            $info = $elementInfo[$elementId] ?? null;
+            $info = $elementInfo[$data['documentKey']] ?? $elementInfo[$elementId] ?? null;
             $elementType = $this->documentTypeFromElementInfo($info);
+            $backendId = $splitSections ? (string)$data['documentKey'] : SearchHitIdentityHelper::pageDocumentId($elementId, $data['siteId']);
 
             if ($typeFilter !== null && !$this->matchesTypeFilter($elementType, $typeFilter)) {
                 continue;
@@ -516,7 +597,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 'objectID' => $elementId,
                 'id' => $elementId,
                 'elementId' => $elementId,
-                'backendId' => SearchHitIdentityHelper::backendId($elementId, $data['siteId']),
+                'backendId' => $backendId,
                 'score' => $data['score'],
                 'type' => $elementType,
                 'elementType' => $elementType,
@@ -568,15 +649,21 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $typeFilter,
         array $searchOptions,
     ): array {
+        $splitSections = SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false;
+        if ($splitSections) {
+            $searchOptions['returnDocumentKeys'] = true;
+        }
         $results = $engine->search($query, $siteId, 0, $searchOptions);
         $elementInfo = [];
 
         if ($typeFilter !== null) {
-            $elementInfo = $storage->getElementsByIds($siteId, array_keys($results));
+            $elementInfo = $splitSections && method_exists($storage, 'getElementsByDocumentKeys')
+                ? $storage->getElementsByDocumentKeys($siteId, array_keys($results))
+                : $storage->getElementsByIds($siteId, array_keys($results));
             $results = array_filter(
                 $results,
-                function(float $score, int|string $elementId) use ($elementInfo, $typeFilter): bool {
-                    $info = $elementInfo[$elementId] ?? null;
+                function(float $score, int|string $documentKey) use ($elementInfo, $typeFilter): bool {
+                    $info = $elementInfo[$documentKey] ?? null;
                     $elementType = $this->documentTypeFromElementInfo($info);
 
                     return $this->matchesTypeFilter($elementType, $typeFilter);
@@ -593,22 +680,27 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         }
 
         if ($typeFilter === null) {
-            $elementInfo = $storage->getElementsByIds($siteId, array_keys($results));
+            $elementInfo = $splitSections && method_exists($storage, 'getElementsByDocumentKeys')
+                ? $storage->getElementsByDocumentKeys($siteId, array_keys($results))
+                : $storage->getElementsByIds($siteId, array_keys($results));
         }
 
         $hits = [];
-        foreach ($results as $elementId => $score) {
-            $info = $elementInfo[$elementId] ?? null;
+        foreach ($results as $documentKey => $score) {
+            $elementId = $splitSections ? $this->elementIdFromDocumentKey((string)$documentKey) : (int)$documentKey;
+            $info = $elementInfo[$documentKey] ?? $elementInfo[$elementId] ?? null;
             $elementType = $this->documentTypeFromElementInfo($info);
+            $backendId = $splitSections ? (string)$documentKey : SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
             $hit = $this->buildSearchHit($info, [
                 'objectID' => $elementId,
                 'id' => $elementId,
                 'elementId' => $elementId,
-                'backendId' => SearchHitIdentityHelper::backendId($elementId, $siteId),
+                'backendId' => $backendId,
                 'score' => $score,
                 'type' => $elementType,
                 'elementType' => $elementType,
+                'siteId' => $siteId,
             ]);
 
             $hits[] = SearchHitIdentityHelper::normalizeHit($hit);
@@ -668,6 +760,15 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $hit['elementType'] = $documentType;
 
         return $hit;
+    }
+
+    private function elementIdFromDocumentKey(string $documentKey): int
+    {
+        if (preg_match('/^(\d+)(?:_|$)/', $documentKey, $match)) {
+            return (int)$match[1];
+        }
+
+        return (int)$documentKey;
     }
 
     // =========================================================================
@@ -862,7 +963,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
             $matchedIn = [];
 
-            $cacheKey = $hitSiteId . ':' . (int)$elementId;
+            $cacheKey = $hitSiteId . ':' . ($hit['backendId'] ?? (int)$elementId);
             $titleTerms = $elementTermsCache[$cacheKey]['titleTerms'] ?? [];
             $docTermKeys = $elementTermsCache[$cacheKey]['docTermKeys'] ?? [];
 
@@ -921,7 +1022,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      */
     private function preloadMatchedFieldTerms(array $hits, int $defaultSiteId, StorageInterface $storage, int $limit): array
     {
-        $elementIdsBySite = [];
+        $documentKeysBySite = [];
         for ($i = 0; $i < $limit; $i++) {
             if (!isset($hits[$i]) || !is_array($hits[$i])) {
                 continue;
@@ -935,19 +1036,26 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             $hitSiteId = isset($hits[$i]['siteId']) && is_numeric($hits[$i]['siteId'])
                 ? (int)$hits[$i]['siteId']
                 : $defaultSiteId;
-            $elementIdsBySite[$hitSiteId][(int)$elementId] = (int)$elementId;
+            $documentKey = is_string($hits[$i]['backendId'] ?? null)
+                ? (string)$hits[$i]['backendId']
+                : (string)$elementId;
+            $documentKeysBySite[$hitSiteId][$documentKey] = $documentKey;
         }
 
         $elementTermsCache = [];
-        foreach ($elementIdsBySite as $siteId => $elementIds) {
-            $ids = array_values($elementIds);
-            $titleTermsByElement = $storage->getTitleTermsBatch((int)$siteId, $ids);
-            $docTermsByElement = $storage->getDocumentTermsBatch((int)$siteId, $ids);
+        foreach ($documentKeysBySite as $siteId => $documentKeys) {
+            $ids = array_values($documentKeys);
+            $titleTermsByElement = method_exists($storage, 'getTitleTermsBatchByKeys')
+                ? $storage->getTitleTermsBatchByKeys((int)$siteId, $ids)
+                : $storage->getTitleTermsBatch((int)$siteId, array_map('intval', $ids));
+            $docTermsByElement = method_exists($storage, 'getDocumentTermsBatchByKeys')
+                ? $storage->getDocumentTermsBatchByKeys((int)$siteId, $ids)
+                : $storage->getDocumentTermsBatch((int)$siteId, array_map('intval', $ids));
 
-            foreach ($ids as $elementId) {
-                $elementTermsCache[(int)$siteId . ':' . $elementId] = [
-                    'titleTerms' => $titleTermsByElement[$elementId] ?? [],
-                    'docTermKeys' => array_keys($docTermsByElement[$elementId] ?? []),
+            foreach ($ids as $documentKey) {
+                $elementTermsCache[(int)$siteId . ':' . $documentKey] = [
+                    'titleTerms' => $titleTermsByElement[$documentKey] ?? $titleTermsByElement[(int)$documentKey] ?? [],
+                    'docTermKeys' => array_keys($docTermsByElement[$documentKey] ?? $docTermsByElement[(int)$documentKey] ?? []),
                 ];
             }
         }

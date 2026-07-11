@@ -71,6 +71,8 @@ SearchManager::$plugin->backend->index('entries-en', [
 ]);
 ```
 
+Search hits are unique by `backendId`, not by `id`. Whole-page records use a backend ID such as `{elementId}_{siteId}`; split section records use `{elementId}_{siteId}_{sectionId}` while keeping `id` and `elementId` equal to the parent Craft element ID.
+
 ### `clearIndex(indexName)`
 
 Clear all data from a specific index.

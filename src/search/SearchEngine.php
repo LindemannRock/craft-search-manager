@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\search;
 
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 
 /**
@@ -169,13 +170,36 @@ class SearchEngine
      */
     public function indexDocumentWithResult(int $siteId, int $elementId, string $title, string $content, ?string $language = null): array
     {
-        $lockName = $this->indexDocumentLockName($siteId, $elementId);
+        return $this->indexDocumentWithKeyResult(
+            $siteId,
+            $elementId,
+            SearchHitIdentityHelper::pageDocumentId($elementId, $siteId),
+            $title,
+            $content,
+            $language,
+        );
+    }
+
+    /**
+     * @return array{success: bool, wasCreated: bool|null}
+     * @since 5.55.0
+     */
+    public function indexDocumentWithKeyResult(
+        int $siteId,
+        int $elementId,
+        string $documentKey,
+        string $title,
+        string $content,
+        ?string $language = null,
+    ): array {
+        $lockName = $this->indexDocumentLockName($siteId, $documentKey);
         $lockAcquired = \Craft::$app->getMutex()->acquire($lockName, 30);
         if (!$lockAcquired) {
             $this->logError('Failed to acquire indexing lock', [
                 'index' => $this->indexHandle,
                 'site_id' => $siteId,
                 'element_id' => $elementId,
+                'document_key' => $documentKey,
             ]);
             return [
                 'success' => false,
@@ -202,6 +226,7 @@ class SearchEngine
             $this->logDebug('Indexing document with language', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
+                'document_key' => $documentKey,
                 'language' => $language,
             ]);
 
@@ -220,6 +245,7 @@ class SearchEngine
             $this->logDebug('Indexing document', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
+                'document_key' => $documentKey,
                 'language' => $language,
                 'doc_length' => $docLength,
                 'unique_terms' => count($termFreqs),
@@ -227,33 +253,28 @@ class SearchEngine
             ]);
 
             // Delete old document data
-            $oldDocLength = $this->storage->getDocumentLength($siteId, $elementId);
-            $oldTerms = $this->storage->getDocumentTerms($siteId, $elementId);
+            $oldDocLength = $this->documentLength($siteId, $elementId, $documentKey);
+            $oldTerms = $this->documentTerms($siteId, $elementId, $documentKey);
             $wasCreated = $oldDocLength <= 0 && empty($oldTerms);
             foreach (array_keys($oldTerms) as $term) {
-                $this->storage->removeTermDocument($term, $siteId, $elementId);
+                $this->removeTermDocument($term, $siteId, $elementId, $documentKey);
             }
-            $this->storage->deleteDocument($siteId, $elementId);
-            $this->storage->deleteTitleTerms($siteId, $elementId);
-            $this->storage->deleteCompoundSuggestions($siteId, $elementId);
+            $this->deleteDocumentRows($siteId, $elementId, $documentKey);
+            $this->deleteTitleRows($siteId, $elementId, $documentKey);
+            $this->deleteCompoundRows($siteId, $elementId, $documentKey);
 
             if ($oldDocLength > 0 || !empty($oldTerms)) {
                 $this->storage->updateMetadata($siteId, $oldDocLength, false);
             }
 
             // Store new document data WITH language
-            $this->storage->storeDocument($siteId, $elementId, $termFreqs, $docLength, $language);
-            $this->storage->storeTitleTerms($siteId, $elementId, $titleTokens);
-            $this->storage->storeCompoundSuggestions(
-                $siteId,
-                $elementId,
-                $this->compoundSuggestionExtractor->extract($title . ' ' . $content),
-                $language,
-            );
+            $this->storeDocumentRows($siteId, $elementId, $documentKey, $termFreqs, $docLength, $language);
+            $this->storeTitleRows($siteId, $elementId, $documentKey, $titleTokens);
+            $this->storeCompoundRows($siteId, $elementId, $documentKey, $title . ' ' . $content, $language);
 
             // Update inverted index
             foreach ($termFreqs as $term => $freq) {
-                $this->storage->storeTermDocument($term, $siteId, $elementId, $freq, $language);
+                $this->storeTermDocument($term, $siteId, $elementId, $documentKey, $freq, $language);
 
                 // Generate and store n-grams for new terms
                 if (!$this->storage->termHasNgrams($term, $siteId)) {
@@ -271,6 +292,7 @@ class SearchEngine
             $this->logInfo('Document indexed', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
+                'document_key' => $documentKey,
                 'duration_ms' => $duration,
             ]);
 
@@ -282,6 +304,7 @@ class SearchEngine
             $this->logError('Failed to index document', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
+                'document_key' => $documentKey,
                 'error' => $e->getMessage(),
             ]);
             return [
@@ -293,9 +316,111 @@ class SearchEngine
         }
     }
 
-    private function indexDocumentLockName(int $siteId, int $elementId): string
+    private function indexDocumentLockName(int $siteId, int|string $documentKey): string
     {
-        return sprintf('search-manager:index-document:%s:%d:%d', $this->indexHandle, $siteId, $elementId);
+        return sprintf('search-manager:index-document:%s:%d:%s', $this->indexHandle, $siteId, (string)$documentKey);
+    }
+
+    /**
+     * @return array<string, int>
+     */
+    private function documentTerms(int $siteId, int $elementId, string $documentKey): array
+    {
+        if (method_exists($this->storage, 'getDocumentTermsByKey')) {
+            return $this->storage->getDocumentTermsByKey($siteId, $documentKey);
+        }
+
+        return $this->storage->getDocumentTerms($siteId, $elementId);
+    }
+
+    private function documentLength(int $siteId, int $elementId, string $documentKey): int
+    {
+        if (method_exists($this->storage, 'getDocumentLengthByKey')) {
+            return $this->storage->getDocumentLengthByKey($siteId, $documentKey);
+        }
+
+        return $this->storage->getDocumentLength($siteId, $elementId);
+    }
+
+    private function storeDocumentRows(int $siteId, int $elementId, string $documentKey, array $termFreqs, int $docLength, string $language): void
+    {
+        if (method_exists($this->storage, 'storeDocumentByKey')) {
+            $this->storage->storeDocumentByKey($siteId, $elementId, $documentKey, $termFreqs, $docLength, $language);
+            return;
+        }
+
+        $this->storage->storeDocument($siteId, $elementId, $termFreqs, $docLength, $language);
+    }
+
+    private function storeTermDocument(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language): void
+    {
+        if (method_exists($this->storage, 'storeTermDocumentByKey')) {
+            $this->storage->storeTermDocumentByKey($term, $siteId, $elementId, $documentKey, $frequency, $language);
+            return;
+        }
+
+        $this->storage->storeTermDocument($term, $siteId, $elementId, $frequency, $language);
+    }
+
+    private function removeTermDocument(string $term, int $siteId, int $elementId, string $documentKey): void
+    {
+        if (method_exists($this->storage, 'removeTermDocumentByKey')) {
+            $this->storage->removeTermDocumentByKey($term, $siteId, $documentKey);
+            return;
+        }
+
+        $this->storage->removeTermDocument($term, $siteId, $elementId);
+    }
+
+    private function deleteDocumentRows(int $siteId, int $elementId, string $documentKey): void
+    {
+        if (method_exists($this->storage, 'deleteDocumentByKey')) {
+            $this->storage->deleteDocumentByKey($siteId, $documentKey);
+            return;
+        }
+
+        $this->storage->deleteDocument($siteId, $elementId);
+    }
+
+    private function storeTitleRows(int $siteId, int $elementId, string $documentKey, array $titleTokens): void
+    {
+        if (method_exists($this->storage, 'storeTitleTermsByKey')) {
+            $this->storage->storeTitleTermsByKey($siteId, $elementId, $documentKey, $titleTokens);
+            return;
+        }
+
+        $this->storage->storeTitleTerms($siteId, $elementId, $titleTokens);
+    }
+
+    private function deleteTitleRows(int $siteId, int $elementId, string $documentKey): void
+    {
+        if (method_exists($this->storage, 'deleteTitleTermsByKey')) {
+            $this->storage->deleteTitleTermsByKey($siteId, $documentKey);
+            return;
+        }
+
+        $this->storage->deleteTitleTerms($siteId, $elementId);
+    }
+
+    private function storeCompoundRows(int $siteId, int $elementId, string $documentKey, string $content, string $language): void
+    {
+        $suggestions = $this->compoundSuggestionExtractor->extract($content);
+        if (method_exists($this->storage, 'storeCompoundSuggestionsByKey')) {
+            $this->storage->storeCompoundSuggestionsByKey($siteId, $elementId, $documentKey, $suggestions, $language);
+            return;
+        }
+
+        $this->storage->storeCompoundSuggestions($siteId, $elementId, $suggestions, $language);
+    }
+
+    private function deleteCompoundRows(int $siteId, int $elementId, string $documentKey): void
+    {
+        if (method_exists($this->storage, 'deleteCompoundSuggestionsByKey')) {
+            $this->storage->deleteCompoundSuggestionsByKey($siteId, $documentKey);
+            return;
+        }
+
+        $this->storage->deleteCompoundSuggestions($siteId, $elementId);
     }
 
     /**
@@ -431,8 +556,9 @@ class SearchEngine
                 $docScores = array_slice($docScores, 0, $limit, true);
             }
 
-            // Convert to element IDs
-            $finalResults = $this->convertDocIdsToElementIds($docScores);
+            $finalResults = !empty($options['returnDocumentKeys'])
+                ? $this->convertDocIdsToDocumentKeys($docScores)
+                : $this->convertDocIdsToElementIds($docScores);
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             $this->logInfo('Advanced search completed', [
@@ -637,13 +763,9 @@ class SearchEngine
                 $results = array_slice($results, 0, $limit, true);
             }
 
-            // Convert docId format from "siteId:elementId" to just elementId
-            $finalResults = [];
-            foreach ($results as $docId => $score) {
-                $parts = explode(':', $docId);
-                $elementId = (int)($parts[1] ?? $parts[0]);
-                $finalResults[$elementId] = $score;
-            }
+            $finalResults = !empty($options['returnDocumentKeys'])
+                ? $this->convertDocIdsToDocumentKeys($results)
+                : $this->convertDocIdsToElementIds($results);
 
             $duration = round((microtime(true) - $startTime) * 1000, 2);
             $this->logInfo('Search completed', [
@@ -734,20 +856,19 @@ class SearchEngine
             return $candidateScores;
         }
 
-        // Extract element IDs from docId format (siteId:elementId)
-        $elementIds = [];
+        $documentKeys = [];
         foreach (array_keys($candidateScores) as $docId) {
-            $parts = explode(':', (string) $docId);
-            $elementId = (int) ($parts[1] ?? $parts[0]);
-            $elementIds[$elementId] = (string) $docId;
+            $documentKeys[$this->documentKeyFromDocId((string)$docId)] = (string)$docId;
         }
 
         // Batch-fetch documentData for all candidates
-        $elements = $this->storage->getElementsByIds($siteId, array_keys($elementIds));
+        $elements = method_exists($this->storage, 'getElementsByDocumentKeys')
+            ? $this->storage->getElementsByDocumentKeys($siteId, array_keys($documentKeys))
+            : $this->storage->getElementsByIds($siteId, array_map('intval', array_keys($documentKeys)));
 
         $verified = [];
-        foreach ($elementIds as $elementId => $docId) {
-            $elementData = $elements[$elementId] ?? null;
+        foreach ($documentKeys as $documentKey => $docId) {
+            $elementData = $elements[$documentKey] ?? $elements[(int)$documentKey] ?? null;
             if ($elementData === null) {
                 continue;
             }
@@ -818,17 +939,17 @@ class SearchEngine
             return $docScores;
         }
 
-        $elementIdsByDocId = [];
+        $documentKeysByDocId = [];
         foreach (array_keys($docScores) as $docId) {
-            $parts = explode(':', (string) $docId);
-            $elementId = (int) ($parts[1] ?? $parts[0]);
-            $elementIdsByDocId[(string) $docId] = $elementId;
+            $documentKeysByDocId[(string) $docId] = $this->documentKeyFromDocId((string)$docId);
         }
 
-        $elements = $this->storage->getElementsByIds($siteId, array_values(array_unique($elementIdsByDocId)));
+        $elements = method_exists($this->storage, 'getElementsByDocumentKeys')
+            ? $this->storage->getElementsByDocumentKeys($siteId, array_values(array_unique($documentKeysByDocId)))
+            : $this->storage->getElementsByIds($siteId, array_map('intval', array_values(array_unique($documentKeysByDocId))));
 
-        foreach ($elementIdsByDocId as $docId => $elementId) {
-            $elementData = $elements[$elementId] ?? null;
+        foreach ($documentKeysByDocId as $docId => $documentKey) {
+            $elementData = $elements[$documentKey] ?? $elements[(int)$documentKey] ?? null;
             if ($elementData === null) {
                 continue;
             }
@@ -1092,13 +1213,14 @@ class SearchEngine
 
         $titleTermsByElement = [];
         if (isset($fieldFilters['title'])) {
-            $titleElementIds = [];
+            $titleDocumentKeys = [];
             foreach (array_keys($docScores) as $docId) {
-                $parts = explode(':', (string)$docId);
-                $titleElementIds[] = (int)($parts[1] ?? $parts[0]);
+                $titleDocumentKeys[] = $this->documentKeyFromDocId((string)$docId);
             }
 
-            $titleTermsByElement = $this->storage->getTitleTermsBatch($siteId, array_values(array_unique($titleElementIds)));
+            $titleTermsByElement = method_exists($this->storage, 'getTitleTermsBatchByKeys')
+                ? $this->storage->getTitleTermsBatchByKeys($siteId, array_values(array_unique($titleDocumentKeys)))
+                : $this->storage->getTitleTermsBatch($siteId, array_map('intval', array_values(array_unique($titleDocumentKeys))));
         }
 
         $filteredScores = [];
@@ -1109,9 +1231,8 @@ class SearchEngine
             foreach ($fieldFilters as $field => $terms) {
                 if ($field === 'title') {
                     // Check if any of the terms are in the title
-                    $parts = explode(':', $docId);
-                    $elementId = (int)($parts[1] ?? $parts[0]);
-                    $titleTerms = $titleTermsByElement[$elementId] ?? [];
+                    $documentKey = $this->documentKeyFromDocId((string)$docId);
+                    $titleTerms = $titleTermsByElement[$documentKey] ?? $titleTermsByElement[(int)$documentKey] ?? [];
 
                     $hasMatch = false;
                     foreach ($terms as $term) {
@@ -1247,28 +1368,28 @@ class SearchEngine
     private function filterByLanguage(array $docScores, string $language, int $siteId): array
     {
         $filtered = [];
-        $elementIdsBySite = [];
+        $documentKeysBySite = [];
 
         foreach (array_keys($docScores) as $docId) {
             $parts = explode(':', $docId);
             $elemSiteId = (int)$parts[0];
-            $elementId = (int)($parts[1] ?? $parts[0]);
-            $elementIdsBySite[$elemSiteId][] = $elementId;
+            $documentKeysBySite[$elemSiteId][] = $this->documentKeyFromDocId((string)$docId);
         }
 
         $languagesByDocId = [];
-        foreach ($elementIdsBySite as $elemSiteId => $elementIds) {
-            $languagesByElement = $this->storage->getDocumentLanguagesBatch((int)$elemSiteId, array_values(array_unique($elementIds)));
-            foreach ($languagesByElement as $elementId => $docLanguage) {
-                $languagesByDocId[$elemSiteId . ':' . $elementId] = $docLanguage;
+        foreach ($documentKeysBySite as $elemSiteId => $documentKeys) {
+            $languagesByDocument = method_exists($this->storage, 'getDocumentLanguagesBatchByKeys')
+                ? $this->storage->getDocumentLanguagesBatchByKeys((int)$elemSiteId, array_values(array_unique($documentKeys)))
+                : $this->storage->getDocumentLanguagesBatch((int)$elemSiteId, array_map('intval', array_values(array_unique($documentKeys))));
+            foreach ($languagesByDocument as $documentKey => $docLanguage) {
+                $languagesByDocId[$elemSiteId . ':' . $documentKey] = $docLanguage;
             }
         }
 
         foreach ($docScores as $docId => $score) {
             $parts = explode(':', $docId);
             $elemSiteId = (int)$parts[0];
-            $elementId = (int)($parts[1] ?? $parts[0]);
-            $docKey = $elemSiteId . ':' . $elementId;
+            $docKey = $elemSiteId . ':' . $this->documentKeyFromDocId((string)$docId);
 
             $docLanguage = $languagesByDocId[$docKey] ?? 'en';
 
@@ -1347,6 +1468,20 @@ class SearchEngine
         return $finalResults;
     }
 
+    /**
+     * @param array<string, float|int> $docScores
+     * @return array<string, float|int>
+     */
+    private function convertDocIdsToDocumentKeys(array $docScores): array
+    {
+        $finalResults = [];
+        foreach ($docScores as $docId => $score) {
+            $finalResults[$this->documentKeyFromDocId((string)$docId)] = $score;
+        }
+
+        return $finalResults;
+    }
+
     // =========================================================================
     // DOCUMENT MANAGEMENT
     // =========================================================================
@@ -1360,20 +1495,25 @@ class SearchEngine
      */
     public function deleteDocument(int $siteId, int $elementId): bool
     {
+        return $this->deleteDocumentByKey($siteId, $elementId, SearchHitIdentityHelper::pageDocumentId($elementId, $siteId));
+    }
+
+    public function deleteDocumentByKey(int $siteId, int $elementId, string $documentKey): bool
+    {
         try {
             // Get document info before deletion
-            $docLength = $this->storage->getDocumentLength($siteId, $elementId);
-            $terms = $this->storage->getDocumentTerms($siteId, $elementId);
+            $docLength = $this->documentLength($siteId, $elementId, $documentKey);
+            $terms = $this->documentTerms($siteId, $elementId, $documentKey);
 
             // Remove from inverted index
             foreach (array_keys($terms) as $term) {
-                $this->storage->removeTermDocument($term, $siteId, $elementId);
+                $this->removeTermDocument($term, $siteId, $elementId, $documentKey);
             }
 
             // Delete document and title data
-            $this->storage->deleteDocument($siteId, $elementId);
-            $this->storage->deleteTitleTerms($siteId, $elementId);
-            $this->storage->deleteCompoundSuggestions($siteId, $elementId);
+            $this->deleteDocumentRows($siteId, $elementId, $documentKey);
+            $this->deleteTitleRows($siteId, $elementId, $documentKey);
+            $this->deleteCompoundRows($siteId, $elementId, $documentKey);
 
             // Missing-document deletes are valid no-ops from the pending-sync
             // path. Only subtract metadata when the document actually existed.
@@ -1384,6 +1524,7 @@ class SearchEngine
             $this->logInfo('Document deleted', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
+                'document_key' => $documentKey,
             ]);
 
             return true;
@@ -1391,6 +1532,7 @@ class SearchEngine
             $this->logError('Failed to delete document', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
+                'document_key' => $documentKey,
                 'error' => $e->getMessage(),
             ]);
             return false;
@@ -1421,20 +1563,21 @@ class SearchEngine
             return [];
         }
 
-        $elementIds = [];
+        $documentKeys = [];
         $docIdsByElement = [];
         foreach ($docIds as $docId) {
-            $parts = explode(':', (string)$docId);
-            $elementId = (int)($parts[1] ?? $parts[0]);
-            $elementIds[$elementId] = true;
-            $docIdsByElement[$elementId][] = (string)$docId;
+            $documentKey = $this->documentKeyFromDocId((string)$docId);
+            $documentKeys[$documentKey] = true;
+            $docIdsByElement[$documentKey][] = (string)$docId;
         }
 
-        $byElement = $this->storage->getTitleTermsBatch($siteId, array_keys($elementIds));
+        $byElement = method_exists($this->storage, 'getTitleTermsBatchByKeys')
+            ? $this->storage->getTitleTermsBatchByKeys($siteId, array_keys($documentKeys))
+            : $this->storage->getTitleTermsBatch($siteId, array_map('intval', array_keys($documentKeys)));
 
         $byDocId = [];
-        foreach ($docIdsByElement as $elementId => $ids) {
-            $terms = $byElement[$elementId] ?? [];
+        foreach ($docIdsByElement as $documentKey => $ids) {
+            $terms = $byElement[$documentKey] ?? $byElement[(int)$documentKey] ?? [];
             foreach ($ids as $docId) {
                 $byDocId[$docId] = $terms;
             }
@@ -1475,7 +1618,7 @@ class SearchEngine
      * Group document IDs by site for batch operations
      *
      * @param array $docIds Array of "siteId:elementId" strings
-     * @return array [siteId => [elementIds]]
+     * @return array [siteId => [documentKeys]]
      */
     private function groupDocIdsBySite(array $docIds): array
     {
@@ -1484,16 +1627,25 @@ class SearchEngine
         foreach ($docIds as $docId) {
             $parts = explode(':', $docId);
             $siteId = (int)$parts[0];
-            $elementId = (int)($parts[1] ?? $parts[0]);
+            $documentKey = $this->documentKeyFromDocId((string)$docId);
 
             if (!isset($grouped[$siteId])) {
                 $grouped[$siteId] = [];
             }
 
-            $grouped[$siteId][] = $elementId;
+            $grouped[$siteId][] = $documentKey;
         }
 
         return $grouped;
+    }
+
+    private function documentKeyFromDocId(string $docId): string
+    {
+        if (str_contains($docId, ':')) {
+            return (string)explode(':', $docId, 2)[1];
+        }
+
+        return $docId;
     }
 
     /**

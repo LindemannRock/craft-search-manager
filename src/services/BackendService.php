@@ -359,6 +359,24 @@ class BackendService extends Component
     }
 
     /**
+     * Delete stale section documents for a parent element after the replacement
+     * section set has been indexed.
+     *
+     * @param string[] $keepBackendIds
+     * @since 5.55.0
+     */
+    public function deleteOrphanDocuments(string $indexName, int $elementId, ?int $siteId, array $keepBackendIds): bool
+    {
+        $backend = $this->getBackendForIndex($indexName);
+        if (!$backend) {
+            $this->logError('No backend available for orphan deletion', ['index' => $indexName]);
+            return false;
+        }
+
+        return $backend->deleteOrphanDocuments($indexName, $elementId, $siteId, $keepBackendIds);
+    }
+
+    /**
      * Delete a document from the index
      *
      * @param string $indexName
@@ -793,7 +811,7 @@ class BackendService extends Component
                     }
 
                     $identity = isset($hit['siteId'])
-                        ? SearchHitIdentityHelper::backendId($elementId, $hit['siteId'])
+                        ? SearchHitIdentityHelper::pageDocumentId($elementId, $hit['siteId'])
                         : (string)$elementId;
 
                     // Avoid duplicates - keep highest score
