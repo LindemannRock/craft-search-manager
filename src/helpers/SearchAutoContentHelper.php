@@ -61,8 +61,17 @@ class SearchAutoContentHelper
                         continue;
                     }
 
+                    $isRichTextField = $this->fieldTypeContentHelper->isRichTextField($field);
+                    $isBodyFieldHandle = $this->isBodyFieldHandle($field->handle);
+
                     if ($this->nativeFieldKeywordHelper->supports($field)) {
                         $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
+                        if ($isBodyFieldHandle && is_scalar($content)) {
+                            $cleanBody = $this->fieldTypeContentHelper->cleanBody((string)$content);
+                            if ($cleanBody !== '') {
+                                $bodyCleanParts[] = $cleanBody;
+                            }
+                        }
                     } else {
                         $fieldValue = $element->getFieldValue($field->handle);
 
@@ -70,7 +79,7 @@ class SearchAutoContentHelper
                             continue;
                         }
 
-                        if ($this->fieldTypeContentHelper->isRichTextField($field)) {
+                        if ($isRichTextField) {
                             $rawHtml = (string)$fieldValue;
                             if (!empty($rawHtml)) {
                                 $richTextContent[] = $rawHtml;
@@ -82,15 +91,17 @@ class SearchAutoContentHelper
                         }
 
                         $content = $this->fieldTypeContentHelper->process($field, $fieldValue, $element);
-                        if (!$this->fieldTypeContentHelper->isRichTextField($field) && $this->isBodyFieldHandle($field->handle) && is_string($content)) {
-                            $cleanBody = $this->fieldTypeContentHelper->cleanBody($content);
+                        if (!$isRichTextField && $isBodyFieldHandle && is_scalar($content)) {
+                            $cleanBody = $this->fieldTypeContentHelper->cleanBody((string)$content);
                             if ($cleanBody !== '') {
                                 $bodyCleanParts[] = $cleanBody;
                             }
                         }
                     }
 
-                    if (!empty($content)) {
+                    $isBodySource = $isRichTextField || $isBodyFieldHandle;
+
+                    if (!empty($content) && !$isBodySource) {
                         if (is_array($content)) {
                             $searchableContent = array_merge($searchableContent, $content);
                         } else {

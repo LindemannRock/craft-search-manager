@@ -988,7 +988,7 @@ return [
     'Split Sections requires a backend that supports document keys.' => 'Split Sections requires a backend that supports document keys.',
     'Retrievable Fields' => 'Retrievable Fields',
     'Controls which custom field values are returned under the public fields payload.' => 'Controls which custom field values are returned under the public fields payload.',
-    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets.' => 'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets.',
+    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist.' => 'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist.',
     'All fields (*)' => 'All fields (*)',
     'No custom fields' => 'No custom fields',
     'Transformer Class' => 'Transformer Class',

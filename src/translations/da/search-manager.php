@@ -988,7 +988,7 @@ return [
     'Split Sections requires a backend that supports document keys.' => 'Split Sections kræver en backend, der understøtter dokumentnøgler.',
     'Retrievable Fields' => 'Felter der kan hentes',
     'Controls which custom field values are returned under the public fields payload.' => 'Styrer hvilke brugerdefinerede feltværdier der returneres i den offentlige fields-payload.',
-    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets.' => 'Brug * til at returnere alle felter, lad feltet være tomt for ikke at returnere nogen, eller angiv ét felthandle pr. linje. Dette er en payload- og kontraktkontrol, ikke en fortrolighedsgrænse; søgbare felter kan stadig påvirke matchning og snippets.',
+    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist.' => 'Brug * til at returnere alle felter, lad feltet være tomt for ikke at returnere nogen, eller angiv ét felthandle pr. linje. Dette er en payload- og kontraktkontrol, ikke en fortrolighedsgrænse; søgbare felter kan stadig påvirke matchning og snippets. Genopbyg indekset efter ændring af retrievableFields, så lagrede poster og leverandørprojektioner bruger den nye feltliste.',
     'All fields (*)' => 'Alle felter (*)',
     'No custom fields' => 'Ingen brugerdefinerede felter',
     'Transformer Class' => 'Transformerklasse',

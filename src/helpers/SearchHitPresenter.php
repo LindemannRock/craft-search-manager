@@ -46,6 +46,7 @@ class SearchHitPresenter
             $hit['_contentClean'],
             $hit['_sectionBody'],
             $hit['_sectionBodyWithCode'],
+            $hit['_snippetFields'],
         );
         if (!$includeQueryRuleDebug) {
             unset($hit['_queryRuleDebug']);

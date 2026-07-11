@@ -460,8 +460,8 @@ final class TransformerCharacterizationTest extends TestCase
                 ],
             ],
             'keywords' => 'setup deployment',
-            'content' => 'Quickstart Install and configure Search Manager. Install Run Composer install. Deploy Use the indexing command after deployment. Install Deploy setup deployment',
-            'excerpt' => 'Quickstart Install and configure Search Manager. Install Run Composer install. Deploy Use the indexing command after deployment. Install Deploy setup deployment',
+            'content' => 'Quickstart Install and configure Search Manager. setup deployment',
+            'excerpt' => 'Quickstart Install and configure Search Manager. setup deployment',
         ], (new DocsManagerTransformer())->transform($sourceDoc));
     }
 
@@ -494,7 +494,7 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('Intro overview before headings.', $sections[0]['sectionBody']);
         self::assertSame('Intro overview before headings.', $sections[0]['_bodyClean']);
         self::assertSame('Intro overview before headings.', $sections[0]['_sectionBodyWithCode']);
-        self::assertSame('Guide Learn the workflow. Intro overview before headings. setup deployment', $sections[0]['content']);
+        self::assertSame('Guide Learn the workflow. setup deployment', $sections[0]['content']);
 
         self::assertSame('heading', $sections[1]['sectionType']);
         self::assertSame('install', $sections[1]['sectionId']);
@@ -505,7 +505,7 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('Run Composer install.', $sections[1]['sectionBody']);
         self::assertSame('Run Composer install.', $sections[1]['_bodyClean']);
         self::assertSame('Run Composer install.', $sections[1]['_sectionBodyWithCode']);
-        self::assertSame('Install Run Composer install.', $sections[1]['content']);
+        self::assertSame('Install', $sections[1]['content']);
         self::assertStringNotContainsString('Learn the workflow.', $sections[1]['content']);
         self::assertStringNotContainsString('setup deployment', $sections[1]['content']);
 
@@ -517,7 +517,7 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('#deploy', $sections[2]['sectionUrl']);
         self::assertSame('Rebuild the index.', $sections[2]['sectionBody']);
         self::assertSame('Rebuild the index.', $sections[2]['_sectionBodyWithCode']);
-        self::assertSame('Deploy Rebuild the index.', $sections[2]['content']);
+        self::assertSame('Deploy', $sections[2]['content']);
         self::assertStringNotContainsString('Learn the workflow.', $sections[2]['content']);
         self::assertStringNotContainsString('setup deployment', $sections[2]['content']);
 
@@ -543,9 +543,9 @@ final class TransformerCharacterizationTest extends TestCase
 
         self::assertSame('Choose a package command. Run the project command.', $pageData['_bodyClean']);
         self::assertSame('Choose a package command. composer require acme/package Run the project command. php craft migrate/all', $pageData['_bodyWithCode']);
-        self::assertStringContainsString('Choose a package command.', $pageData['content']);
-        self::assertStringContainsString('composer require acme/package', $pageData['content']);
-        self::assertStringContainsString('php craft migrate/all', $pageData['content']);
+        self::assertStringNotContainsString('Choose a package command.', $pageData['content']);
+        self::assertStringNotContainsString('composer require acme/package', $pageData['content']);
+        self::assertStringNotContainsString('php craft migrate/all', $pageData['content']);
         self::assertStringNotContainsString('ComposerDDEV', $pageData['content']);
         self::assertStringNotContainsString('Composer DDEV', $pageData['content']);
         self::assertStringNotContainsString('PHPDDEV', $pageData['content']);
@@ -607,12 +607,9 @@ final class TransformerCharacterizationTest extends TestCase
             'section' => 'News',
             'sectionHandle' => 'news',
             'sectionType' => 'channel',
-            '_fields' => [
-                'body' => 'Intro prose. secret codeOutro prose.',
-            ],
             '_bodyClean' => 'Intro prose. Outro prose.',
-            'content' => 'Code Entry code-entry Code Entry Intro prose. secret codeOutro prose.',
-            'excerpt' => 'Code Entry code-entry Code Entry Intro prose. secret codeOutro prose.',
+            'content' => 'Code Entry code-entry Code Entry',
+            'excerpt' => 'Code Entry code-entry Code Entry',
             '_contentClean' => 'Intro prose. Outro prose.',
         ], $data);
 

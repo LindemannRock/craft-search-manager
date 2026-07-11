@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\backends;
 
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use Typesense\Client;
@@ -38,6 +39,7 @@ class TypesenseBackend extends BaseBackend
         'source',
         'type',
         'platform',
+        'retrievableFieldsByIndex',
     ];
 
     private ?Client $_client = null;
@@ -94,6 +96,7 @@ class TypesenseBackend extends BaseBackend
      */
     public function indexWithResult(string $indexName, array $data): array
     {
+        $this->clearLastIndexingFailures();
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -102,7 +105,7 @@ class TypesenseBackend extends BaseBackend
             $this->ensureCollectionExists($fullIndexName);
 
             // Create composite id for multi-site uniqueness
-            $data = $this->prepareDocument($data);
+            $data = $this->prepareDocument($indexName, $data);
 
             try {
                 $client->collections[$fullIndexName]->documents->create($data);
@@ -119,6 +122,7 @@ class TypesenseBackend extends BaseBackend
             ];
         } catch (\Throwable $e) {
             $this->logError('Failed to index in Typesense', ['error' => $e->getMessage()]);
+            $this->recordIndexingFailure($data, $e->getMessage());
             return [
                 'success' => false,
                 'wasCreated' => null,
@@ -129,22 +133,78 @@ class TypesenseBackend extends BaseBackend
     /** @inheritdoc */
     public function batchIndex(string $indexName, array $items): bool
     {
+        $this->clearLastIndexingFailures();
+        $fullIndexName = $this->getFullIndexName($indexName);
         try {
             $client = $this->getClient();
-            $fullIndexName = $this->getFullIndexName($indexName);
 
             // Ensure collection exists
             $this->ensureCollectionExists($fullIndexName);
 
             // Create composite id for multi-site uniqueness
-            $items = array_map(fn($item) => $this->prepareDocument($item), $items);
+            $items = array_map(fn($item) => $this->prepareDocument($indexName, $item), $items);
 
-            $client->collections[$fullIndexName]->documents->import($items, ['action' => 'upsert']);
+            $response = $client->collections[$fullIndexName]->documents->import($items, ['action' => 'upsert']);
+            if ($this->recordTypesenseImportFailures($items, $response)) {
+                $this->logError('Typesense batch import reported document failures', [
+                    'index' => $fullIndexName,
+                    'count' => count($this->lastIndexingFailures),
+                ]);
+
+                return false;
+            }
             $this->logInfo('Batch indexed in Typesense', ['index' => $fullIndexName, 'count' => count($items)]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to batch index in Typesense', ['error' => $e->getMessage()]);
+            $this->recordTypesenseBatchFailures($fullIndexName, $items, $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     */
+    private function recordTypesenseImportFailures(array $items, mixed $response): bool
+    {
+        if (!is_string($response) || trim($response) === '') {
+            return false;
+        }
+
+        foreach (preg_split('/\R/', trim($response)) ?: [] as $i => $line) {
+            $row = json_decode($line, true);
+            if (!is_array($row) || ($row['success'] ?? true) === true) {
+                continue;
+            }
+
+            $this->recordIndexingFailure($items[$i] ?? [], is_scalar($row['error'] ?? null) ? (string)$row['error'] : 'Typesense import failed.');
+        }
+
+        return $this->lastIndexingFailures !== [];
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     */
+    private function recordTypesenseBatchFailures(string $fullIndexName, array $items, string $batchError): void
+    {
+        try {
+            $client = $this->getClient();
+            foreach ($items as $item) {
+                try {
+                    $client->collections[$fullIndexName]->documents->upsert($item);
+                } catch (\Throwable $e) {
+                    $this->recordIndexingFailure($item, $e->getMessage());
+                }
+            }
+        } catch (\Throwable) {
+            // Fall through to the batch-level failure records below.
+        }
+
+        if ($this->lastIndexingFailures === []) {
+            foreach ($items as $item) {
+                $this->recordIndexingFailure($item, $batchError);
+            }
         }
     }
 
@@ -157,9 +217,12 @@ class TypesenseBackend extends BaseBackend
      * - With siteId: "123_1" (multi-site safe, prevents collisions)
      * - Without siteId: "123" (single-site or custom transformers)
      */
-    private function prepareDocument(array $data): array
+    private function prepareDocument(string $indexName, array $data): array
     {
-        return SearchHitIdentityHelper::prepareIdDocument($data);
+        return SearchRecordProjectionHelper::externalRecord(
+            $indexName,
+            SearchHitIdentityHelper::prepareIdDocument($data),
+        );
     }
 
     /** @inheritdoc */
@@ -270,7 +333,10 @@ class TypesenseBackend extends BaseBackend
             $searchParams = array_diff_key($options, array_flip(self::INTERNAL_SEARCH_OPTIONS));
             $searchParams['q'] = $query;
             // Search all common string fields for consistency with other backends
-            $searchParams['query_by'] = $searchParams['query_by'] ?? 'title,content,url';
+            $searchParams['query_by'] = $searchParams['query_by'] ?? 'title,content,_bodyClean,url';
+            $searchParams['query_by_weights'] = $searchParams['query_by_weights'] ?? '5,3,1,1';
+            $searchParams['include_fields'] = $searchParams['include_fields']
+                ?? implode(',', SearchRecordProjectionHelper::searchProjectionFields($this->retrievableFieldsForIndex($indexName, $options)));
 
             $existingFilter = isset($searchParams['filter_by']) && is_string($searchParams['filter_by'])
                 ? $searchParams['filter_by']
@@ -373,7 +439,8 @@ class TypesenseBackend extends BaseBackend
 
             $results = $client->collections[$fullIndexName]->documents->search([
                 'q' => '*',
-                'query_by' => 'title,content,url',
+                'query_by' => 'title,content,_bodyClean,url',
+                'query_by_weights' => '5,3,1,1',
                 'filter_by' => self::siteIdFilter($siteId, $this->elementIdFilter($elementIds)),
                 'per_page' => max(20, count($elementIds) * 20),
             ]);
@@ -535,7 +602,8 @@ class TypesenseBackend extends BaseBackend
                 $searchRequests['searches'][] = array_merge([
                     'collection' => $indexName,
                     'q' => $query['query'] ?? '',
-                    'query_by' => $params['query_by'] ?? 'title,content',
+                    'query_by' => $params['query_by'] ?? 'title,content,_bodyClean,url',
+                    'query_by_weights' => $params['query_by_weights'] ?? '5,3,1,1',
                 ], $params);
             }
 
@@ -777,6 +845,7 @@ class TypesenseBackend extends BaseBackend
                 ['name' => 'title', 'type' => 'string', 'optional' => true],
                 ['name' => 'url', 'type' => 'string', 'optional' => true],
                 ['name' => 'content', 'type' => 'string', 'optional' => true],
+                ['name' => '_bodyClean', 'type' => 'string', 'optional' => true],
 
                 // Dates (stored as timestamps)
                 ['name' => 'dateCreated', 'type' => 'int64', 'optional' => true],
@@ -803,5 +872,18 @@ class TypesenseBackend extends BaseBackend
         return count($elementIds) === 1
             ? 'elementId:=' . $elementIds[0]
             : 'elementId:=[' . implode(',', $elementIds) . ']';
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return list<string>|null
+     */
+    private function retrievableFieldsForIndex(string $indexName, array $options): ?array
+    {
+        $byIndex = $options['retrievableFieldsByIndex'] ?? null;
+
+        return is_array($byIndex) && is_array($byIndex[$indexName] ?? null)
+            ? SearchIndex::normalizeRetrievableFields($byIndex[$indexName])
+            : null;
     }
 }

@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use Meilisearch\Client;
@@ -86,6 +87,7 @@ class MeilisearchBackend extends BaseBackend
      */
     public function indexWithResult(string $indexName, array $data): array
     {
+        $this->clearLastIndexingFailures();
         try {
             $client = $this->getAdminClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -94,7 +96,7 @@ class MeilisearchBackend extends BaseBackend
             $this->ensureFilterableAttributes($fullIndexName);
 
             // Create composite objectID for multi-site uniqueness
-            $data = $this->prepareDocument($data);
+            $data = $this->prepareDocument($indexName, $data);
 
             $index = $client->index($fullIndexName);
             $objectId = (string)$data['objectID'];
@@ -131,6 +133,7 @@ class MeilisearchBackend extends BaseBackend
             $this->logError('Failed to index document in Meilisearch', [
                 'error' => $e->getMessage(),
             ]);
+            $this->recordIndexingFailure($data, $e->getMessage());
             return [
                 'success' => false,
                 'wasCreated' => null,
@@ -141,15 +144,16 @@ class MeilisearchBackend extends BaseBackend
     /** @inheritdoc */
     public function batchIndex(string $indexName, array $items): bool
     {
+        $this->clearLastIndexingFailures();
+        $fullIndexName = $this->getFullIndexName($indexName);
         try {
             $client = $this->getAdminClient();
-            $fullIndexName = $this->getFullIndexName($indexName);
 
             // Ensure index has filterable attributes configured
             $this->ensureFilterableAttributes($fullIndexName);
 
             // Create composite objectID for multi-site uniqueness
-            $items = array_map(fn($item) => $this->prepareDocument($item), $items);
+            $items = array_map(fn($item) => $this->prepareDocument($indexName, $item), $items);
 
             $index = $client->index($fullIndexName);
             $index->addDocuments($items, 'objectID');
@@ -164,7 +168,33 @@ class MeilisearchBackend extends BaseBackend
             $this->logError('Failed to batch index in Meilisearch', [
                 'error' => $e->getMessage(),
             ]);
+            $this->recordMeilisearchBatchFailures($fullIndexName, $items, $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     */
+    private function recordMeilisearchBatchFailures(string $fullIndexName, array $items, string $batchError): void
+    {
+        try {
+            $index = $this->getAdminClient()->index($fullIndexName);
+            foreach ($items as $item) {
+                try {
+                    $index->addDocuments([$item], 'objectID');
+                } catch (\Throwable $e) {
+                    $this->recordIndexingFailure($item, $e->getMessage());
+                }
+            }
+        } catch (\Throwable) {
+            // Fall through to the batch-level failure records below.
+        }
+
+        if ($this->lastIndexingFailures === []) {
+            foreach ($items as $item) {
+                $this->recordIndexingFailure($item, $batchError);
+            }
         }
     }
 
@@ -175,9 +205,12 @@ class MeilisearchBackend extends BaseBackend
      * - With siteId: "123_1" (multi-site safe, prevents collisions)
      * - Without siteId: "123" (single-site or custom transformers)
      */
-    private function prepareDocument(array $data): array
+    private function prepareDocument(string $indexName, array $data): array
     {
-        return SearchHitIdentityHelper::prepareObjectIdDocument($data);
+        return SearchRecordProjectionHelper::externalRecord(
+            $indexName,
+            SearchHitIdentityHelper::prepareObjectIdDocument($data),
+        );
     }
 
     private function indexDocumentLockName(string $fullIndexName, string $objectId): string
@@ -345,6 +378,11 @@ class MeilisearchBackend extends BaseBackend
             }
             if (isset($options['attributesToRetrieve'])) {
                 $searchParams['attributesToRetrieve'] = $options['attributesToRetrieve'];
+            }
+            if (!isset($searchParams['attributesToRetrieve'])) {
+                $searchParams['attributesToRetrieve'] = SearchRecordProjectionHelper::searchProjectionFields(
+                    $this->retrievableFieldsForIndex($indexName, $options),
+                );
             }
             if (isset($options['filter']) && is_string($options['filter']) && trim($options['filter']) !== '') {
                 $searchParams['filter'] = trim($options['filter']);
@@ -822,6 +860,7 @@ class MeilisearchBackend extends BaseBackend
 
             // Required filterable attributes for Search Manager
             $requiredFilterable = ['siteId', 'elementId', 'elementType', 'type'];
+            $requiredSearchable = ['title', 'content', '_bodyClean', 'url'];
 
             // Check if already configured
             $missingAttributes = array_diff($requiredFilterable, $currentFilterable);
@@ -837,13 +876,23 @@ class MeilisearchBackend extends BaseBackend
                 ]);
             }
 
+            if ($index->getSearchableAttributes() !== $requiredSearchable) {
+                $index->updateSearchableAttributes($requiredSearchable);
+
+                $this->logInfo('Configured Meilisearch searchable attributes', [
+                    'index' => $indexName,
+                    'attributes' => $requiredSearchable,
+                ]);
+            }
+
             $this->_configuredIndices[$indexName] = true;
         } catch (\Throwable $e) {
-            // Log but don't fail - filtering just won't work
-            $this->logWarning('Failed to configure Meilisearch filterable attributes', [
+            $this->logError('Failed to configure Meilisearch index attributes', [
                 'index' => $indexName,
                 'error' => $e->getMessage(),
             ]);
+
+            throw $e;
         }
     }
 
@@ -857,5 +906,18 @@ class MeilisearchBackend extends BaseBackend
         return count($elementIds) === 1
             ? 'elementId = ' . $elementIds[0]
             : '(' . implode(' OR ', array_map(static fn(int $id): string => 'elementId = ' . $id, $elementIds)) . ')';
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return list<string>|null
+     */
+    private function retrievableFieldsForIndex(string $indexName, array $options): ?array
+    {
+        $byIndex = $options['retrievableFieldsByIndex'] ?? null;
+
+        return is_array($byIndex) && is_array($byIndex[$indexName] ?? null)
+            ? SearchIndex::normalizeRetrievableFields($byIndex[$indexName])
+            : null;
     }
 }

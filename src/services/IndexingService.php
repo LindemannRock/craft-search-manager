@@ -240,6 +240,7 @@ class IndexingService extends Component
                         'elementId' => $element->id,
                         'indexHandle' => $indexHandle,
                         'backendName' => $backendName,
+                        'failures' => SearchManager::$plugin->backend->getLastIndexingFailures($indexHandle),
                     ]);
                     $success = false;
                 }
@@ -468,6 +469,11 @@ class IndexingService extends Component
                     SearchManager::$plugin->backend->clearSearchCache($indexHandle);
                     SearchManager::$plugin->autocomplete->clearCache($indexHandle);
                 }
+            } else {
+                $this->logWarning($this->lastIndexingFailureMessage($indexHandle), [
+                    'indexHandle' => $indexHandle,
+                    'failures' => SearchManager::$plugin->backend->getLastIndexingFailures($indexHandle),
+                ]);
             }
 
             return $result;
@@ -478,6 +484,32 @@ class IndexingService extends Component
             ]);
             return false;
         }
+    }
+
+    /**
+     * Return the most recent backend indexing failures in a CP/job-visible form.
+     *
+     * @since 5.53.0
+     */
+    public function lastIndexingFailureMessage(string $indexHandle): string
+    {
+        $failures = SearchManager::$plugin->backend->getLastIndexingFailures($indexHandle);
+        if ($failures === []) {
+            return "Batch index failed for {$indexHandle}.";
+        }
+
+        $summary = array_slice(array_map(static function(array $failure): string {
+            $label = $failure['backendId'] ?? ($failure['elementId'] ?? 'unknown document');
+            $title = isset($failure['title']) && $failure['title'] !== ''
+                ? ' "' . $failure['title'] . '"'
+                : '';
+
+            return (string)$label . $title . ': ' . $failure['error'];
+        }, $failures), 0, 5);
+
+        $suffix = count($failures) > 5 ? ' +' . (count($failures) - 5) . ' more' : '';
+
+        return "Batch index failed for {$indexHandle}: " . implode('; ', $summary) . $suffix;
     }
 
     // =========================================================================

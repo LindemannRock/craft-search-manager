@@ -988,7 +988,7 @@ return [
     'Split Sections requires a backend that supports document keys.' => 'Split Sections にはドキュメントキーをサポートするバックエンドが必要です。',
     'Retrievable Fields' => '取得可能フィールド',
     'Controls which custom field values are returned under the public fields payload.' => '公開 fields ペイロードで返されるカスタムフィールド値を制御する',
-    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets.' => '* を使用するとすべてのフィールドを返し、空のままにすると何も返さず、1 行に 1 つのフィールドハンドルを入力します。これはペイロードと契約の制御であり、秘密保持の境界ではありません。検索可能フィールドは引き続きマッチングとスニペットに影響する可能性があります。',
+    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist.' => '* を使用するとすべてのフィールドを返し、空のままにすると何も返さず、1 行に 1 つのフィールドハンドルを入力します。これはペイロードと契約の制御であり、秘密保持の境界ではありません。検索可能フィールドは引き続きマッチングとスニペットに影響する可能性があります。retrievableFields を変更した後はインデックスを再構築し、保存済みレコードとプロバイダー投影が新しいフィールド許可リストを使用するようにしてください。',
     'All fields (*)' => 'すべてのフィールド (*)',
     'No custom fields' => 'カスタムフィールドなし',
     'Transformer Class' => 'Transformer クラス',

@@ -81,6 +81,8 @@ Split mode is only available for SourceDoc indices that use the built-in Docs Ma
 
 For Algolia-backed documentation, enable Split Sections unless every page is comfortably small. Algolia enforces per-record and average record-size limits, and page-mode docs records can exceed those limits on long installation, API, or reference pages. Section records keep stored snippets, headings, and code-included snippet bodies much smaller while preserving links back to the parent page.
 
+Search Manager stores body text once in the dedicated `_bodyClean` snippet source and does not duplicate it into the general `content` field. Matching still covers title, description, searchable custom field text, keywords, and body text: Algolia and Meilisearch search `title`, then `content`, then `_bodyClean`, then `url`; Typesense searches `title,content,_bodyClean,url` with weights `5,3,1,1`; the local backend adds `_bodyClean` to its BM25 term pool alongside `content`.
+
 #### Craft Commerce Integration
 
 When Craft Commerce is installed and enabled, Product and Variant element types are available for indices in the Control Panel. Commerce Product Types are configuration records rather than searchable Craft elements, so they are not listed as index element types.
@@ -219,9 +221,9 @@ Use `['*']` to return every public `_fields` value, `[]` to return none, or an e
 
 REST and GraphQL callers can pass request-time `retrievableFields` to narrow this list for one request. Request values never widen the index allowlist; if an index allows only `intro`, requesting `summary` returns neither field.
 
-This setting trims the public payload only. Snippets and matching still use all searchable indexed `_fields`, so a field omitted from `fields` can still produce matches or snippets. No reindex is required when you change `retrievableFields` in Phase 1.
+This setting controls what custom field values are stored in the public `fields` area of new records. Snippets and matching still use all searchable field text through private snippet/search sources, so a field omitted from `fields` can still produce matches or snippets. Rebuild the index after changing `retrievableFields`; existing records keep the previous stored field allowlist until they are reindexed.
 
-The concept is similar to Algolia's `attributesToRetrieve`, Meilisearch's displayed attributes, and Typesense's `include_fields`, but Phase 1 applies the rule in Search Manager's response shaping layer so snippet sources are preserved consistently across backends.
+The concept is similar to Algolia's `attributesToRetrieve`, Meilisearch's displayed attributes, and Typesense's `include_fields`. Search Manager still enforces the public contract after results come back, while provider projection keeps main searches from downloading custom fields that cannot be returned.
 
 ### Disable Stop Words
 

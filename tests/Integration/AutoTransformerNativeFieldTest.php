@@ -69,15 +69,16 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertNotSame('', $behavior);
     }
 
-    public function testSearchablePlainTextFieldIsIncluded(): void
+    public function testSearchablePlainTextBodyFieldUsesDedicatedBodySource(): void
     {
         $data = $this->transformWithField(
             new PlainText(['handle' => 'body', 'searchable' => true]),
             'Plain text needle',
         );
 
-        self::assertSame('Plain text needle', $data['_fields']['body'] ?? null);
-        self::assertStringContainsString('Plain text needle', $data['content']);
+        self::assertSame('Plain text needle', $data['_bodyClean'] ?? null);
+        self::assertArrayNotHasKey('body', $data['_fields'] ?? []);
+        self::assertStringNotContainsString('Plain text needle', $data['content']);
     }
 
     public function testEntryDocumentTypeUsesStableKindAndSeparateSectionMetadata(): void

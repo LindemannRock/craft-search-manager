@@ -988,7 +988,7 @@ return [
     'Split Sections requires a backend that supports document keys.' => 'Split Sections kräver en backend som stöder dokumentnycklar.',
     'Retrievable Fields' => 'Hämtningsbara fält',
     'Controls which custom field values are returned under the public fields payload.' => 'Styr vilka anpassade fältvärden som returneras i den offentliga fields-nyttolasten.',
-    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets.' => 'Använd * för att returnera alla fält, lämna tomt för att inte returnera några, eller ange ett fälthandtag per rad. Detta är en nyttolast- och kontraktskontroll, inte en sekretessgräns; sökbara fält kan fortfarande påverka matchning och snippets.',
+    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist.' => 'Använd * för att returnera alla fält, lämna tomt för att inte returnera några, eller ange ett fälthandtag per rad. Detta är en nyttolast- och kontraktskontroll, inte en sekretessgräns; sökbara fält kan fortfarande påverka matchning och snippets. Bygg om indexet efter att retrievableFields har ändrats så att lagrade poster och leverantörsprojektioner använder den nya fältlistan.',
     'All fields (*)' => 'Alla fält (*)',
     'No custom fields' => 'Inga anpassade fält',
     'Transformer Class' => 'Transformerklass',

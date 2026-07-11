@@ -174,6 +174,24 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('Needle phrase only in hidden body', $result['snippet'] ?? null);
     }
 
+    public function testSnippetFieldsRemainPrivateAndPowerSnippets(): void
+    {
+        $hit = $this->rawHit(101, 1);
+        unset($hit['_fields']);
+        $hit['fields'] = [];
+        $hit['_snippetFields'] = [
+            'hiddenBody' => 'Needle phrase only in private snippet fields',
+        ];
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'needle phrase', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => []],
+        ])[0] ?? [];
+
+        self::assertSame([], $result['fields'] ?? null);
+        self::assertSame('Needle phrase only in private snippet fields', $result['snippet'] ?? null);
+        self::assertArrayNotHasKey('_snippetFields', $result);
+    }
+
     public function testPresenterStillStripsInternalsAfterRetrievableFieldFiltering(): void
     {
         $hit = SearchHitPresenter::present($this->rawHit(101, 1), false, []);
@@ -734,7 +752,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'sectionLevel' => 2,
             'sectionUrl' => 'https://example.test/docs/release#install',
             'sectionIndex' => 1,
-            'sectionBody' => 'This section opens with deployment context and continues with practical setup steps for production teams.',
+            '_bodyClean' => 'This section opens with deployment context and continues with practical setup steps for production teams.',
             'matchedTerms' => [
                 'title' => ['release'],
                 'content' => [],
@@ -767,7 +785,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'sectionLevel' => 2,
             'sectionUrl' => 'https://example.test/docs/release#install',
             'sectionIndex' => 1,
-            'sectionBody' => 'Opening fallback prose is intentionally different. Later the composer command appears near deployment instructions for teams.',
+            '_bodyClean' => 'Opening fallback prose is intentionally different. Later the composer command appears near deployment instructions for teams.',
             'matchedTerms' => [
                 'title' => [],
                 'content' => ['composer'],
@@ -842,7 +860,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'sectionLevel' => 2,
             'sectionUrl' => 'https://example.test/docs/shortlink-manager/get-started/installation#install',
             'sectionIndex' => 1,
-            'sectionBody' => 'Install ShortLink Manager before configuring your project.',
+            '_bodyClean' => 'Install ShortLink Manager before configuring your project.',
             '_sectionBodyWithCode' => 'Install ShortLink Manager before configuring your project. ddev composer require lindemannrock/craft-shortlink-manager',
             'matchedTerms' => [
                 'title' => [],

@@ -122,7 +122,7 @@ GET /actions/search-manager/api/search
 
 Retrievable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills the internal source map automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. The index's `retrievableFields` setting then decides which of those values are returned publicly.
 
-`retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching, matched metadata, and snippets even when they are omitted from `fields`. No reindex is required when you change retrievable fields because Phase 1 trims the public response from already indexed data.
+`retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching, matched metadata, and snippets even when they are omitted from `fields`. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
 Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `section`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
 
@@ -173,7 +173,7 @@ Search returns one canonical hit shape:
 }
 ```
 
-`snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in the indexed `_fields` map, then from the indexed clean body. Snippet source selection is independent of `retrievableFields`, so a field can be omitted from `fields` and still produce a snippet. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
+`snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in the private snippet source, then from the dedicated indexed clean body. Snippet source selection is independent of `retrievableFields`, so a field can be omitted from `fields` and still produce a snippet. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
 
 For split SourceDoc indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
 

@@ -137,6 +137,7 @@ class SearchResolver extends Resolver
                 'error' => 'No search indices configured',
             ];
         }
+        $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
 
         $results = self::runSearch($indexHandles, $query, $options, $siteIds);
         unset($results['meta']);

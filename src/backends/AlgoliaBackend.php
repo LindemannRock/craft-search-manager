@@ -12,6 +12,7 @@ use Algolia\AlgoliaSearch\Api\SearchClient;
 use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 
@@ -40,6 +41,7 @@ class AlgoliaBackend extends BaseBackend
         'source',
         'type',
         'platform',
+        'retrievableFieldsByIndex',
     ];
 
     private ?SearchClient $_client = null;
@@ -96,6 +98,7 @@ class AlgoliaBackend extends BaseBackend
      */
     public function indexWithResult(string $indexName, array $data): array
     {
+        $this->clearLastIndexingFailures();
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
@@ -104,7 +107,7 @@ class AlgoliaBackend extends BaseBackend
             $this->ensureFilterableAttributes($fullIndexName);
 
             // Create composite objectID for multi-site uniqueness
-            $data = $this->prepareDocument($data);
+            $data = $this->prepareDocument($indexName, $data);
             $objectId = (string)$data['objectID'];
             $lockName = $this->indexDocumentLockName($fullIndexName, $objectId);
             $lockAcquired = Craft::$app->getMutex()->acquire($lockName, 30);
@@ -133,6 +136,7 @@ class AlgoliaBackend extends BaseBackend
             }
         } catch (\Throwable $e) {
             $this->logError('Failed to index in Algolia', ['error' => $e->getMessage()]);
+            $this->recordIndexingFailure($data, $e->getMessage());
             return [
                 'success' => false,
                 'wasCreated' => null,
@@ -143,22 +147,49 @@ class AlgoliaBackend extends BaseBackend
     /** @inheritdoc */
     public function batchIndex(string $indexName, array $items): bool
     {
+        $this->clearLastIndexingFailures();
+        $fullIndexName = $this->getFullIndexName($indexName);
         try {
             $client = $this->getClient();
-            $fullIndexName = $this->getFullIndexName($indexName);
 
             // Ensure index has filterable attributes configured
             $this->ensureFilterableAttributes($fullIndexName);
 
             // Create composite objectID for multi-site uniqueness
-            $items = array_map(fn($item) => $this->prepareDocument($item), $items);
+            $items = array_map(fn($item) => $this->prepareDocument($indexName, $item), $items);
 
             $client->saveObjects($fullIndexName, $items);
             $this->logInfo('Batch indexed in Algolia', ['index' => $fullIndexName, 'count' => count($items)]);
             return true;
         } catch (\Throwable $e) {
             $this->logError('Failed to batch index in Algolia', ['error' => $e->getMessage()]);
+            $this->recordAlgoliaBatchFailures($fullIndexName, $items, $e->getMessage());
             return false;
+        }
+    }
+
+    /**
+     * @param list<array<string, mixed>> $items
+     */
+    private function recordAlgoliaBatchFailures(string $fullIndexName, array $items, string $batchError): void
+    {
+        try {
+            $client = $this->getClient();
+            foreach ($items as $item) {
+                try {
+                    $client->saveObject($fullIndexName, $item);
+                } catch (\Throwable $e) {
+                    $this->recordIndexingFailure($item, $e->getMessage());
+                }
+            }
+        } catch (\Throwable) {
+            // Fall through to the batch-level failure records below.
+        }
+
+        if ($this->lastIndexingFailures === []) {
+            foreach ($items as $item) {
+                $this->recordIndexingFailure($item, $batchError);
+            }
         }
     }
 
@@ -169,9 +200,12 @@ class AlgoliaBackend extends BaseBackend
      * - With siteId: "123_1" (multi-site safe, prevents collisions)
      * - Without siteId: "123" (single-site or custom transformers)
      */
-    private function prepareDocument(array $data): array
+    private function prepareDocument(string $indexName, array $data): array
     {
-        return SearchHitIdentityHelper::prepareObjectIdDocument($data);
+        return SearchRecordProjectionHelper::externalRecord(
+            $indexName,
+            SearchHitIdentityHelper::prepareObjectIdDocument($data),
+        );
     }
 
     private function indexDocumentLockName(string $fullIndexName, string $objectId): string
@@ -312,6 +346,8 @@ class AlgoliaBackend extends BaseBackend
             // Filter out Search Manager internal options that Algolia doesn't understand.
             $searchParams = array_diff_key($options, array_flip(self::INTERNAL_SEARCH_OPTIONS));
             $searchParams['query'] = $query;
+            $searchParams['attributesToRetrieve'] = $searchParams['attributesToRetrieve']
+                ?? SearchRecordProjectionHelper::searchProjectionFields($this->retrievableFieldsForIndex($indexName, $options));
 
             $existingFilters = isset($searchParams['filters']) && is_string($searchParams['filters'])
                 ? $searchParams['filters']
@@ -729,6 +765,7 @@ class AlgoliaBackend extends BaseBackend
             // Required filterable attributes for Search Manager
             // Using filterOnly() to allow filtering without facet counts
             $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementId)', 'filterOnly(elementType)', 'filterOnly(type)'];
+            $requiredSearchable = ['title', 'content', '_bodyClean', 'url'];
 
             // Check if already configured (normalize for comparison)
             $normalizedCurrent = array_map(fn($f) => str_replace('filterOnly(', '', str_replace(')', '', $f)), $currentFacets);
@@ -739,10 +776,11 @@ class AlgoliaBackend extends BaseBackend
                 }
             }
 
+            $settingsUpdate = [];
             if (!empty($missingFacets)) {
                 // Add missing facets while preserving existing ones
                 $newFacets = array_values(array_unique(array_merge($currentFacets, $missingFacets)));
-                $client->setSettings($indexName, ['attributesForFaceting' => $newFacets]);
+                $settingsUpdate['attributesForFaceting'] = $newFacets;
 
                 $this->logInfo('Configured Algolia filterable attributes', [
                     'index' => $indexName,
@@ -750,13 +788,26 @@ class AlgoliaBackend extends BaseBackend
                 ]);
             }
 
+            if (($currentSettings['searchableAttributes'] ?? []) !== $requiredSearchable) {
+                $settingsUpdate['searchableAttributes'] = $requiredSearchable;
+                $this->logInfo('Configured Algolia searchable attributes', [
+                    'index' => $indexName,
+                    'attributes' => $requiredSearchable,
+                ]);
+            }
+
+            if ($settingsUpdate !== []) {
+                $client->setSettings($indexName, $settingsUpdate);
+            }
+
             $this->_configuredIndices[$indexName] = true;
         } catch (\Throwable $e) {
-            // Log but don't fail - filtering just won't work
-            $this->logWarning('Failed to configure Algolia filterable attributes', [
+            $this->logError('Failed to configure Algolia index attributes', [
                 'index' => $indexName,
                 'error' => $e->getMessage(),
             ]);
+
+            throw $e;
         }
     }
 
@@ -770,5 +821,18 @@ class AlgoliaBackend extends BaseBackend
         return count($elementIds) === 1
             ? 'elementId:' . $elementIds[0]
             : '(' . implode(' OR ', array_map(static fn(int $id): string => 'elementId:' . $id, $elementIds)) . ')';
+    }
+
+    /**
+     * @param array<string, mixed> $options
+     * @return list<string>|null
+     */
+    private function retrievableFieldsForIndex(string $indexName, array $options): ?array
+    {
+        $byIndex = $options['retrievableFieldsByIndex'] ?? null;
+
+        return is_array($byIndex) && is_array($byIndex[$indexName] ?? null)
+            ? SearchIndex::normalizeRetrievableFields($byIndex[$indexName])
+            : null;
     }
 }

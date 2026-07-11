@@ -74,7 +74,6 @@ class DocsManagerTransformer extends BaseTransformer
             $headingTexts = array_filter($headingTexts);
             if (!empty($headingTexts)) {
                 $data['headings'] = SearchHeadingHelper::headingText($headings);
-                $searchableContent[] = $data['headings'];
             }
 
             // Keep raw headings for hierarchical display in frontend

@@ -271,7 +271,7 @@ class PendingSyncProcessor extends Component
             } else {
                 $failures[] = [
                     'ids' => $this->rowIds($docRows),
-                    'error' => "Batch index failed for {$indexHandle}.",
+                    'error' => SearchManager::$plugin->indexing->lastIndexingFailureMessage($indexHandle),
                 ];
             }
         }

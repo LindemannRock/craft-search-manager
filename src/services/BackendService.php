@@ -340,6 +340,22 @@ class BackendService extends Component
     }
 
     /**
+     * @return list<array{backendId: string|null, elementId: int|null, title: string|null, error: string}>
+     * @since 5.53.0
+     */
+    public function getLastIndexingFailures(string $indexName): array
+    {
+        $backend = $this->getBackendForIndex($indexName);
+        if ($backend === null || !method_exists($backend, 'getLastIndexingFailures')) {
+            return [];
+        }
+
+        $failures = $backend->getLastIndexingFailures();
+
+        return is_array($failures) ? $failures : [];
+    }
+
+    /**
      * Batch delete multiple documents
      *
      * @param string $indexName

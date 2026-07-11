@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -196,11 +197,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
             // Extract title and content
             $title = $data['title'] ?? '';
-            $content = implode(' ', [
-                $data['content'] ?? '',
-                $data['excerpt'] ?? '',
-                $data['body'] ?? '',
-            ]);
+            $content = SearchRecordProjectionHelper::localMatchingText($data);
 
             $data = SearchHitIdentityHelper::normalizeHit($data);
 
@@ -267,11 +264,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             foreach ($items as $data) {
                 $data = SearchHitIdentityHelper::normalizeHit($data);
                 $title = $data['title'] ?? '';
-                $content = implode(' ', [
-                    $data['content'] ?? '',
-                    $data['excerpt'] ?? '',
-                    $data['body'] ?? '',
-                ]);
+                $content = SearchRecordProjectionHelper::localMatchingText($data);
 
                 $siteId = $data['siteId'] ?? 1;
                 $elementId = SearchHitIdentityHelper::elementId($data);
@@ -945,7 +938,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      */
     protected function buildDocumentData(string $indexName, array $data): ?string
     {
-        $storable = $data;
+        $storable = SearchRecordProjectionHelper::localDocumentData($indexName, $data);
 
         $json = json_encode($storable, JSON_UNESCAPED_UNICODE);
         if ($json === false) {

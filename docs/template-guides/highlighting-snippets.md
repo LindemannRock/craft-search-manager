@@ -66,7 +66,7 @@ When you call the REST API or GraphQL, Search Manager returns a plain-text `snip
 }
 ```
 
-The top-level `snippet` is the best match-centered excerpt from eligible searchable custom fields stored in `fields`, then from the indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body.
+The top-level `snippet` is the best match-centered excerpt from eligible searchable custom fields in the private snippet source, then from the dedicated indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body.
 
 Search Manager does not build these API snippets from title, slug, URL, SKU, native identity values, live element fields, or the flattened content bag. If no eligible field or body text contains the query, `snippet` is `null`.
 
@@ -190,7 +190,7 @@ By default, block-level code in your content is included in search results but e
 
 ### How It Works
 
-When custom field content is indexed, the transformer stores searchable custom field values under the internal `_fields` map. The index's `retrievableFields` setting controls which of those values appear under public API/GraphQL `fields`, but snippets can still use searchable `_fields` values that are omitted from the public payload. Docs Manager SourceDoc indices also store an internal code-included body alongside the normal code-free body after a full reindex. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
+When custom field content is indexed, Search Manager keeps searchable field text in a private snippet source. The index's `retrievableFields` setting controls which of those values appear under public API/GraphQL `fields`, but snippets can still use searchable field values that are omitted from the public payload. Docs Manager SourceDoc indices also store an internal code-included body alongside the normal code-free body after a full reindex. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
 
 - **`showCodeSnippets: false`** (default) — block-level code is removed before building result snippets
 - **`showCodeSnippets: true`** — snippets include block-level code content

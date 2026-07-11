@@ -21,33 +21,33 @@ class SearchFieldValueHelper
      */
     public static function fieldsFromHit(array $hit): array
     {
-        $fields = is_array($hit['_fields'] ?? null) ? $hit['_fields'] : [];
-        $normalized = [];
+        $fields = is_array($hit['_fields'] ?? null)
+            ? $hit['_fields']
+            : (is_array($hit['fields'] ?? null) ? $hit['fields'] : []);
 
-        foreach ($fields as $handle => $value) {
-            if (!self::isPublicHandle($handle) || $value === null || $value === '') {
-                continue;
-            }
+        return self::normalizeFields($fields);
+    }
 
-            if (is_array($value)) {
-                $values = array_values(array_filter(
-                    array_map(static fn(mixed $item): string => is_scalar($item) ? (string)$item : '', $value),
-                    static fn(string $item): bool => $item !== '',
-                ));
-                if ($values === []) {
-                    continue;
-                }
+    /**
+     * Return private field text used only for snippets.
+     *
+     * New records store all snippet-eligible field text in `_snippetFields`.
+     * Old records fall back to `_fields`, then `fields`, so stale records remain
+     * readable until a full reindex rewrites the storage shape.
+     *
+     * @param array<string, mixed> $hit
+     * @return array<string, mixed>
+     * @since 5.53.0
+     */
+    public static function snippetFieldsFromHit(array $hit): array
+    {
+        $fields = is_array($hit['_snippetFields'] ?? null)
+            ? $hit['_snippetFields']
+            : (is_array($hit['_fields'] ?? null)
+                ? $hit['_fields']
+                : (is_array($hit['fields'] ?? null) ? $hit['fields'] : []));
 
-                $normalized[$handle] = $values;
-                continue;
-            }
-
-            if (is_scalar($value)) {
-                $normalized[$handle] = (string)$value;
-            }
-        }
-
-        return $normalized;
+        return self::normalizeFields($fields);
     }
 
     /**
@@ -65,7 +65,7 @@ class SearchFieldValueHelper
             $hit['fields'] = self::normalizeFields($hit['fields']);
         }
         $hit['fields'] = self::filterFields($hit['fields'], $retrievableFields);
-        unset($hit['_fields']);
+        unset($hit['_fields'], $hit['_snippetFields']);
 
         return $hit;
     }

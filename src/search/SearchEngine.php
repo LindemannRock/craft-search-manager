@@ -924,13 +924,18 @@ class SearchEngine
             $docData = $elementData['documentData'] ?? [];
             $title = $elementData['title'] ?? '';
 
-            // Build searchable text from title + content
+            // Build searchable text from title + stored matching fields.
             $searchableText = $title;
             if (!empty($docData['content'])) {
                 $searchableText .= ' ' . $this->stripHtmlForPhrase($docData['content']);
             }
-            if (!empty($docData['body'])) {
-                $searchableText .= ' ' . $this->stripHtmlForPhrase($docData['body']);
+            if (!empty($docData['_bodyClean'])) {
+                $searchableText .= ' ' . $this->stripHtmlForPhrase($docData['_bodyClean']);
+            }
+            if (!empty($docData['_snippetFields']) && is_array($docData['_snippetFields'])) {
+                $searchableText .= ' ' . $this->stripHtmlForPhrase($this->stringifyFieldValues($docData['_snippetFields']));
+            } elseif (!empty($docData['_fields']) && is_array($docData['_fields'])) {
+                $searchableText .= ' ' . $this->stripHtmlForPhrase($this->stringifyFieldValues($docData['_fields']));
             }
             if (!empty($docData['excerpt'])) {
                 $searchableText .= ' ' . $this->stripHtmlForPhrase($docData['excerpt']);
@@ -1029,14 +1034,43 @@ class SearchEngine
 
         $docData = $elementData['documentData'] ?? [];
         if (is_array($docData)) {
-            foreach (['content', 'body', 'excerpt'] as $field) {
+            foreach (['content', '_bodyClean', 'body', 'excerpt'] as $field) {
                 if (isset($docData[$field]) && is_scalar($docData[$field])) {
                     $parts[] = $this->stripHtmlForPhrase((string) $docData[$field]);
                 }
             }
+            if (isset($docData['_snippetFields']) && is_array($docData['_snippetFields'])) {
+                $parts[] = $this->stringifyFieldValues($docData['_snippetFields']);
+            } elseif (isset($docData['_fields']) && is_array($docData['_fields'])) {
+                $parts[] = $this->stringifyFieldValues($docData['_fields']);
+            }
         }
 
         return trim(implode(' ', $parts));
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     */
+    private function stringifyFieldValues(array $fields): string
+    {
+        $values = [];
+        foreach ($fields as $value) {
+            if (is_array($value)) {
+                foreach ($value as $item) {
+                    if (is_scalar($item)) {
+                        $values[] = (string)$item;
+                    }
+                }
+                continue;
+            }
+
+            if (is_scalar($value)) {
+                $values[] = (string)$value;
+            }
+        }
+
+        return implode(' ', $values);
     }
 
     /**

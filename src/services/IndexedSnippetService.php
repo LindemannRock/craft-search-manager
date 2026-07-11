@@ -102,7 +102,7 @@ class IndexedSnippetService extends Component
         ?array &$debugMeta = null,
     ): array {
         $terms = $this->resolveFieldSnippetTerms($hit, $matchedTerms, $query, $indexHandle);
-        $fieldValues = SearchFieldValueHelper::fieldsFromHit($hit);
+        $fieldValues = SearchFieldValueHelper::snippetFieldsFromHit($hit);
         $best = null;
 
         foreach ($fieldValues as $handle => $value) {
@@ -205,9 +205,6 @@ class IndexedSnippetService extends Component
             }
         }
         if ($body === '') {
-            $body = $this->stringValueFromMixed($hit['sectionBody'] ?? null);
-        }
-        if ($body === '') {
             $body = $this->stringValueFromMixed($hit['_bodyClean'] ?? null);
         }
         if ($body === '') {
@@ -305,6 +302,7 @@ class IndexedSnippetService extends Component
 
         if (is_array($matchedTerms)) {
             $terms = array_merge($terms, is_array($matchedTerms['content'] ?? null) ? $matchedTerms['content'] : []);
+            $terms = array_merge($terms, is_array($matchedTerms['_bodyClean'] ?? null) ? $matchedTerms['_bodyClean'] : []);
         }
 
         $phrases = $hit['matchedPhrases'] ?? [];
@@ -411,7 +409,7 @@ class IndexedSnippetService extends Component
 
         $matchedIn = $hit['matchedIn'] ?? [];
 
-        return is_array($matchedIn) && in_array('content', $matchedIn, true);
+        return is_array($matchedIn) && (in_array('content', $matchedIn, true) || in_array('_bodyClean', $matchedIn, true));
     }
 
     /**
@@ -871,8 +869,15 @@ class IndexedSnippetService extends Component
         string $indexHandle,
     ): array {
         $matchedTerms = $matchedTerms ?? ($hit['matchedTerms'] ?? null);
+        $terms = [];
         if (!empty($matchedTerms['content']) && is_array($matchedTerms['content'])) {
-            return array_values(array_unique($matchedTerms['content']));
+            $terms = array_merge($terms, $matchedTerms['content']);
+        }
+        if (!empty($matchedTerms['_bodyClean']) && is_array($matchedTerms['_bodyClean'])) {
+            $terms = array_merge($terms, $matchedTerms['_bodyClean']);
+        }
+        if ($terms !== []) {
+            return array_values(array_unique($terms));
         }
 
         return $this->tokenizeQueryTerms($query, $indexHandle);

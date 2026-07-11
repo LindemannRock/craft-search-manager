@@ -491,6 +491,7 @@ class ApiController extends Controller
             $options,
             SearchManager::$plugin->apiKeys->attributionOptions($this->authenticatedKey),
         );
+        $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields);
 
         // Run search (single, multi, or all enabled indices)
         $searchedIndexHandles = $indexHandles;
@@ -515,6 +516,7 @@ class ApiController extends Controller
             }
 
             $searchedIndexHandles = $allIndexHandles;
+            $options['retrievableFieldsByIndex'] = SearchIndex::retrievableFieldsByIndex($allIndexHandles, $requestedRetrievableFields);
             $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
         }
 

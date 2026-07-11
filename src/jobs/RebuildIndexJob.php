@@ -187,7 +187,9 @@ class RebuildIndexJob extends BaseJob implements RetryableJobInterface
                 }
 
                 if (!empty($elements)) {
-                    SearchManager::$plugin->indexing->batchIndex($elements, $indexHandle);
+                    if (!SearchManager::$plugin->indexing->batchIndex($elements, $indexHandle)) {
+                        throw new \RuntimeException(SearchManager::$plugin->indexing->lastIndexingFailureMessage($indexHandle));
+                    }
                     $totalIndexed += count($elements);
 
                     // Free memory after each batch to prevent exhaustion

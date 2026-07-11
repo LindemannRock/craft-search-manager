@@ -988,7 +988,7 @@ return [
     'Split Sections requires a backend that supports document keys.' => 'يتطلب Split Sections خلفية تدعم مفاتيح المستندات.',
     'Retrievable Fields' => 'الحقول القابلة للاسترجاع',
     'Controls which custom field values are returned under the public fields payload.' => 'يتحكم في قيم الحقول المخصصة التي يتم إرجاعها ضمن حمولة fields العامة.',
-    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets.' => 'استخدم * لإرجاع كل الحقول، واتركه فارغًا لعدم إرجاع أي حقول، أو أدخل handle حقل واحدًا في كل سطر. هذا تحكم في الحمولة والعقد، وليس حدًا للسرية؛ لا تزال الحقول القابلة للبحث قادرة على التأثير في المطابقة والمقتطفات.',
+    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist.' => 'استخدم * لإرجاع كل الحقول، واتركه فارغًا لعدم إرجاع أي حقول، أو أدخل handle حقل واحدًا في كل سطر. هذا تحكم في الحمولة والعقد، وليس حدًا للسرية؛ لا تزال الحقول القابلة للبحث قادرة على التأثير في المطابقة والمقتطفات. أعد بناء الفهرس بعد تغيير retrievableFields حتى تستخدم السجلات المخزنة وإسقاطات المزوّد قائمة الحقول المسموح بها الجديدة.',
     'All fields (*)' => 'كل الحقول (*)',
     'No custom fields' => 'لا توجد حقول مخصصة',
     'Transformer Class' => 'فئة Transformer',

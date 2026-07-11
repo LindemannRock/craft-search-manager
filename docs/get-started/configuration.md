@@ -249,7 +249,7 @@ Indices define what content gets indexed and how it's transformed:
 
 See [Indices](../feature-tour/indices.md) for full configuration options.
 
-`retrievableFields` controls only the public `fields` payload in REST and GraphQL search hits. Use `['*']` to return all indexed custom field values, `[]` to return none, or an explicit field-handle list. Omitting the key defaults to `['*']`. This is not a secrecy boundary: searchable fields can still affect matching and snippets.
+`retrievableFields` controls the public `fields` payload in REST and GraphQL search hits. Use `['*']` to return all indexed custom field values, `[]` to return none, or an explicit field-handle list. Omitting the key defaults to `['*']`. This is not a secrecy boundary: searchable fields can still affect matching and snippets. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
 Leave `transformer` unset for automatic transformer resolution. If you configure a custom class, it must be autoloadable, constructible without required constructor arguments, and implement Search Manager's `TransformerInterface`:
 

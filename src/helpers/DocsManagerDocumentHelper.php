@@ -52,10 +52,6 @@ class DocsManagerDocumentHelper
             $searchableContent[] = $element->description;
         }
 
-        if ($htmlContent !== '') {
-            $searchableContent[] = $contentCleaner->stripHtml($htmlContent);
-        }
-
         return $searchableContent;
     }
 

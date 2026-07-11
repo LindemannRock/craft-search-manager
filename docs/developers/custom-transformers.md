@@ -169,7 +169,7 @@ fields {
 
 Keep Search Manager metadata at the top level. Fields such as `title`, `url`, `section`, `productType`, and `score` have reserved response meanings, while `_fields` is the collision-safe namespace for user-defined field handles.
 
-`retrievableFields` accepts `['*']` for all `_fields` values, `[]` for none, or an explicit field-handle allowlist. It controls only the public `fields` payload. Searchable `_fields` values can still affect matching and snippets, so do not treat this setting as a secrecy boundary.
+`retrievableFields` accepts `['*']` for all stored public field values, `[]` for none, or an explicit field-handle allowlist. It controls the public `fields` payload. Searchable field values can still affect matching and snippets through private search/snippet sources, so do not treat this setting as a secrecy boundary. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
 Provider-specific setup still applies to custom transformer fields:
 

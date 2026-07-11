@@ -105,7 +105,7 @@ Like the REST search endpoint, GraphQL search records analytics unless `skipAnal
 
 GraphQL exposes retrievable custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer adds Craft custom fields to the internal source map only when the field's **Use this field's values as search keywords** setting is enabled; the index's `retrievableFields` setting decides which of those values are returned publicly.
 
-`retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching and snippets even when they are omitted from `fields`. No reindex is required when you change retrievable fields because Phase 1 trims GraphQL results from already indexed data.
+`retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching and snippets even when they are omitted from `fields`. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
 GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields.
 

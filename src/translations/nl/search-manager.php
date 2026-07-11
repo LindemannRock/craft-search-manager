@@ -988,7 +988,7 @@ return [
     'Split Sections requires a backend that supports document keys.' => 'Split Sections vereist een backend die documentsleutels ondersteunt.',
     'Retrievable Fields' => 'Ophaalbare velden',
     'Controls which custom field values are returned under the public fields payload.' => 'Bepaalt welke aangepaste veldwaarden worden teruggegeven in de openbare fields-payload.',
-    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets.' => 'Gebruik * om alle velden terug te geven, laat leeg om geen velden terug te geven, of voer één veldhandle per regel in. Dit is een payload- en contractbeheer, geen geheimhoudingsgrens; doorzoekbare velden kunnen nog steeds matching en snippets beïnvloeden.',
+    'Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist.' => 'Gebruik * om alle velden terug te geven, laat leeg om geen velden terug te geven, of voer één veldhandle per regel in. Dit is een payload- en contractbeheer, geen geheimhoudingsgrens; doorzoekbare velden kunnen nog steeds matching en snippets beïnvloeden. Bouw de index opnieuw op nadat retrievableFields is gewijzigd, zodat opgeslagen records en providerprojecties de nieuwe veldallowlist gebruiken.',
     'All fields (*)' => 'Alle velden (*)',
     'No custom fields' => 'Geen aangepaste velden',
     'Transformer Class' => 'Transformerklasse',

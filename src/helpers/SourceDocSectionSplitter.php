@@ -133,7 +133,6 @@ class SourceDocSectionSplitter
         if ($sectionType === 'intro') {
             $contentParts[] = $pageData['description'] ?? null;
         }
-        $contentParts[] = $sectionBody;
         if ($sectionType === 'intro') {
             $contentParts[] = $pageData['keywords'] ?? null;
         }

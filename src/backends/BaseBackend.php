@@ -38,6 +38,11 @@ abstract class BaseBackend extends Component implements BackendInterface
      */
     protected ?string $_backendHandle = null;
 
+    /**
+     * @var list<array{backendId: string|null, elementId: int|null, title: string|null, error: string}>
+     */
+    protected array $lastIndexingFailures = [];
+
     // =========================================================================
     // INITIALIZATION
     // =========================================================================
@@ -202,6 +207,34 @@ abstract class BaseBackend extends Component implements BackendInterface
     }
 
     abstract public function batchIndex(string $indexName, array $items): bool;
+
+    /**
+     * @return list<array{backendId: string|null, elementId: int|null, title: string|null, error: string}>
+     * @since 5.53.0
+     */
+    public function getLastIndexingFailures(): array
+    {
+        return $this->lastIndexingFailures;
+    }
+
+    protected function clearLastIndexingFailures(): void
+    {
+        $this->lastIndexingFailures = [];
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     */
+    protected function recordIndexingFailure(array $document, string $error): void
+    {
+        $elementId = SearchHitIdentityHelper::elementId($document);
+        $this->lastIndexingFailures[] = [
+            'backendId' => SearchHitIdentityHelper::documentId($document),
+            'elementId' => $elementId,
+            'title' => isset($document['title']) && is_scalar($document['title']) ? (string)$document['title'] : null,
+            'error' => $error,
+        ];
+    }
 
     /**
      * @inheritdoc
