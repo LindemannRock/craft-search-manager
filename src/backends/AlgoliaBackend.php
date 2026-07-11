@@ -13,6 +13,7 @@ use Algolia\AlgoliaSearch\Exceptions\NotFoundException;
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\models\SearchIndex;
 
 /**
  * Algolia Backend
@@ -374,6 +375,57 @@ class AlgoliaBackend extends BaseBackend
     }
 
     /**
+     * @inheritdoc
+     * @since 5.56.0
+     */
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        $elementIds = array_values(array_unique(array_filter(
+            array_map('intval', $elementIds),
+            static fn(int $id): bool => $id > 0,
+        )));
+        if ($elementIds === []) {
+            return [];
+        }
+
+        try {
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $this->ensureFilterableAttributes($fullIndexName);
+
+            if ($siteId !== null && !(SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false)) {
+                $documents = [];
+                foreach ($elementIds as $elementId) {
+                    try {
+                        $documents[] = $client->getObject($fullIndexName, SearchHitIdentityHelper::pageDocumentId($elementId, $siteId));
+                    } catch (NotFoundException) {
+                        continue;
+                    }
+                }
+
+                return $this->bestDocumentsByElementId($documents, $elementIds, $siteId);
+            }
+
+            $filters = $this->elementIdFilter($elementIds);
+            $filters = self::siteIdFilter($siteId, $filters);
+            $documents = [];
+            foreach ($this->browse($indexName, '', ['filters' => $filters]) as $document) {
+                if (is_array($document)) {
+                    $documents[] = $document;
+                }
+            }
+
+            return $this->bestDocumentsByElementId($documents, $elementIds, $siteId);
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to fetch indexed Algolia documents by element ID', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    /**
      * Browse an index (iterate through all objects)
      *
      * Compatible with trendyminds/algolia browse() method
@@ -676,12 +728,12 @@ class AlgoliaBackend extends BaseBackend
 
             // Required filterable attributes for Search Manager
             // Using filterOnly() to allow filtering without facet counts
-            $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementType)', 'filterOnly(type)'];
+            $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementId)', 'filterOnly(elementType)', 'filterOnly(type)'];
 
             // Check if already configured (normalize for comparison)
             $normalizedCurrent = array_map(fn($f) => str_replace('filterOnly(', '', str_replace(')', '', $f)), $currentFacets);
             $missingFacets = [];
-            foreach (['siteId', 'elementType', 'type'] as $attr) {
+            foreach (['siteId', 'elementId', 'elementType', 'type'] as $attr) {
                 if (!in_array($attr, $normalizedCurrent, true)) {
                     $missingFacets[] = 'filterOnly(' . $attr . ')';
                 }
@@ -706,5 +758,17 @@ class AlgoliaBackend extends BaseBackend
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * @param array<int, int> $elementIds
+     */
+    private function elementIdFilter(array $elementIds): string
+    {
+        $elementIds = array_values(array_unique(array_map('intval', $elementIds)));
+
+        return count($elementIds) === 1
+            ? 'elementId:' . $elementIds[0]
+            : '(' . implode(' OR ', array_map(static fn(int $id): string => 'elementId:' . $id, $elementIds)) . ')';
     }
 }

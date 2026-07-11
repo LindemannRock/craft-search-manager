@@ -62,21 +62,25 @@ Position: 1, Index: All, Site: All
 Result: One promotion works across all languages
 ```
 
-## Per-Site Element Status
+## Indexed Document Availability
 
-Promotions automatically respect element status on a per-site basis:
+Promotions are applied from the index that is being searched. When a promotion matches a query, Search Manager asks the active backend for the promoted element's indexed document in that index and site:
 
-- If an element is **disabled** for Site A but **enabled** for Site B, the promotion only appears on Site B
-- Elements with **pending** or **expired** post dates are excluded
-- Uses Craft's `status('live')` check for all status conditions
+- If the promoted element has an indexed document, that document is inserted at the configured position.
+- If the promoted element is not indexed in the searched index/site, the promotion is skipped.
+- Public hit fields such as `title`, `url`, `type`, `snippet`, and metadata come from the indexed document, not from a live Craft element lookup.
+- Split-section indices promote the indexed intro or first section document for the target element. If no split document exists, the promotion is skipped.
 
 ```text
 Example:
 - "Summer Sale" is promoted for query "sale"
-- Disabled for English site, enabled for French/Arabic sites
-- English search: promotion NOT shown
-- French search: promotion shown at position 1
+- The indexed English document still exists after a content change
+- English search: promotion shown from the indexed document
+- After the element is deleted and sync removes the indexed document
+- English search: promotion skipped
 ```
+
+This keeps promotions aligned with normal search results: both trust the backend index as the source of truth at search time. Rebuild the affected index after changing promotion targets, URL-bearing fields, category/product metadata, or split-section content that should appear in promoted results.
 
 ## Bulk Actions
 
@@ -128,7 +132,7 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
 }
 ```
 
-Promoted hits use the same metadata contract as indexed hits. Entries include `section`, `sectionHandle`, and `sectionType`; Assets include `volume` and `volumeHandle`; Categories include `group` and `groupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include a fake `section`. When the indexed document has source-backed hierarchy context, promoted hits can also include `ancestors`, Entry/Category `level`, and public Asset `folderPath`.
+Promoted hits use the same metadata contract as indexed hits because they are copied from indexed documents. Entries include `section`, `sectionHandle`, and `sectionType` when those fields were indexed; Assets include `volume` and `volumeHandle`; Categories include `group` and `groupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include a fake `section`. When the indexed document has source-backed hierarchy context, promoted hits can also include `ancestors`, Entry/Category `level`, and public Asset `folderPath`.
 
 ## Analytics
 

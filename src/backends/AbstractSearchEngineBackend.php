@@ -308,6 +308,81 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
     /**
      * @inheritdoc
+     * @since 5.56.0
+     */
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        $elementIds = array_values(array_unique(array_filter(
+            array_map('intval', $elementIds),
+            static fn(int $id): bool => $id > 0,
+        )));
+        if ($elementIds === []) {
+            return [];
+        }
+
+        $storage = $this->getStorage($indexName);
+        $index = SearchIndex::findByHandle($indexName);
+        $splitSections = $index?->usesSplitSections() ?? false;
+        $documentStorage = $this->documentKeyStorage($storage);
+        if ($splitSections && $documentStorage === null) {
+            $this->logWarning('Cannot fetch split-section promotion documents without document-key storage', [
+                'index' => $indexName,
+            ]);
+            return [];
+        }
+
+        $documents = [];
+        foreach ($this->documentFetchSiteIds($index, $siteId) as $resolvedSiteId) {
+            if ($splitSections && $documentStorage !== null) {
+                foreach ($elementIds as $elementId) {
+                    $documentKeys = $documentStorage->getDocumentKeysByParent($resolvedSiteId, $elementId);
+                    $elementInfo = $documentStorage->getElementsByDocumentKeys($resolvedSiteId, $documentKeys);
+                    foreach ($documentKeys as $documentKey) {
+                        $info = $elementInfo[$documentKey] ?? null;
+                        if ($info === null) {
+                            continue;
+                        }
+
+                        $elementType = $this->documentTypeFromElementInfo($info);
+                        $documents[] = $this->buildSearchHit($info, [
+                            'objectID' => $elementId,
+                            'id' => $elementId,
+                            'elementId' => $elementId,
+                            'backendId' => (string)$documentKey,
+                            'type' => $elementType,
+                            'elementType' => $elementType,
+                            'siteId' => $resolvedSiteId,
+                        ]);
+                    }
+                }
+                continue;
+            }
+
+            $elementInfo = $storage->getElementsByIds($resolvedSiteId, $elementIds);
+            foreach ($elementIds as $elementId) {
+                $info = $elementInfo[$elementId] ?? null;
+                if ($info === null) {
+                    continue;
+                }
+
+                $elementType = $this->documentTypeFromElementInfo($info);
+                $documents[] = $this->buildSearchHit($info, [
+                    'objectID' => $elementId,
+                    'id' => $elementId,
+                    'elementId' => $elementId,
+                    'backendId' => SearchHitIdentityHelper::pageDocumentId($elementId, $resolvedSiteId),
+                    'type' => $elementType,
+                    'elementType' => $elementType,
+                    'siteId' => $resolvedSiteId,
+                ]);
+            }
+        }
+
+        return $this->bestDocumentsByElementId($documents, $elementIds, $siteId);
+    }
+
+    /**
+     * @inheritdoc
      */
     public function delete(string $indexName, int $elementId, ?int $siteId = null): bool
     {
@@ -826,6 +901,32 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         }
 
         return (int)$documentKey;
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    private function documentFetchSiteIds(?SearchIndex $index, ?int $siteId): array
+    {
+        if ($siteId !== null) {
+            return [$siteId];
+        }
+
+        $indexSiteIds = is_array($index?->siteId ?? null)
+            ? array_values(array_filter(array_map('intval', $index->siteId), static fn(int $id): bool => $id > 0))
+            : [];
+        if ($indexSiteIds !== []) {
+            sort($indexSiteIds);
+            return array_values(array_unique($indexSiteIds));
+        }
+
+        $siteIds = array_map(
+            static fn($site): int => (int)$site->id,
+            Craft::$app->getSites()->getAllSites(),
+        );
+        sort($siteIds);
+
+        return array_values(array_unique($siteIds));
     }
 
     // =========================================================================

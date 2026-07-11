@@ -11,7 +11,6 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use Craft;
-use craft\elements\Entry;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\search\storage\MySqlStorage;
 use lindemannrock\searchmanager\search\storage\PostgreSqlStorage;
@@ -42,7 +41,7 @@ final class AuditConfirmingScanRegressionTest extends TestCase
         parent::tearDown();
     }
 
-    public function testPromotionSiteMapUsesPromotionIdentityForDuplicateElementIds(): void
+    public function testPromotionServiceFetchesIndexedDocumentsByElementId(): void
     {
         $source = $this->methodBody(
             $this->readPluginSource('src/services/PromotionService.php'),
@@ -50,36 +49,40 @@ final class AuditConfirmingScanRegressionTest extends TestCase
             'public',
         );
 
-        self::assertStringContainsString('$siteIdsByPromotion[$this->promotionIdentity($promotion)] = $promotionSiteId;', $source);
-        self::assertStringContainsString('$siteIdsByPromotion[$this->promotionIdentity($promotion)] ?? null', $source);
-        self::assertStringNotContainsString('$siteIdsByPromotion[$promotion->elementId]', $source);
+        self::assertStringContainsString('$indexedDocuments = $this->indexedPromotionDocuments($promotions, $indexHandle, $siteId);', $source);
+        self::assertStringContainsString('$promotedItem = $indexedDocuments[$elementId] ?? null;', $source);
+        self::assertStringContainsString('Skipping promotion because target document is not indexed', $source);
+        self::assertStringNotContainsString('promotionIdentity', $source);
+        self::assertStringNotContainsString('siteIdsByPromotion', $source);
     }
 
-    public function testDuplicatePromotionsForSameElementCanKeepDistinctSiteMetadata(): void
+    public function testPromotionsUseSearchedSiteIndexedDocumentMetadata(): void
     {
-        $entryBySite = $this->findEntryPropagatedToTwoSites();
-        if ($entryBySite === null) {
-            self::markTestSkipped('Requires a propagated entry available on at least two Craft sites.');
-        }
+        $stub = $this->installStubBackend();
+        $elementId = 2147482901;
+        $siteId = 2;
+        $stub->documentsByElementId['test-index:' . $elementId . ':' . $siteId] = [
+            'id' => $elementId,
+            'elementId' => $elementId,
+            'siteId' => $siteId,
+            'title' => 'Indexed searched-site promotion',
+            'url' => '/indexed-searched-site-promotion',
+            'type' => 'entry',
+        ];
 
-        [$elementId, $siteIds] = $entryBySite;
-        [$firstSiteId, $secondSiteId] = $siteIds;
-
-        $firstPromotion = $this->makePromotion(24701, $elementId, $firstSiteId, 1);
-        $secondPromotion = $this->makePromotion(24702, $elementId, $secondSiteId, 2);
+        $promotion = $this->makePromotion(24701, $elementId, $siteId, 1);
 
         $results = (new PromotionService())->applyPromotions(
-            [['elementId' => 999999, 'siteId' => $firstSiteId]],
+            [['elementId' => 999999, 'siteId' => $siteId]],
             'duplicate promotion site',
             'test-index',
-            null,
-            [$firstPromotion, $secondPromotion],
+            $siteId,
+            [$promotion],
         );
 
-        self::assertSame($firstSiteId, $results[0]['siteId'] ?? null);
-        self::assertSame($secondSiteId, $results[1]['siteId'] ?? null);
+        self::assertSame($siteId, $results[0]['siteId'] ?? null);
         self::assertSame($elementId, $results[0]['elementId'] ?? null);
-        self::assertSame($elementId, $results[1]['elementId'] ?? null);
+        self::assertSame('Indexed searched-site promotion', $results[0]['title'] ?? null);
     }
 
     public function testMySqlPrefixSearchTreatsLikeWildcardsLiterally(): void
@@ -146,49 +149,6 @@ final class AuditConfirmingScanRegressionTest extends TestCase
         }
     }
 
-    /**
-     * @return array{0: int, 1: array{0: int, 1: int}}|null
-     */
-    private function findEntryPropagatedToTwoSites(): ?array
-    {
-        $siteIds = Craft::$app->getSites()->getAllSiteIds();
-        if (count($siteIds) < 2) {
-            return null;
-        }
-
-        $primarySiteId = (int)$siteIds[0];
-        $entries = Entry::find()
-            ->siteId($primarySiteId)
-            ->status(null)
-            ->drafts(false)
-            ->revisions(false)
-            ->limit(20)
-            ->all();
-
-        foreach ($entries as $entry) {
-            $matchedSiteIds = [];
-            foreach ($siteIds as $siteId) {
-                $localizedEntry = Entry::find()
-                    ->id($entry->id)
-                    ->siteId((int)$siteId)
-                    ->status(null)
-                    ->drafts(false)
-                    ->revisions(false)
-                    ->one();
-
-                if ($localizedEntry !== null) {
-                    $matchedSiteIds[] = (int)$siteId;
-                }
-            }
-
-            if (count($matchedSiteIds) >= 2) {
-                return [(int)$entry->id, [$matchedSiteIds[0], $matchedSiteIds[1]]];
-            }
-        }
-
-        return null;
-    }
-
     private function makePromotion(int $id, int $elementId, int $siteId, int $position): Promotion
     {
         $promotion = new Promotion();
@@ -196,7 +156,7 @@ final class AuditConfirmingScanRegressionTest extends TestCase
         $promotion->query = 'duplicate promotion site';
         $promotion->indexHandle = 'test-index';
         $promotion->elementId = $elementId;
-        $promotion->elementType = Entry::class;
+        $promotion->elementType = \craft\elements\Entry::class;
         $promotion->siteId = $siteId;
         $promotion->position = $position;
         $promotion->enabled = true;

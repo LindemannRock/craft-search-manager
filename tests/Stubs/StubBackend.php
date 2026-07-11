@@ -36,6 +36,9 @@ final class StubBackend extends BackendService
     /** @var array<string, bool> */
     public array $existingDocuments = [];
 
+    /** @var array<string, array<string, mixed>> */
+    public array $documentsByElementId = [];
+
     /** @var array<string, mixed> */
     public array $searchResponse = [
         'hits' => [],
@@ -169,6 +172,32 @@ final class StubBackend extends BackendService
         $key = $this->documentKey($indexName, $elementId, $siteId);
 
         return $key !== null && ($this->existingDocuments[$key] ?? false);
+    }
+
+    /**
+     * @param array<int, int> $elementIds
+     * @return array<int, array<string, mixed>>
+     */
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        $this->calls[] = [
+            'method' => 'getDocumentsByElementIds',
+            'indexName' => $indexName,
+            'items' => [[
+                'elementIds' => $elementIds,
+                'siteId' => $siteId,
+            ]],
+        ];
+
+        $documents = [];
+        foreach ($elementIds as $elementId) {
+            $key = $this->documentKey($indexName, (int)$elementId, $siteId);
+            if ($key !== null && isset($this->documentsByElementId[$key])) {
+                $documents[(int)$elementId] = $this->documentsByElementId[$key];
+            }
+        }
+
+        return $documents;
     }
 
     public function clearSearchCache(string $indexName): void

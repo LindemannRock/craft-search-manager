@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\backends;
 
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\models\SearchIndex;
 use Typesense\Client;
 
 /**
@@ -334,6 +335,60 @@ class TypesenseBackend extends BaseBackend
         } catch (\Throwable $e) {
             $this->logError('Typesense search failed', ['error' => $e->getMessage()]);
             return ['hits' => [], 'total' => 0, '_failed' => true];
+        }
+    }
+
+    /**
+     * @inheritdoc
+     * @since 5.56.0
+     */
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        $elementIds = array_values(array_unique(array_filter(
+            array_map('intval', $elementIds),
+            static fn(int $id): bool => $id > 0,
+        )));
+        if ($elementIds === []) {
+            return [];
+        }
+
+        try {
+            $client = $this->getClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+
+            if ($siteId !== null && !(SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false)) {
+                $documents = [];
+                foreach ($elementIds as $elementId) {
+                    try {
+                        $documents[] = $client->collections[$fullIndexName]
+                            ->documents[SearchHitIdentityHelper::pageDocumentId($elementId, $siteId)]
+                            ->retrieve();
+                    } catch (\Typesense\Exceptions\ObjectNotFound) {
+                        continue;
+                    }
+                }
+
+                return $this->bestDocumentsByElementId($documents, $elementIds, $siteId);
+            }
+
+            $results = $client->collections[$fullIndexName]->documents->search([
+                'q' => '*',
+                'query_by' => 'title,content,url',
+                'filter_by' => self::siteIdFilter($siteId, $this->elementIdFilter($elementIds)),
+                'per_page' => max(20, count($elementIds) * 20),
+            ]);
+            $documents = array_map(
+                static fn(array $hit): array => is_array($hit['document'] ?? null) ? $hit['document'] : [],
+                $results['hits'] ?? [],
+            );
+
+            return $this->bestDocumentsByElementId($documents, $elementIds, $siteId);
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to fetch indexed Typesense documents by element ID', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
         }
     }
 
@@ -716,7 +771,7 @@ class TypesenseBackend extends BaseBackend
 
                 // Core fields
                 ['name' => 'objectID', 'type' => 'int32', 'optional' => true],
-                ['name' => 'elementId', 'type' => 'int32', 'optional' => true],
+                ['name' => 'elementId', 'type' => 'int32', 'optional' => true, 'facet' => true],
                 ['name' => 'siteId', 'type' => 'int32', 'optional' => true, 'facet' => true],
                 ['name' => 'type', 'type' => 'string', 'optional' => true, 'facet' => true],
                 ['name' => 'title', 'type' => 'string', 'optional' => true],
@@ -736,5 +791,17 @@ class TypesenseBackend extends BaseBackend
         $client->collections->create($schema);
 
         $this->logInfo('Created Typesense collection', ['name' => $collectionName]);
+    }
+
+    /**
+     * @param array<int, int> $elementIds
+     */
+    private function elementIdFilter(array $elementIds): string
+    {
+        $elementIds = array_values(array_unique(array_map('intval', $elementIds)));
+
+        return count($elementIds) === 1
+            ? 'elementId:=' . $elementIds[0]
+            : 'elementId:=[' . implode(',', $elementIds) . ']';
     }
 }

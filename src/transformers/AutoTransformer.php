@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\transformers;
 use craft\base\ElementInterface;
 use lindemannrock\searchmanager\helpers\NativeFieldKeywordHelper;
 use lindemannrock\searchmanager\helpers\SearchAutoContentHelper;
+use lindemannrock\searchmanager\helpers\SearchCategoryRelationMetadataHelper;
 use lindemannrock\searchmanager\helpers\SearchContentBuilderHelper;
 use lindemannrock\searchmanager\helpers\SearchElementKindMetadataHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldTypeContentHelper;
@@ -89,6 +90,10 @@ class AutoTransformer extends BaseTransformer
         }
         if ($contentBag['bodyClean'] !== '') {
             $data['_bodyClean'] = $contentBag['bodyClean'];
+        }
+        $categoryIds = SearchCategoryRelationMetadataHelper::categoryIds($element);
+        if ($categoryIds !== []) {
+            $data['_categoryIds'] = $categoryIds;
         }
 
         // Extract headings from rich text fields

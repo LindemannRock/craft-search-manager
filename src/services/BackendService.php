@@ -432,6 +432,24 @@ class BackendService extends Component
     }
 
     /**
+     * Fetch indexed documents for element IDs from an index.
+     *
+     * @param array<int, int> $elementIds
+     * @return array<int, array<string, mixed>>
+     * @since 5.56.0
+     */
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        $backend = $this->getBackendForIndex($indexName);
+        if (!$backend) {
+            $this->logError('No backend available for document fetch', ['index' => $indexName]);
+            return [];
+        }
+
+        return $backend->getDocumentsByElementIds($indexName, $elementIds, $siteId);
+    }
+
+    /**
      * Search an index
      *
      * @param string $indexName

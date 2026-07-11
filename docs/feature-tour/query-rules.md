@@ -53,6 +53,8 @@ Multiplier: 2.0
 
 News articles rank 2x higher when the query contains "election".
 
+Section boosts use the `sectionHandle` stored on each indexed hit. If an older document does not have that metadata, the section boost is skipped for that hit and Search Manager logs a warning.
+
 ### Boost Category
 
 Increase relevance for results in a specific category:
@@ -65,6 +67,8 @@ Action: Boost Category
 Category: Electronics
 Multiplier: 1.5
 ```
+
+Category boosts use compact indexed category relation metadata. Auto-indexed documents store related category IDs in `_categoryIds`, and category hits can also match their own element ID. Search Manager does not hydrate result elements or query Craft relations during search. If an older document does not include `_categoryIds`, related-category boosts are skipped for that hit and Search Manager logs a warning.
 
 ### Boost Element
 
@@ -92,6 +96,8 @@ Redirect users to a page instead of showing search results. Redirect targets are
 - **User** — select a user profile target
 - **Commerce Product** — select a product when Craft Commerce is available
 - **Commerce Variant** — select a variant when Craft Commerce is available
+
+Element-based redirects resolve the target URL from Craft at search time. This is the documented exception to the indexed-only response rule because a redirect may point to valid content outside the searched index and it does not shape public hit fields.
 
 ```text
 Name: Contact Redirect
@@ -147,6 +153,15 @@ Each rule can be scoped to:
 
 - **Index** — apply to all indices (leave blank) or a specific index
 - **Site** — apply to all sites (leave blank) or a specific site
+
+## Reindex Requirements
+
+Boost execution depends on metadata already stored in search documents:
+
+- Rebuild affected entry indices so section boosts can read `sectionHandle` from existing documents.
+- Rebuild indices that should participate in related-category boosts so documents include `_categoryIds`.
+- Rebuild after changing category relations if those changes are not captured by normal element sync.
+- Redirect rules do not require reindexing because they resolve their URL target directly from Craft.
 
 ## Analytics
 

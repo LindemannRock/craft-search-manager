@@ -115,18 +115,15 @@ final class AuditPass29RegressionTest extends TestCase
         self::assertStringNotContainsString('findAll()', $queryRuleSource);
     }
 
-    public function testUnresolvedBoostElementFallbackIsBatched(): void
+    public function testBoostMetadataHasNoLiveElementFallback(): void
     {
-        $source = $this->methodSource(
-            $this->readPluginFile('src/services/QueryRuleService.php'),
-            'private function preloadBoostElements',
-        );
+        $source = $this->readPluginFile('src/services/QueryRuleService.php');
 
         self::assertStringNotContainsString('getElementById', $source);
-        self::assertStringContainsString('Element::find()', $source);
-        self::assertStringContainsString('->id(array_keys($idSet))', $source);
-        self::assertStringContainsString('->siteId((int)$resolvedSiteId)', $source);
-        self::assertStringContainsString('->status(null)', $source);
+        self::assertStringNotContainsString('Element::find()', $source);
+        self::assertStringNotContainsString('preloadBoostElements', $source);
+        self::assertStringContainsString("\$sectionHandle = \$result['sectionHandle'] ?? null;", $source);
+        self::assertStringContainsString("\$categoryIds = \$result['_categoryIds'] ?? null;", $source);
     }
 
     public function testBackendStoragePathIsEscapedBeforeRawInfoBoxRender(): void

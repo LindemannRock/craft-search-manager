@@ -238,6 +238,11 @@ final class AutocompletePrefixBackend implements BackendInterface
         return false;
     }
 
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        return [];
+    }
+
     public function getName(): string
     {
         return 'autocomplete-prefix';

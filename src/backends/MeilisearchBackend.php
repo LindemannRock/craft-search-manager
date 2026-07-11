@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\backends;
 use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\models\SearchIndex;
 use Meilisearch\Client;
 use Meilisearch\Contracts\DocumentsQuery;
 use Meilisearch\Contracts\SearchQuery;
@@ -402,6 +403,57 @@ class MeilisearchBackend extends BaseBackend
         }
     }
 
+    /**
+     * @inheritdoc
+     * @since 5.56.0
+     */
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        $elementIds = array_values(array_unique(array_filter(
+            array_map('intval', $elementIds),
+            static fn(int $id): bool => $id > 0,
+        )));
+        if ($elementIds === []) {
+            return [];
+        }
+
+        try {
+            $client = $this->getAdminClient();
+            $fullIndexName = $this->getFullIndexName($indexName);
+            $this->ensureFilterableAttributes($fullIndexName);
+            $index = $client->index($fullIndexName);
+
+            if ($siteId !== null && !(SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false)) {
+                $documents = [];
+                foreach ($elementIds as $elementId) {
+                    try {
+                        $documents[] = $index->getDocument(SearchHitIdentityHelper::pageDocumentId($elementId, $siteId));
+                    } catch (\Meilisearch\Exceptions\ApiException $e) {
+                        if ($e->httpStatus === 404) {
+                            continue;
+                        }
+                        throw $e;
+                    }
+                }
+
+                return $this->bestDocumentsByElementId($documents, $elementIds, $siteId);
+            }
+
+            $results = $index->search('', [
+                'limit' => max(20, count($elementIds) * 20),
+                'filter' => self::siteIdFilter($siteId, $this->elementIdFilter($elementIds)),
+            ]);
+
+            return $this->bestDocumentsByElementId($results->getHits(), $elementIds, $siteId);
+        } catch (\Throwable $e) {
+            $this->logWarning('Failed to fetch indexed Meilisearch documents by element ID', [
+                'index' => $indexName,
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
     /** @inheritdoc */
     public function clearIndex(string $indexName): bool
     {
@@ -769,7 +821,7 @@ class MeilisearchBackend extends BaseBackend
             $currentFilterable = $index->getFilterableAttributes();
 
             // Required filterable attributes for Search Manager
-            $requiredFilterable = ['siteId', 'elementType', 'type'];
+            $requiredFilterable = ['siteId', 'elementId', 'elementType', 'type'];
 
             // Check if already configured
             $missingAttributes = array_diff($requiredFilterable, $currentFilterable);
@@ -793,5 +845,17 @@ class MeilisearchBackend extends BaseBackend
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * @param array<int, int> $elementIds
+     */
+    private function elementIdFilter(array $elementIds): string
+    {
+        $elementIds = array_values(array_unique(array_map('intval', $elementIds)));
+
+        return count($elementIds) === 1
+            ? 'elementId = ' . $elementIds[0]
+            : '(' . implode(' OR ', array_map(static fn(int $id): string => 'elementId = ' . $id, $elementIds)) . ')';
     }
 }

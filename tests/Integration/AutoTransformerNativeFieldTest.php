@@ -296,6 +296,18 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertStringNotContainsString('lindemannrock\\iconmanager', $source);
     }
 
+    public function testAutoTransformerIndexesCompactCategoryRelationMetadata(): void
+    {
+        $source = $this->readPluginFile('src/transformers/AutoTransformer.php');
+        $helperSource = $this->readPluginFile('src/helpers/SearchCategoryRelationMetadataHelper.php');
+
+        self::assertStringContainsString('SearchCategoryRelationMetadataHelper::categoryIds($element)', $source);
+        self::assertStringContainsString("\$data['_categoryIds'] = \$categoryIds;", $source);
+        self::assertStringContainsString('if (!$field instanceof Categories', $helperSource);
+        self::assertStringContainsString('$element->getFieldValue($field->handle)', $helperSource);
+        self::assertStringContainsString('sort($categoryIds);', $helperSource);
+    }
+
     /**
      * @return array<string, array{0: class-string<Field>, 1: string}>
      */

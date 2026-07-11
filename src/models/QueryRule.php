@@ -583,7 +583,8 @@ class QueryRule extends Model
             return $this->actionValue['url'];
         }
 
-        // Check for element-based redirect
+        // This is the single search-time live lookup exception: redirects may target valid content outside any search index,
+        // and resolving the URL does not shape public hit fields.
         if (!empty($this->actionValue['elementId']) && !empty($this->actionValue['elementType'])) {
             $elementType = $this->actionValue['elementType'];
             $elementId = (int)$this->actionValue['elementId'];

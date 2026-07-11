@@ -297,6 +297,8 @@ abstract class BaseBackend extends Component implements BackendInterface
 
     abstract public function search(string $indexName, string $query, array $options = []): array;
 
+    abstract public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array;
+
     abstract public function clearIndex(string $indexName): bool;
 
     abstract public function documentExists(string $indexName, int $elementId, ?int $siteId = null): bool;
@@ -306,6 +308,65 @@ abstract class BaseBackend extends Component implements BackendInterface
     abstract public function getStatus(): array;
 
     abstract public function getName(): string;
+
+    /**
+     * @param array<int, array<string, mixed>> $documents
+     * @param array<int, int> $elementIds
+     * @return array<int, array<string, mixed>>
+     */
+    protected function bestDocumentsByElementId(array $documents, array $elementIds, ?int $siteId = null): array
+    {
+        $requested = array_flip(array_values(array_unique(array_map('intval', $elementIds))));
+        $candidates = [];
+
+        foreach ($documents as $document) {
+            if (!is_array($document)) {
+                continue;
+            }
+
+            $document = SearchHitIdentityHelper::normalizeHit($document);
+            $elementId = SearchHitIdentityHelper::elementId($document);
+            if ($elementId === null || !isset($requested[$elementId])) {
+                continue;
+            }
+
+            if ($siteId !== null && isset($document['siteId']) && (int)$document['siteId'] !== $siteId) {
+                continue;
+            }
+
+            $candidates[$elementId][] = $document;
+        }
+
+        $selected = [];
+        foreach ($candidates as $elementId => $elementDocuments) {
+            usort($elementDocuments, fn(array $a, array $b): int => $this->indexedDocumentSortTuple($a) <=> $this->indexedDocumentSortTuple($b));
+            $selected[(int)$elementId] = $elementDocuments[0];
+        }
+
+        return $selected;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     * @return array{0: int, 1: int, 2: string}
+     */
+    private function indexedDocumentSortTuple(array $document): array
+    {
+        $siteId = isset($document['siteId']) && is_numeric($document['siteId'])
+            ? (int)$document['siteId']
+            : PHP_INT_MAX;
+        $sectionId = isset($document['sectionId']) ? (string)$document['sectionId'] : '';
+        $sectionIndex = isset($document['sectionIndex']) && is_numeric($document['sectionIndex'])
+            ? (int)$document['sectionIndex']
+            : ($sectionId === '' ? 0 : PHP_INT_MAX);
+        $sectionRank = $sectionId === 'intro' ? -1 : $sectionIndex;
+
+        return [
+            $siteId,
+            $sectionRank,
+            SearchHitIdentityHelper::rawBackendId($document) ?? '',
+        ];
+    }
 
     // =========================================================================
     // DEFAULT IMPLEMENTATIONS (can be overridden by subclasses)

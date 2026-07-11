@@ -315,6 +315,11 @@ final class SearchManagerVariableRecordingBackend implements BackendInterface
         return true;
     }
 
+    public function getDocumentsByElementIds(string $indexName, array $elementIds, ?int $siteId = null): array
+    {
+        return [];
+    }
+
     public function isAvailable(): bool
     {
         return true;

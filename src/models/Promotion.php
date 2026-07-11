@@ -14,7 +14,6 @@ use craft\db\Query;
 use craft\helpers\Db;
 use craft\helpers\StringHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 
 /**
@@ -193,8 +192,6 @@ class Promotion extends Model
 
     /**
      * Find promotions matching a search query
-     * Only returns promotions where the element is enabled for the given site
-     *
      * @param string $searchQuery
      * @param string $indexHandle
      * @param int|null $siteId
@@ -205,50 +202,9 @@ class Promotion extends Model
         $searchQuery = mb_strtolower(trim($searchQuery));
         $promotions = self::findByIndex($indexHandle, $siteId);
 
-        $checkSiteId = $siteId ?? \Craft::$app->getSites()->getCurrentSite()->id;
-
-        // Filter promotions that match the query pattern
-        $queryMatches = [];
-        $elementIds = [];
+        $matches = [];
         foreach ($promotions as $promotion) {
             if ($promotion->matches($searchQuery)) {
-                $queryMatches[] = $promotion;
-                $elementIds[] = $promotion->elementId;
-            }
-        }
-
-        if (empty($queryMatches)) {
-            return [];
-        }
-
-        // Group by element type for efficient batch queries
-        $byType = [];
-        foreach ($queryMatches as $promotion) {
-            $type = $promotion->elementType ?? \craft\elements\Entry::class;
-            $byType[$type][] = $promotion;
-        }
-
-        // Batch-query each element type for live status
-        $liveElements = [];
-        foreach ($byType as $elementClass => $typePromotions) {
-            if (!is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
-                continue;
-            }
-            $typeIds = array_map(fn($p) => $p->elementId, $typePromotions);
-            $elementQuery = $elementClass::find()
-                ->id($typeIds)
-                ->indexBy('id');
-            if (!SearchElementAvailabilityHelper::isSiteIndependent($elementClass)) {
-                $elementQuery->siteId($checkSiteId);
-            }
-            $found = SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all();
-            $liveElements += $found;
-        }
-
-        // Filter to only promotions with live elements
-        $matches = [];
-        foreach ($queryMatches as $promotion) {
-            if (isset($liveElements[$promotion->elementId])) {
                 $matches[] = $promotion;
             }
         }

@@ -23,6 +23,15 @@ final class AuditPass30RegressionTest extends TestCase
 {
     public function testApplyPromotionsUsesSuppliedMatchesWithoutRefetching(): void
     {
+        $stub = $this->installStubBackend();
+        $stub->documentsByElementId['test-index:42:null'] = [
+            'id' => 42,
+            'elementId' => 42,
+            'title' => 'Indexed promotion title',
+            'url' => '/indexed-promotion',
+            'type' => 'entry',
+        ];
+
         $promotion = new Promotion();
         $promotion->id = 123;
         $promotion->query = 'audit-pass-30';
@@ -42,58 +51,73 @@ final class AuditPass30RegressionTest extends TestCase
         $results = $service->applyPromotions([99], 'audit-pass-30', 'test-index', null, [$promotion]);
 
         self::assertSame(0, $service->fetches);
-        self::assertSame([42, 99], $results);
+        self::assertSame(42, $results[0]['id']);
+        self::assertSame('Indexed promotion title', $results[0]['title']);
+        self::assertSame('/indexed-promotion', $results[0]['url']);
+        self::assertTrue($results[0]['promoted']);
+        self::assertSame(1, $results[0]['position']);
+        self::assertSame([99], array_slice($results, 1));
     }
 
-    public function testApplyPromotionsResolvesSiteBeforeFetchingPromotedElementMetadata(): void
+    public function testApplyPromotionsFetchesPromotedDocumentsFromBackend(): void
     {
-        $source = $this->methodSource(
-            $this->readPluginFile('src/services/PromotionService.php'),
-            'public function applyPromotions',
+        $stub = $this->installStubBackend();
+        $stub->documentsByElementId['test-index:42:7'] = [
+            'id' => 42,
+            'elementId' => 42,
+            'siteId' => 7,
+            'title' => 'Indexed site title',
+            'url' => '/site/indexed',
+            'type' => 'entry',
+        ];
+
+        $promotion = new Promotion();
+        $promotion->id = 124;
+        $promotion->query = 'audit-pass-30';
+        $promotion->elementId = 42;
+        $promotion->position = 1;
+
+        $results = (new PromotionService())->applyPromotions(
+            [['id' => 99, 'siteId' => 7, 'score' => 1.0]],
+            'audit-pass-30',
+            'test-index',
+            7,
+            [$promotion],
         );
 
-        self::assertStringContainsString('$siteIdsByElementId = $resultsAreArrays', $source);
-        self::assertStringContainsString('$promotionSiteId = $this->resolvePromotionSiteId($promotion, $siteId, $siteIdsByElementId);', $source);
-        self::assertStringContainsString('->siteId((int)$elementSiteId)', $source);
-        self::assertStringNotContainsString('->siteId($siteId)', $source);
-        self::assertStringNotContainsString('$elements += $found;', $source);
+        self::assertSame('Indexed site title', $results[0]['title']);
+        self::assertSame('/site/indexed', $results[0]['url']);
+        self::assertSame([
+            [
+                'method' => 'getDocumentsByElementIds',
+                'indexName' => 'test-index',
+                'items' => [[
+                    'elementIds' => [42],
+                    'siteId' => 7,
+                ]],
+            ],
+        ], $stub->callsFor('getDocumentsByElementIds'));
     }
 
-    public function testPromotedEntryMetadataUsesEntryTypeAndSeparateSectionLabel(): void
+    public function testApplyPromotionsSkipsMissingIndexedDocuments(): void
     {
-        $source = $this->readPluginFile('src/services/PromotionService.php');
+        $this->installStubBackend();
 
-        self::assertStringContainsString("\$documentType = \$this->resolveElementType(\$element);", $source);
-        self::assertStringContainsString("'type' => \$documentType,", $source);
-        self::assertStringContainsString("'elementType' => \$documentType,", $source);
-        self::assertStringContainsString('$this->resolveEntryMetadata($element),', $source);
-        self::assertStringContainsString('$this->resolveAssetMetadata($element),', $source);
-        self::assertStringContainsString('$this->resolveCategoryMetadata($element),', $source);
-        self::assertStringContainsString('$this->resolveCommerceMetadata($element),', $source);
-        self::assertStringContainsString("return 'entry';", $source);
-        self::assertStringNotContainsString('resolveElementSection', $source);
-        self::assertStringContainsString("'section' => \$section?->name,", $source);
-        self::assertStringContainsString("'sectionHandle' => \$section?->handle,", $source);
-        self::assertStringContainsString("'sectionType' => \$section?->type,", $source);
-        self::assertStringContainsString("'volume' => \$volume->name,", $source);
-        self::assertStringContainsString("'volumeHandle' => \$volume->handle,", $source);
-        self::assertStringContainsString("'group' => \$group->name,", $source);
-        self::assertStringContainsString("'groupHandle' => \$group->handle,", $source);
-        self::assertStringNotContainsString('return $element->getSection()?->handle;', $source);
-    }
+        $promotion = new Promotion();
+        $promotion->id = 125;
+        $promotion->query = 'audit-pass-30';
+        $promotion->elementId = 42;
+        $promotion->position = 1;
 
-    public function testPromotedCommerceMetadataUsesSearchDocumentTypeAndProductType(): void
-    {
-        $source = $this->readPluginFile('src/services/PromotionService.php');
+        $results = (new PromotionService())->applyPromotions(
+            [['id' => 99, 'siteId' => 7, 'score' => 1.0]],
+            'audit-pass-30',
+            'test-index',
+            7,
+            [$promotion],
+        );
 
-        self::assertStringContainsString('is_a($element, CommerceElementTypeHelper::productElementType())', $source);
-        self::assertStringContainsString("return 'product';", $source);
-        self::assertStringContainsString('is_a($element, CommerceElementTypeHelper::variantElementType())', $source);
-        self::assertStringContainsString("return 'variant';", $source);
-        self::assertStringContainsString("'productType' => \$productTypeDisplayName,", $source);
-        self::assertStringContainsString("'productTypeHandle' => \$productTypeHandle,", $source);
-        self::assertStringNotContainsString('productTypeName', $source);
-        self::assertStringNotContainsString("'section' => \$productTypeDisplayName,", $source);
+        self::assertSame([['id' => 99, 'siteId' => 7, 'score' => 1.0]], $results);
     }
 
     public function testPromotedHitsCarryInternalElementTypeAndPresenterSuppressesIt(): void
@@ -105,7 +129,7 @@ final class AuditPass30RegressionTest extends TestCase
         $liveComparisonSource = $this->readPluginFile('src/services/LiveComparisonService.php');
         $presenterSource = $this->readPluginFile('src/helpers/SearchHitPresenter.php');
 
-        self::assertStringContainsString("'_elementType' => \$elementType,", $promotionSource);
+        self::assertStringContainsString("\$promotedItem['_elementType'] = \$promotion->elementType;", $promotionSource);
         self::assertStringContainsString('$explicitElementClass = is_string($hit[\'_elementType\'] ?? null) ? $hit[\'_elementType\'] : null;', $liveComparisonSource);
         self::assertStringContainsString('$elementClass = $explicitElementClass ?:', $liveComparisonSource);
         self::assertStringContainsString('$hit[\'description\'],', $presenterSource);
@@ -115,17 +139,15 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringContainsString('$hit[\'_contentClean\'],', $presenterSource);
     }
 
-    public function testGlobalPromotionsInsertOneDeterministicPromotedHit(): void
+    public function testPromotionServiceShapesHitsFromIndexedDocumentsOnly(): void
     {
-        $source = $this->methodSource(
-            $this->readPluginFile('src/services/PromotionService.php'),
-            'private function resolvePromotionSiteId',
-        );
+        $source = $this->readPluginFile('src/services/PromotionService.php');
 
-        self::assertStringContainsString('if ($promotion->siteId !== null)', $source);
-        self::assertStringContainsString('if ($requestedSiteId !== null)', $source);
-        self::assertStringContainsString('return Craft::$app->getSites()->getPrimarySite()->id ?? null;', $source);
-        self::assertStringNotContainsString('getAllSites()', $source);
+        self::assertStringContainsString('getDocumentsByElementIds($indexHandle, $elementIds, $siteId)', $source);
+        self::assertStringContainsString('Skipping promotion because target document is not indexed', $source);
+        self::assertStringNotContainsString('getElementById', $source);
+        self::assertStringNotContainsString('SearchElementAvailabilityHelper', $source);
+        self::assertStringNotContainsString('::find()', $source);
     }
 
     public function testBackendSearchThreadsAlreadyMatchedPromotionsIntoApplicationPath(): void
@@ -164,6 +186,32 @@ final class AuditPass30RegressionTest extends TestCase
 
         self::assertStringContainsString('public function getActionDescription(?string $redirectUrl = null): string', $source);
         self::assertStringContainsString("'url' => \$redirectUrl ?? \$this->getRedirectUrl()", $source);
+    }
+
+    public function testSearchTimeHitShapingPathsDoNotUseLiveElementLookups(): void
+    {
+        $promotionServiceSource = $this->readPluginFile('src/services/PromotionService.php');
+        $queryRuleServiceSource = $this->readPluginFile('src/services/QueryRuleService.php');
+        $promotionMatchingSource = $this->methodSource(
+            $this->readPluginFile('src/models/Promotion.php'),
+            'public static function findMatching',
+        );
+        $redirectSource = $this->methodSource(
+            $this->readPluginFile('src/models/QueryRule.php'),
+            'public function getRedirectUrl',
+        );
+
+        foreach ([
+            'PromotionService' => $promotionServiceSource,
+            'QueryRuleService' => $queryRuleServiceSource,
+            'Promotion::findMatching' => $promotionMatchingSource,
+        ] as $label => $source) {
+            self::assertStringNotContainsString('getElementById', $source, $label);
+            self::assertDoesNotMatchRegularExpression('/(?:Element|Entry|Category)::find\s*\(/', $source, $label);
+        }
+
+        self::assertStringContainsString('single search-time live lookup exception', $redirectSource);
+        self::assertStringContainsString('getElementById', $redirectSource);
     }
 
     private function readPluginFile(string $path): string

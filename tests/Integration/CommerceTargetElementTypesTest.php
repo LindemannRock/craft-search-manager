@@ -118,34 +118,45 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     public function testPromotionInjectionCarriesCommerceTargetElementTypeContext(): void
     {
+        $stub = $this->installStubBackend();
+        $siteId = 1;
+
         foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
-            $element = $this->findLiveCommerceElement($elementType);
-            if ($element === null) {
-                continue;
-            }
+            $elementId = $elementType === CommerceElementTypeHelper::productElementType() ? 2147482901 : 2147482902;
+            $documentType = $elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant';
+            $stub->documentsByElementId['products:' . $elementId . ':' . $siteId] = [
+                'id' => $elementId,
+                'elementId' => $elementId,
+                'siteId' => $siteId,
+                'title' => 'Indexed ' . $documentType . ' promotion',
+                'url' => '/indexed-' . $documentType,
+                'type' => $documentType,
+            ];
 
             $promotion = new Promotion();
-            $promotion->id = 987000 + (int)$element->id;
+            $promotion->id = 987000 + $elementId;
             $promotion->title = 'Commerce target runtime';
             $promotion->query = 'commerce runtime';
             $promotion->matchType = 'exact';
-            $promotion->elementId = (int)$element->id;
+            $promotion->elementId = $elementId;
             $promotion->elementType = $elementType;
             $promotion->position = 1;
-            $promotion->siteId = (int)$element->siteId;
+            $promotion->siteId = $siteId;
 
             $results = (new PromotionService())->applyPromotions(
-                [['id' => 2147483000, 'siteId' => (int)$element->siteId, 'score' => 1.0]],
+                [['id' => 2147483000, 'siteId' => $siteId, 'score' => 1.0]],
                 'commerce runtime',
                 'products',
-                (int)$element->siteId,
+                $siteId,
                 [$promotion],
             );
 
             self::assertIsArray($results[0]);
-            self::assertSame((int)$element->id, $results[0]['elementId']);
+            self::assertSame($elementId, $results[0]['elementId']);
             self::assertSame($elementType, $results[0]['_elementType']);
-            self::assertSame($elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant', $results[0]['type']);
+            self::assertSame($documentType, $results[0]['type']);
+            self::assertSame('Indexed ' . $documentType . ' promotion', $results[0]['title']);
+            self::assertSame('/indexed-' . $documentType, $results[0]['url']);
             self::assertArrayNotHasKey('_elementType', SearchHitPresenter::present($results[0]));
             $results[0]['_queryRuleDebug'] = ['boosts' => [['ruleId' => 123]]];
             self::assertArrayNotHasKey('_queryRuleDebug', SearchHitPresenter::present($results[0]));
@@ -254,10 +265,21 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     public function testActiveUserPromotionInjectsPromotedHit(): void
     {
+        $stub = $this->installStubBackend();
         $user = User::find()->status(User::STATUS_ACTIVE)->one();
         if (!$user instanceof User) {
             self::markTestSkipped('No active user available for user promotion insertion coverage.');
         }
+
+        $siteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        $stub->documentsByElementId['users:' . (int)$user->id . ':' . $siteId] = [
+            'id' => (int)$user->id,
+            'elementId' => (int)$user->id,
+            'siteId' => $siteId,
+            'title' => 'Indexed user promotion',
+            'url' => '/indexed-user',
+            'type' => 'user',
+        ];
 
         $promotion = new Promotion();
         $promotion->id = 2147483001;
@@ -269,22 +291,24 @@ final class CommerceTargetElementTypesTest extends TestCase
         $promotion->position = 1;
 
         $results = SearchManager::$plugin->promotions->applyPromotions(
-            [['id' => 2147483000, 'siteId' => (int)Craft::$app->getSites()->getPrimarySite()->id, 'score' => 1.0]],
+            [['id' => 2147483000, 'siteId' => $siteId, 'score' => 1.0]],
             'user insertion',
             'users',
-            (int)Craft::$app->getSites()->getPrimarySite()->id,
+            $siteId,
             [$promotion],
         );
 
         self::assertSame((int)$user->id, $results[0]['id']);
         self::assertSame('user', $results[0]['type']);
         self::assertTrue($results[0]['promoted']);
-        self::assertNotSame('', $results[0]['title']);
+        self::assertSame('Indexed user promotion', $results[0]['title']);
+        self::assertSame('/indexed-user', $results[0]['url']);
         self::assertArrayNotHasKey('section', $results[0]);
     }
 
     public function testSplitIndexPromotionInjectsPromotedPageSectionHit(): void
     {
+        $stub = $this->installStubBackend();
         $sourceDocClass = 'lindemannrock\\docsmanager\\elements\\SourceDoc';
         if (!class_exists($sourceDocClass)) {
             self::markTestSkipped('Requires Docs Manager SourceDoc element support.');
@@ -313,6 +337,23 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertTrue($index->save(), implode('; ', $index->getFirstErrors()));
 
         try {
+            $stub->documentsByElementId[$handle . ':' . (int)$sourceDoc->id . ':' . $siteId] = [
+                'id' => (int)$sourceDoc->id,
+                'elementId' => (int)$sourceDoc->id,
+                'siteId' => $siteId,
+                'backendId' => SearchHitIdentityHelper::sectionDocumentId((int)$sourceDoc->id, $siteId, 'intro'),
+                'title' => 'Indexed split promotion',
+                'url' => '/indexed-split-promotion',
+                'type' => 'source-doc',
+                'sectionType' => 'intro',
+                'sectionId' => 'intro',
+                'sectionTitle' => 'Indexed split promotion',
+                'sectionUrl' => '/indexed-split-promotion',
+                'sectionIndex' => 0,
+                'snippet' => 'Indexed split snippet',
+                'headings' => ['Indexed heading'],
+            ];
+
             $promotion = new Promotion();
             $promotion->id = 2147483004;
             $promotion->title = 'Split promotion insertion regression';
@@ -333,14 +374,16 @@ final class CommerceTargetElementTypesTest extends TestCase
             );
 
             self::assertSame((int)$sourceDoc->id, $results[0]['elementId']);
-            self::assertSame('promoted-page', $results[0]['sectionType'] ?? null);
-            self::assertSame('promoted-page', $results[0]['sectionId'] ?? null);
-            self::assertSame($results[0]['title'], $results[0]['sectionTitle'] ?? null);
-            self::assertSame(SearchHitIdentityHelper::sectionDocumentId((int)$sourceDoc->id, $siteId, 'promoted-page'), $results[0]['backendId'] ?? null);
-            self::assertSame($sourceDoc->url, $results[0]['sectionUrl'] ?? null);
+            self::assertSame('Indexed split promotion', $results[0]['title']);
+            self::assertSame('/indexed-split-promotion', $results[0]['url']);
+            self::assertSame('intro', $results[0]['sectionType'] ?? null);
+            self::assertSame('intro', $results[0]['sectionId'] ?? null);
+            self::assertSame('Indexed split promotion', $results[0]['sectionTitle'] ?? null);
+            self::assertSame(SearchHitIdentityHelper::sectionDocumentId((int)$sourceDoc->id, $siteId, 'intro'), $results[0]['backendId'] ?? null);
+            self::assertSame('/indexed-split-promotion', $results[0]['sectionUrl'] ?? null);
             self::assertSame(0, $results[0]['sectionIndex'] ?? null);
-            self::assertNull($results[0]['snippet'] ?? null);
-            self::assertSame([], $results[0]['headings'] ?? null);
+            self::assertSame('Indexed split snippet', $results[0]['snippet'] ?? null);
+            self::assertSame(['Indexed heading'], $results[0]['headings'] ?? null);
             self::assertTrue($results[0]['promoted']);
         } finally {
             $this->deleteTestIndexByHandle($handle);
@@ -349,10 +392,22 @@ final class CommerceTargetElementTypesTest extends TestCase
 
     public function testAssetPromotionInjectsVolumeMetadataWithoutSection(): void
     {
+        $stub = $this->installStubBackend();
         $asset = Asset::find()->status(Element::STATUS_ENABLED)->one();
         if (!$asset instanceof Asset) {
             self::markTestSkipped('No asset available for asset promotion insertion coverage.');
         }
+
+        $stub->documentsByElementId['assets:' . (int)$asset->id . ':' . (int)$asset->siteId] = [
+            'id' => (int)$asset->id,
+            'elementId' => (int)$asset->id,
+            'siteId' => (int)$asset->siteId,
+            'title' => 'Indexed asset promotion',
+            'url' => '/indexed-asset',
+            'type' => 'asset',
+            'volume' => 'Indexed Volume',
+            'volumeHandle' => 'indexedVolume',
+        ];
 
         $promotion = new Promotion();
         $promotion->id = 2147483002;
@@ -374,17 +429,31 @@ final class CommerceTargetElementTypesTest extends TestCase
 
         self::assertSame((int)$asset->id, $results[0]['id']);
         self::assertSame('asset', $results[0]['type']);
-        self::assertSame($asset->getVolume()->name, $results[0]['volume'] ?? null);
-        self::assertSame($asset->getVolume()->handle, $results[0]['volumeHandle'] ?? null);
+        self::assertSame('Indexed asset promotion', $results[0]['title']);
+        self::assertSame('/indexed-asset', $results[0]['url']);
+        self::assertSame('Indexed Volume', $results[0]['volume'] ?? null);
+        self::assertSame('indexedVolume', $results[0]['volumeHandle'] ?? null);
         self::assertArrayNotHasKey('section', $results[0]);
     }
 
     public function testCategoryPromotionInjectsGroupMetadataWithoutSection(): void
     {
+        $stub = $this->installStubBackend();
         $category = Category::find()->status(Element::STATUS_ENABLED)->one();
         if (!$category instanceof Category) {
             self::markTestSkipped('No category available for category promotion insertion coverage.');
         }
+
+        $stub->documentsByElementId['categories:' . (int)$category->id . ':' . (int)$category->siteId] = [
+            'id' => (int)$category->id,
+            'elementId' => (int)$category->id,
+            'siteId' => (int)$category->siteId,
+            'title' => 'Indexed category promotion',
+            'url' => '/indexed-category',
+            'type' => 'category',
+            'group' => 'Indexed Group',
+            'groupHandle' => 'indexedGroup',
+        ];
 
         $promotion = new Promotion();
         $promotion->id = 2147483003;
@@ -406,8 +475,10 @@ final class CommerceTargetElementTypesTest extends TestCase
 
         self::assertSame((int)$category->id, $results[0]['id']);
         self::assertSame('category', $results[0]['type']);
-        self::assertSame($category->getGroup()->name, $results[0]['group'] ?? null);
-        self::assertSame($category->getGroup()->handle, $results[0]['groupHandle'] ?? null);
+        self::assertSame('Indexed category promotion', $results[0]['title']);
+        self::assertSame('/indexed-category', $results[0]['url']);
+        self::assertSame('Indexed Group', $results[0]['group'] ?? null);
+        self::assertSame('indexedGroup', $results[0]['groupHandle'] ?? null);
         self::assertArrayNotHasKey('section', $results[0]);
     }
 
@@ -550,7 +621,7 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertStringContainsString('class_exists(self::VARIANT_ELEMENT_TYPE)', $helperSource);
     }
 
-    public function testPromotionLiveLookupUsesVariantProductStatus(): void
+    public function testPromotionSearchTimePathsDoNotUseLiveAvailabilityFiltering(): void
     {
         $helperSource = $this->readPluginFile('src/helpers/SearchElementAvailabilityHelper.php');
         $promotionSource = $this->readPluginFile('src/models/Promotion.php');
@@ -564,14 +635,14 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertStringContainsString('->productStatus(self::liveStatusFor($elementClass))', $helperSource);
         self::assertStringContainsString('Entry::STATUS_LIVE', $helperSource);
         self::assertStringContainsString('User::STATUS_ACTIVE', $helperSource);
-        self::assertStringContainsString('isSiteIndependent($elementClass)', $promotionSource);
         self::assertStringContainsString('isSiteIndependent($elementClass)', $settingsSource);
         self::assertStringContainsString("'siteIndependent' =>", $settingsSource);
-        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $promotionSource);
         self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $settingsSource);
-        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $promotionServiceSource);
         self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($query, $elementClass)->all()', $liveComparisonSource);
         self::assertStringContainsString('return SearchElementAvailabilityHelper::isSearchable($element);', $indexingSource);
+        self::assertStringNotContainsString('isSiteIndependent($elementClass)', $promotionSource);
+        self::assertStringNotContainsString('SearchElementAvailabilityHelper', $promotionServiceSource);
+        self::assertStringNotContainsString('SearchElementAvailabilityHelper::applyToQuery', $promotionSource);
         self::assertStringNotContainsString('PromotionLiveElementQueryHelper', $promotionSource . $settingsSource . $promotionServiceSource . $liveComparisonSource);
     }
 

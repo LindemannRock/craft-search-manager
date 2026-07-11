@@ -8,14 +8,11 @@
 
 namespace lindemannrock\searchmanager\services;
 
-use Craft;
 use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
-use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
-use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\Promotion;
-use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
 /**
@@ -129,7 +126,7 @@ class PromotionService extends Component
      */
     public function getPromotedElements(string $query, string $indexHandle, ?int $siteId = null): array
     {
-        // findMatching already filters by element live status and sorts by position
+        // findMatching only evaluates the promotion rules; indexed document existence decides promotion validity.
         return Promotion::findMatching($query, $indexHandle, $siteId);
     }
 
@@ -161,14 +158,9 @@ class PromotionService extends Component
             'query' => $query,
             'promotedCount' => count($promotions),
         ]);
-        $splitSections = SearchIndex::findByHandle($indexHandle)?->usesSplitSections() ?? false;
-
         // Collect promoted element IDs for filtering
-        $promotedIds = array_map(fn(Promotion $p) => $p->elementId, $promotions);
-        $resultsAreArrays = !empty($results) && is_array($results[0]);
-        $siteIdsByElementId = $resultsAreArrays
-            ? $this->siteIdsByElementId($results, $promotedIds)
-            : [];
+        $promotedIds = $this->promotionElementIds($promotions);
+        $indexedDocuments = $this->indexedPromotionDocuments($promotions, $indexHandle, $siteId);
 
         // Remove promoted elements from their current positions (if they exist in results)
         $filteredResults = [];
@@ -179,95 +171,29 @@ class PromotionService extends Component
             }
         }
 
-        // Batch-fetch promoted elements grouped by type
-        $elements = [];
-        $siteIdsByPromotion = [];
-        if ($resultsAreArrays) {
-            $byType = [];
-            foreach ($promotions as $promotion) {
-                $type = $promotion->elementType ?? \craft\elements\Entry::class;
-                $promotionSiteId = $this->resolvePromotionSiteId($promotion, $siteId, $siteIdsByElementId);
-                if ($promotionSiteId === null) {
-                    continue;
-                }
-
-                $siteIdsByPromotion[$this->promotionIdentity($promotion)] = $promotionSiteId;
-                $byType[$type][$promotionSiteId][] = $promotion->elementId;
-            }
-
-            foreach ($byType as $elementClass => $idsBySite) {
-                if (!is_subclass_of($elementClass, \craft\base\ElementInterface::class)) {
-                    continue;
-                }
-
-                foreach ($idsBySite as $elementSiteId => $ids) {
-                    $elementQuery = $elementClass::find()
-                        ->id(array_values(array_unique($ids)))
-                        ->indexBy('id');
-                    if (!SearchElementAvailabilityHelper::isSiteIndependent($elementClass)) {
-                        $elementQuery->siteId((int)$elementSiteId);
-                    }
-                    $found = SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all();
-
-                    foreach ($found as $elementId => $element) {
-                        $elements[$elementClass][(int)$elementSiteId][(int)$elementId] = $element;
-                    }
-                }
-            }
-        }
-
         // Insert promoted elements at their positions (already sorted by position from findMatching)
         $finalResults = $filteredResults;
         foreach ($promotions as $promotion) {
             $insertPos = max(0, $promotion->position - 1);
+            $elementId = (int)$promotion->elementId;
+            $promotedItem = $indexedDocuments[$elementId] ?? null;
 
-            if ($resultsAreArrays) {
-                $elementType = $promotion->elementType ?? \craft\elements\Entry::class;
-                $promotionSiteId = $siteIdsByPromotion[$this->promotionIdentity($promotion)] ?? null;
-                $element = $promotionSiteId !== null
-                    ? ($elements[$elementType][$promotionSiteId][$promotion->elementId] ?? null)
-                    : null;
-                $documentType = $this->resolveElementType($element);
-                $promotedItem = [
-                    'objectID' => $promotion->elementId,
-                    'id' => $promotion->elementId,
-                    'elementId' => $promotion->elementId,
-                    '_elementType' => $elementType,
-                    'backendId' => $splitSections
-                        ? SearchHitIdentityHelper::sectionDocumentId($promotion->elementId, $element?->siteId, 'promoted-page')
-                        : SearchHitIdentityHelper::pageDocumentId($promotion->elementId, $element?->siteId),
-                    'siteId' => $element?->siteId,
-                    'promoted' => true,
-                    'position' => $promotion->position,
-                    'score' => null,
-                    'type' => $documentType,
-                    'elementType' => $documentType,
-                    'title' => $this->resolveElementTitle($element),
-                ];
-
-                if ($splitSections) {
-                    $promotedItem['sectionType'] = 'promoted-page';
-                    $promotedItem['sectionId'] = 'promoted-page';
-                    $promotedItem['sectionTitle'] = $promotedItem['title'];
-                    $promotedItem['sectionLevel'] = null;
-                    $promotedItem['sectionAnchor'] = null;
-                    $promotedItem['sectionUrl'] = $element?->url;
-                    $promotedItem['sectionIndex'] = 0;
-                    $promotedItem['snippet'] = null;
-                    $promotedItem['headings'] = [];
-                }
-
-                $promotedItem = array_merge(
-                    $promotedItem,
-                    $this->resolveEntryMetadata($element),
-                    $this->resolveAssetMetadata($element),
-                    $this->resolveCategoryMetadata($element),
-                    $this->resolveCommerceMetadata($element),
-                );
-            } else {
-                $promotedItem = $promotion->elementId;
+            if ($promotedItem === null) {
+                $this->logWarning('Skipping promotion because target document is not indexed', [
+                    'promotionId' => $promotion->id,
+                    'index' => $indexHandle,
+                    'elementId' => $elementId,
+                    'siteId' => $siteId,
+                ]);
+                continue;
             }
 
+            $promotedItem['promoted'] = true;
+            $promotedItem['position'] = $promotion->position;
+            $promotedItem['score'] = null;
+            if ($promotion->elementType !== null) {
+                $promotedItem['_elementType'] = $promotion->elementType;
+            }
             array_splice($finalResults, $insertPos, 0, [$promotedItem]);
         }
 
@@ -275,58 +201,14 @@ class PromotionService extends Component
     }
 
     /**
-     * Preserve site context from existing hits before promoted duplicates are removed.
-     *
-     * @param array<int, array<string, mixed>> $results
-     * @param array<int, int|null> $promotedIds
      * @return array<int, int>
      */
-    private function siteIdsByElementId(array $results, array $promotedIds): array
+    private function promotionElementIds(array $promotions): array
     {
-        $siteIdsByElementId = [];
-
-        foreach ($results as $result) {
-            if (!is_array($result)) {
-                continue;
-            }
-
-            $elementId = SearchHitIdentityHelper::elementId($result);
-            $siteId = $result['siteId'] ?? null;
-            if ($elementId === null || !in_array($elementId, $promotedIds, true) || !is_numeric($siteId)) {
-                continue;
-            }
-
-            $siteIdsByElementId[$elementId] = (int)$siteId;
-        }
-
-        return $siteIdsByElementId;
-    }
-
-    /**
-     * Pick a deterministic site for promoted element metadata.
-     *
-     * @param array<int, int> $siteIdsByElementId
-     */
-    private function resolvePromotionSiteId(Promotion $promotion, ?int $requestedSiteId, array $siteIdsByElementId): ?int
-    {
-        if (isset($siteIdsByElementId[$promotion->elementId])) {
-            return $siteIdsByElementId[$promotion->elementId];
-        }
-
-        if ($promotion->siteId !== null) {
-            return $promotion->siteId;
-        }
-
-        if ($requestedSiteId !== null) {
-            return $requestedSiteId;
-        }
-
-        return Craft::$app->getSites()->getPrimarySite()->id ?? null;
-    }
-
-    private function promotionIdentity(Promotion $promotion): int
-    {
-        return $promotion->id ?? spl_object_id($promotion);
+        return array_values(array_unique(array_filter(
+            array_map(static fn(Promotion $promotion): int => (int)$promotion->elementId, $promotions),
+            static fn(int $elementId): bool => $elementId > 0,
+        )));
     }
 
     // =========================================================================
@@ -381,182 +263,16 @@ class PromotionService extends Component
     // =========================================================================
 
     /**
-     * Resolve the broad display type for a promoted element.
+     * @param array<int, Promotion> $promotions
+     * @return array<int, array<string, mixed>>
      */
-    private function resolveElementType(?\craft\base\ElementInterface $element): ?string
+    private function indexedPromotionDocuments(array $promotions, string $indexHandle, ?int $siteId): array
     {
-        if (!$element) {
-            return null;
-        }
-
-        if ($element instanceof \craft\elements\Entry) {
-            return 'entry';
-        }
-
-        if (is_a($element, CommerceElementTypeHelper::productElementType())) {
-            return 'product';
-        }
-
-        if (is_a($element, CommerceElementTypeHelper::variantElementType())) {
-            return 'variant';
-        }
-
-        if ($element instanceof \craft\elements\Category) {
-            return 'category';
-        }
-
-        if ($element instanceof \craft\elements\Asset) {
-            return 'asset';
-        }
-
-        if ($element instanceof \craft\elements\User) {
-            return 'user';
-        }
-
-        return strtolower($element::displayName());
-    }
-
-    private function resolveElementTitle(?\craft\base\ElementInterface $element): ?string
-    {
-        if (!$element) {
-            return null;
-        }
-
-        if ($element instanceof \craft\elements\User) {
-            foreach (['fullName', 'username', 'email'] as $property) {
-                $value = $this->stringProperty($element, $property);
-                if ($value !== '') {
-                    return $value;
-                }
-            }
-
-            return $element->id !== null ? '#' . $element->id : null;
-        }
-
-        $title = $this->stringProperty($element, 'title');
-
-        return $title !== '' ? $title : null;
-    }
-
-    private function stringProperty(object $object, string $property): string
-    {
-        $value = $object->{$property} ?? null;
-
-        return is_scalar($value) ? trim((string)$value) : '';
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function resolveEntryMetadata(?\craft\base\ElementInterface $element): array
-    {
-        if (!$element instanceof \craft\elements\Entry) {
+        $elementIds = $this->promotionElementIds($promotions);
+        if ($elementIds === []) {
             return [];
         }
 
-        $section = $element->getSection();
-
-        return array_filter([
-            'section' => $section?->name,
-            'sectionHandle' => $section?->handle,
-            'sectionType' => $section?->type,
-        ], static fn(?string $value): bool => $value !== null && $value !== '');
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function resolveAssetMetadata(?\craft\base\ElementInterface $element): array
-    {
-        if (!$element instanceof \craft\elements\Asset) {
-            return [];
-        }
-
-        $volume = $element->getVolume();
-
-        return array_filter([
-            'volume' => $volume->name,
-            'volumeHandle' => $volume->handle,
-        ], static fn(?string $value): bool => $value !== null && $value !== '');
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function resolveCategoryMetadata(?\craft\base\ElementInterface $element): array
-    {
-        if (!$element instanceof \craft\elements\Category) {
-            return [];
-        }
-
-        $group = $element->getGroup();
-
-        return array_filter([
-            'group' => $group->name,
-            'groupHandle' => $group->handle,
-        ], static fn(?string $value): bool => $value !== null && $value !== '');
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function resolveCommerceMetadata(?\craft\base\ElementInterface $element): array
-    {
-        if (!$element) {
-            return [];
-        }
-
-        $product = is_a($element, CommerceElementTypeHelper::variantElementType())
-            ? $this->objectValue($element, ['getProduct', 'product'])
-            : $element;
-
-        if (!is_a($product, CommerceElementTypeHelper::productElementType())) {
-            return [];
-        }
-
-        $productType = $this->objectValue($product, ['getType', 'getProductType', 'type', 'productType']);
-        $productTypeDisplayName = $this->stringValue($productType, ['name', 'getName']);
-        $productTypeHandle = $this->stringValue($productType, ['handle', 'getHandle']);
-
-        return array_filter([
-            'productType' => $productTypeDisplayName,
-            'productTypeHandle' => $productTypeHandle,
-        ], static fn(?string $value): bool => $value !== null && $value !== '');
-    }
-
-    /**
-     * @param string[] $names
-     */
-    private function stringValue(mixed $object, array $names): string
-    {
-        if (!is_object($object)) {
-            return '';
-        }
-
-        $value = $this->objectValue($object, $names);
-
-        return is_scalar($value) ? trim((string)$value) : '';
-    }
-
-    /**
-     * @param string[] $names
-     */
-    private function objectValue(object $object, array $names): mixed
-    {
-        foreach ($names as $name) {
-            try {
-                if (method_exists($object, $name)) {
-                    return $object->{$name}();
-                }
-
-                if (isset($object->{$name})) {
-                    return $object->{$name};
-                }
-            } catch (\Throwable) {
-                continue;
-            }
-        }
-
-        return null;
+        return SearchManager::$plugin->backend->getDocumentsByElementIds($indexHandle, $elementIds, $siteId);
     }
 }
