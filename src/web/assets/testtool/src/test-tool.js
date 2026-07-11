@@ -362,6 +362,14 @@
                 return rows.join('');
             }
 
+            function renderMetaPill(label, value) {
+                if (value === undefined || value === null || value === '') {
+                    return '';
+                }
+
+                return `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(label)}</span> ${escapeDisplay(truncateDisplay(value, 96))}</span>`;
+            }
+
             function fieldRowsFromFields(fields) {
                 if (!fields || typeof fields !== 'object' || Array.isArray(fields)) {
                     return [];
@@ -891,15 +899,17 @@
                     if (data.total > 0) {
                         html += '<div class="sm-test-results-grid">';
                         data.hits.forEach(hit => {
-                            const rawTitle = hit.title || T.untitled;
+                            const hasSectionHit = Boolean(hit.sectionType);
+                            const rawTitle = hasSectionHit ? (hit.sectionTitle || hit.title || T.untitled) : (hit.title || T.untitled);
                             const rawSnippet = hit.snippet || '';
                             const titleTerms = getHitTerms(hit, 'title');
                             const descTerms = getHitTerms(hit, 'snippet');
                             const title = smHighlight(rawTitle, query, titleTerms);
                             const rawDisplayText = rawSnippet;
                             const displayText = rawSnippet ? smHighlight(rawSnippet.substring(0, 400), query, descTerms) : '';
-                            const url = safeUrlAttribute(hit.url);
-                            const urlText = hit.url ? escapeDisplay(hit.url) : '';
+                            const rawUrl = hasSectionHit ? (hit.sectionUrl || hit.url) : hit.url;
+                            const url = safeUrlAttribute(rawUrl);
+                            const urlText = rawUrl ? escapeDisplay(rawUrl) : '';
                             const isPromoted = hit.promoted === true;
                             const isBoosted = hit.boosted === true;
                             const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.map(escapeDisplay).join(', ') : null;
@@ -914,6 +924,12 @@
                             const contextValue = context ? context.value : '';
                             const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : '';
                             const hierarchyMeta = renderHitHierarchyMeta(hit);
+                            const pageTitleMeta = hasSectionHit && hit.title && hit.title !== rawTitle ? renderMetaPill(T.titleLabel, hit.title) : '';
+                            const sectionMeta = hasSectionHit ? [
+                                renderMetaPill(T.sectionTypeLabel, hit.sectionType),
+                                renderMetaPill(T.anchorLabel, hit.sectionAnchor),
+                                renderMetaPill(T.levelLabel, hit.sectionLevel),
+                            ].join('') : '';
                             const siteName = escapeDisplay(hit.siteName || hit.site || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
                             const matchedHeadings = hit.headings || [];
@@ -942,6 +958,8 @@
             <div class="sm-test-meta">
                 <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel('ID')}</span> #${objectIdDisplay}</span>
                 <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.typeLabel)}</span> ${type}</span>
+                ${pageTitleMeta}
+                ${sectionMeta}
                 ${contextMeta}
                 ${hierarchyMeta}
                 ${indexHandle ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.indexLabel)}</span> <code>${indexHandle}</code></span>` : ''}

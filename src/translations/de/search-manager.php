@@ -1760,6 +1760,8 @@ return [
     'Score:' => 'Score:',
     'Type:' => 'Typ:',
     'Section:' => 'Abschnitt:',
+    'Section Type:' => 'Abschnittstyp:',
+    'Anchor:' => 'Anker:',
     'Volume:' => 'Volume:',
     'Group:' => 'Gruppe:',
     'Index:' => 'Index:',

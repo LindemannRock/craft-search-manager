@@ -30,7 +30,8 @@ final class AuditItem252RegressionTest extends TestCase
         self::assertStringContainsString("if (raw.startsWith('//') || raw.includes('\\\\'))", $source);
         self::assertStringContainsString('return Craft.escapeHtml(raw);', $source);
 
-        self::assertStringContainsString('const url = safeUrlAttribute(hit.url);', $source);
+        self::assertStringContainsString('const rawUrl = hasSectionHit ? (hit.sectionUrl || hit.url) : hit.url;', $source);
+        self::assertStringContainsString('const url = safeUrlAttribute(rawUrl);', $source);
         self::assertStringContainsString('${url ? `<div class="sm-test-url"><a href="${url}" target="_blank">${urlText}</a></div>` : \'\'}', $source);
 
         self::assertStringNotContainsString('const url = hit.url || \'\';', $source);
@@ -52,7 +53,7 @@ final class AuditItem252RegressionTest extends TestCase
         self::assertStringContainsString("return Craft.escapeHtml(String(value === undefined || value === null ? '' : value));", $source);
 
         foreach ([
-            'const urlText = hit.url ? escapeDisplay(hit.url) : \'\';',
+            'const urlText = rawUrl ? escapeDisplay(rawUrl) : \'\';',
             'const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.map(escapeDisplay).join(\', \') : null;',
             'const indexHandle = hit.index || hit._index ? escapeDisplay(hit.index || hit._index) : null;',
             'const objectId = hit.objectID || hit.id;',
