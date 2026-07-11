@@ -475,9 +475,233 @@ final class SearchHitFieldsContractTest extends TestCase
                 'id' => 'deploy',
                 'level' => 3,
                 'url' => 'https://example.test/docs/quickstart#deploy',
+                'snippet' => 'Deploy the rebuilt index.',
+            ],
+        ], $results[0]['headings'] ?? null);
+    }
+
+    public function testHeadingTermContextSnippetStaysQueryCenteredAndFallbackUsesSectionOpening(): void
+    {
+        $hit = [
+            'title' => 'Release Notes',
+            'url' => 'https://example.test/docs/release-notes',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_bodyClean' => 'Install Read the setup checklist before running Composer install in production. Deploy Push the rebuilt index after deployment and confirm analytics are writing again.',
+            '_headings' => [
+                [
+                    'text' => 'Install',
+                    'id' => 'install',
+                    'level' => 2,
+                ],
+                [
+                    'text' => 'Deploy',
+                    'id' => 'deploy',
+                    'level' => 2,
+                ],
+            ],
+            'matchedTerms' => [
+                'title' => ['release'],
+                'content' => ['composer'],
+            ],
+        ];
+
+        $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
+            'snippetLength' => 70,
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertSame([
+            [
+                'title' => 'Install',
+                'id' => 'install',
+                'level' => 2,
+                'url' => 'https://example.test/docs/release-notes#install',
+                'snippet' => 'Read the setup checklist before running Composer install in production...',
+            ],
+            [
+                'title' => 'Deploy',
+                'id' => 'deploy',
+                'level' => 2,
+                'url' => 'https://example.test/docs/release-notes#deploy',
+                'snippet' => 'Push the rebuilt index after deployment and confirm analytics are...',
+            ],
+        ], $results[0]['headings'] ?? null);
+    }
+
+    public function testHeadingWithEmptySectionKeepsNullSnippet(): void
+    {
+        $hit = [
+            'title' => 'Release Notes',
+            'url' => 'https://example.test/docs/release-notes',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_bodyClean' => 'Overview Details The details section has body text.',
+            '_headings' => [
+                [
+                    'text' => 'Overview',
+                    'id' => 'overview',
+                    'level' => 2,
+                ],
+                [
+                    'text' => 'Details',
+                    'id' => 'details',
+                    'level' => 3,
+                ],
+            ],
+            'matchedTerms' => [
+                'title' => ['release'],
+                'content' => [],
+            ],
+        ];
+
+        $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertSame([
+            [
+                'title' => 'Overview',
+                'id' => 'overview',
+                'level' => 2,
+                'url' => 'https://example.test/docs/release-notes#overview',
+                'snippet' => null,
+            ],
+            [
+                'title' => 'Details',
+                'id' => 'details',
+                'level' => 3,
+                'url' => 'https://example.test/docs/release-notes#details',
+                'snippet' => 'The details section has body text.',
+            ],
+        ], $results[0]['headings'] ?? null);
+    }
+
+    public function testHeadingMatchFilteredListUsesFallbackSectionOpening(): void
+    {
+        $hit = [
+            'title' => 'Operations Guide',
+            'url' => 'https://example.test/docs/operations',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_bodyClean' => 'Publish Push the rebuilt index after deployment and confirm analytics are writing again. Monitor Check the queue and logs after launch.',
+            '_headings' => [
+                [
+                    'text' => 'Publish',
+                    'id' => 'publish',
+                    'level' => 2,
+                ],
+                [
+                    'text' => 'Monitor',
+                    'id' => 'monitor',
+                    'level' => 2,
+                ],
+            ],
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['publish'],
+            ],
+        ];
+
+        $results = CanonicalHitPipeline::presentHits([$hit], 'publish', ['docs'], [
+            'snippetLength' => 70,
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertSame([
+            [
+                'title' => 'Publish',
+                'id' => 'publish',
+                'level' => 2,
+                'url' => 'https://example.test/docs/operations#publish',
+                'snippet' => 'Push the rebuilt index after deployment and confirm analytics are...',
+            ],
+        ], $results[0]['headings'] ?? null);
+    }
+
+    public function testHeadingSnippetsStayNullWithoutIndexedBodyText(): void
+    {
+        $hit = [
+            'title' => 'Release Notes',
+            'url' => 'https://example.test/docs/release-notes',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_headings' => [
+                [
+                    'text' => 'Install',
+                    'id' => 'install',
+                    'level' => 2,
+                    'description' => 'Legacy metadata description must not be used.',
+                ],
+            ],
+            'matchedTerms' => [
+                'title' => ['release'],
+                'content' => [],
+            ],
+        ];
+
+        $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertSame([
+            [
+                'title' => 'Install',
+                'id' => 'install',
+                'level' => 2,
+                'url' => 'https://example.test/docs/release-notes#install',
                 'snippet' => null,
             ],
         ], $results[0]['headings'] ?? null);
+    }
+
+    public function testRestAndGraphQlReturnSameFallbackHeadingPreview(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        [$index, $entry] = $pair;
+        $hit = [
+            'objectID' => $entry->id,
+            'elementId' => $entry->id,
+            'siteId' => $entry->siteId,
+            'title' => 'Release Notes',
+            'url' => 'https://example.test/docs/release-notes',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_bodyClean' => 'Deploy Push the rebuilt index after deployment and confirm analytics are writing again.',
+            '_headings' => [
+                [
+                    'text' => 'Deploy',
+                    'id' => 'deploy',
+                    'level' => 2,
+                ],
+            ],
+            'matchedTerms' => [
+                'title' => ['release'],
+                'content' => [],
+            ],
+        ];
+        $stub = $this->installStubBackend();
+
+        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
+        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 0, 'release', [
+            'snippetLength' => 70,
+        ])->data['hits'][0] ?? [];
+
+        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
+        $graphql = SearchResolver::resolveSearch(null, [
+            'query' => 'release',
+            'indices' => [$index->handle],
+            'siteId' => $entry->siteId,
+            'snippetLength' => 70,
+        ], null, $this->createMock(ResolveInfo::class));
+        $graphqlHit = $graphql['hits'][0] ?? [];
+
+        self::assertSame($restHit, $graphqlHit);
+        self::assertSame('Push the rebuilt index after deployment and confirm analytics are...', $restHit['headings'][0]['snippet'] ?? null);
     }
 
     public function testIndexedHeadingSnippetsUseSnippetSettingsLikeMainSnippet(): void
@@ -548,6 +772,84 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertStringNotContainsString('**needle**', $longHeading);
         self::assertStringContainsString('**needle**', $unparsedMain);
         self::assertStringContainsString('**needle**', $unparsedHeading);
+    }
+
+    public function testMainSnippetComesFromIndexedFieldWhenBodyDoesNotMatch(): void
+    {
+        $hit = [
+            '_fields' => [
+                'description' => 'The fieldneedle phrase lives only inside this indexed custom field.',
+            ],
+            '_bodyClean' => 'The body has unrelated prose without the searched phrase.',
+            'matchedTerms' => [
+                'content' => ['fieldneedle'],
+            ],
+        ];
+        $debugMeta = [];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets(
+            $hit,
+            'fieldneedle',
+            '',
+            [],
+            $debugMeta,
+        );
+
+        self::assertSame('The fieldneedle phrase lives only inside this indexed custom field.', $result['snippet'] ?? null);
+        self::assertSame('fields', $debugMeta['snippetSource'] ?? null);
+        self::assertSame('description', $debugMeta['snippetFrom'] ?? null);
+    }
+
+    public function testMainSnippetComesFromBodyWhenFieldDoesNotMatch(): void
+    {
+        $hit = [
+            '_fields' => [
+                'description' => 'This indexed field has searchable prose but not the requested term.',
+            ],
+            '_bodyClean' => 'The bodyneedle phrase lives only inside the indexed body text.',
+            'matchedTerms' => [
+                'content' => ['bodyneedle'],
+            ],
+        ];
+        $debugMeta = [];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets(
+            $hit,
+            'bodyneedle',
+            '',
+            [],
+            $debugMeta,
+        );
+
+        self::assertSame('The bodyneedle phrase lives only inside the indexed body text.', $result['snippet'] ?? null);
+        self::assertSame('body', $debugMeta['snippetSource'] ?? null);
+        self::assertSame('body', $debugMeta['snippetFrom'] ?? null);
+    }
+
+    public function testMainSnippetCompetitionKeepsCurrentTieWinner(): void
+    {
+        $hit = [
+            '_fields' => [
+                'description' => 'sharedneedle appears first in the preferred indexed field.',
+            ],
+            '_bodyClean' => 'sharedneedle appears first in the indexed body.',
+            'matchedTerms' => [
+                'content' => ['sharedneedle'],
+            ],
+        ];
+        $debugMeta = [];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets(
+            $hit,
+            'sharedneedle',
+            '',
+            [],
+            $debugMeta,
+        );
+
+        self::assertSame('sharedneedle appears first in the preferred indexed field.', $result['snippet'] ?? null);
+        self::assertSame('fields', $debugMeta['snippetSource'] ?? null);
+        self::assertSame('description', $debugMeta['snippetFrom'] ?? null);
     }
 
     public function testReservedHandleCollisionStaysOnlyUnderFields(): void

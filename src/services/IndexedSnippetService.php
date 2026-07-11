@@ -463,6 +463,10 @@ class IndexedSnippetService extends Component
                 ? $this->findSnippet($headingText, $matchedTerms, $snippetLength, $snippetMode)
                 : null;
 
+            if ($snippet === null && $headingText !== '') {
+                $snippet = $this->leadingSnippet($headingText, $snippetLength);
+            }
+
             if ($snippet !== null) {
                 $prepared['snippet'] = $snippet;
             } else {
@@ -675,6 +679,32 @@ class IndexedSnippetService extends Component
         $suffix = $end < $textLength ? '...' : '';
 
         return $prefix . trim($snippet) . $suffix;
+    }
+
+    private function leadingSnippet(string $text, int $maxLength): ?string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return null;
+        }
+
+        $textLength = mb_strlen($text);
+        if ($textLength <= $maxLength) {
+            return $text;
+        }
+
+        $snippet = mb_substr($text, 0, $maxLength);
+        $lastSpace = mb_strrpos($snippet, ' ');
+        if ($lastSpace !== false) {
+            $snippet = mb_substr($snippet, 0, (int) $lastSpace);
+        }
+
+        $snippet = trim($snippet);
+        if ($snippet === '') {
+            $snippet = trim(mb_substr($text, 0, $maxLength));
+        }
+
+        return $snippet . '...';
     }
 
     /**
