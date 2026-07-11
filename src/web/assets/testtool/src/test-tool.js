@@ -893,7 +893,6 @@
                             const hierarchyMeta = renderHitHierarchyMeta(hit);
                             const siteName = escapeDisplay(hit.siteName || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
-                            const thumbnail = safeUrlAttribute(hit.thumbnail);
                             const matchedHeadings = hit.headings || [];
                             const matchedTerms = hit.matchedTerms || [];
                             const matchedPhrases = hit.matchedPhrases || [];
@@ -903,7 +902,6 @@
                             html += `
 <div class="sm-test-result-card${cardClass}">
     <div class="sm-test-result-layout">
-        ${thumbnail ? `<img src="${thumbnail}" class="sm-test-thumb" alt="">` : ''}
         <div class="sm-test-result-main">
             <div class="sm-test-result-header">
                 <div class="sm-test-result-title-wrap">

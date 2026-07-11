@@ -15,7 +15,7 @@ use GraphQL\Type\Definition\Type;
 use lindemannrock\base\helpers\GqlHelper;
 
 /**
- * GraphQL type for enriched search result headings.
+ * GraphQL type for indexed search result headings.
  *
  * @since 5.53.0
  */
@@ -31,7 +31,7 @@ class SearchHeadingType extends ObjectType
         return GqlEntityRegistry::createEntity($typeName, new self([
             'name' => $typeName,
             'fields' => self::class . '::getFieldDefinitions',
-            'description' => 'An enriched heading within a Search Manager hit.',
+            'description' => 'An indexed heading within a Search Manager hit.',
         ]));
     }
 

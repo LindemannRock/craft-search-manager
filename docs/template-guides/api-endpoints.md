@@ -123,7 +123,7 @@ Searchable custom field values are returned under each hit's `fields` object. Th
 
 Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `section`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
 
-Structure Entries, Categories, and public Assets can also return breadcrumb metadata at the top level. `ancestors` is ordered from root to parent; Entries and Categories can include `level`; public Assets can include `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, and private-volume Assets omit these keys. Existing indexed documents need a full reindex before the hierarchy keys appear.
+Structure Entries, Categories, and public Assets can also return breadcrumb metadata at the top level. `ancestors` is ordered from root to parent; Entries and Categories can include `level`; public Assets can include `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, and private-volume Assets omit these keys.
 
 ### Search Response
 
@@ -188,9 +188,9 @@ Search returns one canonical hit shape:
 |-------|------|-------------|
 | `id` | `int` | Craft element ID |
 | `elementId` | `int` | Craft element ID. Use this for Craft element queries. |
-| `siteId` | `int` | Craft site ID when indexed or resolved. |
-| `site` | `string` | Craft site handle when it can be resolved from `siteId`. |
-| `language` | `string` | Craft site language when it can be resolved from `siteId`. |
+| `siteId` | `int` | Indexed Craft site ID. |
+| `site` | `string` | Indexed Craft site handle. |
+| `language` | `string` | Indexed Craft site language. |
 | `index` | `string` | Source search index handle when the backend reports it. |
 | `backendId` | `string` | Search Manager backend document ID, usually `{elementId}_{siteId}`. |
 | `objectID` | `int\|string` | Raw backend compatibility field. Prefer `elementId` and `backendId` in new code. |

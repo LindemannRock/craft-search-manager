@@ -8,6 +8,7 @@
 
 namespace lindemannrock\searchmanager\helpers;
 
+use Craft;
 use craft\base\ElementInterface;
 use craft\elements\Asset;
 use craft\elements\Category;
@@ -28,6 +29,7 @@ class SearchDocumentDataHelper
     {
         $backendId = SearchHitIdentityHelper::backendId($element->id, $element->siteId);
         $documentType = self::documentType($element);
+        $site = Craft::$app->getSites()->getSiteById((int)$element->siteId);
 
         return [
             'objectID' => $element->id,
@@ -40,6 +42,8 @@ class SearchDocumentDataHelper
             'slug' => self::stringValue($element, 'slug'),
             'url' => $element->url ?? '',
             'siteId' => $element->siteId,
+            'site' => $site?->handle,
+            'language' => $site?->language,
             'dateCreated' => $element->dateCreated?->getTimestamp(),
             'dateUpdated' => $element->dateUpdated?->getTimestamp(),
         ];

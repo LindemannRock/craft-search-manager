@@ -19,7 +19,7 @@ $plugin->widgetStyles;     // WidgetStyleService - widget style preset CRUD
 $plugin->promotions;       // PromotionService - search promotions
 $plugin->queryRules;       // QueryRuleService - query rules management
 $plugin->deviceDetection;  // DeviceDetectionService - user-agent parsing
-$plugin->enrichment;       // EnrichmentService - result enrichment (snippets, headings, thumbnails)
+$plugin->indexedSnippets;  // IndexedSnippetService - snippets and headings from indexed hit data
 $plugin->transformers;     // TransformerService - index transformers
 ```
 
@@ -273,37 +273,13 @@ $counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
 // ['brand-dark' => 3, 'minimal' => 1]
 ```
 
-## EnrichmentService @since(5.39.0)
+## IndexedSnippetService @since(5.54.0)
 
-Transforms raw search hits into enriched results with live element metadata, heading expansion, thumbnails, and metadata for internal callers that need live element augmentation.
-
-### `enrichResults(rawHits, query, indexHandles, options)`
-
-Enrich raw search hits with contextual snippets, heading children, and element metadata.
-
-```php
-$rawResults = SearchManager::$plugin->backend->search('entries-en', 'craft cms');
-
-$enriched = SearchManager::$plugin->enrichment->enrichResults(
-    $rawResults['hits'],
-    'craft cms',
-    ['entries-en'],
-    [
-        'snippetMode' => 'balanced',     // 'early', 'balanced', or 'deep'
-        'snippetLength' => 150,          // 50–1000
-        'showCodeSnippets' => false,
-        'parseMarkdownSnippets' => false,
-        'hideResultsWithoutUrl' => false,
-        'includeDebugMeta' => false,
-    ],
-);
-
-// $enriched = [['id' => 123, 'title' => '...', 'url' => '...', 'snippet' => '...', 'headings' => [...]], ...]
-```
+Builds plain-text snippets and heading matches from saved indexed hit data. The REST API and GraphQL search use this path for their public response shape.
 
 ### `prepareHitSnippets(hit, query, indexHandle, options)`
 
-Build plain-text snippets from saved indexed hit data. The REST API uses this for its canonical response so `snippet` and heading snippets are generated consistently for every search hit.
+Generate `snippet` and `headings` from an indexed backend hit without loading a Craft element.
 
 ## PromotionService @since(5.10.0)
 

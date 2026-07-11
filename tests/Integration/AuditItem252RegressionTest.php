@@ -19,7 +19,7 @@ use lindemannrock\searchmanager\tests\TestCase;
  */
 final class AuditItem252RegressionTest extends TestCase
 {
-    public function testSearchResultUrlsAndThumbnailsUseSchemeGuardedAttributeHelper(): void
+    public function testSearchResultUrlsUseSchemeGuardedAttributeHelperAndThumbnailRenderingIsAbsent(): void
     {
         $source = $this->testToolJs();
 
@@ -31,11 +31,11 @@ final class AuditItem252RegressionTest extends TestCase
         self::assertStringContainsString('return Craft.escapeHtml(raw);', $source);
 
         self::assertStringContainsString('const url = safeUrlAttribute(hit.url);', $source);
-        self::assertStringContainsString('const thumbnail = safeUrlAttribute(hit.thumbnail);', $source);
-        self::assertStringContainsString('${thumbnail ? `<img src="${thumbnail}" class="sm-test-thumb" alt="">` : \'\'}', $source);
         self::assertStringContainsString('${url ? `<div class="sm-test-url"><a href="${url}" target="_blank">${urlText}</a></div>` : \'\'}', $source);
 
         self::assertStringNotContainsString('const url = hit.url || \'\';', $source);
+        self::assertStringNotContainsString('hit.thumbnail', $source);
+        self::assertStringNotContainsString('sm-test-thumb', $source);
         self::assertStringNotContainsString('const thumbnail = hit.thumbnail || null;', $source);
         self::assertStringNotContainsString('<img src="${hit.thumbnail}', $source);
         self::assertStringNotContainsString('<a href="${hit.url}', $source);

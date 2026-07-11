@@ -485,24 +485,21 @@ final class EnrichmentBatchLoadTest extends TestCase
         string $query,
         ?ElementInterface $element = null,
     ): array {
-        $service = SearchManager::$plugin->enrichment;
-        $reflection = new \ReflectionMethod($service, 'buildFieldSnippet');
-        $reflection->setAccessible(true);
-        $matchedTerms = is_array($hit['matchedTerms'] ?? null) ? $hit['matchedTerms'] : null;
         $debug = [];
-        $args = [
+        unset($element);
+
+        return SearchManager::$plugin->indexedSnippets->prepareHitSnippets(
             $hit,
             $query,
-            $matchedTerms,
             'products-en',
-            'balanced',
-            150,
-            false,
-            false,
-            &$debug,
-        ];
-
-        return $reflection->invokeArgs($service, $args);
+            [
+                'snippetMode' => 'balanced',
+                'snippetLength' => 150,
+                'showCodeSnippets' => false,
+                'parseMarkdownSnippets' => false,
+            ],
+            $debug,
+        );
     }
 
     public function testUnresolvedIndexFallsBackToGetElementById(): void

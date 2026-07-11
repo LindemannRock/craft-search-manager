@@ -81,7 +81,7 @@ final class AuditBatch6PerformanceTest extends TestCase
 
     public function testTokenizeQueryTermsCachesSearchIndexLookupByHandle(): void
     {
-        $source = $this->readPluginSource('src/services/EnrichmentService.php');
+        $source = $this->readPluginSource('src/services/IndexedSnippetService.php');
         $body = $this->methodBody($source, 'tokenizeQueryTerms');
 
         self::assertStringContainsString('private array $tokenizeIndexLookupCache = []', $source);

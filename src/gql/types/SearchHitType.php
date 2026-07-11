@@ -56,6 +56,7 @@ class SearchHitType extends ObjectType
             'elementType' => ['name' => 'elementType', 'type' => Type::string(), 'description' => 'The stable lowercase document kind.'],
             'siteId' => ['name' => 'siteId', 'type' => Type::int(), 'description' => 'The site ID.'],
             'site' => ['name' => 'site', 'type' => Type::string(), 'description' => 'The site handle.'],
+            'language' => ['name' => 'language', 'type' => Type::string(), 'description' => 'The indexed site language.'],
             'index' => ['name' => 'index', 'type' => Type::string(), 'description' => 'The source index handle.'],
             'title' => ['name' => 'title', 'type' => Type::string(), 'description' => 'The result title.'],
             'slug' => ['name' => 'slug', 'type' => Type::string(), 'description' => 'The result slug.'],
@@ -92,11 +93,10 @@ class SearchHitType extends ObjectType
             'position' => ['name' => 'position', 'type' => Type::int(), 'description' => 'The promoted position.'],
             'dateCreated' => ['name' => 'dateCreated', 'type' => Type::int(), 'description' => 'The indexed creation timestamp.'],
             'dateUpdated' => ['name' => 'dateUpdated', 'type' => Type::int(), 'description' => 'The indexed update timestamp.'],
-            'thumbnail' => ['name' => 'thumbnail', 'type' => Type::string(), 'description' => 'The thumbnail URL, when enriched.'],
             'headings' => [
                 'name' => 'headings',
                 'type' => Type::listOf(SearchHeadingType::getType()),
-                'description' => 'Enriched heading matches.',
+                'description' => 'Indexed heading matches.',
             ],
         ];
     }
@@ -124,10 +124,6 @@ class SearchHitType extends ObjectType
 
             if ($fieldName === 'slug') {
                 return GqlHelper::nullIfEmptyString($source['slug'] ?? null);
-            }
-
-            if ($fieldName === 'site') {
-                return GqlHelper::siteHandle(isset($source['siteId']) ? (int)$source['siteId'] : null);
             }
 
             if ($fieldName === 'elementId') {

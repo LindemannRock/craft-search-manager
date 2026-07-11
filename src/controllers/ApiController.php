@@ -11,7 +11,6 @@ namespace lindemannrock\searchmanager\controllers;
 use Craft;
 use craft\web\Controller;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
-use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
@@ -556,8 +555,7 @@ class ApiController extends Controller
                 continue;
             }
 
-            $hit = $this->withCanonicalFallbacks($hit);
-            $snippetData = SearchManager::$plugin->enrichment->prepareHitSnippets(
+            $snippetData = SearchManager::$plugin->indexedSnippets->prepareHitSnippets(
                 $hit,
                 $query,
                 is_string($hit['_index'] ?? null) ? $hit['_index'] : ($indexHandles[0] ?? ''),
@@ -585,70 +583,6 @@ class ApiController extends Controller
         }
 
         return $prepared;
-    }
-
-    /**
-     * @param array<string, mixed> $hit
-     * @return array<string, mixed>
-     */
-    private function withCanonicalFallbacks(array $hit): array
-    {
-        $hit = $this->withLiveTitleUrlFallback($hit);
-
-        $siteId = isset($hit['siteId']) && is_numeric($hit['siteId']) ? (int)$hit['siteId'] : null;
-        if ($siteId === null) {
-            return $hit;
-        }
-
-        $site = Craft::$app->getSites()->getSiteById($siteId);
-        if ($site === null) {
-            return $hit;
-        }
-
-        if (!isset($hit['site']) || $hit['site'] === '') {
-            $hit['site'] = $site->handle;
-        }
-
-        if (!isset($hit['language']) || $hit['language'] === '') {
-            $hit['language'] = $site->language;
-        }
-
-        return $hit;
-    }
-
-    /**
-     * @param array<string, mixed> $hit
-     * @return array<string, mixed>
-     */
-    private function withLiveTitleUrlFallback(array $hit): array
-    {
-        $needsTitle = !isset($hit['title']) || $hit['title'] === '';
-        $needsUrl = !isset($hit['url']) || $hit['url'] === '';
-        if (!$needsTitle && !$needsUrl) {
-            return $hit;
-        }
-
-        $elementId = SearchHitIdentityHelper::elementId($hit);
-        if ($elementId === null) {
-            return $hit;
-        }
-
-        $siteId = isset($hit['siteId']) && is_numeric($hit['siteId']) ? (int)$hit['siteId'] : null;
-        $element = Craft::$app->getElements()->getElementById($elementId, null, $siteId);
-        if ($element === null) {
-            return $hit;
-        }
-
-        if ($needsTitle) {
-            $hit['title'] = (string)$element->title;
-        }
-
-        $url = $element->getUrl();
-        if ($needsUrl && $url !== null) {
-            $hit['url'] = $url;
-        }
-
-        return $hit;
     }
 
     /**

@@ -366,13 +366,14 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'color: #94a3b8',
             'color: #64748b;',
             'style=',
+            'hit.thumbnail',
+            'sm-test-thumb',
             '<img src="${hit.thumbnail}',
             '<a href="${hit.url}',
         ] as $needle) {
             self::assertStringNotContainsString($needle, $source);
         }
 
-        self::assertStringContainsString('const thumbnail = safeUrlAttribute(hit.thumbnail);', $source);
         self::assertStringContainsString('function safeUrlAttribute(value)', $source);
     }
 

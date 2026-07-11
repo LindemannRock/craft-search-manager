@@ -35,6 +35,8 @@ query {
       score
       elementId
       siteId
+      site
+      language
       elementType
       section
       sectionHandle
@@ -83,13 +85,19 @@ Search arguments:
 | `platform` | `String` | Optional analytics platform label. |
 | `appVersion` | `String` | Optional analytics app version label. |
 | `skipAnalytics` | `Boolean` | Set to `true` to avoid recording a search analytics row. |
-| `enrich` | `Boolean` | Set to `true` for title, URL, snippets, headings, and other enriched result data. |
+| `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
+| `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
+| `showCodeSnippets` | `Boolean` | Include code block content in snippets. |
+| `parseMarkdownSnippets` | `Boolean` | Parse markdown before generating snippets. |
+| `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
+| `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
+| `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
 GraphQL exposes custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer includes Craft custom fields in this list only when the field's **Use this field's values as search keywords** setting is enabled.
 
-GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields until a full reindex writes source-backed values.
+GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields.
 
 Common hit fields:
 
@@ -98,7 +106,7 @@ Common hit fields:
 | `id` / `elementId` | Numeric Craft element ID. Use this for Craft element queries and URLs. |
 | `backendId` | Search Manager's backend document ID, usually `{elementId}_{siteId}` for multi-site-safe documents. |
 | `objectID` | Raw backend compatibility field. Algolia and Meilisearch use this as their primary key; Typesense keeps the primary key in its reserved `id` field. Prefer `elementId` and `backendId` in new code. |
-| `siteId` / `site` | Site ID and site handle. |
+| `siteId` / `site` / `language` | Site ID, site handle, and site language from the indexed document. |
 | `elementType` | Stable lowercase document kind. Matches `type`. |
 | `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, and `user`. |
 | `section` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
@@ -234,7 +242,6 @@ query {
     query: "test"
     indices: ["meilisearch"]
     hitsPerPage: 5
-    enrich: true
     skipAnalytics: true
   ) {
     total
@@ -327,9 +334,9 @@ query {
 }
 ```
 
-## Enriched Search
+## Indexed Snippets
 
-Set `enrich: true` when the frontend needs ready-to-render result data:
+GraphQL search returns the same index-backed hit shape as the REST API. Snippets, headings, and fields are derived from indexed document data; GraphQL does not hydrate Craft elements while shaping public results.
 
 ```graphql
 query {
@@ -337,7 +344,6 @@ query {
     query: "installation"
     indices: ["docs", "articles"]
     site: "en"
-    enrich: true
     snippetLength: 180
     hideResultsWithoutUrl: true
     skipAnalytics: true
@@ -362,7 +368,7 @@ query {
 }
 ```
 
-Enrichment arguments:
+Snippet arguments:
 
 | Argument | Type | Notes |
 |----------|------|-------|
@@ -370,9 +376,9 @@ Enrichment arguments:
 | `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
 | `showCodeSnippets` | `Boolean` | Include code block content in snippets. |
 | `parseMarkdownSnippets` | `Boolean` | Parse markdown before generating snippets. |
-| `highlightTag` | `String` | Reserved for client renderers. Enriched snippets are returned as plain text. |
-| `highlightClass` | `String` | Reserved for client renderers. Enriched snippets are returned as plain text. |
-| `hideResultsWithoutUrl` | `Boolean` | Exclude enriched results that do not have a URL. |
+| `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
+| `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
+| `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
 
 `snippet` and `headings.snippet` are plain text. Apply highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values, then from the indexed clean body.
 

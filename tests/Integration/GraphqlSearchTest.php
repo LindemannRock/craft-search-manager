@@ -16,7 +16,6 @@ use craft\models\GqlSchema;
 use craft\services\Gql;
 use lindemannrock\searchmanager\gql\queries\SearchQuery;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
-use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\base\Application as YiiApplication;
@@ -146,16 +145,15 @@ final class GraphqlSearchTest extends TestCase
         $this->assertSame('graphql', $calls[0]['items'][0]['options']['source']);
     }
 
-    public function testGraphqlDebugMetaUsesSharedAccessHelper(): void
+    public function testGraphqlSearchSchemaDoesNotExposeEnrichArgument(): void
     {
+        $queries = SearchQuery::getQueries(false);
+        $args = $queries['searchManagerSearch']['args'] ?? [];
         $source = $this->readPluginFile('src/gql/resolvers/SearchResolver.php');
 
-        $this->assertStringContainsString("'includeDebugMeta' => SearchDebugAccessHelper::canExposeDebugMeta(),", $source);
-        $this->assertStringNotContainsString('Craft::$app->getConfig()->getGeneral()->devMode || Craft::$app->getUser()->checkPermission(\'searchManager:viewDebug\')', $source);
-        $this->assertSame(
-            Craft::$app->getConfig()->getGeneral()->devMode || Craft::$app->getUser()->checkPermission('searchManager:viewDebug'),
-            SearchDebugAccessHelper::canExposeDebugMeta(),
-        );
+        $this->assertArrayNotHasKey('enrich', $args);
+        $this->assertStringNotContainsString('enrichResults(', $source);
+        $this->assertStringNotContainsString('SearchManager::$plugin->enrichment', $source);
     }
 
     public function testSearchAllowsExplicitSiteInsideActiveGraphqlSchema(): void

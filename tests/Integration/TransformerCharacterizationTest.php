@@ -53,6 +53,7 @@ class SourceDoc extends \craft\base\Element
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
 use craft\base\Element;
 use craft\base\ElementInterface;
 use craft\base\Field;
@@ -551,11 +552,40 @@ final class TransformerCharacterizationTest extends TestCase
      */
     private function assertDocumentSame(array $expected, ?array $actual): void
     {
+        $expected = $this->withCommonSiteData($expected);
+
         self::assertSame($expected, $actual);
         self::assertSame(
             json_encode($expected, JSON_UNESCAPED_UNICODE),
             json_encode($actual, JSON_UNESCAPED_UNICODE),
         );
+    }
+
+    /**
+     * @param array<string, mixed> $expected
+     * @return array<string, mixed>
+     */
+    private function withCommonSiteData(array $expected): array
+    {
+        if (!isset($expected['siteId']) || array_key_exists('site', $expected) || array_key_exists('language', $expected)) {
+            return $expected;
+        }
+
+        $site = Craft::$app->getSites()->getSiteById((int)$expected['siteId']);
+        if ($site === null) {
+            return $expected;
+        }
+
+        $document = [];
+        foreach ($expected as $key => $value) {
+            $document[$key] = $value;
+            if ($key === 'siteId') {
+                $document['site'] = $site->handle;
+                $document['language'] = $site->language;
+            }
+        }
+
+        return $document;
     }
 
     private function entryAncestor(int $id, string $title): Entry

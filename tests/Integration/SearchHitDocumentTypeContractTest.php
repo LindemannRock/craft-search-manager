@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
 use craft\base\ElementInterface;
 use craft\elements\Asset;
 use craft\elements\Category;
@@ -38,7 +39,8 @@ final class SearchHitDocumentTypeContractTest extends TestCase
     {
         $entry = new Entry();
         $entry->id = 123;
-        $entry->siteId = 1;
+        $site = Craft::$app->getSites()->getPrimarySite();
+        $entry->siteId = $site->id;
         $entry->title = 'Base Entry';
 
         $data = (new DocumentTypeContractBaseTransformer())->transform($entry);
@@ -46,6 +48,8 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame(123, $data['elementId'] ?? null);
         self::assertSame('entry', $data['type'] ?? null);
         self::assertSame('entry', $data['elementType'] ?? null);
+        self::assertSame($site->handle, $data['site'] ?? null);
+        self::assertSame($site->language, $data['language'] ?? null);
     }
 
     public function testBaseTransformerResolvesCoreElementDocumentKinds(): void
@@ -156,6 +160,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame('The stable lowercase document kind.', $fields['elementType']['description'] ?? null);
         self::assertArrayHasKey('snippet', $fields);
         self::assertArrayNotHasKey('description', $fields);
+        self::assertArrayNotHasKey('thumbnail', $fields);
         self::assertArrayHasKey('sectionHandle', $fields);
         self::assertArrayHasKey('sectionType', $fields);
         self::assertArrayHasKey('volume', $fields);

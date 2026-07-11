@@ -12,10 +12,7 @@ use Craft;
 use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
-use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
-use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
-use lindemannrock\searchmanager\helpers\SearchHeadingValueHelper;
-use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -141,12 +138,16 @@ class SearchResolver extends Resolver
         }
 
         $results = self::runSearch($indexHandles, $query, $options, $siteIds);
+        unset($results['meta']);
 
-        if ((bool)($arguments['enrich'] ?? false)) {
-            $results = self::enrichResults($results, $query, $indexHandles, $siteId, $arguments, $limit);
-        } else {
-            unset($results['meta']);
-            self::stripRawHitFields($results);
+        if (!empty($results['hits']) && is_array($results['hits'])) {
+            $results['hits'] = self::canonicalHits($results['hits'], $query, $indexHandles, [
+                'snippetMode' => self::trimmedString($arguments['snippetMode'] ?? null) ?? 'balanced',
+                'snippetLength' => self::clampInt($arguments['snippetLength'] ?? null, 150, 50, 1000),
+                'showCodeSnippets' => (bool)($arguments['showCodeSnippets'] ?? false),
+                'parseMarkdownSnippets' => (bool)($arguments['parseMarkdownSnippets'] ?? false),
+                'hideResultsWithoutUrl' => (bool)($arguments['hideResultsWithoutUrl'] ?? false),
+            ]);
         }
 
         $total = (int)($results['total'] ?? 0);
@@ -444,178 +445,56 @@ class SearchResolver extends Resolver
     }
 
     /**
-     * @param array<string, mixed> $results
-     */
-    private static function stripRawHitFields(array &$results): void
-    {
-        if (empty($results['hits']) || !is_array($results['hits'])) {
-            return;
-        }
-
-        foreach ($results['hits'] as &$hit) {
-            if (is_array($hit)) {
-                $hit = SearchFieldValueHelper::exposeFields($hit);
-                $hit = SearchHeadingValueHelper::exposeHeadings($hit);
-                unset(
-                    $hit['content'],
-                    $hit['body'],
-                    $hit['excerpt'],
-                    $hit['_bodyClean'],
-                    $hit['_contentClean'],
-                    $hit['_elementType'],
-                );
-            }
-        }
-        unset($hit);
-    }
-
-    /**
-     * @param array<string, mixed> $results
+     * @param array<int, mixed> $hits
      * @param array<int, string> $indexHandles
-     * @param array<string, mixed> $arguments
-     * @return array<string, mixed>
+     * @param array{snippetMode: string, snippetLength: int, showCodeSnippets: bool, parseMarkdownSnippets: bool, hideResultsWithoutUrl: bool} $options
+     * @return array<int, array<string, mixed>>
      */
-    private static function enrichResults(array $results, string $query, array $indexHandles, ?int $siteId, array $arguments, int $limit): array
+    private static function canonicalHits(array $hits, string $query, array $indexHandles, array $options): array
     {
-        $rawHitsByElement = self::indexRawHitsByElement($results['hits'] ?? []);
-        $enrichOptions = [
-            'snippetMode' => self::trimmedString($arguments['snippetMode'] ?? null) ?? 'balanced',
-            'snippetLength' => self::clampInt($arguments['snippetLength'] ?? null, 150, 50, 1000),
-            'showCodeSnippets' => (bool)($arguments['showCodeSnippets'] ?? false),
-            'parseMarkdownSnippets' => (bool)($arguments['parseMarkdownSnippets'] ?? false),
-            'hideResultsWithoutUrl' => (bool)($arguments['hideResultsWithoutUrl'] ?? false),
-            'includeDebugMeta' => SearchDebugAccessHelper::canExposeDebugMeta(),
-        ];
+        $prepared = [];
 
-        if ($siteId !== null) {
-            $enrichOptions['siteId'] = $siteId;
-        }
-
-        try {
-            $results['hits'] = SearchManager::$plugin->enrichment->enrichResults(
-                $results['hits'] ?? [],
-                $query,
-                $indexHandles,
-                $enrichOptions,
-            );
-        } catch (\Throwable $e) {
-            Craft::error('GraphQL search enrichment failed: ' . $e->getMessage(), 'search-manager');
-
-            return [
-                'hits' => [],
-                'total' => 0,
-                'query' => $query,
-                'hitsPerPage' => $limit,
-                'totalPages' => 0,
-                'error' => Craft::$app->getConfig()->getGeneral()->devMode ? $e->getMessage() : 'Search enrichment failed',
-            ];
-        }
-
-        self::mergeStableRawHitFields($results['hits'], $rawHitsByElement);
-
-        if (!$enrichOptions['includeDebugMeta']) {
-            unset($results['meta']);
-        }
-
-        return $results;
-    }
-
-    /**
-     * @param mixed $hits
-     * @return array<string, array<string, mixed>>
-     */
-    private static function indexRawHitsByElement(mixed $hits): array
-    {
-        if (!is_array($hits)) {
-            return [];
-        }
-
-        $indexed = [];
         foreach ($hits as $hit) {
             if (!is_array($hit)) {
                 continue;
             }
 
-            $key = self::hitElementKey($hit);
-            if ($key !== null) {
-                $indexed[$key] = $hit;
-            }
-        }
+            $snippetData = SearchManager::$plugin->indexedSnippets->prepareHitSnippets(
+                $hit,
+                $query,
+                is_string($hit['_index'] ?? null) ? $hit['_index'] : ($indexHandles[0] ?? ''),
+                [
+                    'snippetMode' => $options['snippetMode'],
+                    'snippetLength' => $options['snippetLength'],
+                    'showCodeSnippets' => $options['showCodeSnippets'],
+                    'parseMarkdownSnippets' => $options['parseMarkdownSnippets'],
+                    'title' => is_string($hit['title'] ?? null) ? $hit['title'] : '',
+                    'url' => is_string($hit['url'] ?? null) ? $hit['url'] : '',
+                    'documentType' => is_string($hit['type'] ?? null)
+                        ? $hit['type']
+                        : (is_string($hit['elementType'] ?? null) ? $hit['elementType'] : ''),
+                ],
+            );
 
-        return $indexed;
-    }
+            $hit['snippet'] = $snippetData['snippet'];
+            $hit['headings'] = $snippetData['headings'];
 
-    /**
-     * @param mixed $hits
-     * @param array<string, array<string, mixed>> $rawHitsByElement
-     */
-    private static function mergeStableRawHitFields(mixed &$hits, array $rawHitsByElement): void
-    {
-        if (!is_array($hits) || empty($rawHitsByElement)) {
-            return;
-        }
-
-        $stableKeys = [
-            'objectID',
-            'elementId',
-            'elementType',
-            'slug',
-            'title',
-            '_index',
-            'siteId',
-            'dateCreated',
-            'dateUpdated',
-            'matchedIn',
-            'matchedTerms',
-            'boosted',
-            'promoted',
-        ];
-
-        foreach ($hits as &$hit) {
-            if (!is_array($hit)) {
+            if ($options['hideResultsWithoutUrl'] && !self::hasPublicUrl($hit)) {
                 continue;
             }
 
-            $key = self::hitElementKey($hit);
-            if ($key === null) {
-                continue;
-            }
-
-            $rawHit = $rawHitsByElement[$key] ?? null;
-            if ($rawHit === null) {
-                $elementId = SearchHitIdentityHelper::elementId($hit);
-                $rawHit = $elementId !== null ? ($rawHitsByElement['0:' . $elementId] ?? null) : null;
-            }
-            if ($rawHit === null) {
-                continue;
-            }
-
-            $backendId = SearchHitIdentityHelper::rawBackendId($rawHit);
-            if ($backendId !== null) {
-                $hit['_backendId'] = $backendId;
-            }
-
-            foreach ($stableKeys as $stableKey) {
-                if (array_key_exists($stableKey, $rawHit) && !array_key_exists($stableKey, $hit)) {
-                    $hit[$stableKey] = $rawHit[$stableKey];
-                }
-            }
+            $prepared[] = SearchHitPresenter::present($hit);
         }
-        unset($hit);
+
+        return $prepared;
     }
 
     /**
      * @param array<string, mixed> $hit
      */
-    private static function hitElementKey(array $hit): ?string
+    private static function hasPublicUrl(array $hit): bool
     {
-        $elementId = SearchHitIdentityHelper::elementId($hit);
-        if ($elementId === null) {
-            return null;
-        }
-        $siteId = isset($hit['siteId']) && is_numeric($hit['siteId']) ? (int)$hit['siteId'] : 0;
-
-        return $siteId . ':' . $elementId;
+        return isset($hit['url']) && is_string($hit['url']) && trim($hit['url']) !== '';
     }
 
     /**

@@ -34,6 +34,7 @@ class SearchHitPresenter
             $hit['description'],
             $hit['excerpt'],
             $hit['highlights'],
+            $hit['thumbnail'],
             $hit['_index'],
             $hit['_elementType'],
             $hit['_bodyClean'],

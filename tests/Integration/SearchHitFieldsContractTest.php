@@ -20,6 +20,7 @@ use lindemannrock\searchmanager\gql\types\SearchHitType;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\IndexedSnippetService;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -31,6 +32,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(ApiController::class)]
 #[CoversClass(SearchFieldValueHelper::class)]
 #[CoversClass(SearchDebugAccessHelper::class)]
+#[CoversClass(IndexedSnippetService::class)]
 #[CoversClass(SearchHitType::class)]
 final class SearchHitFieldsContractTest extends TestCase
 {
@@ -215,6 +217,8 @@ final class SearchHitFieldsContractTest extends TestCase
             'title' => 'Metadata title',
             'slug' => 'metadata-slug',
             'url' => 'https://example.test/metadata-url',
+            'site' => 'indexed-site',
+            'language' => 'de-CH',
             'dateCreated' => 1771542126,
             'dateUpdated' => 1783631400,
             'section' => 'Metadata Section',
@@ -251,8 +255,6 @@ final class SearchHitFieldsContractTest extends TestCase
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $enriched = $this->runApiSearch($index->handle, $entry->siteId, 1, 'metadata snippet')->data['hits'][0] ?? [];
-        $site = Craft::$app->getSites()->getSiteById($entry->siteId);
-
         self::assertSame($absent, $raw);
         self::assertSame($raw, $enriched);
         self::assertSame('Metadata snippet value', $raw['snippet'] ?? null);
@@ -265,14 +267,45 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('metadata-index', $raw['index'] ?? null);
         self::assertArrayNotHasKey('_index', $raw);
         self::assertSame($entry->siteId, $raw['siteId'] ?? null);
-        self::assertSame($site?->handle, $raw['site'] ?? null);
-        self::assertSame($site?->language, $raw['language'] ?? null);
+        self::assertSame('indexed-site', $raw['site'] ?? null);
+        self::assertSame('de-CH', $raw['language'] ?? null);
         self::assertArrayNotHasKey('highlights', $raw);
+        self::assertArrayNotHasKey('thumbnail', $raw);
         self::assertStringNotContainsString('<mark', (string)($raw['snippet'] ?? ''));
         self::assertArrayNotHasKey('_bodyClean', $raw);
         self::assertArrayNotHasKey('content', $raw);
         self::assertArrayNotHasKey('excerpt', $raw);
         self::assertArrayNotHasKey('description', $raw);
+    }
+
+    public function testRestDoesNotHydrateMissingTitleUrlSiteOrLanguage(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        [$index, $entry] = $pair;
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = [
+            'hits' => [[
+                'objectID' => $entry->id,
+                'elementId' => $entry->id,
+                'siteId' => $entry->siteId,
+                'type' => 'entry',
+                'elementType' => 'entry',
+                '_fields' => ['intro' => 'Indexed intro text'],
+            ]],
+            'total' => 1,
+        ];
+
+        $hit = $this->runApiSearch($index->handle, $entry->siteId, 1, 'intro')->data['hits'][0] ?? [];
+
+        self::assertArrayNotHasKey('title', $hit);
+        self::assertArrayNotHasKey('url', $hit);
+        self::assertArrayNotHasKey('site', $hit);
+        self::assertArrayNotHasKey('language', $hit);
+        self::assertSame('Indexed intro text', $hit['snippet'] ?? null);
     }
 
     public function testRawSnippetSettingsMatchEnrichedSnippetSettings(): void
@@ -407,7 +440,7 @@ final class SearchHitFieldsContractTest extends TestCase
         ], $results[0]['headings'] ?? null);
     }
 
-    public function testEnrichedHeadingSnippetsUseSnippetSettingsLikeMainSnippet(): void
+    public function testIndexedHeadingSnippetsUseSnippetSettingsLikeMainSnippet(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         if ($pair === null) {
@@ -438,21 +471,21 @@ final class SearchHitFieldsContractTest extends TestCase
             ],
         ];
 
-        $short = SearchManager::$plugin->enrichment->prepareHitSnippets($hit, 'needle', $index->handle, [
+        $short = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'needle', $index->handle, [
             'title' => 'Needle Guide',
             'url' => 'https://example.test/docs/needle',
             'documentType' => 'source-doc',
             'snippetLength' => 50,
             'parseMarkdownSnippets' => true,
         ]);
-        $long = SearchManager::$plugin->enrichment->prepareHitSnippets($hit, 'needle', $index->handle, [
+        $long = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'needle', $index->handle, [
             'title' => 'Needle Guide',
             'url' => 'https://example.test/docs/needle',
             'documentType' => 'source-doc',
             'snippetLength' => 1000,
             'parseMarkdownSnippets' => true,
         ]);
-        $unparsed = SearchManager::$plugin->enrichment->prepareHitSnippets($hit, 'needle', $index->handle, [
+        $unparsed = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'needle', $index->handle, [
             'title' => 'Needle Guide',
             'url' => 'https://example.test/docs/needle',
             'documentType' => 'source-doc',
@@ -543,6 +576,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('The query-centered match snippet, when there is a match to excerpt.', $fields['snippet']['description'] ?? null);
         self::assertArrayNotHasKey('description', $fields);
         self::assertArrayNotHasKey('highlights', $fields);
+        self::assertArrayNotHasKey('thumbnail', $fields);
 
         $type = new SearchHitType([
             'name' => 'SearchManagerSearchHitSnippetTest',
@@ -587,15 +621,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'category' => 'One Another one',
         ], $hit['fields'] ?? null);
         self::assertArrayNotHasKey('_fields', $hit);
-        self::assertSame([
-            [
-                'title' => 'Matched Raw Heading',
-                'id' => 'matched-raw-heading',
-                'level' => 2,
-                'url' => 'https://example.test/metadata-url#matched-raw-heading',
-                'snippet' => null,
-            ],
-        ], $hit['headings'] ?? null);
+        self::assertSame([], $hit['headings'] ?? null);
         self::assertArrayNotHasKey('_headings', $hit);
         self::assertArrayNotHasKey('_matchedHeadings', $hit);
         self::assertArrayNotHasKey('_bodyClean', $hit);
@@ -603,6 +629,51 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('_elementType', $hit);
         self::assertArrayNotHasKey('intro', $hit);
         self::assertSame('metadata', $hit['category'] ?? null);
+    }
+
+    public function testGraphQlUsesCanonicalIndexOnlyHitShapeMatchingRest(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        [$index, $entry] = $pair;
+        $hit = $this->rawHit($entry->id, $entry->siteId);
+        $hit['thumbnail'] = 'https://example.test/thumb.jpg';
+        $stub = $this->installStubBackend();
+
+        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
+        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 1, 'intro')->data['hits'][0] ?? [];
+
+        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
+        $graphql = SearchResolver::resolveSearch(null, [
+            'query' => 'intro',
+            'indices' => [$index->handle],
+            'siteId' => $entry->siteId,
+        ], null, $this->createMock(ResolveInfo::class));
+        $graphqlHit = $graphql['hits'][0] ?? [];
+
+        self::assertSame($restHit, $graphqlHit);
+        self::assertSame('indexed-site', $graphqlHit['site'] ?? null);
+        self::assertSame('de-CH', $graphqlHit['language'] ?? null);
+        self::assertArrayNotHasKey('thumbnail', $graphqlHit);
+    }
+
+    public function testPublicSearchResponsePathsDoNotUseLiveElementHydration(): void
+    {
+        $api = $this->readPluginFile('src/controllers/ApiController.php');
+        $resolver = $this->readPluginFile('src/gql/resolvers/SearchResolver.php');
+        $query = $this->readPluginFile('src/gql/queries/SearchQuery.php');
+        $hitType = $this->readPluginFile('src/gql/types/SearchHitType.php');
+
+        self::assertStringNotContainsString('getElementById', $api);
+        self::assertStringNotContainsString('getSiteById', $api);
+        self::assertStringNotContainsString('withLiveTitleUrlFallback', $api);
+        self::assertStringNotContainsString('enrichResults(', $resolver);
+        self::assertStringNotContainsString('SearchManager::$plugin->enrichment', $resolver);
+        self::assertStringNotContainsString("'enrich'", $query);
+        self::assertStringNotContainsString('GqlHelper::siteHandle', $hitType);
     }
 
     /**
@@ -614,6 +685,8 @@ final class SearchHitFieldsContractTest extends TestCase
             'objectID' => $elementId,
             'elementId' => $elementId,
             'siteId' => $siteId,
+            'site' => 'indexed-site',
+            'language' => 'de-CH',
             'title' => 'Metadata title',
             'slug' => 'metadata-slug',
             'url' => 'https://example.test/metadata-url',
@@ -654,6 +727,14 @@ final class SearchHitFieldsContractTest extends TestCase
                 '_private' => 'Private value',
             ],
         ];
+    }
+
+    private function readPluginFile(string $path): string
+    {
+        $content = file_get_contents(dirname(__DIR__, 2) . '/' . ltrim($path, '/'));
+        self::assertIsString($content);
+
+        return $content;
     }
 
     /**

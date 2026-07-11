@@ -105,25 +105,20 @@ class SearchQuery extends Query
                         'type' => Type::boolean(),
                         'description' => 'Whether to skip search analytics tracking.',
                     ],
-                    'enrich' => [
-                        'name' => 'enrich',
-                        'type' => Type::boolean(),
-                        'description' => 'Whether to enrich hits with titles, URLs, snippets, and headings.',
-                    ],
                     'snippetMode' => [
                         'name' => 'snippetMode',
                         'type' => Type::string(),
-                        'description' => 'Snippet positioning mode for enriched results.',
+                        'description' => 'Snippet positioning mode for indexed snippets.',
                     ],
                     'snippetLength' => [
                         'name' => 'snippetLength',
                         'type' => Type::int(),
-                        'description' => 'Maximum snippet length for enriched results.',
+                        'description' => 'Maximum snippet length for indexed snippets.',
                     ],
                     'showCodeSnippets' => [
                         'name' => 'showCodeSnippets',
                         'type' => Type::boolean(),
-                        'description' => 'Whether enriched snippets may include code blocks.',
+                        'description' => 'Whether indexed snippets may include code blocks.',
                     ],
                     'parseMarkdownSnippets' => [
                         'name' => 'parseMarkdownSnippets',
@@ -133,17 +128,17 @@ class SearchQuery extends Query
                     'highlightTag' => [
                         'name' => 'highlightTag',
                         'type' => Type::string(),
-                        'description' => 'Reserved for client renderers. Enriched snippets are returned as plain text.',
+                        'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
                     ],
                     'highlightClass' => [
                         'name' => 'highlightClass',
                         'type' => Type::string(),
-                        'description' => 'Reserved for client renderers. Enriched snippets are returned as plain text.',
+                        'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
                     ],
                     'hideResultsWithoutUrl' => [
                         'name' => 'hideResultsWithoutUrl',
                         'type' => Type::boolean(),
-                        'description' => 'Whether enriched hits without URLs should be hidden.',
+                        'description' => 'Whether indexed hits without URLs should be hidden.',
                     ],
                 ],
                 'resolve' => SearchResolver::class . '::resolveSearch',

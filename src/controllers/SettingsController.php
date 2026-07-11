@@ -284,7 +284,7 @@ class SettingsController extends Controller
                     ? $this->settingsTestIndexedDocumentDebugByIdentity($results['hits'] ?? [], $index)
                     : [];
 
-                // Use EnrichmentService for smart snippets, headings, thumbnails
+                // Use EnrichmentService for smart snippets and headings
                 $enrichedResults = SearchManager::$plugin->enrichment->enrichResults(
                     $results['hits'],
                     $originalQuery,
@@ -849,7 +849,6 @@ class SettingsController extends Controller
             'volumehandle',
             'group',
             'grouphandle',
-            'thumbnail',
             'backend',
             'datecreated',
             'dateupdated',
