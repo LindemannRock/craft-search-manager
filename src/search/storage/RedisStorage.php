@@ -29,7 +29,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  *
  * @since 5.0.0
  */
-class RedisStorage implements StorageInterface
+class RedisStorage implements DocumentKeyStorageInterface
 {
     use LoggingTrait;
 
@@ -128,6 +128,11 @@ class RedisStorage implements StorageInterface
     // DOCUMENT OPERATIONS
     // =========================================================================
 
+    public function supportsDocumentKeys(): bool
+    {
+        return true;
+    }
+
     /**
      * @inheritdoc
      */
@@ -205,6 +210,15 @@ class RedisStorage implements StorageInterface
      */
     public function deleteDocument(int $siteId, int $elementId): void
     {
+        $documentKeys = $this->getDocumentKeysByParent($siteId, $elementId);
+        if ($documentKeys !== []) {
+            foreach ($documentKeys as $documentKey) {
+                $this->deleteDocumentByKey($siteId, $documentKey);
+            }
+
+            return;
+        }
+
         // Delete document data
         $docKey = $this->getDocKey($siteId, $elementId);
         $this->redis->del($docKey);
@@ -301,6 +315,113 @@ class RedisStorage implements StorageInterface
         return $lengths;
     }
 
+    public function storeDocumentByKey(int $siteId, int $elementId, string $documentKey, array $termFreqs, int $docLength, string $language = 'en'): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeDocument($siteId, $elementId, $termFreqs, $docLength, $language);
+            return;
+        }
+
+        $key = $this->getDocKeyByDocumentKey($siteId, $documentKey);
+
+        $data = $termFreqs;
+        $data['_length'] = $docLength;
+        $data['_language'] = $language;
+        $data['_elementId'] = $elementId;
+        $data['_documentKey'] = $documentKey;
+
+        $this->redis->hMSet($key, $data);
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+    }
+
+    public function getDocumentTermsByKey(int $siteId, string $documentKey): array
+    {
+        $data = $this->redis->hGetAll($this->getDocKeyByDocumentKey($siteId, $documentKey));
+        if (!$data) {
+            return [];
+        }
+
+        unset($data['_length'], $data['_language'], $data['_elementId'], $data['_documentKey']);
+
+        return array_map('intval', $data);
+    }
+
+    public function getDocumentTermsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        $keys = array_values(array_unique(array_map('strval', $documentKeys)));
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($keys as $documentKey) {
+            $this->redis->hGetAll($this->getDocKeyByDocumentKey($siteId, $documentKey));
+        }
+        $results = $this->redis->exec();
+
+        $byDocument = [];
+        foreach ($keys as $index => $documentKey) {
+            $terms = $results[$index] ?? [];
+            if (empty($terms)) {
+                continue;
+            }
+
+            unset($terms['_length'], $terms['_language'], $terms['_elementId'], $terms['_documentKey']);
+            $byDocument[$documentKey] = array_map('intval', $terms);
+        }
+
+        return $byDocument;
+    }
+
+    public function deleteDocumentByKey(int $siteId, string $documentKey): void
+    {
+        $data = $this->redis->hGetAll($this->getDocKeyByDocumentKey($siteId, $documentKey));
+        $elementId = isset($data['_elementId']) ? (int)$data['_elementId'] : $this->elementIdFromDocumentKey($documentKey);
+
+        $this->deleteCompoundSuggestionsByKey($siteId, $documentKey);
+
+        $this->redis->del([
+            $this->getDocKeyByDocumentKey($siteId, $documentKey),
+            $this->getTitleKeyByDocumentKey($siteId, $documentKey),
+            $this->getDocumentElementKey($siteId, $documentKey),
+        ]);
+
+        if ($elementId !== null) {
+            $this->removeDocumentKeyForParent($siteId, $elementId, $documentKey);
+            if ($this->getDocumentKeysByParent($siteId, $elementId) === []) {
+                $this->deleteElement($siteId, $elementId);
+            }
+        }
+    }
+
+    public function getDocumentLengthByKey(int $siteId, string $documentKey): int
+    {
+        $length = $this->redis->hGet($this->getDocKeyByDocumentKey($siteId, $documentKey), '_length');
+
+        return $length ? (int)$length : 0;
+    }
+
+    public function getDocumentLanguagesBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        $keys = array_values(array_unique(array_map('strval', $documentKeys)));
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($keys as $documentKey) {
+            $this->redis->hGet($this->getDocKeyByDocumentKey($siteId, $documentKey), '_language');
+        }
+        $results = $this->redis->exec();
+
+        $byDocument = [];
+        foreach ($keys as $index => $documentKey) {
+            $byDocument[$documentKey] = ($results[$index] ?? null) ?: 'en';
+        }
+
+        return $byDocument;
+    }
+
     // =========================================================================
     // TERM OPERATIONS
     // =========================================================================
@@ -371,6 +492,29 @@ class RedisStorage implements StorageInterface
         $docId = $siteId . ':' . $elementId;
 
         $this->redis->hDel($key, $docId);
+    }
+
+    public function storeTermDocumentByKey(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language = 'en'): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeTermDocument($term, $siteId, $elementId, $frequency, $language);
+            return;
+        }
+
+        $key = $this->getTermKey($term, $siteId);
+        $this->redis->hSet($key, $siteId . ':' . $documentKey, $frequency);
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+    }
+
+    public function removeTermDocumentByKey(string $term, int $siteId, string $documentKey): void
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            $this->removeTermDocument($term, $siteId, $elementId);
+            return;
+        }
+
+        $this->redis->hDel($this->getTermKey($term, $siteId), $siteId . ':' . $documentKey);
     }
 
     /**
@@ -515,6 +659,52 @@ class RedisStorage implements StorageInterface
         $this->redis->del($key);
     }
 
+    public function storeTitleTermsByKey(int $siteId, int $elementId, string $documentKey, array $titleTerms): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeTitleTerms($siteId, $elementId, $titleTerms);
+            return;
+        }
+
+        $key = $this->getTitleKeyByDocumentKey($siteId, $documentKey);
+        $this->redis->del($key);
+
+        if (!empty($titleTerms)) {
+            $this->redis->sAddArray($key, $titleTerms);
+        }
+
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+    }
+
+    public function getTitleTermsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        $keys = array_values(array_unique(array_map('strval', $documentKeys)));
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($keys as $documentKey) {
+            $this->redis->sMembers($this->getTitleKeyByDocumentKey($siteId, $documentKey));
+        }
+        $results = $this->redis->exec();
+
+        $byDocument = [];
+        foreach ($keys as $index => $documentKey) {
+            $terms = $results[$index] ?? [];
+            if (!empty($terms)) {
+                $byDocument[$documentKey] = array_values(array_map('strval', $terms));
+            }
+        }
+
+        return $byDocument;
+    }
+
+    public function deleteTitleTermsByKey(int $siteId, string $documentKey): void
+    {
+        $this->redis->del($this->getTitleKeyByDocumentKey($siteId, $documentKey));
+    }
+
     // =========================================================================
     // ELEMENT OPERATIONS (for rich autocomplete suggestions)
     // =========================================================================
@@ -619,6 +809,76 @@ class RedisStorage implements StorageInterface
         }
 
         return $result;
+    }
+
+    public function storeElementByKey(int $siteId, int $elementId, string $documentKey, string $title, string $elementType, ?string $documentData = null): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+            return;
+        }
+
+        $this->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+
+        $data = [
+            'title' => $title,
+            'elementType' => $elementType,
+            'searchText' => mb_strtolower(trim($title)),
+            'elementId' => $elementId,
+            'siteId' => $siteId,
+            'documentKey' => $documentKey,
+        ];
+
+        if ($documentData !== null) {
+            $data['documentData'] = $documentData;
+        }
+
+        $this->redis->hMSet($this->getDocumentElementKey($siteId, $documentKey), $data);
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+    }
+
+    public function getElementsByDocumentKeys(int $siteId, array $documentKeys): array
+    {
+        if (empty($documentKeys)) {
+            return [];
+        }
+
+        $keys = array_values(array_unique(array_map('strval', $documentKeys)));
+        $this->redis->multi(\Redis::PIPELINE);
+        foreach ($keys as $documentKey) {
+            $this->redis->hGetAll($this->getDocumentElementKey($siteId, $documentKey));
+        }
+        $results = $this->redis->exec();
+
+        $byDocument = [];
+        $missingPageKeys = [];
+        foreach ($keys as $index => $documentKey) {
+            $data = $results[$index] ?? [];
+            if (!empty($data)) {
+                $byDocument[$documentKey] = [
+                    'title' => $data['title'] ?? '',
+                    'elementType' => $data['elementType'] ?? 'entry',
+                    'documentData' => !empty($data['documentData']) ? json_decode($data['documentData'], true) : null,
+                ];
+                continue;
+            }
+
+            $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+            if ($elementId !== null) {
+                $missingPageKeys[$documentKey] = $elementId;
+            }
+        }
+
+        if ($missingPageKeys !== []) {
+            $legacy = $this->getElementsByIds($siteId, array_values($missingPageKeys));
+            foreach ($missingPageKeys as $documentKey => $elementId) {
+                if (isset($legacy[$elementId])) {
+                    $byDocument[$documentKey] = $legacy[$elementId];
+                }
+            }
+        }
+
+        return $byDocument;
     }
 
     /**
@@ -915,6 +1175,72 @@ class RedisStorage implements StorageInterface
         $this->redis->exec();
     }
 
+    public function storeCompoundSuggestionsByKey(int $siteId, int $elementId, string $documentKey, array $suggestions, string $language = 'en'): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeCompoundSuggestions($siteId, $elementId, $suggestions, $language);
+            return;
+        }
+
+        $oldRows = $this->readCompoundRowsByKey($siteId, $documentKey);
+
+        if (empty($suggestions)) {
+            $this->redis->multi(\Redis::MULTI);
+            if (!empty($oldRows)) {
+                $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+            }
+            $this->redis->del($this->getCompoundKeyByDocumentKey($siteId, $documentKey));
+            $this->redis->exec();
+
+            return;
+        }
+
+        $rows = [];
+        foreach ($suggestions as $suggestion) {
+            $rows[] = [
+                'suggestion' => (string)$suggestion['suggestion'],
+                'normalizedSuggestion' => (string)$suggestion['normalizedSuggestion'],
+                'tokenKey' => (string)$suggestion['tokenKey'],
+                'frequency' => (int)$suggestion['frequency'],
+                'language' => $language,
+            ];
+        }
+
+        $encoded = json_encode($rows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($encoded !== false) {
+            $this->redis->multi(\Redis::MULTI);
+            if (!empty($oldRows)) {
+                $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+            }
+            $this->redis->set($this->getCompoundKeyByDocumentKey($siteId, $documentKey), $encoded);
+            $this->applyCompoundAggregateDelta($siteId, $rows, 1);
+            $this->redis->exec();
+            $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+        }
+    }
+
+    public function deleteCompoundSuggestionsByKey(int $siteId, string $documentKey): void
+    {
+        $oldRows = $this->readCompoundRowsByKey($siteId, $documentKey);
+        $this->redis->multi(\Redis::MULTI);
+        if (!empty($oldRows)) {
+            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        }
+
+        $this->redis->del($this->getCompoundKeyByDocumentKey($siteId, $documentKey));
+        $this->redis->exec();
+    }
+
+    public function getDocumentKeysByParent(int $siteId, int $elementId): array
+    {
+        $keys = $this->redis->sMembers($this->getParentKey($siteId, $elementId));
+        if (is_array($keys) && $keys !== []) {
+            return array_values(array_unique(array_map('strval', $keys)));
+        }
+
+        return $this->redis->exists($this->getDocKey($siteId, $elementId)) ? [$this->pageDocumentKey($siteId, $elementId)] : [];
+    }
+
     /**
      * @inheritdoc
      */
@@ -1010,11 +1336,14 @@ LUA;
     {
         $compoundKeys = $this->scanKeys($this->keyPrefix . 'compound:' . $siteId . ':*');
         foreach ($compoundKeys as $key) {
-            if (preg_match('/compound:' . $siteId . ':(\d+)$/', $key, $matches) === 1) {
-                $oldRows = $this->readCompoundRows($siteId, (int)$matches[1]);
-                if (!empty($oldRows)) {
-                    $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
-                }
+            $encoded = $this->redis->get($key);
+            if (!is_string($encoded) || $encoded === '') {
+                continue;
+            }
+
+            $oldRows = json_decode($encoded, true);
+            if (is_array($oldRows)) {
+                $this->applyCompoundAggregateDelta($siteId, array_values(array_filter($oldRows, 'is_array')), -1);
             }
         }
 
@@ -1027,6 +1356,8 @@ LUA;
             $this->keyPrefix . 'ngramcount:' . $siteId . ':*',
             $this->keyPrefix . 'meta:' . $siteId . ':*',
             $this->keyPrefix . 'elem:' . $siteId . ':*',
+            $this->keyPrefix . 'docelem:' . $siteId . ':*',
+            $this->keyPrefix . 'parent:' . $siteId . ':*',
             $this->keyPrefix . 'elemindex:' . $siteId,
             $this->keyPrefix . 'compoundidx:site' . $siteId . ':*',
         ];
@@ -1069,6 +1400,16 @@ LUA;
     private function getDocKey(int $siteId, int $elementId): string
     {
         return $this->keyPrefix . 'doc:' . $siteId . ':' . $elementId;
+    }
+
+    private function getDocKeyByDocumentKey(int $siteId, string $documentKey): string
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            return $this->getDocKey($siteId, $elementId);
+        }
+
+        return $this->keyPrefix . 'doc:' . $siteId . ':key:' . $this->encodeKeySegment($documentKey);
     }
 
     /**
@@ -1127,6 +1468,16 @@ LUA;
         return $this->keyPrefix . 'title:' . $siteId . ':' . $elementId;
     }
 
+    private function getTitleKeyByDocumentKey(int $siteId, string $documentKey): string
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            return $this->getTitleKey($siteId, $elementId);
+        }
+
+        return $this->keyPrefix . 'title:' . $siteId . ':key:' . $this->encodeKeySegment($documentKey);
+    }
+
     /**
      * Get element key (for autocomplete suggestions)
      *
@@ -1139,9 +1490,72 @@ LUA;
         return $this->keyPrefix . 'elem:' . $siteId . ':' . $elementId;
     }
 
+    private function getDocumentElementKey(int $siteId, string $documentKey): string
+    {
+        return $this->keyPrefix . 'docelem:' . $siteId . ':' . $this->encodeKeySegment($documentKey);
+    }
+
     private function getCompoundKey(int $siteId, int $elementId): string
     {
         return $this->keyPrefix . 'compound:' . $siteId . ':' . $elementId;
+    }
+
+    private function getCompoundKeyByDocumentKey(int $siteId, string $documentKey): string
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            return $this->getCompoundKey($siteId, $elementId);
+        }
+
+        return $this->keyPrefix . 'compound:' . $siteId . ':key:' . $this->encodeKeySegment($documentKey);
+    }
+
+    private function getParentKey(int $siteId, int $elementId): string
+    {
+        return $this->keyPrefix . 'parent:' . $siteId . ':' . $elementId;
+    }
+
+    private function addDocumentKeyForParent(int $siteId, int $elementId, string $documentKey): void
+    {
+        $this->redis->sAdd($this->getParentKey($siteId, $elementId), $documentKey);
+    }
+
+    private function removeDocumentKeyForParent(int $siteId, int $elementId, string $documentKey): void
+    {
+        $parentKey = $this->getParentKey($siteId, $elementId);
+        $this->redis->sRem($parentKey, $documentKey);
+
+        $remaining = $this->redis->sCard($parentKey);
+        if ((int)$remaining <= 0) {
+            $this->redis->del($parentKey);
+        }
+    }
+
+    private function pageDocumentKey(int $siteId, int $elementId): string
+    {
+        return $elementId . '_' . $siteId;
+    }
+
+    private function elementIdFromDocumentKey(string $documentKey): ?int
+    {
+        if (preg_match('/^(\d+)(?:_|$)/', $documentKey, $match) === 1) {
+            return (int)$match[1];
+        }
+
+        return null;
+    }
+
+    private function elementIdFromPageDocumentKey(int $siteId, string $documentKey): ?int
+    {
+        if (preg_match('/^(\d+)_(\d+)$/', $documentKey, $match) !== 1) {
+            return null;
+        }
+
+        if ((int)$match[2] !== $siteId) {
+            return null;
+        }
+
+        return (int)$match[1];
     }
 
     private function getCompoundRankKey(string $scope, string $language, string $normalizedSuggestion): string
@@ -1193,6 +1607,21 @@ LUA;
     private function readCompoundRows(int $siteId, int $elementId): array
     {
         $encoded = $this->redis->get($this->getCompoundKey($siteId, $elementId));
+        if (!is_string($encoded) || $encoded === '') {
+            return [];
+        }
+
+        $rows = json_decode($encoded, true);
+
+        return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function readCompoundRowsByKey(int $siteId, string $documentKey): array
+    {
+        $encoded = $this->redis->get($this->getCompoundKeyByDocumentKey($siteId, $documentKey));
         if (!is_string($encoded) || $encoded === '') {
             return [];
         }

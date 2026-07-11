@@ -64,6 +64,88 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame([101 => ['alpha' => 2]], $storage->getDocumentTermsBatch(1, [101]));
     }
 
+    public function testSplitSectionDocumentsAreSearchableAndHydratedByDocumentKey(): void
+    {
+        [$storage] = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'test-index', [
+            'disableStopWords' => true,
+        ]);
+
+        $this->indexSection($engine, $storage, '301_1_intro', 'Install Guide', 'overview landing', [
+            'sectionType' => 'intro',
+            'sectionTitle' => 'Install Guide',
+            'sectionIndex' => 0,
+        ]);
+        $this->indexSection($engine, $storage, '301_1_install', 'Install Guide', 'composer install package', [
+            'sectionType' => 'heading',
+            'sectionTitle' => 'Install',
+            'sectionLevel' => 2,
+            'sectionAnchor' => 'install',
+            'sectionUrl' => '/docs/install#install',
+            'sectionIndex' => 1,
+        ]);
+        $this->indexSection($engine, $storage, '301_1_configure', 'Install Guide', 'configure settings', [
+            'sectionType' => 'heading',
+            'sectionTitle' => 'Configure',
+            'sectionLevel' => 2,
+            'sectionAnchor' => 'configure',
+            'sectionUrl' => '/docs/install#configure',
+            'sectionIndex' => 2,
+        ]);
+
+        self::assertTrue($storage->supportsDocumentKeys());
+        self::assertSame(['301_1_intro', '301_1_install', '301_1_configure'], $storage->getDocumentKeysByParent(1, 301));
+        self::assertSame(['301_1_install'], array_keys($engine->search('composer', 1, 0, ['returnDocumentKeys' => true])));
+        self::assertSame(['1:301_1_install'], array_keys($storage->getTermDocuments('composer', 1)));
+
+        $elements = $storage->getElementsByDocumentKeys(1, ['301_1_intro', '301_1_install', '301_1_configure']);
+        self::assertSame('Install Guide', $elements['301_1_intro']['documentData']['sectionTitle'] ?? null);
+        self::assertSame('Install', $elements['301_1_install']['documentData']['sectionTitle'] ?? null);
+        self::assertSame('Configure', $elements['301_1_configure']['documentData']['sectionTitle'] ?? null);
+    }
+
+    public function testDeleteByParentRemovesAllRedisSplitSectionDocuments(): void
+    {
+        [$storage] = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'test-index', [
+            'disableStopWords' => true,
+        ]);
+
+        $this->indexSection($engine, $storage, '301_1_intro', 'Install Guide', 'overview landing', ['sectionType' => 'intro']);
+        $this->indexSection($engine, $storage, '301_1_install', 'Install Guide', 'composer install package', ['sectionType' => 'heading']);
+        $this->indexSection($engine, $storage, '301_1_configure', 'Install Guide', 'configure settings', ['sectionType' => 'heading']);
+
+        self::assertTrue($engine->deleteDocument(1, 301));
+
+        self::assertSame([], $storage->getDocumentKeysByParent(1, 301));
+        self::assertSame([], $engine->search('composer', 1, 0, ['returnDocumentKeys' => true]));
+        self::assertSame([], $storage->getTermDocuments('composer', 1));
+        self::assertSame([], $storage->getElementsByIds(1, [301]));
+    }
+
+    public function testRedisDocumentKeyKeepSetCleanupRemovesOnlyOrphanedSections(): void
+    {
+        [$storage] = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'test-index', [
+            'disableStopWords' => true,
+        ]);
+
+        $this->indexSection($engine, $storage, '301_1_intro', 'Install Guide', 'overview landing', ['sectionType' => 'intro']);
+        $this->indexSection($engine, $storage, '301_1_install', 'Install Guide', 'composer install package', ['sectionType' => 'heading']);
+        $this->indexSection($engine, $storage, '301_1_configure', 'Install Guide', 'configure settings', ['sectionType' => 'heading']);
+
+        $keep = array_flip(['301_1_intro', '301_1_configure']);
+        foreach ($storage->getDocumentKeysByParent(1, 301) as $documentKey) {
+            if (!isset($keep[$documentKey])) {
+                self::assertTrue($engine->deleteDocumentByKey(1, 301, $documentKey));
+            }
+        }
+
+        self::assertSame(['301_1_intro', '301_1_configure'], $storage->getDocumentKeysByParent(1, 301));
+        self::assertSame([], $engine->search('composer', 1, 0, ['returnDocumentKeys' => true]));
+        self::assertSame(['301_1_configure'], array_keys($engine->search('configure', 1, 0, ['returnDocumentKeys' => true])));
+    }
+
     public function testAutocompleteHotPathUsesScanInsteadOfKeys(): void
     {
         [$storage, $redis] = $this->makeStorage();
@@ -429,6 +511,8 @@ final class RedisStorageRegressionTest extends TestCase
             'sm:idx:test-index:ngramcount:1:*',
             'sm:idx:test-index:meta:1:*',
             'sm:idx:test-index:elem:1:*',
+            'sm:idx:test-index:docelem:1:*',
+            'sm:idx:test-index:parent:1:*',
             'sm:idx:test-index:elemindex:1',
             'sm:idx:test-index:compoundidx:site1:*',
         ], $redis->scanPatterns);
@@ -544,6 +628,23 @@ final class RedisStorageRegressionTest extends TestCase
     {
         return rtrim(strtr(base64_encode($value), '+/', '-_'), '=');
     }
+
+    /**
+     * @param array<string, mixed> $documentData
+     */
+    private function indexSection(SearchEngine $engine, RedisStorage $storage, string $documentKey, string $title, string $content, array $documentData): void
+    {
+        self::assertTrue($engine->indexDocumentWithKeyResult(1, 301, $documentKey, $title, $content, 'en')['success']);
+
+        $storage->storeElementByKey(1, 301, $documentKey, $title, 'source-doc', json_encode(array_merge([
+            'title' => $title,
+            'url' => '/docs/install',
+            'elementId' => 301,
+            'siteId' => 1,
+            'backendId' => $documentKey,
+            'content' => $content,
+        ], $documentData), JSON_THROW_ON_ERROR));
+    }
 }
 
 final class RedisStorageFakeRedis
@@ -657,6 +758,19 @@ final class RedisStorageFakeRedis
     public function sAdd(string $key, string $member): void
     {
         $this->sAddArray($key, [$member]);
+    }
+
+    public function sRem(string $key, string $member): void
+    {
+        $this->sets[$key] = array_values(array_filter(
+            $this->sets[$key] ?? [],
+            static fn(string $candidate): bool => $candidate !== $member,
+        ));
+    }
+
+    public function sCard(string $key): int
+    {
+        return count($this->sets[$key] ?? []);
     }
 
     public function sMembers(string $key): array|self

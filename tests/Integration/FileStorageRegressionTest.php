@@ -14,6 +14,7 @@ use Craft;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\storage\FileStorage;
+use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
@@ -334,6 +335,138 @@ final class FileStorageRegressionTest extends TestCase
 
         self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('legacy', 1, 'en', 10));
         self::assertSame([], $storage->getCompoundSuggestionsForAutocomplete('legacy', null, 'en', 10));
+    }
+
+    public function testSplitSectionDocumentsAreSearchableAndHydratedByDocumentKey(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+
+        $this->indexSection($engine, $storage, '301_1_intro', 'Install Guide', 'overview landing', [
+            'sectionType' => 'intro',
+            'sectionTitle' => 'Install Guide',
+            'sectionIndex' => 0,
+        ]);
+        $this->indexSection($engine, $storage, '301_1_install', 'Install Guide', 'composer install package', [
+            'sectionType' => 'heading',
+            'sectionTitle' => 'Install',
+            'sectionLevel' => 2,
+            'sectionAnchor' => 'install',
+            'sectionUrl' => '/docs/install#install',
+            'sectionIndex' => 1,
+        ]);
+        $this->indexSection($engine, $storage, '301_1_configure', 'Install Guide', 'configure settings', [
+            'sectionType' => 'heading',
+            'sectionTitle' => 'Configure',
+            'sectionLevel' => 2,
+            'sectionAnchor' => 'configure',
+            'sectionUrl' => '/docs/install#configure',
+            'sectionIndex' => 2,
+        ]);
+
+        self::assertTrue($storage->supportsDocumentKeys());
+        self::assertSame(['301_1_intro', '301_1_install', '301_1_configure'], $storage->getDocumentKeysByParent(1, 301));
+        self::assertSame(['301_1_install'], array_keys($engine->search('composer', 1, 0, ['returnDocumentKeys' => true])));
+        self::assertSame(['1:301_1_install'], array_keys($storage->getTermDocuments('composer', 1)));
+
+        $elements = $storage->getElementsByDocumentKeys(1, ['301_1_intro', '301_1_install', '301_1_configure']);
+        self::assertSame('Install Guide', $elements['301_1_intro']['documentData']['sectionTitle'] ?? null);
+        self::assertSame('Install', $elements['301_1_install']['documentData']['sectionTitle'] ?? null);
+        self::assertSame('Configure', $elements['301_1_configure']['documentData']['sectionTitle'] ?? null);
+    }
+
+    public function testDeleteByParentRemovesAllSplitSectionDocuments(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+
+        $this->indexSection($engine, $storage, '301_1_intro', 'Install Guide', 'overview landing', ['sectionType' => 'intro']);
+        $this->indexSection($engine, $storage, '301_1_install', 'Install Guide', 'composer install package', ['sectionType' => 'heading']);
+        $this->indexSection($engine, $storage, '301_1_configure', 'Install Guide', 'configure settings', ['sectionType' => 'heading']);
+
+        self::assertTrue($engine->deleteDocument(1, 301));
+
+        self::assertSame([], $storage->getDocumentKeysByParent(1, 301));
+        self::assertSame([], $engine->search('composer', 1, 0, ['returnDocumentKeys' => true]));
+        self::assertSame([], $storage->getTermDocuments('composer', 1));
+        self::assertSame([], $storage->getElementsByIds(1, [301]));
+    }
+
+    public function testDocumentKeyKeepSetCleanupRemovesOnlyOrphanedSections(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+
+        $this->indexSection($engine, $storage, '301_1_intro', 'Install Guide', 'overview landing', ['sectionType' => 'intro']);
+        $this->indexSection($engine, $storage, '301_1_install', 'Install Guide', 'composer install package', ['sectionType' => 'heading']);
+        $this->indexSection($engine, $storage, '301_1_configure', 'Install Guide', 'configure settings', ['sectionType' => 'heading']);
+
+        $keep = array_flip(['301_1_intro', '301_1_configure']);
+        foreach ($storage->getDocumentKeysByParent(1, 301) as $documentKey) {
+            if (!isset($keep[$documentKey])) {
+                self::assertTrue($engine->deleteDocumentByKey(1, 301, $documentKey));
+            }
+        }
+
+        self::assertSame(['301_1_intro', '301_1_configure'], $storage->getDocumentKeysByParent(1, 301));
+        self::assertSame([], $engine->search('composer', 1, 0, ['returnDocumentKeys' => true]));
+        self::assertSame(['301_1_configure'], array_keys($engine->search('configure', 1, 0, ['returnDocumentKeys' => true])));
+    }
+
+    public function testLegacyPageModeDocumentKeyReadsRemainCompatible(): void
+    {
+        $storage = $this->makeStorage();
+        $engine = new SearchEngine($storage, 'file-storage-regression', [
+            'disableStopWords' => true,
+        ]);
+
+        self::assertTrue($engine->indexDocument(1, 401, 'Legacy Page', 'legacy body', 'en'));
+        $storage->storeElement(1, 401, 'Legacy Page', 'entry', json_encode([
+            'title' => 'Legacy Page',
+            'url' => '/legacy',
+        ], JSON_THROW_ON_ERROR));
+
+        self::assertSame($storage->getDocumentTerms(1, 401), $storage->getDocumentTermsByKey(1, '401_1'));
+        self::assertSame(['401_1'], $storage->getDocumentKeysByParent(1, 401));
+        self::assertSame([401], array_keys($engine->search('legacy', 1, 0, ['returnDocumentKeys' => true])));
+        self::assertSame('Legacy Page', $storage->getElementsByDocumentKeys(1, ['401_1'])['401_1']['title'] ?? null);
+    }
+
+    public function testNonDocumentKeyStorageFailsLoudlyForSplitDocumentKey(): void
+    {
+        $storage = new RecordingStorage([], [], [], 0, 1.0);
+        $engine = new SearchEngine($storage, 'recording-storage', [
+            'disableStopWords' => true,
+        ]);
+
+        $result = $engine->indexDocumentWithKeyResult(1, 301, '301_1_install', 'Install Guide', 'composer install package', 'en');
+
+        self::assertFalse($result['success']);
+        self::assertNull($result['wasCreated']);
+        self::assertSame([], $storage->getDocumentTerms(1, 301));
+    }
+
+    /**
+     * @param array<string, mixed> $documentData
+     */
+    private function indexSection(SearchEngine $engine, FileStorage $storage, string $documentKey, string $title, string $content, array $documentData): void
+    {
+        self::assertTrue($engine->indexDocumentWithKeyResult(1, 301, $documentKey, $title, $content, 'en')['success']);
+
+        $storage->storeElementByKey(1, 301, $documentKey, $title, 'source-doc', json_encode(array_merge([
+            'title' => $title,
+            'url' => '/docs/install',
+            'elementId' => 301,
+            'siteId' => 1,
+            'backendId' => $documentKey,
+            'content' => $content,
+        ], $documentData), JSON_THROW_ON_ERROR));
     }
 
     private function makeStorage(): FileStorage

@@ -77,7 +77,7 @@ Long structured SourceDoc indices can opt into section records:
 ],
 ```
 
-Split mode is only available for SourceDoc indices that use the built-in Docs Manager transformer. Each intro or heading section is indexed as its own backend record with the parent page identity plus section metadata. Public search results stay flat: `total` counts section hits, `backendId` is unique per section, and `id` / `elementId` stay equal to the parent page ID. Rebuild the affected index after enabling or disabling split mode.
+Split mode is only available for SourceDoc indices that use the built-in Docs Manager transformer. Each intro or heading section is indexed as its own backend record with the parent page identity plus section metadata. Public search results stay flat: `total` counts section hits, `backendId` is unique per section, and `id` / `elementId` stay equal to the parent page ID. Built-in local backends and external backends support the required document keys; if a custom backend cannot preserve document keys, Split Sections is rejected. Rebuild the affected index after enabling or disabling split mode, and rebuild any Redis or File split-section index after upgrading from a version that did not store section documents by document key.
 
 #### Craft Commerce Integration
 

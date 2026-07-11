@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\search\storage;
 
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 
 /**
  * FileStorage
@@ -30,7 +31,7 @@ use lindemannrock\searchmanager\helpers\FileBackendStoragePathHelper;
  *
  * @since 5.0.0
  */
-class FileStorage implements StorageInterface
+class FileStorage implements DocumentKeyStorageInterface
 {
     use LoggingTrait;
 
@@ -96,9 +97,11 @@ class FileStorage implements StorageInterface
             $this->basePath . '/ngrams-index',
             $this->basePath . '/meta',
             $this->basePath . '/elements',
+            $this->basePath . '/document-elements',
             $this->basePath . '/compounds',
             $this->basePath . '/compounds-index',
             $this->basePath . '/keys',
+            $this->basePath . '/parents',
         ];
 
         foreach ($dirs as $dir) {
@@ -111,6 +114,11 @@ class FileStorage implements StorageInterface
     // =========================================================================
     // DOCUMENT OPERATIONS
     // =========================================================================
+
+    public function supportsDocumentKeys(): bool
+    {
+        return true;
+    }
 
     /**
      * @inheritdoc
@@ -203,6 +211,15 @@ class FileStorage implements StorageInterface
      */
     public function deleteDocument(int $siteId, int $elementId): void
     {
+        $documentKeys = $this->getDocumentKeysByParent($siteId, $elementId);
+        if ($documentKeys !== []) {
+            foreach ($documentKeys as $documentKey) {
+                $this->deleteDocumentByKey($siteId, $documentKey);
+            }
+
+            return;
+        }
+
         // Delete document data file
         $docPath = $this->getDocPath($siteId, $elementId);
         if (file_exists($docPath)) {
@@ -256,6 +273,95 @@ class FileStorage implements StorageInterface
         }
 
         return $lengths;
+    }
+
+    public function storeDocumentByKey(int $siteId, int $elementId, string $documentKey, array $termFreqs, int $docLength, string $language = 'en'): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeDocument($siteId, $elementId, $termFreqs, $docLength, $language);
+            return;
+        }
+
+        $this->rememberFilenameKey($documentKey);
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+
+        $data = $termFreqs;
+        $data['_length'] = $docLength;
+        $data['_language'] = $language;
+        $data['_elementId'] = $elementId;
+        $data['_documentKey'] = $documentKey;
+
+        $this->writeFile($this->getDocPathByKey($siteId, $documentKey), $data);
+    }
+
+    public function getDocumentTermsByKey(int $siteId, string $documentKey): array
+    {
+        $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
+        if (empty($data)) {
+            return [];
+        }
+
+        unset($data['_length'], $data['_language'], $data['_elementId'], $data['_documentKey']);
+
+        return array_map('intval', $data);
+    }
+
+    public function getDocumentTermsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        $byDocument = [];
+
+        foreach (array_values(array_unique(array_map('strval', $documentKeys))) as $documentKey) {
+            $terms = $this->getDocumentTermsByKey($siteId, $documentKey);
+            if ($terms !== []) {
+                $byDocument[$documentKey] = $terms;
+            }
+        }
+
+        return $byDocument;
+    }
+
+    public function deleteDocumentByKey(int $siteId, string $documentKey): void
+    {
+        $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
+        $elementId = isset($data['_elementId']) ? (int)$data['_elementId'] : $this->elementIdFromDocumentKey($documentKey);
+
+        foreach ([
+            $this->getDocPathByKey($siteId, $documentKey),
+            $this->getTitlePathByKey($siteId, $documentKey),
+            $this->getDocumentElementPath($siteId, $documentKey),
+        ] as $path) {
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+        }
+
+        $this->deleteCompoundSuggestionsByKey($siteId, $documentKey);
+
+        if ($elementId !== null) {
+            $this->removeDocumentKeyForParent($siteId, $elementId, $documentKey);
+            if ($this->getDocumentKeysByParent($siteId, $elementId) === []) {
+                $this->deleteElement($siteId, $elementId);
+            }
+        }
+    }
+
+    public function getDocumentLengthByKey(int $siteId, string $documentKey): int
+    {
+        $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
+
+        return (int)($data['_length'] ?? 0);
+    }
+
+    public function getDocumentLanguagesBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        $byDocument = [];
+
+        foreach (array_values(array_unique(array_map('strval', $documentKeys))) as $documentKey) {
+            $data = $this->readFile($this->getDocPathByKey($siteId, $documentKey));
+            $byDocument[$documentKey] = (string)($data['_language'] ?? 'en');
+        }
+
+        return $byDocument;
     }
 
     // =========================================================================
@@ -333,6 +439,54 @@ class FileStorage implements StorageInterface
         } else {
             $this->writeFile($termPath, $data);
         }
+    }
+
+    public function storeTermDocumentByKey(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language = 'en'): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeTermDocument($term, $siteId, $elementId, $frequency, $language);
+            return;
+        }
+
+        $this->rememberFilenameKey($term);
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+
+        $termPath = $this->getTermPath($term, $siteId);
+        $docId = $siteId . ':' . $documentKey;
+
+        $this->updateJsonFile(
+            $termPath,
+            static function(mixed $current) use ($docId, $frequency): array {
+                $data = is_array($current) ? $current : [];
+                $data[$docId] = $frequency;
+
+                return $data;
+            },
+        );
+    }
+
+    public function removeTermDocumentByKey(string $term, int $siteId, string $documentKey): void
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            $this->removeTermDocument($term, $siteId, $elementId);
+            return;
+        }
+
+        $termPath = $this->getTermPath($term, $siteId);
+        $data = $this->readFile($termPath);
+        if (!$data) {
+            return;
+        }
+
+        unset($data[$siteId . ':' . $documentKey]);
+
+        if (empty($data)) {
+            @unlink($termPath);
+            return;
+        }
+
+        $this->writeFile($termPath, $data);
     }
 
     /**
@@ -448,6 +602,40 @@ class FileStorage implements StorageInterface
         }
     }
 
+    public function storeTitleTermsByKey(int $siteId, int $elementId, string $documentKey, array $titleTerms): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeTitleTerms($siteId, $elementId, $titleTerms);
+            return;
+        }
+
+        $this->rememberFilenameKey($documentKey);
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+        $this->writeFile($this->getTitlePathByKey($siteId, $documentKey), $titleTerms);
+    }
+
+    public function getTitleTermsBatchByKeys(int $siteId, array $documentKeys): array
+    {
+        $byDocument = [];
+
+        foreach (array_values(array_unique(array_map('strval', $documentKeys))) as $documentKey) {
+            $data = $this->readFile($this->getTitlePathByKey($siteId, $documentKey));
+            if (!empty($data)) {
+                $byDocument[$documentKey] = array_values(array_map('strval', $data));
+            }
+        }
+
+        return $byDocument;
+    }
+
+    public function deleteTitleTermsByKey(int $siteId, string $documentKey): void
+    {
+        $titlePath = $this->getTitlePathByKey($siteId, $documentKey);
+        if (file_exists($titlePath)) {
+            @unlink($titlePath);
+        }
+    }
+
     // =========================================================================
     // ELEMENT OPERATIONS (for rich autocomplete suggestions)
     // =========================================================================
@@ -534,6 +722,63 @@ class FileStorage implements StorageInterface
                     ];
                 }
             }
+        }
+
+        return $result;
+    }
+
+    public function storeElementByKey(int $siteId, int $elementId, string $documentKey, string $title, string $elementType, ?string $documentData = null): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+            return;
+        }
+
+        $this->storeElement($siteId, $elementId, $title, $elementType, $documentData);
+        $this->rememberFilenameKey($documentKey);
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+
+        $searchText = mb_strtolower(trim($title));
+        $data = [
+            'title' => $title,
+            'elementType' => $elementType,
+            'searchText' => $searchText,
+            'elementId' => $elementId,
+            'siteId' => $siteId,
+            'documentKey' => $documentKey,
+        ];
+
+        if ($documentData !== null) {
+            $data['documentData'] = json_decode($documentData, true);
+        }
+
+        $this->writeFile($this->getDocumentElementPath($siteId, $documentKey), $data);
+    }
+
+    public function getElementsByDocumentKeys(int $siteId, array $documentKeys): array
+    {
+        $result = [];
+
+        foreach (array_values(array_unique(array_map('strval', $documentKeys))) as $documentKey) {
+            $data = $this->readFile($this->getDocumentElementPath($siteId, $documentKey));
+
+            if (empty($data)) {
+                $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+                if ($elementId !== null) {
+                    $legacy = $this->getElementsByIds($siteId, [$elementId]);
+                    if (isset($legacy[$elementId])) {
+                        $result[$documentKey] = $legacy[$elementId];
+                    }
+                }
+
+                continue;
+            }
+
+            $result[$documentKey] = [
+                'title' => $data['title'] ?? '',
+                'elementType' => $data['elementType'] ?? 'entry',
+                'documentData' => $data['documentData'] ?? null,
+            ];
         }
 
         return $result;
@@ -726,6 +971,61 @@ class FileStorage implements StorageInterface
         @unlink($this->getCompoundPath($siteId, $elementId));
     }
 
+    public function storeCompoundSuggestionsByKey(int $siteId, int $elementId, string $documentKey, array $suggestions, string $language = 'en'): void
+    {
+        if ($this->elementIdFromPageDocumentKey($siteId, $documentKey) === $elementId) {
+            $this->storeCompoundSuggestions($siteId, $elementId, $suggestions, $language);
+            return;
+        }
+
+        $oldRows = $this->readCompoundRowsByKey($siteId, $documentKey);
+        if (!empty($oldRows)) {
+            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        }
+
+        if (empty($suggestions)) {
+            @unlink($this->getCompoundPathByKey($siteId, $documentKey));
+            return;
+        }
+
+        $this->addDocumentKeyForParent($siteId, $elementId, $documentKey);
+
+        $rows = [];
+        foreach ($suggestions as $suggestion) {
+            $rows[] = [
+                'suggestion' => (string)$suggestion['suggestion'],
+                'normalizedSuggestion' => (string)$suggestion['normalizedSuggestion'],
+                'tokenKey' => (string)$suggestion['tokenKey'],
+                'frequency' => (int)$suggestion['frequency'],
+                'language' => $language,
+            ];
+        }
+
+        $this->writeFile($this->getCompoundPathByKey($siteId, $documentKey), $rows);
+        $this->applyCompoundAggregateDelta($siteId, $rows, 1);
+    }
+
+    public function deleteCompoundSuggestionsByKey(int $siteId, string $documentKey): void
+    {
+        $oldRows = $this->readCompoundRowsByKey($siteId, $documentKey);
+        if (!empty($oldRows)) {
+            $this->applyCompoundAggregateDelta($siteId, $oldRows, -1);
+        }
+
+        @unlink($this->getCompoundPathByKey($siteId, $documentKey));
+    }
+
+    public function getDocumentKeysByParent(int $siteId, int $elementId): array
+    {
+        $keys = $this->readFile($this->getParentPath($siteId, $elementId));
+        if (is_array($keys) && $keys !== []) {
+            return array_values(array_unique(array_map('strval', $keys)));
+        }
+
+        $pageDocumentKey = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+        return file_exists($this->getDocPath($siteId, $elementId)) ? [$pageDocumentKey] : [];
+    }
+
     /**
      * @inheritdoc
      */
@@ -820,7 +1120,9 @@ class FileStorage implements StorageInterface
             $this->basePath . '/titles/' . $siteId . '_*.dat',
             $this->basePath . '/meta/' . $siteId . '_*.dat',
             $this->basePath . '/elements/' . $siteId . '_*.dat',
+            $this->basePath . '/document-elements/' . $siteId . '_*.dat',
             $this->basePath . '/compounds/' . $siteId . '_*.dat',
+            $this->basePath . '/parents/' . $siteId . '_*.dat',
         ];
 
         foreach ($patterns as $pattern) {
@@ -889,6 +1191,16 @@ class FileStorage implements StorageInterface
         return $this->basePath . '/docs/' . $siteId . '_' . $elementId . '.dat';
     }
 
+    private function getDocPathByKey(int $siteId, string $documentKey): string
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            return $this->getDocPath($siteId, $elementId);
+        }
+
+        return $this->basePath . '/docs/' . $siteId . '_' . $this->sanitizeFilename($documentKey) . '.dat';
+    }
+
     /**
      * Get term file path
      *
@@ -914,6 +1226,16 @@ class FileStorage implements StorageInterface
         return $this->basePath . '/titles/' . $siteId . '_' . $elementId . '.dat';
     }
 
+    private function getTitlePathByKey(int $siteId, string $documentKey): string
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            return $this->getTitlePath($siteId, $elementId);
+        }
+
+        return $this->basePath . '/titles/' . $siteId . '_' . $this->sanitizeFilename($documentKey) . '.dat';
+    }
+
     /**
      * Get element file path (for autocomplete suggestions)
      *
@@ -926,9 +1248,29 @@ class FileStorage implements StorageInterface
         return $this->basePath . '/elements/' . $siteId . '_' . $elementId . '.dat';
     }
 
+    private function getDocumentElementPath(int $siteId, string $documentKey): string
+    {
+        return $this->basePath . '/document-elements/' . $siteId . '_' . $this->sanitizeFilename($documentKey) . '.dat';
+    }
+
     private function getCompoundPath(int $siteId, int $elementId): string
     {
         return $this->basePath . '/compounds/' . $siteId . '_' . $elementId . '.dat';
+    }
+
+    private function getCompoundPathByKey(int $siteId, string $documentKey): string
+    {
+        $elementId = $this->elementIdFromPageDocumentKey($siteId, $documentKey);
+        if ($elementId !== null) {
+            return $this->getCompoundPath($siteId, $elementId);
+        }
+
+        return $this->basePath . '/compounds/' . $siteId . '_' . $this->sanitizeFilename($documentKey) . '.dat';
+    }
+
+    private function getParentPath(int $siteId, int $elementId): string
+    {
+        return $this->basePath . '/parents/' . $siteId . '_' . $elementId . '.dat';
     }
 
     private function getNgramBucketPath(int $siteId, string $ngram): string
@@ -1029,6 +1371,65 @@ class FileStorage implements StorageInterface
         $this->writeFile($this->basePath . '/keys/' . $safe . '.dat', [
             'value' => $filename,
         ]);
+    }
+
+    private function addDocumentKeyForParent(int $siteId, int $elementId, string $documentKey): void
+    {
+        $this->rememberFilenameKey($documentKey);
+        $path = $this->getParentPath($siteId, $elementId);
+
+        $this->updateJsonFile(
+            $path,
+            static function(mixed $current) use ($documentKey): array {
+                $keys = is_array($current) ? array_values(array_map('strval', $current)) : [];
+                $keys[] = $documentKey;
+
+                return array_values(array_unique($keys));
+            },
+        );
+    }
+
+    private function removeDocumentKeyForParent(int $siteId, int $elementId, string $documentKey): void
+    {
+        $path = $this->getParentPath($siteId, $elementId);
+        $keys = $this->readFile($path);
+        if (!is_array($keys)) {
+            return;
+        }
+
+        $keys = array_values(array_filter(
+            array_map('strval', $keys),
+            static fn(string $key): bool => $key !== $documentKey,
+        ));
+
+        if ($keys === []) {
+            @unlink($path);
+            return;
+        }
+
+        $this->writeFile($path, $keys);
+    }
+
+    private function elementIdFromDocumentKey(string $documentKey): ?int
+    {
+        if (preg_match('/^(\d+)(?:_|$)/', $documentKey, $match) === 1) {
+            return (int)$match[1];
+        }
+
+        return null;
+    }
+
+    private function elementIdFromPageDocumentKey(int $siteId, string $documentKey): ?int
+    {
+        if (preg_match('/^(\d+)_(\d+)$/', $documentKey, $match) !== 1) {
+            return null;
+        }
+
+        if ((int)$match[2] !== $siteId) {
+            return null;
+        }
+
+        return (int)$match[1];
     }
 
     /**
@@ -1240,6 +1641,16 @@ class FileStorage implements StorageInterface
     private function readCompoundRows(int $siteId, int $elementId): array
     {
         $rows = $this->readFile($this->getCompoundPath($siteId, $elementId));
+
+        return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function readCompoundRowsByKey(int $siteId, string $documentKey): array
+    {
+        $rows = $this->readFile($this->getCompoundPathByKey($siteId, $documentKey));
 
         return is_array($rows) ? array_values(array_filter($rows, 'is_array')) : [];
     }

@@ -19,6 +19,12 @@ namespace lindemannrock\searchmanager\search\storage;
  */
 interface StorageInterface
 {
+    /**
+     * Whether this storage can persist multiple backend documents for one
+     * parent element by document key.
+     */
+    public function supportsDocumentKeys(): bool;
+
     // =========================================================================
     // DOCUMENT OPERATIONS
     // =========================================================================

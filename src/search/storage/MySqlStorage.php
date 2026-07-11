@@ -22,7 +22,7 @@ use yii\db\Expression;
  *
  * @since 5.0.0
  */
-class MySqlStorage implements StorageInterface
+class MySqlStorage implements DocumentKeyStorageInterface
 {
     use LoggingTrait;
 
@@ -55,6 +55,11 @@ class MySqlStorage implements StorageInterface
         $this->logDebug('Initialized MySqlStorage', [
             'index' => $this->indexHandle,
         ]);
+    }
+
+    public function supportsDocumentKeys(): bool
+    {
+        return true;
     }
 
     // =========================================================================

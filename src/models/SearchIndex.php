@@ -155,6 +155,7 @@ class SearchIndex extends Model
             [['backend'], 'string', 'max' => 255],
             [['backend'], 'validateBackendHandle'],
             [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl', 'splitSections'], 'boolean'],
+            [['splitSections'], 'validateSplitSectionsStorage'],
             [['documentCount'], 'integer'],
             [['siteId'], 'validateSiteId'],
             [['source'], 'in', 'range' => ['config', 'database']],
@@ -1196,6 +1197,33 @@ class SearchIndex extends Model
         $transformerClass = trim((string)$this->transformerClass);
 
         return $transformerClass === '' || $transformerClass === DocsManagerTransformer::class;
+    }
+
+    public function validateSplitSectionsStorage(string $attribute): void
+    {
+        if (!$this->usesSplitSections()) {
+            return;
+        }
+
+        $backendType = $this->getEffectiveBackendType();
+        if (self::backendTypeSupportsDocumentKeys($backendType)) {
+            return;
+        }
+
+        $this->addError($attribute, Craft::t('search-manager', 'Split Sections requires a backend that supports document keys.'));
+    }
+
+    public static function backendTypeSupportsDocumentKeys(?string $backendType): bool
+    {
+        return in_array($backendType, [
+            'algolia',
+            'meilisearch',
+            'typesense',
+            'mysql',
+            'pgsql',
+            'redis',
+            'file',
+        ], true);
     }
 
     /**

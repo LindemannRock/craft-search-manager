@@ -22,7 +22,7 @@ use yii\db\Expression;
  *
  * @since 5.0.0
  */
-class PostgreSqlStorage implements StorageInterface
+class PostgreSqlStorage implements DocumentKeyStorageInterface
 {
     use LoggingTrait;
 
@@ -55,6 +55,11 @@ class PostgreSqlStorage implements StorageInterface
         $this->logDebug('Initialized PostgreSqlStorage', [
             'index' => $this->indexHandle,
         ]);
+    }
+
+    public function supportsDocumentKeys(): bool
+    {
+        return true;
     }
 
     // =========================================================================

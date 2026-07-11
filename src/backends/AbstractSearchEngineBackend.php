@@ -16,6 +16,7 @@ use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryParser;
 use lindemannrock\searchmanager\search\SearchEngine;
 use lindemannrock\searchmanager\search\StopWords;
+use lindemannrock\searchmanager\search\storage\DocumentKeyStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\search\Tokenizer;
 use lindemannrock\searchmanager\SearchManager;
@@ -60,6 +61,30 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
      * @return string
      */
     abstract protected function getBackendLabel(): string;
+
+    protected function documentKeyStorage(StorageInterface $storage): ?DocumentKeyStorageInterface
+    {
+        if ($storage instanceof DocumentKeyStorageInterface && $storage->supportsDocumentKeys()) {
+            return $storage;
+        }
+
+        return null;
+    }
+
+    private function assertSplitStorageCapability(string $indexName, StorageInterface $storage): bool
+    {
+        $splitSections = SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false;
+        if (!$splitSections || $this->documentKeyStorage($storage) !== null) {
+            return true;
+        }
+
+        $this->logError('Split Sections requires storage that supports document keys', [
+            'index' => $indexName,
+            'storage' => get_class($storage),
+        ]);
+
+        return false;
+    }
 
     // =========================================================================
     // STORAGE & ENGINE MANAGEMENT
@@ -162,6 +187,12 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         try {
             $engine = $this->getSearchEngine($indexName);
             $storage = $this->getStorage($indexName);
+            if (!$this->assertSplitStorageCapability($indexName, $storage)) {
+                return [
+                    'success' => false,
+                    'wasCreated' => null,
+                ];
+            }
 
             // Extract title and content
             $title = $data['title'] ?? '';
@@ -193,8 +224,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
                 $documentData = $this->buildDocumentData($indexName, $data);
 
                 // Store element metadata for rich autocomplete suggestions
-                if (method_exists($storage, 'storeElementByKey')) {
-                    $storage->storeElementByKey($siteId, $elementId, $documentKey, $title, $elementType, $documentData);
+                $documentStorage = $this->documentKeyStorage($storage);
+                if ($documentStorage !== null) {
+                    $documentStorage->storeElementByKey($siteId, $elementId, $documentKey, $title, $elementType, $documentData);
                 } else {
                     $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
                 }
@@ -227,6 +259,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         try {
             $engine = $this->getSearchEngine($indexName);
             $storage = $this->getStorage($indexName);
+            if (!$this->assertSplitStorageCapability($indexName, $storage)) {
+                return false;
+            }
 
             $successCount = 0;
             foreach ($items as $data) {
@@ -248,8 +283,9 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
 
                 if ($engine->indexDocumentWithKeyResult($siteId, $elementId, $documentKey, $title, $content)['success']) {
                     $documentData = $this->buildDocumentData($indexName, $data);
-                    if (method_exists($storage, 'storeElementByKey')) {
-                        $storage->storeElementByKey($siteId, $elementId, $documentKey, $title, $elementType, $documentData);
+                    $documentStorage = $this->documentKeyStorage($storage);
+                    if ($documentStorage !== null) {
+                        $documentStorage->storeElementByKey($siteId, $elementId, $documentKey, $title, $elementType, $documentData);
                     } else {
                         $storage->storeElement($siteId, $elementId, $title, $elementType, $documentData);
                     }
@@ -347,13 +383,24 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         try {
             $storage = $this->getStorage($indexName);
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
-            if (!method_exists($storage, 'getDocumentKeysByParent')) {
+            $splitSections = SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false;
+            $documentStorage = $this->documentKeyStorage($storage);
+            if ($documentStorage === null) {
+                if ($splitSections) {
+                    $this->logError('Cannot delete split-section orphans because storage does not support document keys', [
+                        'index' => $indexName,
+                        'storage' => get_class($storage),
+                    ]);
+
+                    return false;
+                }
+
                 return true;
             }
 
             $keep = array_flip(array_map('strval', $keepBackendIds));
             $success = true;
-            foreach ($storage->getDocumentKeysByParent((int)$siteId, $elementId) as $documentKey) {
+            foreach ($documentStorage->getDocumentKeysByParent((int)$siteId, $elementId) as $documentKey) {
                 if (isset($keep[(string)$documentKey])) {
                     continue;
                 }
@@ -547,8 +594,13 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         $allResults = [];
         $splitSections = SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false;
         if ($splitSections) {
+            if (!$this->assertSplitStorageCapability($indexName, $storage)) {
+                return ['hits' => [], 'total' => 0];
+            }
+
             $searchOptions['returnDocumentKeys'] = true;
         }
+        $documentStorage = $this->documentKeyStorage($storage);
 
         foreach ($siteIds as $siteId) {
             $siteId = (int)$siteId;
@@ -575,8 +627,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
             }
         }
         foreach ($elementIdsBySite as $siteId => $idSet) {
-            $elementInfoBySite[$siteId] = $splitSections && method_exists($storage, 'getElementsByDocumentKeys')
-                ? $storage->getElementsByDocumentKeys($siteId, array_keys($idSet))
+            $elementInfoBySite[$siteId] = $splitSections && $documentStorage !== null
+                ? $documentStorage->getElementsByDocumentKeys($siteId, array_keys($idSet))
                 : $storage->getElementsByIds($siteId, array_keys($idSet));
         }
 
@@ -651,14 +703,19 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
     ): array {
         $splitSections = SearchIndex::findByHandle($indexName)?->usesSplitSections() ?? false;
         if ($splitSections) {
+            if (!$this->assertSplitStorageCapability($indexName, $storage)) {
+                return ['hits' => [], 'total' => 0];
+            }
+
             $searchOptions['returnDocumentKeys'] = true;
         }
+        $documentStorage = $this->documentKeyStorage($storage);
         $results = $engine->search($query, $siteId, 0, $searchOptions);
         $elementInfo = [];
 
         if ($typeFilter !== null) {
-            $elementInfo = $splitSections && method_exists($storage, 'getElementsByDocumentKeys')
-                ? $storage->getElementsByDocumentKeys($siteId, array_keys($results))
+            $elementInfo = $splitSections && $documentStorage !== null
+                ? $documentStorage->getElementsByDocumentKeys($siteId, array_keys($results))
                 : $storage->getElementsByIds($siteId, array_keys($results));
             $results = array_filter(
                 $results,
@@ -680,8 +737,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         }
 
         if ($typeFilter === null) {
-            $elementInfo = $splitSections && method_exists($storage, 'getElementsByDocumentKeys')
-                ? $storage->getElementsByDocumentKeys($siteId, array_keys($results))
+            $elementInfo = $splitSections && $documentStorage !== null
+                ? $documentStorage->getElementsByDocumentKeys($siteId, array_keys($results))
                 : $storage->getElementsByIds($siteId, array_keys($results));
         }
 
@@ -1043,13 +1100,14 @@ abstract class AbstractSearchEngineBackend extends BaseBackend
         }
 
         $elementTermsCache = [];
+        $documentStorage = $this->documentKeyStorage($storage);
         foreach ($documentKeysBySite as $siteId => $documentKeys) {
             $ids = array_values($documentKeys);
-            $titleTermsByElement = method_exists($storage, 'getTitleTermsBatchByKeys')
-                ? $storage->getTitleTermsBatchByKeys((int)$siteId, $ids)
+            $titleTermsByElement = $documentStorage !== null
+                ? $documentStorage->getTitleTermsBatchByKeys((int)$siteId, $ids)
                 : $storage->getTitleTermsBatch((int)$siteId, array_map('intval', $ids));
-            $docTermsByElement = method_exists($storage, 'getDocumentTermsBatchByKeys')
-                ? $storage->getDocumentTermsBatchByKeys((int)$siteId, $ids)
+            $docTermsByElement = $documentStorage !== null
+                ? $documentStorage->getDocumentTermsBatchByKeys((int)$siteId, $ids)
                 : $storage->getDocumentTermsBatch((int)$siteId, array_map('intval', $ids));
 
             foreach ($ids as $documentKey) {

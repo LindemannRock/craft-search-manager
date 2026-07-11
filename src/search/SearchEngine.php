@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\search;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\QueryNormalizer;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\search\storage\DocumentKeyStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 
 /**
@@ -321,105 +322,153 @@ class SearchEngine
         return sprintf('search-manager:index-document:%s:%d:%s', $this->indexHandle, $siteId, (string)$documentKey);
     }
 
+    private function documentKeyStorage(): ?DocumentKeyStorageInterface
+    {
+        if ($this->storage instanceof DocumentKeyStorageInterface && $this->storage->supportsDocumentKeys()) {
+            return $this->storage;
+        }
+
+        return null;
+    }
+
+    private function assertDocumentKeySupported(int $siteId, int $elementId, string $documentKey): void
+    {
+        if ($this->documentKeyStorage() !== null) {
+            return;
+        }
+
+        if ($documentKey === SearchHitIdentityHelper::pageDocumentId($elementId, $siteId)) {
+            return;
+        }
+
+        throw new \RuntimeException(sprintf(
+            'Storage backend %s does not support document keys required by split-section indexing for document "%s".',
+            get_class($this->storage),
+            $documentKey,
+        ));
+    }
+
     /**
      * @return array<string, int>
      */
     private function documentTerms(int $siteId, int $elementId, string $documentKey): array
     {
-        if (method_exists($this->storage, 'getDocumentTermsByKey')) {
-            return $this->storage->getDocumentTermsByKey($siteId, $documentKey);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            return $documentStorage->getDocumentTermsByKey($siteId, $documentKey);
         }
+
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
 
         return $this->storage->getDocumentTerms($siteId, $elementId);
     }
 
     private function documentLength(int $siteId, int $elementId, string $documentKey): int
     {
-        if (method_exists($this->storage, 'getDocumentLengthByKey')) {
-            return $this->storage->getDocumentLengthByKey($siteId, $documentKey);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            return $documentStorage->getDocumentLengthByKey($siteId, $documentKey);
         }
+
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
 
         return $this->storage->getDocumentLength($siteId, $elementId);
     }
 
     private function storeDocumentRows(int $siteId, int $elementId, string $documentKey, array $termFreqs, int $docLength, string $language): void
     {
-        if (method_exists($this->storage, 'storeDocumentByKey')) {
-            $this->storage->storeDocumentByKey($siteId, $elementId, $documentKey, $termFreqs, $docLength, $language);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->storeDocumentByKey($siteId, $elementId, $documentKey, $termFreqs, $docLength, $language);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->storeDocument($siteId, $elementId, $termFreqs, $docLength, $language);
     }
 
     private function storeTermDocument(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language): void
     {
-        if (method_exists($this->storage, 'storeTermDocumentByKey')) {
-            $this->storage->storeTermDocumentByKey($term, $siteId, $elementId, $documentKey, $frequency, $language);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->storeTermDocumentByKey($term, $siteId, $elementId, $documentKey, $frequency, $language);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->storeTermDocument($term, $siteId, $elementId, $frequency, $language);
     }
 
     private function removeTermDocument(string $term, int $siteId, int $elementId, string $documentKey): void
     {
-        if (method_exists($this->storage, 'removeTermDocumentByKey')) {
-            $this->storage->removeTermDocumentByKey($term, $siteId, $documentKey);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->removeTermDocumentByKey($term, $siteId, $documentKey);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->removeTermDocument($term, $siteId, $elementId);
     }
 
     private function deleteDocumentRows(int $siteId, int $elementId, string $documentKey): void
     {
-        if (method_exists($this->storage, 'deleteDocumentByKey')) {
-            $this->storage->deleteDocumentByKey($siteId, $documentKey);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->deleteDocumentByKey($siteId, $documentKey);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->deleteDocument($siteId, $elementId);
     }
 
     private function storeTitleRows(int $siteId, int $elementId, string $documentKey, array $titleTokens): void
     {
-        if (method_exists($this->storage, 'storeTitleTermsByKey')) {
-            $this->storage->storeTitleTermsByKey($siteId, $elementId, $documentKey, $titleTokens);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->storeTitleTermsByKey($siteId, $elementId, $documentKey, $titleTokens);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->storeTitleTerms($siteId, $elementId, $titleTokens);
     }
 
     private function deleteTitleRows(int $siteId, int $elementId, string $documentKey): void
     {
-        if (method_exists($this->storage, 'deleteTitleTermsByKey')) {
-            $this->storage->deleteTitleTermsByKey($siteId, $documentKey);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->deleteTitleTermsByKey($siteId, $documentKey);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->deleteTitleTerms($siteId, $elementId);
     }
 
     private function storeCompoundRows(int $siteId, int $elementId, string $documentKey, string $content, string $language): void
     {
         $suggestions = $this->compoundSuggestionExtractor->extract($content);
-        if (method_exists($this->storage, 'storeCompoundSuggestionsByKey')) {
-            $this->storage->storeCompoundSuggestionsByKey($siteId, $elementId, $documentKey, $suggestions, $language);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->storeCompoundSuggestionsByKey($siteId, $elementId, $documentKey, $suggestions, $language);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->storeCompoundSuggestions($siteId, $elementId, $suggestions, $language);
     }
 
     private function deleteCompoundRows(int $siteId, int $elementId, string $documentKey): void
     {
-        if (method_exists($this->storage, 'deleteCompoundSuggestionsByKey')) {
-            $this->storage->deleteCompoundSuggestionsByKey($siteId, $documentKey);
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage !== null) {
+            $documentStorage->deleteCompoundSuggestionsByKey($siteId, $documentKey);
             return;
         }
 
+        $this->assertDocumentKeySupported($siteId, $elementId, $documentKey);
         $this->storage->deleteCompoundSuggestions($siteId, $elementId);
     }
 
@@ -688,9 +737,7 @@ class SearchEngine
             }
 
             // Batch fetch document lengths
-            $docLengths = $this->storage->getDocumentLengthsBatch(
-                $this->groupDocIdsBySite(array_keys($allDocIds))
-            );
+            $docLengths = $this->documentLengthsForDocIds(array_keys($allDocIds));
 
             // Batch fetch title terms once for the whole matched set, so the
             // title boost below is an in-memory lookup rather than one storage
@@ -862,8 +909,9 @@ class SearchEngine
         }
 
         // Batch-fetch documentData for all candidates
-        $elements = method_exists($this->storage, 'getElementsByDocumentKeys')
-            ? $this->storage->getElementsByDocumentKeys($siteId, array_keys($documentKeys))
+        $documentStorage = $this->documentKeyStorage();
+        $elements = $documentStorage !== null
+            ? $documentStorage->getElementsByDocumentKeys($siteId, array_keys($documentKeys))
             : $this->storage->getElementsByIds($siteId, array_map('intval', array_keys($documentKeys)));
 
         $verified = [];
@@ -944,8 +992,9 @@ class SearchEngine
             $documentKeysByDocId[(string) $docId] = $this->documentKeyFromDocId((string)$docId);
         }
 
-        $elements = method_exists($this->storage, 'getElementsByDocumentKeys')
-            ? $this->storage->getElementsByDocumentKeys($siteId, array_values(array_unique($documentKeysByDocId)))
+        $documentStorage = $this->documentKeyStorage();
+        $elements = $documentStorage !== null
+            ? $documentStorage->getElementsByDocumentKeys($siteId, array_values(array_unique($documentKeysByDocId)))
             : $this->storage->getElementsByIds($siteId, array_map('intval', array_values(array_unique($documentKeysByDocId))));
 
         foreach ($documentKeysByDocId as $docId => $documentKey) {
@@ -1099,9 +1148,7 @@ class SearchEngine
         }
 
         // Batch fetch document lengths
-        $docLengths = $this->storage->getDocumentLengthsBatch(
-            $this->groupDocIdsBySite(array_keys($allDocIds))
-        );
+        $docLengths = $this->documentLengthsForDocIds(array_keys($allDocIds));
 
         // Batch fetch title terms once for the whole matched set (see searchSimple).
         $titleTermsByDocId = $this->preloadTitleTerms(array_keys($allDocIds), $siteId);
@@ -1218,8 +1265,9 @@ class SearchEngine
                 $titleDocumentKeys[] = $this->documentKeyFromDocId((string)$docId);
             }
 
-            $titleTermsByElement = method_exists($this->storage, 'getTitleTermsBatchByKeys')
-                ? $this->storage->getTitleTermsBatchByKeys($siteId, array_values(array_unique($titleDocumentKeys)))
+            $documentStorage = $this->documentKeyStorage();
+            $titleTermsByElement = $documentStorage !== null
+                ? $documentStorage->getTitleTermsBatchByKeys($siteId, array_values(array_unique($titleDocumentKeys)))
                 : $this->storage->getTitleTermsBatch($siteId, array_map('intval', array_values(array_unique($titleDocumentKeys))));
         }
 
@@ -1378,8 +1426,9 @@ class SearchEngine
 
         $languagesByDocId = [];
         foreach ($documentKeysBySite as $elemSiteId => $documentKeys) {
-            $languagesByDocument = method_exists($this->storage, 'getDocumentLanguagesBatchByKeys')
-                ? $this->storage->getDocumentLanguagesBatchByKeys((int)$elemSiteId, array_values(array_unique($documentKeys)))
+            $documentStorage = $this->documentKeyStorage();
+            $languagesByDocument = $documentStorage !== null
+                ? $documentStorage->getDocumentLanguagesBatchByKeys((int)$elemSiteId, array_values(array_unique($documentKeys)))
                 : $this->storage->getDocumentLanguagesBatch((int)$elemSiteId, array_map('intval', array_values(array_unique($documentKeys))));
             foreach ($languagesByDocument as $documentKey => $docLanguage) {
                 $languagesByDocId[$elemSiteId . ':' . $documentKey] = $docLanguage;
@@ -1495,7 +1544,24 @@ class SearchEngine
      */
     public function deleteDocument(int $siteId, int $elementId): bool
     {
-        return $this->deleteDocumentByKey($siteId, $elementId, SearchHitIdentityHelper::pageDocumentId($elementId, $siteId));
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage === null) {
+            return $this->deleteDocumentByKey($siteId, $elementId, SearchHitIdentityHelper::pageDocumentId($elementId, $siteId));
+        }
+
+        $documentKeys = $documentStorage->getDocumentKeysByParent($siteId, $elementId);
+        if ($documentKeys === []) {
+            $documentKeys = [SearchHitIdentityHelper::pageDocumentId($elementId, $siteId)];
+        }
+
+        $success = true;
+        foreach ($documentKeys as $documentKey) {
+            if (!$this->deleteDocumentByKey($siteId, $elementId, (string)$documentKey)) {
+                $success = false;
+            }
+        }
+
+        return $success;
     }
 
     public function deleteDocumentByKey(int $siteId, int $elementId, string $documentKey): bool
@@ -1571,8 +1637,9 @@ class SearchEngine
             $docIdsByElement[$documentKey][] = (string)$docId;
         }
 
-        $byElement = method_exists($this->storage, 'getTitleTermsBatchByKeys')
-            ? $this->storage->getTitleTermsBatchByKeys($siteId, array_keys($documentKeys))
+        $documentStorage = $this->documentKeyStorage();
+        $byElement = $documentStorage !== null
+            ? $documentStorage->getTitleTermsBatchByKeys($siteId, array_keys($documentKeys))
             : $this->storage->getTitleTermsBatch($siteId, array_map('intval', array_keys($documentKeys)));
 
         $byDocId = [];
@@ -1584,6 +1651,31 @@ class SearchEngine
         }
 
         return $byDocId;
+    }
+
+    /**
+     * @param list<string|int> $docIds
+     * @return array<string, int>
+     */
+    private function documentLengthsForDocIds(array $docIds): array
+    {
+        $documentStorage = $this->documentKeyStorage();
+        if ($documentStorage === null) {
+            return $this->storage->getDocumentLengthsBatch($this->groupDocIdsBySite($docIds));
+        }
+
+        $lengths = [];
+        foreach ($docIds as $docId) {
+            $docId = (string)$docId;
+            $parts = explode(':', $docId, 2);
+            if (!isset($parts[0], $parts[1])) {
+                continue;
+            }
+
+            $lengths[$docId] = $documentStorage->getDocumentLengthByKey((int)$parts[0], $parts[1]);
+        }
+
+        return $lengths;
     }
 
     /**

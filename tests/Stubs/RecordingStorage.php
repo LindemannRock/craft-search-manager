@@ -109,6 +109,11 @@ final class RecordingStorage implements StorageInterface
     ) {
     }
 
+    public function supportsDocumentKeys(): bool
+    {
+        return false;
+    }
+
     public function getTermDocuments(string $term, int $siteId): array
     {
         $this->getTermDocumentsCalls++;

@@ -985,6 +985,7 @@ return [
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => '階層検索とアンカーリンクのために抽出する見出しレベル。デフォルトは H2–H4。',
     'Split Sections' => 'セクションを分割',
     'Index the page intro and each heading section as separate search hits.' => 'ページの導入部と各見出しセクションを個別の検索結果としてインデックスします。',
+    'Split Sections requires a backend that supports document keys.' => 'Split Sections にはドキュメントキーをサポートするバックエンドが必要です。',
     'Transformer Class' => 'Transformer クラス',
     'Optional override for advanced indexing needs.' => '高度なインデックス作成が必要な場合の任意のオーバーライド。',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'このインデックスのグローバル検索バックエンドをオーバーライド。プラグイン設定で構成されたバックエンドを使用するには \'Default\' のままにしてください。',

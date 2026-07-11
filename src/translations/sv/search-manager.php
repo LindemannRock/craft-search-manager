@@ -985,6 +985,7 @@ return [
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => 'Vilka rubriknivåer som ska extraheras för hierarkisk sökning och ankarlänkar. Standard är H2–H4.',
     'Split Sections' => 'Dela sektioner',
     'Index the page intro and each heading section as separate search hits.' => 'Indexera sidans introduktion och varje rubriksektion som separata sökresultat.',
+    'Split Sections requires a backend that supports document keys.' => 'Split Sections kräver en backend som stöder dokumentnycklar.',
     'Transformer Class' => 'Transformerklass',
     'Optional override for advanced indexing needs.' => 'Valfri åsidosättning för avancerade indexeringsbehov.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'Åsidosätt den globala sökbackend för detta index. Lämna som \'Default\' för att använda backend konfigurerad i plugininställningarna.',

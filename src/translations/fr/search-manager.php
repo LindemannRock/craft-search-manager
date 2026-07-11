@@ -985,6 +985,7 @@ return [
     'Which heading levels to extract for hierarchical search and anchor links. Default is H2–H4.' => 'Quels niveaux de titres extraire pour la recherche hiérarchique et les liens d\'ancrage. Par défaut : H2–H4.',
     'Split Sections' => 'Diviser les sections',
     'Index the page intro and each heading section as separate search hits.' => 'Indexer l’introduction de la page et chaque section de titre comme des résultats de recherche distincts.',
+    'Split Sections requires a backend that supports document keys.' => 'Split Sections nécessite un backend qui prend en charge les clés de document.',
     'Transformer Class' => 'Classe de transformer',
     'Optional override for advanced indexing needs.' => 'Remplacement facultatif pour les besoins d\'indexation avancés.',
     'Override the global search backend for this index. Leave as \'Default\' to use the backend configured in plugin settings.' => 'Remplacez le backend de recherche global pour cet index. Laissez sur \'Default\' pour utiliser le backend configuré dans les paramètres du plugin.',
