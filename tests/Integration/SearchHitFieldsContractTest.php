@@ -129,6 +129,39 @@ final class SearchHitFieldsContractTest extends TestCase
         ], $result['fields'] ?? null);
     }
 
+    public function testRetrievableFieldsWildcardExclusionReturnsAllExceptExcludedFields(): void
+    {
+        $hit = $this->rawHit(101, 1);
+        $hit['_fields']['wysiwyg'] = 'Wysiwyg field value';
+        $hit['_fields']['internalNotes'] = 'Internal notes value';
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'intro', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => ['*', '-wysiwyg']],
+        ])[0] ?? [];
+
+        self::assertSame([
+            'intro' => 'Intro field value',
+            'category' => 'One Another one',
+            'internalNotes' => 'Internal notes value',
+        ], $result['fields'] ?? null);
+    }
+
+    public function testRetrievableFieldsWildcardExclusionSupportsMultipleExcludedFields(): void
+    {
+        $hit = $this->rawHit(101, 1);
+        $hit['_fields']['wysiwyg'] = 'Wysiwyg field value';
+        $hit['_fields']['internalNotes'] = 'Internal notes value';
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'intro', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => ['*', '-wysiwyg', '-internalNotes']],
+        ])[0] ?? [];
+
+        self::assertSame([
+            'intro' => 'Intro field value',
+            'category' => 'One Another one',
+        ], $result['fields'] ?? null);
+    }
+
     public function testRetrievableFieldsEmptyListReturnsNoPublicFields(): void
     {
         $hit = $this->rawHit(101, 1);
@@ -159,6 +192,23 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame(['category'], SearchIndex::narrowRetrievableFields(['category'], ['*']));
         self::assertSame(['intro'], SearchIndex::narrowRetrievableFields(['*'], ['intro']));
         self::assertSame([], SearchIndex::narrowRetrievableFields([], ['intro']));
+        self::assertSame(['*', '-wysiwyg'], SearchIndex::narrowRetrievableFields(['*', '-wysiwyg'], null));
+        self::assertSame(['*', '-wysiwyg', '-internalNotes'], SearchIndex::narrowRetrievableFields(['*', '-wysiwyg'], ['*', '-internalNotes']));
+        self::assertSame(['intro'], SearchIndex::narrowRetrievableFields(['*', '-wysiwyg'], ['intro', 'wysiwyg']));
+        self::assertSame([], SearchIndex::narrowRetrievableFields(['*', '-wysiwyg'], ['wysiwyg']));
+        self::assertSame(['intro'], SearchIndex::narrowRetrievableFields(['intro', 'category'], ['*', '-category']));
+    }
+
+    public function testRetrievableFieldExclusionWithoutWildcardFailsValidation(): void
+    {
+        $index = new SearchIndex();
+        $index->retrievableFields = ['intro', '-wysiwyg'];
+        $index->validateRetrievableFields('retrievableFields');
+
+        self::assertContains(
+            'Retrievable field exclusions (for example -wysiwyg) can only be used with *.',
+            $index->getErrors('retrievableFields'),
+        );
     }
 
     public function testRetrievableFieldNarrowingDoesNotAffectSnippetSources(): void
@@ -172,6 +222,19 @@ final class SearchHitFieldsContractTest extends TestCase
 
         self::assertSame([], $result['fields'] ?? null);
         self::assertSame('Needle phrase only in hidden body', $result['snippet'] ?? null);
+    }
+
+    public function testRetrievableFieldExclusionDoesNotAffectSnippetSources(): void
+    {
+        $hit = $this->rawHit(101, 1);
+        $hit['_fields']['wysiwyg'] = 'Needle phrase only in excluded wysiwyg';
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'needle phrase', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => ['*', '-wysiwyg']],
+        ])[0] ?? [];
+
+        self::assertArrayNotHasKey('wysiwyg', $result['fields'] ?? []);
+        self::assertSame('Needle phrase only in excluded wysiwyg', $result['snippet'] ?? null);
     }
 
     public function testSnippetFieldsRemainPrivateAndPowerSnippets(): void
@@ -317,6 +380,33 @@ final class SearchHitFieldsContractTest extends TestCase
         ]);
 
         self::assertSame(['intro' => 'Intro field value'], $response->data['hits'][0]['fields'] ?? null);
+    }
+
+    public function testRestRetrievableFieldsRequestExclusionNarrowsPublicFields(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        [$index, $entry] = $pair;
+        $stub = $this->installStubBackend();
+        $hit = $this->rawHit($entry->id, $entry->siteId);
+        $hit['_index'] = $index->handle;
+        $hit['_fields']['wysiwyg'] = 'Wysiwyg field value';
+        $stub->searchResponse = [
+            'hits' => [$hit],
+            'total' => 1,
+        ];
+
+        $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
+            'retrievableFields' => '*,-wysiwyg',
+        ]);
+
+        self::assertSame([
+            'intro' => 'Intro field value',
+            'category' => 'One Another one',
+        ], $response->data['hits'][0]['fields'] ?? null);
     }
 
     public function testRestDebugReturnsBackendMetaWhenAllowed(): void

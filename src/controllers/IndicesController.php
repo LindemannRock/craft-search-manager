@@ -249,6 +249,7 @@ class IndicesController extends Controller
             'docsManagerTransformerAvailable' => $this->isDocsManagerTransformerAvailable(),
             'defaultTransformerPlaceholder' => $this->getDefaultTransformerPlaceholder(),
             'transformerPlaceholders' => $this->getTransformerPlaceholders(),
+            'splitSectionsByElementType' => $this->getSplitSectionsByElementType(),
         ]);
     }
 
@@ -328,6 +329,19 @@ class IndicesController extends Controller
         }
 
         return $placeholders;
+    }
+
+    /**
+     * @return array<string, bool>
+     */
+    private function getSplitSectionsByElementType(): array
+    {
+        $support = [];
+        foreach (array_keys($this->getElementTypeOptions()) as $elementType) {
+            $support[$elementType] = SearchManager::$plugin->transformers->supportsSplitSections($elementType);
+        }
+
+        return $support;
     }
 
     /**

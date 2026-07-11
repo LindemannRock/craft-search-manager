@@ -376,14 +376,14 @@ final class CommerceTargetElementTypesTest extends TestCase
             self::assertSame((int)$sourceDoc->id, $results[0]['elementId']);
             self::assertSame('Indexed split promotion', $results[0]['title']);
             self::assertSame('/indexed-split-promotion', $results[0]['url']);
-            self::assertSame('intro', $results[0]['sectionType'] ?? null);
-            self::assertSame('intro', $results[0]['sectionId'] ?? null);
+            self::assertSame('promoted-page', $results[0]['sectionType'] ?? null);
+            self::assertSame('promoted-page', $results[0]['sectionId'] ?? null);
             self::assertSame('Indexed split promotion', $results[0]['sectionTitle'] ?? null);
-            self::assertSame(SearchHitIdentityHelper::sectionDocumentId((int)$sourceDoc->id, $siteId, 'intro'), $results[0]['backendId'] ?? null);
+            self::assertSame(SearchHitIdentityHelper::sectionDocumentId((int)$sourceDoc->id, $siteId, 'promoted-page'), $results[0]['backendId'] ?? null);
             self::assertSame('/indexed-split-promotion', $results[0]['sectionUrl'] ?? null);
             self::assertSame(0, $results[0]['sectionIndex'] ?? null);
-            self::assertSame('Indexed split snippet', $results[0]['snippet'] ?? null);
-            self::assertSame(['Indexed heading'], $results[0]['headings'] ?? null);
+            self::assertArrayNotHasKey('snippet', $results[0]);
+            self::assertArrayNotHasKey('headings', $results[0]);
             self::assertTrue($results[0]['promoted']);
         } finally {
             $this->deleteTestIndexByHandle($handle);

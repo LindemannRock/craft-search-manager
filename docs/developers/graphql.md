@@ -87,7 +87,7 @@ Search arguments:
 | `page` | `Int` | Zero-based page number. |
 | `type` | `String` | Optional stable document-kind filter, for example `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
 | `filters` | `String` | Optional backend-specific filter expression. Requires exactly one `indices` value. |
-| `retrievableFields` | `[String]` | Optional custom field handles to return under `fields`. This can narrow each index's `retrievableFields` setting but cannot widen it. Pass an empty list to return no custom fields. |
+| `retrievableFields` | `[String]` | Optional custom field handles to return under `fields`. This can narrow each index's `retrievableFields` setting but cannot widen it. Pass `["*", "-wysiwyg"]` to return all fields except `wysiwyg`, or an empty list to return no custom fields. |
 | `language` | `String` | Optional language code for localized operators. |
 | `source` | `String` | Analytics source. Defaults to `graphql`. |
 | `platform` | `String` | Optional analytics platform label. |
@@ -103,13 +103,13 @@ Search arguments:
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
-GraphQL exposes retrievable custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer adds Craft custom fields to the internal source map only when the field's **Use this field's values as search keywords** setting is enabled; the index's `retrievableFields` setting decides which of those values are returned publicly.
+GraphQL exposes retrievable custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer adds Craft custom fields to the internal source map only when the field's **Use this field's values as search keywords** setting is enabled, including rich-text and body-source fields that also feed snippets, headings, and Split Sections; the index's `retrievableFields` setting decides which of those values are returned publicly. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve`, so `["*", "-wysiwyg"]` returns all fields except `wysiwyg`.
 
 `retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching and snippets even when they are omitted from `fields`. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
 GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields.
 
-For split SourceDoc indices, GraphQL returns the same flat section hits as REST. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `total` counts section hits, `snippet` is generated only from the section's own indexed body, and `headings` is empty because the hit is already the section.
+For split SourceDoc and AutoTransformer-family indices, GraphQL returns the same flat section hits as REST. Intro and heading section hits share `id` and `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `total` counts section hits, `snippet` is generated only from the section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits.
 
 Common hit fields:
 
@@ -120,10 +120,10 @@ Common hit fields:
 | `objectID` | Raw backend compatibility field. Algolia and Meilisearch use this as their primary key; Typesense keeps the primary key in its reserved `id` field. Prefer `elementId` and `backendId` in new code. |
 | `siteId` / `site` / `language` | Site ID, site handle, and site language from the indexed document. |
 | `elementType` | Stable lowercase document kind. Matches `type`. |
-| `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, `user`, and `source-doc`. Split SourceDoc section hits keep `type: "source-doc"`. |
+| `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, `user`, and `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
 | `section` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | Entry section handle when the hit is an Entry. |
-| `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. For split SourceDoc hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
+| `sectionType` | Entry section type (`single`, `channel`, or `structure`) for normal Entry hits. For split hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
 | `sectionId` | Section identity within the parent element for split section hits. |
 | `sectionTitle` | Parent page title for split `intro` / `promoted-page` hits, or heading title for split `heading` hits. |
 | `sectionLevel` | Heading level for split `heading` hits; `null` for intro and promoted-page hits. |
@@ -142,7 +142,7 @@ Common hit fields:
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
 | `matchedTerms` | Matched query terms grouped into `title` and `content` lists when the backend provides them. |
 | `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body; `null` when no eligible snippet source contains the query. |
-| `headings` | List of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split SourceDoc section hits return an empty list. |
+| `headings` | List of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split section hits return an empty list. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
 
 Scores are useful for debug displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.

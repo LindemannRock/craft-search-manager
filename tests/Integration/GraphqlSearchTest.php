@@ -194,6 +194,41 @@ final class GraphqlSearchTest extends TestCase
         $this->assertSame(['intro' => 'Intro field value'], $response['hits'][0]['fields'] ?? null);
     }
 
+    public function testGraphqlSearchRetrievableFieldsArgumentSupportsWildcardExclusions(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        [$index, $entry] = $pair;
+        $stub = $this->installStubBackend();
+        $stub->searchResponse = [
+            'hits' => [[
+                'objectID' => $entry->id,
+                'elementId' => $entry->id,
+                'siteId' => $entry->siteId,
+                'title' => 'Metadata title',
+                'type' => 'entry',
+                '_index' => $index->handle,
+                '_fields' => [
+                    'intro' => 'Intro field value',
+                    'category' => 'Category field value',
+                ],
+            ]],
+            'total' => 1,
+        ];
+
+        $response = SearchResolver::resolveSearch(null, [
+            'query' => 'intro',
+            'indices' => [$index->handle],
+            'siteId' => $entry->siteId,
+            'retrievableFields' => ['*', '-category'],
+        ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
+
+        $this->assertSame(['intro' => 'Intro field value'], $response['hits'][0]['fields'] ?? null);
+    }
+
     public function testSearchAllowsExplicitSiteInsideActiveGraphqlSchema(): void
     {
         $pair = $this->findWorkingIndexAndElement();

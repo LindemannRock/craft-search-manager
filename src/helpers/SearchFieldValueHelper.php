@@ -8,6 +8,8 @@
 
 namespace lindemannrock\searchmanager\helpers;
 
+use lindemannrock\searchmanager\models\SearchIndex;
+
 /**
  * Normalizes indexed custom field values for API and GraphQL responses.
  *
@@ -114,15 +116,7 @@ class SearchFieldValueHelper
      */
     public static function filterFields(array $fields, ?array $retrievableFields = null): array
     {
-        if ($retrievableFields === null || $retrievableFields === ['*']) {
-            return $fields;
-        }
-
-        if ($retrievableFields === []) {
-            return [];
-        }
-
-        return array_intersect_key($fields, array_flip($retrievableFields));
+        return SearchIndex::filterRetrievableFieldValues($fields, $retrievableFields);
     }
 
     /**

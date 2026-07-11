@@ -49,7 +49,7 @@
 			disabled: true
 		}) }}
 
-		{% if index.elementType == 'lindemannrock\\docsmanager\\elements\\SourceDoc' %}
+		{% if index.supportsSplitSections() %}
 			{{ forms.lightswitchField({
 				label: 'Split Sections'|t('search-manager'),
 				instructions: 'Set via config/search-manager.php. Edit the file to change.'|t('search-manager'),

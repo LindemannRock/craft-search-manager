@@ -190,14 +190,14 @@ By default, block-level code in your content is included in search results but e
 
 ### How It Works
 
-When custom field content is indexed, Search Manager keeps searchable field text in a private snippet source. The index's `retrievableFields` setting controls which of those values appear under public API/GraphQL `fields`, but snippets can still use searchable field values that are omitted from the public payload. Docs Manager SourceDoc indices also store an internal code-included body alongside the normal code-free body after a full reindex. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
+When custom field content is indexed, Search Manager keeps searchable field text in a private snippet source. The index's `retrievableFields` setting controls which of those values appear under public API/GraphQL `fields`, but snippets can still use searchable field values that are omitted from the public payload. Docs Manager SourceDoc records and AutoTransformer-family section records also store an internal code-included body alongside the normal code-free body after indexing. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
 
 - **`showCodeSnippets: false`** (default) — block-level code is removed before building result snippets
 - **`showCodeSnippets: true`** — snippets include block-level code content
 
 Inline code spans are sentence content, so their text is always preserved in snippets. Code can still be searchable when it is present in searchable indexed content. The setting only controls whether block-level code appears in the snippet text shown to the user.
 
-Page-mode docs records can be large on external backends; for Algolia-backed documentation, prefer Split Sections so long pages are stored as smaller section records.
+Page-mode docs, rich Entry records, and product records with long rich-text descriptions can be large on external backends; for Algolia-backed long-form content, prefer Split Sections so long documents are stored as smaller section records.
 
 For Markdown-heavy fields, `parseMarkdownSnippets` is a display cleanup option. It strips common Markdown markers such as headings, emphasis, horizontal rules, list markers, and inline-code backticks from the plain-text snippet. It does not render Markdown, modify stored/indexed data, or run against genuine HTML rich text.
 

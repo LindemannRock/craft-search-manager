@@ -14,7 +14,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\events\IndexEvent;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
-use lindemannrock\searchmanager\helpers\SourceDocSectionSplitter;
+use lindemannrock\searchmanager\helpers\SplitSectionDocumentHelper;
 use lindemannrock\searchmanager\jobs\IndexElementJob;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -639,21 +639,7 @@ class IndexingService extends Component
      */
     private function documentsForIndex(?SearchIndex $index, ElementInterface $element, array $data): array
     {
-        if (!$index?->usesSplitSections()) {
-            return [$data];
-        }
-
-        if (!($element instanceof \lindemannrock\docsmanager\elements\SourceDoc)) {
-            return [$data];
-        }
-
-        $documents = SourceDocSectionSplitter::split(
-            $element,
-            $data,
-            $index->headingLevels ?? [2, 3, 4],
-        );
-
-        return $documents !== [] ? $documents : [$data];
+        return SplitSectionDocumentHelper::documentsForIndex($index, $element, $data);
     }
 
     /**

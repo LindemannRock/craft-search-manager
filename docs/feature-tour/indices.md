@@ -65,7 +65,7 @@ If [Docs Manager](https://lindemannrock.com/plugins/docs-manager) is installed, 
 
 When creating a SourceDoc index via the Control Panel, a checkbox group lets you select which sources to include. Leave all unchecked to index all sources.
 
-Long structured SourceDoc indices can opt into section records:
+Long structured SourceDoc and AutoTransformer-family indices can opt into section records:
 
 ```php
 'search-manager-docs' => [
@@ -77,7 +77,11 @@ Long structured SourceDoc indices can opt into section records:
 ],
 ```
 
-Split mode is only available for SourceDoc indices that use the built-in Docs Manager transformer. Each intro or heading section is indexed as its own backend record with the parent page identity plus section metadata. Public search results stay flat: `total` counts section hits, `backendId` is unique per section, and `id` / `elementId` stay equal to the parent page ID. Built-in local backends and external backends support the required document keys; if a custom backend cannot preserve document keys, Split Sections is rejected. Rebuild the affected index after enabling or disabling split mode, and rebuild any Redis or File split-section index after upgrading from a version that did not store section documents by document key.
+Split mode is available for SourceDoc indices that use the built-in Docs Manager transformer family and for indices whose resolved transformer is `AutoTransformer` or a subclass. That includes normal Entry indices, Craft Commerce Product/Variant indices using the built-in `CommerceTransformer`, and project-specific transformers that extend `AutoTransformer`. Each intro or heading section is indexed as its own backend record with the parent element identity plus section metadata. Public search results stay flat: `total` counts section hits, `backendId` is unique per section, and `id` / `elementId` stay equal to the parent element ID. Built-in local backends and external backends support the required document keys; if a custom backend cannot preserve document keys, Split Sections is rejected.
+
+For AutoTransformer-family indices, Search Manager slices each searchable rich-text field by its own heading structure and never carries text across field boundaries. If an element has no headings at the index's selected `headingLevels`, it is indexed as a normal single record. If rich-text headings are present, the intro record carries pre-heading rich-text, non-sliced field text, and title/metadata text; heading section records search only their heading title plus that section's own body. Commerce product identity metadata such as product type, variant SKUs, and price stays on every section record so type filters, widgets, and promotions can work from any section hit. Heading anchors are generated from the heading text and deduped across the element. Search Manager cannot add matching `id` attributes to your front-end templates, so deep links such as `#installation` work only when your site renders matching heading IDs.
+
+Manual rebuilds are required for configuration changes: enabling or disabling `splitSections`, changing `headingLevels`, or changing `retrievableFields`. Normal content edits do not require a manual rebuild; when an element is saved, Search Manager re-slices the element and removes orphaned section records automatically.
 
 For Algolia-backed documentation, enable Split Sections unless every page is comfortably small. Algolia enforces per-record and average record-size limits, and page-mode docs records can exceed those limits on long installation, API, or reference pages. Section records keep stored snippets, headings, and code-included snippet bodies much smaller while preserving links back to the parent page.
 
@@ -126,7 +130,7 @@ Config-defined indices show a "Config" badge and cannot be edited in the CP. Dat
 | `backend` | `string` | `null` | Handle of a configured backend to use (overrides global default) |
 | `language` | `string` | `null` | Language code (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`). `null` = auto-detect from site locale |
 | `headingLevels` | `array` | `null` | Heading levels to extract for heading matching (e.g., `[2, 3, 4]`) |
-| `splitSections` | `bool` | `false` | For SourceDoc indices using the built-in Docs Manager transformer, index intro and heading sections as separate hits |
+| `splitSections` | `bool` | `false` | For SourceDoc/DocsManagerTransformer-family or AutoTransformer-family indices, index intro and heading sections as separate hits when headings are present |
 | `disableStopWords` | `bool` | `false` | Disable stop word filtering for this index |
 | `skipEntriesWithoutUrl` | `bool` | `false` | Skip entries that don't have a URL |
 | `enableAnalytics` | `bool` | `true` | Whether to track analytics for searches on this index |
@@ -217,9 +221,9 @@ Custom transformer classes must be autoloadable from your project or module name
 ],
 ```
 
-Use `['*']` to return every public `_fields` value, `[]` to return none, or an explicit list of field handles. The default is `['*']` for database indices, new indices, and config indices that omit the key. For production APIs, prefer an explicit narrow list that matches the frontend contract.
+Use `['*']` to return every searchable custom field value mirrored into `_fields`, including rich-text and body-source fields that also feed snippets, headings, and Split Sections. Use `['*', '-wysiwyg']` to return all fields except `wysiwyg`, `[]` to return none, or an explicit list of field handles. Exclusion entries use the same `-attr` convention as Algolia's `attributesToRetrieve` and are valid only alongside `*`. The default is `['*']` for database indices, new indices, and config indices that omit the key. For production APIs, prefer an explicit narrow list that matches the frontend contract.
 
-REST and GraphQL callers can pass request-time `retrievableFields` to narrow this list for one request. Request values never widen the index allowlist; if an index allows only `intro`, requesting `summary` returns neither field.
+REST and GraphQL callers can pass request-time `retrievableFields` to narrow this list for one request. Request values never widen the index allowlist; if an index allows only `intro`, requesting `summary` returns neither field, and if an index excludes `wysiwyg`, requesting `wysiwyg` cannot add it back.
 
 This setting controls what custom field values are stored in the public `fields` area of new records. Snippets and matching still use all searchable field text through private snippet/search sources, so a field omitted from `fields` can still produce matches or snippets. Rebuild the index after changing `retrievableFields`; existing records keep the previous stored field allowlist until they are reindexed.
 

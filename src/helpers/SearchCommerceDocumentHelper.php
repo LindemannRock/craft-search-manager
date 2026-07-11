@@ -99,6 +99,10 @@ class SearchCommerceDocumentHelper
         if ($defaultVariant !== null) {
             $data['defaultVariantSku'] = self::stringValue($defaultVariant, ['sku', 'getSku']);
             $data['defaultVariantTitle'] = self::stringValue($defaultVariant, ['title', 'getTitle']);
+            $price = self::numericValue($defaultVariant, ['price', 'getPrice']);
+            if ($price !== null) {
+                $data['price'] = $price;
+            }
         }
 
         return SearchContentBuilderHelper::append($data, [
@@ -111,6 +115,7 @@ class SearchCommerceDocumentHelper
             $data['variantOptions'] ?? [],
             $data['defaultVariantSku'] ?? '',
             $data['defaultVariantTitle'] ?? '',
+            $data['price'] ?? '',
         ]);
     }
 
@@ -129,6 +134,10 @@ class SearchCommerceDocumentHelper
         $data['sku'] = self::stringValue($variant, ['sku', 'getSku']);
         $data['variantTitle'] = self::stringValue($variant, ['title', 'getTitle']);
         $data['variantOptions'] = $variantOptions;
+        $price = self::numericValue($variant, ['price', 'getPrice']);
+        if ($price !== null) {
+            $data['price'] = $price;
+        }
         $data['productType'] = self::stringValue($productType, ['name', 'getName']);
         $data['productTypeHandle'] = self::stringValue($productType, ['handle', 'getHandle']);
         unset($data['section']);
@@ -153,6 +162,7 @@ class SearchCommerceDocumentHelper
             $data['productSlug'] ?? '',
             $data['productType'],
             $data['productTypeHandle'],
+            $data['price'] ?? '',
         ]);
     }
 
@@ -229,6 +239,25 @@ class SearchCommerceDocumentHelper
         }
 
         return '';
+    }
+
+    /**
+     * @param string[] $names
+     */
+    private static function numericValue(?object $object, array $names): int|float|null
+    {
+        if ($object === null) {
+            return null;
+        }
+
+        $value = self::objectValue($object, $names);
+        if (!is_numeric($value)) {
+            return null;
+        }
+
+        $float = (float)$value;
+
+        return floor($float) === $float ? (int)$float : $float;
     }
 
     /**

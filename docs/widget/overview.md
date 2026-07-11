@@ -12,7 +12,7 @@ Search Manager includes a ready-to-use search widget for your frontend. It's bui
 - **Recent searches** — optional search history stored locally
 - **Grouped results** — group results by type/section with hierarchical layout option
 - **Heading matching** — show matched headings under results for documentation sites
-- **Split section rendering** — split SourceDoc hits can render as page rows with matched heading children in hierarchical layouts
+- **Split section rendering** — split SourceDoc and AutoTransformer-family hits can render as parent rows with matched heading children in hierarchical layouts
 - **Snippet modes** — early, balanced, or deep snippet extraction
 - **Term highlighting** — highlight matched terms in results
 - **Click analytics** — track which results users click

@@ -77,7 +77,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
         );
 
         self::assertSame('Plain text needle', $data['_bodyClean'] ?? null);
-        self::assertArrayNotHasKey('body', $data['_fields'] ?? []);
+        self::assertSame('Plain text needle', $data['_fields']['body'] ?? null);
         self::assertStringNotContainsString('Plain text needle', $data['content']);
     }
 

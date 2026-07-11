@@ -368,6 +368,7 @@ final class TransformerCharacterizationTest extends TestCase
             'variantOptions' => ['Color Red', 'Size Large', 'Color Blue'],
             'defaultVariantSku' => 'SKU-RED',
             'defaultVariantTitle' => 'Red Sneaker',
+            'price' => 0,
         ], (new CommerceTransformer())->transform($product));
     }
 
@@ -403,6 +404,7 @@ final class TransformerCharacterizationTest extends TestCase
             'sku' => 'SKU-RED',
             'variantTitle' => 'Red Sneaker',
             'variantOptions' => ['Color Red', 'Size Large'],
+            'price' => 0,
             'productType' => 'Shoes',
             'productTypeHandle' => 'shoes',
             'productId' => 101,
@@ -607,6 +609,9 @@ final class TransformerCharacterizationTest extends TestCase
             'section' => 'News',
             'sectionHandle' => 'news',
             'sectionType' => 'channel',
+            '_fields' => [
+                'body' => 'Intro prose. secret codeOutro prose.',
+            ],
             '_bodyClean' => 'Intro prose. Outro prose.',
             'content' => 'Code Entry code-entry Code Entry',
             'excerpt' => 'Code Entry code-entry Code Entry',
@@ -650,6 +655,7 @@ final class TransformerCharacterizationTest extends TestCase
         $data = (new TransformerService())->transform($entry);
 
         self::assertSame('Plain Composer body prose with inline config token.', $data['_bodyClean'] ?? null);
+        self::assertSame('Plain Composer body prose with inline config token.', $data['_fields']['body'] ?? null);
         self::assertArrayNotHasKey('_contentClean', $data ?? []);
     }
 

@@ -62,6 +62,8 @@ The extension path controls how much Search Manager does for you:
 - **`TransformerInterface` directly** is an advanced/minimal path. It passes validation when the class is autoloadable and zero-argument constructible, but it does not receive BaseTransformer helpers, stable document-kind defaults, `_contentClean` finalization, or heading-level behavior unless you implement those pieces yourself.
 - **`CommerceTransformer`** is built-in Commerce integration code. Product and Variant indices use it automatically when the transformer is blank. If you need a different Commerce document shape, prefer `BaseTransformer`, `AutoTransformer`, or `EVENT_AFTER_TRANSFORM`; extend `CommerceTransformer` only when you intentionally want to post-process its internal Commerce metadata output.
 
+Split Sections follows the same transformer-family boundary. An index can split rich-text sections when its resolved transformer is `AutoTransformer` or a subclass, including project-level subclasses such as `modules\search\transformers\ProductTransformer`. The section slicer uses the automatic searchable rich-text field sources, keeps non-section prose on the intro record, and keeps fields from crossing into each other. Transformers that extend `BaseTransformer` directly keep full control over their document shape, but they do not opt into automatic rich-text section slicing.
+
 ## Creating a Transformer
 
 Create a class that extends `BaseTransformer`:
@@ -147,7 +149,7 @@ class ProductTransformer extends AutoTransformer
 
 The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, and sorted depending on backend configuration. Returning those values in public REST and GraphQL hits is controlled separately by the index's `retrievableFields` setting.
 
-For automatic documents, `AutoTransformer` includes Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. Fields with that setting disabled are excluded from the searchable content and from the internal `_fields` map.
+For automatic documents, `AutoTransformer` includes Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. Rich-text and body-source fields are still mirrored into `_fields` when searchable, even though they also feed snippets, headings, and Split Sections. Fields with that setting disabled are excluded from the searchable content and from the internal `_fields` map.
 
 For values that may be returned to API and GraphQL consumers as custom field data, write them to `_fields`:
 
@@ -169,7 +171,7 @@ fields {
 
 Keep Search Manager metadata at the top level. Fields such as `title`, `url`, `section`, `productType`, and `score` have reserved response meanings, while `_fields` is the collision-safe namespace for user-defined field handles.
 
-`retrievableFields` accepts `['*']` for all stored public field values, `[]` for none, or an explicit field-handle allowlist. It controls the public `fields` payload. Searchable field values can still affect matching and snippets through private search/snippet sources, so do not treat this setting as a secrecy boundary. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
+`retrievableFields` accepts `['*']` for all stored public field values, `['*', '-wysiwyg']` for all fields except `wysiwyg`, `[]` for none, or an explicit field-handle allowlist. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve` and are valid only alongside `*`. The setting controls the public `fields` payload. Searchable field values can still affect matching and snippets through private search/snippet sources, so do not treat it as a secrecy boundary. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
 Provider-specific setup still applies to custom transformer fields:
 

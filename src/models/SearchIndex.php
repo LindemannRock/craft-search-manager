@@ -23,7 +23,6 @@ use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
-use lindemannrock\searchmanager\transformers\DocsManagerTransformer;
 
 /**
  * Search Index Model
@@ -106,8 +105,9 @@ class SearchIndex extends Model
     /**
      * Custom field handles returned under public hit `fields`.
      *
-     * `['*']` returns every public `_fields` value, `[]` returns none, and any
-     * other list is an explicit handle allowlist.
+     * `['*']` returns every public `_fields` value, `['*', '-body']`
+     * returns every public `_fields` value except `body`, `[]` returns none,
+     * and any other list is an explicit handle allowlist.
      *
      * @var list<string>
      * @since 5.53.0
@@ -166,6 +166,7 @@ class SearchIndex extends Model
             [['backend'], 'string', 'max' => 255],
             [['backend'], 'validateBackendHandle'],
             [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl', 'splitSections'], 'boolean'],
+            [['splitSections'], 'validateSplitSectionsSupport'],
             [['splitSections'], 'validateSplitSectionsStorage'],
             [['retrievableFields'], 'validateRetrievableFields'],
             [['documentCount'], 'integer'],
@@ -367,6 +368,9 @@ class SearchIndex extends Model
     public function validateRetrievableFields(string $attribute): void
     {
         $this->$attribute = self::normalizeRetrievableFields($this->$attribute);
+        if (self::hasRetrievableFieldExclusions($this->$attribute) && !self::hasRetrievableFieldWildcard($this->$attribute)) {
+            $this->addError($attribute, Craft::t('search-manager', 'Retrievable field exclusions (for example -wysiwyg) can only be used with *.'));
+        }
     }
 
     /**
@@ -390,7 +394,9 @@ class SearchIndex extends Model
             return ['*'];
         }
 
+        $wildcard = false;
         $handles = [];
+        $exclusions = [];
         foreach ($value as $handle) {
             if (!is_scalar($handle)) {
                 continue;
@@ -402,7 +408,13 @@ class SearchIndex extends Model
             }
 
             if ($handle === '*') {
-                return ['*'];
+                $wildcard = true;
+                continue;
+            }
+
+            if (preg_match('/^-[a-zA-Z][a-zA-Z0-9_:-]*$/', $handle)) {
+                $exclusions[] = $handle;
+                continue;
             }
 
             if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_:-]*$/', $handle)) {
@@ -412,7 +424,12 @@ class SearchIndex extends Model
             $handles[] = $handle;
         }
 
-        return array_values(array_unique($handles));
+        $exclusions = array_values(array_unique($exclusions));
+        if ($wildcard) {
+            return array_merge(['*'], $exclusions);
+        }
+
+        return array_values(array_unique(array_merge($handles, $exclusions)));
     }
 
     /**
@@ -452,11 +469,63 @@ class SearchIndex extends Model
             return $indexFields;
         }
 
+        $indexWildcard = self::hasRetrievableFieldWildcard($indexFields);
+        $requestWildcard = self::hasRetrievableFieldWildcard($requested);
+
+        if ($indexWildcard && $requestWildcard) {
+            return self::normalizeRetrievableFields(array_merge(
+                ['*'],
+                self::retrievableFieldExclusions($indexFields),
+                self::retrievableFieldExclusions($requested),
+            ));
+        }
+
+        if ($indexWildcard) {
+            return array_values(array_diff(
+                self::retrievableFieldAllowlist($requested),
+                self::retrievableFieldExclusionHandles($indexFields),
+            ));
+        }
+
+        if ($requestWildcard) {
+            return array_values(array_diff(
+                self::retrievableFieldAllowlist($indexFields),
+                self::retrievableFieldExclusionHandles($requested),
+            ));
+        }
+
         if ($indexFields === ['*']) {
             return $requested;
         }
 
-        return array_values(array_intersect($indexFields, $requested));
+        return array_values(array_intersect(
+            self::retrievableFieldAllowlist($indexFields),
+            self::retrievableFieldAllowlist($requested),
+        ));
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     * @param list<string>|null $retrievableFields
+     * @return array<string, mixed>
+     * @since 5.53.0
+     */
+    public static function filterRetrievableFieldValues(array $fields, ?array $retrievableFields = null): array
+    {
+        if ($retrievableFields === null) {
+            return $fields;
+        }
+
+        $retrievableFields = self::normalizeRetrievableFields($retrievableFields);
+        if ($retrievableFields === []) {
+            return [];
+        }
+
+        if (self::hasRetrievableFieldWildcard($retrievableFields)) {
+            return array_diff_key($fields, array_flip(self::retrievableFieldExclusionHandles($retrievableFields)));
+        }
+
+        return array_intersect_key($fields, array_flip(self::retrievableFieldAllowlist($retrievableFields)));
     }
 
     /**
@@ -475,6 +544,58 @@ class SearchIndex extends Model
         }
 
         return self::normalizeRetrievableFields($value);
+    }
+
+    /**
+     * @param list<string> $fields
+     */
+    private static function hasRetrievableFieldWildcard(array $fields): bool
+    {
+        return in_array('*', $fields, true);
+    }
+
+    /**
+     * @param list<string> $fields
+     */
+    private static function hasRetrievableFieldExclusions(array $fields): bool
+    {
+        return self::retrievableFieldExclusions($fields) !== [];
+    }
+
+    /**
+     * @param list<string> $fields
+     * @return list<string>
+     */
+    private static function retrievableFieldAllowlist(array $fields): array
+    {
+        return array_values(array_filter(
+            self::normalizeRetrievableFields($fields),
+            static fn(string $field): bool => $field !== '*' && !str_starts_with($field, '-'),
+        ));
+    }
+
+    /**
+     * @param list<string> $fields
+     * @return list<string>
+     */
+    private static function retrievableFieldExclusions(array $fields): array
+    {
+        return array_values(array_filter(
+            self::normalizeRetrievableFields($fields),
+            static fn(string $field): bool => str_starts_with($field, '-'),
+        ));
+    }
+
+    /**
+     * @param list<string> $fields
+     * @return list<string>
+     */
+    private static function retrievableFieldExclusionHandles(array $fields): array
+    {
+        return array_map(
+            static fn(string $field): string => substr($field, 1),
+            self::retrievableFieldExclusions($fields),
+        );
     }
 
     /**
@@ -1361,13 +1482,24 @@ class SearchIndex extends Model
             return false;
         }
 
-        if ($this->elementType !== 'lindemannrock\\docsmanager\\elements\\SourceDoc') {
-            return false;
+        return $this->supportsSplitSections();
+    }
+
+    public function validateSplitSectionsSupport(string $attribute): void
+    {
+        if (!$this->splitSections || $this->supportsSplitSections()) {
+            return;
         }
 
-        $transformerClass = trim((string)$this->transformerClass);
+        $this->addError($attribute, Craft::t('search-manager', 'Split Sections supports AutoTransformer-family indices, plus SourceDoc indices with DocsManagerTransformer-family transformers.'));
+    }
 
-        return $transformerClass === '' || $transformerClass === DocsManagerTransformer::class;
+    /**
+     * @since 5.53.0
+     */
+    public function supportsSplitSections(): bool
+    {
+        return SearchManager::$plugin->transformers->supportsSplitSections($this->elementType, $this->transformerClass);
     }
 
     public function validateSplitSectionsStorage(string $attribute): void

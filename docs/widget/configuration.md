@@ -148,7 +148,7 @@ Override settings per-include:
 | `hierarchyDisplay` | `string` | `'individual'` | Card mode: `'individual'` (each result is its own card) or `'unified'` (page and headings share one card, Starlight-style) |
 | `maxHeadingsPerResult` | `int` | `3` | Maximum heading children shown per result (1-50) |
 
-When a searched SourceDoc index uses split sections, `resultLayout: 'default'` renders each section hit as its own result. `resultLayout: 'hierarchical'` groups split section hits by parent page, orders parent pages by their best matching section score, uses an intro hit as the page snippet only when that intro hit is present, and renders kept heading hits as children in document order. `maxHeadingsPerResult` keeps the highest-scoring heading children before restoring document order for display.
+When a searched split-capable index uses split sections, `resultLayout: 'default'` renders each section hit as its own result. `resultLayout: 'hierarchical'` groups split section hits by parent element, orders parents by their best matching section score, uses an intro hit as the parent snippet only when that intro hit is present, and renders kept heading hits as children in document order. `maxHeadingsPerResult` keeps the highest-scoring heading children before restoring document order for display.
 
 ### Snippets
 

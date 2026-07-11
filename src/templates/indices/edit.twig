@@ -313,7 +313,7 @@
     {{ forms.textareaField({
         label: "Retrievable Fields"|t('search-manager'),
         instructions: "Controls which custom field values are returned under the public fields payload."|t('search-manager'),
-        tip: "Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets. Rebuild the index after changing retrievableFields so stored records and provider projections use the new field allowlist."|t('search-manager'),
+        tip: "This is a payload control, not a secrecy boundary — searchable fields still match and produce snippets. Rebuild the index after changing it."|t('search-manager'),
         id: 'retrievableFields',
         name: 'retrievableFields',
         value: (index.retrievableFields ?? ['*'])|join("\n"),
@@ -321,6 +321,20 @@
         class: 'code',
         errors: index.getErrors('retrievableFields'),
     }) }}
+
+    {% set retrievableFieldsExamples %}
+        <strong>{{ 'Examples:'|t('search-manager') }}</strong>
+        <ul>
+            <li>{{ '<code>*</code> — return all searchable custom fields'|t('search-manager')|raw }}</li>
+            <li>{{ 'leave empty — return no custom fields'|t('search-manager') }}</li>
+            <li>{{ '<code>intro</code>, <code>image</code>, <code>price</code> (one per line) — return only these fields'|t('search-manager')|raw }}</li>
+            <li>{{ '<code>*</code> and <code>-wysiwyg</code> (one per line) — return all fields except <code>wysiwyg</code>'|t('search-manager')|raw }}</li>
+        </ul>
+    {% endset %}
+    {% include 'lindemannrock-base/_components/info-box' with {
+        type: 'info',
+        message: retrievableFieldsExamples,
+    } %}
 
     <hr style="margin: 25px 0; border: none; border-top: 1px solid #e3e5e8;">
 
@@ -487,10 +501,12 @@ document.addEventListener('DOMContentLoaded', function() {
     const transformerInput = document.getElementById('transformerClass');
     const defaultTransformerPlaceholder = {{ defaultTransformerPlaceholder|json_encode|raw }};
     const transformerPlaceholders = {{ transformerPlaceholders|json_encode|raw }};
+    const splitSectionsByElementType = {{ splitSectionsByElementType|json_encode|raw }};
 
     if (elementTypeSelect) {
         function updateCriteriaVisibility() {
             const isSourceDoc = elementTypeSelect.value === 'lindemannrock\\docsmanager\\elements\\SourceDoc';
+            const isSplitSectionsEligible = splitSectionsByElementType[elementTypeSelect.value] === true;
 
             if (entryCriteria) {
                 entryCriteria.style.display = elementTypeSelect.value === 'craft\\elements\\Entry' ? 'block' : 'none';
@@ -505,10 +521,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 docPageCriteria.style.display = isSourceDoc ? 'block' : 'none';
             }
             if (splitSectionsField) {
-                splitSectionsField.classList.toggle('hidden', !isSourceDoc);
+                splitSectionsField.classList.toggle('hidden', !isSplitSectionsEligible);
             }
             if (splitSectionsInput) {
-                splitSectionsInput.disabled = !isSourceDoc;
+                splitSectionsInput.disabled = !isSplitSectionsEligible;
             }
             // Update transformer placeholder based on element type
             if (transformerInput) {
@@ -519,7 +535,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Update on change
         elementTypeSelect.addEventListener('change', updateCriteriaVisibility);
-
         // Initial state
         updateCriteriaVisibility();
     }
@@ -585,16 +600,14 @@ document.addEventListener('DOMContentLoaded', function() {
 			on: index.skipEntriesWithoutUrl ?? false
 		}) }}
 
-		{% if docsManagerTransformerAvailable %}
-			{{ forms.lightswitchField({
-				label: 'Split Sections'|t('search-manager'),
-				instructions: 'Index the page intro and each heading section as separate search hits.'|t('search-manager'),
-				id: 'splitSections',
-				name: 'splitSections',
-				on: index.splitSections ?? false,
-				fieldClass: index.elementType == 'lindemannrock\\docsmanager\\elements\\SourceDoc' ? [] : ['hidden']
-			}) }}
-		{% endif %}
+		{{ forms.lightswitchField({
+			label: 'Split Sections'|t('search-manager'),
+			instructions: 'Index the intro and each selected heading section as separate search hits. Anchor links require your templates to render matching heading IDs.'|t('search-manager'),
+			id: 'splitSections',
+			name: 'splitSections',
+			on: index.splitSections ?? false,
+			fieldClass: index.supportsSplitSections() ? [] : ['hidden']
+		}) }}
 
 		{{ forms.lightswitchField({
 			label: 'Disable Stop Words'|t('search-manager'),

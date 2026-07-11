@@ -69,7 +69,7 @@ An Algolia index is searchable as soon as Search Manager has indexed records int
 
 Algolia also enforces record-size limits. Build plan indices have a 10 KB hard per-record limit. Elevate/Grow indices allow larger individual records, but still have a 100 KB per-record limit and a 10 KB average record-size limit across the index. These limits matter for documentation pages because page-mode docs records can include long body text, heading metadata, and stored snippet sources.
 
-For Docs Manager indices on Algolia, prefer Split Sections. Algolia's recommended pattern for long documents is to split them into smaller records, and Search Manager's SourceDoc split mode does that while keeping each hit tied to the parent docs page. Page-mode docs indices with large pages may exceed Algolia limits even before enabling code snippets.
+For Docs Manager, long-form Entry, and rich Commerce Product indices on Algolia, prefer Split Sections. Algolia's recommended pattern for long documents is to split them into smaller records, and Search Manager's split mode does that while keeping each hit tied to the parent element. Page-mode docs or rich AutoTransformer-family indices with large content may exceed Algolia limits even before enabling code snippets.
 
 For production relevance, configure Algolia's index settings in Algolia:
 

@@ -606,7 +606,7 @@ return [
          * - transformer: Custom transformer class (optional)
          * - headingLevels: Array of heading levels to extract (optional, default: [2,3,4])
          * - splitSections: Index SourceDoc intro/heading sections as separate hits (optional, default: false)
-         * - retrievableFields: Public custom field handles returned in hit.fields; ['*'] all, [] none (default: ['*'])
+         * - retrievableFields: Public custom field handles returned in hit.fields; ['*'] all, ['*', '-wysiwyg'] all except wysiwyg, [] none (default: ['*'])
          * - language: Language code for stemming/stop words (optional, auto-detected from site)
          * - backend: Handle of configured backend (optional, uses defaultBackendHandle if not set)
          * - enabled: Whether the index is active

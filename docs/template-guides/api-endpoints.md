@@ -54,7 +54,7 @@ GET /actions/search-manager/api/search
 | `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, or `user` |
 | `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
-| `retrievableFields` | index setting | Optional comma-separated custom field handles to return under each hit's `fields` object. This can narrow the index's `retrievableFields` setting but cannot widen it. Use an empty value to return no custom fields. |
+| `retrievableFields` | index setting | Optional comma-separated custom field handles to return under each hit's `fields` object. This can narrow the index's `retrievableFields` setting but cannot widen it. Use `*,-wysiwyg` to return all fields except `wysiwyg`, or an empty value to return no custom fields. |
 | `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
@@ -120,7 +120,7 @@ GET /actions/search-manager/api/search
 > [!NOTE]
 > The REST response does not return internal metadata such as synonyms expanded, rules matched, or private indexed content.
 
-Retrievable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills the internal source map automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. The index's `retrievableFields` setting then decides which of those values are returned publicly.
+Retrievable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills the internal source map automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled, including rich-text and body-source fields that also feed snippets, headings, and Split Sections. The index's `retrievableFields` setting then decides which of those values are returned publicly. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve`, so `*,-wysiwyg` returns all fields except `wysiwyg`.
 
 `retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching, matched metadata, and snippets even when they are omitted from `fields`. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
@@ -175,14 +175,14 @@ Search returns one canonical hit shape:
 
 `snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in the private snippet source, then from the dedicated indexed clean body. Snippet source selection is independent of `retrievableFields`, so a field can be omitted from `fields` and still produce a snippet. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
 
-For split SourceDoc indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
+For split SourceDoc and AutoTransformer-family indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
 
 ### Response Fields
 
 | Field | Type | Description |
 |-------|------|-------------|
 | `hits` | `array` | Array of hit objects (see below) |
-| `total` | `int` | Backend-native number of matching hits. For split SourceDoc indices, this counts matching section hits, not parent pages. |
+| `total` | `int` | Backend-native number of matching hits. For split indices, this counts matching section hits, not parent elements. |
 | `page` | `int` | Current page number (0-based) |
 | `hitsPerPage` | `int` | Results per page |
 | `totalPages` | `int` | Total number of pages |
@@ -204,10 +204,10 @@ For split SourceDoc indices, each returned hit is a flat section hit, not a grou
 | `dateUpdated` | `int` | Indexed update timestamp when available. |
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
 | `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
-| `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, `user`, or `source-doc`. Split SourceDoc section hits keep `type: "source-doc"`. |
+| `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, `user`, or `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
 | `section` | `string` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
 | `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
-| `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) for Entry hits. For split SourceDoc hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
+| `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) for normal Entry hits. For split hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
 | `sectionId` | `string` | Section identity within the parent element for split section hits. |
 | `sectionTitle` | `string` | Parent page title for split `intro` / `promoted-page` hits, or heading title for split `heading` hits. |
 | `sectionLevel` | `int` | Heading level for split `heading` hits; `null` for intro and promoted-page hits. |
@@ -227,7 +227,7 @@ For split SourceDoc indices, each returned hit is a flat section hit, not a grou
 | `sourceId` | `int` | Source document or transformer-provided source ID when available. |
 | `fields` | `object` | Retrievable custom field values keyed by field handle. Values are indexed content, not translated UI labels. |
 | `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body. `null` when no eligible snippet source contains the query. |
-| `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects for whole-page records. Split SourceDoc section hits return an empty array. |
+| `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects for whole-page records. Split section hits return an empty array. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |
 | `title` | `string` | Element title (for promoted items) |

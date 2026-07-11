@@ -188,6 +188,7 @@ class PromotionService extends Component
                 continue;
             }
 
+            $promotedItem = $this->promotedPageHit($promotedItem);
             $promotedItem['promoted'] = true;
             $promotedItem['position'] = $promotion->position;
             $promotedItem['score'] = null;
@@ -198,6 +199,43 @@ class PromotionService extends Component
         }
 
         return $finalResults;
+    }
+
+    /**
+     * @param array<string, mixed> $document
+     * @return array<string, mixed>
+     */
+    private function promotedPageHit(array $document): array
+    {
+        if (($document['sectionId'] ?? null) !== 'intro' && ($document['sectionType'] ?? null) !== 'intro') {
+            return $document;
+        }
+
+        $document['sectionType'] = 'promoted-page';
+        $document['sectionId'] = 'promoted-page';
+        $document['sectionTitle'] = $document['title'] ?? $document['sectionTitle'] ?? '';
+        $document['sectionLevel'] = null;
+        $document['sectionAnchor'] = null;
+        $document['sectionUrl'] = $document['url'] ?? $document['sectionUrl'] ?? null;
+        $document['sectionIndex'] = 0;
+        $elementId = SearchHitIdentityHelper::elementId($document);
+        if ($elementId !== null) {
+            $document['backendId'] = SearchHitIdentityHelper::sectionDocumentId(
+                $elementId,
+                isset($document['siteId']) ? (int)$document['siteId'] : null,
+                'promoted-page',
+            );
+        }
+        unset(
+            $document['snippet'],
+            $document['sectionBody'],
+            $document['_bodyClean'],
+            $document['_sectionBodyWithCode'],
+            $document['_headings'],
+            $document['headings'],
+        );
+
+        return $document;
     }
 
     /**

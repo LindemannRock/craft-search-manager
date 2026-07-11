@@ -40,7 +40,7 @@ Dashboards count user search actions where that's the right unit, and per-index 
 
 This is why the **Total Searches** card may show a smaller number than the row count in the raw analytics log — the card counts user search actions, the log lists individual per-index rows.
 
-The stored `resultsCount` value is the backend-native `total` for that index response. For split SourceDoc indices, that means matching section hits, not distinct parent pages.
+The stored `resultsCount` value is the backend-native `total` for that index response. For split-capable SourceDoc and AutoTransformer-family indices, that means matching section hits, not distinct parent elements.
 
 A zero-result *action* is one where **every** row in that action returned no hits, no redirect, and no promotion. A multi-index search that succeeded on at least one of its indices is not a content gap.
 

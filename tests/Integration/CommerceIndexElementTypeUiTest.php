@@ -168,6 +168,35 @@ final class CommerceIndexElementTypeUiTest extends TestCase
         self::assertStringNotContainsString("transformerInput.placeholder = 'lindemannrock\\\\searchmanager\\\\transformers\\\\AutoTransformer'", $source);
     }
 
+    public function testIndexEditTemplateUsesServerSplitSectionsEligibilityMap(): void
+    {
+        $source = $this->readPluginFile('src/templates/indices/edit.twig');
+
+        self::assertStringContainsString('const splitSectionsByElementType = {{ splitSectionsByElementType|json_encode|raw }};', $source);
+        self::assertStringContainsString('splitSectionsByElementType[elementTypeSelect.value] === true', $source);
+        self::assertStringNotContainsString("|| elementTypeSelect.value === 'craft\\\\elements\\\\Entry'", $source);
+        self::assertStringNotContainsString("configuredTransformer !== ''", $source);
+        self::assertStringNotContainsString("transformerInput.addEventListener('input', updateCriteriaVisibility)", $source);
+    }
+
+    public function testControllerSplitSectionsEligibilityMapUsesTransformerService(): void
+    {
+        $support = $this->invokeControllerMethod('getSplitSectionsByElementType');
+
+        self::assertIsArray($support);
+        self::assertSame(
+            SearchManager::$plugin->transformers->supportsSplitSections(\craft\elements\Entry::class),
+            $support[\craft\elements\Entry::class] ?? null,
+        );
+
+        foreach (CommerceElementTypeHelper::availableElementTypes() as $elementType) {
+            self::assertSame(
+                SearchManager::$plugin->transformers->supportsSplitSections($elementType),
+                $support[$elementType] ?? null,
+            );
+        }
+    }
+
     public function testTransformerDocsDoNotMentionRemovedEntrySpecificClass(): void
     {
         $customTransformers = $this->readPluginFile('docs/developers/custom-transformers.md');
@@ -177,6 +206,7 @@ final class CommerceIndexElementTypeUiTest extends TestCase
         self::assertStringContainsString('Default fallback', $customTransformers);
         self::assertStringContainsString('It handles entries generically itself.', $customTransformers);
         self::assertStringContainsString('project-specific transformer class', $customTransformers);
+        self::assertStringContainsString('resolved transformer is `AutoTransformer` or a subclass', $customTransformers);
         self::assertStringContainsString('modules\\search\\transformers\\ProductTransformer', $docs);
         self::assertStringContainsString('DocsManagerTransformer` for `SourceDoc`', $customTransformers);
         self::assertStringContainsString('`CommerceTransformer` for Commerce Product/Variant elements', $customTransformers);

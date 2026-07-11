@@ -26,12 +26,13 @@ class SearchAutoContentHelper
     }
 
     /**
-     * @return array{parts: array<int, mixed>, fields: array<string, string>, richText: array<int, string>, bodyClean: string}
+     * @return array{parts: array<int, mixed>, fields: array<string, string>, richText: array<int, string>, richTextSources: list<array{handle: string, html: string}>, bodyClean: string}
      */
     public function collect(ElementInterface $element): array
     {
         $searchableContent = [];
         $richTextContent = [];
+        $richTextSources = [];
         $bodyCleanParts = [];
         $fields = [];
 
@@ -63,8 +64,41 @@ class SearchAutoContentHelper
 
                     $isRichTextField = $this->fieldTypeContentHelper->isRichTextField($field);
                     $isBodyFieldHandle = $this->isBodyFieldHandle($field->handle);
+                    $isMatrixField = is_a($field, 'craft\fields\Matrix');
 
-                    if ($this->nativeFieldKeywordHelper->supports($field)) {
+                    if ($isRichTextField || $isMatrixField) {
+                        $fieldValue = $element->getFieldValue($field->handle);
+
+                        if ($fieldValue === null || $fieldValue === '' || $fieldValue === []) {
+                            continue;
+                        }
+
+                        if ($isRichTextField) {
+                            $rawHtml = (string)$fieldValue;
+                            if (!empty($rawHtml)) {
+                                $richTextContent[] = $rawHtml;
+                                $richTextSources[] = [
+                                    'handle' => $field->handle,
+                                    'html' => $rawHtml,
+                                ];
+                                $cleanBody = $this->fieldTypeContentHelper->cleanBody($rawHtml);
+                                if ($cleanBody !== '') {
+                                    $bodyCleanParts[] = $cleanBody;
+                                }
+                            }
+
+                            $content = $this->fieldTypeContentHelper->process($field, $fieldValue, $element);
+                        } else {
+                            $matrixContent = $this->matrixContent($field->handle, $fieldValue);
+                            $content = $matrixContent['content'];
+                            if ($matrixContent['richTextSources'] === [] && $this->nativeFieldKeywordHelper->supports($field)) {
+                                $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
+                            }
+                            $richTextContent = array_merge($richTextContent, $matrixContent['richText']);
+                            $richTextSources = array_merge($richTextSources, $matrixContent['richTextSources']);
+                            $bodyCleanParts = array_merge($bodyCleanParts, $matrixContent['bodyCleanParts']);
+                        }
+                    } elseif ($this->nativeFieldKeywordHelper->supports($field)) {
                         $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
                         if ($isBodyFieldHandle && is_scalar($content)) {
                             $cleanBody = $this->fieldTypeContentHelper->cleanBody((string)$content);
@@ -79,19 +113,8 @@ class SearchAutoContentHelper
                             continue;
                         }
 
-                        if ($isRichTextField) {
-                            $rawHtml = (string)$fieldValue;
-                            if (!empty($rawHtml)) {
-                                $richTextContent[] = $rawHtml;
-                                $cleanBody = $this->fieldTypeContentHelper->cleanBody($rawHtml);
-                                if ($cleanBody !== '') {
-                                    $bodyCleanParts[] = $cleanBody;
-                                }
-                            }
-                        }
-
                         $content = $this->fieldTypeContentHelper->process($field, $fieldValue, $element);
-                        if (!$isRichTextField && $isBodyFieldHandle && is_scalar($content)) {
+                        if ($isBodyFieldHandle && is_scalar($content)) {
                             $cleanBody = $this->fieldTypeContentHelper->cleanBody((string)$content);
                             if ($cleanBody !== '') {
                                 $bodyCleanParts[] = $cleanBody;
@@ -101,13 +124,16 @@ class SearchAutoContentHelper
 
                     $isBodySource = $isRichTextField || $isBodyFieldHandle;
 
+                    if (!empty($content)) {
+                        $fields[$field->handle] = is_array($content) ? implode(' ', $content) : $content;
+                    }
+
                     if (!empty($content) && !$isBodySource) {
                         if (is_array($content)) {
                             $searchableContent = array_merge($searchableContent, $content);
                         } else {
                             $searchableContent[] = $content;
                         }
-                        $fields[$field->handle] = is_array($content) ? implode(' ', $content) : $content;
                     }
                 } catch (\Throwable) {
                     continue;
@@ -119,6 +145,7 @@ class SearchAutoContentHelper
             'parts' => $searchableContent,
             'fields' => $fields,
             'richText' => $richTextContent,
+            'richTextSources' => $richTextSources,
             'bodyClean' => trim((string)preg_replace('/\s+/', ' ', implode(' ', $bodyCleanParts))),
         ];
     }
@@ -134,5 +161,82 @@ class SearchAutoContentHelper
             'maincontent',
             'articlebody',
         ], true);
+    }
+
+    /**
+     * @return array{content: list<string>, richText: list<string>, richTextSources: list<array{handle: string, html: string}>, bodyCleanParts: list<string>}
+     */
+    private function matrixContent(string $fieldHandle, mixed $fieldValue): array
+    {
+        $content = [];
+        $richText = [];
+        $richTextSources = [];
+        $bodyCleanParts = [];
+
+        if (!is_object($fieldValue) && !is_array($fieldValue)) {
+            return [
+                'content' => $content,
+                'richText' => $richText,
+                'richTextSources' => $richTextSources,
+                'bodyCleanParts' => $bodyCleanParts,
+            ];
+        }
+
+        if (is_object($fieldValue) && method_exists($fieldValue, 'all')) {
+            $blocks = $fieldValue->all();
+        } elseif (is_array($fieldValue)) {
+            $blocks = $fieldValue;
+        } else {
+            $blocks = [];
+        }
+
+        foreach ($blocks as $block) {
+            if (!is_object($block) || !method_exists($block, 'getFieldLayout') || !method_exists($block, 'getFieldValue')) {
+                continue;
+            }
+
+            $fieldLayout = $block->getFieldLayout();
+            if (!$fieldLayout) {
+                continue;
+            }
+
+            foreach ($fieldLayout->getCustomFields() as $blockField) {
+                try {
+                    $blockValue = $block->getFieldValue($blockField->handle);
+                } catch (\Throwable) {
+                    continue;
+                }
+
+                if (!is_string($blockValue) || $blockValue === '') {
+                    continue;
+                }
+
+                if ($this->fieldTypeContentHelper->isRichTextField($blockField)) {
+                    $richText[] = $blockValue;
+                    $richTextSources[] = [
+                        'handle' => $fieldHandle . '.' . $blockField->handle,
+                        'html' => $blockValue,
+                    ];
+                    $cleanBody = $this->fieldTypeContentHelper->cleanBody($blockValue);
+                    if ($cleanBody !== '') {
+                        $bodyCleanParts[] = $cleanBody;
+                    }
+
+                    continue;
+                }
+
+                $clean = $this->fieldTypeContentHelper->cleanBody($blockValue);
+                if ($clean !== '') {
+                    $content[] = $clean;
+                }
+            }
+        }
+
+        return [
+            'content' => $content,
+            'richText' => $richText,
+            'richTextSources' => $richTextSources,
+            'bodyCleanParts' => $bodyCleanParts,
+        ];
     }
 }

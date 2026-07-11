@@ -158,29 +158,58 @@ class TransformerService extends Component
         return $this->createTransformer($resolvedClass);
     }
 
-    private function resolveTransformerClass(ElementInterface $element, ?string $transformerClass = null): ?string
+    /**
+     * @since 5.53.0
+     */
+    public function resolveTransformerClass(ElementInterface $element, ?string $transformerClass = null): ?string
     {
-        if ($transformerClass && $transformerClass !== '') {
-            return $transformerClass;
+        return $this->resolveTransformerClassForElementType(get_class($element), $transformerClass);
+    }
+
+    /**
+     * @since 5.53.0
+     */
+    public function resolveTransformerClassForElementType(string $elementType, ?string $transformerClass = null): ?string
+    {
+        if ($transformerClass && trim($transformerClass) !== '') {
+            return trim($transformerClass);
         }
 
-        $elementClass = get_class($element);
-
-        if (isset($this->_transformers[$elementClass])) {
-            return $this->_transformers[$elementClass];
+        if (isset($this->_transformers[$elementType])) {
+            return $this->_transformers[$elementType];
         }
 
         foreach ($this->_transformers as $type => $registeredTransformerClass) {
-            if ($element instanceof $type) {
+            if ($elementType === $type || is_a($elementType, $type, true)) {
                 return $registeredTransformerClass;
             }
         }
 
         $this->logDebug('Using AutoTransformer for element type', [
-            'elementType' => $elementClass,
+            'elementType' => $elementType,
         ]);
 
         return AutoTransformer::class;
+    }
+
+    /**
+     * @since 5.53.0
+     */
+    public function supportsSplitSections(string $elementType, ?string $transformerClass = null): bool
+    {
+        $resolvedClass = $this->resolveTransformerClassForElementType($elementType, $transformerClass);
+        if ($resolvedClass === null || !class_exists($resolvedClass)) {
+            return false;
+        }
+
+        if (
+            ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' || is_a($elementType, 'lindemannrock\\docsmanager\\elements\\SourceDoc', true))
+            && is_a($resolvedClass, DocsManagerTransformer::class, true)
+        ) {
+            return true;
+        }
+
+        return is_a($resolvedClass, AutoTransformer::class, true);
     }
 
     /**
