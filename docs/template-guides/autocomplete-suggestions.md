@@ -59,7 +59,7 @@ input.addEventListener('input', (e) => {
 
     debounceTimer = setTimeout(async () => {
         const response = await fetch(
-            `/actions/search-manager/api/autocomplete?q=${encodeURIComponent(query)}&index=entries-en&only=suggestions`
+            `/actions/search-manager/api/autocomplete?q=${encodeURIComponent(query)}&indices=entries-en&only=suggestions`
         );
         const suggestions = await response.json();
 
@@ -107,7 +107,7 @@ input.addEventListener('input', (e) => {
 
     debounceTimer = setTimeout(async () => {
         const response = await fetch(
-            `/actions/search-manager/api/autocomplete?q=${encodeURIComponent(query)}&index=entries-en`
+            `/actions/search-manager/api/autocomplete?q=${encodeURIComponent(query)}&indices=entries-en`
         );
         const data = await response.json();
 
@@ -148,7 +148,7 @@ input.addEventListener('input', (e) => {
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `index` | (all indices) | Index handle. Omit to search all enabled indices. |
+| `indices` | (all indices) | One index handle or a comma-separated list of index handles. Omit to search all enabled indices. |
 | `hitsPerPage` | `10` | Maximum suggestions/results |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code |

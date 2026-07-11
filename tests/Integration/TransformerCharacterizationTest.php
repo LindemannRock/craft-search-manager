@@ -439,6 +439,7 @@ final class TransformerCharacterizationTest extends TestCase
             'category' => 'Guides',
             'description' => 'Install and configure Search Manager.',
             'sourceId' => null,
+            '_bodyClean' => 'Run Composer install. Use the indexing command after deployment.',
             'headings' => 'Install Deploy',
             '_headings' => [
                 [
@@ -498,6 +499,7 @@ final class TransformerCharacterizationTest extends TestCase
             '_fields' => [
                 'body' => 'Intro prose.secret codeOutro prose.',
             ],
+            '_bodyClean' => 'Intro prose. Outro prose.',
             'content' => 'Code Entry code-entry Code Entry Intro prose.secret codeOutro prose.',
             'excerpt' => 'Code Entry code-entry Code Entry Intro prose.secret codeOutro prose.',
             '_contentClean' => 'Intro prose. Outro prose.',
@@ -519,6 +521,28 @@ final class TransformerCharacterizationTest extends TestCase
             json_encode($nextData, JSON_UNESCAPED_UNICODE),
             json_encode($service->transform($next), JSON_UNESCAPED_UNICODE),
         );
+    }
+
+    public function testNoCodeRichTextBodyStillStoresCleanBody(): void
+    {
+        $fieldClass = 'craft\\ckeditor\\Field';
+        $field = new $fieldClass(['handle' => 'body', 'searchable' => true]);
+        $entry = new TransformerCharacterizationEntry();
+        $entry->id = 803;
+        $entry->siteId = 1;
+        $entry->title = 'Plain Body';
+        $entry->slug = 'plain-body';
+        $entry->testSection = new Section(['name' => 'News', 'handle' => 'news', 'type' => Section::TYPE_CHANNEL]);
+        $entry->testAncestors = new ElementCollection();
+        $entry->setTestFieldLayout($this->fieldLayout([$field], TransformerCharacterizationEntry::class));
+        $entry->setTestFieldValues([
+            'body' => '<p>Plain Composer body prose with inline <code>config</code> token.</p>',
+        ]);
+
+        $data = (new TransformerService())->transform($entry);
+
+        self::assertSame('Plain Composer body prose with inline config token.', $data['_bodyClean'] ?? null);
+        self::assertArrayNotHasKey('_contentClean', $data ?? []);
     }
 
     /**

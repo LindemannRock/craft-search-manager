@@ -16,7 +16,7 @@
  * With inline overrides:
  * {% include 'search-manager/_widget/search-modal' with {
  *     config: 'homepage',
- *     indices: ['blog', 'products'],
+ *     indices: ['blog', 'products'], // or 'blog,products'
  *     placeholder: 'Search articles...',
  *     theme: 'dark',
  * } %}
@@ -44,11 +44,11 @@
 {% set plugin = craft.app.plugins.getPlugin('search-manager') %}
 {% set widgetConfig = plugin.widgetConfigs.getConfigForWidget(config ?? null) %}
 
-{# Search settings - support both indices (array) and legacy index (string) #}
+{# Search settings - support indices as an array or comma-separated string #}
 {% if indices is defined and indices is iterable %}
     {% set indexHandles = indices %}
-{% elseif index is defined and index %}
-    {% set indexHandles = [index] %}
+{% elseif indices is defined and indices %}
+    {% set indexHandles = indices|split(',')|map(handle => handle|trim)|filter(handle => handle) %}
 {% else %}
     {% set indexHandles = widgetConfig.getIndexHandles() %}
 {% endif %}

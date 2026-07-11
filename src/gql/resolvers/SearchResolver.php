@@ -12,7 +12,9 @@ use Craft;
 use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
+use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
+use lindemannrock\searchmanager\helpers\SearchHeadingValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -278,7 +280,6 @@ class SearchResolver extends Resolver
 
         return SearchIndex::resolveRequestedIndices(
             $indicesString,
-            trim((string)($arguments['index'] ?? '')),
             self::MAX_INDICES_COUNT,
         );
     }
@@ -454,7 +455,15 @@ class SearchResolver extends Resolver
         foreach ($results['hits'] as &$hit) {
             if (is_array($hit)) {
                 $hit = SearchFieldValueHelper::exposeFields($hit);
-                unset($hit['content'], $hit['body'], $hit['excerpt']);
+                $hit = SearchHeadingValueHelper::exposeHeadings($hit);
+                unset(
+                    $hit['content'],
+                    $hit['body'],
+                    $hit['excerpt'],
+                    $hit['_bodyClean'],
+                    $hit['_contentClean'],
+                    $hit['_elementType'],
+                );
             }
         }
         unset($hit);
@@ -475,7 +484,7 @@ class SearchResolver extends Resolver
             'showCodeSnippets' => (bool)($arguments['showCodeSnippets'] ?? false),
             'parseMarkdownSnippets' => (bool)($arguments['parseMarkdownSnippets'] ?? false),
             'hideResultsWithoutUrl' => (bool)($arguments['hideResultsWithoutUrl'] ?? false),
-            'includeDebugMeta' => Craft::$app->getConfig()->getGeneral()->devMode || Craft::$app->getUser()->checkPermission('searchManager:viewDebug'),
+            'includeDebugMeta' => SearchDebugAccessHelper::canExposeDebugMeta(),
         ];
 
         if ($siteId !== null) {

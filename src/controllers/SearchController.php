@@ -112,12 +112,14 @@ class SearchController extends Controller
             // Retain for analytics attribution (slice 5) on track-search.
             $this->authenticatedKey = $key;
 
-            // Enforce the key's allowed indices only when the ping names them
-            // (track-click sends `index`, track-search sends `indices`). 403 on
-            // an out-of-allowlist index. Tracking is deliberately not rate-limited.
+            // Enforce the key's allowed indices only when the ping names them.
+            // track-click sends a single result `index`; track-search sends
+            // `indices`. Tracking is deliberately not rate-limited.
+            $trackingIndices = $action->id === 'track-click'
+                ? (string) $request->getParam('index', '')
+                : (string) $request->getParam('indices', '');
             [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
-                (string) $request->getParam('indices', ''),
-                (string) $request->getParam('index', ''),
+                $trackingIndices,
             );
             if ($indicesProvided) {
                 SearchManager::$plugin->apiKeys->scopeIndices($key, $indexHandles, true);

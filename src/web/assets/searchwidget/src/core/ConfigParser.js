@@ -12,7 +12,6 @@
 /**
  * @typedef {Object} BaseConfig
  * @property {Array<string>} indices - Search index handles
- * @property {string} index - Primary index (first of indices)
  * @property {string} placeholder - Input placeholder text
  * @property {string} theme - Color theme ('light' or 'dark')
  * @property {number} maxResults - Maximum results to display
@@ -249,6 +248,26 @@ function parseArray(value) {
 }
 
 /**
+ * Return the internal storage key for this search scope.
+ *
+ * @param {BaseConfig} config - Parsed widget config
+ * @returns {string} Stable scope key for local widget state
+ */
+export function getSearchScopeKey(config) {
+    return config.indices.length > 0 ? config.indices.join(',') : 'all';
+}
+
+/**
+ * Return the single configured index when the scope is exactly one index.
+ *
+ * @param {BaseConfig} config - Parsed widget config
+ * @returns {string} Index handle, or an empty string for all/multi-index scopes
+ */
+export function getSingleConfiguredIndex(config) {
+    return config.indices.length === 1 ? config.indices[0] : '';
+}
+
+/**
  * Parse configuration from HTML element attributes
  *
  * Reads attributes from the element and returns a typed configuration
@@ -279,7 +298,6 @@ export function parseConfig(element, widgetType = 'modal') {
     const config = {
         // Array/special parsing
         indices,
-        index: indices[0] || '',
 
         // String attributes (user-configurable)
         placeholder: element.getAttribute('placeholder') || defaults.placeholder,

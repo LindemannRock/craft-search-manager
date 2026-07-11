@@ -87,6 +87,9 @@ class AutoTransformer extends BaseTransformer
         if ($contentBag['fields'] !== []) {
             $data['_fields'] = $contentBag['fields'];
         }
+        if ($contentBag['bodyClean'] !== '') {
+            $data['_bodyClean'] = $contentBag['bodyClean'];
+        }
 
         // Extract headings from rich text fields
         $allRichText = implode("\n", $richTextContent);

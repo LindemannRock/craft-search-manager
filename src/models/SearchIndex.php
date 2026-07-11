@@ -450,16 +450,15 @@ class SearchIndex extends Model
     /**
      * Parse and validate requested index handles from request parameters.
      *
-     * Handles comma-separated 'indices' param and legacy single 'index' param,
-     * caps the count to prevent fan-out attacks, and filters to enabled-only indices.
+     * Handles the comma-separated 'indices' param, caps the count to prevent
+     * fan-out attacks, and filters to enabled-only indices.
      *
      * @param string $indicesParam Comma-separated index handles (from 'indices' param)
-     * @param string $indexHandle Single index handle (from legacy 'index' param)
      * @param int $maxCount Maximum number of indices allowed
      * @return array{0: array<string>, 1: bool} [validatedHandles, wereIndicesProvided]
      * @since 5.39.0
      */
-    public static function resolveRequestedIndices(string $indicesParam, string $indexHandle, int $maxCount = 5): array
+    public static function resolveRequestedIndices(string $indicesParam, int $maxCount = 5): array
     {
         $indexHandles = [];
         $indicesProvided = false;
@@ -467,9 +466,6 @@ class SearchIndex extends Model
         if (!empty($indicesParam)) {
             $indicesProvided = true;
             $indexHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
-        } elseif (!empty($indexHandle)) {
-            $indicesProvided = true;
-            $indexHandles = [$indexHandle];
         }
 
         // Cap indices count to prevent fan-out attacks

@@ -121,7 +121,7 @@ Search Manager supports 12 languages: English, German, French, Dutch, Spanish, A
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `enableHighlighting` | `bool` | `true` | Enable search term highlighting |
-| `highlightTag` | `string` | `'mark'` | HTML tag wrapping highlighted terms (`mark`, `em`, `strong`, `span`) |
+| `highlightTag` | `string` | `'mark'` | HTML tag wrapping highlighted terms (`mark`, `em`, `strong`, `u`, `b`, `i`, `span`) |
 | `highlightClass` | `?string` | `null` | CSS class added to the highlight tag |
 | `snippetLength` | `int` | `200` | Characters per context snippet |
 | `maxSnippets` | `int` | `3` | Maximum snippets per result |

@@ -26,12 +26,13 @@ class SearchAutoContentHelper
     }
 
     /**
-     * @return array{parts: array<int, mixed>, fields: array<string, string>, richText: array<int, string>}
+     * @return array{parts: array<int, mixed>, fields: array<string, string>, richText: array<int, string>, bodyClean: string}
      */
     public function collect(ElementInterface $element): array
     {
         $searchableContent = [];
         $richTextContent = [];
+        $bodyCleanParts = [];
         $fields = [];
 
         if ($element->title) {
@@ -52,11 +53,15 @@ class SearchAutoContentHelper
         if ($element->getFieldLayout()) {
             foreach ($element->getFieldLayout()->getCustomFields() as $field) {
                 try {
-                    if ($field instanceof Field && !$field->searchable) {
+                    if (!($field instanceof Field)) {
                         continue;
                     }
 
-                    if ($field instanceof Field && $this->nativeFieldKeywordHelper->supports($field)) {
+                    if (!$field->searchable) {
+                        continue;
+                    }
+
+                    if ($this->nativeFieldKeywordHelper->supports($field)) {
                         $content = $this->nativeFieldKeywordHelper->getSearchKeywords($field, $element);
                     } else {
                         $fieldValue = $element->getFieldValue($field->handle);
@@ -69,10 +74,20 @@ class SearchAutoContentHelper
                             $rawHtml = (string)$fieldValue;
                             if (!empty($rawHtml)) {
                                 $richTextContent[] = $rawHtml;
+                                $cleanBody = $this->fieldTypeContentHelper->cleanBody($rawHtml);
+                                if ($cleanBody !== '') {
+                                    $bodyCleanParts[] = $cleanBody;
+                                }
                             }
                         }
 
                         $content = $this->fieldTypeContentHelper->process($field, $fieldValue, $element);
+                        if (!$this->fieldTypeContentHelper->isRichTextField($field) && $this->isBodyFieldHandle($field->handle) && is_string($content)) {
+                            $cleanBody = $this->fieldTypeContentHelper->cleanBody($content);
+                            if ($cleanBody !== '') {
+                                $bodyCleanParts[] = $cleanBody;
+                            }
+                        }
                     }
 
                     if (!empty($content)) {
@@ -93,6 +108,20 @@ class SearchAutoContentHelper
             'parts' => $searchableContent,
             'fields' => $fields,
             'richText' => $richTextContent,
+            'bodyClean' => trim((string)preg_replace('/\s+/', ' ', implode(' ', $bodyCleanParts))),
         ];
+    }
+
+    private function isBodyFieldHandle(string $handle): bool
+    {
+        $handle = strtolower($handle);
+
+        return in_array($handle, [
+            'body',
+            'copy',
+            'content',
+            'maincontent',
+            'articlebody',
+        ], true);
     }
 }

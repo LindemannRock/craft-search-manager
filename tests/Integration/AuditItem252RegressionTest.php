@@ -97,7 +97,8 @@ final class AuditItem252RegressionTest extends TestCase
 
         foreach ([
             'const title = smHighlight(rawTitle, query, titleTerms);',
-            'const displayText = rawDisplayText ? smHighlight(rawDisplayText.substring(0, 400), query, descTerms) : \'\';',
+            'const rawDisplayText = rawSnippet;',
+            'const displayText = rawSnippet ? smHighlight(rawSnippet.substring(0, 400), query, descTerms) : \'\';',
             'if (!showHighlighting.checked) return Craft.escapeHtml(text);',
             'return Craft.escapeHtml(text);',
             'SearchManagerHighlighter.highlight(text, query, {',

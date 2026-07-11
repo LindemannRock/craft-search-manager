@@ -16,7 +16,7 @@ Use `searchManagerSearch` to run a backend search:
 query {
   searchManagerSearch(
     query: "coffee OR tea"
-    index: "products"
+    indices: ["products"]
     site: "en"
     hitsPerPage: 10
     page: 0
@@ -71,14 +71,13 @@ Search arguments:
 | Argument | Type | Notes |
 |----------|------|-------|
 | `query` | `String!` | Search query. Advanced operators match the REST API. |
-| `index` | `String` | Search one index handle. |
-| `indices` | `[String]` | Search multiple index handles. Omit both `index` and `indices` to search all enabled indices. |
+| `indices` | `[String]` | One or more index handles to search. Omit to search all enabled indices. |
 | `site` | `String` | Site handle filter. |
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
 | `hitsPerPage` | `Int` | Defaults to `20`, capped at `200`. |
 | `page` | `Int` | Zero-based page number. |
 | `type` | `String` | Optional stable document-kind filter, for example `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
-| `filters` | `String` | Optional backend-specific filter expression. Requires a single `index`. |
+| `filters` | `String` | Optional backend-specific filter expression. Requires exactly one `indices` value. |
 | `language` | `String` | Optional language code for localized operators. |
 | `source` | `String` | Analytics source. Defaults to `graphql`. |
 | `platform` | `String` | Optional analytics platform label. |
@@ -116,6 +115,8 @@ Common hit fields:
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
 | `matchedTerms` | Matched query terms grouped into `title` and `content` lists when the backend provides them. |
+| `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body; `null` when no eligible snippet source contains the query. |
+| `headings` | List of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
 
 Scores are useful for debug displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.
@@ -126,7 +127,7 @@ Use `type` for portable document-kind filtering:
 
 ```graphql
 query {
-  searchManagerSearch(query: "test", index: "products", type: "entry") {
+  searchManagerSearch(query: "test", indices: ["products"], type: "entry") {
     total
     hits {
       title
@@ -136,13 +137,13 @@ query {
 }
 ```
 
-Use `filters` when you already have a backend-specific filter expression. Because filter syntax differs by backend, `filters` requires a single `index`.
+Use `filters` when you already have a backend-specific filter expression. Because filter syntax differs by backend, `filters` requires exactly one `indices` value.
 
 ```graphql
 query {
   searchManagerSearch(
     query: "test"
-    index: "products-typesense"
+    indices: ["products-typesense"]
     filters: "type:=`entry` && siteId:=`1`"
   ) {
     total
@@ -181,7 +182,7 @@ Use the Algolia-backed index handle. Algolia result order is the relevance signa
 query {
   searchManagerSearch(
     query: "test"
-    index: "test-algolia"
+    indices: ["test-algolia"]
     hitsPerPage: 5
     skipAnalytics: true
   ) {
@@ -207,7 +208,7 @@ For Algolia filters, use Algolia filter syntax and make sure custom filter field
 query {
   searchManagerSearch(
     query: "test"
-    index: "test-algolia"
+    indices: ["test-algolia"]
     filters: "type:\"entry\" AND siteId:1"
     hitsPerPage: 5
     skipAnalytics: true
@@ -231,7 +232,7 @@ Use the Meilisearch-backed index handle. When Meilisearch returns `_rankingScore
 query {
   searchManagerSearch(
     query: "test"
-    index: "meilisearch"
+    indices: ["meilisearch"]
     hitsPerPage: 5
     enrich: true
     skipAnalytics: true
@@ -259,7 +260,7 @@ For Meilisearch filters, use Meilisearch filter syntax. Custom fields must be fi
 query {
   searchManagerSearch(
     query: "test"
-    index: "meilisearch"
+    indices: ["meilisearch"]
     filters: "type = \"entry\" AND siteId = 1"
     hitsPerPage: 5
     skipAnalytics: true
@@ -283,7 +284,7 @@ Use the Typesense-backed index handle. When Typesense returns a text-match value
 query {
   searchManagerSearch(
     query: "test"
-    index: "typesense"
+    indices: ["typesense"]
     hitsPerPage: 5
     skipAnalytics: true
   ) {
@@ -310,7 +311,7 @@ For Typesense filters, use Typesense filter syntax. Typesense also requires sear
 query {
   searchManagerSearch(
     query: "test"
-    index: "typesense"
+    indices: ["typesense"]
     filters: "type:=`entry` && siteId:=`1`"
     hitsPerPage: 5
     skipAnalytics: true
@@ -351,8 +352,10 @@ query {
       type
       headings {
         title
-        description
+        id
+        level
         url
+        snippet
       }
     }
   }
@@ -367,7 +370,11 @@ Enrichment arguments:
 | `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
 | `showCodeSnippets` | `Boolean` | Include code block content in snippets. |
 | `parseMarkdownSnippets` | `Boolean` | Parse markdown before generating snippets. |
+| `highlightTag` | `String` | Reserved for client renderers. Enriched snippets are returned as plain text. |
+| `highlightClass` | `String` | Reserved for client renderers. Enriched snippets are returned as plain text. |
 | `hideResultsWithoutUrl` | `Boolean` | Exclude enriched results that do not have a URL. |
+
+`snippet` and `headings.snippet` are plain text. Apply highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values, then from the indexed clean body.
 
 ## Autocomplete
 
@@ -377,7 +384,7 @@ Use `searchManagerAutocomplete` for suggestions and lightweight result suggestio
 query {
   searchManagerAutocomplete(
     query: "cof"
-    index: "products"
+    indices: ["products"]
     site: "en"
     hitsPerPage: 8
   ) {
@@ -398,8 +405,7 @@ Autocomplete arguments:
 | Argument | Type | Notes |
 |----------|------|-------|
 | `query` | `String!` | Partial search query. |
-| `index` | `String` | Query one index handle. |
-| `indices` | `[String]` | Query multiple index handles. Omit both `index` and `indices` to query all enabled indices. |
+| `indices` | `[String]` | One or more index handles to query. Omit to query all enabled indices. |
 | `site` | `String` | Site handle filter. |
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
 | `hitsPerPage` | `Int` | Defaults to `10`, capped at `100`. |

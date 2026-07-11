@@ -242,15 +242,15 @@ Typesense requires explicit `query_by` to search custom fields. The default sear
 %}
 ```
 
-## Heading Children Missing Descriptions
+## Heading Children Missing Snippets
 
-In hierarchical search results, heading children show a description extracted from the paragraph text directly below each heading. If a heading has no description:
+In hierarchical search results, heading children show query-centered snippets from the heading's section in the indexed clean body. If a heading has no snippet:
 
-- **No text between headings**: If a heading is immediately followed by a sub-heading with no paragraph in between, the description will be empty. Add an introductory sentence below the heading in your content.
-- **Content starts with a code block**: The description is extracted from the first `<p>` tag after the heading. If the content starts with `<pre>` or `<code>` instead, the description may show raw code or be empty.
-- **Content not re-indexed**: Heading descriptions are extracted at index time. After editing content, rebuild the index for changes to appear.
+- **No query match in that section**: The heading can still appear because the page matched, but its `snippet` stays `null` unless the heading section contains the query term.
+- **Heading boundary not found in the indexed body**: Heading metadata is matched back to the clean body at request time. Rebuild the index if headings or body content changed.
+- **Snippet settings are restrictive**: `snippetMode`, `snippetLength`, and `parseMarkdownSnippets` apply to heading snippets the same way they apply to the main snippet.
 
-The heading description is static — it always shows the same text regardless of the search query. The parent result's snippet is query-aware and centers around the matched term (controlled by `snippetMode` and `snippetLength`).
+Heading snippets are plain text and are highlighted by the frontend when highlighting is enabled.
 
 ## Config File Overrides CP Settings
 

@@ -16,6 +16,7 @@ use craft\models\GqlSchema;
 use craft\services\Gql;
 use lindemannrock\searchmanager\gql\queries\SearchQuery;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
+use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\base\Application as YiiApplication;
@@ -119,7 +120,7 @@ final class GraphqlSearchTest extends TestCase
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'index' => $index->handle,
+            'indices' => [$index->handle],
             'siteId' => (int)($index->getSiteIds()[0] ?? 1),
             'hitsPerPage' => 5,
             'page' => 2,
@@ -145,6 +146,18 @@ final class GraphqlSearchTest extends TestCase
         $this->assertSame('graphql', $calls[0]['items'][0]['options']['source']);
     }
 
+    public function testGraphqlDebugMetaUsesSharedAccessHelper(): void
+    {
+        $source = $this->readPluginFile('src/gql/resolvers/SearchResolver.php');
+
+        $this->assertStringContainsString("'includeDebugMeta' => SearchDebugAccessHelper::canExposeDebugMeta(),", $source);
+        $this->assertStringNotContainsString('Craft::$app->getConfig()->getGeneral()->devMode || Craft::$app->getUser()->checkPermission(\'searchManager:viewDebug\')', $source);
+        $this->assertSame(
+            Craft::$app->getConfig()->getGeneral()->devMode || Craft::$app->getUser()->checkPermission('searchManager:viewDebug'),
+            SearchDebugAccessHelper::canExposeDebugMeta(),
+        );
+    }
+
     public function testSearchAllowsExplicitSiteInsideActiveGraphqlSchema(): void
     {
         $pair = $this->findWorkingIndexAndElement();
@@ -163,7 +176,7 @@ final class GraphqlSearchTest extends TestCase
 
         SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'index' => $index->handle,
+            'indices' => [$index->handle],
             'siteId' => $site->id,
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
@@ -194,7 +207,7 @@ final class GraphqlSearchTest extends TestCase
         try {
             SearchResolver::resolveSearch(null, [
                 'query' => 'coffee',
-                'index' => $pair[0]->handle,
+                'indices' => [$pair[0]->handle],
                 'siteId' => $deniedSite->id,
             ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
         } finally {
@@ -221,7 +234,7 @@ final class GraphqlSearchTest extends TestCase
 
         SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'index' => $index->handle,
+            'indices' => [$index->handle],
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
         $calls = $stub->callsFor('search');
@@ -248,7 +261,7 @@ final class GraphqlSearchTest extends TestCase
 
         SearchResolver::resolveAutocomplete(null, [
             'query' => 'coffee',
-            'index' => $index->handle,
+            'indices' => [$index->handle],
             'only' => 'suggestions',
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
@@ -256,13 +269,13 @@ final class GraphqlSearchTest extends TestCase
         $this->assertSame($site->id, $autocomplete->suggestCalls[0]['options']['siteId']);
     }
 
-    public function testInvalidExplicitIndexReturnsEmptyResponseWithoutFallback(): void
+    public function testInvalidExplicitIndicesReturnEmptyResponseWithoutFallback(): void
     {
         $stub = $this->installStubBackend();
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'index' => '__missing_index__',
+            'indices' => ['__missing_index__'],
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
         $this->assertSame(0, $response['total']);
@@ -303,6 +316,14 @@ final class GraphqlSearchTest extends TestCase
     private function searchQuery(): string
     {
         return 'query { searchManagerSearch(query: "coffee") { total } }';
+    }
+
+    private function readPluginFile(string $path): string
+    {
+        $content = file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+        $this->assertIsString($content);
+
+        return $content;
     }
 }
 

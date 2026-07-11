@@ -870,12 +870,11 @@
                         data.hits.forEach(hit => {
                             const rawTitle = hit.title || T.untitled;
                             const rawSnippet = hit.snippet || '';
-                            const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');
                             const titleTerms = getHitTerms(hit, 'title');
                             const descTerms = getHitTerms(hit, 'snippet');
                             const title = smHighlight(rawTitle, query, titleTerms);
-                            const rawDisplayText = rawSnippet || rawExcerpt;
-                            const displayText = rawDisplayText ? smHighlight(rawDisplayText.substring(0, 400), query, descTerms) : '';
+                            const rawDisplayText = rawSnippet;
+                            const displayText = rawSnippet ? smHighlight(rawSnippet.substring(0, 400), query, descTerms) : '';
                             const url = safeUrlAttribute(hit.url);
                             const urlText = hit.url ? escapeDisplay(hit.url) : '';
                             const isPromoted = hit.promoted === true;
@@ -895,7 +894,7 @@
                             const siteName = escapeDisplay(hit.siteName || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
                             const thumbnail = safeUrlAttribute(hit.thumbnail);
-                            const matchedHeadings = hit._matchedHeadings || [];
+                            const matchedHeadings = hit.headings || [];
                             const matchedTerms = hit.matchedTerms || [];
                             const matchedPhrases = hit.matchedPhrases || [];
                             const score = hit.score !== undefined && hit.score !== null ? Number(hit.score).toFixed(2) : T.naValue;
@@ -931,7 +930,7 @@
             ${displayText ? `<div class="sm-test-description">${displayText}${rawDisplayText.length > 400 ? '...' : ''}</div>` : ''}
             ${matchedHeadings.length > 0 ? `<div class="sm-test-headings">
                 <div class="sm-test-headings-title">${T.matchedHeadings}</div>
-                ${matchedHeadings.map(h => `<div class="sm-test-heading-row"><span class="sm-test-heading-tag">${Craft.escapeHtml(h.tag || 'h2')}</span>${Craft.escapeHtml(h.text)}</div>`).join('')}
+                ${matchedHeadings.map(h => `<div class="sm-test-heading-row"><span class="sm-test-heading-tag">${Craft.escapeHtml('h' + (h.level || 2))}</span>${Craft.escapeHtml(h.title || '')}${h.snippet ? `<span class="sm-test-heading-snippet">${h.snippet}</span>` : ''}</div>`).join('')}
             </div>` : ''}
             ${matchedTerms.length > 0 || matchedPhrases.length > 0 ? `<div class="sm-test-terms">
                 ${matchedTerms.length > 0 ? `<strong>${T.termsLabel}</strong> ${matchedTerms.map(t => '<code class="sm-test-term">' + Craft.escapeHtml(t) + '</code>').join(' ')}` : ''}

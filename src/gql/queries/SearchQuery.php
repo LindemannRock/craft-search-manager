@@ -40,15 +40,10 @@ class SearchQuery extends Query
                         'type' => Type::nonNull(Type::string()),
                         'description' => 'The search query.',
                     ],
-                    'index' => [
-                        'name' => 'index',
-                        'type' => Type::string(),
-                        'description' => 'A single index handle to search.',
-                    ],
                     'indices' => [
                         'name' => 'indices',
                         'type' => Type::listOf(Type::string()),
-                        'description' => 'A list of index handles to search. Omit to search all enabled indices.',
+                        'description' => 'One or more index handles to search. Omit to search all enabled indices.',
                     ],
                     'site' => [
                         'name' => 'site',
@@ -135,6 +130,16 @@ class SearchQuery extends Query
                         'type' => Type::boolean(),
                         'description' => 'Whether markdown should be parsed before generating snippets.',
                     ],
+                    'highlightTag' => [
+                        'name' => 'highlightTag',
+                        'type' => Type::string(),
+                        'description' => 'Reserved for client renderers. Enriched snippets are returned as plain text.',
+                    ],
+                    'highlightClass' => [
+                        'name' => 'highlightClass',
+                        'type' => Type::string(),
+                        'description' => 'Reserved for client renderers. Enriched snippets are returned as plain text.',
+                    ],
                     'hideResultsWithoutUrl' => [
                         'name' => 'hideResultsWithoutUrl',
                         'type' => Type::boolean(),
@@ -152,15 +157,10 @@ class SearchQuery extends Query
                         'type' => Type::nonNull(Type::string()),
                         'description' => 'The partial search query.',
                     ],
-                    'index' => [
-                        'name' => 'index',
-                        'type' => Type::string(),
-                        'description' => 'A single index handle to use.',
-                    ],
                     'indices' => [
                         'name' => 'indices',
                         'type' => Type::listOf(Type::string()),
-                        'description' => 'A list of index handles to use. Omit to query all enabled indices.',
+                        'description' => 'One or more index handles to use. Omit to query all enabled indices.',
                     ],
                     'site' => [
                         'name' => 'site',

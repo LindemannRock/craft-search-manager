@@ -355,7 +355,6 @@ class ApiKeyService extends Component
         // validated against enabled indices (drops stale/disabled handles).
         [$scoped] = SearchIndex::resolveRequestedIndices(
             implode(',', $key->allowedIndices),
-            '',
             max(1, count($key->allowedIndices)),
         );
 

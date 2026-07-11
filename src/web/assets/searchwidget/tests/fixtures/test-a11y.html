@@ -309,7 +309,7 @@
             const itemsHtml = items.map(r => {
                 const parentIndex = globalIndex++;
                 const parentId = listboxId + '-option-' + parentIndex;
-                const headings = r._matchedHeadings || [];
+                const headings = r.headings || [];
                 const hasChildren = headings.length > 0;
 
                 const parentHtml = `
@@ -336,14 +336,14 @@
                         const anchorUrl = (r.url || '#') + '#' + (h.id || '');
                         return `
                             <div class="sm-hierarchy-child-row sm-hierarchy-level-${h.level || 2}">
-                                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${h.level || 2}" id="${childId}" role="option" aria-selected="false" href="${escapeHtml(anchorUrl)}" data-index="${childIndex}" data-id="${r.id || ''}" data-title="${escapeHtml(h.text)}">
+                                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${h.level || 2}" id="${childId}" role="option" aria-selected="false" href="${escapeHtml(anchorUrl)}" data-index="${childIndex}" data-id="${r.id || ''}" data-title="${escapeHtml(h.title)}">
                                     <svg class="sm-hierarchy-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                         <line x1="4" y1="9" x2="20" y2="9"/>
                                         <line x1="4" y1="15" x2="20" y2="15"/>
                                         <line x1="10" y1="3" x2="8" y2="21"/>
                                         <line x1="16" y1="3" x2="14" y2="21"/>
                                     </svg>
-                                    <span class="sm-result-title">${escapeHtml(h.text)}</span>
+                                    <span class="sm-result-title">${escapeHtml(h.title)}</span>
                                     <svg class="sm-result-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                                         <path d="M5 12h14M12 5l7 7-7 7"/>
                                     </svg>
@@ -412,96 +412,96 @@
         // Group: "Getting Started" — 5 parents, mixed children
         {
             id: 10, title: 'Installation Guide', description: 'How to install the plugin', url: '/docs/installation', section: 'Getting Started', type: 'entry',
-            _matchedHeadings: [
-                { text: 'Overview', id: 'overview', level: 1 },
-                { text: 'Requirements', id: 'requirements', level: 2 },
-                { text: 'PHP Version', id: 'php-version', level: 3 },
-                { text: 'Database Compatibility', id: 'database-compatibility', level: 3 },
-                { text: 'Minimum MySQL Version', id: 'minimum-mysql-version', level: 4 },
-                { text: 'PostgreSQL Notes', id: 'postgresql-notes', level: 5 },
-                { text: 'Legacy Driver Caveat', id: 'legacy-driver-caveat', level: 6 },
-                { text: 'Composer Install', id: 'composer-install', level: 2 },
-                { text: 'Global vs Local Install', id: 'global-vs-local-install', level: 3 },
-                { text: 'Private Repositories', id: 'private-repositories', level: 4 },
-                { text: 'Manual Install', id: 'manual-install', level: 2 },
+            headings: [
+                { title: 'Overview', id: 'overview', level: 1 },
+                { title: 'Requirements', id: 'requirements', level: 2 },
+                { title: 'PHP Version', id: 'php-version', level: 3 },
+                { title: 'Database Compatibility', id: 'database-compatibility', level: 3 },
+                { title: 'Minimum MySQL Version', id: 'minimum-mysql-version', level: 4 },
+                { title: 'PostgreSQL Notes', id: 'postgresql-notes', level: 5 },
+                { title: 'Legacy Driver Caveat', id: 'legacy-driver-caveat', level: 6 },
+                { title: 'Composer Install', id: 'composer-install', level: 2 },
+                { title: 'Global vs Local Install', id: 'global-vs-local-install', level: 3 },
+                { title: 'Private Repositories', id: 'private-repositories', level: 4 },
+                { title: 'Manual Install', id: 'manual-install', level: 2 },
             ],
         },
         {
             id: 11, title: 'Quick Start', description: 'Get up and running in 5 minutes', url: '/docs/quick-start', section: 'Getting Started', type: 'entry',
-            _matchedHeadings: [
-                { text: 'Create Your First Index', id: 'create-your-first-index', level: 2 },
-                { text: 'Add the Widget', id: 'add-the-widget', level: 2 },
-                { text: 'Inline Configuration', id: 'inline-configuration', level: 3 },
-                { text: 'Test Your Setup', id: 'test-your-setup', level: 2 },
+            headings: [
+                { title: 'Create Your First Index', id: 'create-your-first-index', level: 2 },
+                { title: 'Add the Widget', id: 'add-the-widget', level: 2 },
+                { title: 'Inline Configuration', id: 'inline-configuration', level: 3 },
+                { title: 'Test Your Setup', id: 'test-your-setup', level: 2 },
             ],
         },
         {
             // Parent with NO children
             id: 12, title: 'Licensing', description: 'Plugin editions and pricing', url: '/docs/licensing', section: 'Getting Started', type: 'entry',
-            _matchedHeadings: [],
+            headings: [],
         },
         {
             id: 13, title: 'Upgrading', description: 'Migration from v4 to v5', url: '/docs/upgrading', section: 'Getting Started', type: 'entry',
-            _matchedHeadings: [
-                { text: 'Breaking Changes', id: 'breaking-changes', level: 2 },
+            headings: [
+                { title: 'Breaking Changes', id: 'breaking-changes', level: 2 },
             ],
         },
         {
             id: 14, title: 'Widget Configuration', description: 'Configure widget appearance and behavior', url: '/docs/widgets', section: 'Getting Started', type: 'entry',
-            _matchedHeadings: [
-                { text: 'Style Presets', id: 'style-presets', level: 2 },
-                { text: 'Custom Colors', id: 'custom-colors', level: 3 },
-                { text: 'CSS Custom Properties', id: 'css-custom-properties', level: 4 },
-                { text: 'Trigger Options', id: 'trigger-options', level: 2 },
-                { text: 'Keyboard Shortcuts', id: 'keyboard-shortcuts', level: 3 },
+            headings: [
+                { title: 'Style Presets', id: 'style-presets', level: 2 },
+                { title: 'Custom Colors', id: 'custom-colors', level: 3 },
+                { title: 'CSS Custom Properties', id: 'css-custom-properties', level: 4 },
+                { title: 'Trigger Options', id: 'trigger-options', level: 2 },
+                { title: 'Keyboard Shortcuts', id: 'keyboard-shortcuts', level: 3 },
             ],
         },
         // Group: "Configuration" — 3 parents
         {
             id: 20, title: 'Search Backends', description: 'MySQL, Redis, Meilisearch, Typesense', url: '/docs/backends', section: 'Configuration', type: 'entry',
-            _matchedHeadings: [
-                { text: 'MySQL Backend', id: 'mysql-backend', level: 2 },
-                { text: 'Full-Text Search', id: 'full-text-search', level: 3 },
-                { text: 'Boolean Mode', id: 'boolean-mode', level: 4 },
-                { text: 'Redis Backend', id: 'redis-backend', level: 2 },
-                { text: 'Connection Settings', id: 'connection-settings', level: 3 },
-                { text: 'Meilisearch', id: 'meilisearch', level: 2 },
-                { text: 'Typesense', id: 'typesense', level: 2 },
+            headings: [
+                { title: 'MySQL Backend', id: 'mysql-backend', level: 2 },
+                { title: 'Full-Text Search', id: 'full-text-search', level: 3 },
+                { title: 'Boolean Mode', id: 'boolean-mode', level: 4 },
+                { title: 'Redis Backend', id: 'redis-backend', level: 2 },
+                { title: 'Connection Settings', id: 'connection-settings', level: 3 },
+                { title: 'Meilisearch', id: 'meilisearch', level: 2 },
+                { title: 'Typesense', id: 'typesense', level: 2 },
             ],
         },
         {
             id: 21, title: 'Index Settings', description: 'Configure search index behavior', url: '/docs/index-settings', section: 'Configuration', type: 'entry',
-            _matchedHeadings: [
-                { text: 'Transformers', id: 'transformers', level: 2 },
-                { text: 'Auto Transformer', id: 'auto-transformer', level: 3 },
-                { text: 'Custom Transformers', id: 'custom-transformers', level: 3 },
-                { text: 'Heading Extraction', id: 'heading-extraction', level: 4 },
-                { text: 'Ranking & Weights', id: 'ranking-weights', level: 2 },
+            headings: [
+                { title: 'Transformers', id: 'transformers', level: 2 },
+                { title: 'Auto Transformer', id: 'auto-transformer', level: 3 },
+                { title: 'Custom Transformers', id: 'custom-transformers', level: 3 },
+                { title: 'Heading Extraction', id: 'heading-extraction', level: 4 },
+                { title: 'Ranking & Weights', id: 'ranking-weights', level: 2 },
             ],
         },
         {
             // Parent with only a single H4 child (edge case)
             id: 22, title: 'Environment Config', description: 'Per-environment settings', url: '/docs/env-config', section: 'Configuration', type: 'entry',
-            _matchedHeadings: [
-                { text: 'Docker Compose Override', id: 'docker-compose-override', level: 4 },
+            headings: [
+                { title: 'Docker Compose Override', id: 'docker-compose-override', level: 4 },
             ],
         },
         // Group: "Developers" — 2 parents
         {
             id: 30, title: 'Events Reference', description: 'All events fired by the plugin', url: '/docs/events', section: 'Developers', type: 'entry',
-            _matchedHeadings: [
-                { text: 'Before Index', id: 'before-index', level: 2 },
-                { text: 'After Index', id: 'after-index', level: 2 },
-                { text: 'Before Search', id: 'before-search', level: 2 },
-                { text: 'Modify Results', id: 'modify-results', level: 3 },
-                { text: 'Result Scoring', id: 'result-scoring', level: 4 },
-                { text: 'After Search', id: 'after-search', level: 2 },
+            headings: [
+                { title: 'Before Index', id: 'before-index', level: 2 },
+                { title: 'After Index', id: 'after-index', level: 2 },
+                { title: 'Before Search', id: 'before-search', level: 2 },
+                { title: 'Modify Results', id: 'modify-results', level: 3 },
+                { title: 'Result Scoring', id: 'result-scoring', level: 4 },
+                { title: 'After Search', id: 'after-search', level: 2 },
             ],
         },
         {
             // Another parent with no children
             id: 31, title: 'GraphQL API', description: 'Query search results via GraphQL', url: '/docs/graphql', section: 'Developers', type: 'entry',
-            _matchedHeadings: [],
+            headings: [],
         },
     ];
 

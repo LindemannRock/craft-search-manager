@@ -323,340 +323,175 @@ final class EnrichmentBatchLoadTest extends TestCase
         $this->assertSame(['boosts' => [['ruleId' => 123]]], $withDebug[0]['_queryRuleDebug'] ?? null);
     }
 
-    public function testTitleMatchDoesNotUseFlattenedExcerptOrContentAsDescription(): void
+    public function testContentBagOnlyMatchReturnsNullSnippet(): void
     {
-        $hit = [
+        $result = $this->invokeFieldSnippet([
             'title' => 'Eco Shirt',
-            'excerpt' => 'Eco Shirt SHIRT-36E041-0 SHIRT-36E05A-1 eco-shirt-9-e006 Eco Shirt Lorem ipsum dolor sit amet',
-            'content' => 'Eco Shirt SHIRT-36E041-0 SHIRT-36E05A-1 eco-shirt-9-e006 Eco Shirt Lorem ipsum dolor sit amet',
-            'matchedIn' => ['title'],
-            'matchedTerms' => [
-                'title' => ['eco'],
-                'content' => [],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'eco', $debug);
-
-        self::assertNull($description);
-        self::assertSame(['title'], $hit['matchedIn']);
-        self::assertSame(['eco'], $hit['matchedTerms']['title']);
-        self::assertSame('title', $debug['snippetSource'] ?? null);
-        self::assertSame('none', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testCommerceProductTitleMatchUsesLiveProductProseDescription(): void
-    {
-        $field = new PlainText([
-            'handle' => 'productDetails',
-            'name' => 'Product Details',
-            'searchable' => true,
-        ]);
-        $product = SearchManagerEnrichmentTestElement::withFields([$field], [
-            'productDetails' => 'Lorem ipsum dolor sit amet with organic cotton for everyday wear.',
-        ]);
-        $hit = [
-            'title' => 'Eco Shirt',
-            'type' => 'product',
-            'elementType' => 'product',
-            'excerpt' => 'Eco Shirt SHIRT-36E041-0 SHIRT-36E05A-1 eco-shirt-9-e006 Eco Shirt Lorem ipsum dolor sit amet',
-            'content' => 'Eco Shirt SHIRT-36E041-0 SHIRT-36E05A-1 eco-shirt-9-e006 Eco Shirt Lorem ipsum dolor sit amet',
-            'matchedIn' => ['title'],
-            'matchedTerms' => [
-                'title' => ['eco'],
-                'content' => [],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'eco', $debug, $product);
-
-        self::assertSame('Lorem ipsum dolor sit amet with organic cotton for everyday wear.', $description);
-        self::assertStringNotContainsString('SHIRT-36E041-0', $description);
-        self::assertSame('title', $debug['snippetSource'] ?? null);
-        self::assertSame('description', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testVariantTitleMatchCanUseParentProductProseDescription(): void
-    {
-        $field = new PlainText([
-            'handle' => 'productStory',
-            'name' => 'Product Story',
-            'searchable' => true,
-        ]);
-        $product = SearchManagerEnrichmentTestElement::withFields([$field], [
-            'productStory' => 'Parent product prose explains the fabric, fit, and care instructions.',
-        ]);
-        $variant = SearchManagerEnrichmentTestVariant::withProduct($product);
-        $hit = [
-            'title' => 'Eco Shirt - Medium',
-            'type' => 'variant',
-            'elementType' => 'variant',
-            'excerpt' => 'Eco Shirt SHIRT-36E041-0 Medium eco-shirt-9-e006',
-            'content' => 'Eco Shirt SHIRT-36E041-0 Medium eco-shirt-9-e006',
-            'matchedIn' => ['title'],
-            'matchedTerms' => [
-                'title' => ['eco'],
-                'content' => [],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'eco', $debug, $variant);
-
-        self::assertSame('Parent product prose explains the fabric, fit, and care instructions.', $description);
-        self::assertSame('description', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testUserDefinedSearchableProseFieldDoesNotRequireDescriptionHandle(): void
-    {
-        $field = new PlainText([
-            'handle' => 'marketingCopy',
-            'name' => 'Marketing Copy',
-            'searchable' => true,
-        ]);
-        $element = SearchManagerEnrichmentTestElement::withFields([$field], [
-            'marketingCopy' => 'A breathable everyday layer made from soft organic cotton.',
-        ]);
-        $hit = [
-            'title' => 'Eco Shirt',
-            'excerpt' => 'Eco Shirt SHIRT-36E041-0 eco-shirt-9-e006',
             'content' => 'Eco Shirt SHIRT-36E041-0 eco-shirt-9-e006',
-            'matchedIn' => ['title'],
-            'matchedTerms' => [
-                'title' => ['eco'],
-                'content' => [],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'eco', $debug, $element);
-
-        self::assertSame('A breathable everyday layer made from soft organic cotton.', $description);
-        self::assertSame('description', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testAssetTitleMatchUsesSearchableCustomDescriptionInsteadOfFlattenedContent(): void
-    {
-        $field = new PlainText([
-            'handle' => 'description',
-            'name' => 'Description',
-            'searchable' => true,
-        ]);
-        $asset = SearchManagerEnrichmentTestElement::withFields([$field], [
-            'description' => 'A cheese image for testing',
-        ]);
-        $hit = [
-            'title' => 'Cheese',
-            'type' => 'asset',
-            'elementType' => 'asset',
-            'content' => 'Cheese ALT TEXT FOR CHEESE A cheese image for testing',
-            'excerpt' => 'Cheese ALT TEXT FOR CHEESE A cheese image for testing',
-            'matchedIn' => ['title', 'content'],
-            'matchedTerms' => [
-                'title' => ['cheese'],
-                'content' => ['cheese'],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'cheese', $debug, $asset);
-
-        self::assertSame('A cheese image for testing', $description);
-        self::assertStringNotContainsString('ALT TEXT FOR CHEESE', $description);
-        self::assertSame('title', $debug['snippetSource'] ?? null);
-        self::assertSame('short', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testAssetTitleMatchCanUseAltTextAsSafeProse(): void
-    {
-        $field = new PlainText([
-            'handle' => 'alternativeText',
-            'name' => 'Alternative Text',
-            'searchable' => true,
-        ]);
-        $asset = SearchManagerEnrichmentTestElement::withFields([$field], [
-            'alternativeText' => 'ALT TEXT FOR CHEESE',
-        ]);
-        $hit = [
-            'title' => 'Cheese',
-            'type' => 'asset',
-            'elementType' => 'asset',
-            'content' => 'Cheese ALT TEXT FOR CHEESE',
-            'excerpt' => 'Cheese ALT TEXT FOR CHEESE',
-            'matchedIn' => ['title', 'content'],
-            'matchedTerms' => [
-                'title' => ['cheese'],
-                'content' => ['cheese'],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'cheese', $debug, $asset);
-
-        self::assertSame('ALT TEXT FOR CHEESE', $description);
-        self::assertSame('short', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testUserTitleMatchUsesCustomDescriptionInsteadOfNativeContentBag(): void
-    {
-        $field = new PlainText([
-            'handle' => 'description',
-            'name' => 'Description',
-            'searchable' => true,
-        ]);
-        $user = SearchManagerEnrichmentTestElement::withFields([$field], [
-            'description' => 'The admin is a creative technologist',
-        ]);
-        $hit = [
-            'title' => 'Bilal Harry Lindemann',
-            'type' => 'user',
-            'elementType' => 'user',
-            'content' => 'bh@lindemannrock.com Bilal Harry Lindemann Bilal Lindemann bh@lindemannrock.com The admin is a creative technologist',
-            'excerpt' => 'bh@lindemannrock.com Bilal Harry Lindemann Bilal Lindemann bh@lindemannrock.com The admin is a creative technologist',
-            'matchedIn' => ['title', 'content'],
-            'matchedTerms' => [
-                'title' => ['bilal'],
-                'content' => ['bilal'],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'bilal', $debug, $user);
-
-        self::assertSame('The admin is a creative technologist', $description);
-        self::assertStringNotContainsString('bh@lindemannrock.com', $description);
-        self::assertSame('title', $debug['snippetSource'] ?? null);
-        self::assertSame('description', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testCategoryHitDescriptionRemainsSafeProseCandidate(): void
-    {
-        $hit = [
-            'title' => 'One',
-            'type' => 'category',
-            'elementType' => 'category',
-            '_fields' => [
-                'description' => 'This is one to test for categories',
-            ],
-            'content' => 'One This is one to test for categories',
-            'excerpt' => 'One This is one to test for categories',
-            'matchedIn' => ['title'],
-            'matchedTerms' => [
-                'title' => ['one'],
-                'content' => [],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'one', $debug);
-
-        self::assertSame('This is one to test for categories', $description);
-        self::assertSame('short', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testTitleAndContentMatchWithBodyOnlyTermStillUsesContextualContentSnippet(): void
-    {
-        $hit = [
-            'title' => 'Cheese',
-            'content' => 'Cheese A cheese image for testing with a detailed dairy counter note.',
-            'matchedIn' => ['title', 'content'],
-            'matchedTerms' => [
-                'title' => ['cheese'],
-                'content' => ['image'],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'image', $debug);
-
-        self::assertIsString($description);
-        self::assertStringContainsString('cheese image for testing', $description);
-        self::assertSame('content', $debug['snippetSource'] ?? null);
-        self::assertSame('content', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testSourceDocContentMatchStillUsesContextualContentSnippet(): void
-    {
-        $hit = [
-            'title' => 'Quickstart',
-            'type' => 'source-doc',
-            'elementType' => 'source-doc',
-            'description' => 'Install and configure Search Manager.',
-            'content' => 'Quickstart Install and configure Search Manager. Use the indexing command after deployment.',
-            'matchedIn' => ['content'],
-            'matchedTerms' => [
-                'title' => [],
-                'content' => ['deployment'],
-            ],
-        ];
-        $debug = [];
-
-        $description = $this->invokeDescription($hit, 'deployment', $debug);
-
-        self::assertIsString($description);
-        self::assertStringContainsString('deployment', $description);
-        self::assertSame('content', $debug['snippetSource'] ?? null);
-        self::assertSame('content', $debug['snippetFrom'] ?? null);
-    }
-
-    public function testContentMatchStillUsesContextualContentSnippet(): void
-    {
-        $hit = [
-            'title' => 'Eco Shirt',
-            'excerpt' => 'Eco Shirt SHIRT-36E041-0 eco-shirt-9-e006 Eco Shirt',
-            'content' => 'Eco Shirt SHIRT-36E041-0 eco-shirt-9-e006 Eco Shirt Lorem ipsum dolor sit amet with organic cotton.',
-            'matchedIn' => ['content'],
+            'excerpt' => 'Eco Shirt SHIRT-36E041-0',
             'matchedTerms' => [
                 'title' => [],
                 'content' => ['organic'],
             ],
-        ];
-        $debug = [];
+        ], 'organic');
 
-        $description = $this->invokeDescription($hit, 'organic', $debug);
-
-        self::assertIsString($description);
-        self::assertStringContainsString('organic cotton', $description);
-        self::assertSame('content', $debug['snippetSource'] ?? null);
-        self::assertSame('content', $debug['snippetFrom'] ?? null);
-        self::assertSame(mb_strlen($hit['content']), $debug['fullContentLength'] ?? null);
+        self::assertNull($result['snippet']);
     }
 
-    public function testEquivalentHitDescriptionIsSuppressedWhenNoSafeProseExists(): void
+    public function testFieldMatchReturnsPlainSnippet(): void
     {
-        $flattened = 'Eco Shirt SHIRT-36E041-0 eco-shirt-9-e006 Eco Shirt';
-        $hit = [
-            'description' => $flattened,
-            'excerpt' => $flattened,
-            'content' => $flattened,
-            'matchedIn' => ['title'],
+        $result = $this->invokeFieldSnippet([
+            '_fields' => [
+                'description' => 'This category has one clear paragraph for testing.',
+            ],
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['one'],
+            ],
+        ], 'one');
+
+        self::assertSame('This category has one clear paragraph for testing.', $result['snippet']);
+        self::assertArrayNotHasKey('highlights', $result);
+    }
+
+    public function testTitleOnlyMatchWithoutFieldContentReturnsNullSnippet(): void
+    {
+        $result = $this->invokeFieldSnippet([
+            'title' => 'Eco Shirt',
+            '_fields' => [
+                'description' => 'Soft cotton for everyday wear.',
+            ],
             'matchedTerms' => [
                 'title' => ['eco'],
                 'content' => [],
             ],
-        ];
-        $debug = [];
+        ], 'eco');
 
-        $description = $this->invokeDescription($hit, 'eco', $debug);
+        self::assertNull($result['snippet']);
+    }
 
-        self::assertNull($description);
-        self::assertSame('none', $debug['snippetFrom'] ?? null);
+    public function testBodyOnlyMatchReturnsPlainSnippet(): void
+    {
+        $result = $this->invokeFieldSnippet([
+            '_bodyClean' => 'Run Composer install before rebuilding the docs index.',
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['composer'],
+            ],
+        ], 'composer');
+
+        self::assertSame('Run Composer install before rebuilding the docs index.', $result['snippet']);
+        self::assertArrayNotHasKey('highlights', $result);
+    }
+
+    public function testRawContentBagIsNeverUsedForSnippet(): void
+    {
+        $result = $this->invokeFieldSnippet([
+            'content' => 'Quickstart quickstart setup composer deployment',
+            'excerpt' => 'Quickstart quickstart setup composer deployment',
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['composer'],
+            ],
+        ], 'composer');
+
+        self::assertNull($result['snippet']);
+    }
+
+    public function testTitleMatchWithEligibleFieldContainingQueryUsesThatField(): void
+    {
+        $result = $this->invokeFieldSnippet([
+            'title' => 'Eco Shirt',
+            '_fields' => [
+                'marketingCopy' => 'This eco shirt uses breathable organic cotton.',
+            ],
+            'matchedTerms' => [
+                'title' => ['eco'],
+                'content' => [],
+            ],
+        ], 'eco');
+
+        self::assertSame('This eco shirt uses breathable organic cotton.', $result['snippet']);
+        self::assertArrayNotHasKey('highlights', $result);
+    }
+
+    public function testMultipleFieldsContainingQueryStillChooseBestSnippet(): void
+    {
+        $result = $this->invokeFieldSnippet([
+            '_fields' => [
+                'description' => 'The one summary explains the search result.',
+                'body' => 'Another body paragraph with one useful detail for visitors.',
+            ],
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['one'],
+            ],
+        ], 'one');
+
+        self::assertSame('The one summary explains the search result.', $result['snippet']);
+        self::assertArrayNotHasKey('highlights', $result);
+        self::assertStringNotContainsString('<mark', (string)$result['snippet']);
+    }
+
+    public function testSnippetNeverSourcesLiveElementFieldsOrNoiseFields(): void
+    {
+        $field = new PlainText([
+            'handle' => 'description',
+            'name' => 'Description',
+            'searchable' => true,
+        ]);
+        $element = SearchManagerEnrichmentTestElement::withFields([$field], [
+            'description' => 'Live element field contains organic but must not be read.',
+        ]);
+
+        $result = $this->invokeFieldSnippet([
+            '_fields' => [
+                'title' => 'Organic title field must stay noisy.',
+                'slug' => 'organic-shirt',
+                'sku' => 'ORGANIC-001',
+            ],
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['organic'],
+            ],
+        ], 'organic', $element);
+
+        self::assertNull($result['snippet']);
+    }
+
+    public function testServerSnippetReturnsPlainTextWithoutHighlightMarkup(): void
+    {
+        $result = $this->invokeFieldSnippet([
+            '_fields' => [
+                'description' => '<script>alert(1)</script> one <b>bold</b> value',
+            ],
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['one'],
+            ],
+        ], 'one');
+
+        self::assertSame('one bold value', $result['snippet']);
+        self::assertStringNotContainsString('<mark', (string)$result['snippet']);
+        self::assertStringNotContainsString('<script>', (string)$result['snippet']);
+        self::assertStringNotContainsString('<b>', (string)$result['snippet']);
     }
 
     /**
-     * @param array<string, mixed> $debug
+     * @return array{snippet: string|null}
      */
-    private function invokeDescription(array $hit, string $query, array &$debug, ?ElementInterface $element = null): ?string
-    {
+    private function invokeFieldSnippet(
+        array $hit,
+        string $query,
+        ?ElementInterface $element = null,
+    ): array {
         $service = SearchManager::$plugin->enrichment;
-        $reflection = new \ReflectionMethod($service, 'getDescription');
+        $reflection = new \ReflectionMethod($service, 'buildFieldSnippet');
         $reflection->setAccessible(true);
         $matchedTerms = is_array($hit['matchedTerms'] ?? null) ? $hit['matchedTerms'] : null;
+        $debug = [];
         $args = [
             $hit,
-            $element,
             $query,
             $matchedTerms,
             'products-en',

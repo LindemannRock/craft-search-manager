@@ -47,8 +47,10 @@ class SearchHeadingType extends ObjectType
     {
         return [
             'title' => ['name' => 'title', 'type' => Type::string(), 'description' => 'The heading title.'],
-            'description' => ['name' => 'description', 'type' => Type::string(), 'description' => 'The heading snippet.'],
+            'id' => ['name' => 'id', 'type' => Type::string(), 'description' => 'The heading anchor ID.'],
+            'level' => ['name' => 'level', 'type' => Type::int(), 'description' => 'The heading level.'],
             'url' => ['name' => 'url', 'type' => Type::string(), 'description' => 'The heading URL.'],
+            'snippet' => ['name' => 'snippet', 'type' => Type::string(), 'description' => 'The heading snippet.'],
         ];
     }
 
@@ -58,6 +60,10 @@ class SearchHeadingType extends ObjectType
     protected function resolve(mixed $source, array $arguments, mixed $context, ResolveInfo $resolveInfo): mixed
     {
         if (is_array($source)) {
+            if ($resolveInfo->fieldName === 'level') {
+                return isset($source['level']) && is_numeric($source['level']) ? (int)$source['level'] : null;
+            }
+
             return GqlHelper::nullIfEmptyString($source[$resolveInfo->fieldName] ?? null);
         }
 

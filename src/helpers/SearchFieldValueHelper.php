@@ -25,7 +25,7 @@ class SearchFieldValueHelper
         $normalized = [];
 
         foreach ($fields as $handle => $value) {
-            if (!is_string($handle) || $handle === '' || $value === null || $value === '') {
+            if (!self::isPublicHandle($handle) || $value === null || $value === '') {
                 continue;
             }
 
@@ -60,6 +60,8 @@ class SearchFieldValueHelper
             $hit['fields'] = self::fieldsFromHit($hit);
         } elseif (!isset($hit['fields']) || !is_array($hit['fields'])) {
             $hit['fields'] = [];
+        } else {
+            $hit['fields'] = self::normalizeFields($hit['fields']);
         }
         unset($hit['_fields']);
 
@@ -75,7 +77,7 @@ class SearchFieldValueHelper
         $values = [];
 
         foreach ($fields as $handle => $value) {
-            if (!is_string($handle) || $handle === '') {
+            if (!self::isPublicHandle($handle)) {
                 continue;
             }
 
@@ -101,5 +103,45 @@ class SearchFieldValueHelper
         }
 
         return $values;
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     * @return array<string, string|list<string>>
+     */
+    private static function normalizeFields(array $fields): array
+    {
+        $normalized = [];
+
+        foreach ($fields as $handle => $value) {
+            if (!self::isPublicHandle($handle) || $value === null || $value === '') {
+                continue;
+            }
+
+            if (is_array($value)) {
+                $values = array_values(array_filter(
+                    array_map(static fn(mixed $item): string => is_scalar($item) ? (string)$item : '', $value),
+                    static fn(string $item): bool => $item !== '',
+                ));
+                if ($values !== []) {
+                    $normalized[$handle] = $values;
+                }
+                continue;
+            }
+
+            if (is_scalar($value)) {
+                $normalized[$handle] = (string)$value;
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @phpstan-assert-if-true string $handle
+     */
+    private static function isPublicHandle(mixed $handle): bool
+    {
+        return is_string($handle) && $handle !== '' && !str_starts_with($handle, '_');
     }
 }

@@ -59,6 +59,25 @@ class SearchContentCleaner
         return trim($text);
     }
 
+    public function cleanBody(?string $html): string
+    {
+        if (!$html) {
+            return '';
+        }
+
+        $html = (string)preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
+        $html = (string)preg_replace('/<pre\b[^>]*>.*?<\/pre>/is', ' ', $html);
+        $html = (string)preg_replace('/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $html);
+        $html = (string)preg_replace('/<br\s*\/?>/i', ' ', $html);
+        $html = (string)preg_replace('/<\/(?:p|div|li|td|th|blockquote|section|article)>/i', ' ', $html);
+
+        $text = strip_tags($html);
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = (string)preg_replace('/\s+/', ' ', $text);
+
+        return trim($text);
+    }
+
     /**
      * @param array<string, mixed> $data
      * @return array<string, mixed>

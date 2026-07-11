@@ -115,7 +115,7 @@ Override settings per-include:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `config` | `string` | — | Widget config handle (loads settings from CP/config) |
-| `indices` | `array` | `[]` | Index handles to search (empty = all) |
+| `indices` | `array|string` | `[]` | Index handles to search. Use an array in Twig config or a comma-separated string on the web component; empty = all. |
 | `placeholder` | `string` | `'Search...'` | Input placeholder text |
 | `theme` | `string` | `'light'` | `'light'` or `'dark'` |
 | `siteId` | `int` | — | Specific site to search |
@@ -179,6 +179,8 @@ Override settings per-include:
 | `highlightClass` | `string` | — | Highlight CSS class |
 | `backdropOpacity` | `int` | `50` | Backdrop opacity (0-100) |
 | `enableBackdropBlur` | `bool` | `true` | Enable backdrop blur effect |
+
+The widget uses `highlightTag` and `highlightClass` client-side for titles and snippets. Search responses return plain snippet text; the widget applies highlighting while rendering.
 
 ### Destination Highlighting
 

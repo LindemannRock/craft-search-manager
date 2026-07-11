@@ -47,6 +47,43 @@ Use `craft.searchManager.snippets()` to extract text excerpts around matched ter
 
 Each snippet is a string with matched terms already highlighted.
 
+## API Result Snippets @since(5.53.0)
+
+When you call the REST API or GraphQL, Search Manager returns a plain-text `snippet`. Matched headings can also include their own plain-text `snippet`:
+
+```json
+{
+    "snippet": "A field excerpt with craft in context",
+    "headings": [
+        {
+            "title": "Installation",
+            "id": "installation",
+            "level": 2,
+            "url": "/docs/getting-started#installation",
+            "snippet": "Install Craft before configuring search."
+        }
+    ]
+}
+```
+
+The top-level `snippet` is the best match-centered excerpt from eligible searchable custom fields stored in `fields`, then from the indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body.
+
+Search Manager does not build these API snippets from title, slug, URL, SKU, native identity values, live element fields, or the flattened content bag. If no eligible field or body text contains the query, `snippet` is `null`.
+
+`snippet` and `headings.*.snippet` are plain text. Render them as text and apply highlighting in your frontend when needed.
+
+```twig
+{% if hit.snippet %}
+    <p class="snippet">{{ hit.snippet }}</p>
+{% endif %}
+```
+
+The bundled widget highlights titles and snippets client-side with its configured `highlightTag` and `highlightClass`. Direct API consumers should use the same client-side approach:
+
+```text
+GET /actions/search-manager/api/search?q=craft
+```
+
 ## Complete Search Results Template
 
 ```twig
@@ -153,12 +190,12 @@ By default, code blocks (`<pre>` elements) in your content are included in searc
 
 ### How It Works
 
-When content is indexed, the transformer automatically detects `<pre>` blocks and stores a second version of the content (`_contentClean`) with code removed. At display time, the enrichment service chooses which version to use for snippets:
+When custom field content is indexed, the transformer stores searchable custom field values under `fields` for API presentation. At display time, Search Manager chooses whether to include code-like content while building snippets from those stored field values:
 
-- **`showCodeSnippets: false`** (default) — snippets are generated from `_contentClean`, so code blocks never appear in result snippets
+- **`showCodeSnippets: false`** (default) — code blocks are removed before building result snippets
 - **`showCodeSnippets: true`** — snippets are generated from the full content, including code
 
-Code is always fully indexed and searchable regardless of this setting. A search for `querySelector` will find pages containing that term in code blocks — the setting only controls whether code appears in the snippet text shown to the user.
+Code can still be searchable when it is present in searchable indexed content. The setting only controls whether code appears in the snippet text shown to the user.
 
 ### Configuration
 
@@ -188,7 +225,7 @@ In the config file:
 Via the API:
 
 ```text
-GET /actions/search-manager/api/search?q=querySelector&enrich=1&showCodeSnippets=0
+GET /actions/search-manager/api/search?q=querySelector&showCodeSnippets=0
 ```
 
 ### When to Enable

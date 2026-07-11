@@ -118,12 +118,13 @@ export function renderResultItem(result, index, query, options = {}) {
     } = options;
 
     const title = result.title || result.name || 'Untitled';
-    const description = result.snippet || result.excerpt || '';
+    const snippet = result.snippet || '';
     const rawUrl = result.url || result.href || '#';
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const type = result.section || result.type || '';
     const optionId = getOptionId(listboxId, index);
     const isPromoted = result.promoted === true;
+    const sourceIndex = result._index || result.index || '';
 
     // Build highlight options
     const highlightOptions = {
@@ -136,7 +137,7 @@ export function renderResultItem(result, index, query, options = {}) {
         ...highlightOptions,
         terms: getHighlightTerms(result, 'title'),
     });
-    const highlightedDesc = description ? highlightMatches(description, query, {
+    const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
         terms: getHighlightTerms(result, 'snippet'),
     }) : '';
@@ -156,7 +157,7 @@ export function renderResultItem(result, index, query, options = {}) {
     // When debug is enabled, wrap main content so debug-info can be full-width sibling
     if (debug) {
         return `
-            <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+            <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
                     ${promotedBadge}
                     <div class="sm-result-content">
@@ -172,7 +173,7 @@ export function renderResultItem(result, index, query, options = {}) {
     }
 
     return `
-        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
             ${promotedBadge}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
@@ -273,6 +274,10 @@ function getHighlightTerms(result, area) {
     // Combine: full phrases (longest match first via normalizeTerms), then explicit terms
     const combined = [...phrases, ...terms];
     return combined.length > 0 ? combined : null;
+}
+
+function renderSnippetHtml(result, snippet, query, highlightOptions) {
+    return highlightMatches(snippet, query, highlightOptions);
 }
 
 /**
@@ -408,7 +413,7 @@ function renderHierarchicalResults(results, query, options = {}) {
 
             // Render matched heading children
             let childrenHtml = '';
-            const headings = result._matchedHeadings || [];
+            const headings = result.headings || [];
             const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
             if (limitedHeadings.length > 0) {
                 // Normalize levels: shallowest heading = depth 0
@@ -477,10 +482,11 @@ function renderHierarchyParent(result, index, query, options = {}) {
     } = options;
 
     const title = result.title || result.name || 'Untitled';
-    const description = result.snippet || result.excerpt || '';
+    const snippet = result.snippet || '';
     const rawUrl = result.url || '#';
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const optionId = getOptionId(listboxId, index);
+    const sourceIndex = result._index || result.index || '';
 
     const highlightOptions = {
         enabled: enableHighlighting,
@@ -492,18 +498,18 @@ function renderHierarchyParent(result, index, query, options = {}) {
         ...highlightOptions,
         terms: getHighlightTerms(result, 'title'),
     });
-    const highlightedDesc = description ? highlightMatches(description, query, {
+    const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
         terms: getHighlightTerms(result, 'snippet'),
     }) : '';
 
     const debugInfo = debug ? renderDebugInfo(result) : '';
-    const hasHeadings = result._matchedHeadings && result._matchedHeadings.length > 0;
+    const hasHeadings = result.headings && result.headings.length > 0;
     const icon = hasHeadings ? documentIcon() : contentIcon();
 
     if (debug) {
         return `
-            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
                     ${icon}
                     <div class="sm-result-content">
@@ -518,7 +524,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
     }
 
     return `
-        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
             ${icon}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
@@ -550,9 +556,9 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         queryParamName = 'smq',
     } = options;
 
-    const rawText = heading.text || '';
+    const rawText = heading.title || heading.text || '';
     const text = rawText.replace(/^#+\s*/, '');
-    const description = heading.description || '';
+    const snippet = heading.snippet || '';
     const parsedLevel = Number.parseInt(heading.level, 10);
     const level = Number.isFinite(parsedLevel) ? Math.min(Math.max(parsedLevel, 1), 6) : 2;
     const anchorId = heading.id || (text ? slugifyHeading(text) : '');
@@ -560,6 +566,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     const rawUrl = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const optionId = getOptionId(listboxId, index);
+    const sourceIndex = result._index || result.index || '';
 
     const highlightOptions = {
         enabled: enableHighlighting,
@@ -571,9 +578,9 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         ...highlightOptions,
         terms: getHighlightTerms(result, 'title'),
     });
-    const highlightedDesc = description ? highlightMatches(description, query, {
+    const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'description'),
+        terms: getHighlightTerms(result, 'snippet'),
     }) : '';
 
     const rowClass = isLast ? ' sm-hierarchy-child-row-last' : '';
@@ -601,7 +608,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         return `
             <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
                 ${guidesHtml}
-                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
+                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
                     <div class="sm-result-main">
                         ${hashIcon()}
                         <div class="sm-result-content">
@@ -619,7 +626,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     return `
         <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
             ${guidesHtml}
-            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
+            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
                 ${hashIcon()}
                 <div class="sm-result-content">
                     <span class="sm-result-title">${highlightedText}</span>

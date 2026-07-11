@@ -24,6 +24,7 @@ use craft\models\Volume;
 use craft\models\VolumeFolder;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\searchmanager\gql\types\SearchAncestorType;
+use lindemannrock\searchmanager\gql\types\SearchHeadingType;
 use lindemannrock\searchmanager\gql\types\SearchHitType;
 use lindemannrock\searchmanager\services\EnrichmentService;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -40,6 +41,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(BaseTransformer::class)]
 #[CoversClass(EnrichmentService::class)]
 #[CoversClass(SearchAncestorType::class)]
+#[CoversClass(SearchHeadingType::class)]
 #[CoversClass(SearchHitType::class)]
 final class SearchHitHierarchyContractTest extends TestCase
 {
@@ -215,6 +217,32 @@ final class SearchHitHierarchyContractTest extends TestCase
 
         $resolveInfo->fieldName = 'level';
         self::assertSame(3, $method->invoke($type, ['level' => '3'], [], null, $resolveInfo));
+    }
+
+    public function testGraphQlHeadingTypeUsesPublicSnippetShape(): void
+    {
+        $fields = SearchHeadingType::getFieldDefinitions();
+
+        self::assertArrayHasKey('title', $fields);
+        self::assertArrayHasKey('id', $fields);
+        self::assertArrayHasKey('level', $fields);
+        self::assertArrayHasKey('url', $fields);
+        self::assertArrayHasKey('snippet', $fields);
+        self::assertArrayNotHasKey('description', $fields);
+
+        $type = new SearchHeadingType([
+            'name' => 'SearchManagerSearchHeadingPublicShapeTest',
+            'fields' => $fields,
+        ]);
+        $method = new \ReflectionMethod($type, 'resolve');
+        $method->setAccessible(true);
+
+        $resolveInfo = $this->createMock(ResolveInfo::class);
+        $resolveInfo->fieldName = 'level';
+        self::assertSame(2, $method->invoke($type, ['level' => '2'], [], null, $resolveInfo));
+
+        $resolveInfo->fieldName = 'snippet';
+        self::assertSame('Heading snippet', $method->invoke($type, ['snippet' => 'Heading snippet'], [], null, $resolveInfo));
     }
 
     private function entryAncestor(int $id, string $title): Entry

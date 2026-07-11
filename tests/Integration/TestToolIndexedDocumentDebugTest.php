@@ -241,7 +241,8 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             '<span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}',
             '<span class="sm-test-meta-label">${formatMetaLabel(\'ID\')}</span> #${objectIdDisplay}',
             '${contextMeta}',
-            "const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');",
+            'const rawDisplayText = rawSnippet;',
+            'const displayText = rawSnippet ? smHighlight(rawSnippet.substring(0, 400), query, descTerms) : \'\';',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
@@ -250,6 +251,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringNotContainsString('hit.productTypeName', $source);
         self::assertStringNotContainsString("isCommerceHit ? hit.section : ''", $source);
         self::assertStringNotContainsString('const contextValue = isCommerceHit ? productType : hit.section;', $source);
+        self::assertStringNotContainsString("const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');", $source);
         self::assertStringNotContainsString("const rawDisplayText = rawDescription || hit.excerpt || hit.content || '';", $source);
         self::assertStringContainsString('renderIndexedDocumentDebug(hit)', $source);
     }

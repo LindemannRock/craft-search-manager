@@ -66,6 +66,11 @@ class SearchFieldTypeContentHelper
         return null;
     }
 
+    public function cleanBody(string $html): string
+    {
+        return $this->contentCleaner->cleanBody($html);
+    }
+
     /**
      * @return string[]
      */

@@ -14,6 +14,7 @@ use GraphQL\Type\Definition\ResolveInfo;
 use GraphQL\Type\Definition\Type;
 use lindemannrock\base\helpers\GqlHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
+use lindemannrock\searchmanager\helpers\SearchHeadingValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 
 /**
@@ -157,6 +158,19 @@ class SearchHitType extends ObjectType
                     : SearchFieldValueHelper::fieldsFromHit($source);
 
                 return SearchFieldValueHelper::toGraphqlList($fields);
+            }
+
+            if ($fieldName === 'headings') {
+                $headings = is_array($source['headings'] ?? null)
+                    ? $source['headings']
+                    : SearchHeadingValueHelper::toPublicList(
+                        is_array($source['_matchedHeadings'] ?? null)
+                            ? $source['_matchedHeadings']
+                            : (is_array($source['_headings'] ?? null) ? $source['_headings'] : []),
+                        is_string($source['url'] ?? null) ? $source['url'] : null,
+                    );
+
+                return $headings !== [] ? $headings : null;
             }
 
             if ($fieldName === 'ancestors') {

@@ -58,6 +58,11 @@ class DocsManagerDocumentHelper
         return $searchableContent;
     }
 
+    public static function cleanBody(SourceDoc $element, SearchContentCleaner $contentCleaner): string
+    {
+        return $contentCleaner->cleanBody($element->htmlContent);
+    }
+
     public static function keywords(SourceDoc $element): string
     {
         return implode(' ', $element->keywords);

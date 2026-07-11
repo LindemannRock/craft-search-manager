@@ -23,7 +23,22 @@ class SearchHitPresenter
     {
         $hit = SearchHitIdentityHelper::normalizeHit($hit);
         $hit = SearchFieldValueHelper::exposeFields($hit);
-        unset($hit['_elementType']);
+        $hit = SearchHeadingValueHelper::exposeHeadings($hit);
+        if (!array_key_exists('index', $hit) && is_string($hit['_index'] ?? null) && $hit['_index'] !== '') {
+            $hit['index'] = $hit['_index'];
+        }
+        $hit['snippet'] = array_key_exists('snippet', $hit) ? $hit['snippet'] : null;
+        unset(
+            $hit['content'],
+            $hit['body'],
+            $hit['description'],
+            $hit['excerpt'],
+            $hit['highlights'],
+            $hit['_index'],
+            $hit['_elementType'],
+            $hit['_bodyClean'],
+            $hit['_contentClean'],
+        );
         if (!$includeQueryRuleDebug) {
             unset($hit['_queryRuleDebug']);
         }
@@ -33,6 +48,9 @@ class SearchHitPresenter
             'id',
             'elementId',
             'siteId',
+            'site',
+            'language',
+            'index',
             'backendId',
             'objectID',
             'title',
@@ -56,6 +74,8 @@ class SearchHitPresenter
             'productTypeHandle',
             'promoted',
             'position',
+            'snippet',
+            'headings',
         ] as $key) {
             if (array_key_exists($key, $hit)) {
                 $ordered[$key] = $hit[$key];

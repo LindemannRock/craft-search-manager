@@ -23,7 +23,7 @@
  * @since 5.32.0
  */
 
-import { parseConfig } from './ConfigParser.js';
+import { getSearchScopeKey, getSingleConfiguredIndex, parseConfig } from './ConfigParser.js';
 import { createStateManager, DEFAULT_STATE } from './StateManager.js';
 import { performSearch, trackClick, trackSearch } from '../modules/SearchService.js';
 import { loadRecentSearches, saveRecentSearch, clearRecentSearches } from '../modules/RecentSearches.js';
@@ -218,7 +218,7 @@ class SearchWidgetBase extends HTMLElement {
 
         // Load recent searches from localStorage
         this.state.set({
-            recentSearches: loadRecentSearches(this.config.index),
+            recentSearches: loadRecentSearches(getSearchScopeKey(this.config)),
         });
 
         // Create keyboard navigator
@@ -529,7 +529,7 @@ class SearchWidgetBase extends HTMLElement {
         if (clearBtn) {
             clearBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                clearRecentSearches(this.config.index);
+                clearRecentSearches(getSearchScopeKey(this.config));
                 this.state.set({ recentSearches: [] });
             });
         }
@@ -666,7 +666,7 @@ class SearchWidgetBase extends HTMLElement {
         // Save to recent searches (for regular results, not re-clicking recent items)
         if (!isRecentItem && query) {
             const updatedRecent = saveRecentSearch(
-                this.config.index,
+                getSearchScopeKey(this.config),
                 query,
                 { title, url },
                 this.config.maxRecentSearches
@@ -675,12 +675,13 @@ class SearchWidgetBase extends HTMLElement {
         }
 
         // Track analytics for search results (not recent items)
-        if (id && this.config.index) {
+        const sourceIndex = item.dataset.sourceIndex || getSingleConfiguredIndex(this.config);
+        if (id && sourceIndex) {
             trackClick({
                 endpoint: this.config.trackClickEndpoint,
                 elementId: id,
                 query,
-                index: this.config.index,
+                index: sourceIndex,
                 apiKey: this.config.apiKey,
             });
         }

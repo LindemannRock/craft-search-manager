@@ -48,8 +48,7 @@ GET /actions/search-manager/api/search
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indices` | (all indices) | Comma-separated index handles to search. Omit to search all enabled indices. |
-| `index` | (all indices) | Single index handle (legacy — prefer `indices`). |
+| `indices` | (all indices) | One index handle or a comma-separated list of index handles to search. Omit to search all enabled indices. |
 | `hitsPerPage` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
 | `page` | `0` | Page number (0-based) |
 | `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, or `user` |
@@ -58,12 +57,9 @@ GET /actions/search-manager/api/search
 | `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
-| `enrich` | `0` | Enable result enrichment. When `1`, results include snippets, heading expansion, thumbnails, and promoted/boosted flags. See [Enriched Response](#enriched-response). |
 | `skipAnalytics` | `0` | Skip analytics tracking for this search |
 
-#### Enrichment Parameters
-
-These parameters only apply when `enrich=1`:
+#### Snippet Parameters
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
@@ -72,7 +68,6 @@ These parameters only apply when `enrich=1`:
 | `showCodeSnippets` | `0` | Show code block content in snippets |
 | `parseMarkdownSnippets` | `0` | Parse markdown before generating snippets |
 | `hideResultsWithoutUrl` | `0` | Exclude results that have no URL |
-| `debug` | (devMode) | Include debug metadata. Requires `devMode` or `searchManager:viewDebug` permission. |
 
 ### Response
 
@@ -122,7 +117,7 @@ These parameters only apply when `enrich=1`:
 ```
 
 > [!NOTE]
-> The raw response does not return internal metadata (synonyms expanded, rules matched, promotions matched). Use the `?debug=1` parameter with the `searchManager:viewDebug` permission to inspect query internals during development.
+> The REST response does not return internal metadata such as synonyms expanded, rules matched, or private indexed content.
 
 Searchable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills this object automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. A custom transformer can add response-ready custom field values by writing to the internal `_fields` map before indexing.
 
@@ -130,9 +125,9 @@ Top-level hit fields are reserved for Search Manager identity, ranking, and kind
 
 Structure Entries, Categories, and public Assets can also return breadcrumb metadata at the top level. `ancestors` is ordered from root to parent; Entries and Categories can include `level`; public Assets can include `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, and private-volume Assets omit these keys. Existing indexed documents need a full reindex before the hierarchy keys appear.
 
-### Enriched Response
+### Search Response
 
-When `enrich=1`, results are resolved to full element data with snippets and heading expansion:
+Search returns one canonical hit shape:
 
 ```json
 {
@@ -141,7 +136,7 @@ When `enrich=1`, results are resolved to full element data with snippets and hea
             "id": 123,
             "title": "Getting Started with Craft CMS",
             "url": "/docs/getting-started",
-            "snippet": "A snippet with <mark>matched</mark> terms...",
+            "snippet": "A snippet with matched terms...",
             "section": "Documentation",
             "sectionHandle": "documentation",
             "sectionType": "structure",
@@ -160,21 +155,22 @@ When `enrich=1`, results are resolved to full element data with snippets and hea
             "headings": [
                 {
                     "title": "Installation",
-                    "description": "How to install <mark>Craft</mark>...",
-                    "url": "/docs/getting-started#installation"
+                    "id": "installation",
+                    "level": 2,
+                    "url": "/docs/getting-started#installation",
+                    "snippet": "How to install Craft..."
                 }
             ]
         }
     ],
     "total": 42,
-    "query": "craft",
     "page": 0,
     "hitsPerPage": 20,
     "totalPages": 3
 }
 ```
 
-Enriched mode is what the frontend widget uses internally. It's useful for headless integrations that need ready-to-render results without additional element lookups.
+`snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in `fields`, then from the indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
 
 ### Response Fields
 
@@ -192,8 +188,15 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 |-------|------|-------------|
 | `id` | `int` | Craft element ID |
 | `elementId` | `int` | Craft element ID. Use this for Craft element queries. |
+| `siteId` | `int` | Craft site ID when indexed or resolved. |
+| `site` | `string` | Craft site handle when it can be resolved from `siteId`. |
+| `language` | `string` | Craft site language when it can be resolved from `siteId`. |
+| `index` | `string` | Source search index handle when the backend reports it. |
 | `backendId` | `string` | Search Manager backend document ID, usually `{elementId}_{siteId}`. |
 | `objectID` | `int\|string` | Raw backend compatibility field. Prefer `elementId` and `backendId` in new code. |
+| `slug` | `string` | Indexed element or document slug when available. |
+| `dateCreated` | `int` | Indexed creation timestamp when available. |
+| `dateUpdated` | `int` | Indexed update timestamp when available. |
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
 | `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
 | `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
@@ -209,7 +212,11 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 | `groupHandle` | `string` | Category group handle when the hit is a Category. |
 | `productType` | `string` | Commerce product type name when the hit is a Product or Variant. |
 | `productTypeHandle` | `string` | Commerce product type handle when the hit is a Product or Variant. |
+| `category` | `string` | Source document category or transformer-provided category metadata when available. |
+| `sourceId` | `int` | Source document or transformer-provided source ID when available. |
 | `fields` | `object` | Searchable custom field values keyed by field handle. Values are indexed content, not translated UI labels. |
+| `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body. `null` when no eligible snippet source contains the query. |
+| `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects. Heading snippets use the same query-centered plain-text generation as the top-level snippet. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |
 | `title` | `string` | Element title (for promoted items) |
@@ -221,19 +228,19 @@ Enriched mode is what the frontend widget uses internally. It's useful for headl
 **Full URL format:**
 
 ```text
-https://your-site.com/actions/search-manager/api/search?q=plugin&index=docs-manager&language=en&hitsPerPage=5&page=0&siteId=1
+https://your-site.com/actions/search-manager/api/search?q=plugin&indices=docs-manager&language=en&hitsPerPage=5&page=0&siteId=1
 ```
 
 ```javascript
 // Basic search
-const response = await fetch('/actions/search-manager/api/search?q=craft+cms&index=entries-en');
+const response = await fetch('/actions/search-manager/api/search?q=craft+cms&indices=entries-en');
 const results = await response.json();
 
 // Filter by site and element type
 const response = await fetch('/actions/search-manager/api/search?q=laptop&type=product,category&siteId=1');
 
 // Paginated results
-const response = await fetch('/actions/search-manager/api/search?q=docs&index=entries-en&hitsPerPage=10&page=2');
+const response = await fetch('/actions/search-manager/api/search?q=docs&indices=entries-en&hitsPerPage=10&page=2');
 
 // With localized operators (German)
 const response = await fetch('/actions/search-manager/api/search?q=kaffee+ODER+tee&language=de');
@@ -241,7 +248,7 @@ const response = await fetch('/actions/search-manager/api/search?q=kaffee+ODER+t
 // Mobile app tracking
 const params = new URLSearchParams({
     q: 'shoes',
-    index: 'products',
+    indices: 'products',
     source: 'ios-app',
     platform: 'iOS 17.2',
     appVersion: '2.1.0',
@@ -260,8 +267,7 @@ GET /actions/search-manager/api/autocomplete
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indices` | (all indices) | Comma-separated index handles. Omit to search all enabled indices. |
-| `index` | (all indices) | Single index handle (legacy — prefer `indices`). |
+| `indices` | (all indices) | One index handle or a comma-separated list of index handles. Omit to search all enabled indices. |
 | `hitsPerPage` | `10` | Maximum suggestions/results (capped at 100) |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code (alias: `lang`) |
@@ -302,12 +308,12 @@ GET /actions/search-manager/api/autocomplete
 **Full URL format:**
 
 ```text
-https://your-site.com/actions/search-manager/api/autocomplete?q=test&index=entries-en&hitsPerPage=10&siteId=1
+https://your-site.com/actions/search-manager/api/autocomplete?q=test&indices=entries-en&hitsPerPage=10&siteId=1
 ```
 
 ```javascript
 // Default: both suggestions and results
-const response = await fetch('/actions/search-manager/api/autocomplete?q=test&index=entries-en');
+const response = await fetch('/actions/search-manager/api/autocomplete?q=test&indices=entries-en');
 const data = await response.json();
 // data.suggestions = ["test", "testing"]
 // data.results = [{text: "Test Entry", type: "entry", id: 1, siteId: 1}]
@@ -342,7 +348,7 @@ The API is designed for mobile app use. Pass analytics context for proper tracki
 ```javascript
 const params = new URLSearchParams({
     q: 'kaffee ODER tee NICHT entkoffeiniert',
-    index: 'products',
+    indices: 'products',
     language: 'de',
     source: 'ios-app',
     platform: 'iOS 17.2',
@@ -433,7 +439,7 @@ input.addEventListener('input', (e) => {
     if (q.length < 2) { resultsDiv.innerHTML = ''; return; }
 
     timer = setTimeout(async () => {
-        const res = await fetch(`/actions/search-manager/api/search?q=${encodeURIComponent(q)}&index=all-sites&hitsPerPage=10`);
+        const res = await fetch(`/actions/search-manager/api/search?q=${encodeURIComponent(q)}&indices=all-sites&hitsPerPage=10`);
         const data = await res.json();
 
         resultsDiv.innerHTML = data.hits.map(hit => `

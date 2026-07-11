@@ -53,7 +53,7 @@ final class WidgetFrontendHardeningTest extends TestCase
     {
         $source = $this->readPluginFile('src/web/assets/searchwidget/src/modules/Highlighter.js');
 
-        self::assertStringContainsString("const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'b', 'i', 'span']);", $source);
+        self::assertStringContainsString("const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'u', 'b', 'i', 'span']);", $source);
         self::assertStringContainsString('const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;', $source);
         self::assertStringContainsString('const safeTag = normalizeHighlightTag(tag);', $source);
         self::assertStringContainsString('const classTokens = normalizeClassTokens(className);', $source);
@@ -61,6 +61,28 @@ final class WidgetFrontendHardeningTest extends TestCase
         self::assertStringContainsString('return applyHighlightRanges(text, termList, safeTag, classAttr);', $source);
         self::assertStringNotContainsString('classes.push(className);', $source);
         self::assertStringNotContainsString('return applyHighlightRanges(text, termList, tag, classAttr);', $source);
+    }
+
+    public function testWidgetUsesPublicHeadingsAndClientSnippetHighlighting(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/searchwidget/src/modules/ResultRenderer.js');
+
+        self::assertStringContainsString('const headings = result.headings || [];', $source);
+        self::assertStringContainsString('const hasHeadings = result.headings && result.headings.length > 0;', $source);
+        self::assertStringContainsString('const snippet = heading.snippet || \'\';', $source);
+        self::assertStringContainsString('return highlightMatches(snippet, query, highlightOptions);', $source);
+        self::assertStringContainsString('const rawText = heading.title || heading.text || \'\';', $source);
+        self::assertStringNotContainsString('result._matchedHeadings', $source);
+        self::assertStringNotContainsString('heading.description', $source);
+        self::assertStringNotContainsString('result.excerpt', $source);
+    }
+
+    public function testWidgetSearchServiceDoesNotSendHighlightMarkupOptions(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/searchwidget/src/modules/SearchService.js');
+
+        self::assertStringNotContainsString("params.append('highlightTag'", $source);
+        self::assertStringNotContainsString("params.append('highlightClass'", $source);
     }
 
     public function testPublicWidgetTemplateUsesProductionStyleResolver(): void

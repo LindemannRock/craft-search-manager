@@ -15,7 +15,7 @@ These settings control the default behavior. You can override them per-call in y
 ```php
 // config/search-manager.php
 'enableHighlighting' => true,
-'highlightTag' => 'mark',       // HTML tag: mark, em, strong, span
+'highlightTag' => 'mark',       // HTML tag: mark, em, strong, u, b, i, span
 'highlightClass' => null,       // Optional CSS class
 'snippetLength' => 200,         // Characters per snippet
 'maxSnippets' => 3,             // Max snippets per result

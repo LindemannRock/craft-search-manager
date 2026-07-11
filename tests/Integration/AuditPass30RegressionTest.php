@@ -108,7 +108,11 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringContainsString("'_elementType' => \$elementType,", $promotionSource);
         self::assertStringContainsString('$explicitElementClass = is_string($hit[\'_elementType\'] ?? null) ? $hit[\'_elementType\'] : null;', $enrichmentSource);
         self::assertStringContainsString('$elementClass = $explicitElementClass ?:', $enrichmentSource);
-        self::assertStringContainsString('unset($hit[\'_elementType\']);', $presenterSource);
+        self::assertStringContainsString('$hit[\'description\'],', $presenterSource);
+        self::assertStringContainsString('$hit[\'highlights\'],', $presenterSource);
+        self::assertStringContainsString('$hit[\'_elementType\'],', $presenterSource);
+        self::assertStringContainsString('$hit[\'_bodyClean\'],', $presenterSource);
+        self::assertStringContainsString('$hit[\'_contentClean\'],', $presenterSource);
     }
 
     public function testGlobalPromotionsInsertOneDeterministicPromotedHit(): void

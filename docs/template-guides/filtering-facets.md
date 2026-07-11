@@ -112,7 +112,7 @@ Filter results to a specific site:
 }) %}
 
 {# Via API — use per-site index handles instead of siteId #}
-{# GET /actions/search-manager/api/search?q=test&index=entries-en #}
+{# GET /actions/search-manager/api/search?q=test&indices=entries-en #}
 ```
 
 ## Complete Filtered Search Page

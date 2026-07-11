@@ -275,7 +275,7 @@ $counts = SearchManager::$plugin->widgetStyles->getUsageCountsByHandle();
 
 ## EnrichmentService @since(5.39.0)
 
-Transforms raw search hits into enriched results with snippets, heading expansion, thumbnails, and metadata. This is what the Search API uses when `enrich=1` is passed.
+Transforms raw search hits into enriched results with live element metadata, heading expansion, thumbnails, and metadata for internal callers that need live element augmentation.
 
 ### `enrichResults(rawHits, query, indexHandles, options)`
 
@@ -300,6 +300,10 @@ $enriched = SearchManager::$plugin->enrichment->enrichResults(
 
 // $enriched = [['id' => 123, 'title' => '...', 'url' => '...', 'snippet' => '...', 'headings' => [...]], ...]
 ```
+
+### `prepareHitSnippets(hit, query, indexHandle, options)`
+
+Build plain-text snippets from saved indexed hit data. The REST API uses this for its canonical response so `snippet` and heading snippets are generated consistently for every search hit.
 
 ## PromotionService @since(5.10.0)
 

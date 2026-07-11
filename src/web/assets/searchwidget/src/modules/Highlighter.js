@@ -17,7 +17,7 @@
  * @property {string[]} [terms] - Explicit terms to highlight (preferred over query)
  */
 
-const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'b', 'i', 'span']);
+const ALLOWED_HIGHLIGHT_TAGS = new Set(['mark', 'em', 'strong', 'u', 'b', 'i', 'span']);
 const CSS_CLASS_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 /**

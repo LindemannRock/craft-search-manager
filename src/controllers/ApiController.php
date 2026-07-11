@@ -10,7 +10,8 @@ namespace lindemannrock\searchmanager\controllers;
 
 use Craft;
 use craft\web\Controller;
-use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
+use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
@@ -97,12 +98,11 @@ class ApiController extends Controller
     /**
      * Get autocomplete suggestions and/or element results
      *
-     * GET /actions/search-manager/api/autocomplete?q=test&index=all-sites
+     * GET /actions/search-manager/api/autocomplete?q=test&indices=all-sites
      *
      * Parameters:
      * - q: Search query (required)
      * - indices: Comma-separated index handles (optional)
-     * - index: Single index handle (legacy)
      * - hitsPerPage: Max results (default: 10)
      * - only: Return only 'suggestions' or 'results' (optional, default returns both)
      * - type: Filter results by element type (optional, e.g., 'product', 'category')
@@ -164,7 +164,6 @@ class ApiController extends Controller
         // Parse and validate requested indices
         [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
             Craft::$app->getRequest()->getParam('indices', ''),
-            Craft::$app->getRequest()->getParam('index', ''),
             self::MAX_INDICES_COUNT,
         );
 
@@ -333,12 +332,11 @@ class ApiController extends Controller
     /**
      * Perform search
      *
-     * GET /actions/search-manager/api/search?q=test&index=all-sites
+     * GET /actions/search-manager/api/search?q=test&indices=all-sites
      *
      * Parameters:
      * - q: Search query (required)
      * - indices: Comma-separated index handles (optional)
-     * - index: Single index handle (legacy)
      * - hitsPerPage: Max results per page (default: 20, min: 1, max: 200)
      * - page: Page number (0-based, default: 0)
      * - type: Filter by element type (optional, e.g., 'product', 'category', 'product,category')
@@ -348,23 +346,18 @@ class ApiController extends Controller
      * - source: Analytics source identifier (optional, e.g., 'ios-app', 'android-app')
      * - platform: Platform info (optional, e.g., 'iOS 17.2', 'Android 14')
      * - appVersion: App version (optional, e.g., '2.1.0')
-     * - enrich: Enable result enrichment (default: 0). When enabled, results include
-     *           snippets, heading expansion, thumbnails, debug meta, and promoted/boosted flags.
-     *           Response uses 'hits' key with enriched result objects.
      * - skipAnalytics: Skip analytics tracking for this search (default: 0)
      *
-     * Enrichment parameters (only used when enrich=1):
+     * Snippet parameters:
      * - snippetMode: Snippet positioning mode: 'early'|'balanced'|'deep' (default: 'balanced')
      * - snippetLength: Max snippet length in chars (default: 150, min: 50, max: 1000)
      * - showCodeSnippets: Include code block snippets (default: 0)
      * - parseMarkdownSnippets: Parse markdown before generating snippets (default: 0)
      * - hideResultsWithoutUrl: Exclude results that have no URL (default: 0)
-     * - debug: Include debug metadata in response (default: devMode setting)
      *
      * Response format:
-     * - Raw (default): {hits: [{objectID, id, score, type, elementType}, ...], total, page, hitsPerPage, totalPages}
-     * - Enriched (enrich=1): {hits: [{id, title, url, description, section, type, score, ...}, ...],
-     *   total, page, hitsPerPage, totalPages, query}
+     * - {hits: [{id, elementId, backendId, objectID, title, url, snippet, headings, fields, score, ...}, ...],
+     *   total, page, hitsPerPage, totalPages}
      *
      * @return Response
      */
@@ -372,7 +365,6 @@ class ApiController extends Controller
     {
         $request = Craft::$app->getRequest();
         $query = $request->getParam('q', '');
-        $enrich = (bool) $request->getParam('enrich', false);
 
         // Enforce query length cap to prevent resource exhaustion
         if (mb_strlen($query) > self::MAX_QUERY_LENGTH) {
@@ -426,7 +418,6 @@ class ApiController extends Controller
         // Parse and validate requested indices
         [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
             $request->getParam('indices', ''),
-            $request->getParam('index', ''),
             self::MAX_INDICES_COUNT,
         );
 
@@ -523,84 +514,21 @@ class ApiController extends Controller
             $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
         }
 
-        if ($enrich) {
-            // Enriched mode: resolve elements, generate snippets, expand headings
-            // Debug mode: requires devMode OR searchManager:viewDebug permission
-            $debugParam = $request->getParam('debug');
-            $canViewDebug = Craft::$app->config->general->devMode
-                || Craft::$app->getUser()->checkPermission('searchManager:viewDebug');
-            $includeDebugMeta = $canViewDebug && ($debugParam !== null ? (bool) $debugParam : Craft::$app->config->general->devMode);
+        // Canonical REST mode: enrich is ignored and every request uses the same
+        // indexed-hit response path. Keep backend meta only for the existing
+        // widget/debug toolbar contract.
+        if (!(bool) $request->getParam('debug', false) || !SearchDebugAccessHelper::canExposeDebugMeta()) {
+            unset($results['meta']);
+        }
 
-            $enrichOptions = [
+        if (!empty($results['hits'])) {
+            $results['hits'] = $this->canonicalRestHits($results['hits'], $query, $indexHandles, [
                 'snippetMode' => (string) $request->getParam('snippetMode', 'balanced'),
                 'snippetLength' => (int) $request->getParam('snippetLength', 150),
                 'showCodeSnippets' => (bool) $request->getParam('showCodeSnippets', false),
                 'parseMarkdownSnippets' => (bool) $request->getParam('parseMarkdownSnippets', false),
                 'hideResultsWithoutUrl' => (bool) $request->getParam('hideResultsWithoutUrl', false),
-                'includeDebugMeta' => $includeDebugMeta,
-            ];
-
-            if ($siteId !== null) {
-                $enrichOptions['siteId'] = $siteId;
-            }
-
-            try {
-                $enrichedHits = SearchManager::$plugin->enrichment->enrichResults(
-                    $results['hits'] ?? [],
-                    $query,
-                    $indexHandles,
-                    $enrichOptions,
-                );
-            } catch (\Throwable $e) {
-                Craft::error('Enrichment failed: ' . $e->getMessage(), 'search-manager');
-
-                return $this->asJson([
-                    'hits' => [],
-                    'total' => 0,
-                    'query' => $query,
-                    'error' => Craft::$app->config->general->devMode ? $e->getMessage() : 'Search enrichment failed',
-                ]);
-            }
-
-            $total = (int) ($results['total'] ?? count($enrichedHits));
-            $totalPages = (int) ceil($total / $limit);
-
-            $presentedHits = [];
-            foreach ($enrichedHits as $hit) {
-                if (is_array($hit)) {
-                    $presentedHits[] = SearchHitPresenter::present($hit);
-                }
-            }
-
-            $response = [
-                'hits' => $presentedHits,
-                'total' => $total,
-                'query' => $query,
-                'page' => $page,
-                'hitsPerPage' => $limit,
-                'totalPages' => $totalPages,
-            ];
-
-            // Include debug meta only when devMode is on OR debug param explicitly set
-            if ($includeDebugMeta && !empty($results['meta'])) {
-                $response['meta'] = $results['meta'];
-                $response['meta']['indices'] = $indexHandles ?: ['all'];
-            }
-
-            return $this->asJson($response);
-        }
-
-        // Raw mode: strip internal meta and content fields
-        unset($results['meta']);
-
-        if (!empty($results['hits'])) {
-            foreach ($results['hits'] as &$hit) {
-                if (is_array($hit)) {
-                    $hit = SearchFieldValueHelper::exposeFields($hit);
-                    unset($hit['content'], $hit['body'], $hit['excerpt']);
-                }
-            }
-            unset($hit);
+            ]);
         }
 
         $total = (int) ($results['total'] ?? 0);
@@ -611,5 +539,123 @@ class ApiController extends Controller
         $results = SearchHitPresenter::presentResults($results);
 
         return $this->asJson($results);
+    }
+
+    /**
+     * @param array<int, mixed> $hits
+     * @param array<int, string> $indexHandles
+     * @param array{snippetMode: string, snippetLength: int, showCodeSnippets: bool, parseMarkdownSnippets: bool, hideResultsWithoutUrl: bool} $options
+     * @return array<int, array<string, mixed>>
+     */
+    private function canonicalRestHits(array $hits, string $query, array $indexHandles, array $options): array
+    {
+        $prepared = [];
+
+        foreach ($hits as $hit) {
+            if (!is_array($hit)) {
+                continue;
+            }
+
+            $hit = $this->withCanonicalFallbacks($hit);
+            $snippetData = SearchManager::$plugin->enrichment->prepareHitSnippets(
+                $hit,
+                $query,
+                is_string($hit['_index'] ?? null) ? $hit['_index'] : ($indexHandles[0] ?? ''),
+                [
+                    'snippetMode' => $options['snippetMode'],
+                    'snippetLength' => $options['snippetLength'],
+                    'showCodeSnippets' => $options['showCodeSnippets'],
+                    'parseMarkdownSnippets' => $options['parseMarkdownSnippets'],
+                    'title' => is_string($hit['title'] ?? null) ? $hit['title'] : '',
+                    'url' => is_string($hit['url'] ?? null) ? $hit['url'] : '',
+                    'documentType' => is_string($hit['type'] ?? null)
+                        ? $hit['type']
+                        : (is_string($hit['elementType'] ?? null) ? $hit['elementType'] : ''),
+                ],
+            );
+
+            $hit['snippet'] = $snippetData['snippet'];
+            $hit['headings'] = $snippetData['headings'];
+
+            if ($options['hideResultsWithoutUrl'] && !$this->hasPublicUrl($hit)) {
+                continue;
+            }
+
+            $prepared[] = SearchHitPresenter::present($hit);
+        }
+
+        return $prepared;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     * @return array<string, mixed>
+     */
+    private function withCanonicalFallbacks(array $hit): array
+    {
+        $hit = $this->withLiveTitleUrlFallback($hit);
+
+        $siteId = isset($hit['siteId']) && is_numeric($hit['siteId']) ? (int)$hit['siteId'] : null;
+        if ($siteId === null) {
+            return $hit;
+        }
+
+        $site = Craft::$app->getSites()->getSiteById($siteId);
+        if ($site === null) {
+            return $hit;
+        }
+
+        if (!isset($hit['site']) || $hit['site'] === '') {
+            $hit['site'] = $site->handle;
+        }
+
+        if (!isset($hit['language']) || $hit['language'] === '') {
+            $hit['language'] = $site->language;
+        }
+
+        return $hit;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     * @return array<string, mixed>
+     */
+    private function withLiveTitleUrlFallback(array $hit): array
+    {
+        $needsTitle = !isset($hit['title']) || $hit['title'] === '';
+        $needsUrl = !isset($hit['url']) || $hit['url'] === '';
+        if (!$needsTitle && !$needsUrl) {
+            return $hit;
+        }
+
+        $elementId = SearchHitIdentityHelper::elementId($hit);
+        if ($elementId === null) {
+            return $hit;
+        }
+
+        $siteId = isset($hit['siteId']) && is_numeric($hit['siteId']) ? (int)$hit['siteId'] : null;
+        $element = Craft::$app->getElements()->getElementById($elementId, null, $siteId);
+        if ($element === null) {
+            return $hit;
+        }
+
+        if ($needsTitle) {
+            $hit['title'] = (string)$element->title;
+        }
+
+        $url = $element->getUrl();
+        if ($needsUrl && $url !== null) {
+            $hit['url'] = $url;
+        }
+
+        return $hit;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     */
+    private function hasPublicUrl(array $hit): bool
+    {
+        return isset($hit['url']) && is_string($hit['url']) && trim($hit['url']) !== '';
     }
 }

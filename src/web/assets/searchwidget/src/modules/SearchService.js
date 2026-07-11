@@ -34,9 +34,6 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
         hitsPerPage: maxResults.toString(),
     });
 
-    // Enable result enrichment (snippets, headings, thumbnails)
-    params.append('enrich', '1');
-
     // Pass indices as comma-separated (empty = search all)
     if (indices.length > 0) {
         params.append('indices', indices.join(','));
