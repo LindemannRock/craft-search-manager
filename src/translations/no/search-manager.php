@@ -1042,8 +1042,8 @@ return [
     'Used for:' => 'Brukes til:',
 
     // Enrich results / result display
-    'Enrich Results' => 'Berik resultater',
-    'Enrichment Options' => 'Berikelsesalternativer',
+    'Live Comparison' => 'Live-sammenligning',
+    'Snippet Options' => 'Utdragsalternativer',
     'Hide Results Without URL' => 'Skjul resultater uten URL',
     'Hide search results that do not have a URL (e.g., entries without landing pages)' => 'Skjul søkeresultater som ikke har en URL (f.eks. poster uten landingssider)',
     'Result Layout' => 'Resultatlayout',
@@ -1788,8 +1788,10 @@ return [
     'Custom Fields' => 'Egendefinerte felt',
     'Hit' => 'Treff',
     'Miss' => 'Bom',
-    'Enriched' => 'Beriket',
-    'Raw' => 'Rå',
+    'Public REST' => 'Offentlig REST',
+    'Public REST + Live Comparison' => 'Offentlig REST + live-sammenligning',
+    'Element Found' => 'Element funnet',
+    'CP Edit URL' => 'URL for CP-redigering',
     'Promoted' => 'Promotert',
     'Boosted' => 'Boostet',
     'N/A' => 'N/A',

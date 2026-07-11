@@ -1042,8 +1042,8 @@ return [
     'Used for:' => 'Gebruikt voor:',
 
     // Enrich results / result display
-    'Enrich Results' => 'Resultaten verrijken',
-    'Enrichment Options' => 'Verrijkingsopties',
+    'Live Comparison' => 'Livevergelijking',
+    'Snippet Options' => 'Fragmentopties',
     'Hide Results Without URL' => 'Resultaten zonder URL verbergen',
     'Hide search results that do not have a URL (e.g., entries without landing pages)' => 'Zoekresultaten verbergen die geen URL hebben (bijv. items zonder landingspagina\'s)',
     'Result Layout' => 'Resultaatindeling',
@@ -1788,8 +1788,10 @@ return [
     'Custom Fields' => 'Aangepaste velden',
     'Hit' => 'Hit',
     'Miss' => 'Miss',
-    'Enriched' => 'Verrijkt',
-    'Raw' => 'Onbewerkt',
+    'Public REST' => 'Openbare REST',
+    'Public REST + Live Comparison' => 'Openbare REST + livevergelijking',
+    'Element Found' => 'Element gevonden',
+    'CP Edit URL' => 'CP-bewerkings-URL',
     'Promoted' => 'Gepromoot',
     'Boosted' => 'Geboost',
     'N/A' => 'N/A',

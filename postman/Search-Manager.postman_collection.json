@@ -159,7 +159,7 @@
           ]
         },
         {
-          "name": "Search - enriched widget-style response",
+          "name": "Search - canonical widget-style response",
           "request": {
             "method": "GET",
             "header": [
@@ -173,7 +173,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}&enrich=1&hideResultsWithoutUrl=1&snippetMode=deep&snippetLength=1000&parseMarkdownSnippets=1",
+              "raw": "{{base_url}}/actions/search-manager/api/search?q={{query}}&indices={{indices}}&hitsPerPage={{hits_per_page}}&hideResultsWithoutUrl=1&snippetMode=deep&snippetLength=1000&parseMarkdownSnippets=1",
               "host": [
                 "{{base_url}}"
               ],
@@ -197,10 +197,6 @@
                   "value": "{{hits_per_page}}"
                 },
                 {
-                  "key": "enrich",
-                  "value": "1"
-                },
-                {
                   "key": "hideResultsWithoutUrl",
                   "value": "1"
                 },
@@ -218,7 +214,7 @@
                 }
               ]
             },
-            "description": "Mirrors the bundled widget/custom template enriched search shape."
+            "description": "Mirrors the bundled widget/custom template canonical search shape."
           },
           "event": [
             {
@@ -231,7 +227,7 @@
                   "});",
                   "if (pm.response.code === 200) {",
                   "  const json = pm.response.json();",
-                  "  pm.test('enriched search response has hits array', function () {",
+                  "  pm.test('canonical search response has hits array', function () {",
                   "    pm.expect(json).to.have.property('hits');",
                   "    pm.expect(json.hits).to.be.an('array');",
                   "  });",

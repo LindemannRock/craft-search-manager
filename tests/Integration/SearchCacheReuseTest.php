@@ -169,15 +169,15 @@ final class SearchCacheReuseTest extends TestCase
         $this->assertFalse($differentType['meta']['cached'], 'changing type must fragment the cache');
     }
 
-    // 3. Widget-style option shape (hitsPerPage=100 enrich search) creates + reuses cache.
+    // 3. Widget-style option shape (hitsPerPage=100 canonical search) creates + reuses cache.
     public function testWidgetStyleSearchCreatesAndReusesCache(): void
     {
         $handle = $this->requireIndex();
         $query = $this->markerQuery();
 
         // The backend option shape ApiController::actionSearch() builds for a
-        // widget enrich search. Snippet/enrich options (snippetMode, snippetLength,
-        // parseMarkdownSnippets, enrich, ...) are consumed by EnrichmentService and
+        // widget-style search. Snippet options (snippetMode, snippetLength,
+        // parseMarkdownSnippets, ...) are consumed by the canonical hit pipeline and
         // never reach backend->search(), so they cannot affect the cache key.
         $widgetOptions = [
             'limit' => 100,

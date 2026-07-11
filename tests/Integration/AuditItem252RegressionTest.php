@@ -54,7 +54,7 @@ final class AuditItem252RegressionTest extends TestCase
         foreach ([
             'const urlText = hit.url ? escapeDisplay(hit.url) : \'\';',
             'const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.map(escapeDisplay).join(\', \') : null;',
-            'const indexHandle = hit._index ? escapeDisplay(hit._index) : null;',
+            'const indexHandle = hit.index || hit._index ? escapeDisplay(hit.index || hit._index) : null;',
             'const objectId = hit.objectID || hit.id;',
             'const objectIdDisplay = objectId ? escapeDisplay(objectId) : \'\';',
             'const rawType = hit.type || T.entry;',
@@ -63,7 +63,7 @@ final class AuditItem252RegressionTest extends TestCase
             "const contextLabel = context ? context.label : '';",
             "const contextValue = context ? context.value : '';",
             'const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : \'\';',
-            'const siteName = escapeDisplay(hit.siteName || T.unknown);',
+            'const siteName = escapeDisplay(hit.siteName || hit.site || T.unknown);',
             "const language = escapeDisplay(hit.language || '??');",
             '<a href="${url}" target="_blank">${urlText}</a>',
             '<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(\'ID\')}</span> #${objectIdDisplay}</span>',
@@ -83,7 +83,7 @@ final class AuditItem252RegressionTest extends TestCase
             'hit.productTypeName',
             'Boolean(hit.productTypeHandle || hit.productType)',
             "isCommerceHit ? hit.section : ''",
-            '${hit.siteName || T.unknown}',
+            '${hit.siteName || hit.site || T.unknown}',
             '${hit.language || \'??\'}',
             'const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.join(\', \') : null;',
         ] as $needle) {

@@ -85,8 +85,7 @@
             const showPromotions = document.getElementById('showPromotions');
             const showQueryRules = document.getElementById('showQueryRules');
             const showHighlighting = document.getElementById('showHighlighting');
-            const enableEnrich = document.getElementById('enableEnrich');
-            const enrichOptionsPanel = document.getElementById('enrichOptions');
+            const enableLiveComparison = document.getElementById('enableLiveComparison');
             const autocompleteMinLength = config.autocompleteMinLength || 2;
             const indexSiteIds = config.indexSiteIds || {};
             let autocompleteTimer;
@@ -119,12 +118,6 @@
             showAutocomplete.addEventListener('change', updateSectionVisibility);
             showPromotions.addEventListener('change', updateSectionVisibility);
             showQueryRules.addEventListener('change', updateSectionVisibility);
-
-            function updateEnrichPanel() {
-                enrichOptionsPanel.hidden = !enableEnrich.checked;
-            }
-            enableEnrich.addEventListener('change', updateEnrichPanel);
-            updateEnrichPanel();
 
             showHighlighting.addEventListener('change', function() {
                 if (lastSearchData && lastSearchQuery) {
@@ -481,6 +474,36 @@
                 </details>`;
             }
 
+            function renderLiveComparison(hit) {
+                const comparison = hit._liveComparison;
+                if (!comparison || typeof comparison !== 'object') {
+                    return '';
+                }
+
+                const linkedUrl = comparison.url ? `<div class="sm-test-indexed-row">
+                    <span class="sm-test-indexed-label">${T.urlLabel}</span>
+                    <strong class="sm-test-indexed-value">${renderSafeLinkOrText(comparison.url, comparison.url)}</strong>
+                </div>` : '';
+                const linkedCpUrl = comparison.cpEditUrl ? `<div class="sm-test-indexed-row">
+                    <span class="sm-test-indexed-label">${T.cpEditUrlLabel}</span>
+                    <strong class="sm-test-indexed-value">${renderSafeLinkOrText(comparison.cpEditUrl, comparison.cpEditUrl)}</strong>
+                </div>` : '';
+                const rows = [
+                    renderDebugPill(T.elementFoundLabel, comparison.elementFound ? T.yesLabel : T.noLabel),
+                    renderDebugPill(T.titleLabel, comparison.title),
+                    linkedUrl,
+                    linkedCpUrl,
+                    renderDebugPill(T.typeLabel, comparison.type),
+                    renderDebugPill(T.siteLabel, comparison.site),
+                    renderDebugPill(T.languageLabel, comparison.language),
+                ].filter(Boolean);
+
+                return `<details class="sm-test-indexed-debug sm-test-live-comparison-debug">
+                    <summary>${T.liveComparisonLabel}</summary>
+                    <div class="sm-test-indexed-grid">${rows.join('')}</div>
+                </details>`;
+            }
+
             function renderStatusLabel(label, colorClass) {
                 const color = /^[a-z]+$/.test(colorClass) ? colorClass : 'gray';
 
@@ -662,24 +685,23 @@
                 updateSectionVisibility();
 
                 const snippetLengthInput = document.getElementById('snippetLength');
-                const snippetLength = Math.min(1000, Math.max(50, parseInt(snippetLengthInput.value, 10) || 200));
+                const snippetLength = Math.min(1000, Math.max(50, parseInt(snippetLengthInput.value, 10) || 150));
                 snippetLengthInput.value = snippetLength;
 
                 Promise.all([
-                    postJson(urls.testSearch, csrfToken, Object.assign({
+                    postJson(urls.testSearch, csrfToken, {
                         query: query,
                         indexHandle: indexHandle,
                         wildcard: enableWildcard,
-                        enrich: enableEnrich.checked,
+                        liveComparison: enableLiveComparison.checked,
                         includeQueryRuleDebug: showQueryRules.checked,
-                    }, enableEnrich.checked ? {
                         snippetMode: document.getElementById('snippetMode').value,
                         snippetLength: snippetLength,
                         showCodeSnippets: document.getElementById('showCodeSnippets').checked,
                         parseMarkdownSnippets: document.getElementById('parseMarkdownSnippets').checked,
                         hideResultsWithoutUrl: document.getElementById('hideResultsWithoutUrl').checked,
                         includeDebugMeta: document.getElementById('includeDebugMeta').checked,
-                    } : {})).then(r => r.json()),
+                    }).then(r => r.json()),
                     showPromotions.checked ? postJson(urls.testPromotions, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json()) : Promise.resolve(null),
                 ])
                     .then(([searchData, promotionsData]) => {
@@ -859,7 +881,7 @@
         <div><strong>${T.executionLabel}</strong> ${data.executionTime}ms</div>
         <div><strong>${T.cacheLabel}</strong> ${data.cacheEnabled ? (data.cacheHit ? T.hit : T.miss) : T.disabled}${data.cacheDriver ? ' (' + data.cacheDriver + ')' : ''}</div>
         <div><strong>${T.queryUsedLabel}</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
-        <div><strong>${T.modeLabel}</strong> ${data.enriched ? T.enriched : T.raw}</div>
+        <div><strong>${T.modeLabel}</strong> ${data.liveComparison ? T.liveComparisonMode : T.publicRestMode}</div>
     </div>
 </div>
 `;
@@ -880,7 +902,7 @@
                             const isPromoted = hit.promoted === true;
                             const isBoosted = hit.boosted === true;
                             const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.map(escapeDisplay).join(', ') : null;
-                            const indexHandle = hit._index ? escapeDisplay(hit._index) : null;
+                            const indexHandle = hit.index || hit._index ? escapeDisplay(hit.index || hit._index) : null;
                             const objectId = hit.objectID || hit.id;
                             const objectIdDisplay = objectId ? escapeDisplay(objectId) : '';
                             const rawType = hit.type || T.entry;
@@ -891,7 +913,7 @@
                             const contextValue = context ? context.value : '';
                             const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : '';
                             const hierarchyMeta = renderHitHierarchyMeta(hit);
-                            const siteName = escapeDisplay(hit.siteName || T.unknown);
+                            const siteName = escapeDisplay(hit.siteName || hit.site || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
                             const matchedHeadings = hit.headings || [];
                             const matchedTerms = hit.matchedTerms || [];
@@ -941,6 +963,7 @@
                 <span><span class="sm-test-debug-label">${T.snippetFrom}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetFrom || '-')}</strong></span>
                 ${hit._snippet.fullContentLength ? `<span><span class="sm-test-debug-label">${T.snippetContent}</span> <strong class="sm-test-debug-value">${(hit._snippet.fullContentLength === 1 ? T.charsSingular : T.charsPlural).replace('{count}', hit._snippet.fullContentLength.toLocaleString())}</strong></span>` : ''}
             </div>` : ''}
+            ${renderLiveComparison(hit)}
             ${renderIndexedDocumentDebug(hit)}
         </div>
     </div>

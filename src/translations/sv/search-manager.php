@@ -1042,8 +1042,8 @@ return [
     'Used for:' => 'Används för:',
 
     // Enrich results / result display
-    'Enrich Results' => 'Berika resultat',
-    'Enrichment Options' => 'Berikningsalternativ',
+    'Live Comparison' => 'Livejämförelse',
+    'Snippet Options' => 'Utdragsalternativ',
     'Hide Results Without URL' => 'Dölj resultat utan URL',
     'Hide search results that do not have a URL (e.g., entries without landing pages)' => 'Dölj sökresultat som saknar URL (t.ex. poster utan landningssidor)',
     'Result Layout' => 'Resultatlayout',
@@ -1788,8 +1788,10 @@ return [
     'Custom Fields' => 'Anpassade fält',
     'Hit' => 'Träff',
     'Miss' => 'Miss',
-    'Enriched' => 'Berikad',
-    'Raw' => 'Raw',
+    'Public REST' => 'Publik REST',
+    'Public REST + Live Comparison' => 'Publik REST + livejämförelse',
+    'Element Found' => 'Element hittades',
+    'CP Edit URL' => 'CP-redigerings-URL',
     'Promoted' => 'Befordrad',
     'Boosted' => 'Boostad',
     'N/A' => 'N/A',

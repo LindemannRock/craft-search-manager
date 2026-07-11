@@ -1042,8 +1042,8 @@ return [
     'Used for:' => '用途 :',
 
     // Enrich results / result display
-    'Enrich Results' => '結果をエンリッチ',
-    'Enrichment Options' => 'エンリッチメントオプション',
+    'Live Comparison' => 'ライブ比較',
+    'Snippet Options' => 'スニペットオプション',
     'Hide Results Without URL' => 'URL なしの結果を非表示',
     'Hide search results that do not have a URL (e.g., entries without landing pages)' => 'URL を持たない検索結果を非表示にする（例: ランディングページのないエントリ）',
     'Result Layout' => '結果レイアウト',
@@ -1788,8 +1788,10 @@ return [
     'Custom Fields' => 'カスタムフィールド',
     'Hit' => 'ヒット',
     'Miss' => 'ミス',
-    'Enriched' => 'エンリッチ済み',
-    'Raw' => '未加工',
+    'Public REST' => '公開REST',
+    'Public REST + Live Comparison' => '公開REST + ライブ比較',
+    'Element Found' => '要素が見つかりました',
+    'CP Edit URL' => 'CP編集URL',
     'Promoted' => 'プロモート済み',
     'Boosted' => 'ブースト済み',
     'N/A' => 'N/A',

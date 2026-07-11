@@ -18,11 +18,11 @@ use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\helpers\PluginThemeStyleHelper;
 use lindemannrock\base\helpers\SettingsPostHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
-use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -237,9 +237,10 @@ class SettingsController extends Controller
         $query = Craft::$app->getRequest()->getRequiredBodyParam('query');
         $indexHandle = Craft::$app->getRequest()->getRequiredBodyParam('indexHandle');
         $wildcard = Craft::$app->getRequest()->getBodyParam('wildcard', false);
-        $enrich = (bool) Craft::$app->getRequest()->getBodyParam('enrich', false);
+        $liveComparison = (bool) Craft::$app->getRequest()->getBodyParam('liveComparison', false);
 
         try {
+            $request = Craft::$app->getRequest();
             // Get the index
             $index = SearchIndex::findByHandle($indexHandle);
 
@@ -276,135 +277,34 @@ class SettingsController extends Controller
 
             // Get settings for highlighting and cache info
             $settings = SearchManager::$plugin->getSettings();
+            $includeDebugMeta = (bool) $request->getBodyParam('includeDebugMeta', false);
+            $indexedDocumentDebug = $includeDebugMeta
+                ? $this->settingsTestIndexedDocumentDebugByIdentity($results['hits'] ?? [], $index)
+                : [];
 
-            if ($enrich) {
-                $request = Craft::$app->getRequest();
-                $includeDebugMeta = (bool) $request->getBodyParam('includeDebugMeta', true);
-                $indexedDocumentDebug = $includeDebugMeta
-                    ? $this->settingsTestIndexedDocumentDebugByIdentity($results['hits'] ?? [], $index)
-                    : [];
+            $enhancedHits = CanonicalHitPipeline::presentHits($results['hits'] ?? [], $originalQuery, [$indexHandle], [
+                'snippetMode' => (string) $request->getBodyParam('snippetMode', 'balanced'),
+                'snippetLength' => (int) $request->getBodyParam('snippetLength', 150),
+                'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', false),
+                'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
+                'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
+                'includeSnippetDebug' => $includeDebugMeta,
+            ], $includeQueryRuleDebug);
 
-                // Use EnrichmentService for smart snippets and headings
-                $enrichedResults = SearchManager::$plugin->enrichment->enrichResults(
-                    $results['hits'],
-                    $originalQuery,
-                    [$indexHandle],
-                    [
-                        'siteId' => $searchOptions['siteId'] ?? null,
-                        'snippetMode' => $request->getBodyParam('snippetMode', 'balanced'),
-                        'snippetLength' => (int) $request->getBodyParam('snippetLength', 200),
-                        'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', false),
-                        'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
-                        'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
-                        'includeDebugMeta' => $includeDebugMeta,
-                        'includeQueryRuleDebug' => $includeQueryRuleDebug,
-                    ]
-                );
-
-                // Normalize fields for display (highlighting done client-side via SearchManagerHighlighter)
-                $enhancedHits = [];
-                foreach ($enrichedResults as $hit) {
-                    if (isset($hit['siteId'])) {
-                        $site = Craft::$app->getSites()->getSiteById($hit['siteId']);
-                        if ($site) {
-                            $hit['siteName'] = $site->name;
-                            $hit['language'] = strtoupper(substr($site->language ?? '', 0, 2));
-                        }
-                    }
-                    if ($includeDebugMeta) {
-                        $debugKey = $this->settingsTestHitDebugKey($hit);
-                        if ($debugKey !== null && isset($indexedDocumentDebug[$debugKey])) {
-                            $hit['_indexedDocument'] = $indexedDocumentDebug[$debugKey];
-                        }
-                    }
-
-                    $enhancedHits[] = SearchHitPresenter::present($hit, $includeQueryRuleDebug);
-                }
-            } else {
-                // Manual hydration — load elements for raw backend hit display
-                $elementType = $index->elementType ?? \craft\elements\Entry::class;
-                $indexSiteIds = $index->getSiteIds();
-                $indexSiteId = $indexSiteIds ? $indexSiteIds[0] : null;
-
-                if (!empty($results['hits'])) {
-                    // Group hits by siteId so we can batch-load elements per site
-                    $hitsBySite = [];
-                    foreach ($results['hits'] as $key => $hit) {
-                        // Use the siteId from the hit (returned by backend's all-sites search)
-                        // Fall back to index site or current site
-                        $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
-                        $hitsBySite[$hitSiteId][$key] = $hit;
-                    }
-
-                    // Load elements per site to get correct site-specific data
-                    $elementsById = [];
-                    foreach ($hitsBySite as $siteId => $siteHits) {
-                        // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
-                        // External backends may use composite keys, so we need the original element ID
-                        $elementIds = array_values(array_filter(array_map(
-                            static fn(array $hit): ?int => SearchHitIdentityHelper::elementId($hit),
-                            array_filter($siteHits, 'is_array'),
-                        )));
-                        if ($this->isElementTypeAvailable($elementType, 'settings-search')) {
-                            $elements = $elementType::find()
-                            ->id($elementIds)
-                            ->siteId($siteId)
-                            ->status(null)
-                            ->indexBy('id')
-                            ->all();
-                        } else {
-                            $elements = [];
-                        }
-
-                        foreach ($elements as $id => $element) {
-                            $elementsById[$siteId . ':' . $id] = $element;
-                        }
-                    }
-
-                    // Enhance hits with element data including site info
-                    foreach ($results['hits'] as &$hit) {
-                        $hitSiteId = $hit['siteId'] ?? $indexSiteId ?? Craft::$app->getSites()->getCurrentSite()->id;
-                        // Use 'elementId' (Typesense) or 'id' (others) for actual element ID
-                        $actualElementId = SearchHitIdentityHelper::elementId($hit);
-                        if ($actualElementId === null) {
-                            continue;
-                        }
-                        $elementKey = $hitSiteId . ':' . $actualElementId;
-                        $element = $elementsById[$elementKey] ?? null;
-
-                        if ($element) {
-                            $hit['title'] = $element->title ?? 'Untitled';
-                            $hit['url'] = $element->url ?? '';
-                            $documentType = $this->settingsTestDocumentTypeForElement($element);
-                            $hit['type'] = $documentType;
-                            $hit['elementType'] = $documentType;
-
-                            // Use site info from the element (which was loaded for the correct site)
-                            $site = $element->getSite();
-                            $hit['siteId'] = $site->id;
-                            $hit['siteName'] = $site->name;
-                            $hit['siteHandle'] = $site->handle;
-                            $hit['language'] = strtoupper(substr($site->language, 0, 2));
-
-                            if (method_exists($element, 'getSection') && $element->getSection()) {
-                                $section = $element->getSection();
-                                $hit['section'] = $section->name;
-                                $hit['sectionHandle'] = $section->handle;
-                                $hit['sectionType'] = $section->type;
-                            }
-                        }
-                    }
-                    unset($hit);
-                }
-
-                // Highlighting is done client-side via SearchManagerHighlighter
-                $enhancedHits = [];
-                foreach ($results['hits'] ?? [] as $hit) {
-                    if (is_array($hit)) {
-                        $hit = SearchFieldValueHelper::exposeFields($hit);
-                        $enhancedHits[] = SearchHitPresenter::present($hit, $includeQueryRuleDebug);
+            if ($includeDebugMeta) {
+                foreach ($enhancedHits as &$hit) {
+                    $debugKey = $this->settingsTestHitDebugKey($hit);
+                    if ($debugKey !== null && isset($indexedDocumentDebug[$debugKey])) {
+                        $hit['_indexedDocument'] = $indexedDocumentDebug[$debugKey];
                     }
                 }
+                unset($hit);
+            }
+
+            if ($liveComparison) {
+                $enhancedHits = SearchManager::$plugin->liveComparison->compareHits($enhancedHits, [$indexHandle], [
+                    'siteId' => $searchOptions['siteId'] ?? null,
+                ]);
             }
 
             return $this->asJson([
@@ -419,7 +319,8 @@ class SettingsController extends Controller
                 'wildcard' => $wildcard,
                 'queryUsed' => $query,
                 'originalQuery' => $originalQuery,
-                'enriched' => $enrich,
+                'enriched' => $liveComparison,
+                'liveComparison' => $liveComparison,
                 'indexSiteId' => $index->siteId ?? null,
                 'redirect' => $results['redirect'] ?? null,
             ]);
@@ -960,35 +861,6 @@ class SettingsController extends Controller
         $type = (string)($hit['elementType'] ?? $hit['type'] ?? '');
 
         return in_array($type, ['product', 'variant', CommerceElementTypeHelper::productElementType(), CommerceElementTypeHelper::variantElementType()], true);
-    }
-
-    private function settingsTestDocumentTypeForElement(ElementInterface $element): string
-    {
-        if ($element instanceof \craft\elements\Entry) {
-            return 'entry';
-        }
-
-        if (is_a($element, CommerceElementTypeHelper::productElementType())) {
-            return 'product';
-        }
-
-        if (is_a($element, CommerceElementTypeHelper::variantElementType())) {
-            return 'variant';
-        }
-
-        if ($element instanceof \craft\elements\Category) {
-            return 'category';
-        }
-
-        if ($element instanceof \craft\elements\Asset) {
-            return 'asset';
-        }
-
-        if ($element instanceof \craft\elements\User) {
-            return 'user';
-        }
-
-        return strtolower($element::displayName());
     }
 
     public function actionTestAutocomplete(): Response

@@ -1042,8 +1042,8 @@ return [
     'Used for:' => 'Verwendet für:',
 
     // Enrich results / result display
-    'Enrich Results' => 'Ergebnisse anreichern',
-    'Enrichment Options' => 'Anreicherungsoptionen',
+    'Live Comparison' => 'Live-Vergleich',
+    'Snippet Options' => 'Snippet-Optionen',
     'Hide Results Without URL' => 'Ergebnisse ohne URL ausblenden',
     'Hide search results that do not have a URL (e.g., entries without landing pages)' => 'Suchergebnisse ohne URL ausblenden (z. B. Einträge ohne Landingpages)',
     'Result Layout' => 'Ergebnislayout',
@@ -1788,8 +1788,10 @@ return [
     'Custom Fields' => 'Benutzerdefinierte Felder',
     'Hit' => 'Zugriff',
     'Miss' => 'Fehlschlag',
-    'Enriched' => 'Angereichert',
-    'Raw' => 'Roh',
+    'Public REST' => 'Öffentliches REST',
+    'Public REST + Live Comparison' => 'Öffentliches REST + Live-Vergleich',
+    'Element Found' => 'Element gefunden',
+    'CP Edit URL' => 'CP-Bearbeitungs-URL',
     'Promoted' => 'Gefördert',
     'Boosted' => 'Geboostet',
     'N/A' => 'N/A',

@@ -288,7 +288,7 @@ Non-entry Craft elements also keep their own metadata fields. Assets use `volume
 
 Hierarchy and path context is also top-level kind metadata. `AutoTransformer` writes it at index time for Structure Entries (`ancestors`, `level`), Categories (`ancestors`, `level`), and public Assets (`ancestors`, `folderPath`). Channel/Single Entries, Users, Commerce Products/Variants, source docs, and private-volume Assets omit these keys. `folderPath` is Craft's canonical folder path string, not a join of folder display titles.
 
-If your transformer extends `AutoTransformer`, the built-in section/group/volume and hierarchy/path metadata is included automatically. If your transformer extends `BaseTransformer` directly and wants the same hierarchy contract, merge `$this->getHierarchyMetadata($element)` into the indexed document at transform time. Do not resolve ancestors or folder chains later during result enrichment.
+If your transformer extends `AutoTransformer`, the built-in section/group/volume and hierarchy/path metadata is included automatically. If your transformer extends `BaseTransformer` directly and wants the same hierarchy contract, merge `$this->getHierarchyMetadata($element)` into the indexed document at transform time. Do not resolve ancestors or folder chains later while presenting search results.
 
 After changing `type`, `elementType`, or related metadata in a transformer, rebuild the affected index so stored search documents match the current code. Adding or changing hierarchy/path metadata also requires a full reindex because the values are stored in each backend document.
 

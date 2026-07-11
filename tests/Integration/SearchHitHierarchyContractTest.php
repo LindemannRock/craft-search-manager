@@ -26,7 +26,8 @@ use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\searchmanager\gql\types\SearchAncestorType;
 use lindemannrock\searchmanager\gql\types\SearchHeadingType;
 use lindemannrock\searchmanager\gql\types\SearchHitType;
-use lindemannrock\searchmanager\services\EnrichmentService;
+use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
+use lindemannrock\searchmanager\services\LiveComparisonService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
 use lindemannrock\searchmanager\transformers\BaseTransformer;
@@ -39,7 +40,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
  */
 #[CoversClass(AutoTransformer::class)]
 #[CoversClass(BaseTransformer::class)]
-#[CoversClass(EnrichmentService::class)]
+#[CoversClass(CanonicalHitPipeline::class)]
+#[CoversClass(LiveComparisonService::class)]
 #[CoversClass(SearchAncestorType::class)]
 #[CoversClass(SearchHeadingType::class)]
 #[CoversClass(SearchHitType::class)]
@@ -155,26 +157,24 @@ final class SearchHitHierarchyContractTest extends TestCase
         self::assertArrayNotHasKey('folderPath', $userData);
     }
 
-    public function testEnrichmentReadsHierarchyOnlyFromHitMetadata(): void
+    public function testCanonicalPipelineReadsHierarchyOnlyFromHitMetadata(): void
     {
-        $service = new EnrichmentService();
-
-        $entry = new SearchHierarchyTestEntry();
-        $entry->testSection = new Section(['name' => 'Live Section', 'handle' => 'live', 'type' => Section::TYPE_STRUCTURE]);
-        $entry->testAncestors = new ElementCollection([$this->entryAncestor(999, 'Live Ancestor')]);
-
-        $entryMetadata = $this->invokePrivate($service, 'entryMetadata', [[
+        $results = CanonicalHitPipeline::presentHits([[
+            'id' => 123,
+            'title' => 'Hit Entry',
+            'url' => 'https://example.test/hit',
+            'type' => 'entry',
             'section' => 'Hit Section',
             'sectionHandle' => 'hit',
             'sectionType' => 'structure',
             'ancestors' => [['id' => '100', 'title' => 'Hit Ancestor']],
             'level' => '2',
-        ], $entry]);
+        ]], '', ['pages'], []);
 
-        self::assertSame([['id' => 100, 'title' => 'Hit Ancestor']], $entryMetadata['ancestors'] ?? null);
-        self::assertSame(2, $entryMetadata['level'] ?? null);
+        self::assertSame([['id' => '100', 'title' => 'Hit Ancestor']], $results[0]['ancestors'] ?? null);
+        self::assertSame('2', $results[0]['level'] ?? null);
 
-        $source = $this->readPluginFile('src/services/EnrichmentService.php');
+        $source = $this->readPluginFile('src/services/LiveComparisonService.php');
         foreach (['->getAncestors(', '->getParent(', '->getFolder('] as $needle) {
             self::assertStringNotContainsString($needle, $source);
         }

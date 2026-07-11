@@ -206,11 +206,11 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
     {
         $source = $this->readPluginFile('src/controllers/SettingsController.php');
 
-        self::assertStringContainsString("\$includeDebugMeta = (bool) \$request->getBodyParam('includeDebugMeta', true);", $source);
+        self::assertStringContainsString("\$includeDebugMeta = (bool) \$request->getBodyParam('includeDebugMeta', false);", $source);
         self::assertStringContainsString("\$indexedDocumentDebug = \$includeDebugMeta", $source);
-        self::assertStringContainsString("if (\$includeDebugMeta) {\n                        \$debugKey = \$this->settingsTestHitDebugKey(\$hit);", $source);
+        self::assertStringContainsString("if (\$includeDebugMeta) {\n                foreach (\$enhancedHits as &\$hit) {\n                    \$debugKey = \$this->settingsTestHitDebugKey(\$hit);", $source);
         self::assertStringContainsString("\$hit['_indexedDocument'] = \$indexedDocumentDebug[\$debugKey];", $source);
-        self::assertStringContainsString("'includeDebugMeta' => \$includeDebugMeta,", $source);
+        self::assertStringContainsString("'includeSnippetDebug' => \$includeDebugMeta,", $source);
     }
 
     public function testPublicApiShapeDoesNotExposeSettingsTestDebugPayload(): void
@@ -290,15 +290,17 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         }
     }
 
-    public function testRawSettingsSearchHydrationKeepsCanonicalDocumentType(): void
+    public function testSettingsSearchUsesCanonicalPipelineAndNoManualHydration(): void
     {
         $source = $this->readPluginFile('src/controllers/SettingsController.php');
 
-        self::assertStringContainsString('$documentType = $this->settingsTestDocumentTypeForElement($element);', $source);
-        self::assertStringContainsString('$hit[\'type\'] = $documentType;', $source);
-        self::assertStringContainsString('$hit[\'elementType\'] = $documentType;', $source);
-        self::assertStringContainsString('$hit[\'sectionHandle\'] = $section->handle;', $source);
-        self::assertStringContainsString('$hit[\'sectionType\'] = $section->type;', $source);
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $source);
+        self::assertStringContainsString('SearchManager::$plugin->liveComparison->compareHits', $source);
+        self::assertStringNotContainsString('settingsTestDocumentTypeForElement', $source);
+        self::assertStringNotContainsString('$hit[\'type\'] = $documentType;', $source);
+        self::assertStringNotContainsString('$hit[\'elementType\'] = $documentType;', $source);
+        self::assertStringNotContainsString('$hit[\'sectionHandle\'] = $section->handle;', $source);
+        self::assertStringNotContainsString('$hit[\'sectionType\'] = $section->type;', $source);
         self::assertStringNotContainsString('$hit[\'type\'] = (new \ReflectionClass($element))->getShortName();', $source);
     }
 
@@ -336,7 +338,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'class="sm-test-indexed-value"',
             '${renderIndexedDocumentDebug(hit)}',
             "const snippetLengthInput = document.getElementById('snippetLength');",
-            'const snippetLength = Math.min(1000, Math.max(50, parseInt(snippetLengthInput.value, 10) || 200));',
+            'const snippetLength = Math.min(1000, Math.max(50, parseInt(snippetLengthInput.value, 10) || 150));',
             'snippetLengthInput.value = snippetLength;',
             'snippetLength: snippetLength,',
         ] as $needle) {

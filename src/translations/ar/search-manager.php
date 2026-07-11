@@ -1042,8 +1042,8 @@ return [
     'Used for:' => 'يُستخدم لـ:',
 
     // Enrich results / result display
-    'Enrich Results' => 'إثراء النتائج',
-    'Enrichment Options' => 'خيارات الإثراء',
+    'Live Comparison' => 'مقارنة مباشرة',
+    'Snippet Options' => 'خيارات المقتطف',
     'Hide Results Without URL' => 'إخفاء النتائج بدون URL',
     'Hide search results that do not have a URL (e.g., entries without landing pages)' => 'إخفاء نتائج البحث التي لا تحتوي على URL (مثل الإدخالات بدون صفحات هبوط)',
     'Result Layout' => 'تخطيط النتائج',
@@ -1788,8 +1788,10 @@ return [
     'Custom Fields' => 'الحقول المخصصة',
     'Hit' => 'إصابة',
     'Miss' => 'إخفاقة',
-    'Enriched' => 'مُخصَّب',
-    'Raw' => 'خام',
+    'Public REST' => 'REST عام',
+    'Public REST + Live Comparison' => 'REST عام + مقارنة مباشرة',
+    'Element Found' => 'تم العثور على العنصر',
+    'CP Edit URL' => 'URL تحرير CP',
     'Promoted' => 'مُرقَّى',
     'Boosted' => 'مُعزَّز',
     'N/A' => 'N/A',

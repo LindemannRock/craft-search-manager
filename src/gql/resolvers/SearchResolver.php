@@ -12,7 +12,7 @@ use Craft;
 use craft\gql\base\Resolver;
 use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\base\helpers\GqlHelper;
-use lindemannrock\searchmanager\helpers\SearchHitPresenter;
+use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
@@ -141,7 +141,7 @@ class SearchResolver extends Resolver
         unset($results['meta']);
 
         if (!empty($results['hits']) && is_array($results['hits'])) {
-            $results['hits'] = self::canonicalHits($results['hits'], $query, $indexHandles, [
+            $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $indexHandles, [
                 'snippetMode' => self::trimmedString($arguments['snippetMode'] ?? null) ?? 'balanced',
                 'snippetLength' => self::clampInt($arguments['snippetLength'] ?? null, 150, 50, 1000),
                 'showCodeSnippets' => (bool)($arguments['showCodeSnippets'] ?? false),
@@ -442,59 +442,6 @@ class SearchResolver extends Resolver
             'meilisearch' => ['filter' => $filters],
             default => ['filters' => $filters],
         };
-    }
-
-    /**
-     * @param array<int, mixed> $hits
-     * @param array<int, string> $indexHandles
-     * @param array{snippetMode: string, snippetLength: int, showCodeSnippets: bool, parseMarkdownSnippets: bool, hideResultsWithoutUrl: bool} $options
-     * @return array<int, array<string, mixed>>
-     */
-    private static function canonicalHits(array $hits, string $query, array $indexHandles, array $options): array
-    {
-        $prepared = [];
-
-        foreach ($hits as $hit) {
-            if (!is_array($hit)) {
-                continue;
-            }
-
-            $snippetData = SearchManager::$plugin->indexedSnippets->prepareHitSnippets(
-                $hit,
-                $query,
-                is_string($hit['_index'] ?? null) ? $hit['_index'] : ($indexHandles[0] ?? ''),
-                [
-                    'snippetMode' => $options['snippetMode'],
-                    'snippetLength' => $options['snippetLength'],
-                    'showCodeSnippets' => $options['showCodeSnippets'],
-                    'parseMarkdownSnippets' => $options['parseMarkdownSnippets'],
-                    'title' => is_string($hit['title'] ?? null) ? $hit['title'] : '',
-                    'url' => is_string($hit['url'] ?? null) ? $hit['url'] : '',
-                    'documentType' => is_string($hit['type'] ?? null)
-                        ? $hit['type']
-                        : (is_string($hit['elementType'] ?? null) ? $hit['elementType'] : ''),
-                ],
-            );
-
-            $hit['snippet'] = $snippetData['snippet'];
-            $hit['headings'] = $snippetData['headings'];
-
-            if ($options['hideResultsWithoutUrl'] && !self::hasPublicUrl($hit)) {
-                continue;
-            }
-
-            $prepared[] = SearchHitPresenter::present($hit);
-        }
-
-        return $prepared;
-    }
-
-    /**
-     * @param array<string, mixed> $hit
-     */
-    private static function hasPublicUrl(array $hit): bool
-    {
-        return isset($hit['url']) && is_string($hit['url']) && trim($hit['url']) !== '';
     }
 
     /**

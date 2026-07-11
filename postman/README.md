@@ -115,4 +115,4 @@ Expected: the first requests return `200`; later requests return `429` until the
 - Browser-based headless tracking from another origin requires that exact origin in `trackingAllowedOrigins`; same-origin tracking does not need `trackingAllowedOrigins`.
 - Postman can test Origin fallback by sending `Origin` with `Referer` omitted.
 - `track-search` records analytics rows when analytics is enabled. `track-click` is gated but currently log-only.
-- The enriched search request mirrors the frontend widget/custom-template request shape.
+- The canonical search request mirrors the frontend widget/custom-template request shape.

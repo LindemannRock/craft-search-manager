@@ -134,15 +134,15 @@ final class AuditItem288RegressionTest extends TestCase
     {
         $backendService = $this->readPluginFile('src/services/BackendService.php');
         $abstractBackend = $this->readPluginFile('src/backends/AbstractSearchEngineBackend.php');
-        $enrichmentService = $this->readPluginFile('src/services/EnrichmentService.php');
+        $liveComparisonService = $this->readPluginFile('src/services/LiveComparisonService.php');
 
         self::assertStringNotContainsString('(int) $options[\'siteId\']', $backendService);
-        self::assertStringNotContainsString('(int) $options[\'siteId\']', $enrichmentService);
+        self::assertStringNotContainsString('(int) $options[\'siteId\']', $liveComparisonService);
         self::assertStringNotContainsString('(int)$rawSiteId', $backendService);
         self::assertStringNotContainsString('(int)$siteIdOption', $abstractBackend);
         self::assertStringContainsString('SearchSiteScopeHelper::normalize($options[\'siteId\'] ?? null)', $backendService);
         self::assertStringContainsString('SearchSiteScopeHelper::normalize($options[\'siteId\'] ?? null)', $abstractBackend);
-        self::assertStringContainsString('SearchSiteScopeHelper::scopedSiteId($options[\'siteId\'] ?? null)', $enrichmentService);
+        self::assertStringContainsString('SearchSiteScopeHelper::scopedSiteId($options[\'siteId\'] ?? null)', $liveComparisonService);
     }
 
     private function readPluginFile(string $path): string

@@ -197,7 +197,7 @@ final class CommerceTargetElementTypesTest extends TestCase
                 continue;
             }
 
-            $results = SearchManager::$plugin->enrichment->enrichResults(
+            $results = SearchManager::$plugin->liveComparison->compareHits(
                 [[
                     'id' => (int)$element->id,
                     'siteId' => (int)$element->siteId,
@@ -206,7 +206,6 @@ final class CommerceTargetElementTypesTest extends TestCase
                     'promoted' => true,
                     'type' => $elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant',
                 ]],
-                '',
                 [],
                 ['siteId' => (int)$element->siteId],
             );
@@ -215,6 +214,8 @@ final class CommerceTargetElementTypesTest extends TestCase
             self::assertSame((int)$element->id, $results[0]['id']);
             self::assertTrue($results[0]['promoted']);
             self::assertSame($elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant', $results[0]['type']);
+            self::assertSame(true, $results[0]['_liveComparison']['elementFound'] ?? null);
+            self::assertSame($elementType === CommerceElementTypeHelper::productElementType() ? 'product' : 'variant', $results[0]['_liveComparison']['type'] ?? null);
         }
 
         self::assertTrue(true);
@@ -489,7 +490,7 @@ final class CommerceTargetElementTypesTest extends TestCase
         $promotionSource = $this->readPluginFile('src/models/Promotion.php');
         $settingsSource = $this->readPluginFile('src/controllers/SettingsController.php');
         $promotionServiceSource = $this->readPluginFile('src/services/PromotionService.php');
-        $enrichmentSource = $this->readPluginFile('src/services/EnrichmentService.php');
+        $liveComparisonSource = $this->readPluginFile('src/services/LiveComparisonService.php');
         $indexingSource = $this->readPluginFile('src/services/IndexingService.php');
 
         self::assertStringContainsString('CommerceElementTypeHelper::variantElementType()', $helperSource);
@@ -503,9 +504,9 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $promotionSource);
         self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $settingsSource);
         self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($elementQuery, $elementClass)->all()', $promotionServiceSource);
-        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($query, $elementClass);', $enrichmentSource);
+        self::assertStringContainsString('SearchElementAvailabilityHelper::applyToQuery($query, $elementClass)->all()', $liveComparisonSource);
         self::assertStringContainsString('return SearchElementAvailabilityHelper::isSearchable($element);', $indexingSource);
-        self::assertStringNotContainsString('PromotionLiveElementQueryHelper', $promotionSource . $settingsSource . $promotionServiceSource . $enrichmentSource);
+        self::assertStringNotContainsString('PromotionLiveElementQueryHelper', $promotionSource . $settingsSource . $promotionServiceSource . $liveComparisonSource);
     }
 
     private function readPluginFile(string $path): string

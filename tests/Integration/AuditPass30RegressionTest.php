@@ -102,12 +102,12 @@ final class AuditPass30RegressionTest extends TestCase
             $this->readPluginFile('src/services/PromotionService.php'),
             'public function applyPromotions',
         );
-        $enrichmentSource = $this->readPluginFile('src/services/EnrichmentService.php');
+        $liveComparisonSource = $this->readPluginFile('src/services/LiveComparisonService.php');
         $presenterSource = $this->readPluginFile('src/helpers/SearchHitPresenter.php');
 
         self::assertStringContainsString("'_elementType' => \$elementType,", $promotionSource);
-        self::assertStringContainsString('$explicitElementClass = is_string($hit[\'_elementType\'] ?? null) ? $hit[\'_elementType\'] : null;', $enrichmentSource);
-        self::assertStringContainsString('$elementClass = $explicitElementClass ?:', $enrichmentSource);
+        self::assertStringContainsString('$explicitElementClass = is_string($hit[\'_elementType\'] ?? null) ? $hit[\'_elementType\'] : null;', $liveComparisonSource);
+        self::assertStringContainsString('$elementClass = $explicitElementClass ?:', $liveComparisonSource);
         self::assertStringContainsString('$hit[\'description\'],', $presenterSource);
         self::assertStringContainsString('$hit[\'highlights\'],', $presenterSource);
         self::assertStringContainsString('$hit[\'_elementType\'],', $presenterSource);

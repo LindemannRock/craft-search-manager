@@ -94,6 +94,20 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringNotContainsString('renderStatusLabel(String(appliedCount)', $source);
     }
 
+    public function testTestToolIndexedUrlFilterIsTopLevelFeatureToggle(): void
+    {
+        $template = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
+        $assetSource = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
+
+        self::assertStringContainsString('id="hideResultsWithoutUrl"', $template);
+        self::assertStringContainsString('id="includeDebugMeta"', $template);
+        self::assertStringNotContainsString('id="liveComparisonOptions"', $template);
+        self::assertStringNotContainsString('id="hideWithoutLiveUrl"', $template);
+        self::assertStringNotContainsString('sm-test-toggle-card--primary', $template);
+        self::assertStringContainsString("hideResultsWithoutUrl: document.getElementById('hideResultsWithoutUrl').checked,", $assetSource);
+        self::assertStringNotContainsString('hideWithoutLiveUrl', $assetSource);
+    }
+
     public function testSearchTestToolPassesBackendRedirectToAssetRenderer(): void
     {
         $body = $this->controllerMethodBody('actionTestSearch');
@@ -101,8 +115,10 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringContainsString("'redirect' => \$results['redirect'] ?? null,", $body);
         self::assertStringContainsString("\$includeQueryRuleDebug = (bool)Craft::\$app->getRequest()->getBodyParam('includeQueryRuleDebug', false);", $body);
         self::assertStringContainsString("\$searchOptions['includeQueryRuleDebug'] = true;", $body);
-        self::assertStringContainsString("'includeQueryRuleDebug' => \$includeQueryRuleDebug,", $body);
-        self::assertStringContainsString('SearchHitPresenter::present($hit, $includeQueryRuleDebug)', $body);
+        self::assertStringContainsString('], $includeQueryRuleDebug);', $body);
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $body);
+        self::assertStringContainsString('SearchManager::$plugin->liveComparison->compareHits', $body);
+        self::assertStringNotContainsString('SearchHitPresenter::present($hit, $includeQueryRuleDebug)', $body);
     }
 
     private function controllerMethodBody(string $method): string

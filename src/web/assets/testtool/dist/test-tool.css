@@ -1,8 +1,8 @@
-#enrichOptions .select {
+#snippetOptions .select {
     width: 100%;
 }
 
-#enrichOptions .select select {
+#snippetOptions .select select {
     width: 100%;
 }
 
@@ -54,11 +54,6 @@
     gap: 8px;
     padding: 10px;
     background: #f9fafb;
-}
-
-.sm-test-toggle-card--primary {
-    border-color: #93c5fd;
-    background: #eff6ff;
 }
 
 .sm-test-enrich-panel {

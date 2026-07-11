@@ -22,16 +22,16 @@ use craft\fieldlayoutelements\CustomField;
 use craft\fields\PlainText;
 use craft\models\FieldLayout;
 use craft\models\FieldLayoutTab;
+use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
- * Pins the EnrichmentService element-hydration batching fix.
+ * Pins the LiveComparisonService element-hydration batching fix.
  *
- * `enrichResults()` previously called Craft::$app->elements->getElementById()
- * inside the raw-hit loop — one element load per hit, worst on enrich=1 API /
- * widget searches at hitsPerPage=100. Elements are now batch-loaded up front,
+ * The old live-hydration path called Craft::$app->elements->getElementById()
+ * inside the raw-hit loop. Live comparison now batch-loads up front,
  * grouped by element type and site.
  *
  * Verified against live data: resolved hits must load via the batched element
@@ -127,7 +127,7 @@ final class EnrichmentBatchLoadTest extends TestCase
 
     /**
      * Swap a counting Elements service so the test can assert how many per-hit
-     * getElementById() calls enrichResults makes. Restored in tearDown.
+     * getElementById() calls live comparison makes. Restored in tearDown.
      */
     private function installCountingElements(): object
     {
@@ -175,14 +175,15 @@ final class EnrichmentBatchLoadTest extends TestCase
         }
 
         $counting = $this->installCountingElements();
-        $results = SearchManager::$plugin->enrichment->enrichResults($hits, '', [$index->handle], ['siteId' => $siteId]);
+        $results = SearchManager::$plugin->liveComparison->compareHits($hits, [$index->handle], ['siteId' => $siteId]);
 
         // Output preserved: one enriched result per hit, in order, correct data.
         $this->assertCount(count($entries), $results);
         foreach ($entries as $i => $entry) {
             $this->assertSame((int) $entry->id, $results[$i]['id']);
-            // enrichResults falls back to 'Untitled' when the element has no title.
-            $this->assertSame($entry->title ?? 'Untitled', $results[$i]['title']);
+            $this->assertArrayNotHasKey('title', $results[$i]);
+            $this->assertSame(true, $results[$i]['_liveComparison']['elementFound'] ?? null);
+            $this->assertSame($entry->title ?? 'Untitled', $results[$i]['_liveComparison']['title'] ?? null);
         }
 
         // Batched: resolved hits never touch getElementById (the removed N+1) —
@@ -208,10 +209,11 @@ final class EnrichmentBatchLoadTest extends TestCase
         ]];
 
         $counting = $this->installCountingElements();
-        $results = SearchManager::$plugin->enrichment->enrichResults($hits, '', [], ['siteId' => $siteId]);
+        $results = SearchManager::$plugin->liveComparison->compareHits($hits, [], ['siteId' => $siteId]);
 
         $this->assertCount(1, $results);
         $this->assertSame((int) $entry->id, $results[0]['id']);
+        $this->assertSame(true, $results[0]['_liveComparison']['elementFound'] ?? null);
         $this->assertSame(0, $counting->getByIdCalls, 'explicit hit element type should load through the batched query before index fallback');
     }
 
@@ -226,21 +228,23 @@ final class EnrichmentBatchLoadTest extends TestCase
         $siteId = (int)$category->siteId;
 
         $counting = $this->installCountingElements();
-        $results = SearchManager::$plugin->enrichment->enrichResults([[
+        $results = SearchManager::$plugin->liveComparison->compareHits([[
             'id' => (int)$category->id,
             'siteId' => $siteId,
             '_index' => $index->handle,
             'type' => 'category',
             'elementType' => 'category',
             'url' => $category->url,
-        ]], 'one', [$index->handle], ['siteId' => $siteId]);
+        ]], [$index->handle], ['siteId' => $siteId]);
 
         $this->assertCount(1, $results);
         $this->assertSame((int)$category->id, $results[0]['id']);
         $this->assertSame('category', $results[0]['type']);
-        $this->assertSame($category->getGroup()->name, $results[0]['group'] ?? null);
-        $this->assertSame($category->getGroup()->handle, $results[0]['groupHandle'] ?? null);
+        $this->assertArrayNotHasKey('group', $results[0]);
+        $this->assertArrayNotHasKey('groupHandle', $results[0]);
         $this->assertArrayNotHasKey('section', $results[0]);
+        $this->assertSame(true, $results[0]['_liveComparison']['elementFound'] ?? null);
+        $this->assertSame('category', $results[0]['_liveComparison']['type'] ?? null);
         $this->assertSame(0, $counting->getByIdCalls);
     }
 
@@ -255,45 +259,69 @@ final class EnrichmentBatchLoadTest extends TestCase
         $siteId = (int)$asset->siteId;
 
         $counting = $this->installCountingElements();
-        $results = SearchManager::$plugin->enrichment->enrichResults([[
+        $results = SearchManager::$plugin->liveComparison->compareHits([[
             'id' => (int)$asset->id,
             'siteId' => $siteId,
             '_index' => $index->handle,
             'type' => 'asset',
             'elementType' => 'asset',
             'url' => $asset->url,
-        ]], 'cheese', [$index->handle], ['siteId' => $siteId]);
+        ]], [$index->handle], ['siteId' => $siteId]);
 
         $this->assertCount(1, $results);
         $this->assertSame((int)$asset->id, $results[0]['id']);
         $this->assertSame('asset', $results[0]['type']);
-        $this->assertSame($asset->getVolume()->name, $results[0]['volume'] ?? null);
-        $this->assertSame($asset->getVolume()->handle, $results[0]['volumeHandle'] ?? null);
+        $this->assertArrayNotHasKey('volume', $results[0]);
+        $this->assertArrayNotHasKey('volumeHandle', $results[0]);
         $this->assertArrayNotHasKey('section', $results[0]);
+        $this->assertSame(true, $results[0]['_liveComparison']['elementFound'] ?? null);
+        $this->assertSame('asset', $results[0]['_liveComparison']['type'] ?? null);
         $this->assertSame(0, $counting->getByIdCalls);
     }
 
-    public function testUserEnrichmentFallsBackWhenHitTitleIsEmpty(): void
+    public function testUserLiveComparisonFallsBackWhenHitTitleIsEmpty(): void
     {
         $user = User::find()->status(User::STATUS_ACTIVE)->one();
         if (!$user instanceof User) {
-            $this->markTestSkipped('No active user available for enrichment title fallback coverage.');
+            $this->markTestSkipped('No active user available for live-comparison title fallback coverage.');
         }
 
         $expectedTitle = $user->fullName ?: ($user->username ?: ($user->email ?: '#' . $user->id));
         $siteId = (int)Craft::$app->getSites()->getCurrentSite()->id;
 
-        $results = SearchManager::$plugin->enrichment->enrichResults([[
+        $results = SearchManager::$plugin->liveComparison->compareHits([[
             'id' => (int)$user->id,
             'siteId' => $siteId,
             '_elementType' => User::class,
             'type' => 'user',
             'title' => '',
-        ]], '', [], ['siteId' => $siteId]);
+        ]], [], ['siteId' => $siteId]);
 
         $this->assertCount(1, $results);
-        $this->assertSame($expectedTitle, $results[0]['title']);
+        $this->assertSame('', $results[0]['title']);
+        $this->assertSame($expectedTitle, $results[0]['_liveComparison']['title'] ?? null);
         $this->assertArrayNotHasKey('section', $results[0]);
+    }
+
+    public function testMissingLiveElementsKeepCanonicalHitWithElementFoundFalse(): void
+    {
+        $hit = [
+            'id' => 987654321,
+            'siteId' => (int)Craft::$app->getSites()->getCurrentSite()->id,
+            '_elementType' => Entry::class,
+            'title' => 'Indexed hit with URL',
+            'url' => 'https://example.test/indexed-only',
+            'type' => 'entry',
+        ];
+
+        $results = SearchManager::$plugin->liveComparison->compareHits([$hit], [], [
+            'siteId' => $hit['siteId'],
+        ]);
+
+        $this->assertCount(1, $results);
+        $this->assertSame('https://example.test/indexed-only', $results[0]['url'] ?? null);
+        $this->assertSame(false, $results[0]['_liveComparison']['elementFound'] ?? null);
+        $this->assertNull($results[0]['_liveComparison']['url'] ?? null);
     }
 
     public function testQueryRuleDebugOnlyPassesThroughWhenExplicitlyEnabled(): void
@@ -313,11 +341,8 @@ final class EnrichmentBatchLoadTest extends TestCase
             '_queryRuleDebug' => ['boosts' => [['ruleId' => 123]]],
         ];
 
-        $withoutDebug = SearchManager::$plugin->enrichment->enrichResults([$hit], '', [$index->handle], ['siteId' => $siteId]);
-        $withDebug = SearchManager::$plugin->enrichment->enrichResults([$hit], '', [$index->handle], [
-            'siteId' => $siteId,
-            'includeQueryRuleDebug' => true,
-        ]);
+        $withoutDebug = CanonicalHitPipeline::presentHits([$hit], '', [$index->handle], [], false);
+        $withDebug = CanonicalHitPipeline::presentHits([$hit], '', [$index->handle], [], true);
 
         $this->assertArrayNotHasKey('_queryRuleDebug', $withoutDebug[0]);
         $this->assertSame(['boosts' => [['ruleId' => 123]]], $withDebug[0]['_queryRuleDebug'] ?? null);
@@ -440,7 +465,7 @@ final class EnrichmentBatchLoadTest extends TestCase
             'name' => 'Description',
             'searchable' => true,
         ]);
-        $element = SearchManagerEnrichmentTestElement::withFields([$field], [
+        $element = SearchManagerLiveComparisonTestElement::withFields([$field], [
             'description' => 'Live element field contains organic but must not be read.',
         ]);
 
@@ -517,15 +542,16 @@ final class EnrichmentBatchLoadTest extends TestCase
         $hits = [['id' => $entry->id, 'siteId' => $siteId, '_index' => '__sm_no_such_index']];
 
         $counting = $this->installCountingElements();
-        $results = SearchManager::$plugin->enrichment->enrichResults($hits, '', [], ['siteId' => $siteId]);
+        $results = SearchManager::$plugin->liveComparison->compareHits($hits, [], ['siteId' => $siteId]);
 
         $this->assertCount(1, $results);
         $this->assertSame((int) $entry->id, $results[0]['id']);
+        $this->assertSame(true, $results[0]['_liveComparison']['elementFound'] ?? null);
         $this->assertGreaterThanOrEqual(1, $counting->getByIdCalls, 'unresolved hits still load via the getElementById fallback');
     }
 }
 
-class SearchManagerEnrichmentTestElement extends Element
+class SearchManagerLiveComparisonTestElement extends Element
 {
     private ?FieldLayout $testFieldLayout = null;
 
@@ -536,7 +562,7 @@ class SearchManagerEnrichmentTestElement extends Element
 
     public static function displayName(): string
     {
-        return 'Search Manager Enrichment Test Element';
+        return 'Search Manager Live Comparison Test Element';
     }
 
     /**
@@ -581,7 +607,7 @@ class SearchManagerEnrichmentTestElement extends Element
     }
 }
 
-final class SearchManagerEnrichmentTestVariant extends SearchManagerEnrichmentTestElement
+final class SearchManagerLiveComparisonTestVariant extends SearchManagerLiveComparisonTestElement
 {
     private ?ElementInterface $product = null;
 

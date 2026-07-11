@@ -17,6 +17,7 @@ use GraphQL\Type\Definition\ResolveInfo;
 use lindemannrock\searchmanager\controllers\ApiController;
 use lindemannrock\searchmanager\gql\resolvers\SearchResolver;
 use lindemannrock\searchmanager\gql\types\SearchHitType;
+use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\SearchManager;
@@ -30,13 +31,14 @@ use PHPUnit\Framework\Attributes\CoversClass;
  * @since 5.53.0
  */
 #[CoversClass(ApiController::class)]
+#[CoversClass(CanonicalHitPipeline::class)]
 #[CoversClass(SearchFieldValueHelper::class)]
 #[CoversClass(SearchDebugAccessHelper::class)]
 #[CoversClass(IndexedSnippetService::class)]
 #[CoversClass(SearchHitType::class)]
 final class SearchHitFieldsContractTest extends TestCase
 {
-    public function testEnrichedHitReturnsFieldsWithoutFlatCustomKeys(): void
+    public function testCanonicalHitReturnsFieldsWithoutFlatCustomKeys(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         if ($pair === null) {
@@ -75,7 +77,13 @@ final class SearchHitFieldsContractTest extends TestCase
             ],
         ];
 
-        $results = SearchManager::$plugin->enrichment->enrichResults([$hit], 'metadata snippet', [$index->handle], ['siteId' => $entry->siteId]);
+        $results = CanonicalHitPipeline::presentHits([$hit], 'metadata snippet', [$index->handle], [
+            'snippetMode' => 'balanced',
+            'snippetLength' => 150,
+            'showCodeSnippets' => false,
+            'parseMarkdownSnippets' => false,
+            'hideResultsWithoutUrl' => false,
+        ]);
 
         self::assertCount(1, $results);
         self::assertSame([
@@ -103,6 +111,35 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('Metadata title', $results[0]['title'] ?? null);
         self::assertSame('https://example.test/metadata-url', $results[0]['url'] ?? null);
         self::assertSame(42.0, $results[0]['score'] ?? null);
+    }
+
+    public function testCanonicalPipelineFiltersOnlyIndexedUrlsWhenRequested(): void
+    {
+        $hits = [
+            [
+                'id' => 1001,
+                'title' => 'Has Indexed URL',
+                'url' => 'https://example.test/indexed',
+                'type' => 'entry',
+            ],
+            [
+                'id' => 1002,
+                'title' => 'No Indexed URL',
+                'url' => '',
+                'type' => 'entry',
+            ],
+        ];
+
+        $visible = CanonicalHitPipeline::presentHits($hits, '', ['pages'], [
+            'hideResultsWithoutUrl' => false,
+        ]);
+        $filtered = CanonicalHitPipeline::presentHits($hits, '', ['pages'], [
+            'hideResultsWithoutUrl' => true,
+        ]);
+
+        self::assertCount(2, $visible);
+        self::assertCount(1, $filtered);
+        self::assertSame('Has Indexed URL', $filtered[0]['title'] ?? null);
     }
 
     public function testRawRestHitReturnsFieldsAndStripsInternalFields(): void
@@ -308,7 +345,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('Indexed intro text', $hit['snippet'] ?? null);
     }
 
-    public function testRawSnippetSettingsMatchEnrichedSnippetSettings(): void
+    public function testRestSnippetSettingsAreStableWhenLegacyEnrichParamIsPresent(): void
     {
         $pair = $this->findWorkingIndexAndElement();
         if ($pair === null) {
@@ -350,7 +387,7 @@ final class SearchHitFieldsContractTest extends TestCase
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $enrichedShort = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
+        $legacyEnrichShort = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
             'snippetLength' => 50,
             'parseMarkdownSnippets' => true,
         ])->data['hits'][0] ?? [];
@@ -362,15 +399,15 @@ final class SearchHitFieldsContractTest extends TestCase
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
-        $enrichedLongUnparsed = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
+        $legacyEnrichLongUnparsed = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
             'snippetLength' => 1000,
             'parseMarkdownSnippets' => false,
         ])->data['hits'][0] ?? [];
 
-        self::assertSame($rawShort['snippet'] ?? null, $enrichedShort['snippet'] ?? null);
-        self::assertSame($rawShort['headings'] ?? null, $enrichedShort['headings'] ?? null);
-        self::assertSame($rawLongUnparsed['snippet'] ?? null, $enrichedLongUnparsed['snippet'] ?? null);
-        self::assertSame($rawLongUnparsed['headings'] ?? null, $enrichedLongUnparsed['headings'] ?? null);
+        self::assertSame($rawShort['snippet'] ?? null, $legacyEnrichShort['snippet'] ?? null);
+        self::assertSame($rawShort['headings'] ?? null, $legacyEnrichShort['headings'] ?? null);
+        self::assertSame($rawLongUnparsed['snippet'] ?? null, $legacyEnrichLongUnparsed['snippet'] ?? null);
+        self::assertSame($rawLongUnparsed['headings'] ?? null, $legacyEnrichLongUnparsed['headings'] ?? null);
         self::assertLessThan(mb_strlen((string)($rawLongUnparsed['snippet'] ?? '')), mb_strlen((string)($rawShort['snippet'] ?? '')));
         self::assertStringContainsString('**needle**', (string)($rawLongUnparsed['snippet'] ?? ''));
         self::assertStringNotContainsString('**needle**', (string)($rawShort['snippet'] ?? ''));
@@ -414,9 +451,12 @@ final class SearchHitFieldsContractTest extends TestCase
             ],
         ];
 
-        $results = SearchManager::$plugin->enrichment->enrichResults([$hit], 'composer', [$index->handle], [
-            'siteId' => $entry->siteId,
+        $results = CanonicalHitPipeline::presentHits([$hit], 'composer', [$index->handle], [
+            'snippetMode' => 'balanced',
             'snippetLength' => 150,
+            'showCodeSnippets' => false,
+            'parseMarkdownSnippets' => false,
+            'hideResultsWithoutUrl' => false,
         ]);
 
         self::assertCount(1, $results);
@@ -664,16 +704,49 @@ final class SearchHitFieldsContractTest extends TestCase
     {
         $api = $this->readPluginFile('src/controllers/ApiController.php');
         $resolver = $this->readPluginFile('src/gql/resolvers/SearchResolver.php');
+        $settings = $this->readPluginFile('src/controllers/SettingsController.php');
         $query = $this->readPluginFile('src/gql/queries/SearchQuery.php');
         $hitType = $this->readPluginFile('src/gql/types/SearchHitType.php');
 
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $api);
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $resolver);
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $settings);
         self::assertStringNotContainsString('getElementById', $api);
         self::assertStringNotContainsString('getSiteById', $api);
         self::assertStringNotContainsString('withLiveTitleUrlFallback', $api);
         self::assertStringNotContainsString('enrichResults(', $resolver);
-        self::assertStringNotContainsString('SearchManager::$plugin->enrichment', $resolver);
+        self::assertStringNotContainsString('SearchManager::$plugin->liveComparison', $api);
+        self::assertStringNotContainsString('SearchManager::$plugin->liveComparison', $resolver);
         self::assertStringNotContainsString("'enrich'", $query);
         self::assertStringNotContainsString('GqlHelper::siteHandle', $hitType);
+    }
+
+    public function testTestToolCanonicalDefaultsMatchRestDefaultsByConstruction(): void
+    {
+        $api = $this->readPluginFile('src/controllers/ApiController.php');
+        $settings = $this->readPluginFile('src/controllers/SettingsController.php');
+
+        foreach ([
+            "'snippetMode' => (string) \$request->getBodyParam('snippetMode', 'balanced')",
+            "'snippetLength' => (int) \$request->getBodyParam('snippetLength', 150)",
+            "'showCodeSnippets' => (bool) \$request->getBodyParam('showCodeSnippets', false)",
+            "'parseMarkdownSnippets' => (bool) \$request->getBodyParam('parseMarkdownSnippets', false)",
+        ] as $needle) {
+            self::assertStringContainsString($needle, $settings);
+        }
+
+        foreach ([
+            "'snippetMode' => (string) \$request->getParam('snippetMode', 'balanced')",
+            "'snippetLength' => (int) \$request->getParam('snippetLength', 150)",
+            "'showCodeSnippets' => (bool) \$request->getParam('showCodeSnippets', false)",
+            "'parseMarkdownSnippets' => (bool) \$request->getParam('parseMarkdownSnippets', false)",
+        ] as $needle) {
+            self::assertStringContainsString($needle, $api);
+        }
+
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $api);
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $settings);
+        self::assertStringNotContainsString("getBodyParam('snippetLength', 200)", $settings);
     }
 
     /**

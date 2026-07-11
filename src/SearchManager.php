@@ -59,9 +59,9 @@ use lindemannrock\searchmanager\services\ApiKeyService;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\services\DeviceDetectionService;
-use lindemannrock\searchmanager\services\EnrichmentService;
 use lindemannrock\searchmanager\services\IndexedSnippetService;
 use lindemannrock\searchmanager\services\IndexingService;
+use lindemannrock\searchmanager\services\LiveComparisonService;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
 use lindemannrock\searchmanager\services\SetupService;
@@ -90,8 +90,8 @@ use yii\base\Event;
  * @property-read ApiKeyService $apiKeys
  * @property-read AutocompleteService $autocomplete
  * @property-read DeviceDetectionService $deviceDetection
- * @property-read EnrichmentService $enrichment
  * @property-read IndexedSnippetService $indexedSnippets
+ * @property-read LiveComparisonService $liveComparison
  * @property-read PromotionService $promotions
  * @property-read QueryRuleService $queryRules
  * @property-read SetupService $setup
@@ -281,9 +281,9 @@ class SearchManager extends Plugin
             'autocomplete' => AutocompleteService::class,
             'backend' => BackendService::class,
             'deviceDetection' => DeviceDetectionService::class,
-            'enrichment' => EnrichmentService::class,
             'indexedSnippets' => IndexedSnippetService::class,
             'indexing' => IndexingService::class,
+            'liveComparison' => LiveComparisonService::class,
             'pendingSyncs' => PendingSyncRepository::class,
             'pendingSyncProcessor' => PendingSyncProcessor::class,
             'promotions' => PromotionService::class,
