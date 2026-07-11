@@ -75,6 +75,11 @@ class SearchQuery extends Query
                         'type' => Type::string(),
                         'description' => 'Optional backend-specific filter expression. Requires a single index.',
                     ],
+                    'retrievableFields' => [
+                        'name' => 'retrievableFields',
+                        'type' => Type::listOf(Type::string()),
+                        'description' => 'Optional custom field handles to return under hit fields. Narrows each index setting and never widens it.',
+                    ],
                     'language' => [
                         'name' => 'language',
                         'type' => Type::string(),

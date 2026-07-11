@@ -406,6 +406,7 @@ class IndicesController extends Controller
         $index->disableStopWords = (bool)$request->getBodyParam('disableStopWords', false);
         $index->skipEntriesWithoutUrl = (bool)$request->getBodyParam('skipEntriesWithoutUrl', false);
         $index->splitSections = (bool)$request->getBodyParam('splitSections', false);
+        $index->retrievableFields = SearchIndex::normalizeRetrievableFields($request->getBodyParam('retrievableFields', '*'));
         $criteria = $request->getBodyParam('criteria', []);
         $validCriteriaKeys = ['sections', 'volumes', 'groups', 'sourceHandles'];
         $index->criteria = array_intersect_key(

@@ -229,6 +229,7 @@ class Install extends Migration
             'disableStopWords' => $this->boolean()->notNull()->defaultValue(false),
             'skipEntriesWithoutUrl' => $this->boolean()->notNull()->defaultValue(false),
             'splitSections' => $this->boolean()->notNull()->defaultValue(false),
+            'retrievableFields' => $this->text()->notNull()->defaultValue('["*"]')->comment('JSON list of public custom field handles to return'),
             'source' => $this->enum('source', ['config', 'database'])->notNull()->defaultValue('database'),
             'backend' => $this->string(255)->null()->comment('Handle of configured backend to use'),
             'lastIndexed' => $this->dateTime()->null(),

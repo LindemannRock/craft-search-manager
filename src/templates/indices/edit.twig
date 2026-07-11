@@ -310,6 +310,18 @@
         errors: index.getErrors('headingLevels'),
     }) }}
 
+    {{ forms.textareaField({
+        label: "Retrievable Fields"|t('search-manager'),
+        instructions: "Controls which custom field values are returned under the public fields payload."|t('search-manager'),
+        tip: "Use * to return all fields, leave empty to return none, or enter one field handle per line. This is a payload and contract control, not a secrecy boundary; searchable fields can still affect matching and snippets."|t('search-manager'),
+        id: 'retrievableFields',
+        name: 'retrievableFields',
+        value: (index.retrievableFields ?? ['*'])|join("\n"),
+        rows: 4,
+        class: 'code',
+        errors: index.getErrors('retrievableFields'),
+    }) }}
+
     <hr style="margin: 25px 0; border: none; border-top: 1px solid #e3e5e8;">
 
     <h2 style="font-size: 1.1em; font-weight: 600; margin-bottom: 15px;">{{ "Advanced Settings"|t('search-manager') }}</h2>

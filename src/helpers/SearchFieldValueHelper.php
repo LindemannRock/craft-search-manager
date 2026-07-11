@@ -52,9 +52,10 @@ class SearchFieldValueHelper
 
     /**
      * @param array<string, mixed> $hit
+     * @param list<string>|null $retrievableFields
      * @return array<string, mixed>
      */
-    public static function exposeFields(array $hit): array
+    public static function exposeFields(array $hit, ?array $retrievableFields = null): array
     {
         if (array_key_exists('_fields', $hit)) {
             $hit['fields'] = self::fieldsFromHit($hit);
@@ -63,6 +64,7 @@ class SearchFieldValueHelper
         } else {
             $hit['fields'] = self::normalizeFields($hit['fields']);
         }
+        $hit['fields'] = self::filterFields($hit['fields'], $retrievableFields);
         unset($hit['_fields']);
 
         return $hit;
@@ -103,6 +105,24 @@ class SearchFieldValueHelper
         }
 
         return $values;
+    }
+
+    /**
+     * @param array<string, mixed> $fields
+     * @param list<string>|null $retrievableFields
+     * @return array<string, mixed>
+     */
+    public static function filterFields(array $fields, ?array $retrievableFields = null): array
+    {
+        if ($retrievableFields === null || $retrievableFields === ['*']) {
+            return $fields;
+        }
+
+        if ($retrievableFields === []) {
+            return [];
+        }
+
+        return array_intersect_key($fields, array_flip($retrievableFields));
     }
 
     /**

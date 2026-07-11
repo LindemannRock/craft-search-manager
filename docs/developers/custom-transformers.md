@@ -145,11 +145,11 @@ class ProductTransformer extends AutoTransformer
 
 ## Custom Fields in API and GraphQL
 
-The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, sorted, and returned by the REST API depending on backend configuration.
+The array returned by `transform()` is the indexed document. Search Manager sends that document to the selected backend, so custom fields such as `price`, `brand`, `latitude`, `availability`, or `vehicleModel` can be searched, filtered, and sorted depending on backend configuration. Returning those values in public REST and GraphQL hits is controlled separately by the index's `retrievableFields` setting.
 
 For automatic documents, `AutoTransformer` includes Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. Fields with that setting disabled are excluded from the searchable content and from the internal `_fields` map.
 
-For values that should be returned to API and GraphQL consumers as custom field data, write them to `_fields`:
+For values that may be returned to API and GraphQL consumers as custom field data, write them to `_fields`:
 
 ```php
 $data['_fields']['price'] = (string)($element->price ?? 0);
@@ -157,7 +157,7 @@ $data['_fields']['brand'] = $element->brand->one()?->title ?? null;
 $data['_fields']['availability'] = $element->inStock ? 'in-stock' : 'out-of-stock';
 ```
 
-Those values appear in `/actions/search-manager/api/search` as `hit.fields.price`, `hit.fields.brand`, and `hit.fields.availability`. GraphQL exposes the same data as a typed list:
+Those values appear in `/actions/search-manager/api/search` as `hit.fields.price`, `hit.fields.brand`, and `hit.fields.availability` only when allowed by `retrievableFields`. GraphQL exposes the same data as a typed list:
 
 ```graphql
 fields {
@@ -168,6 +168,8 @@ fields {
 ```
 
 Keep Search Manager metadata at the top level. Fields such as `title`, `url`, `section`, `productType`, and `score` have reserved response meanings, while `_fields` is the collision-safe namespace for user-defined field handles.
+
+`retrievableFields` accepts `['*']` for all `_fields` values, `[]` for none, or an explicit field-handle allowlist. It controls only the public `fields` payload. Searchable `_fields` values can still affect matching and snippets, so do not treat this setting as a secrecy boundary.
 
 Provider-specific setup still applies to custom transformer fields:
 

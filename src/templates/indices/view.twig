@@ -150,6 +150,20 @@
 				<dt class="heading">{{ 'Element Type'|t('search-manager') }}</dt>
 				<dd class="value">{{ elementTypeLabels[index.elementType] ?? (index.elementType|split('\\')|last) }}</dd>
 			</div>
+			<div class="data">
+				<dt class="heading">{{ 'Retrievable Fields'|t('search-manager') }}</dt>
+				<dd class="value">
+					{% if index.retrievableFields == ['*'] %}
+						<span>{{ 'All fields (*)'|t('search-manager') }}</span>
+					{% elseif index.retrievableFields is empty %}
+						<span>{{ 'No custom fields'|t('search-manager') }}</span>
+					{% else %}
+						{% for fieldHandle in index.retrievableFields %}
+							<code>{{ fieldHandle }}</code>{% if not loop.last %}<br>{% endif %}
+						{% endfor %}
+					{% endif %}
+				</dd>
+			</div>
 			{% set configuredBackend = index.configuredBackend %}
 			<div class="data">
 				<dt class="heading">{{ 'Backend'|t('search-manager') }}</dt>

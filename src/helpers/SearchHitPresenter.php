@@ -19,10 +19,13 @@ class SearchHitPresenter
      * @param array<string, mixed> $hit
      * @return array<string, mixed>
      */
-    public static function present(array $hit, bool $includeQueryRuleDebug = false): array
+    /**
+     * @param list<string>|null $retrievableFields
+     */
+    public static function present(array $hit, bool $includeQueryRuleDebug = false, ?array $retrievableFields = null): array
     {
         $hit = SearchHitIdentityHelper::normalizeHit($hit);
-        $hit = SearchFieldValueHelper::exposeFields($hit);
+        $hit = SearchFieldValueHelper::exposeFields($hit, $retrievableFields);
         $hit = SearchHeadingValueHelper::exposeHeadings($hit);
         if (!array_key_exists('index', $hit) && is_string($hit['_index'] ?? null) && $hit['_index'] !== '') {
             $hit['index'] = $hit['_index'];
@@ -114,7 +117,10 @@ class SearchHitPresenter
      * @param array<string, mixed> $results
      * @return array<string, mixed>
      */
-    public static function presentResults(array $results, bool $includeQueryRuleDebug = false): array
+    /**
+     * @param array<string, list<string>> $retrievableFieldsByIndex
+     */
+    public static function presentResults(array $results, bool $includeQueryRuleDebug = false, array $retrievableFieldsByIndex = []): array
     {
         if (empty($results['hits']) || !is_array($results['hits'])) {
             return $results;
@@ -122,11 +128,26 @@ class SearchHitPresenter
 
         foreach ($results['hits'] as &$hit) {
             if (is_array($hit)) {
-                $hit = self::present($hit, $includeQueryRuleDebug);
+                $hit = self::present($hit, $includeQueryRuleDebug, self::retrievableFieldsForHit($hit, $retrievableFieldsByIndex));
             }
         }
         unset($hit);
 
         return $results;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     * @param array<string, list<string>> $retrievableFieldsByIndex
+     * @return list<string>|null
+     */
+    private static function retrievableFieldsForHit(array $hit, array $retrievableFieldsByIndex): ?array
+    {
+        $index = $hit['index'] ?? $hit['_index'] ?? null;
+        if (!is_string($index) || $index === '') {
+            return null;
+        }
+
+        return $retrievableFieldsByIndex[$index] ?? null;
     }
 }

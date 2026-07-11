@@ -347,6 +347,7 @@ class ApiController extends Controller
      * - platform: Platform info (optional, e.g., 'iOS 17.2', 'Android 14')
      * - appVersion: App version (optional, e.g., '2.1.0')
      * - skipAnalytics: Skip analytics tracking for this search (default: 0)
+     * - retrievableFields: Comma-separated field handles to narrow the public hit fields payload
      *
      * Snippet parameters:
      * - snippetMode: Snippet positioning mode: 'early'|'balanced'|'deep' (default: 'balanced')
@@ -395,6 +396,7 @@ class ApiController extends Controller
         $siteId = $request->getParam('siteId');
         $siteId = $siteId ? (int) $siteId : null;
         $language = self::normalizePublicLanguage($request->getParam('language', null) ?? $request->getParam('lang', null));
+        $requestedRetrievableFields = SearchIndex::requestedRetrievableFields($request->getParam('retrievableFields', null));
 
         // Skip analytics if explicitly requested (e.g., widget passes skipAnalytics=1 to prevent keystroke spam)
         $skipAnalytics = (bool) $request->getParam('skipAnalytics', false);
@@ -491,6 +493,7 @@ class ApiController extends Controller
         );
 
         // Run search (single, multi, or all enabled indices)
+        $searchedIndexHandles = $indexHandles;
         if (count($indexHandles) === 1) {
             $results = SearchManager::$plugin->backend->search($indexHandles[0], $query, $options);
         } elseif (count($indexHandles) > 1) {
@@ -511,6 +514,7 @@ class ApiController extends Controller
                 ]);
             }
 
+            $searchedIndexHandles = $allIndexHandles;
             $results = SearchManager::$plugin->backend->searchMultiple($allIndexHandles, $query, $options);
         }
 
@@ -522,12 +526,13 @@ class ApiController extends Controller
         }
 
         if (!empty($results['hits'])) {
-            $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $indexHandles, [
+            $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $searchedIndexHandles, [
                 'snippetMode' => (string) $request->getParam('snippetMode', 'balanced'),
                 'snippetLength' => (int) $request->getParam('snippetLength', 150),
                 'showCodeSnippets' => (bool) $request->getParam('showCodeSnippets', false),
                 'parseMarkdownSnippets' => (bool) $request->getParam('parseMarkdownSnippets', false),
                 'hideResultsWithoutUrl' => (bool) $request->getParam('hideResultsWithoutUrl', false),
+                'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($searchedIndexHandles, $requestedRetrievableFields),
             ]);
         }
 

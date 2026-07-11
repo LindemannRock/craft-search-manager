@@ -127,6 +127,7 @@ class SearchResolver extends Resolver
         if (empty($indexHandles)) {
             $indexHandles = self::enabledIndexHandles();
         }
+        $requestedRetrievableFields = SearchIndex::requestedRetrievableFields($arguments['retrievableFields'] ?? null);
 
         if (empty($indexHandles)) {
             return [
@@ -147,6 +148,7 @@ class SearchResolver extends Resolver
                 'showCodeSnippets' => (bool)($arguments['showCodeSnippets'] ?? false),
                 'parseMarkdownSnippets' => (bool)($arguments['parseMarkdownSnippets'] ?? false),
                 'hideResultsWithoutUrl' => (bool)($arguments['hideResultsWithoutUrl'] ?? false),
+                'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields),
             ]);
         }
 

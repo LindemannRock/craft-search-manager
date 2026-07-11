@@ -20,6 +20,8 @@ use lindemannrock\searchmanager\gql\types\SearchHitType;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
+use lindemannrock\searchmanager\helpers\SearchHitPresenter;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\IndexedSnippetService;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -113,6 +115,77 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame(42.0, $results[0]['score'] ?? null);
     }
 
+    public function testRetrievableFieldsWildcardReturnsAllPublicFields(): void
+    {
+        $hit = $this->rawHit(101, 1);
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'intro', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => ['*']],
+        ])[0] ?? [];
+
+        self::assertSame([
+            'intro' => 'Intro field value',
+            'category' => 'One Another one',
+        ], $result['fields'] ?? null);
+    }
+
+    public function testRetrievableFieldsEmptyListReturnsNoPublicFields(): void
+    {
+        $hit = $this->rawHit(101, 1);
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'intro', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => []],
+        ])[0] ?? [];
+
+        self::assertSame([], $result['fields'] ?? null);
+        self::assertArrayNotHasKey('_fields', $result);
+    }
+
+    public function testRetrievableFieldsAllowlistReturnsOnlyAllowedHandles(): void
+    {
+        $hit = $this->rawHit(101, 1);
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'intro', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => ['category']],
+        ])[0] ?? [];
+
+        self::assertSame(['category' => 'One Another one'], $result['fields'] ?? null);
+    }
+
+    public function testRequestRetrievableFieldsNarrowIndexAllowlistWithoutWidening(): void
+    {
+        self::assertSame(['intro'], SearchIndex::narrowRetrievableFields(['intro', 'category'], ['intro']));
+        self::assertSame(['category'], SearchIndex::narrowRetrievableFields(['category'], ['intro', 'category']));
+        self::assertSame(['category'], SearchIndex::narrowRetrievableFields(['category'], ['*']));
+        self::assertSame(['intro'], SearchIndex::narrowRetrievableFields(['*'], ['intro']));
+        self::assertSame([], SearchIndex::narrowRetrievableFields([], ['intro']));
+    }
+
+    public function testRetrievableFieldNarrowingDoesNotAffectSnippetSources(): void
+    {
+        $hit = $this->rawHit(101, 1);
+        $hit['_fields']['hiddenBody'] = 'Needle phrase only in hidden body';
+
+        $result = CanonicalHitPipeline::presentHits([$hit], 'needle phrase', ['metadata-index'], [
+            'retrievableFieldsByIndex' => ['metadata-index' => []],
+        ])[0] ?? [];
+
+        self::assertSame([], $result['fields'] ?? null);
+        self::assertSame('Needle phrase only in hidden body', $result['snippet'] ?? null);
+    }
+
+    public function testPresenterStillStripsInternalsAfterRetrievableFieldFiltering(): void
+    {
+        $hit = SearchHitPresenter::present($this->rawHit(101, 1), false, []);
+
+        self::assertSame([], $hit['fields'] ?? null);
+        self::assertArrayNotHasKey('_fields', $hit);
+        self::assertArrayNotHasKey('_index', $hit);
+        self::assertArrayNotHasKey('_elementType', $hit);
+        self::assertArrayNotHasKey('content', $hit);
+        self::assertArrayNotHasKey('description', $hit);
+    }
+
     public function testCanonicalPipelineFiltersOnlyIndexedUrlsWhenRequested(): void
     {
         $hits = [
@@ -203,6 +276,29 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame([], $hit['headings'] ?? null);
         self::assertArrayNotHasKey('_headings', $hit);
         self::assertArrayNotHasKey('_matchedHeadings', $hit);
+    }
+
+    public function testRestRetrievableFieldsRequestNarrowsPublicFields(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        [$index, $entry] = $pair;
+        $stub = $this->installStubBackend();
+        $hit = $this->rawHit($entry->id, $entry->siteId);
+        $hit['_index'] = $index->handle;
+        $stub->searchResponse = [
+            'hits' => [$hit],
+            'total' => 1,
+        ];
+
+        $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
+            'retrievableFields' => 'intro',
+        ]);
+
+        self::assertSame(['intro' => 'Intro field value'], $response->data['hits'][0]['fields'] ?? null);
     }
 
     public function testRestDebugReturnsBackendMetaWhenAllowed(): void

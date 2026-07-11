@@ -605,6 +605,8 @@ return [
          * - criteria: Closure to filter elements
          * - transformer: Custom transformer class (optional)
          * - headingLevels: Array of heading levels to extract (optional, default: [2,3,4])
+         * - splitSections: Index SourceDoc intro/heading sections as separate hits (optional, default: false)
+         * - retrievableFields: Public custom field handles returned in hit.fields; ['*'] all, [] none (default: ['*'])
          * - language: Language code for stemming/stop words (optional, auto-detected from site)
          * - backend: Handle of configured backend (optional, uses defaultBackendHandle if not set)
          * - enabled: Whether the index is active
@@ -622,6 +624,7 @@ return [
             //         return $query->section(['news', 'blog'])->status('enabled');
             //     },
             //     'transformer' => \modules\searchmodule\transformers\EntryEnTransformer::class,
+            //     'retrievableFields' => ['intro', 'summary'],
             //     'language' => 'en',
             //     'enabled' => true,
             // ],
@@ -637,6 +640,7 @@ return [
             //     'transformer' => \modules\searchmodule\transformers\EntryArTransformer::class,
             //     'language' => 'ar',
             //     'backend' => 'production-algolia', // Use specific backend for this index
+            //     'retrievableFields' => [], // Return no custom field values in public hits
             //     'enabled' => true,
             //     'enableAnalytics' => true, // Track search analytics for this index
             //     'skipEntriesWithoutUrl' => false, // Skip entries without a URL

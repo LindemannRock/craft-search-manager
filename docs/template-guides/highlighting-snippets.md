@@ -190,7 +190,7 @@ By default, block-level code in your content is included in search results but e
 
 ### How It Works
 
-When custom field content is indexed, the transformer stores searchable custom field values under `fields` for API presentation. Docs Manager SourceDoc indices also store an internal code-included body alongside the normal code-free body after a full reindex. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
+When custom field content is indexed, the transformer stores searchable custom field values under the internal `_fields` map. The index's `retrievableFields` setting controls which of those values appear under public API/GraphQL `fields`, but snippets can still use searchable `_fields` values that are omitted from the public payload. Docs Manager SourceDoc indices also store an internal code-included body alongside the normal code-free body after a full reindex. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
 
 - **`showCodeSnippets: false`** (default) — block-level code is removed before building result snippets
 - **`showCodeSnippets: true`** — snippets include block-level code content

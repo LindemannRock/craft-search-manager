@@ -289,6 +289,7 @@ class SettingsController extends Controller
                 'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
                 'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
                 'includeSnippetDebug' => $includeDebugMeta,
+                'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex([$indexHandle]),
             ], $includeQueryRuleDebug);
 
             if ($includeDebugMeta) {

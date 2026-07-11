@@ -204,6 +204,25 @@ Custom transformer classes must be autoloadable from your project or module name
 
 ## Per-Index Settings
 
+### Retrievable Fields
+
+`retrievableFields` controls which indexed custom field values are returned under public hit `fields`:
+
+```php
+'entries-en' => [
+    'retrievableFields' => ['intro', 'summary'],
+    // ...
+],
+```
+
+Use `['*']` to return every public `_fields` value, `[]` to return none, or an explicit list of field handles. The default is `['*']` for database indices, new indices, and config indices that omit the key. For production APIs, prefer an explicit narrow list that matches the frontend contract.
+
+REST and GraphQL callers can pass request-time `retrievableFields` to narrow this list for one request. Request values never widen the index allowlist; if an index allows only `intro`, requesting `summary` returns neither field.
+
+This setting trims the public payload only. Snippets and matching still use all searchable indexed `_fields`, so a field omitted from `fields` can still produce matches or snippets. No reindex is required when you change `retrievableFields` in Phase 1.
+
+The concept is similar to Algolia's `attributesToRetrieve`, Meilisearch's displayed attributes, and Typesense's `include_fields`, but Phase 1 applies the rule in Search Manager's response shaping layer so snippet sources are preserved consistently across backends.
+
 ### Disable Stop Words
 
 Some indices may contain technical content where stop words are meaningful:

@@ -54,6 +54,7 @@ GET /actions/search-manager/api/search
 | `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, or `user` |
 | `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
+| `retrievableFields` | index setting | Optional comma-separated custom field handles to return under each hit's `fields` object. This can narrow the index's `retrievableFields` setting but cannot widen it. Use an empty value to return no custom fields. |
 | `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
@@ -119,7 +120,9 @@ GET /actions/search-manager/api/search
 > [!NOTE]
 > The REST response does not return internal metadata such as synonyms expanded, rules matched, or private indexed content.
 
-Searchable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills this object automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. A custom transformer can add response-ready custom field values by writing to the internal `_fields` map before indexing.
+Retrievable custom field values are returned under each hit's `fields` object. The keys are Craft field handles and the values are the flattened indexed strings. AutoTransformer fills the internal source map automatically from Craft custom fields only when the field's **Use this field's values as search keywords** setting is enabled. The index's `retrievableFields` setting then decides which of those values are returned publicly.
+
+`retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching, matched metadata, and snippets even when they are omitted from `fields`. No reindex is required when you change retrievable fields because Phase 1 trims the public response from already indexed data.
 
 Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `section`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
 
@@ -170,7 +173,7 @@ Search returns one canonical hit shape:
 }
 ```
 
-`snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in `fields`, then from the indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
+`snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in the indexed `_fields` map, then from the indexed clean body. Snippet source selection is independent of `retrievableFields`, so a field can be omitted from `fields` and still produce a snippet. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
 
 For split SourceDoc indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
 
@@ -222,7 +225,7 @@ For split SourceDoc indices, each returned hit is a flat section hit, not a grou
 | `productTypeHandle` | `string` | Commerce product type handle when the hit is a Product or Variant. |
 | `category` | `string` | Source document category or transformer-provided category metadata when available. |
 | `sourceId` | `int` | Source document or transformer-provided source ID when available. |
-| `fields` | `object` | Searchable custom field values keyed by field handle. Values are indexed content, not translated UI labels. |
+| `fields` | `object` | Retrievable custom field values keyed by field handle. Values are indexed content, not translated UI labels. |
 | `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body. `null` when no eligible snippet source contains the query. |
 | `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects for whole-page records. Split SourceDoc section hits return an empty array. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |

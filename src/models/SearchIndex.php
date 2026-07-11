@@ -103,6 +103,17 @@ class SearchIndex extends Model
      */
     public bool $splitSections = false;
 
+    /**
+     * Custom field handles returned under public hit `fields`.
+     *
+     * `['*']` returns every public `_fields` value, `[]` returns none, and any
+     * other list is an explicit handle allowlist.
+     *
+     * @var list<string>
+     * @since 5.53.0
+     */
+    public array $retrievableFields = ['*'];
+
     public ?\DateTime $lastIndexed = null;
 
     public ?\DateTime $dateCreated = null;
@@ -156,6 +167,7 @@ class SearchIndex extends Model
             [['backend'], 'validateBackendHandle'],
             [['enabled', 'enableAnalytics', 'disableStopWords', 'skipEntriesWithoutUrl', 'splitSections'], 'boolean'],
             [['splitSections'], 'validateSplitSectionsStorage'],
+            [['retrievableFields'], 'validateRetrievableFields'],
             [['documentCount'], 'integer'],
             [['siteId'], 'validateSiteId'],
             [['source'], 'in', 'range' => ['config', 'database']],
@@ -347,6 +359,148 @@ class SearchIndex extends Model
         $this->$attribute = array_values(array_unique($normalized));
     }
 
+    /**
+     * Normalize the public fields allowlist.
+     *
+     * @since 5.53.0
+     */
+    public function validateRetrievableFields(string $attribute): void
+    {
+        $this->$attribute = self::normalizeRetrievableFields($this->$attribute);
+    }
+
+    /**
+     * Normalize an index-level retrievableFields setting.
+     *
+     * @return list<string>
+     * @since 5.53.0
+     */
+    public static function normalizeRetrievableFields(mixed $value): array
+    {
+        if ($value === null) {
+            return ['*'];
+        }
+
+        if (is_string($value)) {
+            $value = str_replace(["\r\n", "\r", "\n"], ',', $value);
+            $value = array_map('trim', explode(',', $value));
+        }
+
+        if (!is_array($value)) {
+            return ['*'];
+        }
+
+        $handles = [];
+        foreach ($value as $handle) {
+            if (!is_scalar($handle)) {
+                continue;
+            }
+
+            $handle = trim((string)$handle);
+            if ($handle === '') {
+                continue;
+            }
+
+            if ($handle === '*') {
+                return ['*'];
+            }
+
+            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_:-]*$/', $handle)) {
+                continue;
+            }
+
+            $handles[] = $handle;
+        }
+
+        return array_values(array_unique($handles));
+    }
+
+    /**
+     * Build the effective public fields allowlist for an index and optional request.
+     *
+     * Request-level retrievableFields can narrow the index allowlist but never
+     * widen it.
+     *
+     * @param list<string>|null $requested
+     * @return list<string>
+     * @since 5.53.0
+     */
+    public function effectiveRetrievableFields(?array $requested = null): array
+    {
+        return self::narrowRetrievableFields($this->retrievableFields, $requested);
+    }
+
+    /**
+     * @param list<string> $indexFields
+     * @param list<string>|null $requested
+     * @return list<string>
+     * @since 5.53.0
+     */
+    public static function narrowRetrievableFields(array $indexFields, ?array $requested): array
+    {
+        $indexFields = self::normalizeRetrievableFields($indexFields);
+        if ($requested === null) {
+            return $indexFields;
+        }
+
+        $requested = self::normalizeRetrievableFields($requested);
+        if ($indexFields === []) {
+            return [];
+        }
+
+        if ($requested === ['*']) {
+            return $indexFields;
+        }
+
+        if ($indexFields === ['*']) {
+            return $requested;
+        }
+
+        return array_values(array_intersect($indexFields, $requested));
+    }
+
+    /**
+     * Parse a request-time retrievableFields value.
+     *
+     * Null means the caller omitted the parameter. Empty strings/lists mean
+     * "return no custom fields".
+     *
+     * @return list<string>|null
+     * @since 5.53.0
+     */
+    public static function requestedRetrievableFields(mixed $value): ?array
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return self::normalizeRetrievableFields($value);
+    }
+
+    /**
+     * Resolve effective retrievable fields for multiple public indices.
+     *
+     * @param array<int, string> $indexHandles
+     * @param list<string>|null $requested
+     * @return array<string, list<string>>
+     * @since 5.53.0
+     */
+    public static function retrievableFieldsByIndex(array $indexHandles, ?array $requested = null): array
+    {
+        $resolved = [];
+
+        foreach (array_values(array_unique($indexHandles)) as $handle) {
+            $index = self::findByHandle($handle);
+            if ($index === null) {
+                continue;
+            }
+
+            $resolved[$handle] = $index->effectiveRetrievableFields($requested);
+        }
+
+        return $resolved;
+    }
+
     // =========================================================================
     // DATABASE OPERATIONS
     // =========================================================================
@@ -399,6 +553,7 @@ class SearchIndex extends Model
             $model->disableStopWords = $configData['disableStopWords'] ?? false;
             $model->skipEntriesWithoutUrl = $configData['skipEntriesWithoutUrl'] ?? false;
             $model->splitSections = (bool)($configData['splitSections'] ?? false);
+            $model->retrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
             $model->source = 'config';
 
             // Load stats from database if metadata record exists
@@ -570,6 +725,7 @@ class SearchIndex extends Model
                 $model->disableStopWords = $indexConfig['disableStopWords'] ?? false;
                 $model->skipEntriesWithoutUrl = $indexConfig['skipEntriesWithoutUrl'] ?? false;
                 $model->splitSections = (bool)($indexConfig['splitSections'] ?? false);
+                $model->retrievableFields = self::normalizeRetrievableFields($indexConfig['retrievableFields'] ?? null);
                 $model->source = 'config';
 
                 // Check if database metadata exists for this config index (array lookup)
@@ -672,6 +828,9 @@ class SearchIndex extends Model
         $model->disableStopWords = (bool)($row['disableStopWords'] ?? false);
         $model->skipEntriesWithoutUrl = (bool)($row['skipEntriesWithoutUrl'] ?? false);
         $model->splitSections = (bool)($row['splitSections'] ?? false);
+        $model->retrievableFields = self::normalizeRetrievableFields(!empty($row['retrievableFields'])
+            ? json_decode((string)$row['retrievableFields'], true)
+            : null);
         $model->source = $row['source'];
         $model->lastIndexed = self::convertToLocalTime($row['lastIndexed']);
         $model->dateCreated = self::parseDate($row['dateCreated'] ?? null);
@@ -736,6 +895,7 @@ class SearchIndex extends Model
                 'disableStopWords' => (int)$this->disableStopWords,
                 'skipEntriesWithoutUrl' => (int)$this->skipEntriesWithoutUrl,
                 'splitSections' => (int)$this->splitSections,
+                'retrievableFields' => json_encode(self::normalizeRetrievableFields($this->retrievableFields)),
                 'source' => $this->source,
                 'lastIndexed' => $this->lastIndexed ? Db::prepareDateForDb($this->lastIndexed) : null,
                 'documentCount' => $this->documentCount,
@@ -863,6 +1023,7 @@ class SearchIndex extends Model
             $freshHeadingLevels = $configData['headingLevels'] ?? null;
             $freshEnabled = $configData['enabled'] ?? true;
             $freshDisableStopWords = $configData['disableStopWords'] ?? false;
+            $freshRetrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
 
             // Validate transformer class before syncing
             if (!$this->validateConfigTransformerClass($freshTransformer)) {
@@ -888,6 +1049,7 @@ class SearchIndex extends Model
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
                         'disableStopWords' => (int)$freshDisableStopWords,
+                        'retrievableFields' => json_encode($freshRetrievableFields),
                         'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
                     ],
                     ['id' => $this->id]
@@ -901,6 +1063,7 @@ class SearchIndex extends Model
             $this->language = $freshLanguage;
             $this->enabled = $freshEnabled;
             $this->disableStopWords = (bool)$freshDisableStopWords;
+            $this->retrievableFields = $freshRetrievableFields;
 
             $this->logInfo('Metadata synced successfully', ['handle' => $this->handle]);
             self::clearCache();
@@ -936,6 +1099,7 @@ class SearchIndex extends Model
             $freshHeadingLevels = $configData['headingLevels'] ?? null;
             $freshEnabled = $configData['enabled'] ?? true;
             $freshDisableStopWords = $configData['disableStopWords'] ?? false;
+            $freshRetrievableFields = self::normalizeRetrievableFields($configData['retrievableFields'] ?? null);
 
             // Validate transformer class before updating stats
             if (!$this->validateConfigTransformerClass($freshTransformer)) {
@@ -962,6 +1126,7 @@ class SearchIndex extends Model
                             'language' => $freshLanguage,
                             'enabled' => (int)$freshEnabled,
                             'disableStopWords' => (int)$freshDisableStopWords,
+                            'retrievableFields' => json_encode($freshRetrievableFields),
                             'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
                             'documentCount' => $documentCount,
                             'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
@@ -984,6 +1149,7 @@ class SearchIndex extends Model
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
                         'disableStopWords' => (int)$freshDisableStopWords,
+                        'retrievableFields' => json_encode($freshRetrievableFields),
                         'source' => 'config',
                         'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
                         'documentCount' => $documentCount,
@@ -1001,6 +1167,7 @@ class SearchIndex extends Model
             $this->language = $freshLanguage;
             $this->enabled = $freshEnabled;
             $this->disableStopWords = (bool)$freshDisableStopWords;
+            $this->retrievableFields = $freshRetrievableFields;
             $this->lastIndexed = new \DateTime();
             $this->documentCount = $documentCount;
             self::clearCache();
@@ -1166,6 +1333,10 @@ class SearchIndex extends Model
 
         if ($this->splitSections) {
             $config['splitSections'] = true;
+        }
+
+        if ($this->retrievableFields !== ['*']) {
+            $config['retrievableFields'] = $this->retrievableFields;
         }
 
         // Only include backend if set (optional override)
@@ -1374,6 +1545,12 @@ class SearchIndex extends Model
             $lines[] = "    'splitSections' => true,";
         }
 
+        if (isset($configData['retrievableFields'])) {
+            $lines[] = "    'retrievableFields' => " . self::formatStringListConfigValue(
+                self::normalizeRetrievableFields($configData['retrievableFields'])
+            ) . ',';
+        }
+
         // Criteria - show as closure placeholder if it's a closure
         if (isset($configData['criteria'])) {
             if ($configData['criteria'] instanceof \Closure) {
@@ -1401,6 +1578,14 @@ class SearchIndex extends Model
         }
 
         return var_export($className, true);
+    }
+
+    /**
+     * @param list<string> $values
+     */
+    private static function formatStringListConfigValue(array $values): string
+    {
+        return '[' . implode(', ', array_map(static fn(string $value): string => var_export($value, true), $values)) . ']';
     }
 
     /**

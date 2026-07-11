@@ -87,6 +87,7 @@ Search arguments:
 | `page` | `Int` | Zero-based page number. |
 | `type` | `String` | Optional stable document-kind filter, for example `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
 | `filters` | `String` | Optional backend-specific filter expression. Requires exactly one `indices` value. |
+| `retrievableFields` | `[String]` | Optional custom field handles to return under `fields`. This can narrow each index's `retrievableFields` setting but cannot widen it. Pass an empty list to return no custom fields. |
 | `language` | `String` | Optional language code for localized operators. |
 | `source` | `String` | Analytics source. Defaults to `graphql`. |
 | `platform` | `String` | Optional analytics platform label. |
@@ -102,7 +103,9 @@ Search arguments:
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
-GraphQL exposes custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer includes Craft custom fields in this list only when the field's **Use this field's values as search keywords** setting is enabled.
+GraphQL exposes retrievable custom field values through a typed key/value list because GraphQL cannot represent dynamic object keys. Each item in `fields` has the field `handle`, a flattened `value`, and `values` for list-valued indexed data. AutoTransformer adds Craft custom fields to the internal source map only when the field's **Use this field's values as search keywords** setting is enabled; the index's `retrievableFields` setting decides which of those values are returned publicly.
+
+`retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching and snippets even when they are omitted from `fields`. No reindex is required when you change retrievable fields because Phase 1 trims GraphQL results from already indexed data.
 
 GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields.
 
@@ -133,7 +136,7 @@ Common hit fields:
 | `volume` / `volumeHandle` | Asset volume metadata when the hit is an Asset. |
 | `group` / `groupHandle` | Category group metadata when the hit is a Category. |
 | `productType` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |
-| `fields` | Searchable custom field values as `SearchManagerSearchFieldValue` objects with `handle`, `value`, and `values`. AutoTransformer includes Craft custom fields only when the field is marked searchable in Craft. |
+| `fields` | Retrievable custom field values as `SearchManagerSearchFieldValue` objects with `handle`, `value`, and `values`. AutoTransformer adds Craft custom fields to the source map only when the field is marked searchable in Craft. |
 | `slug` | Public indexed slug when the element or transformer provides one. |
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
 | `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
@@ -195,7 +198,7 @@ Backend filter examples:
 
 The GraphQL response shape stays the same across backends. The index handle selects the backend, and backend-specific differences mainly show up in `score`, filter syntax, and raw provider behavior that GraphQL intentionally keeps behind typed fields.
 
-Custom transformer fields can still be searched or filtered by the selected backend when the backend is configured for them. Values intended for API consumers should be written to the transformer's `_fields` map so REST returns them as a `fields` object and GraphQL returns them as `fields { handle value values }`.
+Custom transformer fields can still be searched or filtered by the selected backend when the backend is configured for them. Values intended for API consumers should be written to the transformer's `_fields` map and allowed by the index's `retrievableFields` setting so REST returns them as a `fields` object and GraphQL returns them as `fields { handle value values }`.
 
 ### Algolia
 
