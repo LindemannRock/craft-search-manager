@@ -100,6 +100,20 @@ final class AuditConfirmingScanRegressionTest extends TestCase
         self::assertSame([203], array_map('intval', array_column($storage->getElementSuggestions('sale%', self::TEST_SITE_ID), 'elementId')));
     }
 
+    public function testElementSuggestionsDedupeSplitSectionDocumentKeys(): void
+    {
+        $storage = new MySqlStorage(self::MYSQL_INDEX_HANDLE);
+        $storage->storeElementByKey(self::TEST_SITE_ID, 301, '301_1_intro', 'Install Guide', 'source-doc');
+        $storage->storeElementByKey(self::TEST_SITE_ID, 301, '301_1_install', 'Install Guide', 'source-doc');
+        $storage->storeElementByKey(self::TEST_SITE_ID, 301, '301_1_configure', 'Install Guide', 'source-doc');
+
+        $suggestions = $storage->getElementSuggestions('install', self::TEST_SITE_ID);
+
+        self::assertCount(1, $suggestions);
+        self::assertSame([301], array_map('intval', array_column($suggestions, 'elementId')));
+        self::assertSame(['Install Guide'], array_column($suggestions, 'title'));
+    }
+
     public function testPostgreSqlPrefixSearchEscapesLikeWildcardsAndRuntimeMatchesWhenAvailable(): void
     {
         $source = $this->readPluginSource('src/search/storage/PostgreSqlStorage.php');
@@ -108,6 +122,7 @@ final class AuditConfirmingScanRegressionTest extends TestCase
 
         self::assertStringContainsString("self::escapeLikePrefix(\$prefix) . '%'", $termsBody);
         self::assertStringContainsString("self::escapeLikePrefix(\$searchText) . '%'", $suggestionsBody);
+        self::assertStringContainsString("->groupBy(['title', 'elementType', 'elementId', 'siteId'])", $suggestionsBody);
         self::assertStringNotContainsString("\$prefix . '%'", $termsBody);
         self::assertStringNotContainsString("\$searchText . '%'", $suggestionsBody);
 

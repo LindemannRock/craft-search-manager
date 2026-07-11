@@ -120,12 +120,19 @@ class SourceDocSectionSplitter
         $document['_bodyClean'] = $sectionBody;
         $document['_headings'] = [];
         $document['headings'] = '';
-        $document['content'] = trim(implode(' ', array_filter([
-            $sectionTitle,
-            $pageData['description'] ?? null,
-            $sectionBody,
-            $pageData['keywords'] ?? null,
-        ], static fn(mixed $value): bool => is_scalar($value) && trim((string)$value) !== '')));
+        $contentParts = [$sectionTitle];
+        if ($sectionType === 'intro') {
+            $contentParts[] = $pageData['description'] ?? null;
+        }
+        $contentParts[] = $sectionBody;
+        if ($sectionType === 'intro') {
+            $contentParts[] = $pageData['keywords'] ?? null;
+        }
+
+        $document['content'] = trim(implode(' ', array_filter(
+            $contentParts,
+            static fn(mixed $value): bool => is_scalar($value) && trim((string)$value) !== '',
+        )));
 
         return $document;
     }

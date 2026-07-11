@@ -18,10 +18,12 @@ use craft\elements\Entry;
 use craft\elements\User;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
+use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\Promotion;
 use lindemannrock\searchmanager\models\QueryRule;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\PromotionService;
 use lindemannrock\searchmanager\services\QueryRuleService;
@@ -281,6 +283,70 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertArrayNotHasKey('section', $results[0]);
     }
 
+    public function testSplitIndexPromotionInjectsPromotedPageSectionHit(): void
+    {
+        $sourceDocClass = 'lindemannrock\\docsmanager\\elements\\SourceDoc';
+        if (!class_exists($sourceDocClass)) {
+            self::markTestSkipped('Requires Docs Manager SourceDoc element support.');
+        }
+
+        $sourceDoc = $sourceDocClass::find()
+            ->siteId((int)Craft::$app->getSites()->getPrimarySite()->id)
+            ->status(null)
+            ->one();
+        if (!$sourceDoc instanceof \craft\base\ElementInterface) {
+            self::markTestSkipped('Requires at least one SourceDoc element.');
+        }
+
+        $siteId = (int)$sourceDoc->siteId;
+        $handle = 'test_split_promotion_shape';
+        $this->deleteTestIndexByHandle($handle);
+
+        $index = new SearchIndex();
+        $index->name = 'Test Split Promotion Shape';
+        $index->handle = $handle;
+        $index->elementType = $sourceDocClass;
+        $index->siteId = [$siteId];
+        $index->transformerClass = '';
+        $index->splitSections = true;
+
+        self::assertTrue($index->save(), implode('; ', $index->getFirstErrors()));
+
+        try {
+            $promotion = new Promotion();
+            $promotion->id = 2147483004;
+            $promotion->title = 'Split promotion insertion regression';
+            $promotion->query = 'split promotion';
+            $promotion->matchType = 'exact';
+            $promotion->indexHandle = $handle;
+            $promotion->elementId = (int)$sourceDoc->id;
+            $promotion->elementType = $sourceDocClass;
+            $promotion->position = 1;
+            $promotion->siteId = $siteId;
+
+            $results = SearchManager::$plugin->promotions->applyPromotions(
+                [['id' => 2147483000, 'siteId' => $siteId, 'score' => 1.0]],
+                'split promotion',
+                $handle,
+                $siteId,
+                [$promotion],
+            );
+
+            self::assertSame((int)$sourceDoc->id, $results[0]['elementId']);
+            self::assertSame('promoted-page', $results[0]['sectionType'] ?? null);
+            self::assertSame('promoted-page', $results[0]['sectionId'] ?? null);
+            self::assertSame($results[0]['title'], $results[0]['sectionTitle'] ?? null);
+            self::assertSame(SearchHitIdentityHelper::sectionDocumentId((int)$sourceDoc->id, $siteId, 'promoted-page'), $results[0]['backendId'] ?? null);
+            self::assertSame($sourceDoc->url, $results[0]['sectionUrl'] ?? null);
+            self::assertSame(0, $results[0]['sectionIndex'] ?? null);
+            self::assertNull($results[0]['snippet'] ?? null);
+            self::assertSame([], $results[0]['headings'] ?? null);
+            self::assertTrue($results[0]['promoted']);
+        } finally {
+            $this->deleteTestIndexByHandle($handle);
+        }
+    }
+
     public function testAssetPromotionInjectsVolumeMetadataWithoutSection(): void
     {
         $asset = Asset::find()->status(Element::STATUS_ENABLED)->one();
@@ -512,6 +578,28 @@ final class CommerceTargetElementTypesTest extends TestCase
     private function readPluginFile(string $path): string
     {
         return (string)file_get_contents(dirname(__DIR__, 2) . '/' . $path);
+    }
+
+    private function deleteTestIndexByHandle(string $handle): void
+    {
+        $ids = (new \craft\db\Query())
+            ->select('id')
+            ->from('{{%searchmanager_indices}}')
+            ->where(['handle' => $handle])
+            ->column();
+
+        if ($ids !== []) {
+            Craft::$app->getDb()
+                ->createCommand()
+                ->delete('{{%searchmanager_index_sites}}', ['indexId' => $ids])
+                ->execute();
+        }
+
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchmanager_indices}}', ['handle' => $handle])
+            ->execute();
+        SearchIndex::clearCache();
     }
 
     private function findLiveCommerceElement(string $elementType): ?\craft\base\ElementInterface

@@ -619,6 +619,103 @@ final class SearchHitFieldsContractTest extends TestCase
         ], $results[0]['headings'] ?? null);
     }
 
+    public function testSectionHitWithoutBodyTermContextUsesLeadingSectionBodySnippet(): void
+    {
+        $hit = [
+            'id' => 901,
+            'elementId' => 901,
+            'siteId' => 1,
+            'backendId' => '901_1_install',
+            'title' => 'Release Guide',
+            'url' => 'https://example.test/docs/release',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            'sectionType' => 'heading',
+            'sectionId' => 'install',
+            'sectionTitle' => 'Install',
+            'sectionLevel' => 2,
+            'sectionUrl' => 'https://example.test/docs/release#install',
+            'sectionIndex' => 1,
+            'sectionBody' => 'This section opens with deployment context and continues with practical setup steps for production teams.',
+            'matchedTerms' => [
+                'title' => ['release'],
+                'content' => [],
+            ],
+        ];
+
+        $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
+            'snippetLength' => 70,
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertStringStartsWith('This section opens with deployment context', (string)($results[0]['snippet'] ?? ''));
+        self::assertStringEndsWith('...', (string)($results[0]['snippet'] ?? ''));
+    }
+
+    public function testSectionHitWithTermContextKeepsQueryCenteredSnippet(): void
+    {
+        $hit = [
+            'id' => 902,
+            'elementId' => 902,
+            'siteId' => 1,
+            'backendId' => '902_1_install',
+            'title' => 'Release Guide',
+            'url' => 'https://example.test/docs/release',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            'sectionType' => 'heading',
+            'sectionId' => 'install',
+            'sectionTitle' => 'Install',
+            'sectionLevel' => 2,
+            'sectionUrl' => 'https://example.test/docs/release#install',
+            'sectionIndex' => 1,
+            'sectionBody' => 'Opening fallback prose is intentionally different. Later the composer command appears near deployment instructions for teams.',
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['composer'],
+            ],
+        ];
+
+        $results = CanonicalHitPipeline::presentHits([$hit], 'composer', ['docs'], [
+            'snippetLength' => 70,
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertStringContainsString('composer', (string)($results[0]['snippet'] ?? ''));
+        self::assertFalse(str_starts_with((string)($results[0]['snippet'] ?? ''), 'Opening fallback prose'));
+    }
+
+    public function testSectionHitWithEmptyBodyKeepsNullSnippet(): void
+    {
+        $hit = [
+            'id' => 903,
+            'elementId' => 903,
+            'siteId' => 1,
+            'backendId' => '903_1_empty',
+            'title' => 'Release Guide',
+            'url' => 'https://example.test/docs/release',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            'sectionType' => 'heading',
+            'sectionId' => 'empty',
+            'sectionTitle' => 'Empty',
+            'sectionLevel' => 2,
+            'sectionUrl' => 'https://example.test/docs/release#empty',
+            'sectionIndex' => 1,
+            'sectionBody' => '',
+            'matchedTerms' => [
+                'title' => ['release'],
+                'content' => [],
+            ],
+        ];
+
+        $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertNull($results[0]['snippet'] ?? null);
+    }
+
     public function testHeadingSnippetsStayNullWithoutIndexedBodyText(): void
     {
         $hit = [

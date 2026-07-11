@@ -655,6 +655,7 @@ class SearchWidgetBase extends HTMLElement {
         const url = href || dataUrl;
         const title = item.dataset.title || item.querySelector('.sm-result-title')?.textContent;
         const id = item.dataset.id;
+        const elementId = item.dataset.elementId || id;
         const query = item.dataset.query || this.state.get('query');
         const isRecentItem = item.classList.contains('sm-recent-item');
         const destinationUrl = appendQueryParam(
@@ -676,10 +677,10 @@ class SearchWidgetBase extends HTMLElement {
 
         // Track analytics for search results (not recent items)
         const sourceIndex = item.dataset.sourceIndex || getSingleConfiguredIndex(this.config);
-        if (id && sourceIndex) {
+        if (elementId && sourceIndex) {
             trackClick({
                 endpoint: this.config.trackClickEndpoint,
-                elementId: id,
+                elementId,
                 query,
                 index: sourceIndex,
                 apiKey: this.config.apiKey,
@@ -694,6 +695,7 @@ class SearchWidgetBase extends HTMLElement {
         // Dispatch result-click event
         this.dispatchWidgetEvent('result-click', {
             id,
+            elementId,
             title,
             url: destinationUrl,
             query,

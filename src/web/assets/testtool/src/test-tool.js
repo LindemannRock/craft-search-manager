@@ -440,6 +440,7 @@
                 const rows = [
                     renderDebugPill(T.transformerClassLabel, debug.transformerClass),
                     renderDebugPill(T.indexElementTypeLabel, debug.indexElementType),
+                    renderDebugPill(T.hitLabel, debug.documentKey),
                     renderDebugPill(T.documentTypeLabel, debug.documentType),
                     elementKind.section ? renderDebugPill(T.sectionLabel, [elementKind.section, elementKind.sectionHandle ? `(${elementKind.sectionHandle})` : '', elementKind.sectionType ? `[${elementKind.sectionType}]` : ''].filter(Boolean).join(' ')) : '',
                     elementKind.volume ? renderDebugPill(T.volumeLabel, [elementKind.volume, elementKind.volumeHandle ? `(${elementKind.volumeHandle})` : ''].filter(Boolean).join(' ')) : '',

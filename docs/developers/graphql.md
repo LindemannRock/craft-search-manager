@@ -34,6 +34,7 @@ query {
       type
       score
       elementId
+      backendId
       siteId
       site
       language
@@ -105,7 +106,7 @@ GraphQL exposes custom field values through a typed key/value list because Graph
 
 GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields.
 
-For split SourceDoc indices, GraphQL returns the same flat section hits as REST. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `total` counts section hits, `snippet` is generated only from the section's own indexed body, and `headings` is empty because the hit is already the section.
+For split SourceDoc indices, GraphQL returns the same flat section hits as REST. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `total` counts section hits, `snippet` is generated only from the section's own indexed body, and `headings` is empty because the hit is already the section.
 
 Common hit fields:
 
@@ -121,9 +122,9 @@ Common hit fields:
 | `sectionHandle` | Entry section handle when the hit is an Entry. |
 | `sectionType` | Entry section type (`single`, `channel`, or `structure`) when the hit is an Entry. For split SourceDoc hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
 | `sectionId` | Section identity within the parent element for split section hits. |
-| `sectionTitle` | Heading title for split `heading` hits. |
-| `sectionLevel` | Heading level for split `heading` hits. |
-| `sectionAnchor` | URL anchor for split section hits. |
+| `sectionTitle` | Parent page title for split `intro` / `promoted-page` hits, or heading title for split `heading` hits. |
+| `sectionLevel` | Heading level for split `heading` hits; `null` for intro and promoted-page hits. |
+| `sectionAnchor` | URL anchor for split heading hits; `null` for intro and promoted-page hits. |
 | `sectionUrl` | Section URL, including the anchor when available. |
 | `sectionIndex` | Zero-based section order within the parent element. |
 | `ancestors` | Breadcrumb ancestors as `SearchManagerSearchAncestor` objects, ordered root to parent. Present for nested Structure Entries, nested Categories, and public Asset folders when indexed. |

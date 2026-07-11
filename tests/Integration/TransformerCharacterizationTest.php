@@ -492,6 +492,7 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('', $sections[0]['sectionUrl']);
         self::assertSame('Intro overview before headings.', $sections[0]['sectionBody']);
         self::assertSame('Intro overview before headings.', $sections[0]['_bodyClean']);
+        self::assertSame('Guide Learn the workflow. Intro overview before headings. setup deployment', $sections[0]['content']);
 
         self::assertSame('heading', $sections[1]['sectionType']);
         self::assertSame('install', $sections[1]['sectionId']);
@@ -501,6 +502,9 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('#install', $sections[1]['sectionUrl']);
         self::assertSame('Run Composer install.', $sections[1]['sectionBody']);
         self::assertSame('Run Composer install.', $sections[1]['_bodyClean']);
+        self::assertSame('Install Run Composer install.', $sections[1]['content']);
+        self::assertStringNotContainsString('Learn the workflow.', $sections[1]['content']);
+        self::assertStringNotContainsString('setup deployment', $sections[1]['content']);
 
         self::assertSame('heading', $sections[2]['sectionType']);
         self::assertSame('deploy', $sections[2]['sectionId']);
@@ -509,6 +513,9 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('deploy', $sections[2]['sectionAnchor']);
         self::assertSame('#deploy', $sections[2]['sectionUrl']);
         self::assertSame('Rebuild the index.', $sections[2]['sectionBody']);
+        self::assertSame('Deploy Rebuild the index.', $sections[2]['content']);
+        self::assertStringNotContainsString('Learn the workflow.', $sections[2]['content']);
+        self::assertStringNotContainsString('setup deployment', $sections[2]['content']);
 
         foreach ($sections as $section) {
             self::assertSame([], $section['_headings']);

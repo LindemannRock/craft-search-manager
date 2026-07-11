@@ -163,6 +163,21 @@ class IndexedSnippetService extends Component
             }
         }
 
+        if ($best === null && $this->isSplitSectionHit($hit) && $bodyText !== '') {
+            $plainSnippet = $this->leadingSnippet($bodyText, $snippetLength);
+            if ($plainSnippet !== null) {
+                $best = $this->snippetCandidate(
+                    handle: 'sectionBody',
+                    snippet: $plainSnippet,
+                    matchedTerms: [],
+                    source: 'section-body-fallback',
+                    position: 0,
+                    preferred: true,
+                    fullContentLength: mb_strlen($bodyText),
+                );
+            }
+        }
+
         $this->setSnippetDebugMeta(
             $debugMeta,
             is_array($best) ? (string)$best['source'] : 'none',
@@ -190,6 +205,14 @@ class IndexedSnippetService extends Component
         }
 
         return $this->htmlToPlainText($body, false, $parseMarkdownSnippets);
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     */
+    private function isSplitSectionHit(array $hit): bool
+    {
+        return isset($hit['sectionType']) && is_string($hit['sectionType']) && trim($hit['sectionType']) !== '';
     }
 
     private function isEligibleSnippetField(

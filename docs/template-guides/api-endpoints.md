@@ -172,7 +172,7 @@ Search returns one canonical hit shape:
 
 `snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in `fields`, then from the indexed clean body. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
 
-For split SourceDoc indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
+For split SourceDoc indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent page, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
 
 ### Response Fields
 
@@ -206,9 +206,9 @@ For split SourceDoc indices, each returned hit is a flat section hit, not a grou
 | `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
 | `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) for Entry hits. For split SourceDoc hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
 | `sectionId` | `string` | Section identity within the parent element for split section hits. |
-| `sectionTitle` | `string` | Heading title for split `heading` hits. |
-| `sectionLevel` | `int` | Heading level for split `heading` hits. |
-| `sectionAnchor` | `string` | URL anchor for split section hits. |
+| `sectionTitle` | `string` | Parent page title for split `intro` / `promoted-page` hits, or heading title for split `heading` hits. |
+| `sectionLevel` | `int` | Heading level for split `heading` hits; `null` for intro and promoted-page hits. |
+| `sectionAnchor` | `string` | URL anchor for split heading hits; `null` for intro and promoted-page hits. |
 | `sectionUrl` | `string` | Section URL, including the anchor when available. |
 | `sectionIndex` | `int` | Zero-based section order within the parent element. |
 | `ancestors` | `array` | Breadcrumb ancestors as `{id, title}` objects, ordered root to parent. Present for nested Structure Entries, nested Categories, and public Asset folders when indexed. |

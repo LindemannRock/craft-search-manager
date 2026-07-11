@@ -117,14 +117,20 @@ export function renderResultItem(result, index, query, options = {}) {
         queryParamName = 'smq',
     } = options;
 
-    const title = result.title || result.name || 'Untitled';
+    const sectionHit = isSectionHit(result);
+    const title = sectionHit
+        ? (result.sectionTitle || result.title || result.name || 'Untitled')
+        : (result.title || result.name || 'Untitled');
     const snippet = result.snippet || '';
-    const rawUrl = result.url || result.href || '#';
+    const rawUrl = sectionHit
+        ? (result.sectionUrl || result.url || result.href || '#')
+        : (result.url || result.href || '#');
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const type = result.section || result.type || '';
     const optionId = getOptionId(listboxId, index);
     const isPromoted = result.promoted === true;
     const sourceIndex = result._index || result.index || '';
+    const identityAttrs = renderIdentityAttrs(result);
 
     // Build highlight options
     const highlightOptions = {
@@ -157,7 +163,7 @@ export function renderResultItem(result, index, query, options = {}) {
     // When debug is enabled, wrap main content so debug-info can be full-width sibling
     if (debug) {
         return `
-            <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+            <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
                     ${promotedBadge}
                     <div class="sm-result-content">
@@ -173,7 +179,7 @@ export function renderResultItem(result, index, query, options = {}) {
     }
 
     return `
-        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+        <a class="sm-result-item${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
             ${promotedBadge}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
@@ -324,6 +330,195 @@ export function renderPromotedBadge(result, config = {}) {
     return `<span class="sm-promoted-badge ${positionClass}">${escapeHtml(badgeText)}</span>`;
 }
 
+function isSectionHit(result) {
+    return Boolean(result && typeof result === 'object' && result.sectionType);
+}
+
+function hasSectionHits(results) {
+    return Array.isArray(results) && results.some(isSectionHit);
+}
+
+function normalizeSectionHitsForHierarchy(results, maxHeadingsPerResult) {
+    const sectionGroups = new Map();
+    const entries = [];
+
+    results.forEach((result, order) => {
+        if (!isSectionHit(result)) {
+            entries.push({
+                type: 'single',
+                item: result,
+                order,
+                score: numericScore(result),
+            });
+            return;
+        }
+
+        const key = sectionGroupKey(result);
+        if (!sectionGroups.has(key)) {
+            const group = {
+                hits: [],
+                order,
+                score: numericScore(result),
+            };
+            sectionGroups.set(key, group);
+            entries.push({
+                type: 'section-group',
+                key,
+                order,
+                score: group.score,
+            });
+        }
+
+        const group = sectionGroups.get(key);
+        group.hits.push(result);
+        group.score = Math.max(group.score, numericScore(result));
+
+        const entry = entries.find(candidate => candidate.type === 'section-group' && candidate.key === key);
+        if (entry) {
+            entry.score = group.score;
+        }
+    });
+
+    return entries
+        .map(entry => {
+            if (entry.type === 'section-group') {
+                const group = sectionGroups.get(entry.key);
+                return {
+                    ...entry,
+                    item: sectionGroupToPageResult(group.hits, maxHeadingsPerResult),
+                };
+            }
+
+            return entry;
+        })
+        .sort((a, b) => {
+            const score = compareScores(b.score, a.score);
+            return score !== 0 ? score : a.order - b.order;
+        })
+        .map(entry => entry.item);
+}
+
+function sectionGroupToPageResult(hits, maxHeadingsPerResult) {
+    const sortedHits = [...hits].sort((a, b) => sectionIndex(a) - sectionIndex(b));
+    const introHit = sortedHits.find(hit => hit.sectionType === 'intro') || null;
+    const bestHit = [...hits].sort((a, b) => {
+        const score = compareScores(numericScore(b), numericScore(a));
+        return score !== 0 ? score : sectionIndex(a) - sectionIndex(b);
+    })[0] || sortedHits[0] || {};
+    const pageHit = introHit || bestHit;
+    const elementId = elementIdentity(pageHit);
+    const siteId = pageHit.siteId ?? '';
+    const headingLimit = Number.isFinite(maxHeadingsPerResult) && maxHeadingsPerResult > 0
+        ? maxHeadingsPerResult
+        : 3;
+
+    const headings = sortedHits
+        .filter(hit => hit.sectionType === 'heading')
+        .sort((a, b) => {
+            const score = compareScores(numericScore(b), numericScore(a));
+            return score !== 0 ? score : sectionIndex(a) - sectionIndex(b);
+        })
+        .slice(0, headingLimit)
+        .sort((a, b) => sectionIndex(a) - sectionIndex(b))
+        .map(sectionHitToHeading);
+
+    return {
+        ...pageHit,
+        id: elementId || pageHit.id,
+        elementId: elementId || pageHit.elementId,
+        backendId: introHit?.backendId || pageHit.backendId || syntheticPageBackendId(elementId, siteId),
+        title: pageHit.title || pageHit.sectionTitle || pageHit.name || 'Untitled',
+        url: pageHit.url || '#',
+        snippet: introHit ? (introHit.snippet || null) : null,
+        score: numericScore(bestHit),
+        headings,
+        __sectionHitGroup: true,
+        __useBackendDomId: true,
+    };
+}
+
+function sectionHitToHeading(hit) {
+    const parsedLevel = Number.parseInt(hit.sectionLevel, 10);
+    const level = Number.isFinite(parsedLevel) ? parsedLevel : 2;
+
+    return {
+        title: hit.sectionTitle || hit.title || '',
+        text: hit.sectionTitle || hit.title || '',
+        id: hit.sectionAnchor || hit.sectionId || '',
+        level,
+        url: hit.sectionUrl || hit.url || null,
+        snippet: hit.snippet || null,
+        backendId: hit.backendId || '',
+        elementId: elementIdentity(hit),
+        sectionType: hit.sectionType,
+        _index: hit._index,
+        index: hit.index,
+        matchedTerms: hit.matchedTerms,
+        matchedPhrases: hit.matchedPhrases,
+        __useBackendDomId: true,
+    };
+}
+
+function sectionGroupKey(result) {
+    return [
+        elementIdentity(result) || backendIdentity(result) || '',
+        result.siteId ?? '',
+    ].join(':');
+}
+
+function sectionIndex(result) {
+    const index = Number.parseInt(result.sectionIndex, 10);
+    return Number.isFinite(index) ? index : Number.MAX_SAFE_INTEGER;
+}
+
+function numericScore(result) {
+    const score = Number(result?.score);
+    return Number.isFinite(score) ? score : Number.NEGATIVE_INFINITY;
+}
+
+function compareScores(a, b) {
+    if (a === b) {
+        return 0;
+    }
+
+    return a > b ? 1 : -1;
+}
+
+function syntheticPageBackendId(elementId, siteId) {
+    const element = elementId || 'unknown';
+    return siteId !== null && siteId !== undefined && String(siteId) !== ''
+        ? `${element}_${siteId}`
+        : String(element);
+}
+
+function backendIdentity(result, parent = null) {
+    return result?.backendId || result?.objectID || parent?.backendId || parent?.objectID || result?.id || parent?.id || '';
+}
+
+function elementIdentity(result, parent = null) {
+    return result?.elementId || parent?.elementId || numericId(result?.id) || numericId(parent?.id) || '';
+}
+
+function numericId(value) {
+    if (value === null || value === undefined || value === '') {
+        return '';
+    }
+
+    return /^\d+$/.test(String(value)) ? String(value) : '';
+}
+
+function renderIdentityAttrs(result, parent = null) {
+    const useBackendDomId = Boolean(result?.__useBackendDomId || parent?.__sectionHitGroup || isSectionHit(result));
+    if (!useBackendDomId) {
+        return ` data-id="${escapeHtml(result?.id || '')}"`;
+    }
+
+    const backendId = backendIdentity(result, parent);
+    const elementId = elementIdentity(result, parent);
+
+    return ` data-id="${escapeHtml(backendId)}" data-element-id="${escapeHtml(elementId)}"`;
+}
+
 // =========================================================================
 // HIERARCHICAL RESULT RENDERING
 // =========================================================================
@@ -401,8 +596,11 @@ function renderHierarchicalResults(results, query, options = {}) {
     const useTree = hierarchyStyle === 'tree';
     const useConnectors = hierarchyStyle !== 'none';
 
+    const hierarchicalResults = hasSectionHits(results)
+        ? normalizeSectionHitsForHierarchy(results, maxHeadingsPerResult)
+        : results;
     const groupField = hierarchyGroupBy || 'section';
-    const groups = groupResultsByField(results, groupField);
+    const groups = groupResultsByField(hierarchicalResults, groupField);
     let globalIndex = 0;
 
     return Object.entries(groups).map(([groupName, items]) => {
@@ -414,7 +612,7 @@ function renderHierarchicalResults(results, query, options = {}) {
             // Render matched heading children
             let childrenHtml = '';
             const headings = result.headings || [];
-            const limitedHeadings = headings.slice(0, maxHeadingsPerResult);
+            const limitedHeadings = result.__sectionHitGroup ? headings : headings.slice(0, maxHeadingsPerResult);
             if (limitedHeadings.length > 0) {
                 // Normalize levels: shallowest heading = depth 0
                 const minLevel = Math.min(...limitedHeadings.map(h => h.level || 2));
@@ -487,6 +685,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const optionId = getOptionId(listboxId, index);
     const sourceIndex = result._index || result.index || '';
+    const identityAttrs = renderIdentityAttrs(result);
 
     const highlightOptions = {
         enabled: enableHighlighting,
@@ -509,7 +708,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
 
     if (debug) {
         return `
-            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+            <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
                     ${icon}
                     <div class="sm-result-content">
@@ -524,7 +723,7 @@ function renderHierarchyParent(result, index, query, options = {}) {
     }
 
     return `
-        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(title)}">
+        <a class="sm-result-item sm-hierarchy-parent" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
             ${icon}
             <div class="sm-result-content">
                 <span class="sm-result-title">${highlightedTitle}</span>
@@ -563,10 +762,11 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     const level = Number.isFinite(parsedLevel) ? Math.min(Math.max(parsedLevel, 1), 6) : 2;
     const anchorId = heading.id || (text ? slugifyHeading(text) : '');
     const baseUrl = result.url || '#';
-    const rawUrl = anchorId ? `${baseUrl}#${anchorId}` : baseUrl;
+    const rawUrl = heading.url || (anchorId ? `${baseUrl}#${anchorId}` : baseUrl);
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
     const optionId = getOptionId(listboxId, index);
-    const sourceIndex = result._index || result.index || '';
+    const sourceIndex = heading._index || heading.index || result._index || result.index || '';
+    const identityAttrs = renderIdentityAttrs(heading, result);
 
     const highlightOptions = {
         enabled: enableHighlighting,
@@ -576,11 +776,11 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
 
     const highlightedText = highlightMatches(text, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'title'),
+        terms: getHighlightTerms(heading, 'title') || getHighlightTerms(result, 'title'),
     });
     const highlightedDesc = snippet ? renderSnippetHtml(result, snippet, query, {
         ...highlightOptions,
-        terms: getHighlightTerms(result, 'snippet'),
+        terms: getHighlightTerms(heading, 'snippet') || getHighlightTerms(result, 'snippet'),
     }) : '';
 
     const rowClass = isLast ? ' sm-hierarchy-child-row-last' : '';
@@ -598,8 +798,9 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         if (anchorId) {
             childDebugItems.push(debugItem('anchor', anchorId, 'generic'));
         }
-        if (result.id) {
-            childDebugItems.push(debugItem('parent', result.id, 'generic'));
+        const elementId = elementIdentity(heading, result);
+        if (elementId) {
+            childDebugItems.push(debugItem('parent', elementId, 'generic'));
         }
         debugInfo = `<div class="sm-debug-info">${childDebugItems.join('')}</div>`;
     }
@@ -608,7 +809,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         return `
             <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
                 ${guidesHtml}
-                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
+                <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level} sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(text)}">
                     <div class="sm-result-main">
                         ${hashIcon()}
                         <div class="sm-result-content">
@@ -626,7 +827,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     return `
         <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
             ${guidesHtml}
-            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}" data-id="${escapeHtml(result.id || '')}" data-title="${escapeHtml(text)}">
+            <a class="sm-result-item sm-hierarchy-child sm-hierarchy-level-${level}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(text)}">
                 ${hashIcon()}
                 <div class="sm-result-content">
                     <span class="sm-result-title">${highlightedText}</span>

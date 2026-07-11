@@ -237,6 +237,8 @@ For documentation sites, use the hierarchical result layout to group results and
 } %}
 ```
 
+With split SourceDoc indices, the same hierarchical layout groups flat section hits back under their parent page. Intro hits can provide the page snippet, heading hits render as children, and promoted page hits render at the page level.
+
 ### Snippet Modes
 
 Control how snippets are extracted from content:

@@ -745,6 +745,7 @@ class PostgreSqlStorage implements StorageInterface
             ->from('{{%searchmanager_search_elements}}')
             ->where(['indexHandle' => $this->indexHandle])
             ->andWhere(['like', 'searchText', self::escapeLikePrefix($searchText) . '%', false])
+            ->groupBy(['title', 'elementType', 'elementId', 'siteId'])
             ->limit($limit);
 
         // Filter by siteId if provided (null = all sites)

@@ -381,6 +381,11 @@ class SettingsController extends Controller
             $debug['indexElementType'] = $index->elementType;
         }
 
+        $documentKey = SearchHitIdentityHelper::documentId($hit);
+        if ($documentKey !== null) {
+            $debug['documentKey'] = $documentKey;
+        }
+
         $documentType = $this->settingsTestScalarDebugValue($hit['elementType'] ?? $hit['type'] ?? null);
         if ($documentType !== null) {
             $debug['documentType'] = $documentType;

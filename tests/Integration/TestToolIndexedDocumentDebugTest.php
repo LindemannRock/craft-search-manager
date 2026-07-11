@@ -40,6 +40,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         $index->elementType = CommerceElementTypeHelper::productElementType();
         $hit = [
             'id' => 123,
+            'backendId' => '123_1_intro',
             'siteId' => 1,
             'title' => 'Presenter title',
             'url' => 'https://example.test/product',
@@ -72,6 +73,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
 
         self::assertSame(CommerceTransformer::class, $debug['transformerClass'] ?? null);
         self::assertSame(CommerceElementTypeHelper::productElementType(), $debug['indexElementType'] ?? null);
+        self::assertSame('123_1_intro', $debug['documentKey'] ?? null);
         self::assertSame('product', $debug['documentType'] ?? null);
         self::assertSame([
             'name' => 'Clothing',
@@ -314,6 +316,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'const debug = hit._indexedDocument;',
             'renderDebugPill(T.transformerClassLabel, debug.transformerClass)',
             'renderDebugPill(T.indexElementTypeLabel, debug.indexElementType)',
+            'renderDebugPill(T.hitLabel, debug.documentKey)',
             'renderDebugPill(T.documentTypeLabel, debug.documentType)',
             'renderDebugList(T.variantSkusLabel, commerce.variantSkus)',
             'renderDebugList(T.variantOptionsLabel, commerce.variantOptions)',
