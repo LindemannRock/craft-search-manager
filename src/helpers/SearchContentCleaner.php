@@ -31,7 +31,7 @@ class SearchContentCleaner
             return '';
         }
 
-        $text = strip_tags($html);
+        $text = strip_tags($this->addBlockBoundaries($html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/\s+/', ' ', $text);
 
@@ -52,7 +52,7 @@ class SearchContentCleaner
         }
 
         $text = (string)preg_replace('/<pre[^>]*>.*?<\/pre>/is', ' ', $html);
-        $text = strip_tags($text);
+        $text = strip_tags($this->addBlockBoundaries($text));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = (string)preg_replace('/\s+/', ' ', $text);
 
@@ -68,10 +68,28 @@ class SearchContentCleaner
         $html = (string)preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
         $html = (string)preg_replace('/<pre\b[^>]*>.*?<\/pre>/is', ' ', $html);
         $html = (string)preg_replace('/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $html);
-        $html = (string)preg_replace('/<br\s*\/?>/i', ' ', $html);
-        $html = (string)preg_replace('/<\/(?:p|div|li|td|th|blockquote|section|article)>/i', ' ', $html);
+        $text = strip_tags($this->addBlockBoundaries($html));
+        $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = (string)preg_replace('/\s+/', ' ', $text);
 
-        $text = strip_tags($html);
+        return trim($text);
+    }
+
+    /**
+     * Clean body text while preserving block-level code content.
+     *
+     * @since 5.53.0
+     */
+    public function cleanBodyWithCode(?string $html): string
+    {
+        if (!$html) {
+            return '';
+        }
+
+        $html = (string)preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
+        $html = (string)preg_replace('/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $html);
+        $html = (string)preg_replace('/<\/pre>/i', '</pre> ', $html);
+        $text = strip_tags($this->addBlockBoundaries($html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = (string)preg_replace('/\s+/', ' ', $text);
 
@@ -105,5 +123,12 @@ class SearchContentCleaner
     {
         $this->codeFreeParts = [];
         $this->fullParts = [];
+    }
+
+    private function addBlockBoundaries(string $html): string
+    {
+        $html = (string)preg_replace('/<br\s*\/?>/i', ' ', $html);
+
+        return (string)preg_replace('/<\/(?:h[1-6]|p|div|li|td|th|blockquote|section|article|button)>/i', ' ', $html);
     }
 }

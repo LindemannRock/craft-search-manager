@@ -186,16 +186,20 @@ Per-call options override these defaults.
 
 ## Code Snippets @since(5.39.0)
 
-By default, code blocks (`<pre>` elements) in your content are included in search results but excluded from result snippets. The `showCodeSnippets` setting controls this behavior.
+By default, block-level code in your content is included in search results but excluded from result snippets. That includes HTML `<pre>` blocks and fenced Markdown code blocks. The `showCodeSnippets` setting controls this behavior.
 
 ### How It Works
 
-When custom field content is indexed, the transformer stores searchable custom field values under `fields` for API presentation. At display time, Search Manager chooses whether to include code-like content while building snippets from those stored field values:
+When custom field content is indexed, the transformer stores searchable custom field values under `fields` for API presentation. Docs Manager SourceDoc indices also store an internal code-included body alongside the normal code-free body after a full reindex. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
 
-- **`showCodeSnippets: false`** (default) — code blocks are removed before building result snippets
-- **`showCodeSnippets: true`** — snippets are generated from the full content, including code
+- **`showCodeSnippets: false`** (default) — block-level code is removed before building result snippets
+- **`showCodeSnippets: true`** — snippets include block-level code content
 
-Code can still be searchable when it is present in searchable indexed content. The setting only controls whether code appears in the snippet text shown to the user.
+Inline code spans are sentence content, so their text is always preserved in snippets. Code can still be searchable when it is present in searchable indexed content. The setting only controls whether block-level code appears in the snippet text shown to the user.
+
+Page-mode docs records can be large on external backends; for Algolia-backed documentation, prefer Split Sections so long pages are stored as smaller section records.
+
+For Markdown-heavy fields, `parseMarkdownSnippets` is a display cleanup option. It strips common Markdown markers such as headings, emphasis, horizontal rules, list markers, and inline-code backticks from the plain-text snippet. It does not render Markdown, modify stored/indexed data, or run against genuine HTML rich text.
 
 ### Configuration
 

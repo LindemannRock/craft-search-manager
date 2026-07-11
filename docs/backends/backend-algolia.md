@@ -67,6 +67,10 @@ Search Manager handles the connection, indexing, document IDs, search calls, and
 
 An Algolia index is searchable as soon as Search Manager has indexed records into it. By default, Algolia searches all searchable attributes in the records, so a basic query works without extra setup.
 
+Algolia also enforces record-size limits. Build plan indices have a 10 KB hard per-record limit. Elevate/Grow indices allow larger individual records, but still have a 100 KB per-record limit and a 10 KB average record-size limit across the index. These limits matter for documentation pages because page-mode docs records can include long body text, heading metadata, and stored snippet sources.
+
+For Docs Manager indices on Algolia, prefer Split Sections. Algolia's recommended pattern for long documents is to split them into smaller records, and Search Manager's SourceDoc split mode does that while keeping each hit tied to the parent docs page. Page-mode docs indices with large pages may exceed Algolia limits even before enabling code snippets.
+
 For production relevance, configure Algolia's index settings in Algolia:
 
 - `searchableAttributes` — choose which record fields Algolia searches, and in what priority order.
@@ -103,3 +107,4 @@ Search Manager's template API is designed to be compatible with Scout and trendy
 - Native search replacement is not available
 - Search operators (phrase, NOT, wildcards, etc.) use Algolia's native syntax, not Search Manager's
 - Algolia relevance settings such as `searchableAttributes`, `customRanking`, rules, and replicas are configured in Algolia, not in Search Manager
+- Large page-mode documentation records can exceed Algolia's per-record or average record-size limits. Use Split Sections for Docs Manager indices to keep records smaller.

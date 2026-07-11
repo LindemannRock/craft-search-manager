@@ -286,8 +286,8 @@ Widget configurations define how the frontend search widget appears and behaves:
                 'hierarchyDisplay' => 'individual', // 'individual' or 'unified'
                 'maxHeadingsPerResult' => 3,       // Heading children per result (1-50)
                 'snippetMode' => 'balanced',       // 'early', 'balanced', or 'deep'
-                'showCodeSnippets' => false,       // Show code in snippets
-                'parseMarkdownSnippets' => false,  // Parse markdown before snippets
+                'showCodeSnippets' => false,       // Include block-level code in snippets
+                'parseMarkdownSnippets' => false,  // Clean markdown markers from snippet text
             ],
             'analytics' => [
                 'source' => 'header-search',

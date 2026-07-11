@@ -94,8 +94,8 @@ Search arguments:
 | `skipAnalytics` | `Boolean` | Set to `true` to avoid recording a search analytics row. |
 | `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
 | `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
-| `showCodeSnippets` | `Boolean` | Include code block content in snippets. |
-| `parseMarkdownSnippets` | `Boolean` | Parse markdown before generating snippets. |
+| `showCodeSnippets` | `Boolean` | Include block-level code in snippets. Inline code text is always preserved. |
+| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from snippet display text without changing indexed content. |
 | `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
@@ -389,8 +389,8 @@ Snippet arguments:
 |----------|------|-------|
 | `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
 | `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
-| `showCodeSnippets` | `Boolean` | Include code block content in snippets. |
-| `parseMarkdownSnippets` | `Boolean` | Parse markdown before generating snippets. |
+| `showCodeSnippets` | `Boolean` | Include block-level code in snippets. Inline code text is always preserved. |
+| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from snippet display text without changing indexed content. |
 | `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |

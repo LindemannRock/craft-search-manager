@@ -443,6 +443,7 @@ final class TransformerCharacterizationTest extends TestCase
             'description' => 'Install and configure Search Manager.',
             'sourceId' => null,
             '_bodyClean' => 'Run Composer install. Use the indexing command after deployment.',
+            '_bodyWithCode' => 'Run Composer install. Use the indexing command after deployment.',
             'headings' => 'Install Deploy',
             '_headings' => [
                 [
@@ -459,8 +460,8 @@ final class TransformerCharacterizationTest extends TestCase
                 ],
             ],
             'keywords' => 'setup deployment',
-            'content' => 'Quickstart Install and configure Search Manager. InstallRun Composer install.DeployUse the indexing command after deployment. Install Deploy setup deployment',
-            'excerpt' => 'Quickstart Install and configure Search Manager. InstallRun Composer install.DeployUse the indexing command after deployment. Install Deploy setup deployment',
+            'content' => 'Quickstart Install and configure Search Manager. Install Run Composer install. Deploy Use the indexing command after deployment. Install Deploy setup deployment',
+            'excerpt' => 'Quickstart Install and configure Search Manager. Install Run Composer install. Deploy Use the indexing command after deployment. Install Deploy setup deployment',
         ], (new DocsManagerTransformer())->transform($sourceDoc));
     }
 
@@ -492,6 +493,7 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('', $sections[0]['sectionUrl']);
         self::assertSame('Intro overview before headings.', $sections[0]['sectionBody']);
         self::assertSame('Intro overview before headings.', $sections[0]['_bodyClean']);
+        self::assertSame('Intro overview before headings.', $sections[0]['_sectionBodyWithCode']);
         self::assertSame('Guide Learn the workflow. Intro overview before headings. setup deployment', $sections[0]['content']);
 
         self::assertSame('heading', $sections[1]['sectionType']);
@@ -502,6 +504,7 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('#install', $sections[1]['sectionUrl']);
         self::assertSame('Run Composer install.', $sections[1]['sectionBody']);
         self::assertSame('Run Composer install.', $sections[1]['_bodyClean']);
+        self::assertSame('Run Composer install.', $sections[1]['_sectionBodyWithCode']);
         self::assertSame('Install Run Composer install.', $sections[1]['content']);
         self::assertStringNotContainsString('Learn the workflow.', $sections[1]['content']);
         self::assertStringNotContainsString('setup deployment', $sections[1]['content']);
@@ -513,6 +516,7 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertSame('deploy', $sections[2]['sectionAnchor']);
         self::assertSame('#deploy', $sections[2]['sectionUrl']);
         self::assertSame('Rebuild the index.', $sections[2]['sectionBody']);
+        self::assertSame('Rebuild the index.', $sections[2]['_sectionBodyWithCode']);
         self::assertSame('Deploy Rebuild the index.', $sections[2]['content']);
         self::assertStringNotContainsString('Learn the workflow.', $sections[2]['content']);
         self::assertStringNotContainsString('setup deployment', $sections[2]['content']);
@@ -521,6 +525,51 @@ final class TransformerCharacterizationTest extends TestCase
             self::assertSame([], $section['_headings']);
             self::assertSame('', $section['headings']);
         }
+    }
+
+    public function testSourceDocTabbedCodeChromeIsRemovedBeforeCleaningAndSplitting(): void
+    {
+        $sourceDoc = new SourceDoc();
+        $sourceDoc->id = 703;
+        $sourceDoc->siteId = 1;
+        $sourceDoc->title = 'Installation';
+        $sourceDoc->slug = 'installation';
+        $sourceDoc->category = 'Guides';
+        $sourceDoc->description = 'Install the plugin.';
+        $sourceDoc->htmlContent = '<p>Choose a package command.</p><div class="code-tab-buttons" role="tablist"><button class="code-tab-btn">Composer</button><button class="code-tab-btn">DDEV</button></div><pre><code>composer require acme/package</code></pre><h2 id="php">PHP setup</h2><p>Run the project command.</p><div class="code-tab-buttons" role="tablist"><button class="code-tab-btn">PHP</button><button class="code-tab-btn">DDEV</button></div><pre><code>php craft migrate/all</code></pre>';
+        $sourceDoc->keywords = [];
+
+        $pageData = (new DocsManagerTransformer())->transform($sourceDoc);
+
+        self::assertSame('Choose a package command. Run the project command.', $pageData['_bodyClean']);
+        self::assertSame('Choose a package command. composer require acme/package Run the project command. php craft migrate/all', $pageData['_bodyWithCode']);
+        self::assertStringContainsString('Choose a package command.', $pageData['content']);
+        self::assertStringContainsString('composer require acme/package', $pageData['content']);
+        self::assertStringContainsString('php craft migrate/all', $pageData['content']);
+        self::assertStringNotContainsString('ComposerDDEV', $pageData['content']);
+        self::assertStringNotContainsString('Composer DDEV', $pageData['content']);
+        self::assertStringNotContainsString('PHPDDEV', $pageData['content']);
+        self::assertStringNotContainsString('PHP DDEV', $pageData['content']);
+        self::assertSame([
+            [
+                'text' => 'PHP setup',
+                'id' => 'php',
+                'level' => 2,
+                'description' => 'Run the project command.',
+            ],
+        ], $pageData['_headings']);
+
+        $sections = SourceDocSectionSplitter::split($sourceDoc, $pageData, [2]);
+
+        self::assertCount(2, $sections);
+        self::assertSame('Choose a package command.', $sections[0]['sectionBody']);
+        self::assertSame('Run the project command.', $sections[1]['sectionBody']);
+        self::assertSame('Choose a package command. composer require acme/package', $sections[0]['_sectionBodyWithCode']);
+        self::assertSame('Run the project command. php craft migrate/all', $sections[1]['_sectionBodyWithCode']);
+        self::assertStringNotContainsString('ComposerDDEV', $sections[0]['content']);
+        self::assertStringNotContainsString('Composer DDEV', $sections[0]['content']);
+        self::assertStringNotContainsString('PHPDDEV', $sections[1]['content']);
+        self::assertStringNotContainsString('PHP DDEV', $sections[1]['content']);
     }
 
     public function testPreContentCleanFinalizesAndResetsByteIdentically(): void
@@ -559,11 +608,11 @@ final class TransformerCharacterizationTest extends TestCase
             'sectionHandle' => 'news',
             'sectionType' => 'channel',
             '_fields' => [
-                'body' => 'Intro prose.secret codeOutro prose.',
+                'body' => 'Intro prose. secret codeOutro prose.',
             ],
             '_bodyClean' => 'Intro prose. Outro prose.',
-            'content' => 'Code Entry code-entry Code Entry Intro prose.secret codeOutro prose.',
-            'excerpt' => 'Code Entry code-entry Code Entry Intro prose.secret codeOutro prose.',
+            'content' => 'Code Entry code-entry Code Entry Intro prose. secret codeOutro prose.',
+            'excerpt' => 'Code Entry code-entry Code Entry Intro prose. secret codeOutro prose.',
             '_contentClean' => 'Intro prose. Outro prose.',
         ], $data);
 

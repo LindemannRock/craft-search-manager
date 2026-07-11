@@ -24,7 +24,7 @@ class SourceDocSectionSplitter
      */
     public static function split(SourceDoc $element, array $pageData, array $headingLevels): array
     {
-        $html = (string)($element->htmlContent ?? '');
+        $html = DocsManagerDocumentHelper::htmlContent($element);
         if (trim($html) === '') {
             return [];
         }
@@ -36,6 +36,7 @@ class SourceDocSectionSplitter
 
         $introHtml = $matches === [] ? $html : substr($html, 0, (int)$matches[0][0][1]);
         $introBody = $cleaner->cleanBody($introHtml);
+        $introBodyWithCode = $cleaner->cleanBodyWithCode($introHtml);
         if ($introBody !== '') {
             $sections[] = self::sectionDocument(
                 pageData: $pageData,
@@ -45,6 +46,7 @@ class SourceDocSectionSplitter
                 sectionLevel: null,
                 sectionAnchor: null,
                 sectionBody: $introBody,
+                sectionBodyWithCode: $introBodyWithCode !== '' ? $introBodyWithCode : $introBody,
                 sectionIndex: $sectionIndex++,
             );
         }
@@ -64,8 +66,12 @@ class SourceDocSectionSplitter
 
             $anchor = self::headingAnchor((string)$match[2][0], $title);
             $body = $cleaner->cleanBody($sectionHtml);
+            $bodyWithCode = $cleaner->cleanBodyWithCode($sectionHtml);
             if ($body === '') {
                 $body = $title;
+            }
+            if ($bodyWithCode === '') {
+                $bodyWithCode = $body;
             }
 
             $sections[] = self::sectionDocument(
@@ -76,6 +82,7 @@ class SourceDocSectionSplitter
                 sectionLevel: $level,
                 sectionAnchor: $anchor,
                 sectionBody: $body,
+                sectionBodyWithCode: $bodyWithCode,
                 sectionIndex: $sectionIndex++,
             );
         }
@@ -95,6 +102,7 @@ class SourceDocSectionSplitter
         ?int $sectionLevel,
         ?string $sectionAnchor,
         string $sectionBody,
+        string $sectionBodyWithCode,
         int $sectionIndex,
     ): array {
         $elementId = (int)($pageData['elementId'] ?? $pageData['id'] ?? 0);
@@ -118,6 +126,7 @@ class SourceDocSectionSplitter
         $document['sectionIndex'] = $sectionIndex;
         $document['sectionBody'] = $sectionBody;
         $document['_bodyClean'] = $sectionBody;
+        $document['_sectionBodyWithCode'] = $sectionBodyWithCode;
         $document['_headings'] = [];
         $document['headings'] = '';
         $contentParts = [$sectionTitle];

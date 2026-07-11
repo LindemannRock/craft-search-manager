@@ -76,6 +76,7 @@ class IndexedSnippetService extends Component
                 $matchedTerms,
                 $snippetMode,
                 $snippetLength,
+                $showCodeSnippets,
                 $parseMarkdownSnippets,
                 $title,
                 $url !== '' ? $url : null,
@@ -140,7 +141,7 @@ class IndexedSnippetService extends Component
             }
         }
 
-        $bodyText = $this->bodySnippetText($hit, $parseMarkdownSnippets);
+        $bodyText = $this->bodySnippetText($hit, $showCodeSnippets, $parseMarkdownSnippets);
         if ($bodyText !== '') {
             $matchedBodyTerms = $this->matchedTermsForText($bodyText, $terms);
             if ($matchedBodyTerms !== []) {
@@ -194,9 +195,18 @@ class IndexedSnippetService extends Component
     /**
      * @param array<string, mixed> $hit
      */
-    private function bodySnippetText(array $hit, bool $parseMarkdownSnippets): string
+    private function bodySnippetText(array $hit, bool $showCodeSnippets, bool $parseMarkdownSnippets): string
     {
-        $body = $this->stringValueFromMixed($hit['sectionBody'] ?? null);
+        $body = '';
+        if ($showCodeSnippets) {
+            $body = $this->stringValueFromMixed($hit['_sectionBodyWithCode'] ?? null);
+            if ($body === '') {
+                $body = $this->stringValueFromMixed($hit['_bodyWithCode'] ?? null);
+            }
+        }
+        if ($body === '') {
+            $body = $this->stringValueFromMixed($hit['sectionBody'] ?? null);
+        }
         if ($body === '') {
             $body = $this->stringValueFromMixed($hit['_bodyClean'] ?? null);
         }
@@ -204,7 +214,7 @@ class IndexedSnippetService extends Component
             return '';
         }
 
-        return $this->htmlToPlainText($body, false, $parseMarkdownSnippets);
+        return $this->htmlToPlainText($body, $showCodeSnippets, $parseMarkdownSnippets);
     }
 
     /**
@@ -416,6 +426,7 @@ class IndexedSnippetService extends Component
         ?array $matchedTerms,
         string $snippetMode,
         int $snippetLength,
+        bool $showCodeSnippets,
         bool $parseMarkdownSnippets,
         string $title,
         ?string $url,
@@ -435,11 +446,10 @@ class IndexedSnippetService extends Component
         $titleMatches = $title !== '' && $this->textHasAnyTerm($title, $titleMatchTerms);
         $preparedHeadings = $this->headingsWithDynamicSnippets(
             array_values($headings),
-            $this->bodySnippetText($hit, $parseMarkdownSnippets),
+            $this->bodySnippetText($hit, $showCodeSnippets, $parseMarkdownSnippets),
             $headingSnippetTerms,
             $snippetMode,
             $snippetLength,
-            $parseMarkdownSnippets,
         );
 
         if ($titleMatches || $this->shouldExposeFullBodyHeadings($hit, $documentType)) {
@@ -472,7 +482,6 @@ class IndexedSnippetService extends Component
         array $terms,
         string $snippetMode,
         int $snippetLength,
-        bool $parseMarkdownSnippets,
     ): array {
         $sections = $bodyText !== '' ? $this->headingSectionsFromBody($headings, $bodyText) : [];
         $preparedHeadings = [];
@@ -603,56 +612,91 @@ class IndexedSnippetService extends Component
 
     private function htmlToPlainText(string $html, bool $includeCode, bool $parseMarkdownSnippets): string
     {
-        $html = $this->maybeParseMarkdown($html, $parseMarkdownSnippets);
         $html = (string) preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
 
         if (!$includeCode) {
-            $html = (string) preg_replace('/<(pre|code)\b[^>]*>.*?<\/\1>/is', ' ', $html);
+            $html = $this->removeMarkdownFencedCode($html);
+            $html = (string) preg_replace('/<pre\b[^>]*>.*?<\/pre>/is', ' ', $html);
+        } elseif ($parseMarkdownSnippets) {
+            $html = $this->unwrapMarkdownFencedCode($html);
+            $html = $this->addBlockBoundaries($html);
         }
 
-        $text = strip_tags($html);
+        $html = $this->normalizeInlineCodeHtml($html);
+        $shouldCleanMarkdown = $parseMarkdownSnippets && !$this->containsStructuralHtml($html);
+        $text = strip_tags($this->addBlockBoundaries($html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = $shouldCleanMarkdown ? $this->stripMarkdownSnippetMarkers($text) : $text;
         $text = (string) preg_replace('/\s+/', ' ', $text);
 
         return trim($text);
     }
 
-    private function maybeParseMarkdown(string $text, bool $parseMarkdownSnippets): string
+    private function removeMarkdownFencedCode(string $text): string
     {
-        if (!$parseMarkdownSnippets) {
-            return $text;
-        }
+        $text = (string) preg_replace('/```[A-Za-z0-9_-]*\s*.*?```/s', ' ', $text);
 
-        if (preg_match('/<[^>]+>/', $text)) {
-            return $text;
-        }
-
-        if (!$this->looksLikeMarkdown($text)) {
-            return $text;
-        }
-
-        return (string) \yii\helpers\Markdown::process($text, 'gfm-comment');
+        return (string) preg_replace('/~~~[A-Za-z0-9_-]*\s*.*?~~~/s', ' ', $text);
     }
 
-    private function looksLikeMarkdown(string $text): bool
+    private function unwrapMarkdownFencedCode(string $text): string
     {
-        if (preg_match('/^#{1,6}\s+/m', $text)) {
-            return true;
-        }
-        if (preg_match('/^```/m', $text)) {
-            return true;
-        }
-        if (preg_match('/\[[^\]]+\]\([^)]+\)/', $text)) {
-            return true;
-        }
-        if (preg_match('/^\s*[-*+]\s+/m', $text)) {
-            return true;
-        }
-        if (preg_match('/^\s*\|.+\|\s*$/m', $text) && preg_match('/^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$/m', $text)) {
-            return true;
-        }
+        $text = (string) preg_replace('/```[A-Za-z0-9_-]*\s*(.*?)```/s', ' $1 ', $text);
 
-        return false;
+        return (string) preg_replace('/~~~[A-Za-z0-9_-]*\s*(.*?)~~~/s', ' $1 ', $text);
+    }
+
+    private function normalizeInlineCodeHtml(string $html): string
+    {
+        return (string) preg_replace('/<\/?code\b[^>]*>/i', '', $html);
+    }
+
+    private function stripMarkdownSnippetMarkers(string $text): string
+    {
+        $text = $this->unwrapInlineMarkdownCode($text);
+        $text = $this->removeMarkdownHorizontalRules($text);
+        $text = (string) preg_replace('/(^|\s)#{1,6}\s+/', '$1', $text);
+        $text = $this->stripPairedMarkdownMarkers($text, '\*\*');
+        $text = $this->stripPairedMarkdownMarkers($text, '__');
+        $text = $this->stripPairedMarkdownMarkers($text, '\*');
+        $text = $this->stripPairedMarkdownMarkers($text, '_');
+        $text = (string) preg_replace('/(^|\s)(?:-|\d+\))\s+(?=\S)/', '$1', $text);
+
+        return (string) preg_replace('/\s+/', ' ', $text);
+    }
+
+    private function unwrapInlineMarkdownCode(string $text): string
+    {
+        return (string) preg_replace('/`{1,2}([^`\s][^`]*?[^`\s])`{1,2}/', '$1', $text);
+    }
+
+    private function removeMarkdownHorizontalRules(string $text): string
+    {
+        return (string) preg_replace('/(^|\s)(?:-{3,}|\*{3,}|_{3,})(?=\s|$)/', '$1', $text);
+    }
+
+    private function stripPairedMarkdownMarkers(string $text, string $markerPattern): string
+    {
+        $pattern = '/(?<![\pL\pN])' . $markerPattern . '(\S(?:.*?\S)?)' . $markerPattern . '(?![\pL\pN])/u';
+
+        do {
+            $previous = $text;
+            $text = (string) preg_replace($pattern, '$1', $text);
+        } while ($text !== $previous);
+
+        return $text;
+    }
+
+    private function addBlockBoundaries(string $html): string
+    {
+        $html = (string) preg_replace('/<br\s*\/?>/i', ' ', $html);
+
+        return (string) preg_replace('/<\/(?:h[1-6]|p|div|li|td|th|blockquote|section|article|button)>/i', ' ', $html);
+    }
+
+    private function containsStructuralHtml(string $text): bool
+    {
+        return preg_match('/<\/?(?:h[1-6]|p|div|ul|ol|li|table|thead|tbody|tfoot|tr|td|th|blockquote|section|article)\b[^>]*>/i', $text) === 1;
     }
 
     /**

@@ -372,7 +372,7 @@ class WidgetConfig extends Model
     }
 
     /**
-     * Parse markdown before building snippets
+     * Clean Markdown markers from snippet display text.
      *
      * @since 5.39.0
      */

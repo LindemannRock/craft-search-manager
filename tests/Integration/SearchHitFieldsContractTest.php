@@ -193,7 +193,9 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('excerpt', $hit);
         self::assertArrayNotHasKey('description', $hit);
         self::assertArrayNotHasKey('_bodyClean', $hit);
+        self::assertArrayNotHasKey('_bodyWithCode', $hit);
         self::assertArrayNotHasKey('_contentClean', $hit);
+        self::assertArrayNotHasKey('_sectionBodyWithCode', $hit);
         self::assertArrayNotHasKey('_elementType', $hit);
         self::assertArrayHasKey('snippet', $hit);
         self::assertSame('Intro field value', $hit['snippet']);
@@ -685,6 +687,91 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertFalse(str_starts_with((string)($results[0]['snippet'] ?? ''), 'Opening fallback prose'));
     }
 
+    public function testSourceDocCodeIncludedBodyIsSelectedOnlyWhenCodeSnippetsAreEnabled(): void
+    {
+        $hit = [
+            'id' => 904,
+            'elementId' => 904,
+            'siteId' => 1,
+            'title' => 'ShortLink Installation',
+            'url' => 'https://example.test/docs/shortlink-manager/get-started/installation',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_bodyClean' => 'Install ShortLink Manager before configuring your project.',
+            '_bodyWithCode' => 'Install ShortLink Manager before configuring your project. ddev composer require lindemannrock/craft-shortlink-manager',
+            '_headings' => [
+                [
+                    'text' => 'Install',
+                    'id' => 'install',
+                    'level' => 2,
+                    'description' => 'Install ShortLink Manager before configuring your project.',
+                ],
+            ],
+            'matchedIn' => ['content'],
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['ddev'],
+            ],
+        ];
+
+        $off = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'docs', [
+            'snippetLength' => 120,
+            'showCodeSnippets' => false,
+        ]);
+        $on = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'docs', [
+            'snippetLength' => 120,
+            'showCodeSnippets' => true,
+        ]);
+
+        self::assertNull($off['snippet']);
+        self::assertStringNotContainsString('ddev composer require', (string)($off['headings'][0]['snippet'] ?? ''));
+        self::assertStringContainsString('ddev composer require lindemannrock/craft-shortlink-manager', (string)$on['snippet']);
+        self::assertStringContainsString('ddev composer require lindemannrock/craft-shortlink-manager', (string)($on['headings'][0]['snippet'] ?? ''));
+    }
+
+    public function testSplitSourceDocCodeIncludedSectionBodyIsSelectedOnlyWhenCodeSnippetsAreEnabled(): void
+    {
+        $hit = [
+            'id' => 905,
+            'elementId' => 905,
+            'siteId' => 1,
+            'backendId' => '905_1_install',
+            'title' => 'ShortLink Installation',
+            'url' => 'https://example.test/docs/shortlink-manager/get-started/installation',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            'sectionType' => 'heading',
+            'sectionId' => 'install',
+            'sectionTitle' => 'Install',
+            'sectionLevel' => 2,
+            'sectionUrl' => 'https://example.test/docs/shortlink-manager/get-started/installation#install',
+            'sectionIndex' => 1,
+            'sectionBody' => 'Install ShortLink Manager before configuring your project.',
+            '_sectionBodyWithCode' => 'Install ShortLink Manager before configuring your project. ddev composer require lindemannrock/craft-shortlink-manager',
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['ddev'],
+            ],
+        ];
+
+        $off = CanonicalHitPipeline::presentHits([$hit], 'ddev', ['docs'], [
+            'snippetLength' => 120,
+            'showCodeSnippets' => false,
+            'hideResultsWithoutUrl' => false,
+        ]);
+        $on = CanonicalHitPipeline::presentHits([$hit], 'ddev', ['docs'], [
+            'snippetLength' => 120,
+            'showCodeSnippets' => true,
+            'hideResultsWithoutUrl' => false,
+        ]);
+
+        self::assertStringContainsString('Install ShortLink Manager before configuring your project.', (string)($off[0]['snippet'] ?? ''));
+        self::assertStringNotContainsString('ddev composer require', (string)($off[0]['snippet'] ?? ''));
+        self::assertStringContainsString('ddev composer require lindemannrock/craft-shortlink-manager', (string)($on[0]['snippet'] ?? ''));
+        self::assertArrayNotHasKey('_sectionBodyWithCode', $on[0]);
+        self::assertArrayNotHasKey('sectionBody', $on[0]);
+    }
+
     public function testSectionHitWithEmptyBodyKeepsNullSnippet(): void
     {
         $hit = [
@@ -869,6 +956,164 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertStringNotContainsString('**needle**', $longHeading);
         self::assertStringContainsString('**needle**', $unparsedMain);
         self::assertStringContainsString('**needle**', $unparsedHeading);
+    }
+
+    public function testMarkdownSnippetDisplayCleanupMatrixKeepsInlineCodeAndControlsBlockCode(): void
+    {
+        $hit = [
+            'title' => 'DateRangeHelper Guide',
+            'url' => 'https://example.test/docs/daterangehelper',
+            'type' => 'entry',
+            'elementType' => 'entry',
+            '_fields' => [
+                'intro' => '## DateRangeHelper Intro --- Use `inline daterangehelper` and **strong daterangehelper** in prose. ```php block daterangehelper code ``` ### More daterangehelper notes.',
+            ],
+            'matchedTerms' => [
+                'content' => ['daterangehelper'],
+            ],
+        ];
+
+        $cleanCodeOff = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'showCodeSnippets' => false,
+            'parseMarkdownSnippets' => true,
+        ]);
+        $cleanCodeOn = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'showCodeSnippets' => true,
+            'parseMarkdownSnippets' => true,
+        ]);
+        $rawCodeOff = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'showCodeSnippets' => false,
+            'parseMarkdownSnippets' => false,
+        ]);
+        $rawCodeOn = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'showCodeSnippets' => true,
+            'parseMarkdownSnippets' => false,
+        ]);
+
+        $cleanOffSnippet = (string)($cleanCodeOff['snippet'] ?? '');
+        $cleanOnSnippet = (string)($cleanCodeOn['snippet'] ?? '');
+        $rawOffSnippet = (string)($rawCodeOff['snippet'] ?? '');
+        $rawOnSnippet = (string)($rawCodeOn['snippet'] ?? '');
+
+        self::assertStringContainsString('DateRangeHelper Intro Use inline daterangehelper and strong daterangehelper in prose.', $cleanOffSnippet);
+        self::assertStringContainsString('inline daterangehelper', $cleanOffSnippet);
+        self::assertStringContainsString('daterangehelper', $cleanOffSnippet);
+        self::assertStringNotContainsString('block daterangehelper code', $cleanOffSnippet);
+        self::assertStringNotContainsString('##', $cleanOffSnippet);
+        self::assertStringNotContainsString('###', $cleanOffSnippet);
+        self::assertStringNotContainsString('---', $cleanOffSnippet);
+        self::assertStringNotContainsString('**', $cleanOffSnippet);
+        self::assertStringNotContainsString('`', $cleanOffSnippet);
+
+        self::assertStringContainsString('block daterangehelper code', $cleanOnSnippet);
+        self::assertStringContainsString('inline daterangehelper', $cleanOnSnippet);
+        self::assertStringNotContainsString('##', $cleanOnSnippet);
+        self::assertStringNotContainsString('###', $cleanOnSnippet);
+        self::assertStringNotContainsString('---', $cleanOnSnippet);
+        self::assertStringNotContainsString('**', $cleanOnSnippet);
+        self::assertStringNotContainsString('```', $cleanOnSnippet);
+        self::assertStringNotContainsString('`inline', $cleanOnSnippet);
+
+        self::assertStringContainsString('## DateRangeHelper', $rawOffSnippet);
+        self::assertStringContainsString('**strong daterangehelper**', $rawOffSnippet);
+        self::assertStringContainsString('`inline daterangehelper`', $rawOffSnippet);
+        self::assertStringNotContainsString('block daterangehelper code', $rawOffSnippet);
+
+        self::assertStringContainsString('## DateRangeHelper', $rawOnSnippet);
+        self::assertStringContainsString('**strong daterangehelper**', $rawOnSnippet);
+        self::assertStringContainsString('`inline daterangehelper`', $rawOnSnippet);
+        self::assertStringContainsString('```php block daterangehelper code ```', $rawOnSnippet);
+    }
+
+    public function testMarkdownListMarkerCleanupDoesNotEatProseSymbolsOrSentenceNumbers(): void
+    {
+        $hit = [
+            'title' => 'DateRangeHelper Notes',
+            'url' => 'https://example.test/docs/daterangehelper-notes',
+            'type' => 'entry',
+            'elementType' => 'entry',
+            '_fields' => [
+                'intro' => '### 1) Item daterangehelper for Campaign Manager + Next Plugins, kept consistent + correct. They developed it in 1966. No matter what.',
+            ],
+            'matchedTerms' => [
+                'content' => ['daterangehelper'],
+            ],
+        ];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'showCodeSnippets' => false,
+            'parseMarkdownSnippets' => true,
+        ]);
+
+        $snippet = (string)($result['snippet'] ?? '');
+
+        self::assertStringContainsString('Item daterangehelper for Campaign Manager + Next Plugins, kept consistent + correct.', $snippet);
+        self::assertStringContainsString('They developed it in 1966. No matter what.', $snippet);
+        self::assertStringNotContainsString('###', $snippet);
+        self::assertStringNotContainsString('1) Item', $snippet);
+    }
+
+    public function testHtmlRichTextFieldSnippetsAreNotMarkdownParsed(): void
+    {
+        $hit = [
+            'title' => 'DateRangeHelper Rich Text',
+            'url' => 'https://example.test/docs/rich-text',
+            'type' => 'entry',
+            'elementType' => 'entry',
+            '_fields' => [
+                'intro' => '<h2>Discovery **daterangehelper**</h2><p>[docs](https://example.test) paragraph.</p>',
+            ],
+            'matchedTerms' => [
+                'content' => ['daterangehelper'],
+            ],
+        ];
+
+        $parsed = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'parseMarkdownSnippets' => true,
+        ]);
+        $raw = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'parseMarkdownSnippets' => false,
+        ]);
+
+        $snippet = (string)($parsed['snippet'] ?? '');
+
+        self::assertStringContainsString('Discovery **daterangehelper** [docs](https://example.test) paragraph.', $snippet);
+        self::assertSame($raw['snippet'] ?? null, $parsed['snippet'] ?? null);
+    }
+
+    public function testPredominantlyMarkdownFieldWithIncidentalInlineHtmlStillParses(): void
+    {
+        $hit = [
+            'title' => 'DateRangeHelper Mixed Markdown',
+            'url' => 'https://example.test/docs/mixed-markdown',
+            'type' => 'entry',
+            'elementType' => 'entry',
+            '_fields' => [
+                'intro' => "# DateRangeHelper\n\nUse <span>inline</span> **daterangehelper** marker.",
+            ],
+            'matchedTerms' => [
+                'content' => ['daterangehelper'],
+            ],
+        ];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
+            'snippetLength' => 1000,
+            'parseMarkdownSnippets' => true,
+        ]);
+
+        $snippet = (string)($result['snippet'] ?? '');
+
+        self::assertStringContainsString('DateRangeHelper Use inline daterangehelper marker.', $snippet);
+        self::assertStringNotContainsString('<span>', $snippet);
+        self::assertStringNotContainsString('**daterangehelper**', $snippet);
+        self::assertStringNotContainsString('# DateRangeHelper', $snippet);
     }
 
     public function testMainSnippetComesFromIndexedFieldWhenBodyDoesNotMatch(): void
@@ -1064,7 +1309,9 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('_headings', $hit);
         self::assertArrayNotHasKey('_matchedHeadings', $hit);
         self::assertArrayNotHasKey('_bodyClean', $hit);
+        self::assertArrayNotHasKey('_bodyWithCode', $hit);
         self::assertArrayNotHasKey('_contentClean', $hit);
+        self::assertArrayNotHasKey('_sectionBodyWithCode', $hit);
         self::assertArrayNotHasKey('_elementType', $hit);
         self::assertArrayNotHasKey('intro', $hit);
         self::assertSame('metadata', $hit['category'] ?? null);
@@ -1176,7 +1423,9 @@ final class SearchHitFieldsContractTest extends TestCase
             'description' => 'Internal description must be stripped',
             'excerpt' => 'Internal excerpt must be stripped',
             '_bodyClean' => 'Internal clean body must be stripped',
+            '_bodyWithCode' => 'Internal code body must be stripped',
             '_contentClean' => 'Internal clean content must be stripped',
+            '_sectionBodyWithCode' => 'Internal section code body must be stripped',
             '_headings' => [
                 [
                     'text' => 'Raw Heading',

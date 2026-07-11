@@ -79,6 +79,8 @@ Long structured SourceDoc indices can opt into section records:
 
 Split mode is only available for SourceDoc indices that use the built-in Docs Manager transformer. Each intro or heading section is indexed as its own backend record with the parent page identity plus section metadata. Public search results stay flat: `total` counts section hits, `backendId` is unique per section, and `id` / `elementId` stay equal to the parent page ID. Built-in local backends and external backends support the required document keys; if a custom backend cannot preserve document keys, Split Sections is rejected. Rebuild the affected index after enabling or disabling split mode, and rebuild any Redis or File split-section index after upgrading from a version that did not store section documents by document key.
 
+For Algolia-backed documentation, enable Split Sections unless every page is comfortably small. Algolia enforces per-record and average record-size limits, and page-mode docs records can exceed those limits on long installation, API, or reference pages. Section records keep stored snippets, headings, and code-included snippet bodies much smaller while preserving links back to the parent page.
+
 #### Craft Commerce Integration
 
 When Craft Commerce is installed and enabled, Product and Variant element types are available for indices in the Control Panel. Commerce Product Types are configuration records rather than searchable Craft elements, so they are not listed as index element types.

@@ -75,7 +75,7 @@ Widget configurations can be managed at Search Manager > Widgets. Each config ha
 - **General** — name, handle, search indices
 - **Behavior** — placeholder, debounce, min chars, hotkey, scroll lock, loading indicator, recent searches, trigger button
 - **Results** — max results, hide no-URL results, result layout (default/hierarchical), hierarchy options, line clamping
-- **Snippets** — code snippets, snippet mode, snippet length, markdown parsing
+- **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
 - **Highlights** — destination page highlighting, persist query in URL, query param name, content selector
 - **Analytics** — source identifier, idle timeout
 

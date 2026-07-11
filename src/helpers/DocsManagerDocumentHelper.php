@@ -42,6 +42,7 @@ class DocsManagerDocumentHelper
     public static function contentParts(SourceDoc $element, SearchContentCleaner $contentCleaner): array
     {
         $searchableContent = [];
+        $htmlContent = self::htmlContent($element);
 
         if ($element->title) {
             $searchableContent[] = $element->title;
@@ -51,8 +52,8 @@ class DocsManagerDocumentHelper
             $searchableContent[] = $element->description;
         }
 
-        if ($element->htmlContent) {
-            $searchableContent[] = $contentCleaner->stripHtml($element->htmlContent);
+        if ($htmlContent !== '') {
+            $searchableContent[] = $contentCleaner->stripHtml($htmlContent);
         }
 
         return $searchableContent;
@@ -60,7 +61,40 @@ class DocsManagerDocumentHelper
 
     public static function cleanBody(SourceDoc $element, SearchContentCleaner $contentCleaner): string
     {
-        return $contentCleaner->cleanBody($element->htmlContent);
+        return $contentCleaner->cleanBody(self::htmlContent($element));
+    }
+
+    /**
+     * Return SourceDoc body text while preserving code blocks for snippet display.
+     *
+     * @since 5.53.0
+     */
+    public static function cleanBodyWithCode(SourceDoc $element, SearchContentCleaner $contentCleaner): string
+    {
+        return $contentCleaner->cleanBodyWithCode(self::htmlContent($element));
+    }
+
+    /**
+     * Return SourceDoc HTML with docs-manager UI chrome removed before indexing.
+     *
+     * @since 5.53.0
+     */
+    public static function htmlContent(SourceDoc $element): string
+    {
+        return self::stripTabChrome((string)($element->htmlContent ?? ''));
+    }
+
+    private static function stripTabChrome(?string $html): string
+    {
+        if (!$html) {
+            return '';
+        }
+
+        return (string)preg_replace(
+            '/<div\b(?=[^>]*\bclass=(["\'])(?=[^"\']*\bcode-tab-buttons\b)[^"\']*\1)[^>]*>.*?<\/div>/is',
+            ' ',
+            $html,
+        );
     }
 
     public static function keywords(SourceDoc $element): string

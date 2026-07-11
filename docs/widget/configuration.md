@@ -156,8 +156,8 @@ When a searched SourceDoc index uses split sections, `resultLayout: 'default'` r
 |-----------|------|---------|-------------|
 | `snippetMode` | `string` | `'balanced'` | Snippet extraction: `'early'`, `'balanced'`, or `'deep'` |
 | `snippetLength` | `int` | `150` | Maximum snippet length in characters (50-500) |
-| `showCodeSnippets` | `bool` | `false` | Show code in result snippets |
-| `parseMarkdownSnippets` | `bool` | `false` | Parse markdown before building snippets |
+| `showCodeSnippets` | `bool` | `false` | Include block-level code in result snippets; inline code text is always preserved |
+| `parseMarkdownSnippets` | `bool` | `false` | Clean Markdown markers from snippet display text without changing indexed content |
 | `resultTitleLines` | `int` | `1` | Title line clamp count (1-5) |
 | `resultDescLines` | `int` | `1` | Description line clamp count (1-5) |
 
@@ -241,7 +241,7 @@ Widget configurations can be managed at Search Manager > Widgets. Each config ha
 - **General** — name, handle, search indices
 - **Behavior** — placeholder, debounce, min chars, hotkey, scroll lock, loading indicator, recent searches, trigger button
 - **Results** — max results, hide no-URL results, result layout (default/hierarchical), hierarchy options, line clamping
-- **Snippets** — code snippets, snippet mode, snippet length, markdown parsing
+- **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
 - **Highlights** — destination page highlighting, persist query in URL, query param name, content selector
 - **Analytics** — source identifier, idle timeout
 

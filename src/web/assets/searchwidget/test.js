@@ -110,6 +110,57 @@ function loadRendererModule() {
     return require(outfile);
 }
 
+function loadSearchServiceModule() {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sm-widget-service-'));
+    const outfile = path.join(tmpDir, 'SearchService.cjs');
+    esbuild.buildSync({
+        entryPoints: [path.join(SRC_DIR, 'modules', 'SearchService.js')],
+        bundle: true,
+        platform: 'node',
+        format: 'cjs',
+        outfile,
+        logLevel: 'silent',
+    });
+    return require(outfile);
+}
+
+try {
+    const { performSearch } = loadSearchServiceModule();
+    const originalFetch = global.fetch;
+    const requestedUrls = [];
+    global.fetch = async function(url) {
+        requestedUrls.push(String(url));
+
+        return {
+            ok: true,
+            async json() {
+                return { hits: [], total: 0 };
+            },
+        };
+    };
+
+    try {
+        performSearch({
+            query: 'daterangehelper',
+            endpoint: '/actions/search-manager/api/search',
+            parseMarkdownSnippets: true,
+        });
+        performSearch({
+            query: 'daterangehelper',
+            endpoint: '/actions/search-manager/api/search',
+            parseMarkdownSnippets: false,
+        });
+    } finally {
+        global.fetch = originalFetch;
+    }
+
+    test('Widget forwards parseMarkdownSnippets when enabled', requestedUrls[0] && requestedUrls[0].includes('parseMarkdownSnippets=1'));
+    test('Widget omits parseMarkdownSnippets when disabled', requestedUrls[1] && !requestedUrls[1].includes('parseMarkdownSnippets=1'));
+} catch (error) {
+    console.error(error);
+    test('Widget parseMarkdownSnippets forwarding tests execute', false);
+}
+
 try {
     const { renderResults } = loadRendererModule();
     const splitHits = [

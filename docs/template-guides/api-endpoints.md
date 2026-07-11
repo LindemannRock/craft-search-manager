@@ -65,8 +65,8 @@ GET /actions/search-manager/api/search
 |-----------|---------|-------------|
 | `snippetMode` | `balanced` | Snippet positioning: `early`, `balanced`, or `deep` |
 | `snippetLength` | `150` | Max snippet length in characters (50–1000) |
-| `showCodeSnippets` | `0` | Show code block content in snippets |
-| `parseMarkdownSnippets` | `0` | Parse markdown before generating snippets |
+| `showCodeSnippets` | `0` | Include block-level code in snippets; inline code text is always preserved |
+| `parseMarkdownSnippets` | `0` | Clean Markdown markers from snippet display text without changing indexed content |
 | `hideResultsWithoutUrl` | `0` | Exclude results that have no URL |
 
 ### Response

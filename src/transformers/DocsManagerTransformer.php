@@ -51,17 +51,22 @@ class DocsManagerTransformer extends BaseTransformer
         $data['description'] = $element->description ?? '';
         $data['sourceId'] = $element->sourceId;
 
+        $htmlContent = DocsManagerDocumentHelper::htmlContent($element);
         $searchableContent = DocsManagerDocumentHelper::contentParts($element, $this->contentCleaner());
         $cleanBody = DocsManagerDocumentHelper::cleanBody($element, $this->contentCleaner());
         if ($cleanBody !== '') {
             $data['_bodyClean'] = $cleanBody;
         }
+        $bodyWithCode = DocsManagerDocumentHelper::cleanBodyWithCode($element, $this->contentCleaner());
+        if ($bodyWithCode !== '') {
+            $data['_bodyWithCode'] = $bodyWithCode;
+        }
 
         // Extract headings for boosting and hierarchical display
         // Always use BaseTransformer::extractHeadings() which respects index headingLevels
         $headings = [];
-        if (!empty($element->htmlContent)) {
-            $headings = $this->extractHeadings($element->htmlContent);
+        if ($htmlContent !== '') {
+            $headings = $this->extractHeadings($htmlContent);
         }
 
         if (!empty($headings)) {

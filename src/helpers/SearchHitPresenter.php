@@ -39,8 +39,10 @@ class SearchHitPresenter
             $hit['_index'],
             $hit['_elementType'],
             $hit['_bodyClean'],
+            $hit['_bodyWithCode'],
             $hit['_contentClean'],
             $hit['_sectionBody'],
+            $hit['_sectionBodyWithCode'],
         );
         if (!$includeQueryRuleDebug) {
             unset($hit['_queryRuleDebug']);

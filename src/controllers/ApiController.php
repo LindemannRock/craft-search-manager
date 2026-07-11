@@ -352,7 +352,7 @@ class ApiController extends Controller
      * - snippetMode: Snippet positioning mode: 'early'|'balanced'|'deep' (default: 'balanced')
      * - snippetLength: Max snippet length in chars (default: 150, min: 50, max: 1000)
      * - showCodeSnippets: Include code block snippets (default: 0)
-     * - parseMarkdownSnippets: Parse markdown before generating snippets (default: 0)
+     * - parseMarkdownSnippets: Clean Markdown markers from snippet display text (default: 0)
      * - hideResultsWithoutUrl: Exclude results that have no URL (default: 0)
      *
      * Response format:

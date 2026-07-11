@@ -715,13 +715,13 @@ return [
          *       'none' (no indentation, no connectors) (default: 'tree')
          *     - maxHeadingsPerResult: Max heading children per result, 1-50 (default: 3)
          *     - hierarchyGroupBy: Field to group hierarchical results by, e.g. 'section' (default: '')
-         *     - showCodeSnippets: Show code block snippets in results (default: false)
+         *     - showCodeSnippets: Include block-level code in result snippets (default: false)
          *     - snippetMode: How snippets find the best passage — 'early' (first match),
          *       'balanced' (best density), 'deep' (exhaustive scan) (default: 'balanced')
          *     - resultTitleLines: Max lines for result title, 1-5 (default: 1)
          *     - resultDescLines: Max lines for result description, 1-5 (default: 1)
          *     - snippetLength: Snippet length in characters, 50-500 (default: 150)
-         *     - parseMarkdownSnippets: Parse markdown in snippets (default: false)
+         *     - parseMarkdownSnippets: Clean Markdown markers from snippet display text (default: false)
          *     - highlightDestinationPage: Highlight search terms on destination page after
          *       navigating from a result (default: true)
          *     - persistQueryInUrl: Append search query to destination URL (default: true)
