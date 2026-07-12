@@ -1523,12 +1523,15 @@ LUA;
     private function removeDocumentKeyForParent(int $siteId, int $elementId, string $documentKey): void
     {
         $parentKey = $this->getParentKey($siteId, $elementId);
-        $this->redis->sRem($parentKey, $documentKey);
+        $script = <<<'LUA'
+redis.call('SREM', KEYS[1], ARGV[1])
+if redis.call('SCARD', KEYS[1]) <= 0 then
+    redis.call('DEL', KEYS[1])
+end
+return 1
+LUA;
 
-        $remaining = $this->redis->sCard($parentKey);
-        if ((int)$remaining <= 0) {
-            $this->redis->del($parentKey);
-        }
+        $this->redis->eval($script, [$parentKey, $documentKey], 1);
     }
 
     private function pageDocumentKey(int $siteId, int $elementId): string

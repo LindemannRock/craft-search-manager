@@ -466,6 +466,19 @@ final class RedisStorageRegressionTest extends TestCase
         self::assertSame(0, $redis->nonLuaSetCalls);
     }
 
+    public function testParentDocumentKeyRemovalUsesAtomicLua(): void
+    {
+        [$storage, $redis] = $this->makeStorage();
+        $storage->storeDocumentByKey(1, 301, '301_1_intro', ['alpha' => 1], 1);
+        $storage->storeDocumentByKey(1, 301, '301_1_install', ['beta' => 1], 1);
+
+        $evalCallsBeforeDelete = $redis->evalCalls;
+        $storage->deleteDocumentByKey(1, '301_1_intro');
+
+        self::assertSame($evalCallsBeforeDelete + 1, $redis->evalCalls);
+        self::assertSame(['301_1_install'], $storage->getDocumentKeysByParent(1, 301));
+    }
+
     public function testClearSiteUsesScanAndDeletesOnlyMatchingSiteKeys(): void
     {
         [$storage, $redis] = $this->makeStorage();
@@ -940,6 +953,16 @@ final class RedisStorageFakeRedis
     private function evalNow(array $args): array|int
     {
         $this->evalCalls++;
+
+        if (count($args) === 2) {
+            [$parentKey, $documentKey] = $args;
+            $this->sRem((string)$parentKey, (string)$documentKey);
+            if ($this->sCard((string)$parentKey) <= 0) {
+                $this->del((string)$parentKey);
+            }
+
+            return 1;
+        }
 
         if (count($args) === 5) {
             [$displayKey, $rankKey, $normalizedSuggestion, $suggestion, $frequencyDelta] = $args;

@@ -1576,11 +1576,11 @@ class SearchEngine
      * @param int $elementId Element ID
      * @return bool Success
      */
-    public function deleteDocument(int $siteId, int $elementId): bool
+    public function deleteDocument(int $siteId, int $elementId, ?bool &$existed = null): bool
     {
         $documentStorage = $this->documentKeyStorage();
         if ($documentStorage === null) {
-            return $this->deleteDocumentByKey($siteId, $elementId, SearchHitIdentityHelper::pageDocumentId($elementId, $siteId));
+            return $this->deleteDocumentByKey($siteId, $elementId, SearchHitIdentityHelper::pageDocumentId($elementId, $siteId), $existed);
         }
 
         $documentKeys = $documentStorage->getDocumentKeysByParent($siteId, $elementId);
@@ -1589,21 +1589,40 @@ class SearchEngine
         }
 
         $success = true;
+        $existed = false;
         foreach ($documentKeys as $documentKey) {
-            if (!$this->deleteDocumentByKey($siteId, $elementId, (string)$documentKey)) {
+            $documentExisted = null;
+            if (!$this->deleteDocumentByKey($siteId, $elementId, (string)$documentKey, $documentExisted)) {
                 $success = false;
+            }
+            if ($documentExisted === true) {
+                $existed = true;
             }
         }
 
         return $success;
     }
 
-    public function deleteDocumentByKey(int $siteId, int $elementId, string $documentKey): bool
+    public function deleteDocumentByKey(int $siteId, int $elementId, string $documentKey, ?bool &$existed = null): bool
     {
+        $lockName = $this->indexDocumentLockName($siteId, $documentKey);
+        $lockAcquired = \Craft::$app->getMutex()->acquire($lockName, 30);
+        if (!$lockAcquired) {
+            $this->logError('Failed to acquire deletion lock', [
+                'index' => $this->indexHandle,
+                'site_id' => $siteId,
+                'element_id' => $elementId,
+                'document_key' => $documentKey,
+            ]);
+            $existed = null;
+            return false;
+        }
+
         try {
             // Get document info before deletion
             $docLength = $this->documentLength($siteId, $elementId, $documentKey);
             $terms = $this->documentTerms($siteId, $elementId, $documentKey);
+            $existed = $docLength > 0 || !empty($terms);
 
             // Remove from inverted index
             foreach (array_keys($terms) as $term) {
@@ -1617,7 +1636,7 @@ class SearchEngine
 
             // Missing-document deletes are valid no-ops from the pending-sync
             // path. Only subtract metadata when the document actually existed.
-            if ($docLength > 0 || !empty($terms)) {
+            if ($existed) {
                 $this->storage->updateMetadata($siteId, $docLength, false);
             }
 
@@ -1629,6 +1648,7 @@ class SearchEngine
 
             return true;
         } catch (\Throwable $e) {
+            $existed = null;
             $this->logError('Failed to delete document', [
                 'site_id' => $siteId,
                 'element_id' => $elementId,
@@ -1636,6 +1656,8 @@ class SearchEngine
                 'error' => $e->getMessage(),
             ]);
             return false;
+        } finally {
+            \Craft::$app->getMutex()->release($lockName);
         }
     }
 

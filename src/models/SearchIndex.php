@@ -1227,59 +1227,48 @@ class SearchIndex extends Model
                 return false;
             }
 
-            // Check if database record exists for this handle (any source)
-            // Config indices should update/take over existing database records
-            $row = (new Query())
-                ->from('{{%searchmanager_indices}}')
-                ->where(['handle' => $this->handle])
-                ->one();
+            $now = new \DateTime();
+            $nowDb = Db::prepareDateForDb($now);
+            $headingLevelsJson = $freshHeadingLevels ? json_encode($freshHeadingLevels) : null;
+            $retrievableFieldsJson = json_encode($freshRetrievableFields);
 
-            if ($row) {
-                // Update existing metadata record - use FRESH config values
-                Craft::$app->getDb()
-                    ->createCommand()
-                    ->update(
-                        '{{%searchmanager_indices}}',
-                        [
-                            'name' => $freshName,
-                            'transformerClass' => $freshTransformer ?: '',
-                            'headingLevels' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
-                            'language' => $freshLanguage,
-                            'enabled' => (int)$freshEnabled,
-                            'disableStopWords' => (int)$freshDisableStopWords,
-                            'retrievableFields' => json_encode($freshRetrievableFields),
-                            'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
-                            'documentCount' => $documentCount,
-                            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
-                        ],
-                        ['id' => $row['id']]
-                    )
-                    ->execute();
-            } else {
-                // Create new metadata record for config index
-                Craft::$app->getDb()
-                    ->createCommand()
-                    ->insert('{{%searchmanager_indices}}', [
+            Craft::$app->getDb()
+                ->createCommand()
+                ->upsert(
+                    '{{%searchmanager_indices}}',
+                    [
                         'name' => $freshName,
                         'handle' => $this->handle,
                         'elementType' => $this->elementType,
                         'siteId' => is_array($this->siteId) ? null : $this->siteId,
                         'criteria' => '{}', // Empty - actual criteria is in config
                         'transformerClass' => $freshTransformer ?: '',
-                        'headingLevels' => $freshHeadingLevels ? json_encode($freshHeadingLevels) : null,
+                        'headingLevels' => $headingLevelsJson,
                         'language' => $freshLanguage,
                         'enabled' => (int)$freshEnabled,
                         'disableStopWords' => (int)$freshDisableStopWords,
-                        'retrievableFields' => json_encode($freshRetrievableFields),
+                        'retrievableFields' => $retrievableFieldsJson,
                         'source' => 'config',
-                        'lastIndexed' => Db::prepareDateForDb(new \DateTime()),
+                        'lastIndexed' => $nowDb,
                         'documentCount' => $documentCount,
-                        'dateCreated' => Db::prepareDateForDb(new \DateTime()),
-                        'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
+                        'dateCreated' => $nowDb,
+                        'dateUpdated' => $nowDb,
                         'uid' => \craft\helpers\StringHelper::UUID(),
-                    ])
-                    ->execute();
-            }
+                    ],
+                    [
+                        'name' => $freshName,
+                        'transformerClass' => $freshTransformer ?: '',
+                        'headingLevels' => $headingLevelsJson,
+                        'language' => $freshLanguage,
+                        'enabled' => (int)$freshEnabled,
+                        'disableStopWords' => (int)$freshDisableStopWords,
+                        'retrievableFields' => $retrievableFieldsJson,
+                        'lastIndexed' => $nowDb,
+                        'documentCount' => $documentCount,
+                        'dateUpdated' => $nowDb,
+                    ],
+                )
+                ->execute();
 
             // Update current object with fresh values
             $this->name = $freshName;
@@ -1289,7 +1278,7 @@ class SearchIndex extends Model
             $this->enabled = $freshEnabled;
             $this->disableStopWords = (bool)$freshDisableStopWords;
             $this->retrievableFields = $freshRetrievableFields;
-            $this->lastIndexed = new \DateTime();
+            $this->lastIndexed = $now;
             $this->documentCount = $documentCount;
             self::clearCache();
             return true;
@@ -2046,27 +2035,27 @@ class SearchIndex extends Model
                 ->siteId($element->siteId)
                 ->status(null);
 
-            if (method_exists($query, 'drafts')) {
-                $query->drafts(false);
-            }
-            if (method_exists($query, 'revisions')) {
-                $query->revisions(false);
-            }
+            $query->drafts(false);
+            $query->revisions(false);
 
             if ($this->criteria instanceof \Closure) {
                 $criteriaCallback = $this->criteria;
                 $query = $criteriaCallback($query);
             } elseif (is_array($this->criteria)) {
-                if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections']) && method_exists($query, 'section')) {
+                if ($elementType === \craft\elements\Entry::class && !empty($this->criteria['sections'])) {
+                    /** @var \craft\elements\db\EntryQuery $query */
                     $query->section($this->criteria['sections']);
                 }
-                if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes']) && method_exists($query, 'volume')) {
+                if ($elementType === \craft\elements\Asset::class && !empty($this->criteria['volumes'])) {
+                    /** @var \craft\elements\db\AssetQuery $query */
                     $query->volume($this->criteria['volumes']);
                 }
-                if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups']) && method_exists($query, 'group')) {
+                if ($elementType === \craft\elements\Category::class && !empty($this->criteria['groups'])) {
+                    /** @var \craft\elements\db\CategoryQuery $query */
                     $query->group($this->criteria['groups']);
                 }
-                if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles']) && method_exists($query, 'sourceHandle')) {
+                if ($elementType === 'lindemannrock\\docsmanager\\elements\\SourceDoc' && !empty($this->criteria['sourceHandles'])) {
+                    /** @var \lindemannrock\docsmanager\elements\db\SourceDocQuery $query */
                     $query->sourceHandle($this->criteria['sourceHandles']);
                 }
             }

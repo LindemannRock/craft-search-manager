@@ -389,18 +389,10 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
     {
         try {
             $engine = $this->getSearchEngine($indexName);
-            $storage = $this->getStorage($indexName);
             $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
-            $existed = !empty($storage->getDocumentTerms($siteId, $elementId));
+            $existed = null;
 
-            if (!$existed) {
-                return [
-                    'success' => true,
-                    'existed' => false,
-                ];
-            }
-
-            $success = $engine->deleteDocument($siteId, $elementId);
+            $success = $engine->deleteDocument($siteId, $elementId, $existed);
 
             if ($success) {
                 $this->logDebug('Document deleted with SearchEngine', [
@@ -411,7 +403,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
 
             return [
                 'success' => $success,
-                'existed' => $success ? true : null,
+                'existed' => $success ? (bool)$existed : null,
             ];
         } catch (\Throwable $e) {
             $this->logError("Failed to delete from {$this->getBackendLabel()}", ['error' => $e->getMessage()]);

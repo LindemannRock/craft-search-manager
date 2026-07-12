@@ -424,21 +424,17 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     public function removeTermDocument(string $term, int $siteId, int $elementId): void
     {
         $termPath = $this->getTermPath($term, $siteId);
-        $data = $this->readFile($termPath);
-
-        if (!$data) {
-            return;
-        }
-
         $docId = $siteId . ':' . $elementId;
-        unset($data[$docId]);
 
-        if (empty($data)) {
-            // Remove file if no documents left
-            @unlink($termPath);
-        } else {
-            $this->writeFile($termPath, $data);
-        }
+        $this->updateJsonFile(
+            $termPath,
+            static function(mixed $current) use ($docId): array {
+                $data = is_array($current) ? $current : [];
+                unset($data[$docId]);
+
+                return $data;
+            },
+        );
     }
 
     public function storeTermDocumentByKey(string $term, int $siteId, int $elementId, string $documentKey, int $frequency, string $language = 'en'): void
@@ -474,19 +470,17 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
         }
 
         $termPath = $this->getTermPath($term, $siteId);
-        $data = $this->readFile($termPath);
-        if (!$data) {
-            return;
-        }
+        $docId = $siteId . ':' . $documentKey;
 
-        unset($data[$siteId . ':' . $documentKey]);
+        $this->updateJsonFile(
+            $termPath,
+            static function(mixed $current) use ($docId): array {
+                $data = is_array($current) ? $current : [];
+                unset($data[$docId]);
 
-        if (empty($data)) {
-            @unlink($termPath);
-            return;
-        }
-
-        $this->writeFile($termPath, $data);
+                return $data;
+            },
+        );
     }
 
     /**
@@ -1392,22 +1386,20 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
     private function removeDocumentKeyForParent(int $siteId, int $elementId, string $documentKey): void
     {
         $path = $this->getParentPath($siteId, $elementId);
-        $keys = $this->readFile($path);
-        if (!is_array($keys)) {
-            return;
-        }
 
-        $keys = array_values(array_filter(
-            array_map('strval', $keys),
-            static fn(string $key): bool => $key !== $documentKey,
-        ));
+        $this->updateJsonFile(
+            $path,
+            static function(mixed $current) use ($documentKey): array {
+                if (!is_array($current)) {
+                    return [];
+                }
 
-        if ($keys === []) {
-            @unlink($path);
-            return;
-        }
-
-        $this->writeFile($path, $keys);
+                return array_values(array_filter(
+                    array_map('strval', $current),
+                    static fn(string $key): bool => $key !== $documentKey,
+                ));
+            },
+        );
     }
 
     private function elementIdFromDocumentKey(string $documentKey): ?int

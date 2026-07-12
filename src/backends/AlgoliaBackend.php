@@ -226,11 +226,28 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
      */
     public function deleteWithResult(string $indexName, int $elementId, ?int $siteId = null): array
     {
+        $lockName = null;
+        $lockAcquired = false;
+
         try {
             $client = $this->getClient();
             $fullIndexName = $this->getFullIndexName($indexName);
+            $siteId = $siteId ?? Craft::$app->getSites()->getCurrentSite()->id ?? 1;
 
             $documentId = SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+            $lockName = $this->indexDocumentLockName($fullIndexName, $documentId);
+            $lockAcquired = Craft::$app->getMutex()->acquire($lockName, 30);
+            if (!$lockAcquired) {
+                $this->logError('Failed to acquire Algolia deletion lock', [
+                    'index' => $fullIndexName,
+                    'id' => $documentId,
+                ]);
+                return [
+                    'success' => false,
+                    'existed' => null,
+                ];
+            }
+
             if (!$this->algoliaObjectExists($fullIndexName, $documentId)) {
                 return [
                     'success' => true,
@@ -250,6 +267,10 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
                 'success' => false,
                 'existed' => null,
             ];
+        } finally {
+            if ($lockAcquired && $lockName !== null) {
+                Craft::$app->getMutex()->release($lockName);
+            }
         }
     }
 

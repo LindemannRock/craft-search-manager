@@ -81,6 +81,87 @@ final class FileStorageRegressionTest extends TestCase
         ], $storage->getTermDocuments('shared', 1));
     }
 
+    public function testConcurrentTermDocumentRemovePreservesCompetingPosting(): void
+    {
+        $storage = $this->makeStorage();
+        $termPath = $this->indexPath() . '/terms/shared_1.dat';
+        $this->writeJsonFile($termPath, [
+            '1:101' => 1,
+        ]);
+
+        $this->runMutationWhileFileLockIsHeld(
+            $termPath,
+            fn() => $this->writeJsonFile($termPath, [
+                '1:101' => 1,
+                '1:102' => 2,
+            ]),
+            ['remove-term-document', $this->basePath, 'shared', '1', '101'],
+        );
+
+        self::assertSame([
+            '1:102' => 2,
+        ], $storage->getTermDocuments('shared', 1));
+    }
+
+    public function testConcurrentTermDocumentRemoveByKeyPreservesCompetingPosting(): void
+    {
+        $storage = $this->makeStorage();
+        $termPath = $this->indexPath() . '/terms/shared_1.dat';
+        $this->writeJsonFile($termPath, [
+            '1:301_1_intro' => 1,
+        ]);
+
+        $this->runMutationWhileFileLockIsHeld(
+            $termPath,
+            fn() => $this->writeJsonFile($termPath, [
+                '1:301_1_intro' => 1,
+                '1:301_1_install' => 2,
+            ]),
+            ['remove-term-document-by-key', $this->basePath, 'shared', '1', '301_1_intro'],
+        );
+
+        self::assertSame([
+            '1:301_1_install' => 2,
+        ], $storage->getTermDocuments('shared', 1));
+    }
+
+    public function testConcurrentParentDocumentKeyRemovalPreservesCompetingKey(): void
+    {
+        $storage = $this->makeStorage();
+        $parentPath = $this->indexPath() . '/parents/1_301.dat';
+        $this->writeJsonFile($parentPath, [
+            '301_1_intro',
+        ]);
+
+        $this->runMutationWhileFileLockIsHeld(
+            $parentPath,
+            fn() => $this->writeJsonFile($parentPath, [
+                '301_1_intro',
+                '301_1_install',
+            ]),
+            ['delete-document-by-key', $this->basePath, '1', '301_1_intro'],
+        );
+
+        self::assertSame(['301_1_install'], $storage->getDocumentKeysByParent(1, 301));
+    }
+
+    public function testRemovePathsUseLockedJsonUpdateHelper(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/FileStorage.php');
+        self::assertIsString($source);
+
+        foreach ([
+            'removeTermDocument',
+            'removeTermDocumentByKey',
+            'removeDocumentKeyForParent',
+        ] as $method) {
+            $body = $this->methodBody($source, $method);
+            self::assertStringContainsString('updateJsonFile(', $body, $method);
+            self::assertStringNotContainsString('readFile(', $body, $method);
+            self::assertStringNotContainsString('writeFile(', $body, $method);
+        }
+    }
+
     public function testConcurrentNgramBucketRemovalsPreserveBothRemovals(): void
     {
         $storage = $this->makeStorage();
@@ -536,6 +617,21 @@ if ($operation === 'store-term-document') {
     exit(0);
 }
 
+if ($operation === 'remove-term-document') {
+    $storage->removeTermDocument($argv[4], (int)$argv[5], (int)$argv[6]);
+    exit(0);
+}
+
+if ($operation === 'remove-term-document-by-key') {
+    $storage->removeTermDocumentByKey($argv[4], (int)$argv[5], $argv[6]);
+    exit(0);
+}
+
+if ($operation === 'delete-document-by-key') {
+    $storage->deleteDocumentByKey((int)$argv[4], $argv[5]);
+    exit(0);
+}
+
 if ($operation === 'store-term-ngrams') {
     $ngrams = json_decode($argv[6], true, 512, JSON_THROW_ON_ERROR);
     $storage->storeTermNgrams($argv[4], is_array($ngrams) ? $ngrams : [], (int)$argv[5]);
@@ -643,6 +739,20 @@ PHP);
         }
 
         file_put_contents($path, $contents);
+    }
+
+    private function methodBody(string $source, string $method): string
+    {
+        preg_match(
+            '/function ' . preg_quote($method, '/') . '\(.*?^    }$/ms',
+            $source,
+            $matches,
+        );
+
+        $body = $matches[0] ?? '';
+        self::assertNotSame('', $body, $method . ' source should be captured.');
+
+        return $body;
     }
 
     private function deleteDirectory(string $dir): void
