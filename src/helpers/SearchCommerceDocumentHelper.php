@@ -82,7 +82,7 @@ class SearchCommerceDocumentHelper
         $data['slug'] = self::stringValue($product, ['slug']);
         $data['productType'] = self::stringValue($productType, ['name', 'getName']);
         $data['productTypeHandle'] = self::stringValue($productType, ['handle', 'getHandle']);
-        unset($data['section']);
+        unset($data['source']);
 
         if (!empty($variantSkus)) {
             $data['variantSkus'] = array_values(array_unique($variantSkus));
@@ -140,7 +140,7 @@ class SearchCommerceDocumentHelper
         }
         $data['productType'] = self::stringValue($productType, ['name', 'getName']);
         $data['productTypeHandle'] = self::stringValue($productType, ['handle', 'getHandle']);
-        unset($data['section']);
+        unset($data['source']);
 
         if ($product instanceof ElementInterface) {
             $data['productId'] = $product->id;

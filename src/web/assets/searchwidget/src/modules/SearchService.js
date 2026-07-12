@@ -250,14 +250,14 @@ export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, t
 }
 
 /**
- * Group results by type/section
+ * Group results by source, entry section, or type
  * @param {Array} results - Array of search results
  * @returns {Object} - Results grouped by type
  */
 export function groupResultsByType(results) {
     const groups = {};
     results.forEach(result => {
-        const type = result.section || result.type || 'Results';
+        const type = result.source || result.entrySection || result.type || 'Results';
         if (!groups[type]) {
             groups[type] = [];
         }
@@ -269,13 +269,13 @@ export function groupResultsByType(results) {
 /**
  * Group results by a configurable field
  * @param {Array} results - Array of search results
- * @param {string} field - Field name to group by (e.g., 'section', 'category')
+ * @param {string} field - Field name to group by (e.g., 'source', 'entrySection', 'docCategory', 'categoryGroup')
  * @returns {Object} - Results grouped by field value
  */
 export function groupResultsByField(results, field) {
     const groups = {};
     results.forEach(result => {
-        const key = result[field] || result.section || result.type || 'Results';
+        const key = (field ? result[field] : null) || result.source || result.entrySection || result.type || 'Results';
         if (!groups[key]) {
             groups[key] = [];
         }

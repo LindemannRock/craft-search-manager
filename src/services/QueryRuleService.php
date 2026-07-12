@@ -375,7 +375,7 @@ class QueryRuleService extends Component
             }
 
             if (!empty($boosts['sections']) && is_array($result)) {
-                $sectionHandle = $result['sectionHandle'] ?? null;
+                $sectionHandle = $result['entrySectionHandle'] ?? null;
                 if (is_string($sectionHandle) && $sectionHandle !== '') {
                     if (isset($boosts['sections'][$sectionHandle])) {
                         $sectionMultiplier = (float)$boosts['sections'][$sectionHandle];
@@ -441,7 +441,7 @@ class QueryRuleService extends Component
         }
 
         if ($warnMissingSectionMetadata) {
-            $this->logWarning('Skipping section boost for results missing indexed sectionHandle metadata', [
+            $this->logWarning('Skipping section boost for results missing indexed entrySectionHandle metadata', [
                 'query' => $query,
                 'indexHandle' => $indexHandle,
                 'siteId' => $siteId,

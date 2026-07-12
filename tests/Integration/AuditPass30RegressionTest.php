@@ -134,9 +134,8 @@ final class AuditPass30RegressionTest extends TestCase
         self::assertStringContainsString('$elementClass = $explicitElementClass ?:', $liveComparisonSource);
         self::assertStringContainsString('$hit[\'description\'],', $presenterSource);
         self::assertStringContainsString('$hit[\'highlights\'],', $presenterSource);
-        self::assertStringContainsString('$hit[\'_elementType\'],', $presenterSource);
-        self::assertStringContainsString('$hit[\'_bodyClean\'],', $presenterSource);
-        self::assertStringContainsString('$hit[\'_contentClean\'],', $presenterSource);
+        self::assertStringContainsString('str_starts_with($key, \'_\')', $presenterSource);
+        self::assertStringContainsString('unset($hit[$key]);', $presenterSource);
     }
 
     public function testPromotionServiceShapesHitsFromIndexedDocumentsOnly(): void

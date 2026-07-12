@@ -76,10 +76,9 @@ GET /actions/search-manager/api/search
 {
     "hits": [
         {
-            "id": 123,
             "elementId": 123,
+            "siteId": 1,
             "backendId": "123_1",
-            "objectID": 123,
             "promoted": true,
             "position": 1,
             "score": null,
@@ -87,27 +86,43 @@ GET /actions/search-manager/api/search
             "type": "product",
             "productType": "Clothing",
             "productTypeHandle": "clothing",
+            "categoryIds": [12, 18],
             "fields": {
                 "intro": "Soft cotton with recycled trim",
                 "category": "Shirts Summer"
             },
+            "headings": [],
+            "matchedIn": [],
+            "matchedTerms": {
+                "title": [],
+                "content": []
+            },
+            "matchedPhrases": [],
+            "snippet": null,
             "title": "Featured Product"
         },
         {
-            "id": 456,
             "elementId": 456,
+            "siteId": 1,
             "backendId": "456_1",
-            "objectID": 456,
             "score": 45.23,
             "elementType": "entry",
             "type": "entry",
-            "section": "Blog",
-            "sectionHandle": "blog",
-            "sectionType": "channel",
+            "entrySection": "Blog",
+            "entrySectionHandle": "blog",
+            "entrySectionType": "channel",
             "fields": {
                 "intro": "A short article introduction",
                 "iconSingle": "search"
-            }
+            },
+            "headings": [],
+            "matchedIn": ["title", "content"],
+            "matchedTerms": {
+                "title": ["search"],
+                "content": ["search"]
+            },
+            "matchedPhrases": [],
+            "snippet": "A short article introduction"
         }
     ],
     "total": 150,
@@ -124,7 +139,7 @@ Retrievable custom field values are returned under each hit's `fields` object. T
 
 `retrievableFields` is a payload and contract control, not a secrecy boundary. Searchable fields can still affect matching, matched metadata, and snippets even when they are omitted from `fields`. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
-Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `section`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
+Top-level hit fields are reserved for Search Manager identity, ranking, and kind metadata such as `title`, `url`, `entrySection`, `source`, `productType`, and `score`. Custom field handles are not returned flat at the top level, so a field handle like `section` or `url` cannot overwrite metadata.
 
 Structure Entries, Categories, and public Assets can also return breadcrumb metadata at the top level. `ancestors` is ordered from root to parent; Entries and Categories can include `level`; public Assets can include `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, and private-volume Assets omit these keys.
 
@@ -136,13 +151,16 @@ Search returns one canonical hit shape:
 {
     "hits": [
         {
-            "id": 123,
+            "elementId": 123,
+            "siteId": 1,
+            "backendId": "123_1",
             "title": "Getting Started with Craft CMS",
+            "slug": "getting-started",
             "url": "/docs/getting-started",
             "snippet": "A snippet with matched terms...",
-            "section": "Documentation",
-            "sectionHandle": "documentation",
-            "sectionType": "structure",
+            "entrySection": "Documentation",
+            "entrySectionHandle": "documentation",
+            "entrySectionType": "structure",
             "ancestors": [
                 { "id": 10, "title": "Guides" }
             ],
@@ -155,6 +173,12 @@ Search returns one canonical hit shape:
             },
             "score": 45.23,
             "promoted": false,
+            "matchedIn": ["content"],
+            "matchedTerms": {
+                "title": [],
+                "content": ["craft"]
+            },
+            "matchedPhrases": [],
             "headings": [
                 {
                     "title": "Installation",
@@ -164,6 +188,34 @@ Search returns one canonical hit shape:
                     "snippet": "How to install Craft..."
                 }
             ]
+        },
+        {
+            "elementId": 500,
+            "siteId": 1,
+            "backendId": "500_1",
+            "title": "Cheese.jpg",
+            "url": "/uploads/test/Cheese.jpg",
+            "snippet": null,
+            "volume": "Uploads",
+            "volumeHandle": "uploads",
+            "filename": "Cheese.jpg",
+            "assetKind": "image",
+            "extension": "jpg",
+            "size": 123456,
+            "width": 600,
+            "height": 600,
+            "elementType": "asset",
+            "type": "asset",
+            "fields": {},
+            "score": 12.4,
+            "promoted": false,
+            "matchedIn": [],
+            "matchedTerms": {
+                "title": [],
+                "content": ["jpg"]
+            },
+            "matchedPhrases": [],
+            "headings": []
         }
     ],
     "total": 42,
@@ -175,7 +227,7 @@ Search returns one canonical hit shape:
 
 `snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in the private snippet source, then from the dedicated indexed clean body. Snippet source selection is independent of `retrievableFields`, so a field can be omitted from `fields` and still produce a snippet. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
 
-For split SourceDoc and AutoTransformer-family indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `id` and `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
+For split SourceDoc and AutoTransformer-family indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
 
 ### Response Fields
 
@@ -191,23 +243,24 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `id` | `int` | Craft element ID |
 | `elementId` | `int` | Craft element ID. Use this for Craft element queries. |
 | `siteId` | `int` | Indexed Craft site ID. |
 | `site` | `string` | Indexed Craft site handle. |
 | `language` | `string` | Indexed Craft site language. |
 | `index` | `string` | Source search index handle when the backend reports it. |
-| `backendId` | `string` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`, not by `id`; split section hits share `id`/`elementId` with their parent page. |
-| `objectID` | `int\|string` | Raw backend compatibility field. Prefer `elementId` and `backendId` in new code. |
-| `slug` | `string` | Indexed element or document slug when available. |
+| `backendId` | `string` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`. |
+| `slug` | `string` | Indexed element or document slug when available. Entries, Categories, Products, and SourceDoc hits include a non-empty slug; Asset hits omit `slug` because Craft Assets do not have element slugs. |
 | `dateCreated` | `int` | Indexed creation timestamp when available. |
 | `dateUpdated` | `int` | Indexed update timestamp when available. |
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
 | `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
 | `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, `user`, or `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
-| `section` | `string` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
-| `sectionHandle` | `string` | Entry section handle when the hit is an Entry. |
-| `sectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) for normal Entry hits. For split hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
+| Naming rule |  | Hit keys use Craft-native names; a kind prefix is used only where the bare word would be ambiguous within this contract (`entrySection*`, `assetKind`, `categoryGroup*`, `docCategory`). |
+| `source` | `string` | Source name for SourceDoc and custom source-backed hits. |
+| `entrySection` | `string` | Human-readable Entry section name when the hit is an Entry. |
+| `entrySectionHandle` | `string` | Entry section handle when the hit is an Entry. |
+| `entrySectionType` | `string` | Entry section type (`single`, `channel`, or `structure`) for normal Entry hits. |
+| `sectionType` | `string` | Split hit type: `heading`, `intro`, or `promoted-page`. This field belongs only to split hits. |
 | `sectionId` | `string` | Section identity within the parent element for split section hits. |
 | `sectionTitle` | `string` | Parent page title for split `intro` / `promoted-page` hits, or heading title for split `heading` hits. |
 | `sectionLevel` | `int` | Heading level for split `heading` hits; `null` for intro and promoted-page hits. |
@@ -219,20 +272,32 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 | `folderPath` | `string` | Craft's canonical containing-folder path for public Asset hits when indexed. This can differ from joining `ancestors[].title` because it uses folder path segments, not display names. |
 | `volume` | `string` | Asset volume name when the hit is an Asset. |
 | `volumeHandle` | `string` | Asset volume handle when the hit is an Asset. |
-| `group` | `string` | Category group name when the hit is a Category. |
-| `groupHandle` | `string` | Category group handle when the hit is a Category. |
+| `filename` | `string` | Asset filename when the hit is an Asset. |
+| `assetKind` | `string` | Craft Asset kind when the hit is an Asset, for example `image`, `pdf`, `word`, `excel`, `video`, `audio`, `compressed`, or `unknown`. |
+| `extension` | `string` | Asset file extension when the hit is an Asset. |
+| `size` | `int` | Asset file size in bytes when the hit is an Asset. |
+| `width` | `int` | Asset width in pixels when the Asset has dimensions. Omitted for non-image/non-video assets without dimensions. |
+| `height` | `int` | Asset height in pixels when the Asset has dimensions. Omitted for non-image/non-video assets without dimensions. |
+| `categoryGroup` | `string` | Category group name when the hit is a Category. |
+| `categoryGroupHandle` | `string` | Category group handle when the hit is a Category. |
+| `categoryIds` | `array<int>` | Related category element IDs indexed with the hit when available. |
 | `productType` | `string` | Commerce product type name when the hit is a Product or Variant. |
 | `productTypeHandle` | `string` | Commerce product type handle when the hit is a Product or Variant. |
-| `category` | `string` | Source document category or transformer-provided category metadata when available. |
+| `docCategory` | `string` | Docs Manager navigation category when the hit is a SourceDoc. |
 | `sourceId` | `int` | Source document or transformer-provided source ID when available. |
-| `fields` | `object` | Retrievable custom field values keyed by field handle. Values are indexed content, not translated UI labels. |
+| `fields` | `object` | Retrievable custom field values keyed by field handle. Values are indexed content, not translated UI labels. Empty field payloads are `{}`. |
 | `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body. `null` when no eligible snippet source contains the query. |
 | `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects for whole-page records. Split section hits return an empty array. |
+| `matchedIn` | `array<string>` | Provider match-location metadata for indexed fields that matched the query. This can be present even when `matchedTerms` is empty. |
+| `matchedTerms` | `object` | Matched query terms grouped into stable `title` and `content` arrays. |
+| `matchedPhrases` | `array<string>` | Exact phrases matched by phrase queries. |
 | `promoted` | `bool` | Present and `true` for promoted/pinned results |
 | `position` | `int` | Position in results (for promoted items) |
 | `title` | `string` | Element title (for promoted items) |
 
 `score` is not a universal ranking scale. It is safe to display for debugging or within one backend's results, but do not compare scores across Algolia, Meilisearch, Typesense, and built-in backends.
+
+Asset documents add `assetKind` and `extension` to searchable content at indexing time, so queries such as `pricing pdf` can match PDF assets. Filename is not added a second time because Craft assets normally use the filename as the asset title, and Search Manager already indexes the title.
 
 ### Examples
 
@@ -456,7 +521,7 @@ input.addEventListener('input', (e) => {
         resultsDiv.innerHTML = data.hits.map(hit => `
             <div class="result">
                 <span>${typeIcons[hit.type] || ''}</span>
-                <strong>${hit.title || 'Result #' + hit.id}</strong>
+                <strong>${hit.title || 'Result #' + (hit.elementId || hit.backendId)}</strong>
                 ${hit.promoted ? '<span class="badge">Promoted</span>' : ''}
             </div>
         `).join('');

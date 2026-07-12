@@ -30,9 +30,9 @@ class SearchElementKindMetadataHelper
             $section = $element->getSection();
 
             return [
-                'section' => $section->name ?? $section->handle,
-                'sectionHandle' => $section->handle,
-                'sectionType' => $section->type,
+                'entrySection' => $section->name ?? $section->handle,
+                'entrySectionHandle' => $section->handle,
+                'entrySectionType' => $section->type,
             ];
         }
 
@@ -40,26 +40,79 @@ class SearchElementKindMetadataHelper
             $group = $element->getGroup();
 
             return [
-                'group' => $group->name ?? $group->handle,
-                'groupHandle' => $group->handle,
+                'categoryGroup' => $group->name ?? $group->handle,
+                'categoryGroupHandle' => $group->handle,
             ];
         }
 
         if ($element instanceof Asset) {
             $volume = $element->getVolume();
-
-            return [
+            $metadata = [
                 'volume' => $volume->name ?? $volume->handle,
                 'volumeHandle' => $volume->handle,
             ];
+
+            $filename = self::assetFilename($element);
+            if ($filename !== '') {
+                $metadata['filename'] = $filename;
+            }
+
+            $assetKind = self::stringValue($element->kind ?? null);
+            if ($assetKind !== '') {
+                $metadata['assetKind'] = $assetKind;
+            }
+
+            $extension = self::assetExtension($element);
+            if ($extension !== '') {
+                $metadata['extension'] = strtolower($extension);
+            }
+
+            if (is_int($element->size)) {
+                $metadata['size'] = $element->size;
+            }
+
+            $width = $element->getWidth();
+            if (is_int($width)) {
+                $metadata['width'] = $width;
+            }
+
+            $height = $element->getHeight();
+            if (is_int($height)) {
+                $metadata['height'] = $height;
+            }
+
+            return $metadata;
         }
 
         if (!$element instanceof User) {
             return [
-                'section' => ucfirst($documentType),
+                'source' => ucfirst($documentType),
             ];
         }
 
         return [];
+    }
+
+    private static function assetFilename(Asset $asset): string
+    {
+        try {
+            return self::stringValue($asset->getFilename());
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    private static function assetExtension(Asset $asset): string
+    {
+        try {
+            return self::stringValue($asset->getExtension());
+        } catch (\Throwable) {
+            return '';
+        }
+    }
+
+    private static function stringValue(mixed $value): string
+    {
+        return is_scalar($value) ? trim((string)$value) : '';
     }
 }

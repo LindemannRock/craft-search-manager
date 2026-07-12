@@ -72,6 +72,7 @@ class CanonicalHitPipeline
                 $hit,
                 $includeQueryRuleDebug,
                 self::retrievableFieldsForIndex($hitIndex, $options['retrievableFieldsByIndex'] ?? []),
+                !empty($options['includeSnippetDebug']),
             );
         }
 

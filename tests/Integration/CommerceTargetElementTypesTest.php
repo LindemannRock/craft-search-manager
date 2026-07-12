@@ -451,8 +451,8 @@ final class CommerceTargetElementTypesTest extends TestCase
             'title' => 'Indexed category promotion',
             'url' => '/indexed-category',
             'type' => 'category',
-            'group' => 'Indexed Group',
-            'groupHandle' => 'indexedGroup',
+            'categoryGroup' => 'Indexed Group',
+            'categoryGroupHandle' => 'indexedGroup',
         ];
 
         $promotion = new Promotion();
@@ -477,8 +477,10 @@ final class CommerceTargetElementTypesTest extends TestCase
         self::assertSame('category', $results[0]['type']);
         self::assertSame('Indexed category promotion', $results[0]['title']);
         self::assertSame('/indexed-category', $results[0]['url']);
-        self::assertSame('Indexed Group', $results[0]['group'] ?? null);
-        self::assertSame('indexedGroup', $results[0]['groupHandle'] ?? null);
+        self::assertSame('Indexed Group', $results[0]['categoryGroup'] ?? null);
+        self::assertSame('indexedGroup', $results[0]['categoryGroupHandle'] ?? null);
+        self::assertArrayNotHasKey('group', $results[0]);
+        self::assertArrayNotHasKey('groupHandle', $results[0]);
         self::assertArrayNotHasKey('section', $results[0]);
     }
 

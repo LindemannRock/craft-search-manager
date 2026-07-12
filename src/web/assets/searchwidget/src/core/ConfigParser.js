@@ -106,7 +106,7 @@ export const BASE_DEFAULTS = {
     destinationHighlightSelector: 'main, article, [data-search-content]',
     // Hierarchical result display (Algolia DocSearch-style)
     resultLayout: 'default', // 'default' | 'grouped' | 'hierarchical'
-    hierarchyGroupBy: '',    // Field to group by (e.g., 'section', 'category')
+    hierarchyGroupBy: '',    // Field to group by (e.g., 'source', 'entrySection', 'docCategory', 'categoryGroup')
     hierarchyStyle: 'tree',  // 'tree' (indented + connectors) | 'flat' (same depth + connectors) | 'none' (same depth, no connectors)
     hierarchyDisplay: 'individual', // 'individual' (each result is its own card) | 'unified' (page + headings share one card)
     maxHeadingsPerResult: 3, // Max heading children per result

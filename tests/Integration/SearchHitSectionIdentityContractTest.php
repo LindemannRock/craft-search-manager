@@ -90,8 +90,106 @@ final class SearchHitSectionIdentityContractTest extends TestCase
         self::assertSame('overview', $hit['sectionAnchor'] ?? null);
         self::assertSame('https://example.test/docs#overview', $hit['sectionUrl'] ?? null);
         self::assertSame(1, $hit['sectionIndex'] ?? null);
+        self::assertSame(123, $hit['elementId'] ?? null);
+        self::assertSame('123_1_overview', $hit['backendId'] ?? null);
+        self::assertArrayNotHasKey('id', $hit);
+        self::assertArrayNotHasKey('objectID', $hit);
         self::assertArrayNotHasKey('sectionBody', $hit);
         self::assertArrayNotHasKey('_sectionBody', $hit);
+    }
+
+    public function testPresenterRemovesLegacyIdentitySectionAndInternalKeysAcrossHitShapes(): void
+    {
+        $base = [
+            'id' => 123,
+            'objectID' => '123_1',
+            'elementId' => 123,
+            'siteId' => 1,
+            'backendId' => '123_1',
+            'title' => 'Contract hit',
+            'type' => 'entry',
+            'elementType' => 'entry',
+            'section' => 'Legacy Section',
+            'sectionHandle' => 'legacy',
+            'sectionType' => 'channel',
+            'group' => 'Legacy Group',
+            'groupHandle' => 'legacyGroup',
+            'category' => 'legacy-doc-category',
+            'entrySection' => 'Entries',
+            'entrySectionHandle' => 'entries',
+            'entrySectionType' => 'channel',
+            'categoryGroup' => 'Topics',
+            'categoryGroupHandle' => 'topics',
+            'docCategory' => 'Guides',
+            '_testInternal' => 'private',
+        ];
+
+        $shapes = [
+            'page entry' => $base,
+            'page product' => array_merge($base, [
+                'type' => 'product',
+                'elementType' => 'product',
+                'entrySection' => null,
+                'entrySectionHandle' => null,
+                'entrySectionType' => null,
+                'productType' => 'Clothing',
+                'productTypeHandle' => 'clothing',
+            ]),
+            'split heading' => array_merge($base, [
+                'backendId' => '123_1_install',
+                'sectionType' => 'heading',
+                'sectionId' => 'install',
+                'sectionTitle' => 'Install',
+                'sectionLevel' => 2,
+                'sectionAnchor' => 'install',
+                'sectionUrl' => '/docs#install',
+                'sectionIndex' => 1,
+            ]),
+            'split intro' => array_merge($base, [
+                'backendId' => '123_1_intro',
+                'sectionType' => 'intro',
+                'sectionId' => 'intro',
+                'sectionTitle' => 'Contract hit',
+                'sectionLevel' => null,
+                'sectionAnchor' => null,
+                'sectionUrl' => '/docs',
+                'sectionIndex' => 0,
+            ]),
+            'promoted hit' => array_merge($base, [
+                'backendId' => '123_1_promoted-page',
+                'sectionType' => 'promoted-page',
+                'sectionId' => 'promoted-page',
+                'sectionTitle' => 'Contract hit',
+                'sectionUrl' => '/docs',
+                'sectionIndex' => 0,
+                'promoted' => true,
+                'score' => null,
+            ]),
+        ];
+
+        foreach ($shapes as $label => $rawHit) {
+            $hit = SearchHitPresenter::present($rawHit);
+
+            self::assertArrayNotHasKey('id', $hit, $label);
+            self::assertArrayNotHasKey('objectID', $hit, $label);
+            self::assertArrayNotHasKey('section', $hit, $label);
+            self::assertArrayNotHasKey('sectionHandle', $hit, $label);
+            self::assertArrayNotHasKey('group', $hit, $label);
+            self::assertArrayNotHasKey('groupHandle', $hit, $label);
+            self::assertArrayNotHasKey('category', $hit, $label);
+            self::assertArrayNotHasKey('_testInternal', $hit, $label);
+        }
+
+        $pageEntry = SearchHitPresenter::present($shapes['page entry']);
+        self::assertArrayNotHasKey('sectionType', $pageEntry);
+        self::assertSame('Entries', $pageEntry['entrySection'] ?? null);
+        self::assertSame('entries', $pageEntry['entrySectionHandle'] ?? null);
+        self::assertSame('channel', $pageEntry['entrySectionType'] ?? null);
+
+        foreach (['split heading' => 'heading', 'split intro' => 'intro', 'promoted hit' => 'promoted-page'] as $label => $sectionType) {
+            $hit = SearchHitPresenter::present($shapes[$label]);
+            self::assertSame($sectionType, $hit['sectionType'] ?? null, $label);
+        }
     }
 
     public function testGraphQlHitTypeExposesAndResolvesSectionFields(): void

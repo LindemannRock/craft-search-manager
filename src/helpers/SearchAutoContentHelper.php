@@ -10,6 +10,7 @@ namespace lindemannrock\searchmanager\helpers;
 
 use craft\base\ElementInterface;
 use craft\base\Field;
+use craft\elements\Asset;
 use craft\helpers\ElementHelper;
 
 /**
@@ -41,6 +42,10 @@ class SearchAutoContentHelper
         }
 
         foreach (ElementHelper::searchableAttributes($element) as $attribute) {
+            if ($element instanceof Asset && $attribute === 'filename') {
+                continue;
+            }
+
             try {
                 $value = $element->getSearchKeywords($attribute);
                 if (!empty($value)) {

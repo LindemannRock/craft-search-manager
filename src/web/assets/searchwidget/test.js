@@ -165,13 +165,12 @@ try {
     const { renderResults } = loadRendererModule();
     const splitHits = [
         {
-            id: 101,
             elementId: 101,
             siteId: 1,
             backendId: '101_1_install',
             title: 'Guide A',
             url: '/guide-a',
-            section: 'Docs',
+            source: 'Docs',
             type: 'source-doc',
             sectionType: 'heading',
             sectionId: 'install',
@@ -184,13 +183,12 @@ try {
             index: 'docs',
         },
         {
-            id: 101,
             elementId: 101,
             siteId: 1,
             backendId: '101_1_low',
             title: 'Guide A',
             url: '/guide-a',
-            section: 'Docs',
+            source: 'Docs',
             type: 'source-doc',
             sectionType: 'heading',
             sectionId: 'low',
@@ -203,13 +201,12 @@ try {
             index: 'docs',
         },
         {
-            id: 101,
             elementId: 101,
             siteId: 1,
             backendId: '101_1_advanced',
             title: 'Guide A',
             url: '/guide-a',
-            section: 'Docs',
+            source: 'Docs',
             type: 'source-doc',
             sectionType: 'heading',
             sectionId: 'advanced',
@@ -222,13 +219,12 @@ try {
             index: 'docs',
         },
         {
-            id: 101,
             elementId: 101,
             siteId: 1,
             backendId: '101_1_intro',
             title: 'Guide A',
             url: '/guide-a',
-            section: 'Docs',
+            source: 'Docs',
             type: 'source-doc',
             sectionType: 'intro',
             sectionId: 'intro',
@@ -240,13 +236,12 @@ try {
             index: 'docs',
         },
         {
-            id: 202,
             elementId: 202,
             siteId: 1,
             backendId: '202_1_intro',
             title: 'Guide B',
             url: '/guide-b',
-            section: 'Docs',
+            source: 'Docs',
             type: 'source-doc',
             sectionType: 'intro',
             sectionId: 'intro',
@@ -271,13 +266,12 @@ try {
     test('Split hierarchy nests h3 children under h2 in tree mode', hierarchicalHtml.includes('sm-hierarchy-depth-1') && hierarchicalHtml.includes('data-id="101_1_advanced" data-element-id="101"'));
 
     const noIntroHtml = renderResults([{
-        id: 303,
         elementId: 303,
         siteId: 1,
         backendId: '303_1_child',
         title: 'No Intro Page',
         url: '/no-intro',
-        section: 'Docs',
+        source: 'Docs',
         type: 'source-doc',
         sectionType: 'heading',
         sectionId: 'child',
@@ -297,13 +291,12 @@ try {
     test('Split hierarchy does not borrow child snippet for page node without intro hit', !noIntroParentHtml.includes('sm-result-desc') && noIntroHtml.includes('snippet must stay'));
 
     const promotedPageHtml = renderResults([{
-        id: 707,
         elementId: 707,
         siteId: 1,
         backendId: '707_1_promoted-page',
         title: 'Promoted Guide',
         url: '/promoted-guide',
-        section: 'Docs',
+        source: 'Docs',
         type: 'source-doc',
         sectionType: 'promoted-page',
         sectionId: 'promoted-page',
@@ -334,24 +327,24 @@ try {
     test('Flat section hits use backendId for DOM identity and elementId for analytics identity', flatSectionHtml.includes('data-id="101_1_install" data-element-id="101"'));
 
     const pageModeHtml = renderResults([{
-        id: 404,
         elementId: 404,
         backendId: '404_1',
         title: 'Plain Page',
         url: '/plain',
-        section: 'Pages',
+        entrySection: 'Pages',
         snippet: 'Plain snippet',
     }], 'plain', {
         resultLayout: 'default',
         listboxId: 'plain-list',
     });
-    test('Page-mode hits keep legacy data-id identity', pageModeHtml.includes('data-id="404"') && !pageModeHtml.includes('data-element-id="404"'));
+    test('Page-mode hits use backendId DOM identity and elementId analytics identity', pageModeHtml.includes('data-id="404_1" data-element-id="404"'));
 
     const mixedHtml = renderResults([splitHits[0], {
-        id: 505,
+        elementId: 505,
+        backendId: '505_1',
         title: 'Mixed Plain Page',
         url: '/mixed',
-        section: 'Pages',
+        entrySection: 'Pages',
         snippet: 'Mixed plain snippet',
         score: 5,
     }], 'mixed', {

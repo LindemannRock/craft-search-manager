@@ -78,12 +78,17 @@ class AutoTransformer extends BaseTransformer
         $data = $this->getCommonData($element);
 
         // Set element-kind metadata for grouping (hierarchical layout, groupResults).
-        $data = array_merge($data, SearchElementKindMetadataHelper::metadata($element, $data['elementType']));
+        $kindMetadata = SearchElementKindMetadataHelper::metadata($element, $data['elementType']);
+        $data = array_merge($data, $kindMetadata);
 
         $data = array_merge($data, $this->getHierarchyMetadata($element));
 
         $contentBag = $this->autoContentHelper->collect($element);
         $searchableContent = $contentBag['parts'];
+        if ($data['elementType'] === 'asset') {
+            self::appendUniqueSearchableTerm($searchableContent, $kindMetadata['assetKind'] ?? null);
+            self::appendUniqueSearchableTerm($searchableContent, $kindMetadata['extension'] ?? null);
+        }
         $richTextContent = $contentBag['richText'];
         if ($contentBag['fields'] !== []) {
             $data['_fields'] = $contentBag['fields'];
@@ -119,6 +124,29 @@ class AutoTransformer extends BaseTransformer
 
         // Combine all searchable content
         return SearchContentBuilderHelper::apply($data, $searchableContent);
+    }
+
+    /**
+     * @param array<int, mixed> $searchableContent
+     */
+    private static function appendUniqueSearchableTerm(array &$searchableContent, mixed $value): void
+    {
+        if (!is_scalar($value)) {
+            return;
+        }
+
+        $term = trim((string)$value);
+        if ($term === '') {
+            return;
+        }
+
+        foreach ($searchableContent as $part) {
+            if (is_scalar($part) && strcasecmp(trim((string)$part), $term) === 0) {
+                return;
+            }
+        }
+
+        $searchableContent[] = $term;
     }
 
     // =========================================================================

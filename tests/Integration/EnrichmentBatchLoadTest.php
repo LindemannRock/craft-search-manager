@@ -242,6 +242,8 @@ final class EnrichmentBatchLoadTest extends TestCase
         $this->assertSame('category', $results[0]['type']);
         $this->assertArrayNotHasKey('group', $results[0]);
         $this->assertArrayNotHasKey('groupHandle', $results[0]);
+        $this->assertArrayNotHasKey('categoryGroup', $results[0]);
+        $this->assertArrayNotHasKey('categoryGroupHandle', $results[0]);
         $this->assertArrayNotHasKey('section', $results[0]);
         $this->assertSame(true, $results[0]['_liveComparison']['elementFound'] ?? null);
         $this->assertSame('category', $results[0]['_liveComparison']['type'] ?? null);

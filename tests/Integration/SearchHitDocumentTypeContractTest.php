@@ -18,6 +18,7 @@ use craft\elements\Entry;
 use craft\elements\User;
 use lindemannrock\searchmanager\backends\AbstractSearchEngineBackend;
 use lindemannrock\searchmanager\gql\types\SearchHitType;
+use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
@@ -32,6 +33,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(AbstractSearchEngineBackend::class)]
 #[CoversClass(AutoTransformer::class)]
 #[CoversClass(BaseTransformer::class)]
+#[CoversClass(SearchHitPresenter::class)]
 #[CoversClass(SearchHitType::class)]
 final class SearchHitDocumentTypeContractTest extends TestCase
 {
@@ -94,9 +96,9 @@ final class SearchHitDocumentTypeContractTest extends TestCase
             'documentData' => [
                 'elementType' => 'entry',
                 'type' => 'entry',
-                'section' => 'Test Section',
-                'sectionHandle' => 'testSection',
-                'sectionType' => 'structure',
+                'entrySection' => 'Test Section',
+                'entrySectionHandle' => 'testSection',
+                'entrySectionType' => 'structure',
             ],
         ], [
             'id' => 123,
@@ -108,9 +110,9 @@ final class SearchHitDocumentTypeContractTest extends TestCase
 
         self::assertSame('entry', $hit['type'] ?? null);
         self::assertSame('entry', $hit['elementType'] ?? null);
-        self::assertSame('Test Section', $hit['section'] ?? null);
-        self::assertSame('testSection', $hit['sectionHandle'] ?? null);
-        self::assertSame('structure', $hit['sectionType'] ?? null);
+        self::assertSame('Test Section', $hit['entrySection'] ?? null);
+        self::assertSame('testSection', $hit['entrySectionHandle'] ?? null);
+        self::assertSame('structure', $hit['entrySectionType'] ?? null);
     }
 
     public function testLocalBackendRawHitShapeUsesPublicSlugWithoutUnderscoreMirrors(): void
@@ -161,12 +163,29 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertArrayHasKey('snippet', $fields);
         self::assertArrayNotHasKey('description', $fields);
         self::assertArrayNotHasKey('thumbnail', $fields);
-        self::assertArrayHasKey('sectionHandle', $fields);
+        self::assertArrayHasKey('entrySection', $fields);
+        self::assertArrayHasKey('entrySectionHandle', $fields);
+        self::assertArrayHasKey('entrySectionType', $fields);
         self::assertArrayHasKey('sectionType', $fields);
+        self::assertArrayNotHasKey('section', $fields);
+        self::assertArrayNotHasKey('sectionHandle', $fields);
+        self::assertArrayNotHasKey('id', $fields);
+        self::assertArrayNotHasKey('objectID', $fields);
+        self::assertArrayHasKey('categoryIds', $fields);
         self::assertArrayHasKey('volume', $fields);
         self::assertArrayHasKey('volumeHandle', $fields);
-        self::assertArrayHasKey('group', $fields);
-        self::assertArrayHasKey('groupHandle', $fields);
+        self::assertArrayHasKey('filename', $fields);
+        self::assertArrayHasKey('assetKind', $fields);
+        self::assertArrayHasKey('extension', $fields);
+        self::assertArrayHasKey('size', $fields);
+        self::assertArrayHasKey('width', $fields);
+        self::assertArrayHasKey('height', $fields);
+        self::assertArrayHasKey('categoryGroup', $fields);
+        self::assertArrayHasKey('categoryGroupHandle', $fields);
+        self::assertArrayHasKey('docCategory', $fields);
+        self::assertArrayNotHasKey('group', $fields);
+        self::assertArrayNotHasKey('groupHandle', $fields);
+        self::assertArrayNotHasKey('category', $fields);
         self::assertArrayHasKey('productType', $fields);
         self::assertArrayHasKey('productTypeHandle', $fields);
         self::assertArrayNotHasKey('productTypeName', $fields);
@@ -191,6 +210,68 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertNull($method->invoke($type, [
             '_slug' => 'legacy-slug',
         ], [], null, $resolveInfo));
+        self::assertNull($method->invoke($type, [
+            'slug' => '',
+        ], [], null, $resolveInfo));
+    }
+
+    public function testPresenterOmitsEmptyAssetSlugButKeepsSlugBearingKinds(): void
+    {
+        $asset = SearchHitPresenter::present([
+            'elementId' => 500,
+            'siteId' => 1,
+            'backendId' => '500_1',
+            'title' => 'Hero Image',
+            'type' => 'asset',
+            'elementType' => 'asset',
+            'slug' => '',
+            'url' => '/uploads/hero.jpg',
+            'volume' => 'Uploads',
+            'volumeHandle' => 'uploads',
+            'filename' => 'Hero.jpg',
+            'assetKind' => 'image',
+            'extension' => 'jpg',
+            'size' => 123456,
+            'width' => 1600,
+            'height' => 900,
+        ]);
+
+        self::assertSame('asset', $asset['type'] ?? null);
+        self::assertSame('Uploads', $asset['volume'] ?? null);
+        self::assertSame('Hero.jpg', $asset['filename'] ?? null);
+        self::assertSame('image', $asset['assetKind'] ?? null);
+        self::assertSame('jpg', $asset['extension'] ?? null);
+        self::assertSame(123456, $asset['size'] ?? null);
+        self::assertSame(1600, $asset['width'] ?? null);
+        self::assertSame(900, $asset['height'] ?? null);
+        self::assertArrayNotHasKey('slug', $asset);
+
+        foreach ([
+            'entry' => 'getting-started',
+            'category' => 'knowledge-base',
+            'product' => 'trail-sneaker',
+            'source-doc' => 'installation',
+        ] as $kind => $slug) {
+            $hit = SearchHitPresenter::present([
+                'elementId' => 123,
+                'siteId' => 1,
+                'backendId' => '123_1_' . $kind,
+                'title' => ucfirst($kind) . ' hit',
+                'type' => $kind,
+                'elementType' => $kind,
+                'slug' => $slug,
+                'url' => '/' . $slug,
+            ]);
+
+            self::assertSame($slug, $hit['slug'] ?? null, $kind);
+            self::assertNotSame('', $hit['slug'] ?? '', $kind);
+            self::assertArrayNotHasKey('filename', $hit, $kind);
+            self::assertArrayNotHasKey('assetKind', $hit, $kind);
+            self::assertArrayNotHasKey('extension', $hit, $kind);
+            self::assertArrayNotHasKey('size', $hit, $kind);
+            self::assertArrayNotHasKey('width', $hit, $kind);
+            self::assertArrayNotHasKey('height', $hit, $kind);
+        }
     }
 
     private function localBackend(): AbstractSearchEngineBackend

@@ -46,7 +46,7 @@ Define widget configs in `config/search-manager.php`:
         'settings' => [
             'behavior' => [
                 'resultLayout' => 'hierarchical',
-                'hierarchyGroupBy' => 'section',
+                'hierarchyGroupBy' => '',
                 'hierarchyStyle' => 'tree',
                 'hierarchyDisplay' => 'unified',
                 'maxHeadingsPerResult' => 5,
@@ -77,7 +77,7 @@ Override settings per-include:
     groupResults: true,
     hotkey: 'k',
     resultLayout: 'hierarchical',
-    hierarchyGroupBy: 'section',
+    hierarchyGroupBy: '',
     hierarchyStyle: 'tree',
     hierarchyDisplay: 'unified',
     hideResultsWithoutUrl: false,
@@ -132,7 +132,7 @@ Override settings per-include:
 | `minChars` | `int` | `2` | Minimum characters before searching (1-10) |
 | `showRecent` | `bool` | `true` | Show recent search history |
 | `maxRecentSearches` | `int` | `5` | Maximum recent searches to store (1-50) |
-| `groupResults` | `bool` | `true` | Group results by type/section |
+| `groupResults` | `bool` | `true` | Group results by source, Entry section, or type |
 | `hotkey` | `string` | `'k'` | Keyboard shortcut key |
 | `hideResultsWithoutUrl` | `bool` | `false` | Hide results without a URL |
 | `preventBodyScroll` | `bool` | `true` | Prevent body scroll when open |
@@ -143,7 +143,7 @@ Override settings per-include:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `resultLayout` | `string` | `'default'` | Result layout: `'default'` or `'hierarchical'` |
-| `hierarchyGroupBy` | `string` | `''` | Field to group hierarchical results by (e.g., `'section'`) |
+| `hierarchyGroupBy` | `string` | `''` | Field to group hierarchical results by. Leave empty for the default `source` → `entrySection` → `type` chain. |
 | `hierarchyStyle` | `string` | `'tree'` | Hierarchy display style: `'tree'` (indented + connectors), `'flat'` (no indentation + connectors), or `'none'` (no indentation, no connectors) |
 | `hierarchyDisplay` | `string` | `'individual'` | Card mode: `'individual'` (each result is its own card) or `'unified'` (page and headings share one card, Starlight-style) |
 | `maxHeadingsPerResult` | `int` | `3` | Maximum heading children shown per result (1-50) |

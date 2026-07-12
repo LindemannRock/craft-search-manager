@@ -27,8 +27,6 @@ query {
     hitsPerPage
     totalPages
     hits {
-      id
-      objectID
       title
       url
       type
@@ -39,8 +37,10 @@ query {
       site
       language
       elementType
-      section
-      sectionHandle
+      source
+      entrySection
+      entrySectionHandle
+      entrySectionType
       sectionType
       sectionId
       sectionTitle
@@ -56,12 +56,25 @@ query {
       folderPath
       volume
       volumeHandle
-      group
-      groupHandle
+      filename
+      assetKind
+      extension
+      size
+      width
+      height
+      categoryGroup
+      categoryGroupHandle
+      docCategory
       productType
       productTypeHandle
+      categoryIds
       slug
       matchedIn
+      matchedPhrases
+      matchedTerms {
+        title
+        content
+      }
       fields {
         handle
         value
@@ -109,21 +122,25 @@ GraphQL exposes retrievable custom field values through a typed key/value list b
 
 GraphQL exposes breadcrumb context through `ancestors`, a list of `SearchManagerSearchAncestor` objects with `id` and `title`. The list is ordered from root to parent. Structure Entries and Categories can also expose `level`; public Assets can expose `folderPath`, Craft's canonical containing-folder path. Channel/Single Entries, Users, Commerce Products/Variants, source docs, and Assets without public URLs omit these fields.
 
-For split SourceDoc and AutoTransformer-family indices, GraphQL returns the same flat section hits as REST. Intro and heading section hits share `id` and `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `total` counts section hits, `snippet` is generated only from the section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits.
+GraphQL deliberately does not expose an `id` field on search hits. The old value was the Craft element ID, which is not unique across split hits because multiple records can share the same parent `elementId` while using different `backendId` values. Clients such as Apollo commonly auto-normalize cache objects by a field named `id`, so exposing a non-unique hit ID can corrupt cached results. Use `elementId`, `backendId`, and `siteId` together.
+
+For split SourceDoc and AutoTransformer-family indices, GraphQL returns the same flat section hits as REST. Intro and heading section hits share `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `total` counts section hits, `snippet` is generated only from the section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits.
 
 Common hit fields:
 
 | Field | Notes |
 |-------|-------|
-| `id` / `elementId` | Numeric Craft element ID. Use this for Craft element queries and URLs. Split section hits share this parent page identity. |
-| `backendId` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`, not by `id`. |
-| `objectID` | Raw backend compatibility field. Algolia and Meilisearch use this as their primary key; Typesense keeps the primary key in its reserved `id` field. Prefer `elementId` and `backendId` in new code. |
+| `elementId` | Numeric Craft element ID. Use this for Craft element queries and URLs. Split section hits share this parent page identity. |
+| `backendId` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`. |
 | `siteId` / `site` / `language` | Site ID, site handle, and site language from the indexed document. |
 | `elementType` | Stable lowercase document kind. Matches `type`. |
 | `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, `user`, and `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
-| `section` | Human-readable Entry section name when the hit is an Entry. Assets, Categories, Users, Products, and Variants do not use this field. |
-| `sectionHandle` | Entry section handle when the hit is an Entry. |
-| `sectionType` | Entry section type (`single`, `channel`, or `structure`) for normal Entry hits. For split hits, one of `heading`, `intro`, or `promoted-page`; `promoted-page` is injection-only for page-level promotions and carries no snippet. |
+| Naming rule | Hit keys use Craft-native names; a kind prefix is used only where the bare word would be ambiguous within this contract (`entrySection*`, `assetKind`, `categoryGroup*`, `docCategory`). |
+| `source` | Source name for SourceDoc and custom source-backed hits. |
+| `entrySection` | Human-readable Entry section name when the hit is an Entry. |
+| `entrySectionHandle` | Entry section handle when the hit is an Entry. |
+| `entrySectionType` | Entry section type (`single`, `channel`, or `structure`) for normal Entry hits. |
+| `sectionType` | Split hit type: `heading`, `intro`, or `promoted-page`. This field belongs only to split hits. |
 | `sectionId` | Section identity within the parent element for split section hits. |
 | `sectionTitle` | Parent page title for split `intro` / `promoted-page` hits, or heading title for split `heading` hits. |
 | `sectionLevel` | Heading level for split `heading` hits; `null` for intro and promoted-page hits. |
@@ -134,18 +151,28 @@ Common hit fields:
 | `level` | Structure depth for Entry and Category hits when indexed. |
 | `folderPath` | Craft's canonical containing-folder path for public Asset hits when indexed. It uses folder path segments rather than folder display titles. |
 | `volume` / `volumeHandle` | Asset volume metadata when the hit is an Asset. |
-| `group` / `groupHandle` | Category group metadata when the hit is a Category. |
+| `filename` | Asset filename when the hit is an Asset. |
+| `assetKind` | Craft Asset kind when the hit is an Asset, for example `image`, `pdf`, `word`, `excel`, `video`, `audio`, `compressed`, or `unknown`. |
+| `extension` | Asset file extension when the hit is an Asset. |
+| `size` | Asset file size in bytes when the hit is an Asset. |
+| `width` / `height` | Asset dimensions in pixels when the Asset has dimensions. Non-image/non-video Assets without dimensions resolve `null`. |
+| `categoryGroup` / `categoryGroupHandle` | Category group metadata when the hit is a Category. |
+| `docCategory` | Docs Manager navigation category when the hit is a SourceDoc. |
 | `productType` / `productTypeHandle` | Commerce product type metadata when returned by the indexed Product or Variant document. |
+| `categoryIds` | Related category element IDs indexed with the hit when available. |
 | `fields` | Retrievable custom field values as `SearchManagerSearchFieldValue` objects with `handle`, `value`, and `values`. AutoTransformer adds Craft custom fields to the source map only when the field is marked searchable in Craft. |
-| `slug` | Public indexed slug when the element or transformer provides one. |
+| `slug` | Public indexed slug when the element or transformer provides one. Entries, Categories, Products, and SourceDoc hits resolve a non-empty slug; Asset hits resolve `null` because Craft Assets do not have element slugs. |
 | `score` | Optional backend-specific relevance signal. Built-in backends use Search Manager BM25; Meilisearch and Typesense expose provider ranking values when available; Algolia may omit a comparable score; promoted results can be `null`. |
-| `matchedIn` | Indexed fields that matched, such as `title` or `content`. |
-| `matchedTerms` | Matched query terms grouped into `title` and `content` lists when the backend provides them. |
+| `matchedIn` | Provider match-location metadata for indexed fields that matched the query. This can be populated even when `matchedTerms` is empty. |
+| `matchedTerms` | Matched query terms grouped into stable `title` and `content` lists. Empty lists resolve as `[]`. |
+| `matchedPhrases` | Exact phrases matched by phrase queries. Empty lists resolve as `[]`. |
 | `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body; `null` when no eligible snippet source contains the query. |
-| `headings` | List of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split section hits return an empty list. |
+| `headings` | Non-null list of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split section hits return an empty list. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
 
 Scores are useful for debug displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.
+
+Asset documents add `assetKind` and `extension` to searchable content at indexing time, so a query such as `pricing pdf` can match PDF assets. Filename is not added a second time because Craft assets normally use the filename as the asset title, and Search Manager already indexes titles.
 
 ## Filters
 
@@ -174,7 +201,6 @@ query {
   ) {
     total
     hits {
-      id
       title
       matchedIn
       matchedTerms {
@@ -214,11 +240,9 @@ query {
   ) {
     total
     hits {
-      id
       elementId
       siteId
       backendId
-      objectID
       title
       url
       score
@@ -264,11 +288,9 @@ query {
   ) {
     total
     hits {
-      id
       elementId
       siteId
       backendId
-      objectID
       title
       snippet
       url
@@ -315,11 +337,9 @@ query {
   ) {
     total
     hits {
-      id
       elementId
       siteId
       backendId
-      objectID
       title
       slug
       url
@@ -368,11 +388,11 @@ query {
   ) {
     total
     hits {
-      id
       title
       url
       snippet
-      section
+      source
+      entrySection
       type
       headings {
         title

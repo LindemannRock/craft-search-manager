@@ -125,9 +125,9 @@ final class TransformerCharacterizationTest extends TestCase
             'siteId' => 1,
             'dateCreated' => null,
             'dateUpdated' => null,
-            'section' => 'Pages',
-            'sectionHandle' => 'pages',
-            'sectionType' => 'structure',
+            'entrySection' => 'Pages',
+            'entrySectionHandle' => 'pages',
+            'entrySectionType' => 'structure',
             'ancestors' => [
                 ['id' => 100, 'title' => 'Root Entry'],
                 ['id' => 200, 'title' => 'Parent Entry'],
@@ -165,9 +165,9 @@ final class TransformerCharacterizationTest extends TestCase
             'siteId' => 1,
             'dateCreated' => null,
             'dateUpdated' => null,
-            'section' => 'News',
-            'sectionHandle' => 'news',
-            'sectionType' => 'channel',
+            'entrySection' => 'News',
+            'entrySectionHandle' => 'news',
+            'entrySectionType' => 'channel',
             'content' => 'Channel Entry channel-entry Channel Entry',
             'excerpt' => 'Channel Entry channel-entry Channel Entry',
         ], (new AutoTransformer())->transform($entry));
@@ -227,8 +227,8 @@ final class TransformerCharacterizationTest extends TestCase
             'siteId' => 1,
             'dateCreated' => null,
             'dateUpdated' => null,
-            'group' => 'Topics',
-            'groupHandle' => 'topics',
+            'categoryGroup' => 'Topics',
+            'categoryGroupHandle' => 'topics',
             'ancestors' => [
                 ['id' => 250, 'title' => 'Root Category'],
             ],
@@ -248,6 +248,11 @@ final class TransformerCharacterizationTest extends TestCase
         $asset->id = 500;
         $asset->siteId = 1;
         $asset->title = 'Hero Image';
+        $asset->setFilename('Hero.jpg');
+        $asset->kind = 'image';
+        $asset->size = 123456;
+        $asset->setWidth(1600);
+        $asset->setHeight(900);
         $asset->testUrl = 'https://example.test/uploads/campaigns/hero.jpg';
         $asset->testVolume = new TransformerCharacterizationVolume(['name' => 'Uploads', 'handle' => 'uploads']);
         $asset->testVolume->testRootUrl = 'https://example.test/uploads/';
@@ -268,13 +273,19 @@ final class TransformerCharacterizationTest extends TestCase
             'dateUpdated' => null,
             'volume' => 'Uploads',
             'volumeHandle' => 'uploads',
+            'filename' => 'Hero.jpg',
+            'assetKind' => 'image',
+            'extension' => 'jpg',
+            'size' => 123456,
+            'width' => 1600,
+            'height' => 900,
             'ancestors' => [
                 ['id' => 10, 'title' => 'Uploads'],
                 ['id' => 20, 'title' => 'Campaigns'],
             ],
             'folderPath' => 'campaigns/',
-            'content' => 'Hero Image Hero Image',
-            'excerpt' => 'Hero Image Hero Image',
+            'content' => 'Hero Image jpg image Hero Image',
+            'excerpt' => 'Hero Image jpg image Hero Image',
         ], (new AutoTransformer())->transform($asset));
     }
 
@@ -283,7 +294,10 @@ final class TransformerCharacterizationTest extends TestCase
         $asset = new TransformerCharacterizationAsset();
         $asset->id = 501;
         $asset->siteId = 1;
-        $asset->title = 'Private Image';
+        $asset->title = 'Pricing PDF';
+        $asset->setFilename('Pricing.pdf');
+        $asset->kind = 'pdf';
+        $asset->size = 234567;
         $asset->testUrl = '';
         $asset->testVolume = new TransformerCharacterizationVolume(['name' => 'Private', 'handle' => 'private']);
         $asset->testVolume->testRootUrl = null;
@@ -296,7 +310,7 @@ final class TransformerCharacterizationTest extends TestCase
             'backendId' => '501_1',
             'type' => 'asset',
             'elementType' => 'asset',
-            'title' => 'Private Image',
+            'title' => 'Pricing PDF',
             'slug' => '',
             'url' => '',
             'siteId' => 1,
@@ -304,8 +318,12 @@ final class TransformerCharacterizationTest extends TestCase
             'dateUpdated' => null,
             'volume' => 'Private',
             'volumeHandle' => 'private',
-            'content' => 'Private Image Private Image',
-            'excerpt' => 'Private Image Private Image',
+            'filename' => 'Pricing.pdf',
+            'assetKind' => 'pdf',
+            'extension' => 'pdf',
+            'size' => 234567,
+            'content' => 'Pricing PDF pdf pdf Pricing PDF',
+            'excerpt' => 'Pricing PDF pdf pdf Pricing PDF',
         ], (new AutoTransformer())->transform($asset));
     }
 
@@ -440,8 +458,8 @@ final class TransformerCharacterizationTest extends TestCase
             'siteId' => 1,
             'dateCreated' => null,
             'dateUpdated' => null,
-            'section' => 'Docs',
-            'category' => 'Guides',
+            'source' => 'Docs',
+            'docCategory' => 'Guides',
             'description' => 'Install and configure Search Manager.',
             'sourceId' => null,
             '_bodyClean' => 'Run Composer install. Use the indexing command after deployment.',
@@ -606,9 +624,9 @@ final class TransformerCharacterizationTest extends TestCase
             'siteId' => 1,
             'dateCreated' => null,
             'dateUpdated' => null,
-            'section' => 'News',
-            'sectionHandle' => 'news',
-            'sectionType' => 'channel',
+            'entrySection' => 'News',
+            'entrySectionHandle' => 'news',
+            'entrySectionType' => 'channel',
             '_fields' => [
                 'body' => 'Intro prose. secret codeOutro prose.',
             ],

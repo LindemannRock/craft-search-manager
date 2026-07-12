@@ -420,9 +420,9 @@ class SettingsController extends Controller
 
         if ($type === 'entry') {
             return $this->settingsTestFilterElementKindDebug([
-                'section' => $this->settingsTestScalarDebugValue($hit['section'] ?? null),
-                'sectionHandle' => $this->settingsTestScalarDebugValue($hit['sectionHandle'] ?? null),
-                'sectionType' => $this->settingsTestScalarDebugValue($hit['sectionType'] ?? null),
+                'entrySection' => $this->settingsTestScalarDebugValue($hit['entrySection'] ?? null),
+                'entrySectionHandle' => $this->settingsTestScalarDebugValue($hit['entrySectionHandle'] ?? null),
+                'entrySectionType' => $this->settingsTestScalarDebugValue($hit['entrySectionType'] ?? null),
                 'ancestors' => $this->settingsTestAncestorsDebugValue($hit['ancestors'] ?? null),
                 'level' => $this->settingsTestIntegerDebugValue($hit['level'] ?? null),
             ]);
@@ -439,8 +439,8 @@ class SettingsController extends Controller
 
         if ($type === 'category') {
             return $this->settingsTestFilterElementKindDebug([
-                'group' => $this->settingsTestScalarDebugValue($hit['group'] ?? null),
-                'groupHandle' => $this->settingsTestScalarDebugValue($hit['groupHandle'] ?? null),
+                'categoryGroup' => $this->settingsTestScalarDebugValue($hit['categoryGroup'] ?? null),
+                'categoryGroupHandle' => $this->settingsTestScalarDebugValue($hit['categoryGroupHandle'] ?? null),
                 'ancestors' => $this->settingsTestAncestorsDebugValue($hit['ancestors'] ?? null),
                 'level' => $this->settingsTestIntegerDebugValue($hit['level'] ?? null),
             ]);
@@ -749,20 +749,29 @@ class SettingsController extends Controller
             'language',
             'elementtype',
             'type',
-            'section',
-            'sectionhandle',
+            'source',
+            'entrysection',
+            'entrysectionhandle',
+            'entrysectiontype',
             'sectiontype',
+            'sectionid',
+            'sectiontitle',
+            'sectionlevel',
+            'sectionanchor',
+            'sectionurl',
+            'sectionindex',
             'volume',
             'volumehandle',
-            'group',
-            'grouphandle',
+            'categorygroup',
+            'categorygrouphandle',
+            'categoryids',
             'backend',
             'datecreated',
             'dateupdated',
             'promoted',
             'boosted',
             'position',
-            'category',
+            'doccategory',
             'slug',
             'producttype',
             'producttypehandle',

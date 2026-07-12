@@ -230,18 +230,19 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
 
         foreach ([
             'function resultContext(hit, normalizedType)',
-            "normalizedType === 'entry' && hit.section",
+            "normalizedType === 'entry' && hit.entrySection",
             "normalizedType === 'asset' && hit.volume",
-            "normalizedType === 'category' && hit.group",
+            "normalizedType === 'category' && hit.categoryGroup",
             "normalizedType === 'product' || normalizedType === 'variant'",
-            'return {label: T.sectionLabel, value: hit.section};',
+            'return {label: T.sectionLabel, value: hit.entrySection};',
             'return {label: T.volumeLabel, value: hit.volume};',
-            'return {label: T.groupLabel, value: hit.group};',
+            'return {label: T.groupLabel, value: hit.categoryGroup};',
             'return {label: T.productTypeLabel, value: hit.productType};',
             'const context = resultContext(hit, normalizedType);',
             'function formatMetaLabel(label)',
             '<span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}',
-            '<span class="sm-test-meta-label">${formatMetaLabel(\'ID\')}</span> #${objectIdDisplay}',
+            '<span class="sm-test-meta-label">${formatMetaLabel(\'ID\')}</span> #${elementIdDisplay}',
+            '<span class="sm-test-meta-label">${formatMetaLabel(T.hitLabel)}</span> <code>${backendIdDisplay}</code>',
             '${contextMeta}',
             'const rawDisplayText = rawSnippet;',
             'const displayText = rawSnippet ? smHighlight(rawSnippet.substring(0, 400), query, descTerms) : \'\';',
@@ -252,6 +253,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringNotContainsString('<span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}', $source);
         self::assertStringNotContainsString('hit.productTypeName', $source);
         self::assertStringNotContainsString("isCommerceHit ? hit.section : ''", $source);
+        self::assertStringNotContainsString('hit.objectID || hit.id', $source);
         self::assertStringNotContainsString('const contextValue = isCommerceHit ? productType : hit.section;', $source);
         self::assertStringNotContainsString("const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');", $source);
         self::assertStringNotContainsString("const rawDisplayText = rawDescription || hit.excerpt || hit.content || '';", $source);
@@ -265,23 +267,23 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
 
         foreach ([
             'private function settingsTestElementKindDebug(array $hit): array',
-            "'section' => \$this->settingsTestScalarDebugValue(\$hit['section'] ?? null),",
+            "'entrySection' => \$this->settingsTestScalarDebugValue(\$hit['entrySection'] ?? null),",
             "'volume' => \$this->settingsTestScalarDebugValue(\$hit['volume'] ?? null),",
-            "'group' => \$this->settingsTestScalarDebugValue(\$hit['group'] ?? null),",
+            "'categoryGroup' => \$this->settingsTestScalarDebugValue(\$hit['categoryGroup'] ?? null),",
             "'ancestors' => \$this->settingsTestAncestorsDebugValue(\$hit['ancestors'] ?? null),",
             "'level' => \$this->settingsTestIntegerDebugValue(\$hit['level'] ?? null),",
             "'folderPath' => \$this->settingsTestScalarDebugValue(\$hit['folderPath'] ?? null),",
             "'volumehandle',",
-            "'grouphandle',",
+            "'categorygrouphandle',",
         ] as $needle) {
             self::assertStringContainsString($needle, $controllerSource);
         }
 
         foreach ([
             'const elementKind = debug.elementKind && typeof debug.elementKind === \'object\' ? debug.elementKind : {};',
-            'renderDebugPill(T.sectionLabel, [elementKind.section',
+            'renderDebugPill(T.sectionLabel, [elementKind.entrySection',
             'renderDebugPill(T.volumeLabel, [elementKind.volume',
-            'renderDebugPill(T.groupLabel, [elementKind.group',
+            'renderDebugPill(T.groupLabel, [elementKind.categoryGroup',
             'renderDebugPill(T.levelLabel, elementKind.level)',
             'renderDebugAncestors(T.breadcrumbLabel, elementKind.ancestors)',
             'renderDebugPill(T.folderPathLabel, elementKind.folderPath)',
@@ -327,7 +329,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'function fieldRowsFromFields(fields)',
             'function renderHitFields(hit)',
             'Array.isArray(field.children) ? field.children : []',
-            'const hasSectionHit = Boolean(hit.sectionType);',
+            "const hasSectionHit = ['heading', 'intro', 'promoted-page'].includes(String(hit.sectionType || ''));",
             'const rawTitle = hasSectionHit ? (hit.sectionTitle || hit.title || T.untitled) : (hit.title || T.untitled);',
             'const rawUrl = hasSectionHit ? (hit.sectionUrl || hit.url) : hit.url;',
             'const url = safeUrlAttribute(rawUrl);',
@@ -372,7 +374,6 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         foreach ([
             'Object.keys(hit)',
             'JSON.stringify(hit',
-            'backendId',
             'apiKey',
             'authorization',
             '#ffffbf',

@@ -325,7 +325,7 @@ This is the same parser that `highlight()` uses internally when no explicit `ter
 When the search backend returns `matchedPhrases` and `matchedTerms` on each hit, pass them as the `terms` option for precise phrase-aware highlighting:
 
 ```javascript
-// Backend returns hit.matchedPhrases = ["craft cms"] and hit.matchedTerms = {title: ["craft", "cms"]}
+// Backend returns hit.matchedPhrases = ["craft cms"] and hit.matchedTerms = {title: ["craft", "cms"], content: []}
 // Combine phrases first (for longest-match priority), then individual terms
 const terms = [...(hit.matchedPhrases || []), ...(hit.matchedTerms?.title || [])];
 

@@ -97,8 +97,9 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
 {
     "hits": [
         {
-            "objectID": 123,
-            "id": 123,
+            "elementId": 123,
+            "siteId": 1,
+            "backendId": "123_1",
             "promoted": true,
             "position": 1,
             "score": null,
@@ -106,17 +107,34 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
             "type": "product",
             "productType": "Clothing",
             "productTypeHandle": "clothing",
+            "headings": [],
+            "matchedIn": [],
+            "matchedTerms": {
+                "title": [],
+                "content": []
+            },
+            "matchedPhrases": [],
+            "snippet": null,
             "title": "Featured Product"
         },
         {
-            "objectID": 456,
-            "id": 456,
+            "elementId": 456,
+            "siteId": 1,
+            "backendId": "456_1",
             "score": 45.23,
             "elementType": "entry",
             "type": "entry",
-            "section": "Blog",
-            "sectionHandle": "blog",
-            "sectionType": "channel"
+            "entrySection": "Blog",
+            "entrySectionHandle": "blog",
+            "entrySectionType": "channel",
+            "headings": [],
+            "matchedIn": ["title"],
+            "matchedTerms": {
+                "title": ["featured"],
+                "content": []
+            },
+            "matchedPhrases": [],
+            "snippet": null
         }
     ],
     "total": 150,
@@ -132,7 +150,7 @@ Promoted items appear in search results with `promoted: true` and `score: null`:
 }
 ```
 
-Promoted hits use the same metadata contract as indexed hits because they are copied from indexed documents. Entries include `section`, `sectionHandle`, and `sectionType` when those fields were indexed; Assets include `volume` and `volumeHandle`; Categories include `group` and `groupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include a fake `section`. When the indexed document has source-backed hierarchy context, promoted hits can also include `ancestors`, Entry/Category `level`, and public Asset `folderPath`.
+Promoted hits use the same metadata contract as indexed hits because they are copied from indexed documents. Entries include `entrySection`, `entrySectionHandle`, and `entrySectionType` when those fields were indexed; SourceDoc and custom source-backed hits can include `source` and `docCategory`; Assets include `volume` and `volumeHandle`; Categories include `categoryGroup` and `categoryGroupHandle`; Commerce Products and Variants include `productType` and `productTypeHandle`; Users do not include fake source or Entry section metadata. When the indexed document has hierarchy context, promoted hits can also include `ancestors`, Entry/Category `level`, and public Asset `folderPath`.
 
 ## Analytics
 

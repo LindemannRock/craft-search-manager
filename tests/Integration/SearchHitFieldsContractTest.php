@@ -54,7 +54,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'siteId' => $entry->siteId,
             'title' => 'Metadata title',
             'url' => 'https://example.test/metadata-url',
-            'section' => 'Metadata Section',
+            'entrySection' => 'Metadata Section',
             'score' => 42.0,
             '_index' => 'metadata-index',
             'type' => 'entry',
@@ -170,7 +170,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'retrievableFieldsByIndex' => ['metadata-index' => []],
         ])[0] ?? [];
 
-        self::assertSame([], $result['fields'] ?? null);
+        self::assertEquals(new \stdClass(), $result['fields'] ?? null);
         self::assertArrayNotHasKey('_fields', $result);
     }
 
@@ -220,7 +220,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'retrievableFieldsByIndex' => ['metadata-index' => []],
         ])[0] ?? [];
 
-        self::assertSame([], $result['fields'] ?? null);
+        self::assertEquals(new \stdClass(), $result['fields'] ?? null);
         self::assertSame('Needle phrase only in hidden body', $result['snippet'] ?? null);
     }
 
@@ -250,7 +250,7 @@ final class SearchHitFieldsContractTest extends TestCase
             'retrievableFieldsByIndex' => ['metadata-index' => []],
         ])[0] ?? [];
 
-        self::assertSame([], $result['fields'] ?? null);
+        self::assertEquals(new \stdClass(), $result['fields'] ?? null);
         self::assertSame('Needle phrase only in private snippet fields', $result['snippet'] ?? null);
         self::assertArrayNotHasKey('_snippetFields', $result);
     }
@@ -259,7 +259,7 @@ final class SearchHitFieldsContractTest extends TestCase
     {
         $hit = SearchHitPresenter::present($this->rawHit(101, 1), false, []);
 
-        self::assertSame([], $hit['fields'] ?? null);
+        self::assertEquals(new \stdClass(), $hit['fields'] ?? null);
         self::assertArrayNotHasKey('_fields', $hit);
         self::assertArrayNotHasKey('_index', $hit);
         self::assertArrayNotHasKey('_elementType', $hit);
@@ -342,7 +342,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('metadata-index', $hit['index'] ?? null);
         self::assertArrayNotHasKey('_index', $hit);
         self::assertArrayNotHasKey('intro', $hit);
-        self::assertSame('metadata', $hit['category'] ?? null);
+        self::assertArrayNotHasKey('category', $hit);
         self::assertArrayNotHasKey('content', $hit);
         self::assertArrayNotHasKey('excerpt', $hit);
         self::assertArrayNotHasKey('description', $hit);
@@ -464,8 +464,8 @@ final class SearchHitFieldsContractTest extends TestCase
             'language' => 'de-CH',
             'dateCreated' => 1771542126,
             'dateUpdated' => 1783631400,
-            'section' => 'Metadata Section',
-            'category' => 'metadata',
+            'entrySection' => 'Metadata Section',
+            'docCategory' => 'metadata',
             'sourceId' => 5,
             '_index' => 'metadata-index',
             'score' => 42.0,
@@ -504,8 +504,9 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertSame('metadata-slug', $raw['slug'] ?? null);
         self::assertSame(1771542126, $raw['dateCreated'] ?? null);
         self::assertSame(1783631400, $raw['dateUpdated'] ?? null);
-        self::assertSame('Metadata Section', $raw['section'] ?? null);
-        self::assertSame('metadata', $raw['category'] ?? null);
+        self::assertSame('Metadata Section', $raw['entrySection'] ?? null);
+        self::assertSame('metadata', $raw['docCategory'] ?? null);
+        self::assertArrayNotHasKey('category', $raw);
         self::assertSame(5, $raw['sourceId'] ?? null);
         self::assertSame('metadata-index', $raw['index'] ?? null);
         self::assertArrayNotHasKey('_index', $raw);
@@ -1088,7 +1089,7 @@ final class SearchHitFieldsContractTest extends TestCase
         ], null, $this->createMock(ResolveInfo::class));
         $graphqlHit = $graphql['hits'][0] ?? [];
 
-        self::assertSame($restHit, $graphqlHit);
+        self::assertEquals($restHit, $graphqlHit);
         self::assertSame('Push the rebuilt index after deployment and confirm analytics are...', $restHit['headings'][0]['snippet'] ?? null);
     }
 
@@ -1403,7 +1404,7 @@ final class SearchHitFieldsContractTest extends TestCase
         $hit = SearchFieldValueHelper::exposeFields([
             'title' => 'Metadata title',
             'url' => 'https://example.test/metadata-url',
-            'section' => 'Metadata Section',
+            'entrySection' => 'Metadata Section',
             '_fields' => [
                 'title' => 'Custom title field',
                 'url' => 'Custom URL field',
@@ -1413,7 +1414,7 @@ final class SearchHitFieldsContractTest extends TestCase
 
         self::assertSame('Metadata title', $hit['title'] ?? null);
         self::assertSame('https://example.test/metadata-url', $hit['url'] ?? null);
-        self::assertSame('Metadata Section', $hit['section'] ?? null);
+        self::assertSame('Metadata Section', $hit['entrySection'] ?? null);
         self::assertSame([
             'title' => 'Custom title field',
             'url' => 'Custom URL field',
@@ -1518,7 +1519,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('_sectionBodyWithCode', $hit);
         self::assertArrayNotHasKey('_elementType', $hit);
         self::assertArrayNotHasKey('intro', $hit);
-        self::assertSame('metadata', $hit['category'] ?? null);
+        self::assertArrayNotHasKey('category', $hit);
     }
 
     public function testGraphQlUsesCanonicalIndexOnlyHitShapeMatchingRest(): void
@@ -1615,8 +1616,8 @@ final class SearchHitFieldsContractTest extends TestCase
             'url' => 'https://example.test/metadata-url',
             'dateCreated' => 1771542126,
             'dateUpdated' => 1783631400,
-            'section' => 'Metadata Section',
-            'category' => 'metadata',
+            'entrySection' => 'Metadata Section',
+            'docCategory' => 'metadata',
             'sourceId' => 5,
             '_index' => 'metadata-index',
             'score' => 42.0,

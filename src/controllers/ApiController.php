@@ -357,7 +357,7 @@ class ApiController extends Controller
      * - hideResultsWithoutUrl: Exclude results that have no URL (default: 0)
      *
      * Response format:
-     * - {hits: [{id, elementId, backendId, objectID, title, url, snippet, headings, fields, score, ...}, ...],
+     * - {hits: [{elementId, backendId, siteId, title, url, snippet, headings, fields, score, ...}, ...],
      *   total, page, hitsPerPage, totalPages}
      *
      * @return Response

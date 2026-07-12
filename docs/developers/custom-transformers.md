@@ -93,9 +93,9 @@ class ProductTransformer extends BaseTransformer
         $data['content'] = $this->stripHtml($element->body ?? '');
         $data['excerpt'] = $this->getExcerpt($element->body ?? '', 200);
         $section = $element->getSection();
-        $data['section'] = $section?->name;
-        $data['sectionHandle'] = $section?->handle;
-        $data['sectionType'] = $section?->type;
+        $data['entrySection'] = $section?->name;
+        $data['entrySectionHandle'] = $section?->handle;
+        $data['entrySectionType'] = $section?->type;
 
         return $data;
     }
@@ -169,7 +169,7 @@ fields {
 }
 ```
 
-Keep Search Manager metadata at the top level. Fields such as `title`, `url`, `section`, `productType`, and `score` have reserved response meanings, while `_fields` is the collision-safe namespace for user-defined field handles.
+Keep Search Manager metadata at the top level. Fields such as `title`, `url`, `entrySection`, `source`, `productType`, and `score` have reserved response meanings, while `_fields` is the collision-safe namespace for user-defined field handles.
 
 `retrievableFields` accepts `['*']` for all stored public field values, `['*', '-wysiwyg']` for all fields except `wysiwyg`, `[]` for none, or an explicit field-handle allowlist. Exclusions use the same `-attr` convention as Algolia's `attributesToRetrieve` and are valid only alongside `*`. The setting controls the public `fields` payload. Searchable field values can still affect matching and snippets through private search/snippet sources, so do not treat it as a secrecy boundary. Rebuild the index after changing retrievable fields so stored records and provider projections use the new allowlist.
 
@@ -281,18 +281,18 @@ Do not put an Entry section handle or Entry section type in `type` or `elementTy
 ```php
 $data['type'] = 'entry';
 $data['elementType'] = 'entry';
-$data['section'] = $element->getSection()?->name;
-$data['sectionHandle'] = $element->getSection()?->handle;
-$data['sectionType'] = $element->getSection()?->type;
+$data['entrySection'] = $element->getSection()?->name;
+$data['entrySectionHandle'] = $element->getSection()?->handle;
+$data['entrySectionType'] = $element->getSection()?->type;
 ```
 
 Commerce product type metadata follows the same rule: `type`/`elementType` stay `product` or `variant`, while product type details use `productType` and `productTypeHandle`.
 
-Non-entry Craft elements also keep their own metadata fields. Assets use `volume` and `volumeHandle`; Categories use `group` and `groupHandle`; Users do not get a fake `section`.
+Non-entry Craft elements also keep their own metadata fields. Source-backed custom elements can use `source`; Assets use `volume`, `volumeHandle`, `filename`, `assetKind`, `extension`, and `size`, plus `width` and `height` when dimensions exist; Categories use `categoryGroup` and `categoryGroupHandle`; Users do not get fake `source` or Entry section metadata.
 
 Hierarchy and path context is also top-level kind metadata. `AutoTransformer` writes it at index time for Structure Entries (`ancestors`, `level`), Categories (`ancestors`, `level`), and public Assets (`ancestors`, `folderPath`). Channel/Single Entries, Users, Commerce Products/Variants, source docs, and private-volume Assets omit these keys. `folderPath` is Craft's canonical folder path string, not a join of folder display titles.
 
-If your transformer extends `AutoTransformer`, the built-in section/group/volume and hierarchy/path metadata is included automatically. If your transformer extends `BaseTransformer` directly and wants the same hierarchy contract, merge `$this->getHierarchyMetadata($element)` into the indexed document at transform time. Do not resolve ancestors or folder chains later while presenting search results.
+If your transformer extends `AutoTransformer`, the built-in source/entry-section/category-group/volume and hierarchy/path metadata is included automatically. If your transformer extends `BaseTransformer` directly and wants the same hierarchy contract, merge `$this->getHierarchyMetadata($element)` into the indexed document at transform time. Do not resolve ancestors or folder chains later while presenting search results.
 
 After changing `type`, `elementType`, or related metadata in a transformer, rebuild the affected index so stored search documents match the current code. Adding or changing hierarchy/path metadata also requires a full reindex because the values are stored in each backend document.
 
@@ -322,7 +322,7 @@ class ProductTransformer extends BaseTransformer
         $data['content'] = $this->stripHtml($element->description ?? '');
         $data['excerpt'] = $this->getExcerpt($element->description ?? '', 150);
         $data['price'] = (float)($element->price ?? 0);
-        $data['category'] = $element->productCategory->one()?->title ?? '';
+        $data['productCategory'] = $element->productCategory->one()?->title ?? '';
         $data['inStock'] = (bool)$element->inStock;
         $data['sku'] = $element->sku ?? '';
 
@@ -352,7 +352,7 @@ class AssetTransformer extends BaseTransformer
         $data = $this->getCommonData($element);
 
         $data['filename'] = $element->filename;
-        $data['kind'] = $element->kind;
+        $data['assetKind'] = $element->kind;
         $data['extension'] = $element->extension;
         $volume = $element->getVolume();
         $data['volume'] = $volume?->name;
@@ -382,9 +382,9 @@ class ArticleTransformer extends BaseTransformer
         $data['content'] = $this->stripHtml($element->body ?? '');
         $data['excerpt'] = $this->getExcerpt($element->body ?? '', 200);
         $section = $element->getSection();
-        $data['section'] = $section?->name;
-        $data['sectionHandle'] = $section?->handle;
-        $data['sectionType'] = $section?->type;
+        $data['entrySection'] = $section?->name;
+        $data['entrySectionHandle'] = $section?->handle;
+        $data['entrySectionType'] = $section?->type;
 
         // Related categories
         $categories = $element->categories->all();

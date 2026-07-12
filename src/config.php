@@ -718,7 +718,7 @@ return [
          *     - hierarchyStyle: 'tree' (indented + connectors), 'flat' (no indentation + connectors),
          *       'none' (no indentation, no connectors) (default: 'tree')
          *     - maxHeadingsPerResult: Max heading children per result, 1-50 (default: 3)
-         *     - hierarchyGroupBy: Field to group hierarchical results by, e.g. 'section' (default: '')
+         *     - hierarchyGroupBy: Field to group hierarchical results by, e.g. 'source', 'entrySection', or 'docCategory' (default: '')
          *     - showCodeSnippets: Include block-level code in result snippets (default: false)
          *     - snippetMode: How snippets find the best passage — 'early' (first match),
          *       'balanced' (best density), 'deep' (exhaustive scan) (default: 'balanced')

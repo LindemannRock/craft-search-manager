@@ -66,8 +66,8 @@ final class QueryRuleBoostBatchTest extends TestCase
 
         $results = $service->applyBoosts([
             ['id' => 2147483000, 'siteId' => $siteId, '_index' => $index->handle, 'score' => 10.0],
-            ['id' => (int)$entry->id, 'siteId' => $siteId, '_index' => $index->handle, 'sectionHandle' => $sectionHandle, 'score' => 6.0],
-            ['id' => (int)$entry->id, 'siteId' => $siteId, '_index' => $index->handle, 'sectionHandle' => $sectionHandle, 'score' => 1.0],
+            ['id' => (int)$entry->id, 'siteId' => $siteId, '_index' => $index->handle, 'entrySectionHandle' => $sectionHandle, 'score' => 6.0],
+            ['id' => (int)$entry->id, 'siteId' => $siteId, '_index' => $index->handle, 'entrySectionHandle' => $sectionHandle, 'score' => 1.0],
         ], 'query', $index->handle, $siteId);
 
         self::assertSame((int)$entry->id, $results[0]['id']);
@@ -82,9 +82,9 @@ final class QueryRuleBoostBatchTest extends TestCase
         $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/QueryRuleService.php');
         $this->assertIsString($source);
 
-        self::assertStringContainsString("\$sectionHandle = \$result['sectionHandle'] ?? null;", $source);
+        self::assertStringContainsString("\$sectionHandle = \$result['entrySectionHandle'] ?? null;", $source);
         self::assertStringContainsString("\$categoryIds = \$result['_categoryIds'] ?? null;", $source);
-        self::assertStringContainsString('Skipping section boost for results missing indexed sectionHandle metadata', $source);
+        self::assertStringContainsString('Skipping section boost for results missing indexed entrySectionHandle metadata', $source);
         self::assertStringContainsString('Skipping category boost for results missing indexed _categoryIds metadata', $source);
         self::assertStringNotContainsString('preloadBoostElements', $source);
         self::assertStringNotContainsString('preloadCategoryBoostMatches', $source);
@@ -204,7 +204,7 @@ final class QueryRuleBoostBatchTest extends TestCase
         ]);
 
         $results = (new QueryRuleService())->applyBoosts([
-            ['id' => (int)$entry->id, 'siteId' => (int)$entry->siteId, '_index' => $index->handle, 'sectionHandle' => $sectionHandle, 'score' => 3.0],
+            ['id' => (int)$entry->id, 'siteId' => (int)$entry->siteId, '_index' => $index->handle, 'entrySectionHandle' => $sectionHandle, 'score' => 3.0],
         ], 'query', $index->handle, (int)$entry->siteId, [$rule], true);
 
         self::assertSame(6.0, $results[0]['score']);

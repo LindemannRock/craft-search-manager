@@ -122,7 +122,7 @@ final class AuditPass29RegressionTest extends TestCase
         self::assertStringNotContainsString('getElementById', $source);
         self::assertStringNotContainsString('Element::find()', $source);
         self::assertStringNotContainsString('preloadBoostElements', $source);
-        self::assertStringContainsString("\$sectionHandle = \$result['sectionHandle'] ?? null;", $source);
+        self::assertStringContainsString("\$sectionHandle = \$result['entrySectionHandle'] ?? null;", $source);
         self::assertStringContainsString("\$categoryIds = \$result['_categoryIds'] ?? null;", $source);
     }
 

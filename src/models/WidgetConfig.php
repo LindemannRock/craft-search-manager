@@ -286,7 +286,7 @@ class WidgetConfig extends Model
     }
 
     /**
-     * Field to group hierarchical results by (e.g., 'section', 'category')
+     * Field to group hierarchical results by (e.g., 'source', 'entrySection', 'docCategory', 'categoryGroup')
      *
      * @since 5.39.0
      */

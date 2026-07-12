@@ -27,6 +27,7 @@ use lindemannrock\searchmanager\gql\types\SearchAncestorType;
 use lindemannrock\searchmanager\gql\types\SearchHeadingType;
 use lindemannrock\searchmanager\gql\types\SearchHitType;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
+use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\services\LiveComparisonService;
 use lindemannrock\searchmanager\tests\TestCase;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
@@ -44,6 +45,7 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(LiveComparisonService::class)]
 #[CoversClass(SearchAncestorType::class)]
 #[CoversClass(SearchHeadingType::class)]
+#[CoversClass(SearchHitPresenter::class)]
 #[CoversClass(SearchHitType::class)]
 final class SearchHitHierarchyContractTest extends TestCase
 {
@@ -116,6 +118,11 @@ final class SearchHitHierarchyContractTest extends TestCase
         $asset->id = 500;
         $asset->siteId = 1;
         $asset->title = 'Hero Image';
+        $asset->setFilename('Hero.jpg');
+        $asset->kind = 'image';
+        $asset->size = 123456;
+        $asset->setWidth(1600);
+        $asset->setHeight(900);
         $asset->testUrl = 'https://example.test/uploads/campaigns/hero.jpg';
         $asset->testVolume = new SearchHierarchyTestVolume(['testRootUrl' => 'https://example.test/uploads/']);
         $asset->testFolder = $child;
@@ -129,6 +136,17 @@ final class SearchHitHierarchyContractTest extends TestCase
         self::assertSame('campaigns/', $data['folderPath'] ?? null);
         self::assertArrayNotHasKey('folder', $data);
         self::assertArrayNotHasKey('folderId', $data);
+
+        $public = SearchHitPresenter::present($data);
+        self::assertSame('asset', $public['type'] ?? null);
+        self::assertSame('campaigns/', $public['folderPath'] ?? null);
+        self::assertSame('Hero.jpg', $public['filename'] ?? null);
+        self::assertSame('image', $public['assetKind'] ?? null);
+        self::assertSame('jpg', $public['extension'] ?? null);
+        self::assertSame(123456, $public['size'] ?? null);
+        self::assertSame(1600, $public['width'] ?? null);
+        self::assertSame(900, $public['height'] ?? null);
+        self::assertArrayNotHasKey('slug', $public);
     }
 
     public function testPrivateAssetAndUserWriteNoHierarchy(): void
@@ -138,6 +156,9 @@ final class SearchHitHierarchyContractTest extends TestCase
         $asset->id = 501;
         $asset->siteId = 1;
         $asset->title = 'Private Image';
+        $asset->setFilename('Private.pdf');
+        $asset->kind = 'pdf';
+        $asset->size = 234567;
         $asset->testUrl = '';
         $asset->testVolume = new SearchHierarchyTestVolume(['testRootUrl' => null]);
         $asset->testFolder = $folder;
@@ -145,6 +166,10 @@ final class SearchHitHierarchyContractTest extends TestCase
         $assetData = (new AutoTransformer())->transform($asset);
         self::assertArrayNotHasKey('ancestors', $assetData);
         self::assertArrayNotHasKey('folderPath', $assetData);
+        self::assertSame('pdf', $assetData['assetKind'] ?? null);
+        self::assertSame('pdf', $assetData['extension'] ?? null);
+        self::assertArrayNotHasKey('width', $assetData);
+        self::assertArrayNotHasKey('height', $assetData);
 
         $user = new User();
         $user->id = 601;
@@ -164,9 +189,9 @@ final class SearchHitHierarchyContractTest extends TestCase
             'title' => 'Hit Entry',
             'url' => 'https://example.test/hit',
             'type' => 'entry',
-            'section' => 'Hit Section',
-            'sectionHandle' => 'hit',
-            'sectionType' => 'structure',
+            'entrySection' => 'Hit Section',
+            'entrySectionHandle' => 'hit',
+            'entrySectionType' => 'structure',
             'ancestors' => [['id' => '100', 'title' => 'Hit Ancestor']],
             'level' => '2',
         ]], '', ['pages'], []);

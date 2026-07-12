@@ -45,9 +45,9 @@ class DocsManagerTransformer extends BaseTransformer
 
         $data['type'] = $this->resolveDocumentType($element);
         $data['elementType'] = $data['type'];
-        $data['section'] = DocsManagerDocumentHelper::sourceName($element->sourceId);
+        $data['source'] = DocsManagerDocumentHelper::sourceName($element->sourceId);
         $data['slug'] = $element->slug;
-        $data['category'] = $element->category;
+        $data['docCategory'] = $element->category;
         $data['description'] = $element->description ?? '';
         $data['sourceId'] = $element->sourceId;
 

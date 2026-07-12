@@ -71,7 +71,7 @@ SearchManager::$plugin->backend->index('entries-en', [
 ]);
 ```
 
-Search hits are unique by `backendId`, not by `id`. Whole-page records use a backend ID such as `{elementId}_{siteId}`; split section records use `{elementId}_{siteId}_{sectionId}` while keeping `id` and `elementId` equal to the parent Craft element ID.
+Indexed backend records are unique by `backendId`, not by the provider `id` or `objectID` field. Whole-page records use a backend ID such as `{elementId}_{siteId}`; split section records use `{elementId}_{siteId}_{sectionId}` while keeping the same parent `elementId`. Public REST and GraphQL hits expose `elementId`, `backendId`, and `siteId`; provider-level `id` and `objectID` do not appear in public hit responses.
 
 ### `clearIndex(indexName)`
 

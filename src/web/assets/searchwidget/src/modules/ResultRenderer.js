@@ -33,11 +33,13 @@ import { appendQueryParam } from './UrlUtils.js';
 
 /**
  * @typedef {Object} SearchResult
- * @property {string|number} id - Result ID
+ * @property {string} [backendId] - Unique backend record ID
+ * @property {number} [elementId] - Craft element ID
  * @property {string} title - Result title
  * @property {string} [snippet] - Result match snippet
  * @property {string} [url] - Result URL
- * @property {string} [section] - Section/type for grouping
+ * @property {string} [source] - Source name for grouping
+ * @property {string} [entrySection] - Entry section name for grouping
  * @property {string} [type] - Element type
  * @property {boolean} [promoted] - Whether result is promoted
  * @property {number} [position] - Promotion position
@@ -126,7 +128,7 @@ export function renderResultItem(result, index, query, options = {}) {
         ? (result.sectionUrl || result.url || result.href || '#')
         : (result.url || result.href || '#');
     const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
-    const type = result.section || result.type || '';
+    const type = result.source || result.entrySection || result.type || '';
     const optionId = getOptionId(listboxId, index);
     const isPromoted = result.promoted === true;
     const sourceIndex = result._index || result.index || '';
@@ -214,9 +216,12 @@ function renderDebugInfo(result) {
         debugItems.push(debugItem('backend', backendValue, 'backend', backendValue));
     }
 
-    // Element ID
-    if (result.id) {
-        debugItems.push(debugItem('id', result.id, 'generic'));
+    if (result.elementId) {
+        debugItems.push(debugItem('element', result.elementId, 'generic'));
+    }
+
+    if (result.backendId) {
+        debugItems.push(debugItem('hit', result.backendId, 'generic'));
     }
 
     // Score - highlighted
@@ -331,7 +336,7 @@ export function renderPromotedBadge(result, config = {}) {
 }
 
 function isSectionHit(result) {
-    return Boolean(result && typeof result === 'object' && result.sectionType);
+    return Boolean(result && typeof result === 'object' && ['heading', 'intro', 'promoted-page'].includes(String(result.sectionType || '')));
 }
 
 function hasSectionHits(results) {
@@ -424,7 +429,6 @@ function sectionGroupToPageResult(hits, maxHeadingsPerResult) {
 
     return {
         ...pageHit,
-        id: elementId || pageHit.id,
         elementId: elementId || pageHit.elementId,
         backendId: introHit?.backendId || pageHit.backendId || syntheticPageBackendId(elementId, siteId),
         title: pageHit.title || pageHit.sectionTitle || pageHit.name || 'Untitled',
@@ -492,28 +496,15 @@ function syntheticPageBackendId(elementId, siteId) {
 }
 
 function backendIdentity(result, parent = null) {
-    return result?.backendId || result?.objectID || parent?.backendId || parent?.objectID || result?.id || parent?.id || '';
+    return result?.backendId || parent?.backendId || '';
 }
 
 function elementIdentity(result, parent = null) {
-    return result?.elementId || parent?.elementId || numericId(result?.id) || numericId(parent?.id) || '';
-}
-
-function numericId(value) {
-    if (value === null || value === undefined || value === '') {
-        return '';
-    }
-
-    return /^\d+$/.test(String(value)) ? String(value) : '';
+    return result?.elementId || parent?.elementId || '';
 }
 
 function renderIdentityAttrs(result, parent = null) {
-    const useBackendDomId = Boolean(result?.__useBackendDomId || parent?.__sectionHitGroup || isSectionHit(result));
-    if (!useBackendDomId) {
-        return ` data-id="${escapeHtml(result?.id || '')}"`;
-    }
-
-    const backendId = backendIdentity(result, parent);
+    const backendId = backendIdentity(result, parent) || elementIdentity(result, parent);
     const elementId = elementIdentity(result, parent);
 
     return ` data-id="${escapeHtml(backendId)}" data-element-id="${escapeHtml(elementId)}"`;
@@ -586,7 +577,7 @@ function hashIcon() {
  */
 function renderHierarchicalResults(results, query, options = {}) {
     const {
-        hierarchyGroupBy = 'section',
+        hierarchyGroupBy = '',
         hierarchyStyle = 'tree',
         hierarchyDisplay = 'individual',
         maxHeadingsPerResult = 3,
@@ -599,7 +590,7 @@ function renderHierarchicalResults(results, query, options = {}) {
     const hierarchicalResults = hasSectionHits(results)
         ? normalizeSectionHitsForHierarchy(results, maxHeadingsPerResult)
         : results;
-    const groupField = hierarchyGroupBy || 'section';
+    const groupField = hierarchyGroupBy || '';
     const groups = groupResultsByField(hierarchicalResults, groupField);
     let globalIndex = 0;
 

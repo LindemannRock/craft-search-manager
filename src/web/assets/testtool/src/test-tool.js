@@ -450,9 +450,9 @@
                     renderDebugPill(T.indexElementTypeLabel, debug.indexElementType),
                     renderDebugPill(T.hitLabel, debug.documentKey),
                     renderDebugPill(T.documentTypeLabel, debug.documentType),
-                    elementKind.section ? renderDebugPill(T.sectionLabel, [elementKind.section, elementKind.sectionHandle ? `(${elementKind.sectionHandle})` : '', elementKind.sectionType ? `[${elementKind.sectionType}]` : ''].filter(Boolean).join(' ')) : '',
+                    elementKind.entrySection ? renderDebugPill(T.sectionLabel, [elementKind.entrySection, elementKind.entrySectionHandle ? `(${elementKind.entrySectionHandle})` : '', elementKind.entrySectionType ? `[${elementKind.entrySectionType}]` : ''].filter(Boolean).join(' ')) : '',
                     elementKind.volume ? renderDebugPill(T.volumeLabel, [elementKind.volume, elementKind.volumeHandle ? `(${elementKind.volumeHandle})` : ''].filter(Boolean).join(' ')) : '',
-                    elementKind.group ? renderDebugPill(T.groupLabel, [elementKind.group, elementKind.groupHandle ? `(${elementKind.groupHandle})` : ''].filter(Boolean).join(' ')) : '',
+                    elementKind.categoryGroup ? renderDebugPill(T.groupLabel, [elementKind.categoryGroup, elementKind.categoryGroupHandle ? `(${elementKind.categoryGroupHandle})` : ''].filter(Boolean).join(' ')) : '',
                     renderDebugPill(T.levelLabel, elementKind.level),
                     renderDebugAncestors(T.breadcrumbLabel, elementKind.ancestors),
                     renderDebugPill(T.folderPathLabel, elementKind.folderPath),
@@ -529,16 +529,16 @@
             }
 
             function resultContext(hit, normalizedType) {
-                if (normalizedType === 'entry' && hit.section) {
-                    return {label: T.sectionLabel, value: hit.section};
+                if (normalizedType === 'entry' && hit.entrySection) {
+                    return {label: T.sectionLabel, value: hit.entrySection};
                 }
 
                 if (normalizedType === 'asset' && hit.volume) {
                     return {label: T.volumeLabel, value: hit.volume};
                 }
 
-                if (normalizedType === 'category' && hit.group) {
-                    return {label: T.groupLabel, value: hit.group};
+                if (normalizedType === 'category' && hit.categoryGroup) {
+                    return {label: T.groupLabel, value: hit.categoryGroup};
                 }
 
                 if ((normalizedType === 'product' || normalizedType === 'variant') && hit.productType) {
@@ -560,7 +560,7 @@
                     return null;
                 }
 
-                const raw = hit.elementId || hit.id;
+                const raw = hit.elementId;
                 const id = Number(raw);
 
                 return Number.isFinite(id) ? id : null;
@@ -899,7 +899,7 @@
                     if (data.total > 0) {
                         html += '<div class="sm-test-results-grid">';
                         data.hits.forEach(hit => {
-                            const hasSectionHit = Boolean(hit.sectionType);
+                            const hasSectionHit = ['heading', 'intro', 'promoted-page'].includes(String(hit.sectionType || ''));
                             const rawTitle = hasSectionHit ? (hit.sectionTitle || hit.title || T.untitled) : (hit.title || T.untitled);
                             const rawSnippet = hit.snippet || '';
                             const titleTerms = getHitTerms(hit, 'title');
@@ -914,8 +914,8 @@
                             const isBoosted = hit.boosted === true;
                             const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.map(escapeDisplay).join(', ') : null;
                             const indexHandle = hit.index || hit._index ? escapeDisplay(hit.index || hit._index) : null;
-                            const objectId = hit.objectID || hit.id;
-                            const objectIdDisplay = objectId ? escapeDisplay(objectId) : '';
+                            const elementIdDisplay = hit.elementId ? escapeDisplay(hit.elementId) : '';
+                            const backendIdDisplay = hit.backendId ? escapeDisplay(hit.backendId) : '';
                             const rawType = hit.type || T.entry;
                             const type = escapeDisplay(rawType);
                             const normalizedType = String(rawType || '').toLowerCase();
@@ -933,7 +933,11 @@
                             const siteName = escapeDisplay(hit.siteName || hit.site || T.unknown);
                             const language = escapeDisplay(hit.language || '??');
                             const matchedHeadings = hit.headings || [];
-                            const matchedTerms = hit.matchedTerms || [];
+                            const matchedTermsData = hit.matchedTerms && typeof hit.matchedTerms === 'object' ? hit.matchedTerms : {};
+                            const matchedTerms = [
+                                ...(Array.isArray(matchedTermsData.title) ? matchedTermsData.title : []),
+                                ...(Array.isArray(matchedTermsData.content) ? matchedTermsData.content : []),
+                            ];
                             const matchedPhrases = hit.matchedPhrases || [];
                             const score = hit.score !== undefined && hit.score !== null ? Number(hit.score).toFixed(2) : T.naValue;
                             const cardClass = isPromoted ? ' sm-test-result-card--promoted' : (isBoosted ? ' sm-test-result-card--boosted' : '');
@@ -956,7 +960,8 @@
                 </div>
             </div>
             <div class="sm-test-meta">
-                <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel('ID')}</span> #${objectIdDisplay}</span>
+                ${elementIdDisplay ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel('ID')}</span> #${elementIdDisplay}</span>` : ''}
+                ${backendIdDisplay ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.hitLabel)}</span> <code>${backendIdDisplay}</code></span>` : ''}
                 <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.typeLabel)}</span> ${type}</span>
                 ${pageTitleMeta}
                 ${sectionMeta}

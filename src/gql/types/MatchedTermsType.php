@@ -47,12 +47,12 @@ class MatchedTermsType extends ObjectType
         return [
             'title' => [
                 'name' => 'title',
-                'type' => Type::listOf(Type::string()),
+                'type' => Type::nonNull(Type::listOf(Type::nonNull(Type::string()))),
                 'description' => 'Terms matched in title fields.',
             ],
             'content' => [
                 'name' => 'content',
-                'type' => Type::listOf(Type::string()),
+                'type' => Type::nonNull(Type::listOf(Type::nonNull(Type::string()))),
                 'description' => 'Terms matched in content fields.',
             ],
         ];
