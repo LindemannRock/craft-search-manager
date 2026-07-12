@@ -289,7 +289,6 @@ class PendingSyncRepository extends Component
         }
 
         $ids = array_map('intval', $ids);
-        $this->requeueDirtyRows($ids, $claimToken);
 
         $rows = (new Query())
             ->select(['id', 'attemptCount'])
@@ -298,7 +297,6 @@ class PendingSyncRepository extends Component
                 'and',
                 ['id' => $ids],
                 ['claimToken' => $claimToken],
-                ['dirtyAt' => null],
             ])
             ->all();
 
@@ -329,6 +327,7 @@ class PendingSyncRepository extends Component
                     [
                         'status' => self::STATUS_FAILED,
                         'nextAttemptAt' => $nextAttemptAt,
+                        'claimedAt' => null,
                         'claimToken' => null,
                         'dirtyAt' => null,
                         'lastError' => mb_substr($error, 0, 2000),
@@ -338,7 +337,6 @@ class PendingSyncRepository extends Component
                         'and',
                         ['id' => $retryIds],
                         ['claimToken' => $claimToken],
-                        ['dirtyAt' => null],
                     ],
                 )
                 ->execute();
@@ -363,7 +361,6 @@ class PendingSyncRepository extends Component
                 'and',
                 $condition,
                 ['claimToken' => $claimToken],
-                ['dirtyAt' => null],
             ];
         }
 

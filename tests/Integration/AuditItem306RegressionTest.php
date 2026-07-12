@@ -93,7 +93,69 @@ final class AuditItem306RegressionTest extends TestCase
         self::assertNotSame('claim-b', $claimedAfterCompletion[0]['claimToken']);
     }
 
-    private function seedProcessingRow(string $indexHandle, int $elementId, int $siteId, string $claimToken): int
+    public function testDirtyProcessingRowRetryPreservesAttemptCountAndBacksOff(): void
+    {
+        $id = $this->seedProcessingRow(
+            self::MARKER_PREFIX . 'retry',
+            306003,
+            1,
+            'claim-c',
+            2,
+            true,
+        );
+
+        $before = $this->fetchRowById($id);
+        self::assertNotNull($before);
+        self::assertNotEmpty($before['dirtyAt']);
+
+        $this->repository->markRetry([$id], 'backend failed', 5, 10, 'claim-c');
+
+        $row = $this->fetchRowById($id);
+        self::assertNotNull($row);
+        self::assertSame(PendingSyncRepository::STATUS_FAILED, $row['status']);
+        self::assertSame(2, (int)$row['attemptCount']);
+        self::assertNull($row['claimedAt']);
+        self::assertNull($row['claimToken']);
+        self::assertNull($row['dirtyAt']);
+        self::assertSame('backend failed', $row['lastError']);
+        self::assertGreaterThan(
+            (new \DateTime($before['nextAttemptAt']))->getTimestamp(),
+            (new \DateTime($row['nextAttemptAt']))->getTimestamp(),
+            'Dirty failed rows must honor retry backoff instead of resetting to immediate pending work.',
+        );
+    }
+
+    public function testDirtyProcessingRowAtMaxAttemptsIsAbandoned(): void
+    {
+        $id = $this->seedProcessingRow(
+            self::MARKER_PREFIX . 'abandon',
+            306004,
+            1,
+            'claim-d',
+            3,
+            true,
+        );
+
+        $this->repository->markRetry([$id], 'backend still failed', 3, 10, 'claim-d');
+
+        $row = $this->fetchRowById($id);
+        self::assertNotNull($row);
+        self::assertSame(PendingSyncRepository::STATUS_ABANDONED, $row['status']);
+        self::assertSame(3, (int)$row['attemptCount']);
+        self::assertNull($row['claimToken']);
+        self::assertNull($row['dirtyAt']);
+        self::assertSame('backend still failed', $row['lastError']);
+        self::assertNotEmpty($row['lastProcessedAt']);
+    }
+
+    private function seedProcessingRow(
+        string $indexHandle,
+        int $elementId,
+        int $siteId,
+        string $claimToken,
+        int $attemptCount = 1,
+        bool $dirty = false,
+    ): int
     {
         $now = Db::prepareDateForDb(new \DateTime());
         Craft::$app->getDb()
@@ -105,12 +167,12 @@ final class AuditItem306RegressionTest extends TestCase
                 'siteId' => $siteId,
                 'op' => PendingSyncRepository::OP_UPSERT,
                 'status' => PendingSyncRepository::STATUS_PROCESSING,
-                'attemptCount' => 1,
+                'attemptCount' => $attemptCount,
                 'queuedAt' => $now,
                 'nextAttemptAt' => $now,
                 'claimedAt' => $now,
                 'claimToken' => $claimToken,
-                'dirtyAt' => null,
+                'dirtyAt' => $dirty ? $now : null,
                 'lastError' => null,
                 'lastProcessedAt' => null,
                 'dateCreated' => $now,
