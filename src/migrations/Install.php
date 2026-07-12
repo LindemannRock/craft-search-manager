@@ -375,6 +375,7 @@ class Install extends Migration
             'nextAttemptAt' => $this->dateTime()->notNull(),
             'claimedAt' => $this->dateTime()->null(),
             'claimToken' => $this->string(64)->null(),
+            'dirtyAt' => $this->dateTime()->null(),
             'lastError' => $this->text()->null(),
             'lastProcessedAt' => $this->dateTime()->null(),
             'dateCreated' => $this->dateTime()->notNull(),

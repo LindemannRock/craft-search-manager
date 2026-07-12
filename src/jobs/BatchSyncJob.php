@@ -95,9 +95,16 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
 
             $passes++;
             $totalClaimed += count($rows);
+            $claimToken = (string)($rows[0]['claimToken'] ?? '');
+            if ($claimToken === '') {
+                $this->logWarning('Skipping pending-sync batch with missing claim token', [
+                    'rowIds' => array_map(static fn(array $row): int => (int)$row['id'], $rows),
+                ]);
+                break;
+            }
 
             $result = $processor->process($rows);
-            $repository->markSucceeded($result['success']);
+            $repository->markSucceeded($result['success'], $claimToken);
             foreach ($result['syncedIndexHandles'] as $indexHandle) {
                 $syncedIndexHandles[$indexHandle] = true;
             }
@@ -109,6 +116,7 @@ class BatchSyncJob extends BaseJob implements RetryableJobInterface
                     $failure['error'],
                     $settings->batchMaxAttempts,
                     $settings->batchFlushInterval,
+                    $claimToken,
                 );
                 $totalFailureGroups++;
             }

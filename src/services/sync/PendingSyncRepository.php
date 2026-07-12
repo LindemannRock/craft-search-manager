@@ -123,6 +123,7 @@ class PendingSyncRepository extends Component
                 'nextAttemptAt' => $now,
                 'claimedAt' => null,
                 'claimToken' => null,
+                'dirtyAt' => null,
                 'lastError' => null,
                 'lastProcessedAt' => null,
                 'dateCreated' => $now,
@@ -137,14 +138,58 @@ class PendingSyncRepository extends Component
                     [
                         'elementType' => $data['elementType'],
                         'op' => $data['op'],
-                        'status' => self::STATUS_PENDING,
-                        'attemptCount' => 0,
+                        'status' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN [[status]] ELSE :pending END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                                ':pending' => self::STATUS_PENDING,
+                            ],
+                        ),
+                        'attemptCount' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN [[attemptCount]] ELSE 0 END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                            ],
+                        ),
                         'queuedAt' => $now,
-                        'nextAttemptAt' => $now,
-                        'claimedAt' => null,
-                        'claimToken' => null,
-                        'lastError' => null,
-                        'lastProcessedAt' => null,
+                        'nextAttemptAt' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN [[nextAttemptAt]] ELSE :now END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                                ':now' => $now,
+                            ],
+                        ),
+                        'claimedAt' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN [[claimedAt]] ELSE NULL END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                            ],
+                        ),
+                        'claimToken' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN [[claimToken]] ELSE NULL END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                            ],
+                        ),
+                        'dirtyAt' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN :now ELSE NULL END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                                ':now' => $now,
+                            ],
+                        ),
+                        'lastError' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN [[lastError]] ELSE NULL END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                            ],
+                        ),
+                        'lastProcessedAt' => new Expression(
+                            'CASE WHEN [[status]] = :processing THEN [[lastProcessedAt]] ELSE NULL END',
+                            [
+                                ':processing' => self::STATUS_PROCESSING,
+                            ],
+                        ),
                         'dateUpdated' => $now,
                     ]
                 )
@@ -211,31 +256,50 @@ class PendingSyncRepository extends Component
     /**
      * @param int[] $ids
      */
-    public function markSucceeded(array $ids): void
+    public function markSucceeded(array $ids, string $claimToken): void
     {
         if (empty($ids)) {
             return;
         }
 
+        $ids = array_map('intval', $ids);
+        $this->requeueDirtyRows($ids, $claimToken);
+
         Craft::$app->getDb()
             ->createCommand()
-            ->delete('{{%searchmanager_pending_syncs}}', ['id' => array_map('intval', $ids)])
+            ->delete(
+                '{{%searchmanager_pending_syncs}}',
+                [
+                    'and',
+                    ['id' => $ids],
+                    ['claimToken' => $claimToken],
+                    ['dirtyAt' => null],
+                ],
+            )
             ->execute();
     }
 
     /**
      * @param int[] $ids
      */
-    public function markRetry(array $ids, string $error, int $maxAttempts, int $flushInterval): void
+    public function markRetry(array $ids, string $error, int $maxAttempts, int $flushInterval, string $claimToken): void
     {
         if (empty($ids)) {
             return;
         }
 
+        $ids = array_map('intval', $ids);
+        $this->requeueDirtyRows($ids, $claimToken);
+
         $rows = (new Query())
             ->select(['id', 'attemptCount'])
             ->from('{{%searchmanager_pending_syncs}}')
-            ->where(['id' => array_map('intval', $ids)])
+            ->where([
+                'and',
+                ['id' => $ids],
+                ['claimToken' => $claimToken],
+                ['dirtyAt' => null],
+            ])
             ->all();
 
         $retryIds = [];
@@ -266,24 +330,41 @@ class PendingSyncRepository extends Component
                         'status' => self::STATUS_FAILED,
                         'nextAttemptAt' => $nextAttemptAt,
                         'claimToken' => null,
+                        'dirtyAt' => null,
                         'lastError' => mb_substr($error, 0, 2000),
                         'dateUpdated' => $nowDb,
                     ],
-                    ['id' => $retryIds]
+                    [
+                        'and',
+                        ['id' => $retryIds],
+                        ['claimToken' => $claimToken],
+                        ['dirtyAt' => null],
+                    ],
                 )
                 ->execute();
         }
 
-        $this->markAbandoned($abandonIds, $error);
+        $this->markAbandoned($abandonIds, $error, $claimToken);
     }
 
     /**
      * @param int[] $ids
      */
-    public function markAbandoned(array $ids, string $error): void
+    public function markAbandoned(array $ids, string $error, ?string $claimToken = null): void
     {
         if (empty($ids)) {
             return;
+        }
+
+        $ids = array_map('intval', $ids);
+        $condition = ['id' => $ids];
+        if ($claimToken !== null) {
+            $condition = [
+                'and',
+                $condition,
+                ['claimToken' => $claimToken],
+                ['dirtyAt' => null],
+            ];
         }
 
         $nowDb = Db::prepareDateForDb(new \DateTime());
@@ -294,11 +375,48 @@ class PendingSyncRepository extends Component
                 [
                     'status' => self::STATUS_ABANDONED,
                     'claimToken' => null,
+                    'dirtyAt' => null,
                     'lastError' => mb_substr($error, 0, 2000),
                     'lastProcessedAt' => $nowDb,
                     'dateUpdated' => $nowDb,
                 ],
-                ['id' => array_map('intval', $ids)]
+                $condition
+            )
+            ->execute();
+    }
+
+    /**
+     * @param int[] $ids
+     */
+    private function requeueDirtyRows(array $ids, string $claimToken): int
+    {
+        if (empty($ids)) {
+            return 0;
+        }
+
+        $nowDb = Db::prepareDateForDb(new \DateTime());
+
+        return Craft::$app->getDb()
+            ->createCommand()
+            ->update(
+                '{{%searchmanager_pending_syncs}}',
+                [
+                    'status' => self::STATUS_PENDING,
+                    'attemptCount' => 0,
+                    'nextAttemptAt' => $nowDb,
+                    'claimedAt' => null,
+                    'claimToken' => null,
+                    'dirtyAt' => null,
+                    'lastError' => null,
+                    'lastProcessedAt' => null,
+                    'dateUpdated' => $nowDb,
+                ],
+                [
+                    'and',
+                    ['id' => array_map('intval', $ids)],
+                    ['claimToken' => $claimToken],
+                    ['not', ['dirtyAt' => null]],
+                ],
             )
             ->execute();
     }
