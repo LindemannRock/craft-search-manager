@@ -12,7 +12,6 @@ use Craft;
 use craft\web\Controller;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
-use lindemannrock\searchmanager\helpers\SearchHitPresenter;
 use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
@@ -543,8 +542,6 @@ class ApiController extends Controller
         $results['page'] = $page;
         $results['resultsLimit'] = $limit;
         $results['totalPages'] = (int) ceil($total / $limit);
-
-        $results = SearchHitPresenter::presentResults($results);
 
         return $this->asJson($results);
     }

@@ -242,11 +242,22 @@ final class EntrySplitSectionsTest extends TestCase
 
         $stub = $this->installStubBackend();
         $this->saveTestIndex(['*']);
+        $testIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
+        self::assertNotNull($testIndex);
+        $expectedCount = $testIndex->getExpectedCount();
+        $testIndex->updateStats(0);
 
         SearchManager::$plugin->indexing->indexElementNow($entry);
         $firstKeepSet = $this->lastKeepSet($stub->calls);
         self::assertNotEmpty($firstKeepSet);
         self::assertContainsOnly('string', $firstKeepSet);
+        $refreshedIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
+        self::assertNotNull($refreshedIndex);
+        self::assertSame(
+            $expectedCount,
+            $refreshedIndex->documentCount,
+            'Direct split-section indexing must refresh documentCount from the expected element count.',
+        );
 
         $entry->setFieldValue('richText', '<p>Edited intro text.</p><h2>Replacement Heading</h2><p>Replacement body text.</p>');
         SearchManager::$plugin->indexing->indexElementNow($entry);

@@ -163,7 +163,20 @@ try {
 }
 
 try {
-    const { renderResults } = loadRendererModule();
+    const { renderPromotedBadge, renderResults } = loadRendererModule();
+    const maliciousBadgeHtml = renderPromotedBadge({ promoted: true }, {
+        badgeText: '<Featured>',
+        badgePosition: 'top-right" onmouseover="alert(1)',
+    });
+    const inlineBadgeHtml = renderPromotedBadge({ promoted: true }, {
+        badgeText: 'Featured',
+        badgePosition: 'inline',
+    });
+
+    test('Promoted badge position falls back for unrecognised values', maliciousBadgeHtml.includes('sm-promoted-badge--top-right') && !maliciousBadgeHtml.includes('onmouseover'));
+    test('Promoted badge text remains escaped after position normalization', maliciousBadgeHtml.includes('&lt;Featured&gt;'));
+    test('Promoted badge keeps allowlisted inline position', inlineBadgeHtml.includes('sm-promoted-badge--inline'));
+
     const splitHits = [
         {
             elementId: 101,

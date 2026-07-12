@@ -1702,6 +1702,14 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertStringNotContainsString('GqlHelper::siteHandle', $hitType);
     }
 
+    public function testRestSearchDoesNotDoublePresentCanonicalHits(): void
+    {
+        $api = $this->readPluginFile('src/controllers/ApiController.php');
+
+        self::assertStringContainsString('CanonicalHitPipeline::presentHits', $api);
+        self::assertStringNotContainsString('SearchHitPresenter::presentResults($results', $api);
+    }
+
     public function testTestToolCanonicalDefaultsMatchRestDefaultsByConstruction(): void
     {
         $api = $this->readPluginFile('src/controllers/ApiController.php');

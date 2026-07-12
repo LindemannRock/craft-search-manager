@@ -194,7 +194,9 @@ class IndexingService extends Component
                 ]);
 
                 $documents = $this->documentsForIndex($index, $element, $data);
-                if ($index?->usesSplitSections()) {
+                $usesSplitSections = $index?->usesSplitSections() === true;
+                $isNewDocument = false;
+                if ($usesSplitSections) {
                     $result = SearchManager::$plugin->backend->batchIndex($indexHandle, $documents)
                         && SearchManager::$plugin->backend->deleteOrphanDocuments(
                             $indexHandle,
@@ -202,7 +204,6 @@ class IndexingService extends Component
                             (int)$element->siteId,
                             $this->backendIdsFromDocuments($documents),
                         );
-                    $isNewDocument = false;
                 } else {
                     $indexResult = SearchManager::$plugin->backend->indexWithResult($indexHandle, $data);
                     $result = $indexResult['success'];
@@ -216,8 +217,9 @@ class IndexingService extends Component
                         SearchManager::$plugin->autocomplete->clearCache($indexHandle);
                     }
 
-                    // Increment document count only for new documents
-                    if ($isNewDocument) {
+                    if ($usesSplitSections) {
+                        $index->updateStats($index->getExpectedCount());
+                    } elseif ($isNewDocument) {
                         SearchIndex::incrementDocumentCount($indexHandle);
                     }
                     SearchIndex::touchLastIndexedDebounced($indexHandle);

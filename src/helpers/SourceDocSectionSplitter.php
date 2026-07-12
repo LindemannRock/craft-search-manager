@@ -40,7 +40,7 @@ class SourceDocSectionSplitter
             ],
             emitIntroWithoutBody: false,
             preferHeadingIdAttribute: true,
-            dedupeAnchors: false,
+            dedupeAnchors: true,
         );
     }
 }

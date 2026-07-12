@@ -537,6 +537,29 @@ final class TransformerCharacterizationTest extends TestCase
         }
     }
 
+    public function testSourceDocSplitSectionsDedupeGeneratedHeadingAnchors(): void
+    {
+        $sourceDoc = new SourceDoc();
+        $sourceDoc->id = 704;
+        $sourceDoc->siteId = 1;
+        $sourceDoc->title = 'Repeated headings';
+        $sourceDoc->slug = 'repeated-headings';
+        $sourceDoc->category = 'Guides';
+        $sourceDoc->description = 'Repeated generated anchors.';
+        $sourceDoc->htmlContent = '<h2>Install</h2><p>First install section.</p><h2>Install</h2><p>Second install section.</p>';
+        $sourceDoc->keywords = [];
+
+        $pageData = (new DocsManagerTransformer())->transform($sourceDoc);
+        $sections = SourceDocSectionSplitter::split($sourceDoc, $pageData, [2]);
+
+        self::assertCount(2, $sections);
+        self::assertSame(['install', 'install-2'], array_column($sections, 'sectionId'));
+        self::assertSame(['704_1_install', '704_1_install-2'], array_column($sections, 'backendId'));
+        self::assertCount(2, array_unique(array_column($sections, 'backendId')));
+        self::assertSame('First install section.', $sections[0]['_bodyClean']);
+        self::assertSame('Second install section.', $sections[1]['_bodyClean']);
+    }
+
     public function testSourceDocTabbedCodeChromeIsRemovedBeforeCleaningAndSplitting(): void
     {
         $sourceDoc = new SourceDoc();

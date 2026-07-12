@@ -77,6 +77,16 @@ final class WidgetFrontendHardeningTest extends TestCase
         self::assertStringNotContainsString('result.excerpt', $source);
     }
 
+    public function testPromotedBadgePositionIsAllowlistedBeforeRenderingClassName(): void
+    {
+        $source = $this->readPluginFile('src/web/assets/searchwidget/src/modules/ResultRenderer.js');
+
+        self::assertStringContainsString("const allowedPositions = new Set(['top-right', 'top-left', 'inline']);", $source);
+        self::assertStringContainsString("const safeBadgePosition = allowedPositions.has(badgePosition) ? badgePosition : 'top-right';", $source);
+        self::assertStringContainsString('const positionClass = `sm-promoted-badge--${safeBadgePosition}`;', $source);
+        self::assertStringNotContainsString('const positionClass = `sm-promoted-badge--${badgePosition}`;', $source);
+    }
+
     public function testWidgetSearchServiceDoesNotSendHighlightMarkupOptions(): void
     {
         $source = $this->readPluginFile('src/web/assets/searchwidget/src/modules/SearchService.js');

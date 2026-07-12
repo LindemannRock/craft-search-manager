@@ -533,8 +533,8 @@ class WidgetConfigService extends Component
         $config->styleHandle = $row['styleHandle'] ?? null;
         $config->settings = Json::decodeIfJson($row['settings']) ?: WidgetConfig::defaultSettings();
         $config->enabled = (bool) $row['enabled'];
-        $config->dateCreated = $row['dateCreated'] ? new \DateTime($row['dateCreated']) : null;
-        $config->dateUpdated = $row['dateUpdated'] ? new \DateTime($row['dateUpdated']) : null;
+        $config->dateCreated = $row['dateCreated'] ? new \DateTime((string)$row['dateCreated'], new \DateTimeZone('UTC')) : null;
+        $config->dateUpdated = $row['dateUpdated'] ? new \DateTime((string)$row['dateUpdated'], new \DateTimeZone('UTC')) : null;
         $config->uid = $row['uid'] ?? null;
 
         return $config;

@@ -330,7 +330,9 @@ export function renderPromotedBadge(result, config = {}) {
         return '';
     }
 
-    const positionClass = `sm-promoted-badge--${badgePosition}`;
+    const allowedPositions = new Set(['top-right', 'top-left', 'inline']);
+    const safeBadgePosition = allowedPositions.has(badgePosition) ? badgePosition : 'top-right';
+    const positionClass = `sm-promoted-badge--${safeBadgePosition}`;
 
     return `<span class="sm-promoted-badge ${positionClass}">${escapeHtml(badgeText)}</span>`;
 }

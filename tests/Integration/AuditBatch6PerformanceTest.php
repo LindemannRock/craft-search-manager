@@ -35,9 +35,11 @@ final class AuditBatch6PerformanceTest extends TestCase
         $source = $this->readPluginSource('src/services/IndexingService.php');
         $body = $this->methodBody($source, 'indexElementNow', 'public');
 
-        self::assertStringContainsString('if ($index?->usesSplitSections()) {', $body);
+        self::assertStringContainsString('$usesSplitSections = $index?->usesSplitSections() === true;', $body);
+        self::assertStringContainsString('if ($usesSplitSections) {', $body);
         self::assertStringContainsString('->batchIndex($indexHandle, $documents)', $body);
         self::assertStringContainsString('->deleteOrphanDocuments(', $body);
+        self::assertStringContainsString('$index->updateStats($index->getExpectedCount());', $body);
         self::assertLessThan(
             strpos($body, '->deleteOrphanDocuments('),
             strpos($body, '->batchIndex($indexHandle, $documents)'),

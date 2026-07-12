@@ -264,8 +264,8 @@ class WidgetStyleService extends Component
         $style->type = $row['type'] ?? 'modal';
         $style->styles = $row['styles'] ? Json::decodeIfJson($row['styles']) : [];
         $style->enabled = (bool) $row['enabled'];
-        $style->dateCreated = $row['dateCreated'] ? new \DateTime($row['dateCreated']) : null;
-        $style->dateUpdated = $row['dateUpdated'] ? new \DateTime($row['dateUpdated']) : null;
+        $style->dateCreated = $row['dateCreated'] ? new \DateTime((string)$row['dateCreated'], new \DateTimeZone('UTC')) : null;
+        $style->dateUpdated = $row['dateUpdated'] ? new \DateTime((string)$row['dateUpdated'], new \DateTimeZone('UTC')) : null;
         $style->uid = $row['uid'] ?? null;
 
         return $style;
