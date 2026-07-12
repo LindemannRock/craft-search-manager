@@ -1,0 +1,38 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+	label: 'Placeholder'|t('search-manager'),
+	instructions: 'Placeholder text shown in the search input'|t('search-manager'),
+	tip: 'Max: 255 characters. Default: "Search...". Supports translation via Craft\'s static translations.'|t('search-manager'),
+	id: 'search-placeholder',
+	name: 'settings[search][placeholder]',
+	value: widgetConfig.getPlaceholder(),
+	placeholder: 'Search...',
+	errors: widgetConfig.getErrors('settings.search.placeholder')
+}) }}
+
+{{ forms.textField({
+	label: 'Search Debounce'|t('search-manager'),
+	instructions: 'Delay in milliseconds before search triggers after typing'|t('search-manager'),
+	tip: 'Min: 0 (instant), Max: 2000 (2 seconds). Default: 200ms'|t('search-manager'),
+	id: 'behavior-searchDebounceMs',
+	name: 'settings[behavior][searchDebounceMs]',
+	value: widgetConfig.getSearchDebounceMs(),
+	type: 'number',
+	min: 0,
+	max: 2000,
+	errors: widgetConfig.getErrors('settings.behavior.searchDebounceMs')
+}) }}
+
+{{ forms.textField({
+	label: 'Search Minimum Characters'|t('search-manager'),
+	instructions: 'Minimum characters before search begins'|t('search-manager'),
+	tip: 'Min: 1, Max: 10. Default: 2'|t('search-manager'),
+	id: 'behavior-searchMinChars',
+	name: 'settings[behavior][searchMinChars]',
+	value: widgetConfig.getSearchMinChars(),
+	type: 'number',
+	min: 1,
+	max: 10,
+	errors: widgetConfig.getErrors('settings.behavior.searchMinChars')
+}) }}

@@ -36,7 +36,7 @@ Use `craft.searchManager.snippets()` to extract text excerpts around matched ter
 
 ```twig
 {% set snippets = craft.searchManager.snippets(entry.body, query, {
-    snippetLength: 200,
+    snippetMaxLength: 200,
     maxSnippets: 3,
 }) %}
 
@@ -106,7 +106,7 @@ GET /actions/search-manager/api/search?q=craft
                 {% set snippets = craft.searchManager.snippets(
                     entry.body ?? '',
                     query,
-                    {snippetLength: 150, maxSnippets: 2}
+                    {snippetMaxLength: 150, maxSnippets: 2}
                 ) %}
 
                 {% if snippets|length %}
@@ -175,10 +175,10 @@ These settings apply when you don't pass options to the template functions:
 
 ```php
 // config/search-manager.php
-'enableHighlighting' => true,
+'highlightResultsEnabled' => true,
 'highlightTag' => 'mark',
 'highlightClass' => null,
-'snippetLength' => 200,
+'snippetMaxLength' => 200,
 'maxSnippets' => 3,
 ```
 
@@ -186,20 +186,20 @@ Per-call options override these defaults.
 
 ## Code Snippets @since(5.39.0)
 
-By default, block-level code in your content is included in search results but excluded from result snippets. That includes HTML `<pre>` blocks and fenced Markdown code blocks. The `showCodeSnippets` setting controls this behavior.
+By default, block-level code in your content is included in search results but excluded from result snippets. That includes HTML `<pre>` blocks and fenced Markdown code blocks. The `snippetIncludeCodeBlocks` setting controls this behavior.
 
 ### How It Works
 
 When custom field content is indexed, Search Manager keeps searchable field text in a private snippet source. The index's `retrievableFields` setting controls which of those values appear under public API/GraphQL `fields`, but snippets can still use searchable field values that are omitted from the public payload. Docs Manager SourceDoc records and AutoTransformer-family section records also store an internal code-included body alongside the normal code-free body after indexing. At display time, Search Manager chooses whether to include block-level code while building snippets from those stored values:
 
-- **`showCodeSnippets: false`** (default) — block-level code is removed before building result snippets
-- **`showCodeSnippets: true`** — snippets include block-level code content
+- **`snippetIncludeCodeBlocks: false`** (default) — block-level code is removed before building result snippets
+- **`snippetIncludeCodeBlocks: true`** — snippets include block-level code content
 
 Inline code spans are sentence content, so their text is always preserved in snippets. Code can still be searchable when it is present in searchable indexed content. The setting only controls whether block-level code appears in the snippet text shown to the user.
 
 Page-mode docs, rich Entry records, and product records with long rich-text descriptions can be large on external backends; for Algolia-backed long-form content, prefer Split Sections so long documents are stored as smaller section records.
 
-For Markdown-heavy fields, `parseMarkdownSnippets` is a display cleanup option. It strips common Markdown markers such as headings, emphasis, horizontal rules, list markers, and inline-code backticks from the plain-text snippet. It does not render Markdown, modify stored/indexed data, or run against genuine HTML rich text.
+For Markdown-heavy fields, `snippetCleanMarkdown` is a display cleanup option. It strips common Markdown markers such as headings, emphasis, horizontal rules, list markers, and inline-code backticks from the plain-text snippet. It does not render Markdown, modify stored/indexed data, or run against genuine HTML rich text.
 
 ### Configuration
 
@@ -207,7 +207,7 @@ In the widget include:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    showCodeSnippets: false,
+    snippetIncludeCodeBlocks: false,
 } %}
 ```
 
@@ -219,7 +219,7 @@ In the config file:
     'docs-search' => [
         'settings' => [
             'behavior' => [
-                'showCodeSnippets' => false,
+                'snippetIncludeCodeBlocks' => false,
             ],
         ],
     ],
@@ -229,12 +229,12 @@ In the config file:
 Via the API:
 
 ```text
-GET /actions/search-manager/api/search?q=querySelector&showCodeSnippets=0
+GET /actions/search-manager/api/search?q=querySelector&snippetIncludeCodeBlocks=0
 ```
 
 ### When to Enable
 
-Enable `showCodeSnippets` when code is the primary content users are searching for — API references, code snippet libraries, or developer tools where seeing the matching code in the result snippet is more useful than seeing the surrounding prose.
+Enable `snippetIncludeCodeBlocks` when code is the primary content users are searching for — API references, code snippet libraries, or developer tools where seeing the matching code in the result snippet is more useful than seeing the surrounding prose.
 
 Keep it disabled (the default) for documentation sites, blogs, and general content where code blocks are supplementary and prose snippets provide better context.
 

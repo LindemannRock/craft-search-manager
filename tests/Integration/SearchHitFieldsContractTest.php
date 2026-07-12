@@ -81,10 +81,10 @@ final class SearchHitFieldsContractTest extends TestCase
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'metadata snippet', [$index->handle], [
             'snippetMode' => 'balanced',
-            'snippetLength' => 150,
-            'showCodeSnippets' => false,
-            'parseMarkdownSnippets' => false,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 150,
+            'snippetIncludeCodeBlocks' => false,
+            'snippetCleanMarkdown' => false,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertCount(1, $results);
@@ -285,10 +285,10 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $visible = CanonicalHitPipeline::presentHits($hits, '', ['pages'], [
-            'hideResultsWithoutUrl' => false,
+            'resultsRequireUrl' => false,
         ]);
         $filtered = CanonicalHitPipeline::presentHits($hits, '', ['pages'], [
-            'hideResultsWithoutUrl' => true,
+            'resultsRequireUrl' => true,
         ]);
 
         self::assertCount(2, $visible);
@@ -319,7 +319,7 @@ final class SearchHitFieldsContractTest extends TestCase
         Craft::$app->set('response', new Response());
         Craft::$app->getRequest()->setQueryParams([
             'q' => 'intro',
-            'indices' => $index->handle,
+            'indexHandles' => $index->handle,
             'siteId' => $entry->siteId,
             'enrich' => 0,
         ]);
@@ -429,14 +429,14 @@ final class SearchHitFieldsContractTest extends TestCase
                 'cacheEnabled' => true,
                 'cacheDriver' => 'file',
                 'took' => 12.5,
-                'indices' => [$index->handle],
+                'indexHandles' => [$index->handle],
                 'rulesMatched' => [],
                 'promotionsMatched' => [],
             ],
         ];
 
         $response = $this->runApiSearch($index->handle, $entry->siteId, null, 'intro', [
-            'debug' => 1,
+            'debugEnabled' => 1,
         ]);
 
         self::assertSame($stub->searchResponse['meta'], $response->data['meta'] ?? null);
@@ -588,26 +588,26 @@ final class SearchHitFieldsContractTest extends TestCase
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $rawShort = $this->runApiSearch($index->handle, $entry->siteId, 0, 'needle', [
-            'snippetLength' => 50,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 50,
+            'snippetCleanMarkdown' => true,
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $legacyEnrichShort = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
-            'snippetLength' => 50,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 50,
+            'snippetCleanMarkdown' => true,
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $rawLongUnparsed = $this->runApiSearch($index->handle, $entry->siteId, 0, 'needle', [
-            'snippetLength' => 1000,
-            'parseMarkdownSnippets' => false,
+            'snippetMaxLength' => 1000,
+            'snippetCleanMarkdown' => false,
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $legacyEnrichLongUnparsed = $this->runApiSearch($index->handle, $entry->siteId, 1, 'needle', [
-            'snippetLength' => 1000,
-            'parseMarkdownSnippets' => false,
+            'snippetMaxLength' => 1000,
+            'snippetCleanMarkdown' => false,
         ])->data['hits'][0] ?? [];
 
         self::assertSame($rawShort['snippet'] ?? null, $legacyEnrichShort['snippet'] ?? null);
@@ -659,10 +659,10 @@ final class SearchHitFieldsContractTest extends TestCase
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'composer', [$index->handle], [
             'snippetMode' => 'balanced',
-            'snippetLength' => 150,
-            'showCodeSnippets' => false,
-            'parseMarkdownSnippets' => false,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 150,
+            'snippetIncludeCodeBlocks' => false,
+            'snippetCleanMarkdown' => false,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertCount(1, $results);
@@ -713,8 +713,8 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
-            'snippetLength' => 70,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 70,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertSame([
@@ -762,7 +762,7 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
-            'hideResultsWithoutUrl' => false,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertSame([
@@ -810,8 +810,8 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'publish', ['docs'], [
-            'snippetLength' => 70,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 70,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertSame([
@@ -850,8 +850,8 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
-            'snippetLength' => 70,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 70,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertStringStartsWith('This section opens with deployment context', (string)($results[0]['snippet'] ?? ''));
@@ -883,8 +883,8 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'composer', ['docs'], [
-            'snippetLength' => 70,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 70,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertStringContainsString('composer', (string)($results[0]['snippet'] ?? ''));
@@ -919,12 +919,12 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $off = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'docs', [
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
         ]);
         $on = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'docs', [
-            'snippetLength' => 120,
-            'showCodeSnippets' => true,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => true,
         ]);
 
         self::assertSame('Install ShortLink Manager before configuring your project.', $off['snippet'] ?? null);
@@ -953,8 +953,8 @@ final class SearchHitFieldsContractTest extends TestCase
         $debugMeta = [];
 
         $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'docs', [
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
         ], $debugMeta);
 
         self::assertSame(
@@ -981,8 +981,8 @@ final class SearchHitFieldsContractTest extends TestCase
         $debugMeta = [];
 
         $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'missingneedle', 'entries', [
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
         ], $debugMeta);
 
         self::assertSame('This field preview explains the page when the indexed body has no prose.', $result['snippet'] ?? null);
@@ -1007,8 +1007,8 @@ final class SearchHitFieldsContractTest extends TestCase
         $debugMeta = [];
 
         $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'entries', [
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
         ], $debugMeta);
 
         self::assertNull($result['snippet'] ?? null);
@@ -1043,17 +1043,17 @@ final class SearchHitFieldsContractTest extends TestCase
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $restHit = $this->runApiSearch($index->handle, $entry->siteId, 0, 'ddev', [
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $graphql = SearchResolver::resolveSearch(null, [
             'query' => 'ddev',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => $entry->siteId,
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
         ], null, $this->createMock(ResolveInfo::class));
         $graphqlHit = $graphql['hits'][0] ?? [];
 
@@ -1091,14 +1091,14 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $off = CanonicalHitPipeline::presentHits([$hit], 'ddev', ['docs'], [
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
+            'resultsRequireUrl' => false,
         ]);
         $on = CanonicalHitPipeline::presentHits([$hit], 'ddev', ['docs'], [
-            'snippetLength' => 120,
-            'showCodeSnippets' => true,
-            'hideResultsWithoutUrl' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => true,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertStringContainsString('Install ShortLink Manager before configuring your project.', (string)($off[0]['snippet'] ?? ''));
@@ -1133,7 +1133,7 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
-            'hideResultsWithoutUrl' => false,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertNull($results[0]['snippet'] ?? null);
@@ -1161,7 +1161,7 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $results = CanonicalHitPipeline::presentHits([$hit], 'release', ['docs'], [
-            'hideResultsWithoutUrl' => false,
+            'resultsRequireUrl' => false,
         ]);
 
         self::assertSame([
@@ -1208,15 +1208,15 @@ final class SearchHitFieldsContractTest extends TestCase
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $restHit = $this->runApiSearch($index->handle, $entry->siteId, 0, 'release', [
-            'snippetLength' => 70,
+            'snippetMaxLength' => 70,
         ])->data['hits'][0] ?? [];
 
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $graphql = SearchResolver::resolveSearch(null, [
             'query' => 'release',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => $entry->siteId,
-            'snippetLength' => 70,
+            'snippetMaxLength' => 70,
         ], null, $this->createMock(ResolveInfo::class));
         $graphqlHit = $graphql['hits'][0] ?? [];
 
@@ -1259,22 +1259,22 @@ final class SearchHitFieldsContractTest extends TestCase
             'title' => 'Needle Guide',
             'url' => 'https://example.test/docs/needle',
             'documentType' => 'source-doc',
-            'snippetLength' => 50,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 50,
+            'snippetCleanMarkdown' => true,
         ]);
         $long = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'needle', $index->handle, [
             'title' => 'Needle Guide',
             'url' => 'https://example.test/docs/needle',
             'documentType' => 'source-doc',
-            'snippetLength' => 1000,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 1000,
+            'snippetCleanMarkdown' => true,
         ]);
         $unparsed = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'needle', $index->handle, [
             'title' => 'Needle Guide',
             'url' => 'https://example.test/docs/needle',
             'documentType' => 'source-doc',
-            'snippetLength' => 1000,
-            'parseMarkdownSnippets' => false,
+            'snippetMaxLength' => 1000,
+            'snippetCleanMarkdown' => false,
         ]);
 
         $shortMain = (string)($short['snippet'] ?? '');
@@ -1310,24 +1310,24 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $cleanCodeOff = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'showCodeSnippets' => false,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 1000,
+            'snippetIncludeCodeBlocks' => false,
+            'snippetCleanMarkdown' => true,
         ]);
         $cleanCodeOn = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'showCodeSnippets' => true,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 1000,
+            'snippetIncludeCodeBlocks' => true,
+            'snippetCleanMarkdown' => true,
         ]);
         $rawCodeOff = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'showCodeSnippets' => false,
-            'parseMarkdownSnippets' => false,
+            'snippetMaxLength' => 1000,
+            'snippetIncludeCodeBlocks' => false,
+            'snippetCleanMarkdown' => false,
         ]);
         $rawCodeOn = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'showCodeSnippets' => true,
-            'parseMarkdownSnippets' => false,
+            'snippetMaxLength' => 1000,
+            'snippetIncludeCodeBlocks' => true,
+            'snippetCleanMarkdown' => false,
         ]);
 
         $cleanOffSnippet = (string)($cleanCodeOff['snippet'] ?? '');
@@ -1381,9 +1381,9 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'showCodeSnippets' => false,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 1000,
+            'snippetIncludeCodeBlocks' => false,
+            'snippetCleanMarkdown' => true,
         ]);
 
         $snippet = (string)($result['snippet'] ?? '');
@@ -1410,12 +1410,12 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $parsed = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 1000,
+            'snippetCleanMarkdown' => true,
         ]);
         $raw = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'parseMarkdownSnippets' => false,
+            'snippetMaxLength' => 1000,
+            'snippetCleanMarkdown' => false,
         ]);
 
         $snippet = (string)($parsed['snippet'] ?? '');
@@ -1440,8 +1440,8 @@ final class SearchHitFieldsContractTest extends TestCase
         ];
 
         $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'daterangehelper', '', [
-            'snippetLength' => 1000,
-            'parseMarkdownSnippets' => true,
+            'snippetMaxLength' => 1000,
+            'snippetCleanMarkdown' => true,
         ]);
 
         $snippet = (string)($result['snippet'] ?? '');
@@ -1630,7 +1630,7 @@ final class SearchHitFieldsContractTest extends TestCase
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'intro',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => $entry->siteId,
         ], null, $this->createMock(ResolveInfo::class));
 
@@ -1670,7 +1670,7 @@ final class SearchHitFieldsContractTest extends TestCase
         $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
         $graphql = SearchResolver::resolveSearch(null, [
             'query' => 'intro',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => $entry->siteId,
         ], null, $this->createMock(ResolveInfo::class));
         $graphqlHit = $graphql['hits'][0] ?? [];
@@ -1709,18 +1709,18 @@ final class SearchHitFieldsContractTest extends TestCase
 
         foreach ([
             "'snippetMode' => (string) \$request->getBodyParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE)",
-            "'snippetLength' => (int) \$request->getBodyParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH)",
-            "'showCodeSnippets' => (bool) \$request->getBodyParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE)",
-            "'parseMarkdownSnippets' => (bool) \$request->getBodyParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN)",
+            "'snippetMaxLength' => (int) \$request->getBodyParam('snippetMaxLength', SnippetOptionsHelper::DEFAULT_LENGTH)",
+            "'snippetIncludeCodeBlocks' => (bool) \$request->getBodyParam('snippetIncludeCodeBlocks', SnippetOptionsHelper::DEFAULT_SHOW_CODE)",
+            "'snippetCleanMarkdown' => (bool) \$request->getBodyParam('snippetCleanMarkdown', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN)",
         ] as $needle) {
             self::assertStringContainsString($needle, $settings);
         }
 
         foreach ([
             "'snippetMode' => (string) \$request->getParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE)",
-            "'snippetLength' => (int) \$request->getParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH)",
-            "'showCodeSnippets' => (bool) \$request->getParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE)",
-            "'parseMarkdownSnippets' => (bool) \$request->getParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN)",
+            "'snippetMaxLength' => (int) \$request->getParam('snippetMaxLength', SnippetOptionsHelper::DEFAULT_LENGTH)",
+            "'snippetIncludeCodeBlocks' => (bool) \$request->getParam('snippetIncludeCodeBlocks', SnippetOptionsHelper::DEFAULT_SHOW_CODE)",
+            "'snippetCleanMarkdown' => (bool) \$request->getParam('snippetCleanMarkdown', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN)",
         ] as $needle) {
             self::assertStringContainsString($needle, $api);
         }
@@ -1729,7 +1729,7 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertStringContainsString('CanonicalHitPipeline::presentHits', $settings);
         self::assertStringContainsString('use lindemannrock\\searchmanager\\helpers\\SnippetOptionsHelper;', $api);
         self::assertStringContainsString('use lindemannrock\\searchmanager\\helpers\\SnippetOptionsHelper;', $settings);
-        self::assertStringNotContainsString("getBodyParam('snippetLength', 200)", $settings);
+        self::assertStringNotContainsString("getBodyParam('snippetMaxLength', 200)", $settings);
     }
 
     /**
@@ -1807,7 +1807,7 @@ final class SearchHitFieldsContractTest extends TestCase
         Craft::$app->set('response', new Response());
         $params = [
             'q' => $query,
-            'indices' => $indexHandle,
+            'indexHandles' => $indexHandle,
             'siteId' => $siteId,
         ];
         if ($enrich !== null) {

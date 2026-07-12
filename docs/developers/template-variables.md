@@ -12,7 +12,7 @@ Perform a search against a specific index.
 {% set results = craft.searchManager.search('entries-en', 'craft cms') %}
 {% set results = craft.searchManager.search('entries-en', 'craft cms', {
     siteId: 1,
-    source: 'header-search',
+    analyticsSource: 'header-search',
 }) %}
 ```
 
@@ -20,7 +20,7 @@ Perform a search against a specific index.
 |-----------|------|---------|-------------|
 | `indexName` | `string` | — | Index handle to search |
 | `query` | `string` | — | Search query (supports all operators) |
-| `options` | `array` | `[]` | Additional options (siteId, source, platform, etc.) |
+| `options` | `array` | `[]` | Additional options (siteId, analyticsSource, platform, etc.) |
 
 **Returns:** `array` with `hits`, `total`, and `meta` keys.
 
@@ -120,7 +120,7 @@ Generate context snippets with highlighted terms.
 
 ```twig
 {% set snippets = craft.searchManager.snippets(entry.body, 'craft cms', {
-    snippetLength: 200,
+    snippetMaxLength: 200,
     maxSnippets: 3,
 }) %}
 ```
@@ -129,7 +129,7 @@ Generate context snippets with highlighted terms.
 |-----------|------|-------------|
 | `text` | `string` | Source text |
 | `terms` | `string\|array` | Search terms or query string |
-| `options` | `array` | Options: `snippetLength`, `maxSnippets` |
+| `options` | `array` | Options: `snippetMaxLength`, `maxSnippets` |
 
 **Returns:** `array` of snippet strings with highlighted terms.
 

@@ -362,7 +362,7 @@ class ApiKeyService extends Component
     }
 
     /**
-     * Clamp a requested `hitsPerPage` to the key's `maxHitsPerPage` cap.
+     * Clamp a requested `resultsLimit` to the key's `maxHitsPerPage` cap.
      * A null cap leaves the request value untouched.
      *
      * @since 5.47.0

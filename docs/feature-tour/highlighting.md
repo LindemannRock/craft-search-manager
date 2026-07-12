@@ -14,10 +14,10 @@ These settings control the default behavior. You can override them per-call in y
 
 ```php
 // config/search-manager.php
-'enableHighlighting' => true,
+'highlightResultsEnabled' => true,
 'highlightTag' => 'mark',       // HTML tag: mark, em, strong, u, b, i, span
 'highlightClass' => null,       // Optional CSS class
-'snippetLength' => 200,         // Characters per snippet
+'snippetMaxLength' => 200,         // Characters per snippet
 'maxSnippets' => 3,             // Max snippets per result
 ```
 
@@ -53,7 +53,7 @@ Snippets extract portions of text around matched terms:
 
 ```twig
 {% set snippets = craft.searchManager.snippets(entry.body, 'craft cms', {
-    snippetLength: 200,
+    snippetMaxLength: 200,
     maxSnippets: 3,
 }) %}
 
@@ -96,7 +96,7 @@ See the [Highlighting & Snippets](../template-guides/highlighting-snippets.md) t
 
 The widget can also highlight search terms on the page a user navigates to after clicking a result. After the user clicks a result, the widget appends the search query to the destination URL, and the widget's script on the destination page reads that parameter and highlights matching terms in the page content.
 
-This feature is independent from in-widget result highlighting (`enableHighlighting`), which wraps matched terms inside the search results list. Destination page highlighting applies to the actual content of the target page after navigation.
+This feature is independent from in-widget result highlighting (`highlightResultsEnabled`), which wraps matched terms inside the search results list. Destination page highlighting applies to the actual content of the target page after navigation.
 
 ### How It Works
 
@@ -111,16 +111,16 @@ These parameters control destination page highlighting. They can be set in the C
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `highlightDestinationPage` | `bool` | `true` | Enable destination page highlighting |
-| `persistQueryInUrl` | `bool` | `true` | Append the search query to the destination URL |
-| `queryParamName` | `string` | `'smq'` | URL parameter name for the persisted query |
-| `destinationHighlightSelector` | `string` | `'main, article, [data-search-content]'` | CSS selector for page content areas to scan |
+| `highlightDestinationEnabled` | `bool` | `true` | Enable destination page highlighting |
+| `highlightDestinationPersistQuery` | `bool` | `true` | Append the search query to the destination URL |
+| `highlightDestinationQueryParam` | `string` | `'smq'` | URL parameter name for the persisted query |
+| `highlightDestinationContentSelector` | `string` | `'main, article, [data-search-content]'` | CSS selector for page content areas to scan |
 
 > [!TIP]
-> Change `queryParamName` if `smq` conflicts with an existing query parameter in your site. For example, set it to `'q'` or `'highlight'`.
+> Change `highlightDestinationQueryParam` if `smq` conflicts with an existing query parameter in your site. For example, set it to `'q'` or `'highlight'`.
 
 > [!NOTE]
-> `persistQueryInUrl` controls whether the query is appended to the URL at all. If disabled, the destination page cannot know what to highlight and no highlighting will occur, even if `highlightDestinationPage` is `true`.
+> `highlightDestinationPersistQuery` controls whether the query is appended to the URL at all. If disabled, the destination page cannot know what to highlight and no highlighting will occur, even if `highlightDestinationEnabled` is `true`.
 
 ### Multi-Widget Support
 
@@ -128,4 +128,4 @@ When multiple widgets are included on the same page, each widget registers indep
 
 ### CP Configuration
 
-In the CP, destination page highlighting settings are on the **Highlights** tab of each widget config. The `highlightDestinationPage` toggle reveals or hides the sub-options (`persistQueryInUrl`, `queryParamName`, `destinationHighlightSelector`) when toggled off.
+In the CP, destination page highlighting settings are on the **Highlights** tab of each widget config. The `highlightDestinationEnabled` toggle reveals or hides the sub-options (`highlightDestinationPersistQuery`, `highlightDestinationQueryParam`, `highlightDestinationContentSelector`) when toggled off.

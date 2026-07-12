@@ -11,73 +11,58 @@
 
 /**
  * @typedef {Object} BaseConfig
- * @property {Array<string>} indices - Search index handles
+ * @property {Array<string>} indexHandles - Search index handles
  * @property {string} placeholder - Input placeholder text
  * @property {string} theme - Color theme ('light' or 'dark')
- * @property {number} maxResults - Maximum results to display
- * @property {number} debounce - Debounce delay in milliseconds
- * @property {number} minChars - Minimum characters before search
- * @property {boolean} showRecent - Show recent searches
- * @property {number} maxRecentSearches - Max recent searches to store
- * @property {boolean} groupResults - Group flat results by source, Entry section, or type
+ * @property {number} resultsLimit - Maximum results to display
+ * @property {number} searchDebounceMs - Debounce delay in milliseconds
+ * @property {number} searchMinChars - Minimum characters before search
+ * @property {boolean} recentSearchesEnabled - Show recent searches
+ * @property {number} recentSearchesLimit - Max recent searches to store
+ * @property {boolean} resultsGroupingEnabled - Group flat results by source, Entry section, or type
  * @property {string} siteId - Site ID filter
  * @property {string} searchEndpoint - Search API endpoint (internal)
  * @property {string} trackClickEndpoint - Click tracking endpoint (internal)
  * @property {string} trackSearchEndpoint - Search tracking endpoint (internal)
- * @property {number} idleTimeout - Idle timeout for analytics tracking (ms)
- * @property {string} source - Analytics source identifier
- * @property {boolean} enableHighlighting - Enable text highlighting
+ * @property {number} analyticsIdleTimeoutMs - Idle timeout for analytics tracking (ms)
+ * @property {string} analyticsSource - Analytics source identifier
+ * @property {boolean} highlightResultsEnabled - Enable result text highlighting
  * @property {string} highlightTag - HTML tag for highlights
  * @property {string} highlightClass - CSS class for highlights
- * @property {boolean} hideResultsWithoutUrl - Hide URL-less results
- * @property {boolean} showCodeSnippets - Allow block-level code in page or section snippets
+ * @property {boolean} resultsRequireUrl - Hide URL-less results
+ * @property {boolean} snippetIncludeCodeBlocks - Allow block-level code in page or section snippets
  * @property {string} snippetMode - Snippet mode: early | balanced | deep
+ * @property {number} snippetMaxLength - Max snippet length
+ * @property {boolean} snippetCleanMarkdown - Clean Markdown markers before displaying snippets
  * @property {Object} styles - Custom style values
- * @property {Object} promotions - Promotion display config
+ * @property {Object} promotionBadge - Promotion badge display config
  */
 
 /**
  * @typedef {Object} ModalConfig
  * @extends BaseConfig
- * @property {string} hotkey - Keyboard shortcut key
- * @property {boolean} showTrigger - Show trigger button
+ * @property {string} triggerHotkey - Keyboard shortcut key
+ * @property {boolean} triggerEnabled - Show trigger button
+ * @property {string} triggerLabel - Trigger button label
  * @property {string} triggerSelector - External trigger CSS selector
- * @property {number} backdropOpacity - Backdrop opacity (0-100)
- * @property {boolean} enableBackdropBlur - Enable backdrop blur
- * @property {boolean} preventBodyScroll - Prevent body scroll when open
- */
-
-/**
- * @typedef {Object} PageConfig
- * @extends BaseConfig
- * @property {boolean} showFilters - Show filter sidebar
- * @property {string} paginationType - Pagination type: 'numbered', 'loadMore', 'infinite'
- * @property {number} resultsPerPage - Results per page
- * @property {boolean} updateUrl - Update URL with search state
- * @property {Array} sortOptions - Available sort options
- */
-
-/**
- * @typedef {Object} InlineConfig
- * @extends BaseConfig
- * @property {string} dropdownPosition - Dropdown position: 'below', 'above'
- * @property {number} dropdownMaxHeight - Max dropdown height in pixels
- * @property {boolean} showOnFocus - Show dropdown on input focus
+ * @property {number} modalBackdropOpacity - Backdrop opacity (0-100)
+ * @property {boolean} modalBackdropBlurEnabled - Enable backdrop blur
+ * @property {boolean} modalPreventBodyScroll - Prevent body scroll when open
  */
 
 /**
  * Default configuration values shared by all widget types
  */
 export const BASE_DEFAULTS = {
-    indices: [],
+    indexHandles: [],
     placeholder: 'Search...',
     theme: 'light',
-    maxResults: 20,
-    debounce: 200,
-    minChars: 2,
-    showRecent: true,
-    maxRecentSearches: 5,
-    groupResults: true,
+    resultsLimit: 20,
+    searchDebounceMs: 200,
+    searchMinChars: 2,
+    recentSearchesEnabled: true,
+    recentSearchesLimit: 5,
+    resultsGroupingEnabled: true,
     siteId: '',
     // Public API key, sent as X-Search-Manager-Key (required when requireApiKey is on)
     apiKey: '',
@@ -86,32 +71,32 @@ export const BASE_DEFAULTS = {
     trackClickEndpoint: '/actions/search-manager/search/track-click',
     trackSearchEndpoint: '/actions/search-manager/search/track-search',
     // Analytics settings (user-configurable)
-    idleTimeout: 1500, // Track search after 1.5s idle (0 = disabled)
-    source: '', // Custom source identifier (empty = 'frontend-widget')
-    enableHighlighting: true,
+    analyticsIdleTimeoutMs: 1500, // Track search after 1.5s idle (0 = disabled)
+    analyticsSource: '', // Custom source identifier (empty = 'frontend-widget')
+    highlightResultsEnabled: true,
     highlightTag: 'mark',
     highlightClass: '',
-    hideResultsWithoutUrl: false,
-    showCodeSnippets: false,
+    resultsRequireUrl: false,
+    snippetIncludeCodeBlocks: false,
     snippetMode: 'balanced',
-    showLoadingIndicator: true,
-    debug: false,
-    resultTitleLines: 1,
-    resultDescLines: 1,
-    snippetLength: 150,
-    parseMarkdownSnippets: false,
-    persistQueryInUrl: true,
-    queryParamName: 'smq',
-    highlightDestinationPage: true,
-    destinationHighlightSelector: 'main, article, [data-search-content]',
+    loadingIndicatorEnabled: true,
+    debugEnabled: false,
+    resultsTitleLines: 1,
+    resultsDescriptionLines: 1,
+    snippetMaxLength: 150,
+    snippetCleanMarkdown: false,
+    highlightDestinationPersistQuery: true,
+    highlightDestinationQueryParam: 'smq',
+    highlightDestinationEnabled: true,
+    highlightDestinationContentSelector: 'main, article, [data-search-content]',
     // Hierarchical result display for parent results and split section hits
-    resultLayout: 'default', // 'default' | 'hierarchical'
+    resultsLayout: 'default', // 'default' | 'hierarchical'
     hierarchyGroupBy: '',    // Field to group by (e.g., 'source', 'entrySection', 'docCategory', 'categoryGroup')
     hierarchyStyle: 'tree',  // 'tree' (indented + connectors) | 'flat' (same depth + connectors) | 'none' (same depth, no connectors)
     hierarchyDisplay: 'individual', // 'individual' (each parent is its own card) | 'unified' (page block + headings share one card)
-    maxHeadingsPerResult: 3, // Max heading children per page block
+    hierarchyMaxHeadings: 3, // Max heading children per page block
     styles: {},
-    promotions: {
+    promotionBadge: {
         showBadge: true,
         badgeText: 'Featured',
         badgePosition: 'top-right',
@@ -122,32 +107,13 @@ export const BASE_DEFAULTS = {
  * Default configuration values specific to modal widget
  */
 export const MODAL_DEFAULTS = {
-    hotkey: 'k',
-    showTrigger: true,
+    triggerHotkey: 'k',
+    triggerEnabled: true,
+    triggerLabel: 'Search',
     triggerSelector: '',
-    backdropOpacity: 50,
-    enableBackdropBlur: true,
-    preventBodyScroll: true,
-};
-
-/**
- * Default configuration values specific to page widget (future)
- */
-export const PAGE_DEFAULTS = {
-    showFilters: true,
-    paginationType: 'numbered',
-    resultsPerPage: 20,
-    updateUrl: true,
-    sortOptions: ['relevance', 'date-desc', 'date-asc', 'title'],
-};
-
-/**
- * Default configuration values specific to inline widget (future)
- */
-export const INLINE_DEFAULTS = {
-    dropdownPosition: 'below',
-    dropdownMaxHeight: 400,
-    showOnFocus: true,
+    modalBackdropOpacity: 50,
+    modalBackdropBlurEnabled: true,
+    modalPreventBodyScroll: true,
 };
 
 /**
@@ -159,8 +125,6 @@ export const INLINE_DEFAULTS = {
 export function getDefaultsForType(widgetType) {
     const typeDefaults = {
         modal: MODAL_DEFAULTS,
-        page: PAGE_DEFAULTS,
-        inline: INLINE_DEFAULTS,
     };
 
     return {
@@ -254,7 +218,7 @@ function parseArray(value) {
  * @returns {string} Stable scope key for local widget state
  */
 export function getSearchScopeKey(config) {
-    return config.indices.length > 0 ? config.indices.join(',') : 'all';
+    return config.indexHandles.length > 0 ? config.indexHandles.join(',') : 'all';
 }
 
 /**
@@ -264,7 +228,7 @@ export function getSearchScopeKey(config) {
  * @returns {string} Index handle, or an empty string for all/multi-index scopes
  */
 export function getSingleConfiguredIndex(config) {
-    return config.indices.length === 1 ? config.indices[0] : '';
+    return config.indexHandles.length === 1 ? config.indexHandles[0] : '';
 }
 
 /**
@@ -275,17 +239,12 @@ export function getSingleConfiguredIndex(config) {
  *
  * @param {HTMLElement} element - The widget element
  * @param {string} widgetType - Widget type ('modal', 'page', 'inline')
- * @returns {BaseConfig|ModalConfig|PageConfig|InlineConfig} Parsed configuration
+ * @returns {BaseConfig|ModalConfig} Parsed configuration
  *
  * @example
  * // Parse modal config from element
  * const config = parseConfig(element, 'modal');
- * console.log(config.hotkey); // 'k'
- *
- * @example
- * // Parse page config (future)
- * const config = parseConfig(element, 'page');
- * console.log(config.resultsPerPage); // 20
+ * console.log(config.triggerHotkey); // 'k'
  */
 export function parseConfig(element, widgetType = 'modal') {
     const emittedSnippetDefaults = parseJson(element.getAttribute('snippet-defaults'), {});
@@ -293,10 +252,10 @@ export function parseConfig(element, widgetType = 'modal') {
         ...getDefaultsForType(widgetType),
         ...Object.fromEntries(
             Object.entries(emittedSnippetDefaults).filter(([key]) => [
-                'showCodeSnippets',
+                'snippetIncludeCodeBlocks',
                 'snippetMode',
-                'snippetLength',
-                'parseMarkdownSnippets',
+                'snippetMaxLength',
+                'snippetCleanMarkdown',
                 'minSnippetLength',
                 'maxSnippetLength',
                 'snippetModes',
@@ -306,24 +265,24 @@ export function parseConfig(element, widgetType = 'modal') {
     const snippetModes = Array.isArray(defaults.snippetModes) ? defaults.snippetModes : ['early', 'balanced', 'deep'];
     const snippetMin = Number.isFinite(Number(defaults.minSnippetLength)) ? Number(defaults.minSnippetLength) : 50;
     const snippetMax = Number.isFinite(Number(defaults.maxSnippetLength)) ? Number(defaults.maxSnippetLength) : 1000;
-    const snippetLength = Math.min(snippetMax, Math.max(snippetMin, parseInt(element.getAttribute('snippet-length'), defaults.snippetLength)));
+    const snippetMaxLength = Math.min(snippetMax, Math.max(snippetMin, parseInt(element.getAttribute('snippet-max-length'), defaults.snippetMaxLength)));
     const snippetMode = element.getAttribute('snippet-mode') || defaults.snippetMode;
 
-    // Parse indices
-    const indicesAttr = element.getAttribute('indices') || '';
-    const indices = parseArray(indicesAttr);
+    // Parse index handles
+    const indexHandlesAttr = element.getAttribute('index-handles') || '';
+    const indexHandles = parseArray(indexHandlesAttr);
 
     // Build base config
     const config = {
         // Array/special parsing
-        indices,
+        indexHandles,
 
         // String attributes (user-configurable)
         placeholder: element.getAttribute('placeholder') || defaults.placeholder,
         theme: element.getAttribute('theme') || defaults.theme,
         siteId: element.getAttribute('site-id') || defaults.siteId,
         apiKey: element.getAttribute('api-key') || defaults.apiKey,
-        source: element.getAttribute('source') || defaults.source,
+        analyticsSource: element.getAttribute('analytics-source') || defaults.analyticsSource,
         highlightTag: element.getAttribute('highlight-tag') || defaults.highlightTag,
         highlightClass: element.getAttribute('highlight-class') || defaults.highlightClass,
 
@@ -333,75 +292,56 @@ export function parseConfig(element, widgetType = 'modal') {
         trackSearchEndpoint: defaults.trackSearchEndpoint,
 
         // Integer attributes
-        maxResults: parseInt(element.getAttribute('max-results'), defaults.maxResults),
-        debounce: parseInt(element.getAttribute('debounce'), defaults.debounce),
-        minChars: parseInt(element.getAttribute('min-chars'), defaults.minChars),
-        maxRecentSearches: parseInt(element.getAttribute('max-recent-searches'), defaults.maxRecentSearches),
-        idleTimeout: parseInt(element.getAttribute('idle-timeout'), defaults.idleTimeout),
+        resultsLimit: parseInt(element.getAttribute('results-limit'), defaults.resultsLimit),
+        searchDebounceMs: parseInt(element.getAttribute('search-debounce-ms'), defaults.searchDebounceMs),
+        searchMinChars: parseInt(element.getAttribute('search-min-chars'), defaults.searchMinChars),
+        recentSearchesLimit: parseInt(element.getAttribute('recent-searches-limit'), defaults.recentSearchesLimit),
+        analyticsIdleTimeoutMs: parseInt(element.getAttribute('analytics-idle-timeout-ms'), defaults.analyticsIdleTimeoutMs),
 
         // Boolean attributes (default true - check for 'false')
-        showRecent: parseBoolean(element.getAttribute('show-recent'), defaults.showRecent),
-        groupResults: parseBoolean(element.getAttribute('group-results'), defaults.groupResults),
-        enableHighlighting: parseBoolean(element.getAttribute('enable-highlighting'), defaults.enableHighlighting),
-        showLoadingIndicator: parseBoolean(element.getAttribute('show-loading-indicator'), defaults.showLoadingIndicator),
+        recentSearchesEnabled: parseBoolean(element.getAttribute('recent-searches-enabled'), defaults.recentSearchesEnabled),
+        resultsGroupingEnabled: parseBoolean(element.getAttribute('results-grouping-enabled'), defaults.resultsGroupingEnabled),
+        highlightResultsEnabled: parseBoolean(element.getAttribute('highlight-results-enabled'), defaults.highlightResultsEnabled),
+        loadingIndicatorEnabled: parseBoolean(element.getAttribute('loading-indicator-enabled'), defaults.loadingIndicatorEnabled),
 
         // Boolean attributes (default false - check for presence)
-        hideResultsWithoutUrl: parseBoolean(element.getAttribute('hide-results-without-url'), defaults.hideResultsWithoutUrl),
-        showCodeSnippets: parseBoolean(element.getAttribute('show-code-snippets'), defaults.showCodeSnippets),
-        debug: parseBoolean(element.getAttribute('debug'), defaults.debug),
+        resultsRequireUrl: parseBoolean(element.getAttribute('results-require-url'), defaults.resultsRequireUrl),
+        snippetIncludeCodeBlocks: parseBoolean(element.getAttribute('snippet-include-code-blocks'), defaults.snippetIncludeCodeBlocks),
+        debugEnabled: parseBoolean(element.getAttribute('debug-enabled'), defaults.debugEnabled),
         snippetMode: snippetModes.includes(snippetMode) ? snippetMode : defaults.snippetMode,
-        snippetLength,
-        parseMarkdownSnippets: parseBoolean(element.getAttribute('parse-markdown-snippets'), defaults.parseMarkdownSnippets),
-        persistQueryInUrl: parseBoolean(element.getAttribute('persist-query-in-url'), defaults.persistQueryInUrl),
-        highlightDestinationPage: parseBoolean(element.getAttribute('highlight-destination-page'), defaults.highlightDestinationPage),
+        snippetMaxLength,
+        snippetCleanMarkdown: parseBoolean(element.getAttribute('snippet-clean-markdown'), defaults.snippetCleanMarkdown),
+        highlightDestinationPersistQuery: parseBoolean(element.getAttribute('highlight-destination-persist-query'), defaults.highlightDestinationPersistQuery),
+        highlightDestinationEnabled: parseBoolean(element.getAttribute('highlight-destination-enabled'), defaults.highlightDestinationEnabled),
 
         // Result line clamping
-        resultTitleLines: parseInt(element.getAttribute('result-title-lines'), defaults.resultTitleLines),
-        resultDescLines: parseInt(element.getAttribute('result-desc-lines'), defaults.resultDescLines),
-        queryParamName: element.getAttribute('query-param-name') || defaults.queryParamName,
-        destinationHighlightSelector: element.getAttribute('destination-highlight-selector') || defaults.destinationHighlightSelector,
+        resultsTitleLines: parseInt(element.getAttribute('results-title-lines'), defaults.resultsTitleLines),
+        resultsDescriptionLines: parseInt(element.getAttribute('results-description-lines'), defaults.resultsDescriptionLines),
+        highlightDestinationQueryParam: element.getAttribute('highlight-destination-query-param') || defaults.highlightDestinationQueryParam,
+        highlightDestinationContentSelector: element.getAttribute('highlight-destination-content-selector') || defaults.highlightDestinationContentSelector,
 
         // Hierarchical result display
-        resultLayout: element.getAttribute('result-layout') || defaults.resultLayout,
+        resultsLayout: element.getAttribute('results-layout') || defaults.resultsLayout,
         hierarchyGroupBy: element.getAttribute('hierarchy-group-by') || defaults.hierarchyGroupBy,
         hierarchyStyle: element.getAttribute('hierarchy-style') || defaults.hierarchyStyle,
         hierarchyDisplay: element.getAttribute('hierarchy-display') || defaults.hierarchyDisplay,
-        maxHeadingsPerResult: parseInt(element.getAttribute('max-headings-per-result'), defaults.maxHeadingsPerResult),
+        hierarchyMaxHeadings: parseInt(element.getAttribute('hierarchy-max-headings'), defaults.hierarchyMaxHeadings),
 
         // JSON attributes
         styles: parseJson(element.getAttribute('styles'), defaults.styles),
-        promotions: parseJson(element.getAttribute('promotions'), defaults.promotions),
+        promotionBadge: parseJson(element.getAttribute('promotion-badge'), defaults.promotionBadge),
     };
 
     // Add modal-specific config
     if (widgetType === 'modal') {
         Object.assign(config, {
-            hotkey: element.getAttribute('hotkey') || defaults.hotkey,
+            triggerHotkey: element.getAttribute('trigger-hotkey') || defaults.triggerHotkey,
+            triggerLabel: element.getAttribute('trigger-label') || defaults.triggerLabel,
             triggerSelector: element.getAttribute('trigger-selector') || defaults.triggerSelector,
-            backdropOpacity: parseInt(element.getAttribute('backdrop-opacity'), defaults.backdropOpacity),
-            showTrigger: parseBoolean(element.getAttribute('show-trigger'), defaults.showTrigger),
-            enableBackdropBlur: parseBoolean(element.getAttribute('enable-backdrop-blur'), defaults.enableBackdropBlur),
-            preventBodyScroll: parseBoolean(element.getAttribute('prevent-body-scroll'), defaults.preventBodyScroll),
-        });
-    }
-
-    // Add page-specific config (future)
-    if (widgetType === 'page') {
-        Object.assign(config, {
-            resultsPerPage: parseInt(element.getAttribute('results-per-page'), defaults.resultsPerPage),
-            paginationType: element.getAttribute('pagination-type') || defaults.paginationType,
-            showFilters: parseBoolean(element.getAttribute('show-filters'), defaults.showFilters),
-            updateUrl: parseBoolean(element.getAttribute('update-url'), defaults.updateUrl),
-            sortOptions: parseArray(element.getAttribute('sort-options')) || defaults.sortOptions,
-        });
-    }
-
-    // Add inline-specific config (future)
-    if (widgetType === 'inline') {
-        Object.assign(config, {
-            dropdownPosition: element.getAttribute('dropdown-position') || defaults.dropdownPosition,
-            dropdownMaxHeight: parseInt(element.getAttribute('dropdown-max-height'), defaults.dropdownMaxHeight),
-            showOnFocus: parseBoolean(element.getAttribute('show-on-focus'), defaults.showOnFocus),
+            modalBackdropOpacity: parseInt(element.getAttribute('modal-backdrop-opacity'), defaults.modalBackdropOpacity),
+            triggerEnabled: parseBoolean(element.getAttribute('trigger-enabled'), defaults.triggerEnabled),
+            modalBackdropBlurEnabled: parseBoolean(element.getAttribute('modal-backdrop-blur-enabled'), defaults.modalBackdropBlurEnabled),
+            modalPreventBodyScroll: parseBoolean(element.getAttribute('modal-prevent-body-scroll'), defaults.modalPreventBodyScroll),
         });
     }
 
@@ -420,39 +360,26 @@ export function getObservedAttributes(widgetType = 'modal') {
     // Base attributes (all widget types)
     // Note: endpoint attributes are internal and not included here
     const baseAttrs = [
-        'indices', 'placeholder', 'theme',
-        'max-results', 'debounce', 'min-chars', 'show-recent',
-        'max-recent-searches', 'group-results', 'site-id',
-        'idle-timeout', 'source',
-        'enable-highlighting', 'highlight-tag',
-        'highlight-class', 'hide-results-without-url', 'show-code-snippets', 'snippet-mode', 'show-loading-indicator',
-        'debug', 'styles', 'promotions',
-        'result-layout', 'hierarchy-group-by', 'hierarchy-style', 'hierarchy-display', 'max-headings-per-result',
-        'result-title-lines', 'result-desc-lines', 'snippet-length', 'parse-markdown-snippets',
-        'persist-query-in-url', 'query-param-name', 'highlight-destination-page', 'destination-highlight-selector',
+        'index-handles', 'placeholder', 'theme',
+        'results-limit', 'search-debounce-ms', 'search-min-chars', 'recent-searches-enabled',
+        'recent-searches-limit', 'results-grouping-enabled', 'site-id',
+        'analytics-idle-timeout-ms', 'analytics-source',
+        'highlight-results-enabled', 'highlight-tag',
+        'highlight-class', 'results-require-url', 'snippet-include-code-blocks', 'snippet-mode', 'loading-indicator-enabled',
+        'debug-enabled', 'styles', 'promotion-badge',
+        'results-layout', 'hierarchy-group-by', 'hierarchy-style', 'hierarchy-display', 'hierarchy-max-headings',
+        'results-title-lines', 'results-description-lines', 'snippet-max-length', 'snippet-clean-markdown',
+        'highlight-destination-persist-query', 'highlight-destination-query-param', 'highlight-destination-enabled', 'highlight-destination-content-selector',
     ];
 
     // Modal-specific attributes
     const modalAttrs = [
-        'hotkey', 'show-trigger', 'trigger-selector',
-        'backdrop-opacity', 'enable-backdrop-blur', 'prevent-body-scroll',
-    ];
-
-    // Page-specific attributes (future)
-    const pageAttrs = [
-        'show-filters', 'pagination-type', 'results-per-page',
-        'update-url', 'sort-options',
-    ];
-
-    // Inline-specific attributes (future)
-    const inlineAttrs = [
-        'dropdown-position', 'dropdown-max-height', 'show-on-focus',
+        'trigger-hotkey', 'trigger-enabled', 'trigger-label', 'trigger-selector',
+        'modal-backdrop-opacity', 'modal-backdrop-blur-enabled', 'modal-prevent-body-scroll',
     ];
 
     const typeAttrs = {
         modal: modalAttrs,
-        page: pageAttrs,
-        inline: inlineAttrs,
     };
 
     return [...baseAttrs, ...(typeAttrs[widgetType] || [])];

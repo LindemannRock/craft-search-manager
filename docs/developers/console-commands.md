@@ -195,7 +195,7 @@ php craft search-manager/api-keys/create \
 | `--type` | `string` | `public` | Key type: `public` (intended for browser embedding, `sm_pub_…` prefix) or `server` (server-side only, `sm_srv_…` prefix). Locked once generated. |
 | `--indices` | `string` | *(none)* | Comma-separated index handles, or `*` for all indices (current and future). Empty is only valid with `--disabled`, creating an incomplete draft key that must be widened before it can be enabled. |
 | `--referrers` | `string` | *(none — any referrer allowed)* | Comma-separated allowed referrer patterns. Each entry is either an exact host (`example.com`) or a subdomain wildcard (`*.example.com`, matches any subdomain depth). |
-| `--max-hits` | `int` | *(none)* | Clamp on the `hitsPerPage` request parameter. |
+| `--max-hits` | `int` | *(none)* | Clamp on the `resultsLimit` request parameter. |
 | `--rate-limit` | `int` | *(none)* | Per-key requests-per-minute cap. Requests beyond the cap are rejected with `429`. Omit for no limit. |
 | `--valid-until` | `string` | *(never expires)* | Optional expiry datetime in any format `DateTimeHelper::toDateTime` accepts (`2027-12-31`, `2027-12-31 23:59:59`, ISO 8601, etc.). |
 | `--disabled` | `bool` | `false` | Create the key in a paused state. Default is enabled. |

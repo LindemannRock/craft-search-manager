@@ -87,18 +87,18 @@
         </div>
 
 		{{ forms.lightswitchField({
-            label: 'Enable Highlighting'|t('search-manager'),
+            label: 'Result Highlighting Enabled'|t('search-manager'),
             instructions: 'Enable search term highlighting in results'|t('search-manager'),
-            id: 'enableHighlighting',
-            name: 'settings[enableHighlighting]',
-            on: settings.enableHighlighting ?? true,
+            id: 'highlightResultsEnabled',
+            name: 'settings[highlightResultsEnabled]',
+            on: settings.highlightResultsEnabled ?? true,
             toggle: 'highlighting-settings',
-            disabled: settings.isOverriddenByConfig('enableHighlighting'),
-            warning: settings.isOverriddenByConfig('enableHighlighting') ?
-                "This is being overridden by the <code>enableHighlighting</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+            disabled: settings.isOverriddenByConfig('highlightResultsEnabled'),
+            warning: settings.isOverriddenByConfig('highlightResultsEnabled') ?
+                "This is being overridden by the <code>highlightResultsEnabled</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
         }) }}
 
-        <div id="highlighting-settings" class="{{ not (settings.enableHighlighting ?? true) ? 'hidden' }}">
+        <div id="highlighting-settings" class="{{ not (settings.highlightResultsEnabled ?? true) ? 'hidden' }}">
 
             {{ forms.selectField({
                 label: 'HTML Tag'|t('search-manager'),
@@ -168,18 +168,18 @@
             {{ forms.textField({
                 label: 'Snippet Length'|t('search-manager'),
                 instructions: 'Maximum characters per snippet. Range: 50 - 1000. Snippets show context around matched terms.'|t('search-manager'),
-                id: 'snippetLength',
-                name: 'settings[snippetLength]',
-                value: settings.snippetLength ?? 200,
+                id: 'snippetMaxLength',
+                name: 'settings[snippetMaxLength]',
+                value: settings.snippetMaxLength ?? 200,
                 type: 'number',
                 min: '50',
                 max: '1000',
                 required: true,
                 tip: 'Default: 200 characters (~30-40 words).'|t('search-manager'),
-                disabled: settings.isOverriddenByConfig('snippetLength'),
-                warning: settings.isOverriddenByConfig('snippetLength') ?
-                    "This is being overridden by the <code>snippetLength</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
-                errors: settings.getErrors('snippetLength')
+                disabled: settings.isOverriddenByConfig('snippetMaxLength'),
+                warning: settings.isOverriddenByConfig('snippetMaxLength') ?
+                    "This is being overridden by the <code>snippetMaxLength</code> setting in <code>config/search-manager.php</code>."|t('search-manager')|raw : null,
+                errors: settings.getErrors('snippetMaxLength')
             }) }}
 
             {{ forms.textField({

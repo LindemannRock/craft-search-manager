@@ -119,9 +119,9 @@ final class GraphqlSearchTest extends TestCase
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => (int)($index->getSiteIds()[0] ?? 1),
-            'hitsPerPage' => 5,
+            'resultsLimit' => 5,
             'page' => 2,
             'language' => 'en',
             'skipAnalytics' => true,
@@ -129,7 +129,7 @@ final class GraphqlSearchTest extends TestCase
 
         $this->assertSame(1, $response['total']);
         $this->assertSame(2, $response['page']);
-        $this->assertSame(5, $response['hitsPerPage']);
+        $this->assertSame(5, $response['resultsLimit']);
         $this->assertSame(1, $response['totalPages']);
         $this->assertArrayNotHasKey('meta', $response);
         $this->assertArrayNotHasKey('content', $response['hits'][0]);
@@ -186,7 +186,7 @@ final class GraphqlSearchTest extends TestCase
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'intro',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => $entry->siteId,
             'retrievableFields' => ['intro'],
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
@@ -221,7 +221,7 @@ final class GraphqlSearchTest extends TestCase
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'intro',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => $entry->siteId,
             'retrievableFields' => ['*', '-category'],
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
@@ -247,7 +247,7 @@ final class GraphqlSearchTest extends TestCase
 
         SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'siteId' => $site->id,
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
@@ -278,7 +278,7 @@ final class GraphqlSearchTest extends TestCase
         try {
             SearchResolver::resolveSearch(null, [
                 'query' => 'coffee',
-                'indices' => [$pair[0]->handle],
+                'indexHandles' => [$pair[0]->handle],
                 'siteId' => $deniedSite->id,
             ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
         } finally {
@@ -305,7 +305,7 @@ final class GraphqlSearchTest extends TestCase
 
         SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
         $calls = $stub->callsFor('search');
@@ -332,7 +332,7 @@ final class GraphqlSearchTest extends TestCase
 
         SearchResolver::resolveAutocomplete(null, [
             'query' => 'coffee',
-            'indices' => [$index->handle],
+            'indexHandles' => [$index->handle],
             'only' => 'suggestions',
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
@@ -346,7 +346,7 @@ final class GraphqlSearchTest extends TestCase
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'indices' => ['__missing_index__'],
+            'indexHandles' => ['__missing_index__'],
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
         $this->assertSame(0, $response['total']);

@@ -16,10 +16,10 @@
  *
  * @example
  * <search-modal
- *   indices="products,articles"
+ *   index-handles="products,articles"
  *   placeholder="Search..."
- *   hotkey="k"
- *   show-trigger="true"
+ *   trigger-hotkey="k"
+ *   trigger-enabled="true"
  * ></search-modal>
  *
  * @fires search-open - When modal opens
@@ -149,7 +149,7 @@ class SearchModalWidget extends SearchWidgetBase {
         this.updateDebugToolbar();
         this.updateSelectionVisual();
 
-        document.body.style.overflow = this.config.preventBodyScroll ? 'hidden' : '';
+        document.body.style.overflow = this.config.modalPreventBodyScroll ? 'hidden' : '';
 
         requestAnimationFrame(() => {
             if (this.isConnected) {
@@ -166,20 +166,21 @@ class SearchModalWidget extends SearchWidgetBase {
      * Render the modal HTML structure
      */
     render() {
-        const { theme, placeholder, showTrigger } = this.config;
+        const { theme, placeholder, triggerEnabled, triggerLabel } = this.config;
         const hotkeyDisplay = escapeHtml(this.getHotkeyDisplay());
         const safePlaceholder = escapeHtml(placeholder || '');
+        const safeTriggerLabel = escapeHtml(triggerLabel || 'Search');
 
         this.shadowRoot.innerHTML = `
             <style>${styles}</style>
 
             <!-- Trigger button -->
-            <button class="sm-trigger" part="trigger" aria-label="Open search" aria-haspopup="dialog" aria-expanded="false" ${showTrigger ? '' : 'style="display: none;"'}>
+            <button class="sm-trigger" part="trigger" aria-label="${safeTriggerLabel}" aria-haspopup="dialog" aria-expanded="false" ${triggerEnabled ? '' : 'style="display: none;"'}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
                 </svg>
-                <span class="sm-trigger-text">Search</span>
+                <span class="sm-trigger-text">${safeTriggerLabel}</span>
                 <kbd class="sm-trigger-kbd" aria-hidden="true">${hotkeyDisplay}</kbd>
             </button>
 
@@ -299,12 +300,12 @@ class SearchModalWidget extends SearchWidgetBase {
 
         if (!this.config) return;
 
-        const { backdropOpacity, enableBackdropBlur } = this.config;
+        const { modalBackdropOpacity, modalBackdropBlurEnabled } = this.config;
         const host = this.shadowRoot.host;
 
         // Modal-specific backdrop settings
-        host.style.setProperty('--sm-backdrop-opacity', backdropOpacity / 100);
-        host.style.setProperty('--sm-backdrop-blur', enableBackdropBlur ? 'blur(4px)' : 'none');
+        host.style.setProperty('--sm-backdrop-opacity', modalBackdropOpacity / 100);
+        host.style.setProperty('--sm-backdrop-blur', modalBackdropBlurEnabled ? 'blur(4px)' : 'none');
     }
 
     // =========================================================================
@@ -413,7 +414,7 @@ class SearchModalWidget extends SearchWidgetBase {
         });
 
         // Prevent body scroll
-        if (this.config.preventBodyScroll) {
+        if (this.config.modalPreventBodyScroll) {
             document.body.style.overflow = 'hidden';
         }
 
@@ -433,7 +434,7 @@ class SearchModalWidget extends SearchWidgetBase {
         this.unregisterOpenWidget();
 
         // Restore body scroll
-        if (this.config.preventBodyScroll) {
+        if (this.config.modalPreventBodyScroll) {
             document.body.style.overflow = '';
         }
 
@@ -501,7 +502,7 @@ class SearchModalWidget extends SearchWidgetBase {
      * @param {KeyboardEvent} e - Keyboard event
      */
     handleGlobalKeydown(e) {
-        const hotkey = this.config.hotkey.toLowerCase();
+        const hotkey = this.config.triggerHotkey.toLowerCase();
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
         const modifier = isMac ? e.metaKey : e.ctrlKey;
 
@@ -570,7 +571,7 @@ class SearchModalWidget extends SearchWidgetBase {
      */
     getHotkeyDisplay() {
         const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-        const key = this.config.hotkey.toUpperCase();
+        const key = this.config.triggerHotkey.toUpperCase();
         return isMac ? `⌘${key}` : `Ctrl+${key}`;
     }
 }

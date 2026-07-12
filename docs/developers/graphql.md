@@ -16,15 +16,15 @@ Use `searchManagerSearch` to run a backend search:
 query {
   searchManagerSearch(
     query: "coffee OR tea"
-    indices: ["products"]
+    indexHandles: ["products"]
     site: "en"
-    hitsPerPage: 10
+    resultsLimit: 10
     page: 0
     language: "en"
   ) {
     total
     page
-    hitsPerPage
+    resultsLimit
     totalPages
     hits {
       title
@@ -92,26 +92,26 @@ Search arguments:
 | Argument | Type | Notes |
 |----------|------|-------|
 | `query` | `String!` | Search query. Advanced operators match the REST API. |
-| `indices` | `[String]` | One or more index handles to search. Omit to search all enabled indices. |
+| `indexHandles` | `[String]` | One or more index handles to search. Omit to search all enabled indices. |
 | `site` | `String` | Site handle filter. |
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
-| `hitsPerPage` | `Int` | Defaults to `20`, capped at `200`. |
+| `resultsLimit` | `Int` | Defaults to `20`, capped at `200`. |
 | `page` | `Int` | Zero-based page number. |
 | `type` | `String` | Optional stable document-kind filter, for example `entry`, `product`, `variant`, `asset`, `category`, or `user`. |
-| `filters` | `String` | Optional backend-specific filter expression. Requires exactly one `indices` value. |
+| `filters` | `String` | Optional backend-specific filter expression. Requires exactly one `indexHandles` value. |
 | `retrievableFields` | `[String]` | Optional custom field handles to return under `fields`. This can narrow each index's `retrievableFields` setting but cannot widen it. Pass `["*", "-wysiwyg"]` to return all fields except `wysiwyg`, or an empty list to return no custom fields. |
 | `language` | `String` | Optional language code for localized operators. |
-| `source` | `String` | Analytics source. Defaults to `graphql`. |
+| `analyticsSource` | `String` | Analytics source. Defaults to `graphql`. |
 | `platform` | `String` | Optional analytics platform label. |
 | `appVersion` | `String` | Optional analytics app version label. |
 | `skipAnalytics` | `Boolean` | Set to `true` to avoid recording a search analytics row. |
 | `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
-| `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
-| `showCodeSnippets` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
-| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from page and section snippet display text without changing indexed content. |
+| `snippetMaxLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
+| `snippetIncludeCodeBlocks` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
+| `snippetCleanMarkdown` | `Boolean` | Clean Markdown markers from page and section snippet display text without changing indexed content. |
 | `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
-| `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
+| `resultsRequireUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
 
 Like the REST search endpoint, GraphQL search records analytics unless `skipAnalytics: true` is passed. This makes an executed search behave like a real frontend search while still letting typeahead or background callers opt out.
 
@@ -168,7 +168,7 @@ Common hit fields:
 | `headings` | Non-null list of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split section hits return an empty list. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
 
-Scores are useful for debug displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.
+Scores are useful for debugEnabled displays and single-backend ordering, but they are not portable across backend types. Do not compare an Algolia result's position or missing score directly against a Meilisearch, Typesense, or built-in backend score.
 
 Asset documents add `assetKind` and `extension` to searchable content at indexing time, so a query such as `pricing pdf` can match PDF assets. Filename is not added a second time because Craft assets normally use the filename as the asset title, and Search Manager already indexes titles.
 
@@ -178,7 +178,7 @@ Use `type` for portable document-kind filtering:
 
 ```graphql
 query {
-  searchManagerSearch(query: "test", indices: ["products"], type: "entry") {
+  searchManagerSearch(query: "test", indexHandles: ["products"], type: "entry") {
     total
     hits {
       title
@@ -188,13 +188,13 @@ query {
 }
 ```
 
-Use `filters` when you already have a backend-specific filter expression. Because filter syntax differs by backend, `filters` requires exactly one `indices` value.
+Use `filters` when you already have a backend-specific filter expression. Because filter syntax differs by backend, `filters` requires exactly one `indexHandles` value.
 
 ```graphql
 query {
   searchManagerSearch(
     query: "test"
-    indices: ["products-typesense"]
+    indexHandles: ["products-typesense"]
     filters: "type:=`entry` && siteId:=`1`"
   ) {
     total
@@ -232,8 +232,8 @@ Use the Algolia-backed index handle. Algolia result order is the relevance signa
 query {
   searchManagerSearch(
     query: "test"
-    indices: ["test-algolia"]
-    hitsPerPage: 5
+    indexHandles: ["test-algolia"]
+    resultsLimit: 5
     skipAnalytics: true
   ) {
     total
@@ -256,9 +256,9 @@ For Algolia filters, use Algolia filter syntax and make sure custom filter field
 query {
   searchManagerSearch(
     query: "test"
-    indices: ["test-algolia"]
+    indexHandles: ["test-algolia"]
     filters: "type:\"entry\" AND siteId:1"
-    hitsPerPage: 5
+    resultsLimit: 5
     skipAnalytics: true
   ) {
     total
@@ -280,8 +280,8 @@ Use the Meilisearch-backed index handle. When Meilisearch returns `_rankingScore
 query {
   searchManagerSearch(
     query: "test"
-    indices: ["meilisearch"]
-    hitsPerPage: 5
+    indexHandles: ["meilisearch"]
+    resultsLimit: 5
     skipAnalytics: true
   ) {
     total
@@ -305,9 +305,9 @@ For Meilisearch filters, use Meilisearch filter syntax. Custom fields must be fi
 query {
   searchManagerSearch(
     query: "test"
-    indices: ["meilisearch"]
+    indexHandles: ["meilisearch"]
     filters: "type = \"entry\" AND siteId = 1"
-    hitsPerPage: 5
+    resultsLimit: 5
     skipAnalytics: true
   ) {
     total
@@ -329,8 +329,8 @@ Use the Typesense-backed index handle. When Typesense returns a text-match value
 query {
   searchManagerSearch(
     query: "test"
-    indices: ["typesense"]
-    hitsPerPage: 5
+    indexHandles: ["typesense"]
+    resultsLimit: 5
     skipAnalytics: true
   ) {
     total
@@ -354,9 +354,9 @@ For Typesense filters, use Typesense filter syntax. Typesense also requires sear
 query {
   searchManagerSearch(
     query: "test"
-    indices: ["typesense"]
+    indexHandles: ["typesense"]
     filters: "type:=`entry` && siteId:=`1`"
-    hitsPerPage: 5
+    resultsLimit: 5
     skipAnalytics: true
   ) {
     total
@@ -378,10 +378,10 @@ GraphQL search returns the same index-backed hit shape as the REST API. Snippets
 query {
   searchManagerSearch(
     query: "installation"
-    indices: ["docs", "articles"]
+    indexHandles: ["docs", "articles"]
     site: "en"
-    snippetLength: 180
-    hideResultsWithoutUrl: true
+    snippetMaxLength: 180
+    resultsRequireUrl: true
     skipAnalytics: true
   ) {
     total
@@ -409,12 +409,12 @@ Snippet arguments:
 | Argument | Type | Notes |
 |----------|------|-------|
 | `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
-| `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
-| `showCodeSnippets` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
-| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from page and section snippet display text without changing indexed content. |
+| `snippetMaxLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
+| `snippetIncludeCodeBlocks` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
+| `snippetCleanMarkdown` | `Boolean` | Clean Markdown markers from page and section snippet display text without changing indexed content. |
 | `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
-| `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
+| `resultsRequireUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
 
 `snippet` and `headings.snippet` are plain text. Apply highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values, then from the indexed clean body. If no eligible source contains the query term, Search Manager falls back to leading code-free body text, then the first eligible prose field.
 
@@ -426,9 +426,9 @@ Use `searchManagerAutocomplete` for suggestions and lightweight result suggestio
 query {
   searchManagerAutocomplete(
     query: "cof"
-    indices: ["products"]
+    indexHandles: ["products"]
     site: "en"
-    hitsPerPage: 8
+    resultsLimit: 8
   ) {
     suggestions
     results {
@@ -447,10 +447,10 @@ Autocomplete arguments:
 | Argument | Type | Notes |
 |----------|------|-------|
 | `query` | `String!` | Partial search query. |
-| `indices` | `[String]` | One or more index handles to query. Omit to query all enabled indices. |
+| `indexHandles` | `[String]` | One or more index handles to query. Omit to query all enabled indices. |
 | `site` | `String` | Site handle filter. |
 | `siteId` | `Int` | Site ID filter. `site` wins when both are provided. |
-| `hitsPerPage` | `Int` | Defaults to `10`, capped at `100`. |
+| `resultsLimit` | `Int` | Defaults to `10`, capped at `100`. |
 | `only` | `String` | Use `suggestions` or `results` to limit the response. |
 | `type` | `String` | Optional element type filter for result suggestions. |
 | `language` | `String` | Optional language code. |
@@ -460,11 +460,11 @@ When multiple indices return the same element suggestion, Search Manager keeps t
 
 ## Multi-Index Counts
 
-When a search spans multiple indices, request `indices` to see per-index totals:
+When a search spans multiple indices, request the `indices` field to see per-index totals:
 
 ```graphql
 query {
-  searchManagerSearch(query: "sale", indices: ["products", "articles"], site: "en") {
+  searchManagerSearch(query: "sale", indexHandles: ["products", "articles"], site: "en") {
     total
     indices {
       index

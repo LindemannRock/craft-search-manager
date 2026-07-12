@@ -301,7 +301,7 @@ class Settings extends Model
     /**
      * @var bool Enable search result highlighting
      */
-    public bool $enableHighlighting = true;
+    public bool $highlightResultsEnabled = true;
 
     /**
      * @var string HTML tag for highlighted terms
@@ -316,7 +316,7 @@ class Settings extends Model
     /**
      * @var int Snippet length in characters
      */
-    public int $snippetLength = 200;
+    public int $snippetMaxLength = 200;
 
     /**
      * @var int Maximum number of snippets per result
@@ -410,7 +410,7 @@ class Settings extends Model
             'cachePopularQueriesOnly',
             'clearCacheOnSave',
             'enableStopWords',
-            'enableHighlighting',
+            'highlightResultsEnabled',
             'enableAutocomplete',
             'autocompleteFuzzy',
             'enableAutocompleteCache',
@@ -438,7 +438,7 @@ class Settings extends Model
             'cacheDuration',
             'popularQueryThreshold',
             'statusSyncInterval',
-            'snippetLength',
+            'snippetMaxLength',
             'maxSnippets',
             'autocompleteMinLength',
             'autocompleteLimit',
@@ -479,11 +479,11 @@ class Settings extends Model
         return array_merge([
             [['indexPrefix'], 'string', 'max' => 50],
             [['indexPrefix'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Index Prefix may contain only letters, numbers, underscores, and hyphens.')],
-            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'enableHighlighting', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
+            [['autoIndex', 'queueEnabled', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'highlightResultsEnabled', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
-            [['batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
+            [['batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetMaxLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
             [['lastIndexedDebounceSeconds'], 'integer', 'min' => 0, 'max' => 3600],
             [['syncBatchSize'], 'integer', 'min' => 1, 'max' => 1000],
             [['batchFlushInterval'], 'integer', 'min' => 0, 'max' => 300],
@@ -492,7 +492,7 @@ class Settings extends Model
             [['analyticsRetention'], 'integer', 'min' => 0, 'max' => 3650],
             [['batchSize'], 'integer', 'max' => 1000],
             [['maxFuzzyCandidates'], 'integer', 'min' => 10, 'max' => 1000],
-            [['snippetLength'], 'integer', 'min' => 50, 'max' => 1000],
+            [['snippetMaxLength'], 'integer', 'min' => 50, 'max' => 1000],
             [['maxSnippets'], 'integer', 'min' => 1, 'max' => 10],
             [['autocompleteMinLength'], 'integer', 'min' => 1, 'max' => 5],
             [['autocompleteLimit'], 'integer', 'min' => 1, 'max' => 50],
@@ -563,10 +563,10 @@ class Settings extends Model
             'enableStopWords' => Craft::t('search-manager', 'Enable Stop Words'),
             'defaultLanguage' => Craft::t('search-manager', 'Default Language'),
             // Highlighting + snippets
-            'enableHighlighting' => Craft::t('search-manager', 'Enable Highlighting'),
+            'highlightResultsEnabled' => Craft::t('search-manager', 'Result Highlighting Enabled'),
             'highlightTag' => Craft::t('search-manager', 'HTML Tag'),
             'highlightClass' => Craft::t('search-manager', 'CSS Class'),
-            'snippetLength' => Craft::t('search-manager', 'Snippet Length'),
+            'snippetMaxLength' => Craft::t('search-manager', 'Snippet Max Length'),
             'maxSnippets' => Craft::t('search-manager', 'Max Snippets'),
             // Autocomplete
             'enableAutocomplete' => Craft::t('search-manager', 'Enable Autocomplete'),

@@ -67,7 +67,7 @@ class ApiKeysController extends Controller
     public string $referrers = '';
 
     /**
-     * @var int|null Clamp on the `hitsPerPage` request parameter.
+     * @var int|null Clamp on the `resultsLimit` request parameter.
      */
     public ?int $maxHits = null;
 

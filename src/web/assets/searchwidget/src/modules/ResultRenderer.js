@@ -17,11 +17,11 @@ import { appendQueryParam } from './UrlUtils.js';
 /**
  * @typedef {Object} RenderOptions
  * @property {string} listboxId - ARIA listbox ID for accessibility
- * @property {boolean} groupResults - Whether to group flat results by source, Entry section, or type
- * @property {boolean} enableHighlighting - Whether to highlight matches
+ * @property {boolean} resultsGroupingEnabled - Whether to group flat results by source, Entry section, or type
+ * @property {boolean} highlightResultsEnabled - Whether to highlight matches
  * @property {string} highlightTag - HTML tag for highlights (default: 'mark')
  * @property {string} highlightClass - Additional CSS class for highlights
- * @property {PromotionConfig} promotions - Promoted results configuration
+ * @property {PromotionConfig} promotionBadge - Promoted results configuration
  */
 
 /**
@@ -58,24 +58,24 @@ import { appendQueryParam } from './UrlUtils.js';
  * @example
  * const html = renderResults(results, 'search query', {
  *   listboxId: 'sm-results',
- *   groupResults: true,
- *   enableHighlighting: true,
+ *   resultsGroupingEnabled: true,
+ *   highlightResultsEnabled: true,
  *   highlightTag: 'mark',
  * });
  */
 export function renderResults(results, query, options = {}) {
-    const { groupResults = false, resultLayout = 'default', listboxId } = options;
+    const { resultsGroupingEnabled = false, resultsLayout = 'default', listboxId } = options;
 
     if (!results || results.length === 0) {
         return '';
     }
 
     // Hierarchical layout can group split section hits back under their page.
-    if (resultLayout === 'hierarchical') {
+    if (resultsLayout === 'hierarchical') {
         return renderHierarchicalResults(results, query, options);
     }
 
-    if (groupResults) {
+    if (resultsGroupingEnabled) {
         const groups = groupResultsByType(results);
         let globalIndex = 0;
 
@@ -102,21 +102,21 @@ export function renderResults(results, query, options = {}) {
  * @example
  * const itemHtml = renderResultItem(result, 0, 'query', {
  *   listboxId: 'sm-results',
- *   enableHighlighting: true,
- *   promotions: { showBadge: true, badgeText: 'Featured' },
+ *   highlightResultsEnabled: true,
+ *   promotionBadge: { showBadge: true, badgeText: 'Featured' },
  * });
  */
 export function renderResultItem(result, index, query, options = {}) {
     const {
         listboxId,
-        enableHighlighting = true,
+        highlightResultsEnabled = true,
         highlightTag = 'mark',
         highlightClass = '',
-        groupResults = false,
-        promotions = {},
-        debug = false,
-        persistQueryInUrl = false,
-        queryParamName = 'smq',
+        resultsGroupingEnabled = false,
+        promotionBadge = {},
+        debugEnabled = false,
+        highlightDestinationPersistQuery = false,
+        highlightDestinationQueryParam = 'smq',
     } = options;
 
     const sectionHit = isSectionHit(result);
@@ -127,7 +127,7 @@ export function renderResultItem(result, index, query, options = {}) {
     const rawUrl = sectionHit
         ? (result.sectionUrl || result.url || result.href || '#')
         : (result.url || result.href || '#');
-    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
+    const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
     const type = result.source || result.entrySection || result.type || '';
     const optionId = getOptionId(listboxId, index);
     const isPromoted = result.promoted === true;
@@ -136,7 +136,7 @@ export function renderResultItem(result, index, query, options = {}) {
 
     // Build highlight options
     const highlightOptions = {
-        enabled: enableHighlighting,
+        enabled: highlightResultsEnabled,
         tag: highlightTag,
         className: highlightClass,
     };
@@ -151,19 +151,19 @@ export function renderResultItem(result, index, query, options = {}) {
     }) : '';
 
     // Build promoted badge HTML
-    const promotedBadge = renderPromotedBadge(result, promotions);
+    const promotedBadge = renderPromotedBadge(result, promotionBadge);
     const promotedClass = isPromoted ? ' sm-promoted' : '';
 
     // Build type badge (only if not grouping)
-    const typeBadge = type && !groupResults
+    const typeBadge = type && !resultsGroupingEnabled
         ? `<span class="sm-result-type">${escapeHtml(type)}</span>`
         : '';
 
     // Build debug info (only if debug mode enabled)
-    const debugInfo = debug ? renderDebugInfo(result) : '';
+    const debugInfo = debugEnabled ? renderDebugInfo(result) : '';
 
     // When debug is enabled, wrap main content so debug-info can be full-width sibling
-    if (debug) {
+    if (debugEnabled) {
         return `
             <a class="sm-result-item sm-debug-enabled${promotedClass}" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
@@ -343,7 +343,7 @@ function hasSectionHits(results) {
     return Array.isArray(results) && results.some(isSectionHit);
 }
 
-function normalizeSectionHitsForHierarchy(results, maxHeadingsPerResult) {
+function normalizeSectionHitsForHierarchy(results, hierarchyMaxHeadings) {
     const sectionGroups = new Map();
     const entries = [];
 
@@ -390,7 +390,7 @@ function normalizeSectionHitsForHierarchy(results, maxHeadingsPerResult) {
                 const group = sectionGroups.get(entry.key);
                 return {
                     ...entry,
-                    item: sectionGroupToPageResult(group.hits, maxHeadingsPerResult),
+                    item: sectionGroupToPageResult(group.hits, hierarchyMaxHeadings),
                 };
             }
 
@@ -403,7 +403,7 @@ function normalizeSectionHitsForHierarchy(results, maxHeadingsPerResult) {
         .map(entry => entry.item);
 }
 
-function sectionGroupToPageResult(hits, maxHeadingsPerResult) {
+function sectionGroupToPageResult(hits, hierarchyMaxHeadings) {
     const sortedHits = [...hits].sort((a, b) => sectionIndex(a) - sectionIndex(b));
     const introHit = sortedHits.find(hit => hit.sectionType === 'intro') || null;
     const bestHit = [...hits].sort((a, b) => {
@@ -413,8 +413,8 @@ function sectionGroupToPageResult(hits, maxHeadingsPerResult) {
     const pageHit = introHit || bestHit;
     const elementId = elementIdentity(pageHit);
     const siteId = pageHit.siteId ?? '';
-    const headingLimit = Number.isFinite(maxHeadingsPerResult) && maxHeadingsPerResult > 0
-        ? maxHeadingsPerResult
+    const headingLimit = Number.isFinite(hierarchyMaxHeadings) && hierarchyMaxHeadings > 0
+        ? hierarchyMaxHeadings
         : 3;
 
     const headings = sortedHits
@@ -580,7 +580,7 @@ function renderHierarchicalResults(results, query, options = {}) {
         hierarchyGroupBy = '',
         hierarchyStyle = 'tree',
         hierarchyDisplay = 'individual',
-        maxHeadingsPerResult = 3,
+        hierarchyMaxHeadings = 3,
         listboxId,
     } = options;
 
@@ -588,7 +588,7 @@ function renderHierarchicalResults(results, query, options = {}) {
     const useConnectors = hierarchyStyle !== 'none';
 
     const hierarchicalResults = hasSectionHits(results)
-        ? normalizeSectionHitsForHierarchy(results, maxHeadingsPerResult)
+        ? normalizeSectionHitsForHierarchy(results, hierarchyMaxHeadings)
         : results;
     const groupField = hierarchyGroupBy || '';
     const groups = groupResultsByField(hierarchicalResults, groupField);
@@ -603,7 +603,7 @@ function renderHierarchicalResults(results, query, options = {}) {
             // Render matched heading children
             let childrenHtml = '';
             const headings = result.headings || [];
-            const limitedHeadings = result.__sectionHitGroup ? headings : headings.slice(0, maxHeadingsPerResult);
+            const limitedHeadings = result.__sectionHitGroup ? headings : headings.slice(0, hierarchyMaxHeadings);
             if (limitedHeadings.length > 0) {
                 // Normalize levels: shallowest heading = depth 0
                 const minLevel = Math.min(...limitedHeadings.map(h => h.level || 2));
@@ -662,24 +662,24 @@ function renderHierarchicalResults(results, query, options = {}) {
 function renderHierarchyParent(result, index, query, options = {}) {
     const {
         listboxId,
-        enableHighlighting = true,
+        highlightResultsEnabled = true,
         highlightTag = 'mark',
         highlightClass = '',
-        debug = false,
-        persistQueryInUrl = false,
-        queryParamName = 'smq',
+        debugEnabled = false,
+        highlightDestinationPersistQuery = false,
+        highlightDestinationQueryParam = 'smq',
     } = options;
 
     const title = result.title || result.name || 'Untitled';
     const snippet = result.snippet || '';
     const rawUrl = result.url || '#';
-    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
+    const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
     const optionId = getOptionId(listboxId, index);
     const sourceIndex = result._index || result.index || '';
     const identityAttrs = renderIdentityAttrs(result);
 
     const highlightOptions = {
-        enabled: enableHighlighting,
+        enabled: highlightResultsEnabled,
         tag: highlightTag,
         className: highlightClass,
     };
@@ -693,11 +693,11 @@ function renderHierarchyParent(result, index, query, options = {}) {
         terms: getHighlightTerms(result, 'snippet'),
     }) : '';
 
-    const debugInfo = debug ? renderDebugInfo(result) : '';
+    const debugInfo = debugEnabled ? renderDebugInfo(result) : '';
     const hasHeadings = result.headings && result.headings.length > 0;
     const icon = hasHeadings ? documentIcon() : contentIcon();
 
-    if (debug) {
+    if (debugEnabled) {
         return `
             <a class="sm-result-item sm-hierarchy-parent sm-debug-enabled" id="${optionId}" role="option" aria-selected="false" href="${escapeHtml(url)}" data-index="${index}" data-source-index="${escapeHtml(sourceIndex)}"${identityAttrs} data-title="${escapeHtml(title)}">
                 <div class="sm-result-main">
@@ -738,12 +738,12 @@ function renderHierarchyParent(result, index, query, options = {}) {
 function renderHeadingChild(result, heading, index, query, options = {}, isLast = false, depth = 0, activeGuides = []) {
     const {
         listboxId,
-        enableHighlighting = true,
+        highlightResultsEnabled = true,
         highlightTag = 'mark',
         highlightClass = '',
-        debug = false,
-        persistQueryInUrl = false,
-        queryParamName = 'smq',
+        debugEnabled = false,
+        highlightDestinationPersistQuery = false,
+        highlightDestinationQueryParam = 'smq',
     } = options;
 
     const rawText = heading.title || heading.text || '';
@@ -754,13 +754,13 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
     const anchorId = heading.id || (text ? slugifyHeading(text) : '');
     const baseUrl = result.url || '#';
     const rawUrl = heading.url || (anchorId ? `${baseUrl}#${anchorId}` : baseUrl);
-    const url = appendQueryParam(rawUrl, query, persistQueryInUrl ? queryParamName : '');
+    const url = appendQueryParam(rawUrl, query, highlightDestinationPersistQuery ? highlightDestinationQueryParam : '');
     const optionId = getOptionId(listboxId, index);
     const sourceIndex = heading._index || heading.index || result._index || result.index || '';
     const identityAttrs = renderIdentityAttrs(heading, result);
 
     const highlightOptions = {
-        enabled: enableHighlighting,
+        enabled: highlightResultsEnabled,
         tag: highlightTag,
         className: highlightClass,
     };
@@ -783,7 +783,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
 
     // Build debug info for heading child
     let debugInfo = '';
-    if (debug) {
+    if (debugEnabled) {
         const childDebugItems = [];
         childDebugItems.push(debugItem('h', level, 'generic'));
         if (anchorId) {
@@ -796,7 +796,7 @@ function renderHeadingChild(result, heading, index, query, options = {}, isLast 
         debugInfo = `<div class="sm-debug-info">${childDebugItems.join('')}</div>`;
     }
 
-    if (debug) {
+    if (debugEnabled) {
         return `
             <div class="sm-hierarchy-child-row sm-hierarchy-level-${level} sm-hierarchy-depth-${depth}${rowClass}" style="--sm-hierarchy-depth:${depth}">
                 ${guidesHtml}
@@ -966,7 +966,7 @@ export function renderErrorState(message) {
  * @param {Array} state.results - Search results
  * @param {Array} state.recentSearches - Recent searches
  * @param {boolean} state.loading - Loading state
- * @param {boolean} state.showRecent - Whether to show recent searches
+ * @param {boolean} state.recentSearchesEnabled - Whether to show recent searches
  * @param {RenderOptions} options - Rendering options
  * @returns {Object} Object with { html, hasResults, showListbox }
  *
@@ -976,16 +976,16 @@ export function renderErrorState(message) {
  *   results: [],
  *   recentSearches: [...],
  *   loading: false,
- *   showRecent: true,
+ *   recentSearchesEnabled: true,
  * }, options);
  */
 export function getContentToRender(state, options) {
-    const { query, results, recentSearches, loading, showRecent, error } = state;
-    const { showLoadingIndicator = true } = options;
+    const { query, results, recentSearches, loading, recentSearchesEnabled, error } = state;
+    const { loadingIndicatorEnabled = true } = options;
     const hasQuery = query && query.trim();
 
-    // Loading state (only if showLoadingIndicator is enabled)
-    if (loading && showLoadingIndicator) {
+    // Loading state (only if loadingIndicatorEnabled is enabled)
+    if (loading && loadingIndicatorEnabled) {
         return {
             html: renderLoadingState(),
             hasResults: false,
@@ -1003,7 +1003,7 @@ export function getContentToRender(state, options) {
 
     // No query - show recent searches or empty state
     if (!hasQuery) {
-        if (showRecent && recentSearches && recentSearches.length > 0) {
+        if (recentSearchesEnabled && recentSearches && recentSearches.length > 0) {
             return {
                 html: renderRecentSearches(recentSearches, options.listboxId),
                 hasResults: true,

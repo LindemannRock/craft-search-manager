@@ -43,9 +43,9 @@ class IndexedSnippetService extends Component
         ?array &$debugMeta = null,
     ): array {
         $snippetMode = SnippetOptionsHelper::normalizeMode($options['snippetMode'] ?? SnippetOptionsHelper::DEFAULT_MODE);
-        $snippetLength = SnippetOptionsHelper::normalizeLength($options['snippetLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH);
-        $showCodeSnippets = (bool)($options['showCodeSnippets'] ?? false);
-        $parseMarkdownSnippets = (bool)($options['parseMarkdownSnippets'] ?? false);
+        $snippetLength = SnippetOptionsHelper::normalizeLength($options['snippetMaxLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH);
+        $showCodeSnippets = (bool)($options['snippetIncludeCodeBlocks'] ?? false);
+        $parseMarkdownSnippets = (bool)($options['snippetCleanMarkdown'] ?? false);
         $matchedTerms = is_array($hit['matchedTerms'] ?? null) ? $hit['matchedTerms'] : null;
         $title = is_string($options['title'] ?? null)
             ? (string)$options['title']

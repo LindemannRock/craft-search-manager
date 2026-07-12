@@ -144,22 +144,22 @@ try {
         performSearch({
             query: 'daterangehelper',
             endpoint: '/actions/search-manager/api/search',
-            parseMarkdownSnippets: true,
+            snippetCleanMarkdown: true,
         });
         performSearch({
             query: 'daterangehelper',
             endpoint: '/actions/search-manager/api/search',
-            parseMarkdownSnippets: false,
+            snippetCleanMarkdown: false,
         });
     } finally {
         global.fetch = originalFetch;
     }
 
-    test('Widget forwards parseMarkdownSnippets when enabled', requestedUrls[0] && requestedUrls[0].includes('parseMarkdownSnippets=1'));
-    test('Widget omits parseMarkdownSnippets when disabled', requestedUrls[1] && !requestedUrls[1].includes('parseMarkdownSnippets=1'));
+    test('Widget forwards snippetCleanMarkdown when enabled', requestedUrls[0] && requestedUrls[0].includes('snippetCleanMarkdown=1'));
+    test('Widget omits snippetCleanMarkdown when disabled', requestedUrls[1] && !requestedUrls[1].includes('snippetCleanMarkdown=1'));
 } catch (error) {
     console.error(error);
-    test('Widget parseMarkdownSnippets forwarding tests execute', false);
+    test('Widget snippetCleanMarkdown forwarding tests execute', false);
 }
 
 try {
@@ -256,9 +256,9 @@ try {
     ];
 
     const hierarchicalHtml = renderResults(splitHits, 'install', {
-        resultLayout: 'hierarchical',
+        resultsLayout: 'hierarchical',
         listboxId: 'split-list',
-        maxHeadingsPerResult: 2,
+        hierarchyMaxHeadings: 2,
     });
 
     test('Split hierarchy orders page groups by best section score', hierarchicalHtml.indexOf('Guide B') < hierarchicalHtml.indexOf('Guide A'));
@@ -284,9 +284,9 @@ try {
         score: 10,
         index: 'docs',
     }], 'child', {
-        resultLayout: 'hierarchical',
+        resultsLayout: 'hierarchical',
         listboxId: 'no-intro-list',
-        maxHeadingsPerResult: 3,
+        hierarchyMaxHeadings: 3,
     });
     const noIntroParentHtml = noIntroHtml.split('<div class="sm-hierarchy-children"')[0] || '';
     test('Split hierarchy does not borrow child snippet for page node without intro hit', !noIntroParentHtml.includes('sm-result-desc') && noIntroHtml.includes('snippet must stay'));
@@ -309,10 +309,10 @@ try {
         promoted: true,
         index: 'docs',
     }], 'guide', {
-        resultLayout: 'hierarchical',
+        resultsLayout: 'hierarchical',
         listboxId: 'promoted-list',
-        maxHeadingsPerResult: 3,
-        promotions: {
+        hierarchyMaxHeadings: 3,
+        promotionBadge: {
             showBadge: true,
             badgeText: 'Promoted',
         },
@@ -321,7 +321,7 @@ try {
     test('Split promoted-page hits keep backendId DOM identity and elementId analytics identity', promotedPageHtml.includes('data-id="707_1_promoted-page" data-element-id="707"'));
 
     const flatSectionHtml = renderResults([splitHits[0]], 'install', {
-        resultLayout: 'default',
+        resultsLayout: 'default',
         listboxId: 'flat-list',
     });
     test('Flat section hits render section title and section URL', flatSectionHtml.includes('Install') && flatSectionHtml.includes('href="/guide-a#install'));
@@ -335,7 +335,7 @@ try {
         entrySection: 'Pages',
         snippet: 'Plain snippet',
     }], 'plain', {
-        resultLayout: 'default',
+        resultsLayout: 'default',
         listboxId: 'plain-list',
     });
     test('Page-mode hits use backendId DOM identity and elementId analytics identity', pageModeHtml.includes('data-id="404_1" data-element-id="404"'));
@@ -349,9 +349,9 @@ try {
         snippet: 'Mixed plain snippet',
         score: 5,
     }], 'mixed', {
-        resultLayout: 'hierarchical',
+        resultsLayout: 'hierarchical',
         listboxId: 'mixed-list',
-        maxHeadingsPerResult: 3,
+        hierarchyMaxHeadings: 3,
     });
     test('Mixed hierarchical results render split and page-mode shapes together', mixedHtml.includes('Guide A') && mixedHtml.includes('Mixed Plain Page'));
 } catch (error) {
@@ -415,8 +415,8 @@ async function runWidgetInstanceBehaviorTests() {
             <!doctype html>
             <html>
                 <body>
-                    <search-modal id="widget-a" hotkey="k"></search-modal>
-                    <search-modal id="widget-b" hotkey="k"></search-modal>
+                    <search-modal id="widget-a" trigger-hotkey="k"></search-modal>
+                    <search-modal id="widget-b" trigger-hotkey="k"></search-modal>
                 </body>
             </html>
         `);
@@ -454,7 +454,7 @@ async function runWidgetInstanceBehaviorTests() {
             <!doctype html>
             <html>
                 <body>
-                    <search-modal id="solo-widget" hotkey="k"></search-modal>
+                    <search-modal id="solo-widget" trigger-hotkey="k"></search-modal>
                 </body>
             </html>
         `);
@@ -479,15 +479,21 @@ async function runWidgetInstanceBehaviorTests() {
                     <button id="external-trigger" type="button">External search</button>
                     <search-modal
                         id="live-widget"
-                        hotkey="k"
-                        show-trigger="false"
+                        trigger-hotkey="k"
+                        trigger-enabled="false"
                         trigger-selector="#external-trigger"
                     ></search-modal>
-                    <search-modal id="registry-widget" hotkey="j"></search-modal>
+                    <search-modal
+                        id="style-widget"
+                        trigger-hotkey="x"
+                        trigger-enabled="false"
+                        styles='{"modalBg":"#ffffff","modalBgDark":"#09090b","inputTextColor":"#18181b","inputTextColorDark":"#f4f4f5","modalMaxWidth":640}'
+                    ></search-modal>
+                    <search-modal id="registry-widget" trigger-hotkey="j"></search-modal>
                 </body>
             </html>
         `);
-        await waitForWidgets(page, ['live-widget', 'registry-widget']);
+        await waitForWidgets(page, ['live-widget', 'style-widget', 'registry-widget']);
 
         await page.evaluate(() => {
             document.getElementById('live-widget').setAttribute('theme', 'dark');
@@ -495,6 +501,55 @@ async function runWidgetInstanceBehaviorTests() {
         });
         states = await getWidgetStates(page, ['live-widget', 'registry-widget']);
         test('Theme attribute updates keep the external trigger attached', states['live-widget'].open && states.bodyOverflow === 'hidden');
+
+        const themeStyleStates = await page.evaluate(async () => {
+            const widget = document.getElementById('style-widget');
+            const readVars = () => ({
+                modalBg: widget.style.getPropertyValue('--sm-modal-bg').trim(),
+                modalBgDark: widget.style.getPropertyValue('--sm-modal-bg-dark').trim(),
+                inputColor: widget.style.getPropertyValue('--sm-input-color').trim(),
+                inputColorDark: widget.style.getPropertyValue('--sm-input-color-dark').trim(),
+                width: widget.style.getPropertyValue('--sm-modal-width').trim(),
+            });
+            const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+
+            const initial = readVars();
+            widget.setAttribute('theme', 'dark');
+            await nextFrame();
+            const dark = readVars();
+
+            widget.setAttribute('theme', 'light');
+            await nextFrame();
+            const light = readVars();
+
+            widget.setAttribute('theme', 'dark');
+            await nextFrame();
+            const darkAgain = readVars();
+
+            return { initial, dark, light, darkAgain };
+        });
+
+        test('Theme style switch removes stale light inline vars when dark is active',
+            themeStyleStates.initial.modalBg === '#ffffff'
+            && themeStyleStates.dark.modalBg === ''
+            && themeStyleStates.dark.inputColor === ''
+            && themeStyleStates.dark.modalBgDark === '#09090b'
+            && themeStyleStates.dark.inputColorDark === '#f4f4f5');
+        test('Theme style switch removes stale dark inline vars when light is active',
+            themeStyleStates.light.modalBg === '#ffffff'
+            && themeStyleStates.light.inputColor === '#18181b'
+            && themeStyleStates.light.modalBgDark === ''
+            && themeStyleStates.light.inputColorDark === '');
+        test('Theme-neutral style vars survive repeated theme switches',
+            themeStyleStates.initial.width === '640px'
+            && themeStyleStates.dark.width === '640px'
+            && themeStyleStates.light.width === '640px'
+            && themeStyleStates.darkAgain.width === '640px');
+        test('Repeated light-dark-light-dark style toggles stay clean',
+            themeStyleStates.darkAgain.modalBg === ''
+            && themeStyleStates.darkAgain.inputColor === ''
+            && themeStyleStates.darkAgain.modalBgDark === '#09090b'
+            && themeStyleStates.darkAgain.inputColorDark === '#f4f4f5');
 
         await page.evaluate(() => {
             document.getElementById('live-widget').close({ source: 'test' });

@@ -77,7 +77,7 @@ class AutoTransformer extends BaseTransformer
         // Start with common data
         $data = $this->getCommonData($element);
 
-        // Set element-kind metadata for grouping (hierarchical layout, groupResults).
+        // Set element-kind metadata for grouping (hierarchical layout, resultsGroupingEnabled).
         $kindMetadata = SearchElementKindMetadataHelper::metadata($element, $data['type']);
         $data = array_merge($data, $kindMetadata);
 

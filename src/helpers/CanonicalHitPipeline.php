@@ -20,7 +20,7 @@ class CanonicalHitPipeline
     /**
      * @param array<int, mixed> $hits
      * @param array<int, string> $indexHandles
-     * @param array{snippetMode?: string, snippetLength?: int, showCodeSnippets?: bool, parseMarkdownSnippets?: bool, hideResultsWithoutUrl?: bool, includeSnippetDebug?: bool, retrievableFieldsByIndex?: array<string, list<string>>} $options
+     * @param array{snippetMode?: string, snippetMaxLength?: int, snippetIncludeCodeBlocks?: bool, snippetCleanMarkdown?: bool, resultsRequireUrl?: bool, includeSnippetDebug?: bool, retrievableFieldsByIndex?: array<string, list<string>>} $options
      * @return array<int, array<string, mixed>>
      */
     public static function presentHits(
@@ -45,9 +45,9 @@ class CanonicalHitPipeline
                 $hitIndex,
                 [
                     'snippetMode' => $options['snippetMode'] ?? SnippetOptionsHelper::DEFAULT_MODE,
-                    'snippetLength' => $options['snippetLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH,
-                    'showCodeSnippets' => $options['showCodeSnippets'] ?? SnippetOptionsHelper::DEFAULT_SHOW_CODE,
-                    'parseMarkdownSnippets' => $options['parseMarkdownSnippets'] ?? SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
+                    'snippetMaxLength' => $options['snippetMaxLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH,
+                    'snippetIncludeCodeBlocks' => $options['snippetIncludeCodeBlocks'] ?? SnippetOptionsHelper::DEFAULT_SHOW_CODE,
+                    'snippetCleanMarkdown' => $options['snippetCleanMarkdown'] ?? SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
                     'title' => is_string($hit['title'] ?? null) ? $hit['title'] : '',
                     'url' => is_string($hit['url'] ?? null) ? $hit['url'] : '',
                     'documentType' => is_string($hit['type'] ?? null) ? $hit['type'] : '',
@@ -58,7 +58,7 @@ class CanonicalHitPipeline
             $hit['snippet'] = $snippetData['snippet'];
             $hit['headings'] = $snippetData['headings'];
 
-            if (($options['hideResultsWithoutUrl'] ?? false) && !self::hasIndexedUrl($hit)) {
+            if (($options['resultsRequireUrl'] ?? false) && !self::hasIndexedUrl($hit)) {
                 continue;
             }
 

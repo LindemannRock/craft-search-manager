@@ -38,15 +38,15 @@ class SnippetOptionsHelper
     }
 
     /**
-     * @return array{showCodeSnippets: bool, snippetMode: string, snippetLength: int, parseMarkdownSnippets: bool, minSnippetLength: int, maxSnippetLength: int, snippetModes: list<string>}
+     * @return array{snippetIncludeCodeBlocks: bool, snippetMode: string, snippetMaxLength: int, snippetCleanMarkdown: bool, minSnippetLength: int, maxSnippetLength: int, snippetModes: list<string>}
      */
     public static function widgetDefaults(): array
     {
         return [
-            'showCodeSnippets' => self::DEFAULT_SHOW_CODE,
+            'snippetIncludeCodeBlocks' => self::DEFAULT_SHOW_CODE,
             'snippetMode' => self::DEFAULT_MODE,
-            'snippetLength' => self::DEFAULT_LENGTH,
-            'parseMarkdownSnippets' => self::DEFAULT_PARSE_MARKDOWN,
+            'snippetMaxLength' => self::DEFAULT_LENGTH,
+            'snippetCleanMarkdown' => self::DEFAULT_PARSE_MARKDOWN,
             'minSnippetLength' => self::MIN_LENGTH,
             'maxSnippetLength' => self::MAX_LENGTH,
             'snippetModes' => self::MODES,

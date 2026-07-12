@@ -1241,15 +1241,6 @@ class WidgetsController extends Controller
     {
         $apiKeyHandle = $widgetConfig->getApiKeyHandle();
         if ($apiKeyHandle === '') {
-            $fallbackId = $widgetConfig->getApiKeyId();
-            if ($fallbackId === null) {
-                return null;
-            }
-            foreach ($keys as $key) {
-                if ($key->id === $fallbackId) {
-                    return $key;
-                }
-            }
             return null;
         }
 
@@ -1332,7 +1323,7 @@ class WidgetsController extends Controller
     {
         // Exact matches first
         return match ($key) {
-            'highlightEnabled' => 'boolean',
+            'highlightResultsEnabled' => 'boolean',
             'highlightTag' => 'tag',
             'highlightClass' => 'class',
             'modalShadow', 'modalShadowDark' => 'shadow',

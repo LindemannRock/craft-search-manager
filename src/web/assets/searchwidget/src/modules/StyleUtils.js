@@ -4,6 +4,36 @@
 
 import { STYLE_MAPPINGS, NUMERIC_KEYS, VH_KEYS, COLOR_KEYS } from './StyleConfig.js';
 
+const appliedThemeVarsByElement = new WeakMap();
+
+function getThemeKeySets() {
+    const lightKeys = new Set();
+    const darkKeys = new Set();
+
+    for (const key of Object.keys(STYLE_MAPPINGS)) {
+        if (key.endsWith('Dark')) {
+            darkKeys.add(key);
+            continue;
+        }
+
+        if (key.endsWith('Light')) {
+            const darkPeer = key.replace(/Light$/, 'Dark');
+            if (STYLE_MAPPINGS[darkPeer]) {
+                lightKeys.add(key);
+            }
+            continue;
+        }
+
+        if (STYLE_MAPPINGS[`${key}Dark`]) {
+            lightKeys.add(key);
+        }
+    }
+
+    return { lightKeys, darkKeys };
+}
+
+const THEME_KEY_SETS = getThemeKeySets();
+
 /**
  * Check if a value is a CSS function (var(), calc(), light-dark(), etc.)
  * These values must pass through without any prefix/suffix processing.
@@ -82,18 +112,32 @@ export function processStyleValue(key, value) {
  * @param {string} theme - Current theme ('light' or 'dark')
  */
 export function applyStylesToElement(element, styles, theme = 'light') {
+    if (!element) return;
+
+    const previouslyAppliedThemeVars = appliedThemeVarsByElement.get(element);
+
+    if (previouslyAppliedThemeVars) {
+        for (const cssVar of previouslyAppliedThemeVars) {
+            element.style.removeProperty(cssVar);
+        }
+        appliedThemeVarsByElement.delete(element);
+    }
+
     if (!styles || typeof styles !== 'object') return;
 
     const isDark = theme === 'dark';
 
     const entries = Object.entries(STYLE_MAPPINGS);
     const sharedKeys = new Set([...NUMERIC_KEYS, ...VH_KEYS]);
+    const nextAppliedThemeVars = new Set();
 
     for (const [key, cssVar] of entries) {
-        const isDarkKey = key.endsWith('Dark');
+        const isLightKey = THEME_KEY_SETS.lightKeys.has(key);
+        const isDarkKey = THEME_KEY_SETS.darkKeys.has(key);
+        const isThemeKey = isLightKey || isDarkKey;
 
         if (isDark) {
-            if (!isDarkKey && !sharedKeys.has(key)) {
+            if (isLightKey || (!isDarkKey && !sharedKeys.has(key))) {
                 continue;
             }
         } else if (isDarkKey) {
@@ -104,8 +148,15 @@ export function applyStylesToElement(element, styles, theme = 'light') {
             const value = processStyleValue(key, styles[key]);
             if (value) {
                 element.style.setProperty(cssVar, value);
+                if (isThemeKey) {
+                    nextAppliedThemeVars.add(cssVar);
+                }
             }
         }
+    }
+
+    if (nextAppliedThemeVars.size > 0) {
+        appliedThemeVarsByElement.set(element, nextAppliedThemeVars);
     }
 }
 

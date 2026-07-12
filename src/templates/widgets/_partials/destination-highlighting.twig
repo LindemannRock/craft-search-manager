@@ -1,0 +1,43 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.lightswitchField({
+	label: 'Destination Highlighting Enabled'|t('search-manager'),
+	instructions: 'Highlight matching search terms on the destination page after navigating from a search result.'|t('search-manager'),
+	id: 'behavior-highlightDestinationEnabled',
+	name: 'settings[behavior][highlightDestinationEnabled]',
+	on: widgetConfig.isHighlightDestinationEnabled(),
+	toggle: 'destination-highlight-options',
+}) }}
+
+<div id="destination-highlight-options"{% if not widgetConfig.isHighlightDestinationEnabled() %} class="hidden"{% endif %}>
+	{{ forms.lightswitchField({
+		label: 'Destination Highlighting Persist Query'|t('search-manager'),
+		instructions: 'Append the search query to the destination URL so the page knows what to highlight.'|t('search-manager'),
+		id: 'behavior-highlightDestinationPersistQuery',
+		name: 'settings[behavior][highlightDestinationPersistQuery]',
+		on: widgetConfig.isHighlightDestinationPersistQueryEnabled(),
+	}) }}
+
+	{{ forms.textField({
+		label: 'Destination Highlighting Query Parameter'|t('search-manager'),
+		instructions: 'URL parameter name for the search query (e.g., ?smq=redis).'|t('search-manager'),
+		tip: 'Default: smq. Change to avoid conflicts with other query parameters.'|t('search-manager'),
+		id: 'behavior-highlightDestinationQueryParam',
+		name: 'settings[behavior][highlightDestinationQueryParam]',
+		value: widgetConfig.getHighlightDestinationQueryParam(),
+		placeholder: 'smq',
+		size: 20,
+		errors: widgetConfig.getErrors('settings.behavior.highlightDestinationQueryParam')
+	}) }}
+
+	{{ forms.textField({
+		label: 'Destination Highlighting Content Selector'|t('search-manager'),
+		instructions: 'CSS selector for page content areas to scan for highlighting.'|t('search-manager'),
+		tip: 'Comma-separated CSS selectors. Default: main, article, [data-search-content]'|t('search-manager'),
+		id: 'behavior-highlightDestinationContentSelector',
+		name: 'settings[behavior][highlightDestinationContentSelector]',
+		value: widgetConfig.getHighlightDestinationContentSelector(),
+		placeholder: 'main, article, [data-search-content]',
+		errors: widgetConfig.getErrors('settings.behavior.highlightDestinationContentSelector')
+	}) }}
+</div>

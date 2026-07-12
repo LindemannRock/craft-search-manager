@@ -19,7 +19,7 @@ Common issues and solutions for Search Manager.
 **Debugging tips:**
 
 - Check plugin logs at Search Manager > Logs (or `storage/logs/search-manager.log`)
-- Enable debug logging: set `logLevel` to `'debug'` in your config
+- Enable debugEnabled logging: set `logLevel` to `'debugEnabled'` in your config
 - If using `replaceNativeSearch`, verify it only works with built-in backends (MySQL, PostgreSQL, Redis, File)
 
 ## Element Stays in Index After Editor Change
@@ -226,7 +226,7 @@ ddev craft search-manager/security/generate-salt
 ## Widget Not Appearing
 
 1. **Is the widget included?** Check your template has `{% include 'search-manager/_widget/search-modal' %}`.
-2. **Is a widget config set?** If using `config: 'my-config'`, verify the handle exists in the CP or config file.
+2. **Is a widget config set?** If using `configHandle: 'my-config'`, verify the handle exists in the CP or config file.
 3. **Is the widget enabled?** Check the widget config is enabled in Search Manager > Widgets.
 4. **Check browser console**: Look for JavaScript errors that might prevent the web component from loading.
 
@@ -248,7 +248,7 @@ In hierarchical search results, heading children show query-centered snippets fr
 
 - **No query match in that section**: The heading can still appear because the page matched. When the heading section has text but no query-term context, Search Manager shows the section opening; `snippet` stays `null` only when the indexed section text is empty.
 - **Heading boundary not found in the indexed body**: Heading metadata is matched back to the clean body at request time. Rebuild the index if headings or body content changed.
-- **Snippet settings are restrictive**: `snippetMode`, `snippetLength`, and `parseMarkdownSnippets` apply to heading snippets the same way they apply to the main snippet.
+- **Snippet settings are restrictive**: `snippetMode`, `snippetMaxLength`, and `snippetCleanMarkdown` apply to heading snippets the same way they apply to the main snippet.
 
 Heading snippets are plain text and are highlighted by the frontend when highlighting is enabled.
 
@@ -283,6 +283,6 @@ Heading snippets are plain text and are highlighted by the frontend when highlig
 ## Getting Help
 
 - Check plugin logs: Search Manager > Logs
-- Enable debug logging: `'logLevel' => 'debug'` in config
+- Enable debugEnabled logging: `'logLevel' => 'debugEnabled'` in config
 - Check Craft's general logs: `storage/logs/web.log`
 - For persistent issues, include your Search Manager version, backend type, and relevant log entries when reporting

@@ -137,10 +137,10 @@ class Install extends Migration
             'enableStopWords' => $this->boolean()->notNull()->defaultValue(true),
             'defaultLanguage' => $this->string(10)->null(),
             // Highlighting Settings (for template helpers, not widget)
-            'enableHighlighting' => $this->boolean()->notNull()->defaultValue(true),
+            'highlightResultsEnabled' => $this->boolean()->notNull()->defaultValue(true),
             'highlightTag' => $this->string(20)->notNull()->defaultValue('mark'),
             'highlightClass' => $this->string(100)->null(),
-            'snippetLength' => $this->integer()->notNull()->defaultValue(200),
+            'snippetMaxLength' => $this->integer()->notNull()->defaultValue(200),
             'maxSnippets' => $this->integer()->notNull()->defaultValue(3),
             // Autocomplete Settings
             'enableAutocomplete' => $this->boolean()->notNull()->defaultValue(true),
@@ -452,10 +452,10 @@ class Install extends Migration
             'maxFuzzyCandidates' => 100,
             'enableStopWords' => 1,
             'defaultLanguage' => null,
-            'enableHighlighting' => 1,
+            'highlightResultsEnabled' => 1,
             'highlightTag' => 'mark',
             'highlightClass' => null,
-            'snippetLength' => 200,
+            'snippetMaxLength' => 200,
             'maxSnippets' => 3,
             'enableAutocomplete' => 1,
             'autocompleteMinLength' => 2,
@@ -890,24 +890,24 @@ class Install extends Migration
     {
         $defaultSettings = [
             'behavior' => [
-                'preventBodyScroll' => true,
-                'debounce' => 200,
-                'minChars' => 2,
-                'maxResults' => 10,
-                'showRecent' => true,
-                'maxRecentSearches' => 5,
-                'groupResults' => true,
-                'hotkey' => 'k',
-                'hideResultsWithoutUrl' => false,
-                'showLoadingIndicator' => true,
+                'modalPreventBodyScroll' => true,
+                'searchDebounceMs' => 200,
+                'searchMinChars' => 2,
+                'resultsLimit' => 10,
+                'recentSearchesEnabled' => true,
+                'recentSearchesLimit' => 5,
+                'resultsGroupingEnabled' => true,
+                'triggerHotkey' => 'k',
+                'resultsRequireUrl' => false,
+                'loadingIndicatorEnabled' => true,
             ],
             'trigger' => [
-                'showTrigger' => true,
-                'triggerText' => 'Search',
+                'triggerEnabled' => true,
+                'triggerLabel' => 'Search',
             ],
             'analytics' => [
-                'source' => '',        // Custom source identifier
-                'idleTimeout' => 1500, // Track search after idle timeout in ms (0 = disabled)
+                'analyticsSource' => '',        // Custom source identifier
+                'analyticsIdleTimeoutMs' => 1500, // Track search after idle timeout in ms (0 = disabled)
             ],
         ];
 
@@ -1003,7 +1003,7 @@ class Install extends Migration
             'keyPrefix' => $this->string(32)->notNull()->comment('Unhashed prefix for CP display + lookup (e.g. sm_pub_a1b2c3d4)'),
             'allowedIndices' => $this->text()->null()->comment('JSON array of index handles, or ["*"] for all indices'),
             'allowedReferrers' => $this->text()->null()->comment('JSON array of domain patterns (example.com, *.example.com)'),
-            'maxHitsPerPage' => $this->integer()->null()->comment('Cap on hitsPerPage; null = use endpoint default'),
+            'maxHitsPerPage' => $this->integer()->null()->comment('Cap on resultsLimit; null = use endpoint default'),
             'validUntil' => $this->dateTime()->null()->comment('Expiry datetime; null = never expires'),
             'rateLimit' => $this->integer()->null()->comment('Requests per minute; null = no rate limit (slice 3)'),
             'lastUsedAt' => $this->dateTime()->null()->comment('Updated on successful enforcement (slice 2)'),

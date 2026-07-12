@@ -99,12 +99,12 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         $template = $this->readPluginFile('src/templates/settings/test/_partials/search.twig');
         $assetSource = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
-        self::assertStringContainsString('id="hideResultsWithoutUrl"', $template);
+        self::assertStringContainsString('id="resultsRequireUrl"', $template);
         self::assertStringContainsString('id="includeDebugMeta"', $template);
         self::assertStringNotContainsString('id="liveComparisonOptions"', $template);
         self::assertStringNotContainsString('id="hideWithoutLiveUrl"', $template);
         self::assertStringNotContainsString('sm-test-toggle-card--primary', $template);
-        self::assertStringContainsString("hideResultsWithoutUrl: document.getElementById('hideResultsWithoutUrl').checked,", $assetSource);
+        self::assertStringContainsString("resultsRequireUrl: document.getElementById('resultsRequireUrl').checked,", $assetSource);
         self::assertStringNotContainsString('hideWithoutLiveUrl', $assetSource);
     }
 

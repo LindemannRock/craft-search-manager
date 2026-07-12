@@ -33,7 +33,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  * Restrictions are per-key (multi-dimensional model):
  *  - `allowedIndices` — whitelist of index handles, or `['*']` for all
  *  - `allowedReferrers` — domain patterns (`example.com`, `*.example.com`)
- *  - `maxHitsPerPage` — clamp on per-request hitsPerPage parameter
+ *  - `maxHitsPerPage` — clamp on per-request resultsLimit parameter
  *  - `validUntil` — expiry datetime; null = never expires
  *  - `rateLimit` — requests per minute (enforced in slice 3)
  *

@@ -37,9 +37,9 @@
  * @example
  * // Use in HTML
  * <search-modal
- *   indices="products,articles"
+ *   index-handles="products,articles"
  *   placeholder="Search..."
- *   hotkey="k"
+ *   trigger-hotkey="k"
  * ></search-modal>
  */
 
@@ -54,8 +54,6 @@ export {
     getDefaultsForType,
     BASE_DEFAULTS,
     MODAL_DEFAULTS,
-    PAGE_DEFAULTS,
-    INLINE_DEFAULTS,
 } from './core/ConfigParser.js';
 export {
     createStateManager,

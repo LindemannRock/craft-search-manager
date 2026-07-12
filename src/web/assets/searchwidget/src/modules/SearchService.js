@@ -15,57 +15,57 @@
  * @param {Object} options - Search options
  * @param {string} options.query - The search query
  * @param {string} options.endpoint - The API endpoint URL
- * @param {Array} options.indices - Search index handles
+ * @param {Array} options.indexHandles - Search index handles
  * @param {string} options.siteId - Optional site ID
- * @param {number} options.maxResults - Maximum results to return
- * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
- * @param {boolean} options.showCodeSnippets - Allow block-level code in page or section snippets
+ * @param {number} options.resultsLimit - Maximum results to return
+ * @param {boolean} options.resultsRequireUrl - Hide results without URLs
+ * @param {boolean} options.snippetIncludeCodeBlocks - Allow block-level code in page or section snippets
  * @param {string} options.snippetMode - Snippet mode: early | balanced | deep
- * @param {number} options.snippetLength - Max snippet length
- * @param {boolean} options.parseMarkdownSnippets - Clean Markdown markers before displaying snippets
- * @param {boolean} options.debug - Request debug metadata (overrides devMode default)
+ * @param {number} options.snippetMaxLength - Max snippet length
+ * @param {boolean} options.snippetCleanMarkdown - Clean Markdown markers before displaying snippets
+ * @param {boolean} options.debugEnabled - Request debug metadata (overrides devMode default)
  * @param {string} options.apiKey - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  * @param {AbortSignal} options.signal - AbortController signal
  * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
-export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = '', snippetLength = 0, parseMarkdownSnippets = false, debug = false, apiKey = '', signal }) {
+export async function performSearch({ query, endpoint, indexHandles = [], siteId = '', resultsLimit = 10, resultsRequireUrl = false, snippetIncludeCodeBlocks = false, snippetMode = '', snippetMaxLength = 0, snippetCleanMarkdown = false, debugEnabled = false, apiKey = '', signal }) {
     const params = new URLSearchParams({
         q: query,
-        hitsPerPage: maxResults.toString(),
+        resultsLimit: resultsLimit.toString(),
     });
 
-    // Pass indices as comma-separated (empty = search all)
-    if (indices.length > 0) {
-        params.append('indices', indices.join(','));
+    // Pass index handles as comma-separated (empty = search all)
+    if (indexHandles.length > 0) {
+        params.append('indexHandles', indexHandles.join(','));
     }
 
     if (siteId) {
         params.append('siteId', siteId);
     }
 
-    if (hideResultsWithoutUrl) {
-        params.append('hideResultsWithoutUrl', '1');
+    if (resultsRequireUrl) {
+        params.append('resultsRequireUrl', '1');
     }
 
-    if (showCodeSnippets) {
-        params.append('showCodeSnippets', '1');
+    if (snippetIncludeCodeBlocks) {
+        params.append('snippetIncludeCodeBlocks', '1');
     }
 
     if (snippetMode) {
         params.append('snippetMode', snippetMode);
     }
 
-    if (snippetLength) {
-        params.append('snippetLength', String(snippetLength));
+    if (snippetMaxLength) {
+        params.append('snippetMaxLength', String(snippetMaxLength));
     }
 
-    if (parseMarkdownSnippets) {
-        params.append('parseMarkdownSnippets', '1');
+    if (snippetCleanMarkdown) {
+        params.append('snippetCleanMarkdown', '1');
     }
 
     // Request debug metadata explicitly (overrides server devMode default)
-    if (debug) {
-        params.append('debug', '1');
+    if (debugEnabled) {
+        params.append('debugEnabled', '1');
     }
 
     // Skip automatic analytics tracking for widget searches (prevents keystroke spam)
@@ -202,25 +202,25 @@ export function trackClick({ endpoint, elementId, query, index, apiKey = '' }) {
  * @param {Object} options - Tracking options
  * @param {string} options.endpoint - The track-search endpoint URL
  * @param {string} options.query - The search query
- * @param {Array} options.indices - Search indices
+ * @param {Array} options.indexHandles - Search indices
  * @param {number} options.resultsCount - Number of results
  * @param {string} options.trigger - What triggered tracking ('click', 'enter', 'idle')
- * @param {string} options.source - Source identifier (e.g., 'header-search')
+ * @param {string} options.analyticsSource - Source identifier (e.g., 'header-search')
  * @param {string} options.siteId - Optional site ID
  * @param {boolean} [options.cached] - Whether the final search response was served from cache
  * @param {number} [options.took] - Backend execution time in ms (from response meta.took)
  * @param {string} [options.apiKey] - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  */
-export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, trigger = 'unknown', source = '', siteId = '', cached, took, apiKey = '' }) {
+export function trackSearch({ endpoint, query, indexHandles = [], resultsCount = 0, trigger = 'unknown', analyticsSource = '', siteId = '', cached, took, apiKey = '' }) {
     if (!query || !endpoint) return;
 
     try {
         const formData = new FormData();
         formData.append('q', query);
-        formData.append('indices', indices.join(','));
+        formData.append('indexHandles', indexHandles.join(','));
         formData.append('resultsCount', resultsCount.toString());
         formData.append('trigger', trigger);
-        formData.append('source', source || 'frontend-widget');
+        formData.append('analyticsSource', analyticsSource || 'frontend-widget');
         if (siteId) {
             formData.append('siteId', siteId);
         }

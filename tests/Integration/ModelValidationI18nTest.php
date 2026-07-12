@@ -185,16 +185,16 @@ final class ModelValidationI18nTest extends TestCase
         ], $index->getErrors('transformerClass'));
 
         $widget = $this->makeWidgetConfig();
-        $widget->settings['behavior']['debounce'] = 'not-a-number';
-        $widget->settings['behavior']['queryParamName'] = '1bad';
-        $widget->settings['behavior']['destinationHighlightSelector'] = '<script';
+        $widget->settings['behavior']['searchDebounceMs'] = 'not-a-number';
+        $widget->settings['behavior']['highlightDestinationQueryParam'] = '1bad';
+        $widget->settings['behavior']['highlightDestinationContentSelector'] = '<script';
 
         self::assertFalse($widget->validate(['settings']));
-        self::assertSame(['Debounce must be a whole number.'], $widget->getErrors('settings.behavior.debounce'));
+        self::assertSame(['Search Debounce must be a whole number.'], $widget->getErrors('settings.behavior.searchDebounceMs'));
         self::assertSame([
-            'Query Parameter Name must start with a letter and contain only letters, numbers, hyphens, and underscores.',
-        ], $widget->getErrors('settings.behavior.queryParamName'));
-        self::assertSame(['Content Selector contains unsafe characters.'], $widget->getErrors('settings.behavior.destinationHighlightSelector'));
+            'Destination Highlighting Query Parameter must start with a letter and contain only letters, numbers, hyphens, and underscores.',
+        ], $widget->getErrors('settings.behavior.highlightDestinationQueryParam'));
+        self::assertSame(['Content Selector contains unsafe characters.'], $widget->getErrors('settings.behavior.highlightDestinationContentSelector'));
     }
 
     public function testWidgetStyleRangeValidationUsesTranslatedLabelAndMessage(): void

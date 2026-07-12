@@ -5,12 +5,12 @@
 #}
 {% if widgetConfig is defined and widgetConfig is not null %}
 	{% set styles = widgetConfig.getStylesForPreview() %}
-	{% set hotkey = widgetConfig.getHotkey() %}
-	{% set triggerText = widgetConfig.getTriggerText() %}
+	{% set hotkey = widgetConfig.getTriggerHotkey() %}
+	{% set triggerLabel = widgetConfig.getTriggerLabel() %}
 {% else %}
 	{% set styles = styles ?? {} %}
 	{% set hotkey = 'K' %}
-	{% set triggerText = 'Search' %}
+	{% set triggerLabel = 'Search' %}
 {% endif %}
 
 {# Highlight colors from styles (with defaults matching style-defaults.json) #}
@@ -84,7 +84,7 @@
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
-				<span>{{ triggerText ?: 'Search'|t('search-manager') }}</span>
+				<span>{{ triggerLabel ?: 'Search'|t('search-manager') }}</span>
 				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBg }}; color: {{ styles.kbdTextColor }};">{{ hotkey|upper }}</span>
 			</button>
 		</div>
@@ -144,7 +144,7 @@
 					<circle cx="11" cy="11" r="8"></circle>
 					<path d="m21 21-4.35-4.35"></path>
 				</svg>
-				<span>{{ triggerText ?: 'Search'|t('search-manager') }}</span>
+				<span>{{ triggerLabel ?: 'Search'|t('search-manager') }}</span>
 				<span class="preview-trigger-kbd" style="background: {{ styles.kbdBgDark }}; color: {{ styles.kbdTextColorDark }};">{{ hotkey|upper }}</span>
 			</button>
 		</div>

@@ -18,7 +18,7 @@ Create a widget configuration in the CP (Search Manager > Widgets) or config fil
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'main-search',
+    configHandle: 'main-search',
 } %}
 ```
 
@@ -28,7 +28,7 @@ If [**Require API Key**](../feature-tour/api-keys.md) is enabled, the widget mus
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'main-search',
+    configHandle: 'main-search',
     apiKey: 'sm_pub_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
 } %}
 ```
@@ -43,7 +43,7 @@ Override specific visual styles at render time. These merge on top of the widget
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'main-search',
+    configHandle: 'main-search',
     styles: {
         modalBg: '#0f172a',
         inputBg: '#1e293b',
@@ -60,12 +60,12 @@ Override specific settings without creating a config:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    indices: ['blog', 'products'],
+    indexHandles: ['blog', 'products'],
     placeholder: 'Search articles and products...',
     theme: 'dark',
-    maxResults: 12,
-    showRecent: true,
-    groupResults: true,
+    resultsLimit: 12,
+    recentSearchesEnabled: true,
+    resultsGroupingEnabled: true,
 } %}
 ```
 
@@ -94,7 +94,7 @@ Replace the built-in trigger with your own design:
 </button>
 
 {% include 'search-manager/_widget/search-modal' with {
-    showTrigger: false,
+    triggerEnabled: false,
     triggerSelector: '#search-trigger',
 } %}
 ```
@@ -166,19 +166,19 @@ For right-to-left languages:
 
 ## Analytics Tracking
 
-Track where searches come from by setting a source identifier:
+Track where searches come from by setting an analytics source identifier:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    source: 'header-search',
+    analyticsSource: 'header-search',
 } %}
 
 {% include 'search-manager/_widget/search-modal' with {
-    source: 'mobile-nav',
+    analyticsSource: 'mobile-nav',
 } %}
 ```
 
-The source appears in analytics so you can compare search behavior across placements.
+The analytics source appears in analytics so you can compare search behavior across placements.
 
 ### Idle Timeout
 
@@ -186,11 +186,11 @@ By default, a search is tracked after the user stops typing for 1.5 seconds. Adj
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    idleTimeout: 2000,
+    analyticsIdleTimeoutMs: 2000,
 } %}
 
 {% include 'search-manager/_widget/search-modal' with {
-    idleTimeout: 0,
+    analyticsIdleTimeoutMs: 0,
 } %}
 ```
 
@@ -228,13 +228,13 @@ You can include multiple widgets with different configs on the same page:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'main-search',
+    configHandle: 'main-search',
     triggerSelector: '#header-search',
 } %}
 
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'blog-search',
-    indices: ['blog'],
+    configHandle: 'blog-search',
+    indexHandles: ['blog'],
     triggerSelector: '#sidebar-search',
 } %}
 ```
@@ -249,13 +249,13 @@ For documentation sites, use the hierarchical result layout to group results and
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'docs-search',
-    resultLayout: 'hierarchical',
-    maxHeadingsPerResult: 5,
+    configHandle: 'docs-search',
+    resultsLayout: 'hierarchical',
+    hierarchyMaxHeadings: 5,
 } %}
 ```
 
-With split SourceDoc or AutoTransformer-family indices, the same hierarchical layout groups flat section hits back under their parent element. Intro hits can provide the parent snippet, heading hits render as children, and promoted page hits render at the parent level. `maxHeadingsPerResult` limits heading children per page block: the widget keeps the highest-scoring heading hits first, then restores document order for display.
+With split SourceDoc or AutoTransformer-family indices, the same hierarchical layout groups flat section hits back under their parent element. Intro hits can provide the parent snippet, heading hits render as children, and promoted page hits render at the parent level. `hierarchyMaxHeadings` limits heading children per page block: the widget keeps the highest-scoring heading hits first, then restores document order for display.
 
 ### Snippet Modes
 
@@ -264,9 +264,9 @@ Control how snippets are extracted from eligible fields, page bodies, and split 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
     snippetMode: 'deep',
-    snippetLength: 200,
-    showCodeSnippets: true,
-    parseMarkdownSnippets: true,
+    snippetMaxLength: 200,
+    snippetIncludeCodeBlocks: true,
+    snippetCleanMarkdown: true,
 } %}
 ```
 

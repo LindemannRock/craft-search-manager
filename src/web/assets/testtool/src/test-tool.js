@@ -91,7 +91,7 @@
             const snippetOptions = config.snippetOptions || {};
             const minSnippetLength = Number.isFinite(Number(snippetOptions.minSnippetLength)) ? Number(snippetOptions.minSnippetLength) : 50;
             const maxSnippetLength = Number.isFinite(Number(snippetOptions.maxSnippetLength)) ? Number(snippetOptions.maxSnippetLength) : 1000;
-            const defaultSnippetLength = Number.isFinite(Number(snippetOptions.snippetLength)) ? Number(snippetOptions.snippetLength) : 150;
+            const defaultSnippetLength = Number.isFinite(Number(snippetOptions.snippetMaxLength)) ? Number(snippetOptions.snippetMaxLength) : 150;
             let autocompleteTimer;
             let autocompleteTerms = [];
             let lastSearchData = null;
@@ -835,9 +835,9 @@
                 testButton.textContent = T.searching;
                 updateSectionVisibility();
 
-                const snippetLengthInput = document.getElementById('snippetLength');
-                const snippetLength = Math.min(maxSnippetLength, Math.max(minSnippetLength, parseInt(snippetLengthInput.value, 10) || defaultSnippetLength));
-                snippetLengthInput.value = snippetLength;
+                const snippetMaxLengthInput = document.getElementById('snippetMaxLength');
+                const snippetMaxLength = Math.min(maxSnippetLength, Math.max(minSnippetLength, parseInt(snippetMaxLengthInput.value, 10) || defaultSnippetLength));
+                snippetMaxLengthInput.value = snippetMaxLength;
 
                 Promise.all([
                     postJson(urls.testSearch, csrfToken, {
@@ -847,10 +847,10 @@
                         liveComparison: enableLiveComparison.checked,
                         includeQueryRuleDebug: showQueryRules.checked,
                         snippetMode: document.getElementById('snippetMode').value,
-                        snippetLength: snippetLength,
-                        showCodeSnippets: document.getElementById('showCodeSnippets').checked,
-                        parseMarkdownSnippets: document.getElementById('parseMarkdownSnippets').checked,
-                        hideResultsWithoutUrl: document.getElementById('hideResultsWithoutUrl').checked,
+                        snippetMaxLength: snippetMaxLength,
+                        snippetIncludeCodeBlocks: document.getElementById('snippetIncludeCodeBlocks').checked,
+                        snippetCleanMarkdown: document.getElementById('snippetCleanMarkdown').checked,
+                        resultsRequireUrl: document.getElementById('resultsRequireUrl').checked,
                         includeDebugMeta: document.getElementById('includeDebugMeta').checked,
                     }).then(r => r.json()),
                     showPromotions.checked ? postJson(urls.testPromotions, csrfToken, { query: query, indexHandle: indexHandle }).then(r => r.json()) : Promise.resolve(null),

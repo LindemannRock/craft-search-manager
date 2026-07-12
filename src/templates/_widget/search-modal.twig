@@ -10,13 +10,13 @@
  *
  * With a named config:
  * {% include 'search-manager/_widget/search-modal' with {
- *     config: 'homepage',
+ *     configHandle: 'homepage',
  * } %}
  *
  * With inline overrides:
  * {% include 'search-manager/_widget/search-modal' with {
- *     config: 'homepage',
- *     indices: ['blog', 'products'], // or 'blog,products'
+ *     configHandle: 'homepage',
+ *     indexHandles: ['blog', 'products'], // or 'blog,products'
  *     placeholder: 'Search articles...',
  *     theme: 'dark',
  * } %}
@@ -42,47 +42,47 @@
 
 {# Get plugin instance and widget config #}
 {% set plugin = craft.app.plugins.getPlugin('search-manager') %}
-{% set widgetConfig = plugin.widgetConfigs.getConfigForWidget(config ?? null) %}
+{% set widgetConfig = plugin.widgetConfigs.getConfigForWidget(configHandle ?? null) %}
 
-{# Search settings - support indices as an array or comma-separated string #}
-{% if indices is defined and indices is iterable %}
-    {% set indexHandles = indices %}
-{% elseif indices is defined and indices %}
-    {% set indexHandles = indices|split(',')|map(handle => handle|trim)|filter(handle => handle) %}
+{# Search settings - support indexHandles as an array or comma-separated string #}
+{% if indexHandles is defined and indexHandles is iterable %}
+    {% set selectedIndexHandles = indexHandles %}
+{% elseif indexHandles is defined and indexHandles %}
+    {% set selectedIndexHandles = indexHandles|split(',')|map(handle => handle|trim)|filter(handle => handle) %}
 {% else %}
-    {% set indexHandles = widgetConfig.getIndexHandles() %}
+    {% set selectedIndexHandles = widgetConfig.getIndexHandles() %}
 {% endif %}
 
 {% set placeholder = placeholder ?? widgetConfig.getPlaceholder()|t('search-manager') %}
 {% set theme = theme ?? 'light' %}
 {% set siteId = siteId ?? '' %}
-{% set class = class ?? '' %}
+{% set cssClass = cssClass ?? '' %}
 {% set dir = dir ?? (craft.app.locale.getOrientation() == 'rtl' ? 'rtl' : 'ltr') %}
 
 {# Behavior settings - use inline param override or fall back to widget config #}
-{% set maxResults = maxResults ?? widgetConfig.getMaxResults() %}
-{% set debounce = debounce ?? widgetConfig.getDebounce() %}
-{% set minChars = minChars ?? widgetConfig.getMinChars() %}
-{% set showRecent = showRecent ?? widgetConfig.isShowRecentEnabled() %}
-{% set maxRecentSearches = maxRecentSearches ?? widgetConfig.getMaxRecentSearches() %}
-{% set groupResults = groupResults ?? widgetConfig.isGroupResultsEnabled() %}
-{% set hotkey = hotkey ?? widgetConfig.getHotkey() %}
-{% set hideResultsWithoutUrl = hideResultsWithoutUrl ?? widgetConfig.isHideResultsWithoutUrlEnabled() %}
-{% set showCodeSnippets = showCodeSnippets ?? widgetConfig.isShowCodeSnippetsEnabled() %}
+{% set resultsLimit = resultsLimit ?? widgetConfig.getResultsLimit() %}
+{% set searchDebounceMs = searchDebounceMs ?? widgetConfig.getSearchDebounceMs() %}
+{% set searchMinChars = searchMinChars ?? widgetConfig.getSearchMinChars() %}
+{% set recentSearchesEnabled = recentSearchesEnabled ?? widgetConfig.isRecentSearchesEnabled() %}
+{% set recentSearchesLimit = recentSearchesLimit ?? widgetConfig.getRecentSearchesLimit() %}
+{% set resultsGroupingEnabled = resultsGroupingEnabled ?? widgetConfig.isResultsGroupingEnabled() %}
+{% set triggerHotkey = triggerHotkey ?? widgetConfig.getTriggerHotkey() %}
+{% set resultsRequireUrl = resultsRequireUrl ?? widgetConfig.isResultsRequireUrlEnabled() %}
+{% set snippetIncludeCodeBlocks = snippetIncludeCodeBlocks ?? widgetConfig.isSnippetIncludeCodeBlocksEnabled() %}
 {% set snippetMode = snippetMode ?? widgetConfig.getSnippetMode() %}
-{% set highlightDestinationPage = highlightDestinationPage ?? widgetConfig.isHighlightDestinationPageEnabled() %}
-{% set persistQueryInUrl = persistQueryInUrl ?? widgetConfig.isPersistQueryInUrlEnabled() %}
-{% set queryParamName = queryParamName ?? widgetConfig.getQueryParamName() %}
-{% set destinationHighlightSelector = destinationHighlightSelector ?? widgetConfig.getDestinationHighlightSelector() %}
+{% set highlightDestinationEnabled = highlightDestinationEnabled ?? widgetConfig.isHighlightDestinationEnabled() %}
+{% set highlightDestinationPersistQuery = highlightDestinationPersistQuery ?? widgetConfig.isHighlightDestinationPersistQueryEnabled() %}
+{% set highlightDestinationQueryParam = highlightDestinationQueryParam ?? widgetConfig.getHighlightDestinationQueryParam() %}
+{% set highlightDestinationContentSelector = highlightDestinationContentSelector ?? widgetConfig.getHighlightDestinationContentSelector() %}
 
 {# Trigger settings #}
-{% set showTrigger = showTrigger ?? widgetConfig.isShowTriggerEnabled() %}
-{% set triggerText = triggerText ?? widgetConfig.getTriggerText()|t('search-manager') %}
+{% set triggerEnabled = triggerEnabled ?? widgetConfig.isTriggerEnabled() %}
+{% set triggerLabel = triggerLabel ?? widgetConfig.getTriggerLabel()|t('search-manager') %}
 {% set triggerSelector = triggerSelector ?? '' %}
 
 {# Analytics settings — forwarded to the web component as HTML attributes #}
-{% set source = source ?? widgetConfig.getAnalyticsSource() %}
-{% set idleTimeout = idleTimeout ?? widgetConfig.getIdleTimeout() %}
+{% set analyticsSource = analyticsSource ?? widgetConfig.getAnalyticsSource() %}
+{% set analyticsIdleTimeoutMs = analyticsIdleTimeoutMs ?? widgetConfig.getAnalyticsIdleTimeoutMs() %}
 
 {# Public API key — render-time override wins over the saved widget setting.
    Sent as the X-Search-Manager-Key header by the widget when requireApiKey is on. #}
@@ -94,31 +94,31 @@
 {% set resolvedStyles = widgetConfig.getStylesForRender(styleOverrides) %}
 
 {# Highlighting settings - from style preset, with inline override support #}
-{% set enableHighlighting = enableHighlighting ?? (resolvedStyles.highlightEnabled ?? '1') %}
+{% set highlightResultsEnabled = highlightResultsEnabled ?? (resolvedStyles.highlightResultsEnabled ?? '1') %}
 {% set highlightTag = highlightTag ?? (resolvedStyles.highlightTag is defined and resolvedStyles.highlightTag ? resolvedStyles.highlightTag : 'mark') %}
 {% set highlightClass = highlightClass ?? (resolvedStyles.highlightClass ?? '') %}
 
 {# Backdrop settings - from style preset, with inline override support #}
-{% set backdropOpacity = backdropOpacity ?? (resolvedStyles.backdropOpacity ?? 50) %}
-{% set enableBackdropBlur = enableBackdropBlur ?? (resolvedStyles.backdropBlur ?? '1') %}
-{% set preventBodyScroll = preventBodyScroll ?? widgetConfig.isPreventBodyScrollEnabled() %}
+{% set modalBackdropOpacity = modalBackdropOpacity ?? (resolvedStyles.backdropOpacity ?? 50) %}
+{% set modalBackdropBlurEnabled = modalBackdropBlurEnabled ?? (resolvedStyles.backdropBlur ?? '1') %}
+{% set modalPreventBodyScroll = modalPreventBodyScroll ?? widgetConfig.isModalPreventBodyScrollEnabled() %}
 
 {# Loading indicator - shows spinner during search (defaults to true) #}
-{% set showLoadingIndicator = showLoadingIndicator ?? widgetConfig.isShowLoadingIndicatorEnabled() %}
+{% set loadingIndicatorEnabled = loadingIndicatorEnabled ?? widgetConfig.isLoadingIndicatorEnabled() %}
 
 {# Debug mode - shows index handle, score, element ID for each result #}
-{% set debug = debug ?? false %}
+{% set debugEnabled = debugEnabled ?? false %}
 
 {# Hierarchical display - parent results with optional heading children #}
-{% set resultLayout = resultLayout ?? widgetConfig.getResultLayout() %}
+{% set resultsLayout = resultsLayout ?? widgetConfig.getResultsLayout() %}
 {% set hierarchyGroupBy = hierarchyGroupBy ?? widgetConfig.getHierarchyGroupBy() %}
 {% set hierarchyStyle = hierarchyStyle ?? widgetConfig.getHierarchyStyle() %}
 {% set hierarchyDisplay = hierarchyDisplay ?? widgetConfig.getHierarchyDisplay() %}
-{% set maxHeadingsPerResult = maxHeadingsPerResult ?? widgetConfig.getMaxHeadingsPerResult() %}
-{% set resultTitleLines = resultTitleLines ?? widgetConfig.getResultTitleLines() %}
-{% set resultDescLines = resultDescLines ?? widgetConfig.getResultDescLines() %}
-{% set snippetLength = snippetLength ?? widgetConfig.getSnippetLength() %}
-{% set parseMarkdownSnippets = parseMarkdownSnippets ?? widgetConfig.isParseMarkdownSnippetsEnabled() %}
+{% set hierarchyMaxHeadings = hierarchyMaxHeadings ?? widgetConfig.getHierarchyMaxHeadings() %}
+{% set resultsTitleLines = resultsTitleLines ?? widgetConfig.getResultsTitleLines() %}
+{% set resultsDescriptionLines = resultsDescriptionLines ?? widgetConfig.getResultsDescriptionLines() %}
+{% set snippetMaxLength = snippetMaxLength ?? widgetConfig.getSnippetMaxLength() %}
+{% set snippetCleanMarkdown = snippetCleanMarkdown ?? widgetConfig.isSnippetCleanMarkdownEnabled() %}
 {% set snippetDefaults = widgetConfig.getSnippetDefaults() %}
 
 {# Merged styles already resolved above (resolvedStyles) #}
@@ -131,48 +131,49 @@
 
 {# Render the widget #}
 <search-modal
-    {% if indexHandles|length %}indices="{{ indexHandles|join(',') }}"{% endif %}
+    {% if selectedIndexHandles|length %}index-handles="{{ selectedIndexHandles|join(',') }}"{% endif %}
     placeholder="{{ placeholder }}"
     theme="{{ theme }}"
-    max-results="{{ maxResults }}"
-    debounce="{{ debounce }}"
-    min-chars="{{ minChars }}"
-    show-recent="{{ _self.toBool(showRecent, widgetConfig.isShowRecentEnabled()) }}"
-    max-recent-searches="{{ maxRecentSearches }}"
-    group-results="{{ _self.toBool(groupResults, widgetConfig.isGroupResultsEnabled()) }}"
-    hotkey="{{ hotkey }}"
-    hide-results-without-url="{{ _self.toBool(hideResultsWithoutUrl, widgetConfig.isHideResultsWithoutUrlEnabled()) }}"
-    show-code-snippets="{{ _self.toBool(showCodeSnippets, widgetConfig.isShowCodeSnippetsEnabled()) }}"
+    results-limit="{{ resultsLimit }}"
+    search-debounce-ms="{{ searchDebounceMs }}"
+    search-min-chars="{{ searchMinChars }}"
+    recent-searches-enabled="{{ _self.toBool(recentSearchesEnabled, widgetConfig.isRecentSearchesEnabled()) }}"
+    recent-searches-limit="{{ recentSearchesLimit }}"
+    results-grouping-enabled="{{ _self.toBool(resultsGroupingEnabled, widgetConfig.isResultsGroupingEnabled()) }}"
+    trigger-hotkey="{{ triggerHotkey }}"
+    results-require-url="{{ _self.toBool(resultsRequireUrl, widgetConfig.isResultsRequireUrlEnabled()) }}"
+    snippet-include-code-blocks="{{ _self.toBool(snippetIncludeCodeBlocks, widgetConfig.isSnippetIncludeCodeBlocksEnabled()) }}"
     snippet-mode="{{ snippetMode }}"
     snippet-defaults="{{ snippetDefaults|json_encode|e('html_attr') }}"
-    persist-query-in-url="{{ _self.toBool(persistQueryInUrl, true) }}"
-    query-param-name="{{ queryParamName|e('html_attr') }}"
-    highlight-destination-page="{{ _self.toBool(highlightDestinationPage, true) }}"
-    destination-highlight-selector="{{ destinationHighlightSelector|e('html_attr') }}"
+    highlight-destination-persist-query="{{ _self.toBool(highlightDestinationPersistQuery, true) }}"
+    highlight-destination-query-param="{{ highlightDestinationQueryParam|e('html_attr') }}"
+    highlight-destination-enabled="{{ _self.toBool(highlightDestinationEnabled, true) }}"
+    highlight-destination-content-selector="{{ highlightDestinationContentSelector|e('html_attr') }}"
     {% if siteId %}site-id="{{ siteId }}"{% endif %}
-    {% if class %}class="{{ class }}"{% endif %}
+    {% if cssClass %}class="{{ cssClass }}"{% endif %}
     {% if apiKey %}api-key="{{ apiKey|e('html_attr') }}"{% endif %}
-    {% if source %}source="{{ source|e('html_attr') }}"{% endif %}
-    idle-timeout="{{ idleTimeout }}"
+    {% if analyticsSource %}analytics-source="{{ analyticsSource|e('html_attr') }}"{% endif %}
+    analytics-idle-timeout-ms="{{ analyticsIdleTimeoutMs }}"
     dir="{{ dir }}"
-    enable-highlighting="{{ _self.toBool(enableHighlighting, true) }}"
+    highlight-results-enabled="{{ _self.toBool(highlightResultsEnabled, true) }}"
     highlight-tag="{{ highlightTag|e('html_attr') }}"
     {% if highlightClass %}highlight-class="{{ highlightClass|e('html_attr') }}"{% endif %}
-    backdrop-opacity="{{ backdropOpacity }}"
-    enable-backdrop-blur="{{ _self.toBool(enableBackdropBlur, true) }}"
-    prevent-body-scroll="{{ _self.toBool(preventBodyScroll, widgetConfig.isPreventBodyScrollEnabled()) }}"
-    show-trigger="{{ _self.toBool(showTrigger, widgetConfig.isShowTriggerEnabled()) }}"
+    modal-backdrop-opacity="{{ modalBackdropOpacity }}"
+    modal-backdrop-blur-enabled="{{ _self.toBool(modalBackdropBlurEnabled, true) }}"
+    modal-prevent-body-scroll="{{ _self.toBool(modalPreventBodyScroll, widgetConfig.isModalPreventBodyScrollEnabled()) }}"
+    trigger-enabled="{{ _self.toBool(triggerEnabled, widgetConfig.isTriggerEnabled()) }}"
+    trigger-label="{{ triggerLabel|e('html_attr') }}"
     {% if triggerSelector %}trigger-selector="{{ triggerSelector }}"{% endif %}
     styles="{{ mergedStyles|json_encode|e('html_attr') }}"
-    show-loading-indicator="{{ _self.toBool(showLoadingIndicator, true) }}"
-    debug="{{ _self.toBool(debug, false) }}"
-    {% if resultLayout != 'default' %}result-layout="{{ resultLayout }}"{% endif %}
+    loading-indicator-enabled="{{ _self.toBool(loadingIndicatorEnabled, true) }}"
+    debug-enabled="{{ _self.toBool(debugEnabled, false) }}"
+    {% if resultsLayout != 'default' %}results-layout="{{ resultsLayout }}"{% endif %}
     {% if hierarchyGroupBy %}hierarchy-group-by="{{ hierarchyGroupBy }}"{% endif %}
     {% if hierarchyStyle != 'tree' %}hierarchy-style="{{ hierarchyStyle }}"{% endif %}
     {% if hierarchyDisplay != 'individual' %}hierarchy-display="{{ hierarchyDisplay }}"{% endif %}
-    max-headings-per-result="{{ maxHeadingsPerResult }}"
-    result-title-lines="{{ resultTitleLines }}"
-    result-desc-lines="{{ resultDescLines }}"
-    snippet-length="{{ snippetLength }}"
-    parse-markdown-snippets="{{ _self.toBool(parseMarkdownSnippets, false) }}"
+    hierarchy-max-headings="{{ hierarchyMaxHeadings }}"
+    results-title-lines="{{ resultsTitleLines }}"
+    results-description-lines="{{ resultsDescriptionLines }}"
+    snippet-max-length="{{ snippetMaxLength }}"
+    snippet-clean-markdown="{{ _self.toBool(snippetCleanMarkdown, false) }}"
 ></search-modal>

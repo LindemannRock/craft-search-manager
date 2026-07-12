@@ -349,7 +349,7 @@ return [
          * Enable search result highlighting
          * Default: true
          */
-        // 'enableHighlighting' => true,
+        // 'highlightResultsEnabled' => true,
 
         /**
          * HTML tag for highlighted terms
@@ -368,7 +368,7 @@ return [
          * Snippet length in characters
          * Default: 200
          */
-        // 'snippetLength' => 200,
+        // 'snippetMaxLength' => 200,
 
         /**
          * Maximum number of snippets per result
@@ -682,7 +682,7 @@ return [
          *
          * SERVER-ENFORCED LIMITS (security):
          * - Query length: Max 256 characters (widget input enforces this client-side)
-         * - Max results: Capped at 100 (behavior.maxResults values above 100 are silently capped)
+         * - Max results: Capped at 100 (behavior.resultsLimit values above 100 are silently capped)
          * - Max indices: Max 5 indices per search (search.indexHandles arrays with >5 items are truncated)
          * - Analytics resultsCount: Capped at 1000
          * - Analytics source: Alphanumeric + dash/underscore only, max 64 chars
@@ -699,48 +699,46 @@ return [
          *   - search: Search settings
          *     - indexHandles: Array of index handles to search (empty = all, max 5)
          *     - placeholder: Placeholder text in the search input (default: 'Search...')
-         *   - highlighting: Highlight settings (enabled, tag, class)
-         *   - backdrop: Modal backdrop (opacity, blur)
          *   - behavior: Widget behavior settings
-         *     - debounce: Delay before search triggers in ms (default: 200)
-         *     - minChars: Minimum chars before search (default: 2)
-         *     - maxResults: Max results to show, capped at 100 (default: 10)
-         *     - showRecent: Show recent searches (default: true)
-         *     - maxRecentSearches: Max recent searches stored (default: 5)
-         *     - groupResults: Group flat results by source, Entry section, or type (default: true)
-         *     - hotkey: Keyboard shortcut key, e.g. 'k' for Cmd/Ctrl+K (default: 'k')
-         *     - hideResultsWithoutUrl: Hide results that don't have a URL (default: false)
-         *     - showLoadingIndicator: Show spinner while searching (default: true)
-         *     - preventBodyScroll: Prevent page scroll when modal is open (default: true)
-         *     - resultLayout: 'default' (flat list) or 'hierarchical' (parent/child) (default: 'default')
+         *     - searchDebounceMs: Delay before search triggers in ms (default: 200)
+         *     - searchMinChars: Minimum chars before search (default: 2)
+         *     - resultsLimit: Max results to show, capped at 100 (default: 10)
+         *     - recentSearchesEnabled: Show recent searches (default: true)
+         *     - recentSearchesLimit: Max recent searches stored (default: 5)
+         *     - resultsGroupingEnabled: Group flat results by source, Entry section, or type (default: true)
+         *     - triggerHotkey: Keyboard shortcut key, e.g. 'k' for Cmd/Ctrl+K (default: 'k')
+         *     - resultsRequireUrl: Hide results that don't have a URL (default: false)
+         *     - loadingIndicatorEnabled: Show spinner while searching (default: true)
+         *     - modalPreventBodyScroll: Prevent page scroll when modal is open (default: true)
+         *     - resultsLayout: 'default' (flat list) or 'hierarchical' (parent/child) (default: 'default')
          *     - hierarchyDisplay: 'individual' (each parent as card) or 'unified' (page block +
          *       heading children in one card) (default: 'individual')
          *     - hierarchyStyle: 'tree' (indented + connectors), 'flat' (no indentation + connectors),
          *       'none' (no indentation, no connectors) (default: 'tree')
-         *     - maxHeadingsPerResult: Max heading children per page block, 1-50. Split hits are
+         *     - hierarchyMaxHeadings: Max heading children per page block, 1-50. Split hits are
          *       selected by score, then displayed in document order (default: 3)
          *     - hierarchyGroupBy: Field to group hierarchical results by, e.g. 'source',
          *       'entrySection', or 'docCategory'. Empty uses source -> entrySection -> type
-         *     - showCodeSnippets: Allow snippets to use block-level code from page or section bodies
+         *     - snippetIncludeCodeBlocks: Allow snippets to use block-level code from page or section bodies
          *       (default: false)
          *     - snippetMode: How snippets find the best passage from fields, page bodies, or split
          *       section bodies: 'early', 'balanced', or 'deep' (default: 'balanced')
-         *     - resultTitleLines: Max lines for result title, 1-5 (default: 1)
-         *     - resultDescLines: Max lines for result description, 1-5 (default: 1)
-         *     - snippetLength: Snippet length in characters for page and section snippets, 50-1000
+         *     - resultsTitleLines: Max lines for result title, 1-5 (default: 1)
+         *     - resultsDescriptionLines: Max lines for result description, 1-5 (default: 1)
+         *     - snippetMaxLength: Snippet length in characters for page and section snippets, 50-1000
          *       (default: 150)
-         *     - parseMarkdownSnippets: Clean Markdown markers from page and section snippet display
+         *     - snippetCleanMarkdown: Clean Markdown markers from page and section snippet display
          *       text without changing indexed content (default: false)
-         *     - highlightDestinationPage: Highlight search terms on destination page after
+         *     - highlightDestinationEnabled: Highlight search terms on destination page after
          *       navigating from a result (default: true)
-         *     - persistQueryInUrl: Append search query to destination URL (default: true)
-         *     - queryParamName: URL parameter name for the search query (default: 'smq')
-         *     - destinationHighlightSelector: CSS selector for page content areas to scan
+         *     - highlightDestinationPersistQuery: Append search query to destination URL (default: true)
+         *     - highlightDestinationQueryParam: URL parameter name for the search query (default: 'smq')
+         *     - highlightDestinationContentSelector: CSS selector for page content areas to scan
          *       for highlighting (default: 'main, article, [data-search-content]')
-         *   - trigger: Trigger button (showTrigger, triggerText)
+         *   - trigger: Trigger button (triggerEnabled, triggerLabel)
          *   - analytics: Analytics tracking
-         *     - source: Identifier in analytics reports (alphanumeric, max 64 chars)
-         *     - idleTimeout: Track search after idle in ms, 0 = disabled (default: 1500)
+         *     - analyticsSource: Identifier in analytics reports (alphanumeric, max 64 chars)
+         *     - analyticsIdleTimeoutMs: Track search after idle in ms, 0 = disabled (default: 1500)
          *   - styles: Inline visual styles (alternative to styleHandle, see widgetStyles for keys)
          */
         'widgets' => [
@@ -762,45 +760,36 @@ return [
             //             'indexHandles' => ['entries-en', 'products'],
             //             'placeholder' => 'Search...',
             //         ],
-            //         'highlighting' => [
-            //             'enabled' => true,
-            //             'tag' => 'mark',
-            //             'class' => null,
-            //         ],
-            //         'backdrop' => [
-            //             'opacity' => 50,
-            //             'blur' => true,
-            //         ],
             //         'behavior' => [
-            //             'preventBodyScroll' => true,
-            //             'debounce' => 200,
-            //             'minChars' => 2,
-            //             'maxResults' => 10,
-            //             'showRecent' => true,
-            //             'maxRecentSearches' => 5,
-            //             'groupResults' => true,
-            //             'hotkey' => 'k',
-            //             'hideResultsWithoutUrl' => false,
-            //             'showLoadingIndicator' => true,
-            //             'resultLayout' => 'default',
-            //             'showCodeSnippets' => false,
+            //             'modalPreventBodyScroll' => true,
+            //             'searchDebounceMs' => 200,
+            //             'searchMinChars' => 2,
+            //             'resultsLimit' => 10,
+            //             'recentSearchesEnabled' => true,
+            //             'recentSearchesLimit' => 5,
+            //             'resultsGroupingEnabled' => true,
+            //             'triggerHotkey' => 'k',
+            //             'resultsRequireUrl' => false,
+            //             'loadingIndicatorEnabled' => true,
+            //             'resultsLayout' => 'default',
+            //             'snippetIncludeCodeBlocks' => false,
             //             'snippetMode' => 'balanced',
-            //             'resultTitleLines' => 1,
-            //             'resultDescLines' => 1,
-            //             'snippetLength' => 150,
-            //             'parseMarkdownSnippets' => false,
-            //             'highlightDestinationPage' => true,
-            //             'persistQueryInUrl' => true,
-            //             'queryParamName' => 'smq',
-            //             'destinationHighlightSelector' => 'main, article, [data-search-content]',
+            //             'resultsTitleLines' => 1,
+            //             'resultsDescriptionLines' => 1,
+            //             'snippetMaxLength' => 150,
+            //             'snippetCleanMarkdown' => false,
+            //             'highlightDestinationEnabled' => true,
+            //             'highlightDestinationPersistQuery' => true,
+            //             'highlightDestinationQueryParam' => 'smq',
+            //             'highlightDestinationContentSelector' => 'main, article, [data-search-content]',
             //         ],
             //         'trigger' => [
-            //             'showTrigger' => true,
-            //             'triggerText' => 'Search',
+            //             'triggerEnabled' => true,
+            //             'triggerLabel' => 'Search',
             //         ],
             //         'analytics' => [
-            //             'source' => 'header-search',
-            //             'idleTimeout' => 1500,
+            //             'analyticsSource' => 'header-search',
+            //             'analyticsIdleTimeoutMs' => 1500,
             //         ],
             //     ],
             // ],
@@ -818,13 +807,13 @@ return [
             //             'indexHandles' => ['docs-manager'],
             //         ],
             //         'behavior' => [
-            //             'resultLayout' => 'hierarchical',
+            //             'resultsLayout' => 'hierarchical',
             //             'hierarchyDisplay' => 'unified',
             //             'hierarchyStyle' => 'tree',
-            //             'maxHeadingsPerResult' => 3,
+            //             'hierarchyMaxHeadings' => 3,
             //             'snippetMode' => 'deep',
-            //             'resultDescLines' => 2,
-            //             'snippetLength' => 200,
+            //             'resultsDescriptionLines' => 2,
+            //             'snippetMaxLength' => 200,
             //         ],
             //         // Inline styles — same keys as widgetStyles.*.styles
             //         // These apply directly to this widget without a shared preset
@@ -847,11 +836,11 @@ return [
             //     'enabled' => true,
             //     'settings' => [
             //         'behavior' => [
-            //             'showRecent' => false,
-            //             'groupResults' => false,
+            //             'recentSearchesEnabled' => false,
+            //             'resultsGroupingEnabled' => false,
             //         ],
             //         'trigger' => [
-            //             'showTrigger' => false,
+            //             'triggerEnabled' => false,
             //         ],
             //     ],
             // ],

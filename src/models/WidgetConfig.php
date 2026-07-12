@@ -75,38 +75,39 @@ class WidgetConfig extends Model
                 'placeholder' => 'Search...',
             ],
             'behavior' => [
-                'preventBodyScroll' => true,
-                'debounce' => 200,
-                'minChars' => 2,
-                'maxResults' => 10,
-                'maxHeadingsPerResult' => 3,
-                'showRecent' => true,
-                'maxRecentSearches' => 5,
-                'groupResults' => true,
-                'hotkey' => 'k',
-                'hideResultsWithoutUrl' => false,
-                'resultLayout' => 'default',
+                'modalPreventBodyScroll' => true,
+                'searchDebounceMs' => 200,
+                'searchMinChars' => 2,
+                'resultsLimit' => 10,
+                'hierarchyMaxHeadings' => 3,
+                'recentSearchesEnabled' => true,
+                'recentSearchesLimit' => 5,
+                'resultsGroupingEnabled' => true,
+                'triggerHotkey' => 'k',
+                'resultsRequireUrl' => false,
+                'resultsLayout' => 'default',
                 'hierarchyGroupBy' => '',
+                'hierarchyStyle' => 'tree',
                 'hierarchyDisplay' => 'individual',
-                'showCodeSnippets' => SnippetOptionsHelper::DEFAULT_SHOW_CODE,
+                'snippetIncludeCodeBlocks' => SnippetOptionsHelper::DEFAULT_SHOW_CODE,
                 'snippetMode' => SnippetOptionsHelper::DEFAULT_MODE,
-                'resultTitleLines' => 1,
-                'resultDescLines' => 1,
-                'snippetLength' => SnippetOptionsHelper::DEFAULT_LENGTH,
-                'parseMarkdownSnippets' => SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
-                'showLoadingIndicator' => true,
-                'highlightDestinationPage' => true,
-                'persistQueryInUrl' => true,
-                'queryParamName' => 'smq',
-                'destinationHighlightSelector' => 'main, article, [data-search-content]',
+                'resultsTitleLines' => 1,
+                'resultsDescriptionLines' => 1,
+                'snippetMaxLength' => SnippetOptionsHelper::DEFAULT_LENGTH,
+                'snippetCleanMarkdown' => SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
+                'loadingIndicatorEnabled' => true,
+                'highlightDestinationEnabled' => true,
+                'highlightDestinationPersistQuery' => true,
+                'highlightDestinationQueryParam' => 'smq',
+                'highlightDestinationContentSelector' => 'main, article, [data-search-content]',
             ],
             'trigger' => [
-                'showTrigger' => true,
-                'triggerText' => 'Search',
+                'triggerEnabled' => true,
+                'triggerLabel' => 'Search',
             ],
             'analytics' => [
-                'source' => '',           // Custom source identifier (e.g., 'header-search', 'mobile-nav')
-                'idleTimeout' => 1500,    // Track search after idle timeout in ms (0 = disabled)
+                'analyticsSource' => '',        // Custom source identifier (e.g., 'header-search', 'mobile-nav')
+                'analyticsIdleTimeoutMs' => 1500, // Track search after idle timeout in ms (0 = disabled)
             ],
         ];
     }
@@ -189,13 +190,6 @@ class WidgetConfig extends Model
     public function getIndexHandles(): array
     {
         $handles = $this->getSetting('search.indexHandles', []);
-        // Handle legacy single indexHandle
-        if (empty($handles)) {
-            $legacy = $this->getSetting('search.indexHandle', '');
-            if (!empty($legacy)) {
-                return [$legacy];
-            }
-        }
         return is_array($handles) ? $handles : [];
     }
 
@@ -209,34 +203,25 @@ class WidgetConfig extends Model
         return $this->getSetting('search.placeholder', 'Search...');
     }
 
-    /**
-     * @deprecated Use getIndexHandles() instead
-     */
-    public function getIndexHandle(): string
-    {
-        $handles = $this->getIndexHandles();
-        return $handles[0] ?? '';
-    }
-
     // Behavior
-    public function isPreventBodyScrollEnabled(): bool
+    public function isModalPreventBodyScrollEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.preventBodyScroll', true);
+        return $this->getBooleanSetting('behavior.modalPreventBodyScroll', true);
     }
 
-    public function getDebounce(): int
+    public function getSearchDebounceMs(): int
     {
-        return (int) $this->getSetting('behavior.debounce', 200);
+        return (int) $this->getSetting('behavior.searchDebounceMs', 200);
     }
 
-    public function getMinChars(): int
+    public function getSearchMinChars(): int
     {
-        return (int) $this->getSetting('behavior.minChars', 2);
+        return (int) $this->getSetting('behavior.searchMinChars', 2);
     }
 
-    public function getMaxResults(): int
+    public function getResultsLimit(): int
     {
-        return (int) $this->getSetting('behavior.maxResults', 10);
+        return (int) $this->getSetting('behavior.resultsLimit', 10);
     }
 
     /**
@@ -244,34 +229,34 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function getMaxHeadingsPerResult(): int
+    public function getHierarchyMaxHeadings(): int
     {
-        return (int) $this->getSetting('behavior.maxHeadingsPerResult', 3);
+        return (int) $this->getSetting('behavior.hierarchyMaxHeadings', 3);
     }
 
-    public function isShowRecentEnabled(): bool
+    public function isRecentSearchesEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.showRecent', true);
+        return $this->getBooleanSetting('behavior.recentSearchesEnabled', true);
     }
 
-    public function getMaxRecentSearches(): int
+    public function getRecentSearchesLimit(): int
     {
-        return (int) $this->getSetting('behavior.maxRecentSearches', 5);
+        return (int) $this->getSetting('behavior.recentSearchesLimit', 5);
     }
 
-    public function isGroupResultsEnabled(): bool
+    public function isResultsGroupingEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.groupResults', true);
+        return $this->getBooleanSetting('behavior.resultsGroupingEnabled', true);
     }
 
-    public function getHotkey(): string
+    public function getTriggerHotkey(): string
     {
-        return $this->getSetting('behavior.hotkey', 'k');
+        return $this->getSetting('behavior.triggerHotkey', 'k');
     }
 
-    public function isHideResultsWithoutUrlEnabled(): bool
+    public function isResultsRequireUrlEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.hideResultsWithoutUrl', false);
+        return $this->getBooleanSetting('behavior.resultsRequireUrl', false);
     }
 
     /**
@@ -279,9 +264,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function getResultLayout(): string
+    public function getResultsLayout(): string
     {
-        $layout = (string) $this->getSetting('behavior.resultLayout', 'default');
+        $layout = (string) $this->getSetting('behavior.resultsLayout', 'default');
         $layout = strtolower(trim($layout));
         return in_array($layout, ['default', 'hierarchical'], true) ? $layout : 'default';
     }
@@ -325,9 +310,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function isShowCodeSnippetsEnabled(): bool
+    public function isSnippetIncludeCodeBlocksEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE);
+        return $this->getBooleanSetting('behavior.snippetIncludeCodeBlocks', SnippetOptionsHelper::DEFAULT_SHOW_CODE);
     }
 
     /**
@@ -345,9 +330,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function getResultTitleLines(): int
+    public function getResultsTitleLines(): int
     {
-        return (int) $this->getSetting('behavior.resultTitleLines', 1);
+        return (int) $this->getSetting('behavior.resultsTitleLines', 1);
     }
 
     /**
@@ -355,9 +340,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function getResultDescLines(): int
+    public function getResultsDescriptionLines(): int
     {
-        return (int) $this->getSetting('behavior.resultDescLines', 1);
+        return (int) $this->getSetting('behavior.resultsDescriptionLines', 1);
     }
 
     /**
@@ -365,9 +350,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function getSnippetLength(): int
+    public function getSnippetMaxLength(): int
     {
-        return SnippetOptionsHelper::normalizeLength($this->getSetting('behavior.snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH));
+        return SnippetOptionsHelper::normalizeLength($this->getSetting('behavior.snippetMaxLength', SnippetOptionsHelper::DEFAULT_LENGTH));
     }
 
     /**
@@ -375,13 +360,13 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function isParseMarkdownSnippetsEnabled(): bool
+    public function isSnippetCleanMarkdownEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN);
+        return $this->getBooleanSetting('behavior.snippetCleanMarkdown', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN);
     }
 
     /**
-     * @return array{showCodeSnippets: bool, snippetMode: string, snippetLength: int, parseMarkdownSnippets: bool, minSnippetLength: int, maxSnippetLength: int, snippetModes: list<string>}
+     * @return array{snippetIncludeCodeBlocks: bool, snippetMode: string, snippetMaxLength: int, snippetCleanMarkdown: bool, minSnippetLength: int, maxSnippetLength: int, snippetModes: list<string>}
      * @since 5.53.0
      */
     public function getSnippetDefaults(): array
@@ -389,9 +374,9 @@ class WidgetConfig extends Model
         return SnippetOptionsHelper::widgetDefaults();
     }
 
-    public function isShowLoadingIndicatorEnabled(): bool
+    public function isLoadingIndicatorEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.showLoadingIndicator', true);
+        return $this->getBooleanSetting('behavior.loadingIndicatorEnabled', true);
     }
 
     /**
@@ -399,9 +384,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function isHighlightDestinationPageEnabled(): bool
+    public function isHighlightDestinationEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.highlightDestinationPage', true);
+        return $this->getBooleanSetting('behavior.highlightDestinationEnabled', true);
     }
 
     /**
@@ -409,9 +394,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function isPersistQueryInUrlEnabled(): bool
+    public function isHighlightDestinationPersistQueryEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.persistQueryInUrl', true);
+        return $this->getBooleanSetting('behavior.highlightDestinationPersistQuery', true);
     }
 
     /**
@@ -419,9 +404,9 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function getQueryParamName(): string
+    public function getHighlightDestinationQueryParam(): string
     {
-        return $this->getSetting('behavior.queryParamName', 'smq');
+        return $this->getSetting('behavior.highlightDestinationQueryParam', 'smq');
     }
 
     /**
@@ -429,36 +414,26 @@ class WidgetConfig extends Model
      *
      * @since 5.39.0
      */
-    public function getDestinationHighlightSelector(): string
+    public function getHighlightDestinationContentSelector(): string
     {
-        return $this->getSetting('behavior.destinationHighlightSelector', 'main, article, [data-search-content]');
+        return $this->getSetting('behavior.highlightDestinationContentSelector', 'main, article, [data-search-content]');
     }
 
     // Trigger
-    public function isShowTriggerEnabled(): bool
+    public function isTriggerEnabled(): bool
     {
-        return $this->getBooleanSetting('trigger.showTrigger', true);
+        return $this->getBooleanSetting('trigger.triggerEnabled', true);
     }
 
-    public function getTriggerText(): string
+    public function getTriggerLabel(): string
     {
-        return $this->getSetting('trigger.triggerText', 'Search');
+        return $this->getSetting('trigger.triggerLabel', 'Search');
     }
 
     // Analytics
     public function getAnalyticsSource(): string
     {
-        return $this->getSetting('analytics.source', '');
-    }
-
-    public function getApiKeyId(): ?int
-    {
-        $value = $this->getSetting('apiKeyId');
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        return is_numeric($value) ? (int)$value : null;
+        return $this->getSetting('analytics.analyticsSource', '');
     }
 
     public function getApiKeyHandle(): string
@@ -473,12 +448,7 @@ class WidgetConfig extends Model
 
     public function getSelectedApiKey(): ?ApiKey
     {
-        $key = SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyByHandle($this->getApiKeyHandle());
-        if ($key !== null) {
-            return $key;
-        }
-
-        return SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyById($this->getApiKeyId());
+        return SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyByHandle($this->getApiKeyHandle());
     }
 
     /**
@@ -486,9 +456,7 @@ class WidgetConfig extends Model
      * header. Saved/config references should use `apiKeyHandle` to point at a
      * CP-managed public API key by handle. Direct `apiKey` values are raw
      * public keys intended for render-time overrides or config-only widgets
-     * that intentionally provide the actual key value. Numeric IDs are still
-     * accepted when reading older database settings from pre-release test
-     * installs, but CP saves write handles.
+     * that intentionally provide the actual key value.
      *
      * @since 5.47.0
      */
@@ -502,9 +470,9 @@ class WidgetConfig extends Model
         return (string)$this->getSetting('apiKey', '');
     }
 
-    public function getIdleTimeout(): int
+    public function getAnalyticsIdleTimeoutMs(): int
     {
-        return (int) $this->getSetting('analytics.idleTimeout', 1500);
+        return (int) $this->getSetting('analytics.analyticsIdleTimeoutMs', 1500);
     }
 
     // Styles - returns styles from style preset or inline config
@@ -708,48 +676,49 @@ class WidgetConfig extends Model
         $this->validateIndexHandles($s, $selectedApiKey);
 
         // Behavior settings — integers with ranges
-        $this->validateIntField($s, 'behavior', 'debounce', Craft::t('search-manager', 'Debounce'), 0, 2000);
-        $this->validateIntField($s, 'behavior', 'minChars', Craft::t('search-manager', 'Minimum Characters'), 1, 10);
-        $this->validateIntField($s, 'behavior', 'maxResults', Craft::t('search-manager', 'Maximum Results'), 1, 100);
-        $this->validateIntField($s, 'behavior', 'maxHeadingsPerResult', Craft::t('search-manager', 'Max Headings per Page Block'), 1, 50);
-        if (BooleanHelper::normalize($s['behavior']['showRecent'] ?? true, true)) {
-            $this->validateIntField($s, 'behavior', 'maxRecentSearches', Craft::t('search-manager', 'Max Recent Searches'), 1, 50);
+        $this->validateIntField($s, 'behavior', 'searchDebounceMs', Craft::t('search-manager', 'Search Debounce'), 0, 2000);
+        $this->validateIntField($s, 'behavior', 'searchMinChars', Craft::t('search-manager', 'Search Minimum Characters'), 1, 10);
+        $this->validateIntField($s, 'behavior', 'resultsLimit', Craft::t('search-manager', 'Results Limit'), 1, 100);
+        $this->validateIntField($s, 'behavior', 'hierarchyMaxHeadings', Craft::t('search-manager', 'Hierarchy Max Headings'), 1, 50);
+        if (BooleanHelper::normalize($s['behavior']['recentSearchesEnabled'] ?? true, true)) {
+            $this->validateIntField($s, 'behavior', 'recentSearchesLimit', Craft::t('search-manager', 'Recent Searches Limit'), 1, 50);
         }
-        $this->validateIntField($s, 'behavior', 'resultTitleLines', Craft::t('search-manager', 'Result Title Lines'), 1, 5);
-        $this->validateIntField($s, 'behavior', 'resultDescLines', Craft::t('search-manager', 'Result Description Lines'), 1, 5);
-        $this->validateIntField($s, 'behavior', 'snippetLength', Craft::t('search-manager', 'Snippet Length'), SnippetOptionsHelper::MIN_LENGTH, SnippetOptionsHelper::MAX_LENGTH);
+        $this->validateIntField($s, 'behavior', 'resultsTitleLines', Craft::t('search-manager', 'Results Title Lines'), 1, 5);
+        $this->validateIntField($s, 'behavior', 'resultsDescriptionLines', Craft::t('search-manager', 'Results Description Lines'), 1, 5);
+        $this->validateIntField($s, 'behavior', 'snippetMaxLength', Craft::t('search-manager', 'Snippet Max Length'), SnippetOptionsHelper::MIN_LENGTH, SnippetOptionsHelper::MAX_LENGTH);
 
         // Behavior settings — enums
-        $this->validateEnumField($s, 'behavior', 'resultLayout', Craft::t('search-manager', 'Result Layout'), ['default', 'hierarchical']);
+        $this->validateEnumField($s, 'behavior', 'resultsLayout', Craft::t('search-manager', 'Results Layout'), ['default', 'hierarchical']);
+        $this->validateEnumField($s, 'behavior', 'hierarchyStyle', Craft::t('search-manager', 'Hierarchy Style'), ['tree', 'flat', 'none']);
         $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', Craft::t('search-manager', 'Hierarchy Display'), ['individual', 'unified']);
         $this->validateEnumField($s, 'behavior', 'snippetMode', Craft::t('search-manager', 'Snippet Mode'), SnippetOptionsHelper::MODES);
 
         // Behavior settings — booleans
-        $this->validateBooleanField($s, 'behavior', 'preventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));
-        $this->validateBooleanField($s, 'behavior', 'showRecent', Craft::t('search-manager', 'Show Recent Searches'));
-        $this->validateBooleanField($s, 'behavior', 'groupResults', Craft::t('search-manager', 'Group Results'));
-        $this->validateBooleanField($s, 'behavior', 'hideResultsWithoutUrl', Craft::t('search-manager', 'Hide Results Without URL'));
-        $this->validateBooleanField($s, 'behavior', 'showCodeSnippets', Craft::t('search-manager', 'Show Code Snippets'));
-        $this->validateBooleanField($s, 'behavior', 'parseMarkdownSnippets', Craft::t('search-manager', 'Parse Markdown Snippets'));
-        $this->validateBooleanField($s, 'behavior', 'showLoadingIndicator', Craft::t('search-manager', 'Show Loading Indicator'));
-        $this->validateBooleanField($s, 'behavior', 'highlightDestinationPage', Craft::t('search-manager', 'Highlight Destination Page'));
-        $this->validateBooleanField($s, 'behavior', 'persistQueryInUrl', Craft::t('search-manager', 'Persist Query in URL'));
+        $this->validateBooleanField($s, 'behavior', 'modalPreventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));
+        $this->validateBooleanField($s, 'behavior', 'recentSearchesEnabled', Craft::t('search-manager', 'Recent Searches Enabled'));
+        $this->validateBooleanField($s, 'behavior', 'resultsGroupingEnabled', Craft::t('search-manager', 'Results Grouping Enabled'));
+        $this->validateBooleanField($s, 'behavior', 'resultsRequireUrl', Craft::t('search-manager', 'Results Require URL'));
+        $this->validateBooleanField($s, 'behavior', 'snippetIncludeCodeBlocks', Craft::t('search-manager', 'Snippet Include Code Blocks'));
+        $this->validateBooleanField($s, 'behavior', 'snippetCleanMarkdown', Craft::t('search-manager', 'Snippet Clean Markdown'));
+        $this->validateBooleanField($s, 'behavior', 'loadingIndicatorEnabled', Craft::t('search-manager', 'Loading Indicator Enabled'));
+        $this->validateBooleanField($s, 'behavior', 'highlightDestinationEnabled', Craft::t('search-manager', 'Destination Highlighting Enabled'));
+        $this->validateBooleanField($s, 'behavior', 'highlightDestinationPersistQuery', Craft::t('search-manager', 'Destination Highlighting Persist Query'));
 
         // Behavior settings — strings
-        $this->validateStringField($s, 'behavior', 'hotkey', Craft::t('search-manager', 'Hotkey'), 1);
+        $this->validateStringField($s, 'behavior', 'triggerHotkey', Craft::t('search-manager', 'Trigger Hotkey'), 1);
         $this->validateStringField($s, 'behavior', 'hierarchyGroupBy', Craft::t('search-manager', 'Group By Field'), 64);
-        $this->validateStringField($s, 'behavior', 'queryParamName', Craft::t('search-manager', 'Query Parameter Name'), 32);
-        $this->validateStringField($s, 'behavior', 'destinationHighlightSelector', Craft::t('search-manager', 'Content Selector'), 255);
+        $this->validateStringField($s, 'behavior', 'highlightDestinationQueryParam', Craft::t('search-manager', 'Destination Highlighting Query Parameter'), 32);
+        $this->validateStringField($s, 'behavior', 'highlightDestinationContentSelector', Craft::t('search-manager', 'Destination Highlighting Content Selector'), 255);
         $this->validateQueryParamName($s);
-        $this->validateCssSelector('settings.behavior.destinationHighlightSelector', (string)($s['behavior']['destinationHighlightSelector'] ?? ''));
+        $this->validateCssSelector('settings.behavior.highlightDestinationContentSelector', (string)($s['behavior']['highlightDestinationContentSelector'] ?? ''));
 
         // Trigger settings
-        $this->validateStringField($s, 'trigger', 'triggerText', Craft::t('search-manager', 'Trigger Text'), 255);
-        $this->validateBooleanField($s, 'trigger', 'showTrigger', Craft::t('search-manager', 'Show Trigger Button'));
+        $this->validateStringField($s, 'trigger', 'triggerLabel', Craft::t('search-manager', 'Trigger Label'), 255);
+        $this->validateBooleanField($s, 'trigger', 'triggerEnabled', Craft::t('search-manager', 'Trigger Enabled'));
 
         // Analytics settings
-        $this->validateIntField($s, 'analytics', 'idleTimeout', Craft::t('search-manager', 'Idle Timeout'), 0, 10000);
-        $this->validateStringField($s, 'analytics', 'source', Craft::t('search-manager', 'Source Identifier'), 64);
+        $this->validateIntField($s, 'analytics', 'analyticsIdleTimeoutMs', Craft::t('search-manager', 'Analytics Idle Timeout'), 0, 10000);
+        $this->validateStringField($s, 'analytics', 'analyticsSource', Craft::t('search-manager', 'Analytics Source'), 64);
         $this->validateSourceIdentifier($s);
     }
 
@@ -760,17 +729,7 @@ class WidgetConfig extends Model
     {
         $raw = $settings['apiKeyHandle'] ?? null;
         if ($raw === null || $raw === '') {
-            $idFallback = $settings['apiKeyId'] ?? null;
-            if ($idFallback === null || $idFallback === '') {
-                return null;
-            }
-            $key = is_numeric($idFallback)
-                ? SearchManager::$plugin->apiKeys->findWidgetUsablePublicKeyById((int)$idFallback)
-                : null;
-            if ($key === null) {
-                $this->addError('settings.apiKeyHandle', Craft::t('search-manager', 'Select a valid widget API key.'));
-            }
-            return $key;
+            return null;
         }
 
         if (!is_string($raw)) {
@@ -926,15 +885,15 @@ class WidgetConfig extends Model
      */
     private function validateQueryParamName(array $settings): void
     {
-        $value = trim((string)($settings['behavior']['queryParamName'] ?? ''));
+        $value = trim((string)($settings['behavior']['highlightDestinationQueryParam'] ?? ''));
         if ($value === '') {
             return;
         }
 
         if (preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,31}$/', $value) !== 1) {
             $this->addError(
-                'settings.behavior.queryParamName',
-                Craft::t('search-manager', 'Query Parameter Name must start with a letter and contain only letters, numbers, hyphens, and underscores.')
+                'settings.behavior.highlightDestinationQueryParam',
+                Craft::t('search-manager', 'Destination Highlighting Query Parameter must start with a letter and contain only letters, numbers, hyphens, and underscores.')
             );
         }
     }
@@ -944,15 +903,15 @@ class WidgetConfig extends Model
      */
     private function validateSourceIdentifier(array $settings): void
     {
-        $value = trim((string)($settings['analytics']['source'] ?? ''));
+        $value = trim((string)($settings['analytics']['analyticsSource'] ?? ''));
         if ($value === '') {
             return;
         }
 
         if (preg_match('/^[a-z][a-z0-9_-]{0,63}$/', $value) !== 1) {
             $this->addError(
-                'settings.analytics.source',
-                Craft::t('search-manager', 'Source Identifier must start with a lowercase letter and contain only lowercase letters, numbers, hyphens, and underscores.')
+                'settings.analytics.analyticsSource',
+                Craft::t('search-manager', 'Analytics Source must start with a lowercase letter and contain only lowercase letters, numbers, hyphens, and underscores.')
             );
         }
     }

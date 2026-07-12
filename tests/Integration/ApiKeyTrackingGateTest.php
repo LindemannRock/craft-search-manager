@@ -202,7 +202,7 @@ final class ApiKeyTrackingGateTest extends TestCase
         $this->seedIndex(self::INDEX_HANDLE);
         [, $plaintext] = $this->seedKey(allowedIndices: [self::INDEX_HANDLE]);
         SearchManager::$plugin->getSettings()->requireApiKey = true;
-        $this->installRequest(apiKey: $plaintext, params: ['indices' => self::INDEX_HANDLE]);
+        $this->installRequest(apiKey: $plaintext, params: ['indexHandles' => self::INDEX_HANDLE]);
 
         $this->assertTrue($this->runBeforeAction('track-search'));
     }
@@ -212,7 +212,7 @@ final class ApiKeyTrackingGateTest extends TestCase
         $this->seedIndex(self::INDEX_HANDLE);
         [, $plaintext] = $this->seedKey(allowedIndices: ['__sm_some_other_index__']);
         SearchManager::$plugin->getSettings()->requireApiKey = true;
-        $this->installRequest(apiKey: $plaintext, params: ['indices' => self::INDEX_HANDLE]);
+        $this->installRequest(apiKey: $plaintext, params: ['indexHandles' => self::INDEX_HANDLE]);
 
         $this->expectException(ForbiddenHttpException::class);
         $this->runBeforeAction('track-search');

@@ -69,7 +69,7 @@ class SearchController extends Controller
      * Slice 4: when `requireApiKey` is enabled, the tracking endpoints are gated
      * behind a valid API key (closes audit #8) — same authenticate + public-key
      * referrer gate as search/autocomplete, plus an allowed-indices check when
-     * the ping names `index`/`indices`. Tracking is **not** rate-limited (pings
+     * the ping names `index`/`indexHandles`. Tracking is **not** rate-limited (pings
      * are noisy; the cap is scoped to search/autocomplete query volume). When
      * `requireApiKey` is off, the endpoints stay anonymous (backward compatible).
      *
@@ -114,10 +114,10 @@ class SearchController extends Controller
 
             // Enforce the key's allowed indices only when the ping names them.
             // track-click sends a single result `index`; track-search sends
-            // `indices`. Tracking is deliberately not rate-limited.
+            // `indexHandles`. Tracking is deliberately not rate-limited.
             $trackingIndices = $action->id === 'track-click'
                 ? (string) $request->getParam('index', '')
-                : (string) $request->getParam('indices', '');
+                : (string) $request->getParam('indexHandles', '');
             [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
                 $trackingIndices,
             );
@@ -201,10 +201,10 @@ class SearchController extends Controller
      *
      * Parameters:
      * - q: The search query
-     * - indices: Comma-separated index handles (or empty for all)
+     * - indexHandles: Comma-separated index handles (or empty for all)
      * - resultsCount: Number of results returned
      * - trigger: What triggered tracking ('click', 'enter', 'idle')
-     * - source: Source identifier (e.g., 'header-search', 'mobile-nav')
+     * - analyticsSource: Source identifier (e.g., 'header-search', 'mobile-nav')
      * - siteId: Site ID (optional)
      *
      * @return Response
@@ -216,10 +216,10 @@ class SearchController extends Controller
 
         $request = Craft::$app->getRequest();
         $query = $request->getParam('q', '');
-        $indicesParam = $request->getParam('indices', '');
+        $indexHandlesParam = $request->getParam('indexHandles', '');
         $resultsCount = (int) $request->getParam('resultsCount', 0);
         $trigger = $request->getParam('trigger', 'unknown');
-        $source = $request->getParam('source', 'frontend-widget');
+        $source = $request->getParam('analyticsSource', 'frontend-widget');
         $siteId = self::normalizeTrackingSiteId($request->getParam('siteId'));
 
         // Validate and sanitize inputs to prevent analytics pollution
@@ -264,9 +264,9 @@ class SearchController extends Controller
         // Parse indices and validate against enabled indices
         $indexHandles = [];
         $indicesProvided = false;
-        if (!empty($indicesParam)) {
+        if (!empty($indexHandlesParam)) {
             $indicesProvided = true;
-            $requestedHandles = array_filter(array_map('trim', explode(',', $indicesParam)));
+            $requestedHandles = array_filter(array_map('trim', explode(',', $indexHandlesParam)));
 
             // Get all enabled index handles
             $allIndices = SearchIndex::findAll();

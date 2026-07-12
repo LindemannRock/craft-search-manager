@@ -172,10 +172,10 @@ final class ApiKeyAnalyticsAttributionTest extends TestCase
         [$key, $plaintext] = $this->seedKeyWithPlaintext(ApiKey::TYPE_PUBLIC);
         $this->installTrackingRequest($plaintext, [
             'q' => '__sm_attr_controller',
-            'indices' => $handle,
+            'indexHandles' => $handle,
             'resultsCount' => '3',
             'trigger' => 'enter',
-            'source' => 'test-widget',
+            'analyticsSource' => 'test-widget',
             'siteId' => (string) $this->realTestSiteId(),
         ]);
 

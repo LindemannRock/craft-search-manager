@@ -98,7 +98,7 @@ You can also override individual style properties at render time using the `styl
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'main-search',
+    configHandle: 'main-search',
     styles: {
         modalBg: '#0f172a',
         spinnerColor: '#818cf8',
@@ -244,7 +244,7 @@ The search input is the bare `<input>` element inside the header. By default it 
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `highlightEnabled` | `string` | `1` | Enable search term highlighting (`1` or `0`) |
+| `highlightResultsEnabled` | `string` | `1` | Enable search term highlighting (`1` or `0`) |
 | `highlightTag` | `string` | — | Custom HTML tag for highlights (empty = default `mark`) |
 | `highlightClass` | `string` | — | CSS class added to highlight tags |
 | `highlightBgLight` | `string` | `#fef08a` | Highlight background (light mode) |

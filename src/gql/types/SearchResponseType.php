@@ -66,10 +66,10 @@ class SearchResponseType extends ObjectType
                 'type' => Type::int(),
                 'description' => 'The zero-based page number.',
             ],
-            'hitsPerPage' => [
-                'name' => 'hitsPerPage',
+            'resultsLimit' => [
+                'name' => 'resultsLimit',
                 'type' => Type::int(),
-                'description' => 'The number of hits requested per page.',
+                'description' => 'The requested result limit per page.',
             ],
             'totalPages' => [
                 'name' => 'totalPages',

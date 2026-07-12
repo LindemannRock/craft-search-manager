@@ -61,22 +61,22 @@ class SearchResolver extends Resolver
             ];
         }
 
-        $limit = self::clampInt($arguments['hitsPerPage'] ?? null, 20, 1, 200);
+        $limit = self::clampInt($arguments['resultsLimit'] ?? null, 20, 1, 200);
         $page = self::clampInt($arguments['page'] ?? null, 0, 0, PHP_INT_MAX);
         $offset = $page * $limit;
 
         $siteId = self::resolveRequestedSiteId($arguments);
         if (self::hasSiteArgument($arguments) && $siteId === null) {
-            return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'hitsPerPage' => $limit, 'totalPages' => 0];
+            return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'resultsLimit' => $limit, 'totalPages' => 0];
         }
         $siteIds = self::resolveSchemaSiteScope($siteId);
         if ($siteIds === []) {
-            return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'hitsPerPage' => $limit, 'totalPages' => 0];
+            return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'resultsLimit' => $limit, 'totalPages' => 0];
         }
 
         [$indexHandles, $indicesProvided] = self::resolveIndexHandles($arguments);
         if ($indicesProvided && empty($indexHandles)) {
-            return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'hitsPerPage' => $limit, 'totalPages' => 0];
+            return ['hits' => [], 'total' => 0, 'query' => $query, 'page' => $page, 'resultsLimit' => $limit, 'totalPages' => 0];
         }
 
         $filters = self::trimmedString($arguments['filters'] ?? null);
@@ -86,7 +86,7 @@ class SearchResolver extends Resolver
                 'total' => 0,
                 'query' => $query,
                 'page' => $page,
-                'hitsPerPage' => $limit,
+                'resultsLimit' => $limit,
                 'totalPages' => 0,
                 'error' => 'The filters argument requires a single index.',
             ];
@@ -98,7 +98,7 @@ class SearchResolver extends Resolver
             'page' => $page,
             'type' => self::trimmedString($arguments['type'] ?? null),
             'skipAnalytics' => (bool)($arguments['skipAnalytics'] ?? false),
-            'source' => TrackingMetadataHelper::source(self::trimmedString($arguments['source'] ?? null)) ?? 'graphql',
+            'source' => TrackingMetadataHelper::source(self::trimmedString($arguments['analyticsSource'] ?? null)) ?? 'graphql',
         ];
 
         if ($filters !== null && count($indexHandles) === 1) {
@@ -145,10 +145,10 @@ class SearchResolver extends Resolver
         if (!empty($results['hits']) && is_array($results['hits'])) {
             $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $indexHandles, [
                 'snippetMode' => self::trimmedString($arguments['snippetMode'] ?? null) ?? 'balanced',
-                'snippetLength' => self::clampInt($arguments['snippetLength'] ?? null, 150, 50, 1000),
-                'showCodeSnippets' => (bool)($arguments['showCodeSnippets'] ?? false),
-                'parseMarkdownSnippets' => (bool)($arguments['parseMarkdownSnippets'] ?? false),
-                'hideResultsWithoutUrl' => (bool)($arguments['hideResultsWithoutUrl'] ?? false),
+                'snippetMaxLength' => self::clampInt($arguments['snippetMaxLength'] ?? null, 150, 50, 1000),
+                'snippetIncludeCodeBlocks' => (bool)($arguments['snippetIncludeCodeBlocks'] ?? false),
+                'snippetCleanMarkdown' => (bool)($arguments['snippetCleanMarkdown'] ?? false),
+                'resultsRequireUrl' => (bool)($arguments['resultsRequireUrl'] ?? false),
                 'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($indexHandles, $requestedRetrievableFields),
             ]);
         }
@@ -156,7 +156,7 @@ class SearchResolver extends Resolver
         $total = (int)($results['total'] ?? 0);
         $results['query'] = $query;
         $results['page'] = $page;
-        $results['hitsPerPage'] = $limit;
+        $results['resultsLimit'] = $limit;
         $results['totalPages'] = (int)ceil($total / $limit);
 
         if (isset($results['indices']) && is_array($results['indices'])) {
@@ -180,7 +180,7 @@ class SearchResolver extends Resolver
             return ['suggestions' => [], 'results' => []];
         }
 
-        $limit = self::clampInt($arguments['hitsPerPage'] ?? null, 10, 1, 100);
+        $limit = self::clampInt($arguments['resultsLimit'] ?? null, 10, 1, 100);
         $siteId = self::resolveRequestedSiteId($arguments);
         if (self::hasSiteArgument($arguments) && $siteId === null) {
             return ['suggestions' => [], 'results' => []];
@@ -277,7 +277,7 @@ class SearchResolver extends Resolver
      */
     private static function resolveIndexHandles(array $arguments): array
     {
-        $indices = $arguments['indices'] ?? [];
+        $indices = $arguments['indexHandles'] ?? [];
         $indicesString = is_array($indices)
             ? implode(',', array_filter(array_map(static fn(mixed $value): string => trim((string)$value), $indices)))
             : trim((string)$indices);

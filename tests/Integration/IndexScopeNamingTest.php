@@ -46,22 +46,22 @@ final class IndexScopeNamingTest extends TestCase
 
         self::assertStringNotContainsString("getParam('index'", $apiController);
         self::assertStringNotContainsString('getParam("index"', $apiController);
-        self::assertStringContainsString("getParam('indices'", $apiController);
+        self::assertStringContainsString("getParam('indexHandles'", $apiController);
     }
 
-    public function testGraphqlSearchScopeExposesOnlyIndicesArgument(): void
+    public function testGraphqlSearchScopeExposesOnlyIndexHandlesArgument(): void
     {
         $queries = SearchQuery::getQueries(false);
 
         self::assertArrayNotHasKey('index', $queries['searchManagerSearch']['args']);
-        self::assertArrayHasKey('indices', $queries['searchManagerSearch']['args']);
+        self::assertArrayHasKey('indexHandles', $queries['searchManagerSearch']['args']);
         self::assertArrayNotHasKey('index', $queries['searchManagerAutocomplete']['args']);
-        self::assertArrayHasKey('indices', $queries['searchManagerAutocomplete']['args']);
+        self::assertArrayHasKey('indexHandles', $queries['searchManagerAutocomplete']['args']);
 
         $resolver = $this->readPluginFile('src/gql/resolvers/SearchResolver.php');
 
         self::assertStringNotContainsString("\$arguments['index']", $resolver);
-        self::assertStringContainsString("\$arguments['indices']", $resolver);
+        self::assertStringContainsString("\$arguments['indexHandles']", $resolver);
     }
 
     public function testWidgetConfigDoesNotDerivePublicIndexAlias(): void
@@ -71,7 +71,7 @@ final class IndexScopeNamingTest extends TestCase
 
         self::assertStringNotContainsString('@property {string} index', $configParser);
         self::assertStringNotContainsString('index: indices[0]', $configParser);
-        self::assertStringNotContainsString('this.config.index', $widgetBase);
+        self::assertDoesNotMatchRegularExpression('/\\bthis\\.config\\.index\\b/', $widgetBase);
         self::assertStringContainsString('getSearchScopeKey(this.config)', $widgetBase);
         self::assertStringContainsString('item.dataset.sourceIndex', $widgetBase);
     }

@@ -79,7 +79,7 @@ final class Audit305WidgetConfigTest extends TestCase
                 'unknownSearch' => 'drop-me',
             ],
             'behavior' => [
-                'maxResults' => '20',
+                'resultsLimit' => '20',
                 'unknownBehavior' => 'drop-me',
             ],
         ]);
@@ -88,7 +88,7 @@ final class Audit305WidgetConfigTest extends TestCase
 
         self::assertSame(['docs', 'shortlinks'], $filtered['search']['indexHandles']);
         self::assertSame('widget-public', $filtered['apiKeyHandle']);
-        self::assertSame('20', $filtered['behavior']['maxResults']);
+        self::assertSame('20', $filtered['behavior']['resultsLimit']);
         self::assertArrayNotHasKey('unknownRoot', $filtered);
         self::assertArrayNotHasKey('unknownSearch', $filtered['search']);
         self::assertArrayNotHasKey('unknownBehavior', $filtered['behavior']);
@@ -347,7 +347,7 @@ final class Audit305WidgetConfigTest extends TestCase
         self::assertContains(self::PREFIX . 'config-dependent', array_map(static fn(WidgetConfig $config): string => $config->handle, $configs));
     }
 
-    public function testExistingApiKeyIdFallbackStillResolvesWidgetConfig(): void
+    public function testRemovedApiKeyIdFallbackNoLongerResolvesWidgetConfig(): void
     {
         [$key, $plaintext] = $this->seedApiKey(ApiKey::TYPE_PUBLIC, [ApiKey::ALL_INDICES]);
 
@@ -358,11 +358,11 @@ final class Audit305WidgetConfigTest extends TestCase
         $widget = $this->makeWidget('id-fallback');
         $widget->settings = $settings;
 
-        self::assertSame($plaintext, $widget->getApiKey());
+        self::assertSame('', $widget->getApiKey());
         self::assertTrue(SearchManager::$plugin->widgetConfigs->save($widget), print_r($widget->getErrors(), true));
 
         $configs = SearchManager::$plugin->widgetConfigs->findConfigsUsingApiKeyHandle($key->handle);
-        self::assertContains($widget->handle, array_map(static fn(WidgetConfig $config): string => $config->handle, $configs));
+        self::assertNotContains($widget->handle, array_map(static fn(WidgetConfig $config): string => $config->handle, $configs));
     }
 
     public function testFindConfigsBrokenByApiKeyScopeReturnsOnlyWidgetsOutsideRestrictedKey(): void

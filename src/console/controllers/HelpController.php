@@ -180,7 +180,7 @@ final class HelpController extends AbstractHelpController
                                 ],
                                 [
                                     'name' => '--max-hits',
-                                    'description' => 'Clamp on the hitsPerPage request parameter.',
+                                    'description' => 'Clamp on the resultsLimit request parameter.',
                                 ],
                                 [
                                     'name' => '--rate-limit',

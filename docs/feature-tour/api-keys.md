@@ -85,7 +85,7 @@ Mixing both forms is fine — e.g. `example.com` + `*.example.com` accepts the b
 
 ### Max hits per page
 
-Optional integer clamp on the `hitsPerPage` query parameter. Requests asking for more are reduced to this value.
+Optional integer clamp on the `resultsLimit` query parameter. Requests asking for more are reduced to this value.
 
 Useful for public keys to bound bandwidth and result-set size without hard-coding a low cap site-wide.
 

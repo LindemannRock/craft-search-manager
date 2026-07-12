@@ -272,12 +272,9 @@ class WidgetConfigService extends Component
             return [];
         }
 
-        $apiKey = ApiKey::findByHandle($handle);
-
         return array_values(array_filter(
             $this->getAll(),
-            static fn(WidgetConfig $config): bool => $config->getApiKeyHandle() === $handle
-                || ($apiKey !== null && $apiKey->id !== null && $config->getApiKeyId() === $apiKey->id),
+            static fn(WidgetConfig $config): bool => $config->getApiKeyHandle() === $handle,
         ));
     }
 

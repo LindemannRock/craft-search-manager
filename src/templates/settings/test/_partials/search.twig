@@ -96,7 +96,7 @@
                 <span>{{ "Live Comparison"|t('search-manager') }}</span>
             </label>
             <label class="sm-test-toggle-card">
-                <input type="checkbox" id="hideResultsWithoutUrl">
+                <input type="checkbox" id="resultsRequireUrl">
                 <span>{{ "Hide Without URL"|t('search-manager') }}</span>
             </label>
             <label class="sm-test-toggle-card">
@@ -125,17 +125,17 @@
                     }) }}
                 </div>
                 <div>
-                    <label for="snippetLength" class="sm-test-number-label">{{ "Snippet Length (50–1000 chars)"|t('search-manager') }}</label>
-                    <input type="number" id="snippetLength" class="text fullwidth sm-test-number-input" value="{{ snippetOptions.snippetLength }}" min="{{ snippetOptions.minSnippetLength }}" max="{{ snippetOptions.maxSnippetLength }}" step="50">
+                    <label for="snippetMaxLength" class="sm-test-number-label">{{ "Snippet Length (50–1000 chars)"|t('search-manager') }}</label>
+                    <input type="number" id="snippetMaxLength" class="text fullwidth sm-test-number-input" value="{{ snippetOptions.snippetMaxLength }}" min="{{ snippetOptions.minSnippetLength }}" max="{{ snippetOptions.maxSnippetLength }}" step="50">
                 </div>
             </div>
             <div class="sm-test-enrich-options">
                 <label class="sm-test-enrich-option">
-                    <input type="checkbox" id="showCodeSnippets">
+                    <input type="checkbox" id="snippetIncludeCodeBlocks">
                     {{ "Show Code Snippets"|t('search-manager') }}
                 </label>
                 <label class="sm-test-enrich-option">
-                    <input type="checkbox" id="parseMarkdownSnippets">
+                    <input type="checkbox" id="snippetCleanMarkdown">
                     {{ "Parse Markdown"|t('search-manager') }}
                 </label>
             </div>

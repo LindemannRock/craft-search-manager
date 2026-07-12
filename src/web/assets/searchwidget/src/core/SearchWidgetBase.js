@@ -308,7 +308,7 @@ class SearchWidgetBase extends HTMLElement {
             activeOpenWidget
             && activeOpenWidget !== this
             && activeOpenWidget.state?.get('isOpen')
-            && activeOpenWidget.config?.hotkey?.toLowerCase() === hotkey
+            && activeOpenWidget.config?.triggerHotkey?.toLowerCase() === hotkey
         ) {
             return false;
         }
@@ -409,14 +409,14 @@ class SearchWidgetBase extends HTMLElement {
         }
 
         // Don't search if below minimum characters
-        if (query.length < this.config.minChars) {
+        if (query.length < this.config.searchMinChars) {
             return;
         }
 
         // Debounced search
         this.debounceTimer = setTimeout(() => {
             this.executeSearch(query);
-        }, this.config.debounce);
+        }, this.config.searchDebounceMs);
     }
 
     /**
@@ -441,15 +441,15 @@ class SearchWidgetBase extends HTMLElement {
             const { results, meta } = await performSearch({
                 query,
                 endpoint: this.config.searchEndpoint,
-                indices: this.config.indices,
+                indexHandles: this.config.indexHandles,
                 siteId: this.config.siteId,
-                maxResults: this.config.maxResults,
-                hideResultsWithoutUrl: this.config.hideResultsWithoutUrl,
-                showCodeSnippets: this.config.showCodeSnippets,
+                resultsLimit: this.config.resultsLimit,
+                resultsRequireUrl: this.config.resultsRequireUrl,
+                snippetIncludeCodeBlocks: this.config.snippetIncludeCodeBlocks,
                 snippetMode: this.config.snippetMode,
-                snippetLength: this.config.snippetLength,
-                parseMarkdownSnippets: this.config.parseMarkdownSnippets,
-                debug: this.config.debug,
+                snippetMaxLength: this.config.snippetMaxLength,
+                snippetCleanMarkdown: this.config.snippetCleanMarkdown,
+                debugEnabled: this.config.debugEnabled,
                 apiKey: this.config.apiKey,
             });
 
@@ -527,7 +527,15 @@ class SearchWidgetBase extends HTMLElement {
         if (!container) return;
 
         const state = this.state.getAll();
-        const { showRecent, groupResults, enableHighlighting, highlightTag, highlightClass, showLoadingIndicator, debug } = this.config;
+        const {
+            recentSearchesEnabled,
+            resultsGroupingEnabled,
+            highlightResultsEnabled,
+            highlightTag,
+            highlightClass,
+            loadingIndicatorEnabled,
+            debugEnabled,
+        } = this.config;
 
         // Get appropriate content based on state
         const { html, hasResults, showListbox } = getContentToRender(
@@ -537,25 +545,25 @@ class SearchWidgetBase extends HTMLElement {
                 recentSearches: state.recentSearches,
                 loading: state.loading,
                 error: state.error,
-                showRecent,
+                recentSearchesEnabled,
             },
             {
                 listboxId: this.listboxId,
-                groupResults,
-                enableHighlighting,
+                resultsGroupingEnabled,
+                highlightResultsEnabled,
                 highlightTag,
                 highlightClass,
-                showLoadingIndicator,
-                debug,
-                persistQueryInUrl: this.config.highlightDestinationPage && this.config.persistQueryInUrl,
-                queryParamName: this.config.queryParamName,
-                promotions: this.config.promotions,
+                loadingIndicatorEnabled,
+                debugEnabled,
+                highlightDestinationPersistQuery: this.config.highlightDestinationEnabled && this.config.highlightDestinationPersistQuery,
+                highlightDestinationQueryParam: this.config.highlightDestinationQueryParam,
+                promotionBadge: this.config.promotionBadge,
                 // Hierarchical display options
-                resultLayout: this.config.resultLayout,
+                resultsLayout: this.config.resultsLayout,
                 hierarchyGroupBy: this.config.hierarchyGroupBy,
                 hierarchyStyle: this.config.hierarchyStyle,
                 hierarchyDisplay: this.config.hierarchyDisplay,
-                maxHeadingsPerResult: this.config.maxHeadingsPerResult,
+                hierarchyMaxHeadings: this.config.hierarchyMaxHeadings,
             }
         );
 
@@ -583,7 +591,7 @@ class SearchWidgetBase extends HTMLElement {
         if (this.liveRegion && !state.loading) {
             if (state.query && state.results.length === 0) {
                 announce(this.liveRegion, getResultsAnnouncement(0, state.query));
-            } else if (!state.query && state.recentSearches.length > 0 && showRecent) {
+            } else if (!state.query && state.recentSearches.length > 0 && recentSearchesEnabled) {
                 announce(this.liveRegion, getRecentSearchesAnnouncement(state.recentSearches.length));
             }
         }
@@ -728,7 +736,7 @@ class SearchWidgetBase extends HTMLElement {
         const destinationUrl = appendQueryParam(
             url,
             query,
-            (this.config.highlightDestinationPage && this.config.persistQueryInUrl) ? this.config.queryParamName : ''
+            (this.config.highlightDestinationEnabled && this.config.highlightDestinationPersistQuery) ? this.config.highlightDestinationQueryParam : ''
         );
 
         // Save to recent searches (for regular results, not re-clicking recent items)
@@ -737,7 +745,7 @@ class SearchWidgetBase extends HTMLElement {
                 getSearchScopeKey(this.config),
                 query,
                 { title, url },
-                this.config.maxRecentSearches
+                this.config.recentSearchesLimit
             );
             this.state.set({ recentSearches: updatedRecent });
         }
@@ -810,12 +818,12 @@ class SearchWidgetBase extends HTMLElement {
      * parameter is present (for example, ?smq=redis).
      */
     applyDestinationPageHighlight() {
-        if (!this.config.highlightDestinationPage || typeof window === 'undefined' || typeof document === 'undefined') {
+        if (!this.config.highlightDestinationEnabled || typeof window === 'undefined' || typeof document === 'undefined') {
             return;
         }
 
-        const queryParamName = this.config.queryParamName || 'smq';
-        const selector = this.config.destinationHighlightSelector || 'main, article, [data-search-content]';
+        const queryParamName = this.config.highlightDestinationQueryParam || 'smq';
+        const selector = this.config.highlightDestinationContentSelector || 'main, article, [data-search-content]';
         const query = new URLSearchParams(window.location.search).get(queryParamName);
 
         if (!query || !query.trim()) {
@@ -1000,13 +1008,13 @@ class SearchWidgetBase extends HTMLElement {
     /**
      * Update loading indicator visibility
      *
-     * Respects showLoadingIndicator config - if disabled, spinner stays hidden.
+     * Respects loadingIndicatorEnabled config - if disabled, spinner stays hidden.
      */
     updateLoadingVisual() {
         const loading = this.getLoadingElement();
         if (loading) {
             const isLoading = this.state.get('loading');
-            const showIndicator = this.config?.showLoadingIndicator !== false;
+            const showIndicator = this.config?.loadingIndicatorEnabled !== false;
             loading.hidden = !isLoading || !showIndicator;
         }
     }
@@ -1020,11 +1028,11 @@ class SearchWidgetBase extends HTMLElement {
         const toolbar = this.getDebugToolbarElement();
         if (!toolbar) return;
 
-        const { debug } = this.config;
+        const { debugEnabled } = this.config;
         const state = this.state.getAll();
 
         // Hide toolbar if debug is off or no results
-        if (!debug || !state.meta || state.results.length === 0) {
+        if (!debugEnabled || !state.meta || state.results.length === 0) {
             toolbar.hidden = true;
             return;
         }
@@ -1106,16 +1114,16 @@ class SearchWidgetBase extends HTMLElement {
         if (!this.config) return;
 
         const host = this.shadowRoot.host;
-        const { theme, styles, resultTitleLines, resultDescLines } = this.config;
+        const { theme, styles, resultsTitleLines, resultsDescriptionLines } = this.config;
 
         // Apply styles from config (theme-aware)
         applyStylesToElement(host, styles, theme);
 
-        if (resultTitleLines) {
-            host.style.setProperty('--sm-result-title-lines', String(resultTitleLines));
+        if (resultsTitleLines) {
+            host.style.setProperty('--sm-result-title-lines', String(resultsTitleLines));
         }
-        if (resultDescLines) {
-            host.style.setProperty('--sm-result-desc-lines', String(resultDescLines));
+        if (resultsDescriptionLines) {
+            host.style.setProperty('--sm-result-desc-lines', String(resultsDescriptionLines));
         }
     }
 
@@ -1152,7 +1160,7 @@ class SearchWidgetBase extends HTMLElement {
         }
 
         // Check if idle tracking is enabled
-        const idleTimeout = this.config.idleTimeout;
+        const idleTimeout = this.config.analyticsIdleTimeoutMs;
         if (!idleTimeout || idleTimeout <= 0) {
             return;
         }
@@ -1196,10 +1204,10 @@ class SearchWidgetBase extends HTMLElement {
         trackSearch({
             endpoint: this.config.trackSearchEndpoint,
             query,
-            indices: this.config.indices,
+            indexHandles: this.config.indexHandles,
             resultsCount,
             trigger,
-            source: this.config.source,
+            analyticsSource: this.config.analyticsSource,
             siteId: this.config.siteId,
             cached: this.lastSearchCacheState?.cached,
             took: this.lastSearchCacheState?.took,

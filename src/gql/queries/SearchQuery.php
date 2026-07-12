@@ -40,8 +40,8 @@ class SearchQuery extends Query
                         'type' => Type::nonNull(Type::string()),
                         'description' => 'The search query.',
                     ],
-                    'indices' => [
-                        'name' => 'indices',
+                    'indexHandles' => [
+                        'name' => 'indexHandles',
                         'type' => Type::listOf(Type::string()),
                         'description' => 'One or more index handles to search. Omit to search all enabled indices.',
                     ],
@@ -55,8 +55,8 @@ class SearchQuery extends Query
                         'type' => Type::int(),
                         'description' => 'The site ID to filter results by.',
                     ],
-                    'hitsPerPage' => [
-                        'name' => 'hitsPerPage',
+                    'resultsLimit' => [
+                        'name' => 'resultsLimit',
                         'type' => Type::int(),
                         'description' => 'Maximum results per page. Defaults to 20 and is capped at 200.',
                     ],
@@ -90,8 +90,8 @@ class SearchQuery extends Query
                         'type' => Type::string(),
                         'description' => 'Alias for language.',
                     ],
-                    'source' => [
-                        'name' => 'source',
+                    'analyticsSource' => [
+                        'name' => 'analyticsSource',
                         'type' => Type::string(),
                         'description' => 'Optional analytics source identifier.',
                     ],
@@ -115,20 +115,25 @@ class SearchQuery extends Query
                         'type' => Type::string(),
                         'description' => 'Snippet positioning mode for indexed snippets.',
                     ],
-                    'snippetLength' => [
-                        'name' => 'snippetLength',
+                    'snippetMaxLength' => [
+                        'name' => 'snippetMaxLength',
                         'type' => Type::int(),
                         'description' => 'Maximum snippet length for indexed snippets.',
                     ],
-                    'showCodeSnippets' => [
-                        'name' => 'showCodeSnippets',
+                    'snippetIncludeCodeBlocks' => [
+                        'name' => 'snippetIncludeCodeBlocks',
                         'type' => Type::boolean(),
                         'description' => 'Whether indexed snippets may include code blocks.',
                     ],
-                    'parseMarkdownSnippets' => [
-                        'name' => 'parseMarkdownSnippets',
+                    'snippetCleanMarkdown' => [
+                        'name' => 'snippetCleanMarkdown',
                         'type' => Type::boolean(),
                         'description' => 'Whether markdown should be parsed before generating snippets.',
+                    ],
+                    'highlightResultsEnabled' => [
+                        'name' => 'highlightResultsEnabled',
+                        'type' => Type::boolean(),
+                        'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
                     ],
                     'highlightTag' => [
                         'name' => 'highlightTag',
@@ -140,8 +145,28 @@ class SearchQuery extends Query
                         'type' => Type::string(),
                         'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
                     ],
-                    'hideResultsWithoutUrl' => [
-                        'name' => 'hideResultsWithoutUrl',
+                    'highlightDestinationEnabled' => [
+                        'name' => 'highlightDestinationEnabled',
+                        'type' => Type::boolean(),
+                        'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
+                    ],
+                    'highlightDestinationPersistQuery' => [
+                        'name' => 'highlightDestinationPersistQuery',
+                        'type' => Type::boolean(),
+                        'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
+                    ],
+                    'highlightDestinationQueryParam' => [
+                        'name' => 'highlightDestinationQueryParam',
+                        'type' => Type::string(),
+                        'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
+                    ],
+                    'highlightDestinationContentSelector' => [
+                        'name' => 'highlightDestinationContentSelector',
+                        'type' => Type::string(),
+                        'description' => 'Reserved for client renderers. Indexed snippets are returned as plain text.',
+                    ],
+                    'resultsRequireUrl' => [
+                        'name' => 'resultsRequireUrl',
                         'type' => Type::boolean(),
                         'description' => 'Whether indexed hits without URLs should be hidden.',
                     ],
@@ -157,8 +182,8 @@ class SearchQuery extends Query
                         'type' => Type::nonNull(Type::string()),
                         'description' => 'The partial search query.',
                     ],
-                    'indices' => [
-                        'name' => 'indices',
+                    'indexHandles' => [
+                        'name' => 'indexHandles',
                         'type' => Type::listOf(Type::string()),
                         'description' => 'One or more index handles to use. Omit to query all enabled indices.',
                     ],
@@ -172,8 +197,8 @@ class SearchQuery extends Query
                         'type' => Type::int(),
                         'description' => 'The site ID to filter suggestions by.',
                     ],
-                    'hitsPerPage' => [
-                        'name' => 'hitsPerPage',
+                    'resultsLimit' => [
+                        'name' => 'resultsLimit',
                         'type' => Type::int(),
                         'description' => 'Maximum suggestions/results. Defaults to 10 and is capped at 100.',
                     ],

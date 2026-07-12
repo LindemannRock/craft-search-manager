@@ -27,7 +27,7 @@ final class AuditPass34Test extends TestCase
         $api = $this->readPluginFile('src/controllers/ApiController.php');
 
         self::assertStringContainsString('use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;', $resolver);
-        self::assertStringContainsString("TrackingMetadataHelper::source(self::trimmedString(\$arguments['source'] ?? null)) ?? 'graphql'", $resolver);
+        self::assertStringContainsString("TrackingMetadataHelper::source(self::trimmedString(\$arguments['analyticsSource'] ?? null)) ?? 'graphql'", $resolver);
         self::assertStringContainsString("TrackingMetadataHelper::platform(self::trimmedString(\$arguments['platform'] ?? null))", $resolver);
         self::assertStringContainsString("TrackingMetadataHelper::appVersion(self::trimmedString(\$arguments['appVersion'] ?? null))", $resolver);
         self::assertStringContainsString('use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;', $api);

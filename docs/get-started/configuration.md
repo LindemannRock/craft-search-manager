@@ -27,7 +27,7 @@ return [
     ],
 
     'dev' => [
-        'logLevel' => 'debug',
+        'logLevel' => 'debugEnabled',
         'indexPrefix' => 'local_',
     ],
 
@@ -53,7 +53,7 @@ Settings are grouped by area. All settings can be set in the config file or mana
 | `pluginName` | `string` | `'Search Manager'` | Custom display name in the CP sidebar |
 | `defaultBackendHandle` | `?string` | `null` | Handle of the default backend (must match a key in `backends`) |
 | `defaultWidgetHandle` | `?string` | `null` | Handle of the default widget configuration |
-| `logLevel` | `string` | `'error'` | Log level: `debug`, `info`, `warning`, `error` |
+| `logLevel` | `string` | `'error'` | Log level: `debugEnabled`, `info`, `warning`, `error` |
 
 ### Interface
 **CP:** Settings → Interface
@@ -120,10 +120,10 @@ Search Manager supports 12 languages: English, German, French, Dutch, Spanish, A
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `enableHighlighting` | `bool` | `true` | Enable search term highlighting |
+| `highlightResultsEnabled` | `bool` | `true` | Enable search term highlighting |
 | `highlightTag` | `string` | `'mark'` | HTML tag wrapping highlighted terms (`mark`, `em`, `strong`, `u`, `b`, `i`, `span`) |
 | `highlightClass` | `?string` | `null` | CSS class added to the highlight tag |
-| `snippetLength` | `int` | `200` | Characters per context snippet |
+| `snippetMaxLength` | `int` | `200` | Characters per context snippet |
 | `maxSnippets` | `int` | `3` | Maximum snippets per result |
 
 See [Highlighting](../feature-tour/highlighting.md) and the [Highlighting & Snippets](../template-guides/highlighting-snippets.md) template guide.
@@ -281,20 +281,20 @@ Widget configurations define how the frontend search widget appears and behaves:
             'behavior' => [
                 'debounce' => 200,
                 'minChars' => 2,
-                'maxResults' => 10,
+                'resultsLimit' => 10,
                 'hotkey' => 'k',
-                'resultLayout' => 'default',      // 'default' or 'hierarchical'
+                'resultsLayout' => 'default',      // 'default' or 'hierarchical'
                 'hierarchyGroupBy' => '',          // Empty = source -> entrySection -> type
                 'hierarchyStyle' => 'tree',        // 'tree', 'flat', or 'none'
                 'hierarchyDisplay' => 'individual', // 'individual' or 'unified'
-                'maxHeadingsPerResult' => 3,       // Heading children per page block (1-50)
+                'hierarchyMaxHeadings' => 3,       // Heading children per page block (1-50)
                 'snippetMode' => 'balanced',       // Passage choice for page/section snippets
-                'showCodeSnippets' => false,       // Allow block-level code in page/section snippets
-                'parseMarkdownSnippets' => false,  // Clean Markdown markers from snippet display text
+                'snippetIncludeCodeBlocks' => false,       // Allow block-level code in page/section snippets
+                'snippetCleanMarkdown' => false,  // Clean Markdown markers from snippet display text
             ],
             'analytics' => [
                 'source' => 'header-search',
-                'idleTimeout' => 1500,
+                'analyticsIdleTimeoutMs' => 1500,
             ],
         ],
     ],
@@ -451,9 +451,9 @@ return [
                         'placeholder' => 'Search...',
                     ],
                     'behavior' => [
-                        'maxResults' => 10,
+                        'resultsLimit' => 10,
                         'hotkey' => 'k',
-                        'groupResults' => true,
+                        'resultsGroupingEnabled' => true,
                     ],
                     'analytics' => [
                         'source' => 'header-search',
@@ -482,7 +482,7 @@ return [
     ],
 
     'dev' => [
-        'logLevel' => 'debug',
+        'logLevel' => 'debugEnabled',
         'defaultCountry' => App::env('SEARCH_MANAGER_DEFAULT_COUNTRY'),
         'defaultCity' => App::env('SEARCH_MANAGER_DEFAULT_CITY'),
     ],

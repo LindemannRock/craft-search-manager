@@ -20,7 +20,7 @@ Plugin source: <https://github.com/LindemannRock/craft-search-manager>
 3. Select the duplicated environment from Postman's environment dropdown.
 4. Set:
    - `base_url` → your Craft site URL, no trailing slash.
-   - `indices` → one or more enabled Search Manager index handles, comma-separated.
+   - `indexHandles` → one or more enabled Search Manager index handles, comma-separated.
    - `index_handle` → one enabled index handle, used by `track-click`.
    - `query` → a query that should return results on your install.
    - `site_id` → a real Craft site ID, if you want to test site filtering.
@@ -72,7 +72,7 @@ Expected: the normal requests return `200`.
 With **Require API Key** on:
 
 1. Create a public API key in Search Manager.
-2. Scope it to the test index in `indices`.
+2. Scope it to the test index in `indexHandles`.
 3. Add an allowed referrer matching `referrer`.
 4. Paste the plaintext key into the `api_key` environment variable.
 5. Run the **Search API**, **Autocomplete API**, and **Analytics Tracking** folders.

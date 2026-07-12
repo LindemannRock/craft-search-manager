@@ -83,7 +83,7 @@
   "kbdBorderRadius": "4",
   "backdropOpacity": "50",
   "backdropBlur": "1",
-  "highlightEnabled": "1",
+  "highlightResultsEnabled": "1",
   "highlightTag": "",
   "highlightClass": "",
   "highlightBgLight": "fef08a",

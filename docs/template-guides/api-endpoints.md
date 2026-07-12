@@ -27,7 +27,7 @@ Rejections (returned as the endpoint's JSON error, in English):
 
 **Site scope.** `siteId` is only a filter — site visibility is controlled by each index, not by the key. With no `siteId`, results span all sites the selected indices cover. For a keyed request, a `siteId` outside the scope of a selected index is rejected with `403`; an unknown `siteId` is rejected with `400`. Anonymous requests keep their existing behaviour (the `siteId` is applied as a plain filter).
 
-The `track-search` / `track-click` analytics endpoints are gated the same way when **Require API Key** is on (authenticate + public-key referrer, plus the allowed-indices check when the ping includes `index`/`indices`). They are **not** rate-limited. When the setting is off, they stay anonymous. The bundled widget sends its configured key on these pings automatically.
+The `track-search` / `track-click` analytics endpoints are gated the same way when **Require API Key** is on (authenticate + public-key referrer, plus the allowed-indices check when the ping includes `index`/`indexHandles`). They are **not** rate-limited. When the setting is off, they stay anonymous. The bundled widget sends its configured key on these pings automatically.
 
 Tracking pings intentionally remain CSRF-free so they keep working from statically cached pages and the bundled frontend widget. Same-origin browser requests are accepted automatically. If a headless frontend sends tracking pings from another browser origin, add that exact origin in `config/search-manager.php`:
 
@@ -48,14 +48,14 @@ GET /actions/search-manager/api/search
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indices` | (all indices) | One index handle or a comma-separated list of index handles to search. Omit to search all enabled indices. |
-| `hitsPerPage` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
+| `indexHandles` | (all indices) | One index handle or a comma-separated list of index handles to search. Omit to search all enabled indices. |
+| `resultsLimit` | `20` | Maximum results per page (min: 1, max: 200). Values below 1 reset to the default. |
 | `page` | `0` | Page number (0-based) |
 | `type` | (none) | Filter by stable document kind, for example `entry`, `product`, `variant`, `asset`, `category`, or `user` |
 | `siteId` | (all sites) | Filter to a specific site. Omit to search all sites. |
 | `language` | (auto) | Language code for localized operators (`en`, `de`, `fr`, `nl`, `es`, `ar`, `it`, `pt`, `ja`, `sv`, `da`, `no`) |
 | `retrievableFields` | index setting | Optional comma-separated custom field handles to return under each hit's `fields` object. This can narrow the index's `retrievableFields` setting but cannot widen it. Use `*,-wysiwyg` to return all fields except `wysiwyg`, or an empty value to return no custom fields. |
-| `source` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
+| `analyticsSource` | (auto-detected) | Analytics source identifier (e.g., `ios-app`) |
 | `platform` | (none) | Platform info for analytics (e.g., `iOS 17.2`) |
 | `appVersion` | (none) | App version for analytics (e.g., `2.1.0`) |
 | `skipAnalytics` | `0` | Skip analytics tracking for this search |
@@ -65,10 +65,10 @@ GET /actions/search-manager/api/search
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `snippetMode` | `balanced` | Snippet positioning: `early`, `balanced`, or `deep` |
-| `snippetLength` | `150` | Max snippet length in characters (50–1000) |
-| `showCodeSnippets` | `0` | Allow snippets to use block-level code from page or section bodies; inline code text is always preserved |
-| `parseMarkdownSnippets` | `0` | Clean Markdown markers from page and section snippet display text without changing indexed content |
-| `hideResultsWithoutUrl` | `0` | Exclude results that have no URL |
+| `snippetMaxLength` | `150` | Max snippet length in characters (50–1000) |
+| `snippetIncludeCodeBlocks` | `0` | Allow snippets to use block-level code from page or section bodies; inline code text is always preserved |
+| `snippetCleanMarkdown` | `0` | Clean Markdown markers from page and section snippet display text without changing indexed content |
+| `resultsRequireUrl` | `0` | Exclude results that have no URL |
 
 ### Response
 
@@ -125,7 +125,7 @@ GET /actions/search-manager/api/search
     ],
     "total": 150,
     "page": 0,
-    "hitsPerPage": 20,
+    "resultsLimit": 20,
     "totalPages": 8
 }
 ```
@@ -216,7 +216,7 @@ Search returns one canonical hit shape:
     ],
     "total": 42,
     "page": 0,
-    "hitsPerPage": 20,
+    "resultsLimit": 20,
     "totalPages": 3
 }
 ```
@@ -232,7 +232,7 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 | `hits` | `array` | Array of hit objects (see below) |
 | `total` | `int` | Backend-native number of matching hits. For split indices, this counts matching section hits, not parent elements. |
 | `page` | `int` | Current page number (0-based) |
-| `hitsPerPage` | `int` | Results per page |
+| `resultsLimit` | `int` | Results per page |
 | `totalPages` | `int` | Total number of pages |
 
 ### Hit Fields
@@ -299,19 +299,19 @@ Asset documents add `assetKind` and `extension` to searchable content at indexin
 **Full URL format:**
 
 ```text
-https://your-site.com/actions/search-manager/api/search?q=plugin&indices=docs-manager&language=en&hitsPerPage=5&page=0&siteId=1
+https://your-site.com/actions/search-manager/api/search?q=plugin&indexHandles=docs-manager&language=en&resultsLimit=5&page=0&siteId=1
 ```
 
 ```javascript
 // Basic search
-const response = await fetch('/actions/search-manager/api/search?q=craft+cms&indices=entries-en');
+const response = await fetch('/actions/search-manager/api/search?q=craft+cms&indexHandles=entries-en');
 const results = await response.json();
 
 // Filter by site and element type
 const response = await fetch('/actions/search-manager/api/search?q=laptop&type=product,category&siteId=1');
 
 // Paginated results
-const response = await fetch('/actions/search-manager/api/search?q=docs&indices=entries-en&hitsPerPage=10&page=2');
+const response = await fetch('/actions/search-manager/api/search?q=docs&indexHandles=entries-en&resultsLimit=10&page=2');
 
 // With localized operators (German)
 const response = await fetch('/actions/search-manager/api/search?q=kaffee+ODER+tee&language=de');
@@ -319,8 +319,8 @@ const response = await fetch('/actions/search-manager/api/search?q=kaffee+ODER+t
 // Mobile app tracking
 const params = new URLSearchParams({
     q: 'shoes',
-    indices: 'products',
-    source: 'ios-app',
+    indexHandles: 'products',
+    analyticsSource: 'ios-app',
     platform: 'iOS 17.2',
     appVersion: '2.1.0',
 });
@@ -338,8 +338,8 @@ GET /actions/search-manager/api/autocomplete
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query |
-| `indices` | (all indices) | One index handle or a comma-separated list of index handles. Omit to search all enabled indices. |
-| `hitsPerPage` | `10` | Maximum suggestions/results (capped at 100) |
+| `indexHandles` | (all indices) | One index handle or a comma-separated list of index handles. Omit to search all enabled indices. |
+| `resultsLimit` | `10` | Maximum suggestions/results (capped at 100) |
 | `siteId` | (all sites) | Filter to a specific site |
 | `language` | (auto) | Language code (alias: `lang`) |
 | `only` | (none) | Return only `suggestions` or `results` |
@@ -379,12 +379,12 @@ GET /actions/search-manager/api/autocomplete
 **Full URL format:**
 
 ```text
-https://your-site.com/actions/search-manager/api/autocomplete?q=test&indices=entries-en&hitsPerPage=10&siteId=1
+https://your-site.com/actions/search-manager/api/autocomplete?q=test&indexHandles=entries-en&resultsLimit=10&siteId=1
 ```
 
 ```javascript
 // Default: both suggestions and results
-const response = await fetch('/actions/search-manager/api/autocomplete?q=test&indices=entries-en');
+const response = await fetch('/actions/search-manager/api/autocomplete?q=test&indexHandles=entries-en');
 const data = await response.json();
 // data.suggestions = ["test", "testing"]
 // data.results = [{text: "Test Entry", type: "entry", id: 1, siteId: 1}]
@@ -419,9 +419,9 @@ The API is designed for mobile app use. Pass analytics context for proper tracki
 ```javascript
 const params = new URLSearchParams({
     q: 'kaffee ODER tee NICHT entkoffeiniert',
-    indices: 'products',
+    indexHandles: 'products',
     language: 'de',
-    source: 'ios-app',
+    analyticsSource: 'ios-app',
     platform: 'iOS 17.2',
     appVersion: '2.1.0',
 });
@@ -449,10 +449,10 @@ Records a search query when the user shows intent (clicking a result, pressing E
 | Parameter | Default | Description |
 |-----------|---------|-------------|
 | `q` | (required) | Search query (truncated at 256 characters) |
-| `indices` | (all) | Comma-separated index handles. Only enabled indices are accepted. |
+| `indexHandles` | (all) | Comma-separated index handles. Only enabled indices are accepted. |
 | `resultsCount` | `0` | Number of results shown (capped at 1000) |
 | `trigger` | `unknown` | What triggered tracking: `click`, `enter`, `idle`, or `unknown` |
-| `source` | `frontend-widget` | Source identifier (alphanumeric, dash, underscore; max 64 chars) |
+| `analyticsSource` | `frontend-widget` | Source identifier (alphanumeric, dash, underscore; max 64 chars) |
 | `siteId` | (none) | Site ID |
 | `cached` @since(5.46.0) | (none) | Boolean-like (`1`/`0`, `true`/`false`, `on`/`off`, `yes`/`no`). Carry forward from the final search response's `meta.cached`. When truthy, the analytics row records `executionTime = 0` (cache hit). |
 | `took` @since(5.46.0) | (none) | Backend execution time in ms from `meta.took`. Used only when `cached` is falsy. Clamped to `[0, 60000]`; negative or non-numeric values are ignored. Recorded as the row's `executionTime` for cache-miss accounting. |
@@ -510,7 +510,7 @@ input.addEventListener('input', (e) => {
     if (q.length < 2) { resultsDiv.innerHTML = ''; return; }
 
     timer = setTimeout(async () => {
-        const res = await fetch(`/actions/search-manager/api/search?q=${encodeURIComponent(q)}&indices=all-sites&hitsPerPage=10`);
+        const res = await fetch(`/actions/search-manager/api/search?q=${encodeURIComponent(q)}&indexHandles=all-sites&resultsLimit=10`);
         const data = await res.json();
 
         resultsDiv.innerHTML = data.hits.map(hit => `

@@ -40,16 +40,15 @@ class TwigSearchOptionsHelper
     }
 
     /**
-     * Normalize Twig-facing search limit options while preserving both accepted
-     * caller spellings. `limit` is the backend-native option; `hitsPerPage`
-     * mirrors the HTTP/GraphQL argument and is accepted for template parity.
+     * Normalize Twig-facing search limit options. `limit` is the backend-native
+     * option; `resultsLimit` mirrors the HTTP/GraphQL/widget vocabulary.
      *
      * @param array<string, mixed> $options
      * @return array<string, mixed>
      */
     private static function normalizeLimitOptions(array $options, int $default, int $max): array
     {
-        $rawLimit = $options['limit'] ?? $options['hitsPerPage'] ?? $default;
+        $rawLimit = $options['limit'] ?? $options['resultsLimit'] ?? $default;
         $limit = is_numeric($rawLimit) ? (int)$rawLimit : $default;
         if ($limit < 1) {
             $limit = $default;
@@ -57,7 +56,7 @@ class TwigSearchOptionsHelper
         $limit = min($max, $limit);
 
         $options['limit'] = $limit;
-        unset($options['hitsPerPage']);
+        unset($options['resultsLimit']);
 
         return $options;
     }

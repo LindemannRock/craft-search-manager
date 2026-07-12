@@ -144,7 +144,7 @@ class SearchManagerVariable
     {
         // Check if highlighting is enabled
         $settings = SearchManager::$plugin->getSettings();
-        if (!($settings->enableHighlighting ?? true)) {
+        if (!($settings->highlightResultsEnabled ?? true)) {
             return $text; // Return text unchanged if disabled
         }
 
@@ -152,7 +152,7 @@ class SearchManagerVariable
         $config = [
             'tag' => $settings->highlightTag ?? 'mark',
             'class' => $settings->highlightClass ?? '',
-            'snippetLength' => $settings->snippetLength ?? 200,
+            'snippetMaxLength' => $settings->snippetMaxLength ?? 200,
             'maxSnippets' => $settings->maxSnippets ?? 3,
         ];
         $config = array_merge($config, $options);
@@ -182,7 +182,7 @@ class SearchManagerVariable
     {
         // Check if highlighting is enabled
         $settings = SearchManager::$plugin->getSettings();
-        if (!($settings->enableHighlighting ?? true)) {
+        if (!($settings->highlightResultsEnabled ?? true)) {
             return []; // Return empty array if disabled
         }
 
@@ -190,7 +190,7 @@ class SearchManagerVariable
         $config = [
             'tag' => $settings->highlightTag ?? 'mark',
             'class' => $settings->highlightClass ?? '',
-            'snippetLength' => $settings->snippetLength ?? 200,
+            'snippetMaxLength' => $settings->snippetMaxLength ?? 200,
             'maxSnippets' => $settings->maxSnippets ?? 3,
         ];
         $config = array_merge($config, $options);

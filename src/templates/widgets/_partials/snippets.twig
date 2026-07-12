@@ -1,11 +1,11 @@
 {% import "_includes/forms" as forms %}
 
 {{ forms.lightswitchField({
-	label: 'Show Code Snippets'|t('search-manager'),
+	label: 'Snippet Include Code Blocks'|t('search-manager'),
 	instructions: 'Allow snippets to use block-level code from page and section bodies.'|t('search-manager'),
-	id: 'behavior-showCodeSnippets',
-	name: 'settings[behavior][showCodeSnippets]',
-	on: widgetConfig.isShowCodeSnippetsEnabled(),
+	id: 'behavior-snippetIncludeCodeBlocks',
+	name: 'settings[behavior][snippetIncludeCodeBlocks]',
+	on: widgetConfig.isSnippetIncludeCodeBlocksEnabled(),
 }) }}
 
 {{ forms.selectField({
@@ -24,23 +24,23 @@
 }) }}
 
 {{ forms.textField({
-	label: 'Snippet Length'|t('search-manager'),
+	label: 'Snippet Max Length'|t('search-manager'),
 	instructions: 'Maximum character length for page and section snippets'|t('search-manager'),
 	tip: 'Min: 50, Max: 1000 characters. Default: 150. Longer snippets show more context but use more space.'|t('search-manager'),
-	id: 'behavior-snippetLength',
-	name: 'settings[behavior][snippetLength]',
-	value: widgetConfig.getSnippetLength(),
+	id: 'behavior-snippetMaxLength',
+	name: 'settings[behavior][snippetMaxLength]',
+	value: widgetConfig.getSnippetMaxLength(),
 	type: 'number',
 	min: snippetOptions.minSnippetLength,
 	max: snippetOptions.maxSnippetLength,
-	errors: widgetConfig.getErrors('settings.behavior.snippetLength')
+	errors: widgetConfig.getErrors('settings.behavior.snippetMaxLength')
 }) }}
 
 {{ forms.lightswitchField({
-	label: 'Parse Markdown Snippets'|t('search-manager'),
+	label: 'Snippet Clean Markdown'|t('search-manager'),
 	instructions: 'Clean Markdown markers from page and section snippet display text.'|t('search-manager'),
 	tip: 'Enable for Markdown-heavy content, such as documentation pages. This does not change indexed content.'|t('search-manager'),
-	id: 'behavior-parseMarkdownSnippets',
-	name: 'settings[behavior][parseMarkdownSnippets]',
-	on: widgetConfig.isParseMarkdownSnippetsEnabled(),
+	id: 'behavior-snippetCleanMarkdown',
+	name: 'settings[behavior][snippetCleanMarkdown]',
+	on: widgetConfig.isSnippetCleanMarkdownEnabled(),
 }) }}

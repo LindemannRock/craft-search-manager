@@ -52,17 +52,17 @@ final class SearchManagerVariableGuardTest extends TestCase
         $stub = $this->installStubBackend();
 
         $variable->search('content', 'coffee', ['limit' => 999]);
-        $variable->searchMultiple(['content', 'products'], 'coffee', ['hitsPerPage' => 999]);
+        $variable->searchMultiple(['content', 'products'], 'coffee', ['resultsLimit' => 999]);
 
         $searchCalls = $stub->callsFor('search');
         self::assertCount(1, $searchCalls);
         self::assertSame(200, $searchCalls[0]['items'][0]['options']['limit']);
-        self::assertArrayNotHasKey('hitsPerPage', $searchCalls[0]['items'][0]['options']);
+        self::assertArrayNotHasKey('resultsLimit', $searchCalls[0]['items'][0]['options']);
 
         $searchMultipleCalls = $stub->callsFor('searchMultiple');
         self::assertCount(1, $searchMultipleCalls);
         self::assertSame(200, $searchMultipleCalls[0]['items'][0]['options']['limit']);
-        self::assertArrayNotHasKey('hitsPerPage', $searchMultipleCalls[0]['items'][0]['options']);
+        self::assertArrayNotHasKey('resultsLimit', $searchMultipleCalls[0]['items'][0]['options']);
     }
 
     public function testTwigVariableAndProxyNormalizeSearchLimitsIdentically(): void
@@ -71,9 +71,9 @@ final class SearchManagerVariableGuardTest extends TestCase
             [['limit' => 0], 20],
             [['limit' => -5], 20],
             [['limit' => 'invalid'], 20],
-            [['hitsPerPage' => 0], 20],
-            [['hitsPerPage' => 999], 200],
-            [['limit' => 5, 'hitsPerPage' => 999], 5],
+            [['resultsLimit' => 0], 20],
+            [['resultsLimit' => 999], 200],
+            [['limit' => 5, 'resultsLimit' => 999], 5],
         ];
 
         foreach ($cases as [$options, $expectedLimit]) {
@@ -91,8 +91,8 @@ final class SearchManagerVariableGuardTest extends TestCase
             self::assertSame($expectedLimit, $variableOptions['limit']);
             self::assertSame($expectedLimit, $proxyOptions['limit']);
             self::assertSame($variableOptions, $proxyOptions);
-            self::assertArrayNotHasKey('hitsPerPage', $variableOptions);
-            self::assertArrayNotHasKey('hitsPerPage', $proxyOptions);
+            self::assertArrayNotHasKey('resultsLimit', $variableOptions);
+            self::assertArrayNotHasKey('resultsLimit', $proxyOptions);
         }
     }
 
@@ -102,12 +102,12 @@ final class SearchManagerVariableGuardTest extends TestCase
         $autocomplete = new SearchManagerVariableRecordingAutocompleteService();
         $this->swapPluginComponent('search-manager', 'autocomplete', $autocomplete);
 
-        $suggestions = $variable->suggest('coffee', 'content', ['hitsPerPage' => 999]);
+        $suggestions = $variable->suggest('coffee', 'content', ['resultsLimit' => 999]);
 
         self::assertSame(['coffee'], $suggestions);
         self::assertCount(1, $autocomplete->suggestCalls);
         self::assertSame(100, $autocomplete->suggestCalls[0]['options']['limit']);
-        self::assertArrayNotHasKey('hitsPerPage', $autocomplete->suggestCalls[0]['options']);
+        self::assertArrayNotHasKey('resultsLimit', $autocomplete->suggestCalls[0]['options']);
     }
 
     public function testTwigVariableAndProxyNormalizeAutocompleteLimitsIdentically(): void
@@ -116,9 +116,9 @@ final class SearchManagerVariableGuardTest extends TestCase
             [['limit' => 0], 10],
             [['limit' => -5], 10],
             [['limit' => 'invalid'], 10],
-            [['hitsPerPage' => 0], 10],
-            [['hitsPerPage' => 999], 100],
-            [['limit' => 5, 'hitsPerPage' => 999], 5],
+            [['resultsLimit' => 0], 10],
+            [['resultsLimit' => 999], 100],
+            [['limit' => 5, 'resultsLimit' => 999], 5],
         ];
 
         foreach ($cases as [$options, $expectedLimit]) {
@@ -138,8 +138,8 @@ final class SearchManagerVariableGuardTest extends TestCase
             self::assertSame($expectedLimit, $variableOptions['limit']);
             self::assertSame($expectedLimit, $proxyOptions['limit']);
             self::assertSame($variableOptions, $proxyOptions);
-            self::assertArrayNotHasKey('hitsPerPage', $variableOptions);
-            self::assertArrayNotHasKey('hitsPerPage', $proxyOptions);
+            self::assertArrayNotHasKey('resultsLimit', $variableOptions);
+            self::assertArrayNotHasKey('resultsLimit', $proxyOptions);
         }
     }
 
@@ -169,12 +169,12 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertSame('Query too long (max 256 characters)', $response['error']);
         self::assertSame([], $stub->callsFor('search'));
 
-        $proxy->search('content', 'coffee', ['hitsPerPage' => 999]);
+        $proxy->search('content', 'coffee', ['resultsLimit' => 999]);
 
         $searchCalls = $stub->callsFor('search');
         self::assertCount(1, $searchCalls);
         self::assertSame(200, $searchCalls[0]['items'][0]['options']['limit']);
-        self::assertArrayNotHasKey('hitsPerPage', $searchCalls[0]['items'][0]['options']);
+        self::assertArrayNotHasKey('resultsLimit', $searchCalls[0]['items'][0]['options']);
     }
 
     public function testProxySuggestQueryGuardsMatchTwigVariableGuards(): void
@@ -189,7 +189,7 @@ final class SearchManagerVariableGuardTest extends TestCase
         self::assertSame([], $overlongSuggestions);
         self::assertSame([], $autocomplete->suggestCalls);
 
-        $suggestions = $proxy->suggest('coffee', 'content', ['hitsPerPage' => 999]);
+        $suggestions = $proxy->suggest('coffee', 'content', ['resultsLimit' => 999]);
 
         self::assertSame(['backend-coffee'], $suggestions);
         self::assertSame([], $autocomplete->suggestCalls);
@@ -198,7 +198,7 @@ final class SearchManagerVariableGuardTest extends TestCase
         $autocompleteCalls = $stub->callsFor('autocomplete');
         self::assertCount(1, $autocompleteCalls);
         self::assertSame(100, $autocompleteCalls[0]['items'][0]['options']['limit']);
-        self::assertArrayNotHasKey('hitsPerPage', $autocompleteCalls[0]['items'][0]['options']);
+        self::assertArrayNotHasKey('resultsLimit', $autocompleteCalls[0]['items'][0]['options']);
     }
 
     public function testProxySuggestReturnsEmptyWhenSelectedBackendCannotAutocomplete(): void

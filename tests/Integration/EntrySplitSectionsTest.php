@@ -187,12 +187,12 @@ final class EntrySplitSectionsTest extends TestCase
         self::assertArrayNotHasKey('fields', $record);
 
         $off = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($record, 'ddev', self::INDEX_HANDLE, [
-            'snippetLength' => 120,
-            'showCodeSnippets' => false,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => false,
         ]);
         $on = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($record, 'ddev', self::INDEX_HANDLE, [
-            'snippetLength' => 120,
-            'showCodeSnippets' => true,
+            'snippetMaxLength' => 120,
+            'snippetIncludeCodeBlocks' => true,
         ]);
 
         self::assertStringContainsString('Run the command.', (string)$off['snippet']);

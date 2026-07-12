@@ -286,10 +286,10 @@ class SettingsController extends Controller
 
             $enhancedHits = CanonicalHitPipeline::presentHits($results['hits'] ?? [], $originalQuery, [$indexHandle], [
                 'snippetMode' => (string) $request->getBodyParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE),
-                'snippetLength' => (int) $request->getBodyParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH),
-                'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE),
-                'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
-                'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
+                'snippetMaxLength' => (int) $request->getBodyParam('snippetMaxLength', SnippetOptionsHelper::DEFAULT_LENGTH),
+                'snippetIncludeCodeBlocks' => (bool) $request->getBodyParam('snippetIncludeCodeBlocks', SnippetOptionsHelper::DEFAULT_SHOW_CODE),
+                'snippetCleanMarkdown' => (bool) $request->getBodyParam('snippetCleanMarkdown', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
+                'resultsRequireUrl' => (bool) $request->getBodyParam('resultsRequireUrl', false),
                 'includeSnippetDebug' => $includeDebugMeta,
                 'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex([$indexHandle]),
             ], $includeQueryRuleDebug);
@@ -1452,7 +1452,7 @@ class SettingsController extends Controller
             'analytics' => ['enableAnalytics', 'enableGeoDetection', 'geoProvider', 'geoApiKey', 'anonymizeIpAddress', 'analyticsRetention'],
             'search' => ['bm25K1', 'bm25B', 'titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor', 'similarityThreshold', 'maxFuzzyCandidates', 'ngramSizes'],
             'language' => ['defaultLanguage', 'enableStopWords'],
-            'highlighting' => ['enableHighlighting', 'highlightTag', 'highlightClass', 'snippetLength', 'maxSnippets', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit', 'autocompleteFuzzy'],
+            'highlighting' => ['highlightResultsEnabled', 'highlightTag', 'highlightClass', 'snippetMaxLength', 'maxSnippets', 'enableAutocomplete', 'autocompleteMinLength', 'autocompleteLimit', 'autocompleteFuzzy'],
             'cache' => ['cacheStorageMethod', 'enableCache', 'cacheDuration', 'cachePopularQueriesOnly', 'popularQueryThreshold', 'enableAutocompleteCache', 'autocompleteCacheDuration', 'clearCacheOnSave', 'statusSyncInterval', 'enableCacheWarming', 'cacheWarmingQueryCount', 'cacheDeviceDetection', 'deviceDetectionCacheDuration'],
             'interface' => ['itemsPerPage', 'timeFormat', 'monthFormat', 'dateOrder', 'dateSeparator', 'showSeconds', 'defaultDateRange', 'exportsCsv', 'exportsJson', 'exportsExcel'],
             default => [],

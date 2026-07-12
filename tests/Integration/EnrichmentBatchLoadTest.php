@@ -521,9 +521,9 @@ final class EnrichmentBatchLoadTest extends TestCase
             'products-en',
             [
                 'snippetMode' => 'balanced',
-                'snippetLength' => 150,
-                'showCodeSnippets' => false,
-                'parseMarkdownSnippets' => false,
+                'snippetMaxLength' => 150,
+                'snippetIncludeCodeBlocks' => false,
+                'snippetCleanMarkdown' => false,
             ],
             $debug,
         );

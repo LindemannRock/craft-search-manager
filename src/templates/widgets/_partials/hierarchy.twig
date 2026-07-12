@@ -1,0 +1,52 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.selectField({
+	label: 'Hierarchy Display'|t('search-manager'),
+	instructions: 'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.'|t('search-manager'),
+	id: 'behavior-hierarchyDisplay',
+	name: 'settings[behavior][hierarchyDisplay]',
+	value: widgetConfig.getHierarchyDisplay(),
+	options: [
+		{value: 'individual', label: 'Individual'|t('search-manager')},
+		{value: 'unified', label: 'Unified'|t('search-manager')},
+	],
+	errors: widgetConfig.getErrors('settings.behavior.hierarchyDisplay')
+}) }}
+
+{{ forms.selectField({
+	label: 'Hierarchy Style'|t('search-manager'),
+	instructions: 'How heading children are visually connected in hierarchical results.'|t('search-manager'),
+	id: 'behavior-hierarchyStyle',
+	name: 'settings[behavior][hierarchyStyle]',
+	value: widgetConfig.getHierarchyStyle(),
+	options: [
+		{value: 'tree', label: 'Tree'|t('search-manager')},
+		{value: 'flat', label: 'Flat'|t('search-manager')},
+		{value: 'none', label: 'None'|t('search-manager')},
+	],
+	errors: widgetConfig.getErrors('settings.behavior.hierarchyStyle')
+}) }}
+
+{{ forms.textField({
+	label: 'Hierarchy Max Headings'|t('search-manager'),
+	instructions: 'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.'|t('search-manager'),
+	tip: 'Min: 1, Max: 50. Default: 3. Applies per page block.'|t('search-manager'),
+	id: 'behavior-hierarchyMaxHeadings',
+	name: 'settings[behavior][hierarchyMaxHeadings]',
+	value: widgetConfig.getHierarchyMaxHeadings(),
+	type: 'number',
+	min: 1,
+	max: 50,
+	errors: widgetConfig.getErrors('settings.behavior.hierarchyMaxHeadings')
+}) }}
+
+{{ forms.textField({
+	label: 'Group By Field'|t('search-manager'),
+	instructions: 'Document field to group hierarchical results by, such as "source", "entrySection", or "docCategory". Leave empty for the default source → entrySection → type chain.'|t('search-manager'),
+	tip: 'Max: 64 characters. Must match a public field in indexed hits.'|t('search-manager'),
+	id: 'behavior-hierarchyGroupBy',
+	name: 'settings[behavior][hierarchyGroupBy]',
+	value: widgetConfig.getHierarchyGroupBy(),
+	placeholder: 'source',
+	errors: widgetConfig.getErrors('settings.behavior.hierarchyGroupBy')
+}) }}

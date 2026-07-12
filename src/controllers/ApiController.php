@@ -48,7 +48,7 @@ class ApiController extends Controller
     /**
      * The API key authenticated for this request, or null when enforcement is
      * off. Set in {@see beforeAction()}; consumed by the action methods to scope
-     * indices and clamp hitsPerPage.
+     * indices and clamp resultsLimit.
      */
     private ?ApiKey $authenticatedKey = null;
 
@@ -99,12 +99,12 @@ class ApiController extends Controller
     /**
      * Get autocomplete suggestions and/or element results
      *
-     * GET /actions/search-manager/api/autocomplete?q=test&indices=all-sites
+     * GET /actions/search-manager/api/autocomplete?q=test&indexHandles=all-sites
      *
      * Parameters:
      * - q: Search query (required)
-     * - indices: Comma-separated index handles (optional)
-     * - hitsPerPage: Max results (default: 10)
+     * - indexHandles: Comma-separated index handles (optional)
+     * - resultsLimit: Max results (default: 10)
      * - only: Return only 'suggestions' or 'results' (optional, default returns both)
      * - type: Filter results by element type (optional, e.g., 'product', 'category')
      *
@@ -128,7 +128,7 @@ class ApiController extends Controller
             ]);
         }
 
-        $limit = (int) Craft::$app->getRequest()->getParam('hitsPerPage', 10);
+        $limit = (int) Craft::$app->getRequest()->getParam('resultsLimit', 10);
         // Clamp limit to prevent expensive queries (max 100, 0 or negative = use default)
         if ($limit <= 0) {
             $limit = 10;
@@ -164,7 +164,7 @@ class ApiController extends Controller
 
         // Parse and validate requested indices
         [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
-            Craft::$app->getRequest()->getParam('indices', ''),
+            Craft::$app->getRequest()->getParam('indexHandles', ''),
             self::MAX_INDICES_COUNT,
         );
 
@@ -333,18 +333,18 @@ class ApiController extends Controller
     /**
      * Perform search
      *
-     * GET /actions/search-manager/api/search?q=test&indices=all-sites
+     * GET /actions/search-manager/api/search?q=test&indexHandles=all-sites
      *
      * Parameters:
      * - q: Search query (required)
-     * - indices: Comma-separated index handles (optional)
-     * - hitsPerPage: Max results per page (default: 20, min: 1, max: 200)
+     * - indexHandles: Comma-separated index handles (optional)
+     * - resultsLimit: Max results per page (default: 20, min: 1, max: 200)
      * - page: Page number (0-based, default: 0)
      * - type: Filter by element type (optional, e.g., 'product', 'category', 'product,category')
      * - language: Language code for localized operators (optional, e.g., 'de', 'fr', 'es', 'ar')
      *             Supports: AND/OR/NOT in English, UND/ODER/NICHT (German), ET/OU/SAUF (French),
      *             Y/O/NO (Spanish), و/أو/ليس (Arabic). Defaults to site language.
-     * - source: Analytics source identifier (optional, e.g., 'ios-app', 'android-app')
+     * - analyticsSource: Analytics source identifier (optional, e.g., 'ios-app', 'android-app')
      * - platform: Platform info (optional, e.g., 'iOS 17.2', 'Android 14')
      * - appVersion: App version (optional, e.g., '2.1.0')
      * - skipAnalytics: Skip analytics tracking for this search (default: 0)
@@ -352,14 +352,14 @@ class ApiController extends Controller
      *
      * Snippet parameters:
      * - snippetMode: Snippet positioning mode: 'early'|'balanced'|'deep' (default: 'balanced')
-     * - snippetLength: Max snippet length in chars (default: 150, min: 50, max: 1000)
-     * - showCodeSnippets: Include code block snippets (default: 0)
-     * - parseMarkdownSnippets: Clean Markdown markers from snippet display text (default: 0)
-     * - hideResultsWithoutUrl: Exclude results that have no URL (default: 0)
+     * - snippetMaxLength: Max snippet length in chars (default: 150, min: 50, max: 1000)
+     * - snippetIncludeCodeBlocks: Include code block snippets (default: 0)
+     * - snippetCleanMarkdown: Clean Markdown markers from snippet display text (default: 0)
+     * - resultsRequireUrl: Exclude results that have no URL (default: 0)
      *
      * Response format:
      * - {hits: [{elementId, backendId, siteId, title, url, snippet, headings, fields, score, ...}, ...],
-     *   total, page, hitsPerPage, totalPages}
+     *   total, page, resultsLimit, totalPages}
      *
      * @return Response
      */
@@ -378,8 +378,8 @@ class ApiController extends Controller
             ]);
         }
 
-        // hitsPerPage: min 1, default 20, max 200
-        $limit = (int) $request->getParam('hitsPerPage', 20);
+        // resultsLimit: min 1, default 20, max 200
+        $limit = (int) $request->getParam('resultsLimit', 20);
         if ($limit < 1) {
             $limit = 20;
         }
@@ -407,7 +407,7 @@ class ApiController extends Controller
         // width and strip unexpected characters — otherwise an oversized/garbage
         // value silently truncates (non-strict MySQL) or trips a caught insert error
         // (strict MySQL/PostgreSQL), losing the analytics row and adding log noise.
-        $source = TrackingMetadataHelper::source($request->getParam('source', null));
+        $source = TrackingMetadataHelper::source($request->getParam('analyticsSource', null));
         $platform = TrackingMetadataHelper::platform($request->getParam('platform', null));
         $appVersion = TrackingMetadataHelper::appVersion($request->getParam('appVersion', null));
 
@@ -420,7 +420,7 @@ class ApiController extends Controller
 
         // Parse and validate requested indices
         [$indexHandles, $indicesProvided] = SearchIndex::resolveRequestedIndices(
-            $request->getParam('indices', ''),
+            $request->getParam('indexHandles', ''),
             self::MAX_INDICES_COUNT,
         );
 
@@ -524,24 +524,24 @@ class ApiController extends Controller
         // Canonical REST mode: enrich is ignored and every request uses the same
         // indexed-hit response path. Keep backend meta only for the existing
         // widget/debug toolbar contract.
-        if (!(bool) $request->getParam('debug', false) || !SearchDebugAccessHelper::canExposeDebugMeta()) {
+        if (!(bool) $request->getParam('debugEnabled', false) || !SearchDebugAccessHelper::canExposeDebugMeta()) {
             unset($results['meta']);
         }
 
         if (!empty($results['hits'])) {
             $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $searchedIndexHandles, [
                 'snippetMode' => (string) $request->getParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE),
-                'snippetLength' => (int) $request->getParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH),
-                'showCodeSnippets' => (bool) $request->getParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE),
-                'parseMarkdownSnippets' => (bool) $request->getParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
-                'hideResultsWithoutUrl' => (bool) $request->getParam('hideResultsWithoutUrl', false),
+                'snippetMaxLength' => (int) $request->getParam('snippetMaxLength', SnippetOptionsHelper::DEFAULT_LENGTH),
+                'snippetIncludeCodeBlocks' => (bool) $request->getParam('snippetIncludeCodeBlocks', SnippetOptionsHelper::DEFAULT_SHOW_CODE),
+                'snippetCleanMarkdown' => (bool) $request->getParam('snippetCleanMarkdown', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
+                'resultsRequireUrl' => (bool) $request->getParam('resultsRequireUrl', false),
                 'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($searchedIndexHandles, $requestedRetrievableFields),
             ]);
         }
 
         $total = (int) ($results['total'] ?? 0);
         $results['page'] = $page;
-        $results['hitsPerPage'] = $limit;
+        $results['resultsLimit'] = $limit;
         $results['totalPages'] = (int) ceil($total / $limit);
 
         $results = SearchHitPresenter::presentResults($results);

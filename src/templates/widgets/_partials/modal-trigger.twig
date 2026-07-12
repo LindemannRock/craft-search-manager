@@ -1,0 +1,50 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+	label: 'Trigger Hotkey'|t('search-manager'),
+	instructions: 'Keyboard shortcut key (used with Cmd/Ctrl, e.g., "k" for Cmd+K)'|t('search-manager'),
+	tip: 'Single character. Default: k (Cmd+K / Ctrl+K)'|t('search-manager'),
+	id: 'behavior-triggerHotkey',
+	name: 'settings[behavior][triggerHotkey]',
+	value: widgetConfig.getTriggerHotkey(),
+	size: 1,
+	maxlength: 1,
+	errors: widgetConfig.getErrors('settings.behavior.triggerHotkey')
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Prevent Body Scroll'|t('search-manager'),
+	instructions: 'Prevent the page from scrolling when the search modal is open'|t('search-manager'),
+	id: 'behavior-modalPreventBodyScroll',
+	name: 'settings[behavior][modalPreventBodyScroll]',
+	on: widgetConfig.isModalPreventBodyScrollEnabled(),
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Loading Indicator Enabled'|t('search-manager'),
+	instructions: 'Display a spinner while search results are loading'|t('search-manager'),
+	id: 'behavior-loadingIndicatorEnabled',
+	name: 'settings[behavior][loadingIndicatorEnabled]',
+	on: widgetConfig.isLoadingIndicatorEnabled(),
+}) }}
+
+{{ forms.lightswitchField({
+	label: 'Trigger Enabled'|t('search-manager'),
+	instructions: 'Display a visible search button that opens the modal'|t('search-manager'),
+	id: 'trigger-triggerEnabled',
+	name: 'settings[trigger][triggerEnabled]',
+	on: widgetConfig.isTriggerEnabled(),
+	toggle: 'trigger-label-field',
+}) }}
+
+<div id="trigger-label-field"{% if not widgetConfig.isTriggerEnabled() %} class="hidden"{% endif %}>
+	{{ forms.textField({
+		label: 'Trigger Label'|t('search-manager'),
+		instructions: 'Text displayed on the trigger button'|t('search-manager'),
+		tip: 'Max: 255 characters. Default: "Search"'|t('search-manager'),
+		id: 'trigger-triggerLabel',
+		name: 'settings[trigger][triggerLabel]',
+		value: widgetConfig.getTriggerLabel(),
+		errors: widgetConfig.getErrors('settings.trigger.triggerLabel')
+	}) }}
+</div>

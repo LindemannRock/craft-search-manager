@@ -369,10 +369,10 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'class="sm-test-indexed-label"',
             'class="sm-test-indexed-value"',
             '${renderIndexedDocumentDebug(hit)}',
-            "const snippetLengthInput = document.getElementById('snippetLength');",
-            'const snippetLength = Math.min(maxSnippetLength, Math.max(minSnippetLength, parseInt(snippetLengthInput.value, 10) || defaultSnippetLength));',
-            'snippetLengthInput.value = snippetLength;',
-            'snippetLength: snippetLength,',
+            "const snippetMaxLengthInput = document.getElementById('snippetMaxLength');",
+            'const snippetMaxLength = Math.min(maxSnippetLength, Math.max(minSnippetLength, parseInt(snippetMaxLengthInput.value, 10) || defaultSnippetLength));',
+            'snippetMaxLengthInput.value = snippetMaxLength;',
+            'snippetMaxLength: snippetMaxLength,',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }

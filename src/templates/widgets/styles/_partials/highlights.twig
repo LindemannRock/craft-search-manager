@@ -6,21 +6,21 @@
 </div>
 
 {# ========================================
-   SEARCH HIGHLIGHTING
+   RESULT HIGHLIGHTING
    ======================================== #}
-<h2>{{ "Search Highlighting"|t('search-manager') }}</h2>
+<h2>{{ "Result Highlighting"|t('search-manager') }}</h2>
 <p class="light">{{ "Configure how matching search terms are highlighted in results."|t('search-manager') }}</p>
 
 {{ forms.lightswitchField({
-	label: 'Enable Highlighting'|t('search-manager'),
+	label: 'Result Highlighting Enabled'|t('search-manager'),
 	instructions: 'Enable search term highlighting in results'|t('search-manager'),
-	id: 'styles-highlightEnabled',
-	name: namePrefix ~ '[highlightEnabled]',
-	on: styles.highlightEnabled is not same as(false) and styles.highlightEnabled not in ['0', 0, 'false', 'off', 'no'],
+	id: 'styles-highlightResultsEnabled',
+	name: namePrefix ~ '[highlightResultsEnabled]',
+	on: styles.highlightResultsEnabled is not same as(false) and styles.highlightResultsEnabled not in ['0', 0, 'false', 'off', 'no'],
 	toggle: 'styles-highlighting-options',
 }) }}
 
-<div id="styles-highlighting-options"{% if styles.highlightEnabled is same as(false) or styles.highlightEnabled in ['0', 0, 'false', 'off', 'no'] %} class="hidden"{% endif %}>
+<div id="styles-highlighting-options"{% if styles.highlightResultsEnabled is same as(false) or styles.highlightResultsEnabled in ['0', 0, 'false', 'off', 'no'] %} class="hidden"{% endif %}>
 
 	{% set highlightTagValue = styles.highlightTag ?? '' %}
 	{{ forms.selectField({

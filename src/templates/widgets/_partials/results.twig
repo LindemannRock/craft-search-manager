@@ -1,92 +1,50 @@
 {% import "_includes/forms" as forms %}
 
 {{ forms.textField({
-	label: 'Maximum Results'|t('search-manager'),
+	label: 'Results Limit'|t('search-manager'),
 	instructions: 'Maximum number of results to display'|t('search-manager'),
 	tip: 'Min: 1, Max: 100. Default: 10'|t('search-manager'),
-	id: 'behavior-maxResults',
-	name: 'settings[behavior][maxResults]',
-	value: widgetConfig.getMaxResults(),
+	id: 'behavior-resultsLimit',
+	name: 'settings[behavior][resultsLimit]',
+	value: widgetConfig.getResultsLimit(),
 	type: 'number',
 	min: 1,
 	max: 100,
-	errors: widgetConfig.getErrors('settings.behavior.maxResults')
+	errors: widgetConfig.getErrors('settings.behavior.resultsLimit')
 }) }}
 
 {{ forms.lightswitchField({
-	label: 'Hide Results Without URL'|t('search-manager'),
+	label: 'Results Require URL'|t('search-manager'),
 	instructions: 'Hide search results that do not have a URL (e.g., entries without landing pages)'|t('search-manager'),
-	id: 'behavior-hideResultsWithoutUrl',
-	name: 'settings[behavior][hideResultsWithoutUrl]',
-	on: widgetConfig.isHideResultsWithoutUrlEnabled(),
+	id: 'behavior-resultsRequireUrl',
+	name: 'settings[behavior][resultsRequireUrl]',
+	on: widgetConfig.isResultsRequireUrlEnabled(),
 }) }}
 
 <hr>
 
-{# Result Layout #}
-<h2>{{ "Result Layout"|t('search-manager') }}</h2>
-
 {{ forms.selectField({
-	label: 'Result Layout'|t('search-manager'),
+	label: 'Results Layout'|t('search-manager'),
 	instructions: 'How results are displayed. Hierarchical can group split section hits back under their page.'|t('search-manager'),
-	id: 'behavior-resultLayout',
-	name: 'settings[behavior][resultLayout]',
-	value: widgetConfig.getResultLayout(),
+	id: 'behavior-resultsLayout',
+	name: 'settings[behavior][resultsLayout]',
+	value: widgetConfig.getResultsLayout(),
 	options: [
 		{value: 'default', label: 'Default'|t('search-manager')},
 		{value: 'hierarchical', label: 'Hierarchical'|t('search-manager')},
 	],
 	toggle: true,
 	targetPrefix: 'result-layout-',
-	errors: widgetConfig.getErrors('settings.behavior.resultLayout')
+	errors: widgetConfig.getErrors('settings.behavior.resultsLayout')
 }) }}
 
-<div id="result-layout-default"{% if widgetConfig.getResultLayout() != 'default' %} class="hidden"{% endif %}>
+<div id="result-layout-default"{% if widgetConfig.getResultsLayout() != 'default' %} class="hidden"{% endif %}>
 	{{ forms.lightswitchField({
-		label: 'Group Results'|t('search-manager'),
+		label: 'Results Grouping Enabled'|t('search-manager'),
 		instructions: 'Group flat results by source, Entry section, or type.'|t('search-manager'),
-		id: 'behavior-groupResults',
-		name: 'settings[behavior][groupResults]',
-		on: widgetConfig.isGroupResultsEnabled(),
-	}) }}
-</div>
-
-<div id="result-layout-hierarchical"{% if widgetConfig.getResultLayout() != 'hierarchical' %} class="hidden"{% endif %}>
-	{{ forms.selectField({
-		label: 'Hierarchy Display'|t('search-manager'),
-		instructions: 'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.'|t('search-manager'),
-		id: 'behavior-hierarchyDisplay',
-		name: 'settings[behavior][hierarchyDisplay]',
-		value: widgetConfig.getHierarchyDisplay(),
-		options: [
-			{value: 'individual', label: 'Individual'|t('search-manager')},
-			{value: 'unified', label: 'Unified'|t('search-manager')},
-		],
-		errors: widgetConfig.getErrors('settings.behavior.hierarchyDisplay')
-	}) }}
-
-	{{ forms.textField({
-		label: 'Max Headings per Page Block'|t('search-manager'),
-		instructions: 'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.'|t('search-manager'),
-		tip: 'Min: 1, Max: 50. Default: 3. Set higher to show more heading anchors per page.'|t('search-manager'),
-		id: 'behavior-maxHeadingsPerResult',
-		name: 'settings[behavior][maxHeadingsPerResult]',
-		value: widgetConfig.getMaxHeadingsPerResult(),
-		type: 'number',
-		min: 1,
-		max: 50,
-		errors: widgetConfig.getErrors('settings.behavior.maxHeadingsPerResult')
-	}) }}
-
-	{{ forms.textField({
-		label: 'Group By Field'|t('search-manager'),
-		instructions: 'Document field to group hierarchical results by, such as "source", "entrySection", or "docCategory". Leave empty for the default source → entrySection → type chain.'|t('search-manager'),
-		tip: 'Max: 64 characters. Must match a public field in indexed hits.'|t('search-manager'),
-		id: 'behavior-hierarchyGroupBy',
-		name: 'settings[behavior][hierarchyGroupBy]',
-		value: widgetConfig.getHierarchyGroupBy(),
-		placeholder: 'source',
-		errors: widgetConfig.getErrors('settings.behavior.hierarchyGroupBy')
+		id: 'behavior-resultsGroupingEnabled',
+		name: 'settings[behavior][resultsGroupingEnabled]',
+		on: widgetConfig.isResultsGroupingEnabled(),
 	}) }}
 </div>
 
@@ -96,27 +54,27 @@
 <h2>{{ "Line Clamping"|t('search-manager') }}</h2>
 
 {{ forms.textField({
-	label: 'Result Title Lines'|t('search-manager'),
+	label: 'Results Title Lines'|t('search-manager'),
 	instructions: 'Maximum lines for result titles before truncating'|t('search-manager'),
 	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for longer titles.'|t('search-manager'),
-	id: 'behavior-resultTitleLines',
-	name: 'settings[behavior][resultTitleLines]',
-	value: widgetConfig.getResultTitleLines(),
+	id: 'behavior-resultsTitleLines',
+	name: 'settings[behavior][resultsTitleLines]',
+	value: widgetConfig.getResultsTitleLines(),
 	type: 'number',
 	min: 1,
 	max: 5,
-	errors: widgetConfig.getErrors('settings.behavior.resultTitleLines')
+	errors: widgetConfig.getErrors('settings.behavior.resultsTitleLines')
 }) }}
 
 {{ forms.textField({
-	label: 'Result Description Lines'|t('search-manager'),
+	label: 'Results Description Lines'|t('search-manager'),
 	instructions: 'Maximum lines for result descriptions before truncating'|t('search-manager'),
 	tip: 'Min: 1, Max: 5. Default: 1. Use 2-3 for richer previews.'|t('search-manager'),
-	id: 'behavior-resultDescLines',
-	name: 'settings[behavior][resultDescLines]',
-	value: widgetConfig.getResultDescLines(),
+	id: 'behavior-resultsDescriptionLines',
+	name: 'settings[behavior][resultsDescriptionLines]',
+	value: widgetConfig.getResultsDescriptionLines(),
 	type: 'number',
 	min: 1,
 	max: 5,
-	errors: widgetConfig.getErrors('settings.behavior.resultDescLines')
+	errors: widgetConfig.getErrors('settings.behavior.resultsDescriptionLines')
 }) }}

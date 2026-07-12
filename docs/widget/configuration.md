@@ -30,12 +30,12 @@ Define widget configs in `config/search-manager.php`:
                 'placeholder' => 'Search...',
             ],
             'behavior' => [
-                'maxResults' => 15,
+                'resultsLimit' => 15,
                 'debounce' => 300,
                 'minChars' => 2,
-                'showRecent' => true,
-                'maxRecentSearches' => 5,
-                'groupResults' => true,
+                'recentSearchesEnabled' => true,
+                'recentSearchesLimit' => 5,
+                'resultsGroupingEnabled' => true,
                 'hotkey' => 'k',
             ],
         ],
@@ -51,46 +51,46 @@ Override settings per-include:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {
-    config: 'homepage',
-    indices: ['blog', 'products'],
+    configHandle: 'homepage',
+    indexHandles: ['blog', 'products'],
     placeholder: 'Search articles...',
     theme: 'dark',
-    maxResults: 15,
-    debounce: 300,
-    minChars: 2,
-    showRecent: true,
-    maxRecentSearches: 5,
-    groupResults: true,
-    hotkey: 'k',
-    resultLayout: 'hierarchical',
+    resultsLimit: 15,
+    searchDebounceMs: 300,
+    searchMinChars: 2,
+    recentSearchesEnabled: true,
+    recentSearchesLimit: 5,
+    resultsGroupingEnabled: true,
+    triggerHotkey: 'k',
+    resultsLayout: 'hierarchical',
     hierarchyGroupBy: '',
     hierarchyStyle: 'tree',
     hierarchyDisplay: 'unified',
-    hideResultsWithoutUrl: false,
-    showTrigger: true,
-    triggerText: 'Search',
+    resultsRequireUrl: false,
+    triggerEnabled: true,
+    triggerLabel: 'Search',
     triggerSelector: '#my-search-btn',
 
     {# Style overrides (from style preset, can be overridden inline) #}
-    enableHighlighting: true,
+    highlightResultsEnabled: true,
     highlightTag: 'mark',
     highlightClass: 'search-highlight',
-    backdropOpacity: 50,
-    enableBackdropBlur: true,
+    modalBackdropOpacity: 50,
+    modalBackdropBlurEnabled: true,
 
-    {# Behavior settings (from widget config) #}
-    preventBodyScroll: true,
-    highlightDestinationPage: true,
-    persistQueryInUrl: true,
-    queryParamName: 'smq',
-    destinationHighlightSelector: 'main, article, [data-search-content]',
+    {# Modal behavior #}
+    modalPreventBodyScroll: true,
+    highlightDestinationEnabled: true,
+    highlightDestinationPersistQuery: true,
+    highlightDestinationQueryParam: 'smq',
+    highlightDestinationContentSelector: 'main, article, [data-search-content]',
 
     {# Analytics #}
-    source: 'header-search',
-    idleTimeout: 1500,
+    analyticsSource: 'header-search',
+    analyticsIdleTimeoutMs: 1500,
 
     {# Developer #}
-    debug: false,
+    debugEnabled: false,
 } %}
 ```
 
@@ -100,8 +100,8 @@ Override settings per-include:
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `config` | `string` | — | Widget config handle (loads settings from CP/config) |
-| `indices` | `array|string` | `[]` | Index handles to search. Use an array in Twig config or a comma-separated string on the web component; empty = all. |
+| `configHandle` | `string` | — | Widget config handle (loads settings from CP/config) |
+| `indexHandles` | `array|string` | `[]` | Index handles to search. Use an array in Twig config or a comma-separated string on the web component; empty = all. |
 | `placeholder` | `string` | `'Search...'` | Input placeholder text |
 | `theme` | `string` | `'light'` | `'light'` or `'dark'` |
 | `siteId` | `int` | — | Specific site to search |
@@ -109,64 +109,73 @@ Override settings per-include:
 | `apiKey` | `string` | — | Optional raw **public** [API key](../feature-tour/api-keys.md) value emitted into page HTML as `X-Search-Manager-Key` request material. Prefer `settings.apiKeyHandle` for saved/config references to CP-managed public keys by handle. Use `apiKey` only for render-time overrides or config-only widgets that intentionally provide the actual public key value. Never use a server key. |
 | `styles` | `object` | `{}` | Override individual [style properties](styles.md) at render time |
 
-### Behavior
+### Search Input
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `maxResults` | `int` | `10` | Maximum results to show (1-100) |
-| `debounce` | `int` | `200` | Debounce delay in ms (0-2000) |
-| `minChars` | `int` | `2` | Minimum characters before searching (1-10) |
-| `showRecent` | `bool` | `true` | Show recent search history |
-| `maxRecentSearches` | `int` | `5` | Maximum recent searches to store (1-50) |
-| `groupResults` | `bool` | `true` | Group flat results by `source`, `entrySection`, or `type` |
-| `hotkey` | `string` | `'k'` | Keyboard shortcut key |
-| `hideResultsWithoutUrl` | `bool` | `false` | Hide results without a URL |
-| `preventBodyScroll` | `bool` | `true` | Prevent body scroll when open |
-| `showLoadingIndicator` | `bool` | `true` | Show loading spinner during search |
+| `searchDebounceMs` | `int` | `200` | Debounce delay in ms (0-2000) |
+| `searchMinChars` | `int` | `2` | Minimum characters before searching (1-10) |
+| `loadingIndicatorEnabled` | `bool` | `true` | Show loading spinner during search |
 
-### Result Layout @since(5.39.0)
+### Modal & Trigger
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `resultLayout` | `string` | `'default'` | Result layout: `'default'` or `'hierarchical'` |
+| `modalPreventBodyScroll` | `bool` | `true` | Prevent body scroll when open |
+| `modalBackdropOpacity` | `int` | `50` | Backdrop opacity (0-100) |
+| `modalBackdropBlurEnabled` | `bool` | `true` | Enable backdrop blur effect |
+| `triggerEnabled` | `bool` | `true` | Show the trigger button |
+| `triggerHotkey` | `string` | `'k'` | Keyboard shortcut key |
+| `triggerLabel` | `string` | `'Search'` | Trigger button text |
+| `triggerSelector` | `string` | — | CSS selector for an external trigger element |
+
+### Recent Searches
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `recentSearchesEnabled` | `bool` | `true` | Show recent search history |
+| `recentSearchesLimit` | `int` | `5` | Maximum recent searches to store (1-50) |
+
+### Results
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `resultsLimit` | `int` | `10` | Maximum results to show (1-100) |
+| `resultsGroupingEnabled` | `bool` | `true` | Group flat results by `source`, `entrySection`, or `type` |
+| `resultsRequireUrl` | `bool` | `false` | Hide results without a URL |
+| `resultsTitleLines` | `int` | `1` | Title line clamp count (1-5) |
+| `resultsDescriptionLines` | `int` | `1` | Description line clamp count (1-5) |
+
+### Hierarchy @since(5.39.0)
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `resultsLayout` | `string` | `'default'` | Result layout: `'default'` or `'hierarchical'` |
 | `hierarchyGroupBy` | `string` | `''` | Field to group hierarchical results by. Leave empty for the default `source` → `entrySection` → `type` chain. |
 | `hierarchyStyle` | `string` | `'tree'` | Hierarchy display style: `'tree'` (indented + connectors), `'flat'` (no indentation + connectors), or `'none'` (no indentation, no connectors) |
 | `hierarchyDisplay` | `string` | `'individual'` | Card mode: `'individual'` (each parent result is its own card) or `'unified'` (page block and heading children share one card) |
-| `maxHeadingsPerResult` | `int` | `3` | Maximum heading children shown per page block (1-50). Split hits are selected by score, then displayed in document order. |
+| `hierarchyMaxHeadings` | `int` | `3` | Maximum heading children shown per page block (1-50). Split hits are selected by score, then displayed in document order. |
 
-When a searched split-capable index uses split sections, `resultLayout: 'default'` renders each section hit as its own result. `resultLayout: 'hierarchical'` groups split section hits by parent element, orders parents by their best matching section score, uses an intro hit as the parent snippet only when that intro hit is present, and renders kept heading hits as children in document order. `maxHeadingsPerResult` keeps the highest-scoring heading children before restoring document order for display.
+When a searched split-capable index uses split sections, `resultsLayout: 'default'` renders each section hit as its own result. `resultsLayout: 'hierarchical'` groups split section hits by parent element, orders parents by their best matching section score, uses an intro hit as the parent snippet only when that intro hit is present, and renders kept heading hits as children in document order. `hierarchyMaxHeadings` keeps the highest-scoring heading children before restoring document order for display.
 
 ### Snippets
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `snippetMode` | `string` | `'balanced'` | Snippet passage choice for eligible fields, page bodies, and split section bodies: `'early'`, `'balanced'`, or `'deep'` |
-| `snippetLength` | `int` | `150` | Maximum snippet length in characters for page and section snippets (50-1000) |
-| `showCodeSnippets` | `bool` | `false` | Allow snippets to use block-level code from page or section bodies; inline code text is always preserved |
-| `parseMarkdownSnippets` | `bool` | `false` | Clean Markdown markers from page and section snippet display text without changing indexed content |
-| `resultTitleLines` | `int` | `1` | Title line clamp count (1-5) |
-| `resultDescLines` | `int` | `1` | Description line clamp count (1-5) |
-
-### Trigger
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `showTrigger` | `bool` | `true` | Show the trigger button |
-| `triggerText` | `string` | `'Search'` | Trigger button text |
-| `triggerSelector` | `string` | — | CSS selector for an external trigger element |
-
-### Highlighting
+| `snippetMaxLength` | `int` | `150` | Maximum snippet length in characters for page and section snippets (50-1000) |
+| `snippetIncludeCodeBlocks` | `bool` | `false` | Allow snippets to use block-level code from page or section bodies; inline code text is always preserved |
+| `snippetCleanMarkdown` | `bool` | `false` | Clean Markdown markers from page and section snippet display text without changing indexed content |
+### Result Highlighting
 
 > [!NOTE]
-> `enableHighlighting`, `highlightTag`, `highlightClass`, `backdropOpacity`, and `enableBackdropBlur` are style-layer overrides — they come from the style preset and can be overridden inline. The destination page highlighting params below are config-layer behavior settings.
+> `highlightResultsEnabled`, `highlightTag`, and `highlightClass` are style-layer overrides — they come from the style preset and can be overridden inline. The destination page highlighting params below are config-layer behavior settings.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `enableHighlighting` | `bool` | `true` | Highlight matched terms in results |
+| `highlightResultsEnabled` | `bool` | `true` | Highlight matched terms in results |
 | `highlightTag` | `string` | `'mark'` | Highlight HTML tag |
 | `highlightClass` | `string` | — | Highlight CSS class |
-| `backdropOpacity` | `int` | `50` | Backdrop opacity (0-100) |
-| `enableBackdropBlur` | `bool` | `true` | Enable backdrop blur effect |
 
 The widget uses `highlightTag` and `highlightClass` client-side for titles and snippets. Search responses return plain snippet text; the widget applies highlighting while rendering.
 
@@ -174,23 +183,23 @@ The widget uses `highlightTag` and `highlightClass` client-side for titles and s
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `highlightDestinationPage` | `bool` | `true` | Highlight search terms on the destination page after navigating from a result |
-| `persistQueryInUrl` | `bool` | `true` | Append the search query to the destination URL so the page knows what to highlight |
-| `queryParamName` | `string` | `'smq'` | URL parameter name for the persisted search query |
-| `destinationHighlightSelector` | `string` | `'main, article, [data-search-content]'` | CSS selector for page content areas to scan for highlighting |
+| `highlightDestinationEnabled` | `bool` | `true` | Highlight search terms on the destination page after navigating from a result |
+| `highlightDestinationPersistQuery` | `bool` | `true` | Append the search query to the destination URL so the page knows what to highlight |
+| `highlightDestinationQueryParam` | `string` | `'smq'` | URL parameter name for the persisted search query |
+| `highlightDestinationContentSelector` | `string` | `'main, article, [data-search-content]'` | CSS selector for page content areas to scan for highlighting |
 
 ### Analytics
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `source` | `string` | — | Custom analytics source identifier |
-| `idleTimeout` | `int` | `1500` | Track search after idle (ms), 0 to disable |
+| `analyticsSource` | `string` | — | Custom analytics source identifier |
+| `analyticsIdleTimeoutMs` | `int` | `1500` | Track search after idle (ms), 0 to disable |
 
 ### Developer
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `debug` | `bool` | `false` | Enable debug toolbar overlay. Requires `devMode` or `searchManager:viewDebug` permission. |
+| `debugEnabled` | `bool` | `false` | Enable debug toolbar overlay. Requires `devMode` or `searchManager:viewDebug` permission. |
 
 ## External Trigger
 
@@ -202,7 +211,7 @@ Connect any element on your page to open the search modal:
 </button>
 
 {% include 'search-manager/_widget/search-modal' with {
-    showTrigger: false,
+    triggerEnabled: false,
     triggerSelector: '#my-search-btn',
 } %}
 ```
@@ -222,13 +231,16 @@ If the default widget is deleted, another enabled widget is automatically assign
 
 ## CP Widget Management
 
-Widget configurations can be managed at Search Manager > Widgets. Each config has six tabs:
+Widget configurations can be managed at Search Manager > Widgets. Each config uses these sections:
 
 - **General** — name, handle, search indices
-- **Behavior** — placeholder, debounce, min chars, hotkey, scroll lock, loading indicator, recent searches, trigger button
-- **Results** — max results, hide no-URL results, result layout (default/hierarchical), hierarchy options, line clamping
+- **Search Input** — placeholder, debounce, minimum characters, loading indicator
+- **Modal & Trigger** — hotkey, trigger button, scroll lock, backdrop behavior
+- **Recent Searches** — recent-search history and limit
+- **Results** — result limit, grouping, URL requirement, line clamping
+- **Hierarchy** — result layout, grouping field, hierarchy style, heading limit
 - **Snippets** — block-code snippets, snippet mode, snippet length, Markdown marker cleanup
-- **Highlights** — destination page highlighting, persist query in URL, query param name, content selector
+- **Destination Highlighting** — destination-page highlight toggle, persisted query, query param, content selector
 - **Analytics** — source identifier, idle timeout
 
-Visual appearance is controlled via the **Widget Style** selector in the sidebar, not a dedicated tab.
+Visual appearance and result highlighting are controlled via the **Widget Style** selector in the sidebar, not a dedicated tab.
