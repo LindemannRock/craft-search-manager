@@ -16,6 +16,7 @@ use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
+use lindemannrock\searchmanager\helpers\SearchHeadingHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\transformers\AutoTransformer;
@@ -245,6 +246,7 @@ class IndicesController extends Controller
         return $this->renderTemplate('search-manager/indices/edit', [
             'index' => $index,
             'isNew' => !$indexId,
+            'defaultHeadingLevels' => SearchHeadingHelper::DEFAULT_LEVELS,
             'elementTypeOptions' => $this->getElementTypeOptions(),
             'docsManagerTransformerAvailable' => $this->isDocsManagerTransformerAvailable(),
             'defaultTransformerPlaceholder' => $this->getDefaultTransformerPlaceholder(),
@@ -408,8 +410,7 @@ class IndicesController extends Controller
         $index->transformerClass = $request->getBodyParam('transformerClass');
         $headingLevelsParam = $request->getBodyParam('headingLevels');
         if (is_array($headingLevelsParam)) {
-            $levels = array_values(array_unique(array_filter(array_map('intval', $headingLevelsParam), fn($level) => $level >= 1 && $level <= 6)));
-            $index->headingLevels = $levels ?: null;
+            $index->headingLevels = SearchHeadingHelper::normalizeLevels($headingLevelsParam);
         } else {
             $index->headingLevels = null;
         }

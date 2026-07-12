@@ -47,9 +47,9 @@ Choose one of these extension models:
 
 | Model | Use When | Notes |
 |-------|----------|-------|
-| Extend `BaseTransformer` | You want full control over the indexed document | Recommended for most custom transformers. Includes common identity fields, stable `type` / `elementType` defaults, optional hierarchy/path metadata helpers, HTML stripping, excerpts, `_contentClean` finalization, and heading-level support. |
+| Extend `BaseTransformer` | You want full control over the indexed document | Recommended for most custom transformers. Includes common identity fields, stable `type` / `elementType` defaults, optional hierarchy/path metadata helpers, HTML stripping, prose-only body helpers, excerpts, and heading-level support. |
 | Extend `AutoTransformer` | You want automatic extraction plus a few project fields | Call `parent::transform($element)` and then add, remove, or normalize fields. This keeps Search Manager's automatic field, relation, rich text, and heading extraction. |
-| Implement `TransformerInterface` directly | You need a minimal advanced transformer | Supported, but Base helpers, `_contentClean` finalization, and heading-level behavior are not automatic unless you implement them yourself. |
+| Implement `TransformerInterface` directly | You need a minimal advanced transformer | Supported, but Base helpers, prose-only body handling, and heading-level behavior are not automatic unless you implement them yourself. |
 
 The `supports(ElementInterface $element)` method is required by `TransformerInterface`, but it is not used as a safety gate for an index-specific configured transformer override. If an index points at your class, Search Manager uses that class for that index. Choose the class carefully and keep one transformer focused on the element type it is assigned to.
 
@@ -59,7 +59,7 @@ The extension path controls how much Search Manager does for you:
 
 - **`BaseTransformer`** is for a full custom document shape. You decide which fields become searchable, so the indexed content can be much narrower than Search Manager's automatic documents. Starting with `$this->getCommonData($element)` gives you identity fields plus stable `type` and `elementType` values.
 - **`AutoTransformer`** is for automatic extraction plus project-specific additions. Start with `parent::transform($element)`, then add fields such as brand, availability, or catalog metadata.
-- **`TransformerInterface` directly** is an advanced/minimal path. It passes validation when the class is autoloadable and zero-argument constructible, but it does not receive BaseTransformer helpers, stable document-kind defaults, `_contentClean` finalization, or heading-level behavior unless you implement those pieces yourself.
+- **`TransformerInterface` directly** is an advanced/minimal path. It passes validation when the class is autoloadable and zero-argument constructible, but it does not receive BaseTransformer helpers, stable document-kind defaults, prose-only body handling, or heading-level behavior unless you implement those pieces yourself.
 - **`CommerceTransformer`** is built-in Commerce integration code. Product and Variant indices use it automatically when the transformer is blank. If you need a different Commerce document shape, prefer `BaseTransformer`, `AutoTransformer`, or `EVENT_AFTER_TRANSFORM`; extend `CommerceTransformer` only when you intentionally want to post-process its internal Commerce metadata output.
 
 Split Sections follows the same transformer-family boundary. An index can split rich-text sections when its resolved transformer is `AutoTransformer` or a subclass, including project-level subclasses such as `modules\search\transformers\ProductTransformer`. The section slicer uses the automatic searchable rich-text field sources, keeps non-section prose on the intro record, and keeps fields from crossing into each other. Transformers that extend `BaseTransformer` directly keep full control over their document shape, but they do not opt into automatic rich-text section slicing.

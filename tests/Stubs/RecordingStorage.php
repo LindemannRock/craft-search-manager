@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Stubs;
 
+use lindemannrock\searchmanager\search\storage\ElementSuggestionStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 
 /**
@@ -24,7 +25,7 @@ use lindemannrock\searchmanager\search\storage\StorageInterface;
  *
  * @since 5.47.0
  */
-final class RecordingStorage implements StorageInterface
+final class RecordingStorage implements StorageInterface, ElementSuggestionStorageInterface
 {
     /** @var int Times getTitleTerms() (per-document) was called. */
     public int $getTitleTermsCalls = 0;
@@ -269,6 +270,37 @@ final class RecordingStorage implements StorageInterface
         }
 
         return $out;
+    }
+
+    public function getElementSuggestions(string $query, ?int $siteId, int $limit = 10, ?string $elementType = null): array
+    {
+        $normalizedQuery = mb_strtolower(trim($query));
+        $suggestions = [];
+
+        foreach ($this->elementsById as $elementId => $element) {
+            $title = (string)($element['title'] ?? '');
+            $type = (string)($element['elementType'] ?? $element['type'] ?? 'entry');
+            if ($elementType !== null && $type !== $elementType) {
+                continue;
+            }
+
+            if ($siteId !== null && isset($element['siteId']) && (int)$element['siteId'] !== $siteId) {
+                continue;
+            }
+
+            if ($normalizedQuery !== '' && !str_starts_with(mb_strtolower($title), $normalizedQuery)) {
+                continue;
+            }
+
+            $suggestions[] = [
+                'title' => $title,
+                'elementType' => $type,
+                'elementId' => (int)$elementId,
+                'siteId' => $element['siteId'] ?? $siteId,
+            ];
+        }
+
+        return array_slice($suggestions, 0, $limit);
     }
 
     public function termHasNgrams(string $term, int $siteId): bool

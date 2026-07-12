@@ -348,7 +348,6 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('description', $hit);
         self::assertArrayNotHasKey('_bodyClean', $hit);
         self::assertArrayNotHasKey('_bodyWithCode', $hit);
-        self::assertArrayNotHasKey('_contentClean', $hit);
         self::assertArrayNotHasKey('_sectionBodyWithCode', $hit);
         self::assertArrayNotHasKey('_elementType', $hit);
         self::assertArrayHasKey('snippet', $hit);
@@ -1515,7 +1514,6 @@ final class SearchHitFieldsContractTest extends TestCase
         self::assertArrayNotHasKey('_matchedHeadings', $hit);
         self::assertArrayNotHasKey('_bodyClean', $hit);
         self::assertArrayNotHasKey('_bodyWithCode', $hit);
-        self::assertArrayNotHasKey('_contentClean', $hit);
         self::assertArrayNotHasKey('_sectionBodyWithCode', $hit);
         self::assertArrayNotHasKey('_elementType', $hit);
         self::assertArrayNotHasKey('intro', $hit);
@@ -1578,25 +1576,27 @@ final class SearchHitFieldsContractTest extends TestCase
         $settings = $this->readPluginFile('src/controllers/SettingsController.php');
 
         foreach ([
-            "'snippetMode' => (string) \$request->getBodyParam('snippetMode', 'balanced')",
-            "'snippetLength' => (int) \$request->getBodyParam('snippetLength', 150)",
-            "'showCodeSnippets' => (bool) \$request->getBodyParam('showCodeSnippets', false)",
-            "'parseMarkdownSnippets' => (bool) \$request->getBodyParam('parseMarkdownSnippets', false)",
+            "'snippetMode' => (string) \$request->getBodyParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE)",
+            "'snippetLength' => (int) \$request->getBodyParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH)",
+            "'showCodeSnippets' => (bool) \$request->getBodyParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE)",
+            "'parseMarkdownSnippets' => (bool) \$request->getBodyParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN)",
         ] as $needle) {
             self::assertStringContainsString($needle, $settings);
         }
 
         foreach ([
-            "'snippetMode' => (string) \$request->getParam('snippetMode', 'balanced')",
-            "'snippetLength' => (int) \$request->getParam('snippetLength', 150)",
-            "'showCodeSnippets' => (bool) \$request->getParam('showCodeSnippets', false)",
-            "'parseMarkdownSnippets' => (bool) \$request->getParam('parseMarkdownSnippets', false)",
+            "'snippetMode' => (string) \$request->getParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE)",
+            "'snippetLength' => (int) \$request->getParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH)",
+            "'showCodeSnippets' => (bool) \$request->getParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE)",
+            "'parseMarkdownSnippets' => (bool) \$request->getParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN)",
         ] as $needle) {
             self::assertStringContainsString($needle, $api);
         }
 
         self::assertStringContainsString('CanonicalHitPipeline::presentHits', $api);
         self::assertStringContainsString('CanonicalHitPipeline::presentHits', $settings);
+        self::assertStringContainsString('use lindemannrock\\searchmanager\\helpers\\SnippetOptionsHelper;', $api);
+        self::assertStringContainsString('use lindemannrock\\searchmanager\\helpers\\SnippetOptionsHelper;', $settings);
         self::assertStringNotContainsString("getBodyParam('snippetLength', 200)", $settings);
     }
 
@@ -1629,7 +1629,6 @@ final class SearchHitFieldsContractTest extends TestCase
             'excerpt' => 'Internal excerpt must be stripped',
             '_bodyClean' => 'Internal clean body must be stripped',
             '_bodyWithCode' => 'Internal code body must be stripped',
-            '_contentClean' => 'Internal clean content must be stripped',
             '_sectionBodyWithCode' => 'Internal section code body must be stripped',
             '_headings' => [
                 [

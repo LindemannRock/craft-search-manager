@@ -88,6 +88,10 @@
             const enableLiveComparison = document.getElementById('enableLiveComparison');
             const autocompleteMinLength = config.autocompleteMinLength || 2;
             const indexSiteIds = config.indexSiteIds || {};
+            const snippetOptions = config.snippetOptions || {};
+            const minSnippetLength = Number.isFinite(Number(snippetOptions.minSnippetLength)) ? Number(snippetOptions.minSnippetLength) : 50;
+            const maxSnippetLength = Number.isFinite(Number(snippetOptions.maxSnippetLength)) ? Number(snippetOptions.maxSnippetLength) : 1000;
+            const defaultSnippetLength = Number.isFinite(Number(snippetOptions.snippetLength)) ? Number(snippetOptions.snippetLength) : 150;
             let autocompleteTimer;
             let autocompleteTerms = [];
             let lastSearchData = null;
@@ -694,7 +698,7 @@
                 updateSectionVisibility();
 
                 const snippetLengthInput = document.getElementById('snippetLength');
-                const snippetLength = Math.min(1000, Math.max(50, parseInt(snippetLengthInput.value, 10) || 150));
+                const snippetLength = Math.min(maxSnippetLength, Math.max(minSnippetLength, parseInt(snippetLengthInput.value, 10) || defaultSnippetLength));
                 snippetLengthInput.value = snippetLength;
 
                 Promise.all([

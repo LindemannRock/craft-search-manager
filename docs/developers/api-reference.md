@@ -306,6 +306,8 @@ $promoted = SearchManager::$plugin->promotions->getPromotedElements('craft cms',
 
 ### `save(promotion)` / `delete(promotion)`
 
+Use these service methods for promotion writes; successful saves and deletes clear Search Manager's search-result cache.
+
 ```php
 $promotion = new Promotion();
 $promotion->query = 'craft cms';
@@ -364,6 +366,8 @@ $expanded = SearchManager::$plugin->queryRules->expandWithSynonyms('laptop');
 ```
 
 ### `save(rule)` / `delete(rule)`
+
+Use these service methods for query-rule writes; successful saves and deletes clear Search Manager's search-result cache.
 
 ```php
 $rule = new QueryRule();

@@ -34,7 +34,7 @@ class SplitSectionDocumentHelper
         }
 
         $resolvedTransformer = SearchManager::$plugin->transformers->resolveTransformerClass($element, $index->transformerClass);
-        $headingLevels = $index->headingLevels ?? [2, 3, 4];
+        $headingLevels = SearchHeadingHelper::normalizeLevels($index->headingLevels ?? null);
 
         if (
             is_a($element, self::SOURCE_DOC_ELEMENT_TYPE)

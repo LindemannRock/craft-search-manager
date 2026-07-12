@@ -13,6 +13,7 @@ use craft\base\Model;
 use craft\helpers\Json;
 use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
+use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
 
@@ -87,12 +88,12 @@ class WidgetConfig extends Model
                 'resultLayout' => 'default',
                 'hierarchyGroupBy' => '',
                 'hierarchyDisplay' => 'individual',
-                'showCodeSnippets' => false,
-                'snippetMode' => 'balanced',
+                'showCodeSnippets' => SnippetOptionsHelper::DEFAULT_SHOW_CODE,
+                'snippetMode' => SnippetOptionsHelper::DEFAULT_MODE,
                 'resultTitleLines' => 1,
                 'resultDescLines' => 1,
-                'snippetLength' => 150,
-                'parseMarkdownSnippets' => false,
+                'snippetLength' => SnippetOptionsHelper::DEFAULT_LENGTH,
+                'parseMarkdownSnippets' => SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
                 'showLoadingIndicator' => true,
                 'highlightDestinationPage' => true,
                 'persistQueryInUrl' => true,
@@ -326,7 +327,7 @@ class WidgetConfig extends Model
      */
     public function isShowCodeSnippetsEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.showCodeSnippets', false);
+        return $this->getBooleanSetting('behavior.showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE);
     }
 
     /**
@@ -336,9 +337,7 @@ class WidgetConfig extends Model
      */
     public function getSnippetMode(): string
     {
-        $mode = (string) $this->getSetting('behavior.snippetMode', 'balanced');
-        $mode = strtolower(trim($mode));
-        return in_array($mode, ['early', 'balanced', 'deep'], true) ? $mode : 'balanced';
+        return SnippetOptionsHelper::normalizeMode($this->getSetting('behavior.snippetMode', SnippetOptionsHelper::DEFAULT_MODE));
     }
 
     /**
@@ -368,7 +367,7 @@ class WidgetConfig extends Model
      */
     public function getSnippetLength(): int
     {
-        return (int) $this->getSetting('behavior.snippetLength', 150);
+        return SnippetOptionsHelper::normalizeLength($this->getSetting('behavior.snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH));
     }
 
     /**
@@ -378,7 +377,16 @@ class WidgetConfig extends Model
      */
     public function isParseMarkdownSnippetsEnabled(): bool
     {
-        return $this->getBooleanSetting('behavior.parseMarkdownSnippets', false);
+        return $this->getBooleanSetting('behavior.parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN);
+    }
+
+    /**
+     * @return array{showCodeSnippets: bool, snippetMode: string, snippetLength: int, parseMarkdownSnippets: bool, minSnippetLength: int, maxSnippetLength: int, snippetModes: list<string>}
+     * @since 5.53.0
+     */
+    public function getSnippetDefaults(): array
+    {
+        return SnippetOptionsHelper::widgetDefaults();
     }
 
     public function isShowLoadingIndicatorEnabled(): bool
@@ -698,12 +706,12 @@ class WidgetConfig extends Model
         }
         $this->validateIntField($s, 'behavior', 'resultTitleLines', Craft::t('search-manager', 'Result Title Lines'), 1, 5);
         $this->validateIntField($s, 'behavior', 'resultDescLines', Craft::t('search-manager', 'Result Description Lines'), 1, 5);
-        $this->validateIntField($s, 'behavior', 'snippetLength', Craft::t('search-manager', 'Snippet Length'), 50, 500);
+        $this->validateIntField($s, 'behavior', 'snippetLength', Craft::t('search-manager', 'Snippet Length'), SnippetOptionsHelper::MIN_LENGTH, SnippetOptionsHelper::MAX_LENGTH);
 
         // Behavior settings — enums
         $this->validateEnumField($s, 'behavior', 'resultLayout', Craft::t('search-manager', 'Result Layout'), ['default', 'hierarchical']);
         $this->validateEnumField($s, 'behavior', 'hierarchyDisplay', Craft::t('search-manager', 'Hierarchy Display'), ['individual', 'unified']);
-        $this->validateEnumField($s, 'behavior', 'snippetMode', Craft::t('search-manager', 'Snippet Mode'), ['early', 'balanced', 'deep']);
+        $this->validateEnumField($s, 'behavior', 'snippetMode', Craft::t('search-manager', 'Snippet Mode'), SnippetOptionsHelper::MODES);
 
         // Behavior settings — booleans
         $this->validateBooleanField($s, 'behavior', 'preventBodyScroll', Craft::t('search-manager', 'Prevent Body Scroll'));

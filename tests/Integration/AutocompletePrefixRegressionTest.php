@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\Stubs\RecordingStorage;
@@ -176,7 +177,7 @@ final class AutocompletePrefixBackendService extends BackendService
     }
 }
 
-final class AutocompletePrefixBackend implements BackendInterface
+final class AutocompletePrefixBackend implements BackendInterface, StorageBackedBackendInterface
 {
     public function __construct(private readonly RecordingStorage $storage)
     {

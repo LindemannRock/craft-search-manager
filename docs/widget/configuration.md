@@ -155,7 +155,7 @@ When a searched split-capable index uses split sections, `resultLayout: 'default
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `snippetMode` | `string` | `'balanced'` | Snippet extraction: `'early'`, `'balanced'`, or `'deep'` |
-| `snippetLength` | `int` | `150` | Maximum snippet length in characters (50-500) |
+| `snippetLength` | `int` | `150` | Maximum snippet length in characters (50-1000) |
 | `showCodeSnippets` | `bool` | `false` | Include block-level code in result snippets; inline code text is always preserved |
 | `parseMarkdownSnippets` | `bool` | `false` | Clean Markdown markers from snippet display text without changing indexed content |
 | `resultTitleLines` | `int` | `1` | Title line clamp count (1-5) |

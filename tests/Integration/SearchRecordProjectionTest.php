@@ -131,20 +131,19 @@ final class SearchRecordProjectionTest extends TestCase
 
     public function testProviderMatchingAndProjectionConfigurationIsExplicit(): void
     {
+        self::assertSame(['title', 'content', '_bodyClean', 'url'], SearchRecordProjectionHelper::providerSearchableAttributes());
+        self::assertSame('title,content,_bodyClean,url', SearchRecordProjectionHelper::typesenseQueryBy());
+        self::assertSame('5,3,1,1', SearchRecordProjectionHelper::typesenseQueryByWeights());
         self::assertStringContainsString(
-            "['title', 'content', '_bodyClean', 'url']",
+            'SearchRecordProjectionHelper::providerSearchableAttributes()',
             $this->readPluginSource('src/backends/AlgoliaBackend.php'),
         );
         self::assertStringContainsString(
-            "['title', 'content', '_bodyClean', 'url']",
+            'SearchRecordProjectionHelper::providerSearchableAttributes()',
             $this->readPluginSource('src/backends/MeilisearchBackend.php'),
         );
         self::assertStringContainsString(
-            "'query_by' => 'title,content,_bodyClean,url'",
-            $this->readPluginSource('src/backends/TypesenseBackend.php'),
-        );
-        self::assertStringContainsString(
-            "'query_by_weights' => '5,3,1,1'",
+            'SearchRecordProjectionHelper::typesenseQueryBy()',
             $this->readPluginSource('src/backends/TypesenseBackend.php'),
         );
     }

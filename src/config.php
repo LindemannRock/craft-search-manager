@@ -724,7 +724,7 @@ return [
          *       'balanced' (best density), 'deep' (exhaustive scan) (default: 'balanced')
          *     - resultTitleLines: Max lines for result title, 1-5 (default: 1)
          *     - resultDescLines: Max lines for result description, 1-5 (default: 1)
-         *     - snippetLength: Snippet length in characters, 50-500 (default: 150)
+         *     - snippetLength: Snippet length in characters, 50-1000 (default: 150)
          *     - parseMarkdownSnippets: Clean Markdown markers from snippet display text (default: false)
          *     - highlightDestinationPage: Highlight search terms on destination page after
          *       navigating from a result (default: true)

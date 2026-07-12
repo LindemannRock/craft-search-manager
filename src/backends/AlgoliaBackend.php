@@ -14,6 +14,7 @@ use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 
 /**
@@ -24,7 +25,7 @@ use lindemannrock\searchmanager\models\SearchIndex;
  *
  * @since 5.0.0
  */
-class AlgoliaBackend extends BaseBackend
+class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
 {
     /**
      * Search Manager options that must not be forwarded to Algolia.
@@ -765,7 +766,7 @@ class AlgoliaBackend extends BaseBackend
             // Required filterable attributes for Search Manager
             // Using filterOnly() to allow filtering without facet counts
             $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementId)', 'filterOnly(elementType)', 'filterOnly(type)'];
-            $requiredSearchable = ['title', 'content', '_bodyClean', 'url'];
+            $requiredSearchable = SearchRecordProjectionHelper::providerSearchableAttributes();
 
             // Check if already configured (normalize for comparison)
             $normalizedCurrent = array_map(fn($f) => str_replace('filterOnly(', '', str_replace(')', '', $f)), $currentFacets);

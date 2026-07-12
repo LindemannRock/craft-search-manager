@@ -119,6 +119,7 @@
 {% set resultDescLines = resultDescLines ?? widgetConfig.getResultDescLines() %}
 {% set snippetLength = snippetLength ?? widgetConfig.getSnippetLength() %}
 {% set parseMarkdownSnippets = parseMarkdownSnippets ?? widgetConfig.isParseMarkdownSnippetsEnabled() %}
+{% set snippetDefaults = widgetConfig.getSnippetDefaults() %}
 
 {# Merged styles already resolved above (resolvedStyles) #}
 {% set mergedStyles = resolvedStyles %}
@@ -143,6 +144,7 @@
     hide-results-without-url="{{ _self.toBool(hideResultsWithoutUrl, widgetConfig.isHideResultsWithoutUrlEnabled()) }}"
     show-code-snippets="{{ _self.toBool(showCodeSnippets, widgetConfig.isShowCodeSnippetsEnabled()) }}"
     snippet-mode="{{ snippetMode }}"
+    snippet-defaults="{{ snippetDefaults|json_encode|e('html_attr') }}"
     persist-query-in-url="{{ _self.toBool(persistQueryInUrl, true) }}"
     query-param-name="{{ queryParamName|e('html_attr') }}"
     highlight-destination-page="{{ _self.toBool(highlightDestinationPage, true) }}"

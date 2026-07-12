@@ -22,7 +22,7 @@ use yii\db\Expression;
  *
  * @since 5.0.0
  */
-class PostgreSqlStorage implements DocumentKeyStorageInterface
+class PostgreSqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStorageInterface
 {
     use LoggingTrait;
 
@@ -76,7 +76,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
 
     public function storeDocumentByKey(int $siteId, int $elementId, string $documentKey, array $termFreqs, int $docLength, string $language = 'en'): void
     {
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         // Store term frequencies
         $values = [];
@@ -114,20 +114,11 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             $language,
         ];
 
-        $columns = $hasDocumentKey
-            ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'term', 'frequency', 'language']
-            : ['indexHandle', 'siteId', 'elementId', 'term', 'frequency', 'language'];
-        if (!$hasDocumentKey) {
-            $values = array_map(static fn(array $row): array => [$row[0], $row[1], $row[2], $row[4], $row[5], $row[6]], $values);
-        }
-
         $this->upsertRows(
             '{{%searchmanager_search_documents}}',
-            $columns,
+            ['indexHandle', 'siteId', 'elementId', 'documentKey', 'term', 'frequency', 'language'],
             $values,
-            $hasDocumentKey
-                ? ['indexHandle', 'siteId', 'documentKey', 'term']
-                : ['indexHandle', 'siteId', 'elementId', 'term'],
+            ['indexHandle', 'siteId', 'documentKey', 'term'],
             ['frequency', 'language'],
         );
 
@@ -193,9 +184,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            return $this->getDocumentLanguagesBatch($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'language'])
@@ -226,15 +215,13 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
 
     public function getDocumentTermsByKey(int $siteId, string $documentKey): array
     {
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
+
         $where = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            $where['documentKey'] = $documentKey;
-        } else {
-            $where['elementId'] = (int)$documentKey;
-        }
 
         $rows = (new Query())
             ->select(['term', 'frequency'])
@@ -287,9 +274,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            return $this->getDocumentTermsBatch($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'term', 'frequency'])
@@ -331,15 +316,13 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
         ];
 
         foreach ($tables as $table) {
+            $this->requireDocumentKeyColumn($table);
+
             $condition = [
                 'indexHandle' => $this->indexHandle,
                 'siteId' => $siteId,
+                'documentKey' => $documentKey,
             ];
-            if ($this->hasColumn($table, 'documentKey')) {
-                $condition['documentKey'] = $documentKey;
-            } else {
-                $condition['elementId'] = (int)$documentKey;
-            }
 
             $this->db->createCommand()->delete(
                 $table,
@@ -363,16 +346,14 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
 
     public function getDocumentLengthByKey(int $siteId, string $documentKey): int
     {
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
+
         $where = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
             'term' => '_length',
         ];
-        if ($this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            $where['documentKey'] = $documentKey;
-        } else {
-            $where['elementId'] = (int)$documentKey;
-        }
 
         $result = (new Query())
             ->select(['frequency'])
@@ -389,22 +370,22 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
     public function getDocumentLengthsBatch(array $docIds): array
     {
         $lengths = [];
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         foreach ($docIds as $siteId => $documentIds) {
             $rows = (new Query())
-                ->select($hasDocumentKey ? ['siteId', 'documentKey', 'frequency'] : ['siteId', 'elementId', 'frequency'])
+                ->select(['siteId', 'documentKey', 'frequency'])
                 ->from('{{%searchmanager_search_documents}}')
                 ->where([
                     'indexHandle' => $this->indexHandle,
                     'siteId' => $siteId,
-                    $hasDocumentKey ? 'documentKey' : 'elementId' => $documentIds,
+                    'documentKey' => $documentIds,
                     'term' => '_length',
                 ])
                 ->all();
 
             foreach ($rows as $row) {
-                $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
+                $docId = $row['siteId'] . ':' . $row['documentKey'];
                 $lengths[$docId] = (int)$row['frequency'];
             }
         }
@@ -431,12 +412,11 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             'term' => $term,
             'siteId' => $siteId,
             'elementId' => $elementId,
+            'documentKey' => $documentKey,
             'frequency' => $frequency,
             'language' => $language,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')) {
-            $values['documentKey'] = $documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_terms}}');
 
         // Upsert avoids duplicate-key failures when collation-equivalent terms collide.
         $this->db->createCommand()->upsert(
@@ -458,9 +438,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
     public function getTermDocuments(string $term, int $siteId): array
     {
         $rows = (new Query())
-            ->select($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')
-                ? ['siteId', 'documentKey', 'frequency']
-                : ['siteId', 'elementId', 'frequency'])
+            ->select(['siteId', 'documentKey', 'frequency'])
             ->from('{{%searchmanager_search_terms}}')
             ->where([
                 'indexHandle' => $this->indexHandle,
@@ -471,7 +449,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
 
         $docs = [];
         foreach ($rows as $row) {
-            $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
+            $docId = $row['siteId'] . ':' . $row['documentKey'];
             $docs[$docId] = (int)$row['frequency'];
         }
 
@@ -488,9 +466,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
         }
 
         $rows = (new Query())
-            ->select($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')
-                ? ['term', 'siteId', 'documentKey', 'frequency']
-                : ['term', 'siteId', 'elementId', 'frequency'])
+            ->select(['term', 'siteId', 'documentKey', 'frequency'])
             ->from('{{%searchmanager_search_terms}}')
             ->where([
                 'indexHandle' => $this->indexHandle,
@@ -501,7 +477,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
 
         $byTerm = [];
         foreach ($rows as $row) {
-            $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
+            $docId = $row['siteId'] . ':' . $row['documentKey'];
             $byTerm[$row['term']][$docId] = (int)$row['frequency'];
         }
 
@@ -522,12 +498,9 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             'indexHandle' => $this->indexHandle,
             'term' => $term,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')) {
-            $condition['documentKey'] = $documentKey;
-        } else {
-            $condition['elementId'] = (int)$documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_terms}}');
 
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_terms}}',
@@ -615,26 +588,22 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
     {
         // Normalize searchText for prefix matching (lowercase)
         $searchText = mb_strtolower(trim($title));
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_elements}}');
 
         $this->upsertRows(
             '{{%searchmanager_search_elements}}',
-            $hasDocumentKey
-                ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'title', 'elementType', 'searchText', 'documentData']
-                : ['indexHandle', 'siteId', 'elementId', 'title', 'elementType', 'searchText', 'documentData'],
+            ['indexHandle', 'siteId', 'elementId', 'documentKey', 'title', 'elementType', 'searchText', 'documentData'],
             [[
                 $this->indexHandle,
                 $siteId,
                 $elementId,
-                ...($hasDocumentKey ? [$documentKey] : []),
+                $documentKey,
                 $title,
                 $elementType,
                 $searchText,
                 $documentData,
             ]],
-            $hasDocumentKey
-                ? ['indexHandle', 'siteId', 'documentKey']
-                : ['indexHandle', 'siteId', 'elementId'],
+            ['indexHandle', 'siteId', 'documentKey'],
             ['title', 'elementType', 'searchText', 'documentData'],
         );
 
@@ -705,9 +674,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey')) {
-            return $this->getElementsByIds($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_elements}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'elementId', 'title', 'elementType', 'documentData'])
@@ -784,18 +751,14 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
         }
 
         $rows = [];
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_titles}}');
         foreach ($titleTerms as $term) {
-            $rows[] = $hasDocumentKey
-                ? [$this->indexHandle, $siteId, $elementId, $documentKey, $term]
-                : [$this->indexHandle, $siteId, $elementId, $term];
+            $rows[] = [$this->indexHandle, $siteId, $elementId, $documentKey, $term];
         }
 
         $this->insertRowsOnConflictDoNothing(
             '{{%searchmanager_search_titles}}',
-            $hasDocumentKey
-                ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'term']
-                : ['indexHandle', 'siteId', 'elementId', 'term'],
+            ['indexHandle', 'siteId', 'elementId', 'documentKey', 'term'],
             $rows,
         );
 
@@ -855,9 +818,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey')) {
-            return $this->getTitleTermsBatch($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_titles}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'term'])
@@ -890,12 +851,9 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
         $condition = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey')) {
-            $condition['documentKey'] = $documentKey;
-        } else {
-            $condition['elementId'] = (int)$documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_titles}}');
 
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_titles}}',
@@ -1069,17 +1027,15 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
             return;
         }
 
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_compounds}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_compounds}}');
         $rows = [];
         foreach ($suggestions as $suggestion) {
             $row = [
                 $this->indexHandle,
                 $siteId,
                 $elementId,
+                $documentKey,
             ];
-            if ($hasDocumentKey) {
-                $row[] = $documentKey;
-            }
             $rows[] = array_merge($row, [
                 (string)$suggestion['suggestion'],
                 (string)$suggestion['normalizedSuggestion'],
@@ -1091,13 +1047,9 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
 
         $this->upsertRows(
             '{{%searchmanager_search_compounds}}',
-            $hasDocumentKey
-                ? ['indexHandle', 'siteId', 'elementId', 'documentKey', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language']
-                : ['indexHandle', 'siteId', 'elementId', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
+            ['indexHandle', 'siteId', 'elementId', 'documentKey', 'suggestion', 'normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
             $rows,
-            $hasDocumentKey
-                ? ['indexHandle', 'siteId', 'documentKey', 'suggestion']
-                : ['indexHandle', 'siteId', 'elementId', 'suggestion'],
+            ['indexHandle', 'siteId', 'documentKey', 'suggestion'],
             ['normalizedSuggestion', 'tokenKey', 'frequency', 'language'],
         );
     }
@@ -1105,6 +1057,18 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
     private function pageDocumentKey(int $siteId, int $elementId): string
     {
         return SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+    }
+
+    private function requireDocumentKeyColumn(string $table): void
+    {
+        if ($this->hasColumn($table, 'documentKey')) {
+            return;
+        }
+
+        throw new \RuntimeException(sprintf(
+            'Search Manager storage table %s is missing documentKey. Reinstall Search Manager or run the documented ALTER for the current Install.php schema.',
+            $table,
+        ));
     }
 
     private function hasColumn(string $table, string $column): bool
@@ -1133,12 +1097,9 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
         $condition = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_compounds}}', 'documentKey')) {
-            $condition['documentKey'] = $documentKey;
-        } else {
-            $condition['elementId'] = (int)$documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_compounds}}');
 
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_compounds}}',
@@ -1151,9 +1112,7 @@ class PostgreSqlStorage implements DocumentKeyStorageInterface
      */
     public function getDocumentKeysByParent(int $siteId, int $elementId): array
     {
-        if (!$this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey')) {
-            return [$this->pageDocumentKey($siteId, $elementId)];
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_elements}}');
 
         return array_map('strval', (new Query())
             ->select(['documentKey'])

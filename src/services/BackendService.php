@@ -12,6 +12,7 @@ use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\backends\AlgoliaBackend;
+use lindemannrock\searchmanager\backends\BaseBackend;
 use lindemannrock\searchmanager\backends\FileBackend;
 use lindemannrock\searchmanager\backends\MeilisearchBackend;
 use lindemannrock\searchmanager\backends\MySqlBackend;
@@ -346,13 +347,11 @@ class BackendService extends Component
     public function getLastIndexingFailures(string $indexName): array
     {
         $backend = $this->getBackendForIndex($indexName);
-        if ($backend === null || !method_exists($backend, 'getLastIndexingFailures')) {
+        if (!$backend instanceof BaseBackend) {
             return [];
         }
 
-        $failures = $backend->getLastIndexingFailures();
-
-        return is_array($failures) ? $failures : [];
+        return $backend->getLastIndexingFailures();
     }
 
     /**

@@ -272,8 +272,8 @@ class TransformerService extends Component
             return null;
         }
 
-        // Configure heading levels if the transformer supports it
-        if ($headingLevels !== null && method_exists($transformer, 'setHeadingLevels')) {
+        // Configure heading levels for BaseTransformer-family transformers.
+        if ($headingLevels !== null && $transformer instanceof BaseTransformer) {
             $transformer->setHeadingLevels($headingLevels);
         }
 
@@ -295,13 +295,6 @@ class TransformerService extends Component
 
         try {
             $data = $transformer->transform($element);
-
-            // Finalize _contentClean (prose-only content for showCodeSnippets support).
-            // BaseTransformer accumulates code-free text during stripHtml() calls —
-            // this builds _contentClean automatically for all transformers.
-            if ($transformer instanceof BaseTransformer) {
-                $data = $transformer->finalizeContentClean($data);
-            }
         } catch (\Throwable $e) {
             $this->logError('Failed to transform element', [
                 'elementId' => $element->id,

@@ -8,8 +8,10 @@
 
 namespace lindemannrock\searchmanager\services;
 
+use lindemannrock\searchmanager\helpers\SearchContentCleaner;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHeadingValueHelper;
+use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\StopWords;
 use lindemannrock\searchmanager\search\Tokenizer;
@@ -40,8 +42,8 @@ class IndexedSnippetService extends Component
         array $options = [],
         ?array &$debugMeta = null,
     ): array {
-        $snippetMode = $this->resolveSnippetMode((string)($options['snippetMode'] ?? 'balanced'));
-        $snippetLength = $this->resolveSnippetLength((int)($options['snippetLength'] ?? 150));
+        $snippetMode = SnippetOptionsHelper::normalizeMode($options['snippetMode'] ?? SnippetOptionsHelper::DEFAULT_MODE);
+        $snippetLength = SnippetOptionsHelper::normalizeLength($options['snippetLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH);
         $showCodeSnippets = (bool)($options['showCodeSnippets'] ?? false);
         $parseMarkdownSnippets = (bool)($options['parseMarkdownSnippets'] ?? false);
         $matchedTerms = is_array($hit['matchedTerms'] ?? null) ? $hit['matchedTerms'] : null;
@@ -613,83 +615,26 @@ class IndexedSnippetService extends Component
         $html = (string) preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
 
         if (!$includeCode) {
-            $html = $this->removeMarkdownFencedCode($html);
+            $html = SearchContentCleaner::removeMarkdownFencedCode($html);
             $html = (string) preg_replace('/<pre\b[^>]*>.*?<\/pre>/is', ' ', $html);
         } elseif ($parseMarkdownSnippets) {
-            $html = $this->unwrapMarkdownFencedCode($html);
-            $html = $this->addBlockBoundaries($html);
+            $html = SearchContentCleaner::unwrapMarkdownFencedCode($html);
+            $html = SearchContentCleaner::addBlockBoundaries($html);
         }
 
         $html = $this->normalizeInlineCodeHtml($html);
         $shouldCleanMarkdown = $parseMarkdownSnippets && !$this->containsStructuralHtml($html);
-        $text = strip_tags($this->addBlockBoundaries($html));
+        $text = strip_tags(SearchContentCleaner::addBlockBoundaries($html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-        $text = $shouldCleanMarkdown ? $this->stripMarkdownSnippetMarkers($text) : $text;
+        $text = $shouldCleanMarkdown ? SearchContentCleaner::cleanMarkdownPlainText($text, SearchContentCleaner::MARKDOWN_CODE_UNWRAP) : $text;
         $text = (string) preg_replace('/\s+/', ' ', $text);
 
         return trim($text);
     }
 
-    private function removeMarkdownFencedCode(string $text): string
-    {
-        $text = (string) preg_replace('/```[A-Za-z0-9_-]*\s*.*?```/s', ' ', $text);
-
-        return (string) preg_replace('/~~~[A-Za-z0-9_-]*\s*.*?~~~/s', ' ', $text);
-    }
-
-    private function unwrapMarkdownFencedCode(string $text): string
-    {
-        $text = (string) preg_replace('/```[A-Za-z0-9_-]*\s*(.*?)```/s', ' $1 ', $text);
-
-        return (string) preg_replace('/~~~[A-Za-z0-9_-]*\s*(.*?)~~~/s', ' $1 ', $text);
-    }
-
     private function normalizeInlineCodeHtml(string $html): string
     {
         return (string) preg_replace('/<\/?code\b[^>]*>/i', '', $html);
-    }
-
-    private function stripMarkdownSnippetMarkers(string $text): string
-    {
-        $text = $this->unwrapInlineMarkdownCode($text);
-        $text = $this->removeMarkdownHorizontalRules($text);
-        $text = (string) preg_replace('/(^|\s)#{1,6}\s+/', '$1', $text);
-        $text = $this->stripPairedMarkdownMarkers($text, '\*\*');
-        $text = $this->stripPairedMarkdownMarkers($text, '__');
-        $text = $this->stripPairedMarkdownMarkers($text, '\*');
-        $text = $this->stripPairedMarkdownMarkers($text, '_');
-        $text = (string) preg_replace('/(^|\s)(?:-|\d+\))\s+(?=\S)/', '$1', $text);
-
-        return (string) preg_replace('/\s+/', ' ', $text);
-    }
-
-    private function unwrapInlineMarkdownCode(string $text): string
-    {
-        return (string) preg_replace('/`{1,2}([^`\s][^`]*?[^`\s])`{1,2}/', '$1', $text);
-    }
-
-    private function removeMarkdownHorizontalRules(string $text): string
-    {
-        return (string) preg_replace('/(^|\s)(?:-{3,}|\*{3,}|_{3,})(?=\s|$)/', '$1', $text);
-    }
-
-    private function stripPairedMarkdownMarkers(string $text, string $markerPattern): string
-    {
-        $pattern = '/(?<![\pL\pN])' . $markerPattern . '(\S(?:.*?\S)?)' . $markerPattern . '(?![\pL\pN])/u';
-
-        do {
-            $previous = $text;
-            $text = (string) preg_replace($pattern, '$1', $text);
-        } while ($text !== $previous);
-
-        return $text;
-    }
-
-    private function addBlockBoundaries(string $html): string
-    {
-        $html = (string) preg_replace('/<br\s*\/?>/i', ' ', $html);
-
-        return (string) preg_replace('/<\/(?:h[1-6]|p|div|li|td|th|blockquote|section|article|button)>/i', ' ', $html);
     }
 
     private function containsStructuralHtml(string $text): bool
@@ -810,27 +755,6 @@ class IndexedSnippetService extends Component
         }
 
         return [$start, $end];
-    }
-
-    private function resolveSnippetMode(string $mode): string
-    {
-        $mode = strtolower(trim($mode));
-        $allowed = ['early', 'balanced', 'deep'];
-
-        return in_array($mode, $allowed, true) ? $mode : 'balanced';
-    }
-
-    private function resolveSnippetLength(int $length): int
-    {
-        if ($length < 50) {
-            return 50;
-        }
-
-        if ($length > 1000) {
-            return 1000;
-        }
-
-        return $length;
     }
 
     private function stringValueFromMixed(mixed $value): string

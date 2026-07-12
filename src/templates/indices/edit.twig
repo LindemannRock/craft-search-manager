@@ -298,7 +298,7 @@
         { label: 'H5', value: 5 },
         { label: 'H6', value: 6 },
     ] %}
-    {% set selectedHeadingLevels = index.headingLevels ?? [2, 3, 4] %}
+    {% set selectedHeadingLevels = index.headingLevels ?? defaultHeadingLevels %}
 
     {{ forms.checkboxGroupField({
         label: "Heading Levels"|t('search-manager'),

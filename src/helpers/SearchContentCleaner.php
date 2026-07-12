@@ -9,21 +9,57 @@
 namespace lindemannrock\searchmanager\helpers;
 
 /**
- * Cleans indexed HTML content and tracks prose-only text for _contentClean.
+ * Cleans indexed HTML and Markdown content before it reaches search records.
  *
  * @since 5.53.0
  */
 class SearchContentCleaner
 {
-    /**
-     * @var string[]
-     */
-    private array $codeFreeParts = [];
+    public const MARKDOWN_CODE_REMOVE = 'remove-code';
+    public const MARKDOWN_CODE_UNWRAP = 'unwrap-code';
 
     /**
-     * @var string[]
+     * Add plain-text spacing around block boundaries before tag stripping.
+     *
+     * @since 5.53.0
      */
-    private array $fullParts = [];
+    public static function addBlockBoundaries(string $html): string
+    {
+        $html = (string)preg_replace('/<br\s*\/?>/i', ' ', $html);
+
+        return (string)preg_replace('/<\/(?:h[1-6]|p|div|li|td|th|blockquote|section|article|button)>/i', ' ', $html);
+    }
+
+    public static function removeMarkdownFencedCode(string $text): string
+    {
+        $text = (string)preg_replace('/```[A-Za-z0-9_-]*\s*.*?```/s', ' ', $text);
+
+        return (string)preg_replace('/~~~[A-Za-z0-9_-]*\s*.*?~~~/s', ' ', $text);
+    }
+
+    public static function unwrapMarkdownFencedCode(string $text): string
+    {
+        $text = (string)preg_replace('/```[A-Za-z0-9_-]*\s*(.*?)```/s', ' $1 ', $text);
+
+        return (string)preg_replace('/~~~[A-Za-z0-9_-]*\s*(.*?)~~~/s', ' $1 ', $text);
+    }
+
+    public static function cleanMarkdownPlainText(string $text, string $codeMode = self::MARKDOWN_CODE_REMOVE): string
+    {
+        $text = $codeMode === self::MARKDOWN_CODE_UNWRAP
+            ? self::unwrapMarkdownFencedCode($text)
+            : self::removeMarkdownFencedCode($text);
+        $text = self::unwrapInlineMarkdownCode($text);
+        $text = self::removeMarkdownHorizontalRules($text);
+        $text = (string)preg_replace('/(^|\s)#{1,6}\s+/', '$1', $text);
+        $text = self::stripPairedMarkdownMarkers($text, '\*\*');
+        $text = self::stripPairedMarkdownMarkers($text, '__');
+        $text = self::stripPairedMarkdownMarkers($text, '\*');
+        $text = self::stripPairedMarkdownMarkers($text, '_');
+        $text = (string)preg_replace('/(^|\s)(?:-|\d+\))\s+(?=\S)/', '$1', $text);
+
+        return (string)preg_replace('/\s+/', ' ', $text);
+    }
 
     public function stripHtml(?string $html): string
     {
@@ -31,18 +67,11 @@ class SearchContentCleaner
             return '';
         }
 
-        $text = strip_tags($this->addBlockBoundaries($html));
+        $text = strip_tags(self::addBlockBoundaries($html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = preg_replace('/\s+/', ' ', $text);
 
-        $result = trim((string)$text);
-
-        if (stripos($html, '<pre') !== false) {
-            $this->codeFreeParts[] = $this->stripHtmlWithoutCode($html);
-            $this->fullParts[] = $result;
-        }
-
-        return $result;
+        return trim((string)$text);
     }
 
     public function stripHtmlWithoutCode(?string $html): string
@@ -52,7 +81,7 @@ class SearchContentCleaner
         }
 
         $text = (string)preg_replace('/<pre[^>]*>.*?<\/pre>/is', ' ', $html);
-        $text = strip_tags($this->addBlockBoundaries($text));
+        $text = strip_tags(self::addBlockBoundaries($text));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = (string)preg_replace('/\s+/', ' ', $text);
 
@@ -68,7 +97,7 @@ class SearchContentCleaner
         $html = (string)preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
         $html = (string)preg_replace('/<pre\b[^>]*>.*?<\/pre>/is', ' ', $html);
         $html = (string)preg_replace('/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $html);
-        $text = strip_tags($this->addBlockBoundaries($html));
+        $text = strip_tags(self::addBlockBoundaries($html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = (string)preg_replace('/\s+/', ' ', $text);
 
@@ -89,46 +118,32 @@ class SearchContentCleaner
         $html = (string)preg_replace('/<(script|style)\b[^>]*>.*?<\/\1>/is', ' ', $html);
         $html = (string)preg_replace('/<h[1-6]\b[^>]*>.*?<\/h[1-6]>/is', ' ', $html);
         $html = (string)preg_replace('/<\/pre>/i', '</pre> ', $html);
-        $text = strip_tags($this->addBlockBoundaries($html));
+        $text = strip_tags(self::addBlockBoundaries($html));
         $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $text = (string)preg_replace('/\s+/', ' ', $text);
 
         return trim($text);
     }
 
-    /**
-     * @param array<string, mixed> $data
-     * @return array<string, mixed>
-     */
-    public function finalize(array $data): array
+    private static function unwrapInlineMarkdownCode(string $text): string
     {
-        if (!empty($this->codeFreeParts)) {
-            $cleanContent = implode(' ', $this->codeFreeParts);
-            $cleanContent = trim((string)preg_replace('/\s+/', ' ', $cleanContent));
-
-            $fullContent = implode(' ', $this->fullParts);
-            $fullContent = trim((string)preg_replace('/\s+/', ' ', $fullContent));
-
-            if (!empty($cleanContent) && $cleanContent !== $fullContent) {
-                $data['_contentClean'] = $cleanContent;
-            }
-        }
-
-        $this->reset();
-
-        return $data;
+        return (string)preg_replace('/`{1,2}([^`\s][^`]*?[^`\s])`{1,2}/', '$1', $text);
     }
 
-    public function reset(): void
+    private static function removeMarkdownHorizontalRules(string $text): string
     {
-        $this->codeFreeParts = [];
-        $this->fullParts = [];
+        return (string)preg_replace('/(^|\s)(?:-{3,}|\*{3,}|_{3,})(?=\s|$)/', '$1', $text);
     }
 
-    private function addBlockBoundaries(string $html): string
+    private static function stripPairedMarkdownMarkers(string $text, string $markerPattern): string
     {
-        $html = (string)preg_replace('/<br\s*\/?>/i', ' ', $html);
+        $pattern = '/(?<![\pL\pN])' . $markerPattern . '(\S(?:.*?\S)?)' . $markerPattern . '(?![\pL\pN])/u';
 
-        return (string)preg_replace('/<\/(?:h[1-6]|p|div|li|td|th|blockquote|section|article|button)>/i', ' ', $html);
+        do {
+            $previous = $text;
+            $text = (string)preg_replace($pattern, '$1', $text);
+        } while ($text !== $previous);
+
+        return $text;
     }
 }

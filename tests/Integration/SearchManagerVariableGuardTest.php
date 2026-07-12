@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\services\AutocompleteService;
 use lindemannrock\searchmanager\tests\TestCase;
@@ -235,7 +236,7 @@ final class SearchManagerVariableRecordingAutocompleteService extends Autocomple
     }
 }
 
-final class SearchManagerVariableRecordingBackend implements BackendInterface
+final class SearchManagerVariableRecordingBackend implements BackendInterface, AutocompleteBackendInterface
 {
     /** @var list<array{method: string, indexName: string, items?: array<int, array<string, mixed>>}> */
     public array $calls = [];

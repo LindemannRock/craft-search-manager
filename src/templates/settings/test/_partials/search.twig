@@ -126,7 +126,7 @@
                 </div>
                 <div>
                     <label for="snippetLength" class="sm-test-number-label">{{ "Snippet Length (50–1000 chars)"|t('search-manager') }}</label>
-                    <input type="number" id="snippetLength" class="text fullwidth sm-test-number-input" value="150" min="50" max="1000" step="50">
+                    <input type="number" id="snippetLength" class="text fullwidth sm-test-number-input" value="{{ snippetOptions.snippetLength }}" min="{{ snippetOptions.minSnippetLength }}" max="{{ snippetOptions.maxSnippetLength }}" step="50">
                 </div>
             </div>
             <div class="sm-test-enrich-options">
@@ -207,6 +207,7 @@ window.lrSearchManagerTestToolInit({
     csrfToken: {{ craft.app.request.csrfToken|json_encode|raw }},
     autocompleteMinLength: {{ settings.autocompleteMinLength ?? 2 }},
     indexSiteIds: {{ indexSiteIds|json_encode|raw }},
+    snippetOptions: {{ snippetOptions|json_encode|raw }},
     urls: {
         clearTestCache: {{ actionUrl('search-manager/settings/clear-test-cache')|json_encode|raw }},
         clearAutocompleteCache: {{ actionUrl('search-manager/utilities/clear-autocomplete-cache')|json_encode|raw }},

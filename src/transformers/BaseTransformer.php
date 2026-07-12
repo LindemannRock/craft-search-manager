@@ -31,7 +31,7 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     /**
      * @var array<int> Heading levels to extract (default: H2-H4)
      */
-    protected array $headingLevels = [2, 3, 4];
+    protected array $headingLevels = SearchHeadingHelper::DEFAULT_LEVELS;
 
     private ?SearchContentCleaner $contentCleaner = null;
 
@@ -42,19 +42,7 @@ abstract class BaseTransformer extends Component implements TransformerInterface
      */
     public function setHeadingLevels(?array $levels): void
     {
-        if ($levels === null) {
-            return;
-        }
-
-        $normalized = array_values(array_unique(array_filter(
-            array_map('intval', $levels),
-            fn($level) => $level >= 1 && $level <= 6
-        )));
-
-        if (!empty($normalized)) {
-            sort($normalized);
-            $this->headingLevels = $normalized;
-        }
+        $this->headingLevels = SearchHeadingHelper::normalizeLevels($levels, $this->headingLevels);
     }
 
     /**
@@ -64,7 +52,7 @@ abstract class BaseTransformer extends Component implements TransformerInterface
      */
     protected function getHeadingLevels(): array
     {
-        return !empty($this->headingLevels) ? $this->headingLevels : [2, 3, 4];
+        return SearchHeadingHelper::normalizeLevels($this->headingLevels);
     }
 
     protected function contentCleaner(): SearchContentCleaner
@@ -134,11 +122,6 @@ abstract class BaseTransformer extends Component implements TransformerInterface
         return SearchElementHierarchyHelper::metadata($element);
     }
 
-    protected function elementTitle(ElementInterface $element): string
-    {
-        return SearchDocumentDataHelper::title($element);
-    }
-
     protected function resolveDocumentType(ElementInterface $element): string
     {
         return SearchDocumentDataHelper::documentType($element);
@@ -153,37 +136,6 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     protected function stripHtml(?string $html): string
     {
         return $this->contentCleaner()->stripHtml($html);
-    }
-
-    /**
-     * Strip HTML tags and clean text, removing code blocks entirely
-     *
-     * Unlike stripHtml() which keeps text content from code blocks,
-     * this removes <pre> blocks and their contents before stripping tags,
-     * producing prose-only text for snippets when showCodeSnippets is false.
-     *
-     * @param string|null $html Raw HTML content
-     * @return string Plain text without code block content
-     */
-    protected function stripHtmlWithoutCode(?string $html): string
-    {
-        return $this->contentCleaner()->stripHtmlWithoutCode($html);
-    }
-
-    /**
-     * Finalize _contentClean on transformer output
-     *
-     * Called automatically by TransformerService after transform().
-     * Builds _contentClean from prose-only text accumulated during stripHtml() calls.
-     * Only sets _contentClean when it meaningfully differs from content
-     * (i.e. the source HTML actually contained code blocks).
-     *
-     * @param array $data Transformer output
-     * @return array Data with _contentClean added if applicable
-     */
-    public function finalizeContentClean(array $data): array
-    {
-        return $this->contentCleaner()->finalize($data);
     }
 
     /**
@@ -215,17 +167,6 @@ abstract class BaseTransformer extends Component implements TransformerInterface
     protected function extractHeadings(string $content): array
     {
         return SearchHeadingHelper::extract($content, $this->getHeadingLevels());
-    }
-
-    /**
-     * Generate a URL-safe heading ID from text
-     *
-     * @param string $text Heading text
-     * @return string URL-safe ID
-     */
-    protected function generateHeadingId(string $text): string
-    {
-        return SearchHeadingHelper::headingId($text);
     }
 
     // =========================================================================

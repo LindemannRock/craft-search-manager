@@ -12,6 +12,7 @@ use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use Meilisearch\Client;
 use Meilisearch\Contracts\DocumentsQuery;
@@ -25,7 +26,7 @@ use Meilisearch\Contracts\SearchQuery;
  *
  * @since 5.0.0
  */
-class MeilisearchBackend extends BaseBackend
+class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInterface
 {
     private ?Client $_adminClient = null;
     private ?Client $_searchClient = null;
@@ -860,7 +861,7 @@ class MeilisearchBackend extends BaseBackend
 
             // Required filterable attributes for Search Manager
             $requiredFilterable = ['siteId', 'elementId', 'elementType', 'type'];
-            $requiredSearchable = ['title', 'content', '_bodyClean', 'url'];
+            $requiredSearchable = SearchRecordProjectionHelper::providerSearchableAttributes();
 
             // Check if already configured
             $missingAttributes = array_diff($requiredFilterable, $currentFilterable);

@@ -23,6 +23,7 @@ use lindemannrock\searchmanager\helpers\CommerceElementTypeHelper;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchFieldValueHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\helpers\TargetElementTypeHelper;
 use lindemannrock\searchmanager\models\QueryRule;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -201,6 +202,7 @@ class SettingsController extends Controller
             'settings' => $settings,
             'cacheEnabled' => $settings->enableCache ?? true,
             'backends' => $backends,
+            'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
         ]);
     }
 
@@ -283,10 +285,10 @@ class SettingsController extends Controller
                 : [];
 
             $enhancedHits = CanonicalHitPipeline::presentHits($results['hits'] ?? [], $originalQuery, [$indexHandle], [
-                'snippetMode' => (string) $request->getBodyParam('snippetMode', 'balanced'),
-                'snippetLength' => (int) $request->getBodyParam('snippetLength', 150),
-                'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', false),
-                'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', false),
+                'snippetMode' => (string) $request->getBodyParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE),
+                'snippetLength' => (int) $request->getBodyParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH),
+                'showCodeSnippets' => (bool) $request->getBodyParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE),
+                'parseMarkdownSnippets' => (bool) $request->getBodyParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
                 'hideResultsWithoutUrl' => (bool) $request->getBodyParam('hideResultsWithoutUrl', false),
                 'includeSnippetDebug' => $includeDebugMeta,
                 'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex([$indexHandle]),

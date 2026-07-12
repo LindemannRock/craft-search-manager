@@ -44,10 +44,10 @@ class CanonicalHitPipeline
                 $query,
                 $hitIndex,
                 [
-                    'snippetMode' => $options['snippetMode'] ?? 'balanced',
-                    'snippetLength' => $options['snippetLength'] ?? 150,
-                    'showCodeSnippets' => $options['showCodeSnippets'] ?? false,
-                    'parseMarkdownSnippets' => $options['parseMarkdownSnippets'] ?? false,
+                    'snippetMode' => $options['snippetMode'] ?? SnippetOptionsHelper::DEFAULT_MODE,
+                    'snippetLength' => $options['snippetLength'] ?? SnippetOptionsHelper::DEFAULT_LENGTH,
+                    'showCodeSnippets' => $options['showCodeSnippets'] ?? SnippetOptionsHelper::DEFAULT_SHOW_CODE,
+                    'parseMarkdownSnippets' => $options['parseMarkdownSnippets'] ?? SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
                     'title' => is_string($hit['title'] ?? null) ? $hit['title'] : '',
                     'url' => is_string($hit['url'] ?? null) ? $hit['url'] : '',
                     'documentType' => is_string($hit['type'] ?? null)

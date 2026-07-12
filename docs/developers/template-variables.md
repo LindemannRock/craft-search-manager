@@ -221,7 +221,7 @@ List all indices available in the backend.
 
 ### `withBackend(backendHandle)` @since(5.28.0)
 
-Get a proxy for a specific configured backend. All methods above are available on the proxy, plus:
+Get a proxy for a specific configured backend. The proxy supports `search()`, `suggest()`, `browse()`, `multipleQueries()`, `parseFilters()`, `listIndices()`, `supportsBrowse()`, `supportsMultipleQueries()`, `getName()`, `isAvailable()`, plus:
 
 - `getBackendHandle()` — returns the configured backend handle
 - `getBackend()` — returns the underlying `BackendInterface` instance

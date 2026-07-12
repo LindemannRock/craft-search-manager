@@ -89,7 +89,12 @@ class PromotionService extends Component
      */
     public function save(Promotion $promotion): bool
     {
-        return $promotion->save();
+        $saved = $promotion->save();
+        if ($saved) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
+        }
+
+        return $saved;
     }
 
     /**
@@ -98,7 +103,12 @@ class PromotionService extends Component
      */
     public function delete(Promotion $promotion): bool
     {
-        return $promotion->delete();
+        $deleted = $promotion->delete();
+        if ($deleted) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
+        }
+
+        return $deleted;
     }
 
     /**

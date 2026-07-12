@@ -157,6 +157,19 @@ final class MySqlStorageMetadataTest extends TestCase
         self::assertSame(25, $storage->getTotalLength(1));
     }
 
+    public function testMySqlStorageRequiresDocumentKeySchemaWithoutElementIdFallback(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/MySqlStorage.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString('requireDocumentKeyColumn', $source);
+        self::assertStringContainsString('Reinstall Search Manager or run the documented ALTER', $source);
+        self::assertStringNotContainsString('$hasDocumentKey', $source);
+        self::assertStringNotContainsString('array_map(\'intval\', $documentKeys)', $source);
+        self::assertDoesNotMatchRegularExpression('/hasColumn\([^)]*documentKey[^)]*\)\s*\{/', $source);
+        self::assertDoesNotMatchRegularExpression('/hasColumn\([^)]*documentKey[^)]*\)\s*\?/', $source);
+    }
+
     private function deleteRowsForIndex(): void
     {
         $tables = [
@@ -167,6 +180,7 @@ final class MySqlStorageMetadataTest extends TestCase
             '{{%searchmanager_search_ngram_counts}}',
             '{{%searchmanager_search_metadata}}',
             '{{%searchmanager_search_elements}}',
+            '{{%searchmanager_search_compounds}}',
         ];
 
         foreach ($tables as $table) {

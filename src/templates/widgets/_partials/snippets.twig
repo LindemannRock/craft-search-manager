@@ -26,13 +26,13 @@
 {{ forms.textField({
 	label: 'Snippet Length'|t('search-manager'),
 	instructions: 'Maximum character length for result description snippets'|t('search-manager'),
-	tip: 'Min: 50, Max: 500 characters. Default: 150. Longer snippets show more context but use more space.'|t('search-manager'),
+	tip: 'Min: 50, Max: 1000 characters. Default: 150. Longer snippets show more context but use more space.'|t('search-manager'),
 	id: 'behavior-snippetLength',
 	name: 'settings[behavior][snippetLength]',
 	value: widgetConfig.getSnippetLength(),
 	type: 'number',
-	min: 50,
-	max: 500,
+	min: snippetOptions.minSnippetLength,
+	max: snippetOptions.maxSnippetLength,
 	errors: widgetConfig.getErrors('settings.behavior.snippetLength')
 }) }}
 

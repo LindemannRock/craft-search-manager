@@ -16,10 +16,16 @@ namespace lindemannrock\searchmanager\helpers;
 class SearchHeadingHelper
 {
     /**
+     * @var array<int>
+     * @since 5.53.0
+     */
+    public const DEFAULT_LEVELS = [2, 3, 4];
+
+    /**
      * @param array<int>|null $levels
      * @return array<int>
      */
-    public static function normalizeLevels(?array $levels, array $default = [2, 3, 4]): array
+    public static function normalizeLevels(?array $levels, array $default = self::DEFAULT_LEVELS): array
     {
         if ($levels === null) {
             return $default;
@@ -166,12 +172,8 @@ class SearchHeadingHelper
         $endOffset = $nextOffset ?? strlen($content);
         $between = substr($content, $afterOffset, $endOffset - $afterOffset);
 
-        $between = (string)preg_replace('/```[\s\S]*?```/', '', $between);
+        $between = SearchContentCleaner::cleanMarkdownPlainText($between, SearchContentCleaner::MARKDOWN_CODE_REMOVE);
         $between = (string)preg_replace('/\[([^\]]+)\]\([^)]+\)/', '$1', $between);
-        $between = (string)preg_replace('/[*_]{1,2}([^*_]+)[*_]{1,2}/', '$1', $between);
-        $between = (string)preg_replace('/`([^`]+)`/', '$1', $between);
-        $between = (string)preg_replace('/^\s*[-*+]\s+/m', '', $between);
-        $between = (string)preg_replace('/^\s*\d+\.\s+/m', '', $between);
 
         $lines = array_filter(array_map('trim', explode("\n", $between)));
         $description = implode(' ', array_slice($lines, 0, 2));

@@ -28,7 +28,7 @@
  * @param {AbortSignal} options.signal - AbortController signal
  * @returns {Promise<SearchResponse>} - Search response with results and meta
  */
-export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = 'balanced', snippetLength = 150, parseMarkdownSnippets = false, debug = false, apiKey = '', signal }) {
+export async function performSearch({ query, endpoint, indices = [], siteId = '', maxResults = 10, hideResultsWithoutUrl = false, showCodeSnippets = false, snippetMode = '', snippetLength = 0, parseMarkdownSnippets = false, debug = false, apiKey = '', signal }) {
     const params = new URLSearchParams({
         q: query,
         hitsPerPage: maxResults.toString(),
@@ -51,11 +51,11 @@ export async function performSearch({ query, endpoint, indices = [], siteId = ''
         params.append('showCodeSnippets', '1');
     }
 
-    if (snippetMode && snippetMode !== 'balanced') {
+    if (snippetMode) {
         params.append('snippetMode', snippetMode);
     }
 
-    if (snippetLength && snippetLength !== 150) {
+    if (snippetLength) {
         params.append('snippetLength', String(snippetLength));
     }
 

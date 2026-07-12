@@ -288,7 +288,26 @@ export function getSingleConfiguredIndex(config) {
  * console.log(config.resultsPerPage); // 20
  */
 export function parseConfig(element, widgetType = 'modal') {
-    const defaults = getDefaultsForType(widgetType);
+    const emittedSnippetDefaults = parseJson(element.getAttribute('snippet-defaults'), {});
+    const defaults = {
+        ...getDefaultsForType(widgetType),
+        ...Object.fromEntries(
+            Object.entries(emittedSnippetDefaults).filter(([key]) => [
+                'showCodeSnippets',
+                'snippetMode',
+                'snippetLength',
+                'parseMarkdownSnippets',
+                'minSnippetLength',
+                'maxSnippetLength',
+                'snippetModes',
+            ].includes(key)),
+        ),
+    };
+    const snippetModes = Array.isArray(defaults.snippetModes) ? defaults.snippetModes : ['early', 'balanced', 'deep'];
+    const snippetMin = Number.isFinite(Number(defaults.minSnippetLength)) ? Number(defaults.minSnippetLength) : 50;
+    const snippetMax = Number.isFinite(Number(defaults.maxSnippetLength)) ? Number(defaults.maxSnippetLength) : 1000;
+    const snippetLength = Math.min(snippetMax, Math.max(snippetMin, parseInt(element.getAttribute('snippet-length'), defaults.snippetLength)));
+    const snippetMode = element.getAttribute('snippet-mode') || defaults.snippetMode;
 
     // Parse indices
     const indicesAttr = element.getAttribute('indices') || '';
@@ -330,8 +349,8 @@ export function parseConfig(element, widgetType = 'modal') {
         hideResultsWithoutUrl: parseBoolean(element.getAttribute('hide-results-without-url'), defaults.hideResultsWithoutUrl),
         showCodeSnippets: parseBoolean(element.getAttribute('show-code-snippets'), defaults.showCodeSnippets),
         debug: parseBoolean(element.getAttribute('debug'), defaults.debug),
-        snippetMode: element.getAttribute('snippet-mode') || defaults.snippetMode,
-        snippetLength: parseInt(element.getAttribute('snippet-length'), defaults.snippetLength),
+        snippetMode: snippetModes.includes(snippetMode) ? snippetMode : defaults.snippetMode,
+        snippetLength,
         parseMarkdownSnippets: parseBoolean(element.getAttribute('parse-markdown-snippets'), defaults.parseMarkdownSnippets),
         persistQueryInUrl: parseBoolean(element.getAttribute('persist-query-in-url'), defaults.persistQueryInUrl),
         highlightDestinationPage: parseBoolean(element.getAttribute('highlight-destination-page'), defaults.highlightDestinationPage),

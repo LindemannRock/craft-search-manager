@@ -46,6 +46,19 @@ final class PostgreSqlStorageTest extends TestCase
         self::assertStringContainsString('GREATEST(CAST({{%searchmanager_search_metadata}}."metaValue" AS INTEGER) + :increment, :minimum)', $source);
     }
 
+    public function testPostgreSqlStorageRequiresDocumentKeySchemaWithoutElementIdFallback(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/PostgreSqlStorage.php');
+        self::assertIsString($source);
+
+        self::assertStringContainsString('requireDocumentKeyColumn', $source);
+        self::assertStringContainsString('Reinstall Search Manager or run the documented ALTER', $source);
+        self::assertStringNotContainsString('$hasDocumentKey', $source);
+        self::assertStringNotContainsString('array_map(\'intval\', $documentKeys)', $source);
+        self::assertDoesNotMatchRegularExpression('/hasColumn\([^)]*documentKey[^)]*\)\s*\{/', $source);
+        self::assertDoesNotMatchRegularExpression('/hasColumn\([^)]*documentKey[^)]*\)\s*\?/', $source);
+    }
+
     public function testPostgreSqlStorageDefinesGroupedCompoundAutocompleteLookup(): void
     {
         $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/PostgreSqlStorage.php');
@@ -83,7 +96,7 @@ final class PostgreSqlStorageTest extends TestCase
 
             self::assertSame(4, $storage->getDocumentLength(1, 1001));
             self::assertSame(['protein' => 3, 'powder' => 1], $storage->getDocumentTerms(1, 1001));
-            self::assertSame(['1:1001' => 3], $storage->getTermDocuments('protein', 1));
+            self::assertSame(['1:1001_1' => 3], $storage->getTermDocuments('protein', 1));
             self::assertSame(['protein'], $storage->getTitleTerms(1, 1001));
             self::assertSame(['protein'], $storage->getTermsByPrefix('pro', 1));
 

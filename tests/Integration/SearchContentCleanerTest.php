@@ -11,6 +11,7 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\helpers\SearchContentCleaner;
+use lindemannrock\searchmanager\helpers\SearchHeadingHelper;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -67,5 +68,12 @@ final class SearchContentCleanerTest extends TestCase
 
         self::assertSame('Before command. ddev composer require acme/package After command.', $text);
         self::assertStringNotContainsString('Install', $text);
+    }
+
+    public function testMarkdownHeadingDescriptionsDoNotStripSentenceEndingNumbers(): void
+    {
+        $headings = SearchHeadingHelper::extract("## History\n\n1) Timeline item.\nThey developed it in 1966. No matter what.\n", [2]);
+
+        self::assertSame('Timeline item. They developed it in 1966. No matter what.', $headings[0]['description'] ?? null);
     }
 }

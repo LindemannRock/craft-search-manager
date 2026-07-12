@@ -281,7 +281,7 @@ class PromotionsController extends Controller
         $promotion->siteId = $request->getBodyParam('siteId') ?: null;
         $promotion->enabled = (bool)$request->getBodyParam('enabled', true);
 
-        if (!$promotion->validate() || !$promotion->save()) {
+        if (!$promotion->validate() || !SearchManager::$plugin->promotions->save($promotion)) {
             Craft::$app->getSession()->setError(
                 Craft::t('search-manager', 'Could not save promotion')
             );
@@ -293,9 +293,6 @@ class PromotionsController extends Controller
 
             return null;
         }
-
-        // Promotions can be global, so clear all search caches like query rules do.
-        SearchManager::$plugin->backend->clearAllSearchCache();
 
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', 'Promotion saved')
@@ -322,9 +319,7 @@ class PromotionsController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'Promotion not found'));
         }
 
-        if ($promotion->delete()) {
-            SearchManager::$plugin->backend->clearAllSearchCache();
-
+        if (SearchManager::$plugin->promotions->delete($promotion)) {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
                 return $this->asJson(['success' => true]);
             }
@@ -377,7 +372,7 @@ class PromotionsController extends Controller
         $promotion->siteId = $source->siteId;
         $promotion->enabled = false;
 
-        if (!$promotion->save()) {
+        if (!SearchManager::$plugin->promotions->save($promotion)) {
             $error = Craft::t('search-manager', 'Could not duplicate promotion');
             if ($request->getAcceptsJson()) {
                 return $this->asJson(['success' => false, 'error' => $error]);
@@ -385,8 +380,6 @@ class PromotionsController extends Controller
             Craft::$app->getSession()->setError($error);
             return $this->redirect('search-manager/promotions');
         }
-
-        SearchManager::$plugin->backend->clearAllSearchCache();
 
         $message = Craft::t('search-manager', 'Promotion duplicated');
 
@@ -414,14 +407,10 @@ class PromotionsController extends Controller
             $promotion = Promotion::findById((int)$id);
             if ($promotion) {
                 $promotion->enabled = true;
-                if ($promotion->save()) {
+                if (SearchManager::$plugin->promotions->save($promotion)) {
                     $count++;
                 }
             }
-        }
-
-        if ($count > 0) {
-            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([
@@ -446,14 +435,10 @@ class PromotionsController extends Controller
             $promotion = Promotion::findById((int)$id);
             if ($promotion) {
                 $promotion->enabled = false;
-                if ($promotion->save()) {
+                if (SearchManager::$plugin->promotions->save($promotion)) {
                     $count++;
                 }
             }
-        }
-
-        if ($count > 0) {
-            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([
@@ -477,14 +462,10 @@ class PromotionsController extends Controller
         foreach ($promotionIds as $id) {
             $promotion = Promotion::findById((int)$id);
             if ($promotion) {
-                if ($promotion->delete()) {
+                if (SearchManager::$plugin->promotions->delete($promotion)) {
                     $count++;
                 }
             }
-        }
-
-        if ($count > 0) {
-            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([

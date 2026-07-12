@@ -194,7 +194,6 @@ final class TransformerCharacterizationTest extends TestCase
         self::assertArrayNotHasKey('_fields', $data);
         self::assertArrayNotHasKey('_headings', $data);
         self::assertArrayNotHasKey('headings', $data);
-        self::assertArrayNotHasKey('_contentClean', $data);
         self::assertStringNotContainsString('Hidden Heading', $data['content']);
         self::assertStringNotContainsString('Hidden rich needle', $data['content']);
         self::assertStringNotContainsString('hidden code needle', $data['content']);
@@ -633,7 +632,6 @@ final class TransformerCharacterizationTest extends TestCase
             '_bodyClean' => 'Intro prose. Outro prose.',
             'content' => 'Code Entry code-entry Code Entry',
             'excerpt' => 'Code Entry code-entry Code Entry',
-            '_contentClean' => 'Intro prose. Outro prose.',
         ], $data);
 
         $next = new TransformerCharacterizationEntry();
@@ -647,7 +645,6 @@ final class TransformerCharacterizationTest extends TestCase
 
         $nextData = $service->transform($next);
 
-        self::assertArrayNotHasKey('_contentClean', $nextData ?? []);
         self::assertSame(
             json_encode($nextData, JSON_UNESCAPED_UNICODE),
             json_encode($service->transform($next), JSON_UNESCAPED_UNICODE),
@@ -674,7 +671,6 @@ final class TransformerCharacterizationTest extends TestCase
 
         self::assertSame('Plain Composer body prose with inline config token.', $data['_bodyClean'] ?? null);
         self::assertSame('Plain Composer body prose with inline config token.', $data['_fields']['body'] ?? null);
-        self::assertArrayNotHasKey('_contentClean', $data ?? []);
     }
 
     /**

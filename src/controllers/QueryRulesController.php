@@ -375,7 +375,7 @@ class QueryRulesController extends Controller
 
         $rule->actionValue = $actionValue;
 
-        if (!$rule->validate() || !$rule->save()) {
+        if (!$rule->validate() || !SearchManager::$plugin->queryRules->save($rule)) {
             Craft::$app->getSession()->setError(
                 Craft::t('search-manager', 'Could not save query rule')
             );
@@ -387,9 +387,6 @@ class QueryRulesController extends Controller
 
             return null;
         }
-
-        // Clear all search cache (rules can affect any query)
-        SearchManager::$plugin->backend->clearAllSearchCache();
 
         Craft::$app->getSession()->setNotice(
             Craft::t('search-manager', 'Query rule saved')
@@ -416,10 +413,7 @@ class QueryRulesController extends Controller
             throw new NotFoundHttpException(Craft::t('search-manager', 'Query rule not found'));
         }
 
-        if ($rule->delete()) {
-            // Clear all search cache
-            SearchManager::$plugin->backend->clearAllSearchCache();
-
+        if (SearchManager::$plugin->queryRules->delete($rule)) {
             if (Craft::$app->getRequest()->getAcceptsJson()) {
                 return $this->asJson(['success' => true]);
             }
@@ -472,7 +466,7 @@ class QueryRulesController extends Controller
         $rule->siteId = $source->siteId;
         $rule->enabled = false;
 
-        if (!$rule->save()) {
+        if (!SearchManager::$plugin->queryRules->save($rule)) {
             $error = Craft::t('search-manager', 'Could not duplicate query rule');
             if ($request->getAcceptsJson()) {
                 return $this->asJson(['success' => false, 'error' => $error]);
@@ -480,8 +474,6 @@ class QueryRulesController extends Controller
             Craft::$app->getSession()->setError($error);
             return $this->redirect('search-manager/query-rules');
         }
-
-        SearchManager::$plugin->backend->clearAllSearchCache();
 
         $message = Craft::t('search-manager', 'Query rule duplicated');
 
@@ -509,15 +501,10 @@ class QueryRulesController extends Controller
             $rule = QueryRule::findById((int)$id);
             if ($rule) {
                 $rule->enabled = true;
-                if ($rule->save()) {
+                if (SearchManager::$plugin->queryRules->save($rule)) {
                     $count++;
                 }
             }
-        }
-
-        // Clear all search cache
-        if ($count > 0) {
-            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([
@@ -542,15 +529,10 @@ class QueryRulesController extends Controller
             $rule = QueryRule::findById((int)$id);
             if ($rule) {
                 $rule->enabled = false;
-                if ($rule->save()) {
+                if (SearchManager::$plugin->queryRules->save($rule)) {
                     $count++;
                 }
             }
-        }
-
-        // Clear all search cache
-        if ($count > 0) {
-            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([
@@ -573,14 +555,9 @@ class QueryRulesController extends Controller
 
         foreach ($ruleIds as $id) {
             $rule = QueryRule::findById((int)$id);
-            if ($rule && $rule->delete()) {
+            if ($rule && SearchManager::$plugin->queryRules->delete($rule)) {
                 $count++;
             }
-        }
-
-        // Clear all search cache
-        if ($count > 0) {
-            SearchManager::$plugin->backend->clearAllSearchCache();
         }
 
         return $this->asJson([

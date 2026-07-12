@@ -22,7 +22,7 @@ use yii\db\Expression;
  *
  * @since 5.0.0
  */
-class MySqlStorage implements DocumentKeyStorageInterface
+class MySqlStorage implements DocumentKeyStorageInterface, ElementSuggestionStorageInterface
 {
     use LoggingTrait;
 
@@ -76,7 +76,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
 
     public function storeDocumentByKey(int $siteId, int $elementId, string $documentKey, array $termFreqs, int $docLength, string $language = 'en'): void
     {
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         // Store term frequencies
         $values = [];
@@ -115,9 +115,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
         ];
 
         // Use REPLACE INTO to handle duplicates (deletes old, inserts new)
-        $columns = $hasDocumentKey
-            ? '`indexHandle`, `siteId`, `elementId`, `documentKey`, `term`, `frequency`, `language`'
-            : '`indexHandle`, `siteId`, `elementId`, `term`, `frequency`, `language`';
+        $columns = '`indexHandle`, `siteId`, `elementId`, `documentKey`, `term`, `frequency`, `language`';
         $sql = "REPLACE INTO {{%searchmanager_search_documents}}
                 (" . $columns . ") VALUES ";
 
@@ -127,10 +125,8 @@ class MySqlStorage implements DocumentKeyStorageInterface
                 . $this->db->quoteValue($value[0]) . ", "
                 . (int)$value[1] . ", "
                 . (int)$value[2] . ", ";
-            if ($hasDocumentKey) {
-                $row .= $this->db->quoteValue($value[3]) . ", ";
-            }
-            $row .= $this->db->quoteValue($value[4]) . ", "
+            $row .= $this->db->quoteValue($value[3]) . ", "
+                . $this->db->quoteValue($value[4]) . ", "
                 . (int)$value[5] . ", "
                 . $this->db->quoteValue($value[6]) . ")";
             $valueStrings[] = $row;
@@ -202,9 +198,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            return $this->getDocumentLanguagesBatch($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'language'])
@@ -235,15 +229,13 @@ class MySqlStorage implements DocumentKeyStorageInterface
 
     public function getDocumentTermsByKey(int $siteId, string $documentKey): array
     {
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
+
         $where = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            $where['documentKey'] = $documentKey;
-        } else {
-            $where['elementId'] = (int)$documentKey;
-        }
 
         $rows = (new Query())
             ->select(['term', 'frequency'])
@@ -296,9 +288,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            return $this->getDocumentTermsBatch($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'term', 'frequency'])
@@ -340,15 +330,13 @@ class MySqlStorage implements DocumentKeyStorageInterface
         ];
 
         foreach ($tables as $table) {
+            $this->requireDocumentKeyColumn($table);
+
             $condition = [
                 'indexHandle' => $this->indexHandle,
                 'siteId' => $siteId,
+                'documentKey' => $documentKey,
             ];
-            if ($this->hasColumn($table, 'documentKey')) {
-                $condition['documentKey'] = $documentKey;
-            } else {
-                $condition['elementId'] = (int)$documentKey;
-            }
 
             $this->db->createCommand()->delete(
                 $table,
@@ -372,16 +360,14 @@ class MySqlStorage implements DocumentKeyStorageInterface
 
     public function getDocumentLengthByKey(int $siteId, string $documentKey): int
     {
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
+
         $where = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
             'term' => '_length',
         ];
-        if ($this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey')) {
-            $where['documentKey'] = $documentKey;
-        } else {
-            $where['elementId'] = (int)$documentKey;
-        }
 
         $result = (new Query())
             ->select(['frequency'])
@@ -398,22 +384,22 @@ class MySqlStorage implements DocumentKeyStorageInterface
     public function getDocumentLengthsBatch(array $docIds): array
     {
         $lengths = [];
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_documents}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_documents}}');
 
         foreach ($docIds as $siteId => $documentIds) {
             $rows = (new Query())
-                ->select($hasDocumentKey ? ['siteId', 'documentKey', 'frequency'] : ['siteId', 'elementId', 'frequency'])
+                ->select(['siteId', 'documentKey', 'frequency'])
                 ->from('{{%searchmanager_search_documents}}')
                 ->where([
                     'indexHandle' => $this->indexHandle,
                     'siteId' => $siteId,
-                    $hasDocumentKey ? 'documentKey' : 'elementId' => $documentIds,
+                    'documentKey' => $documentIds,
                     'term' => '_length',
                 ])
                 ->all();
 
             foreach ($rows as $row) {
-                $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
+                $docId = $row['siteId'] . ':' . $row['documentKey'];
                 $lengths[$docId] = (int)$row['frequency'];
             }
         }
@@ -440,12 +426,11 @@ class MySqlStorage implements DocumentKeyStorageInterface
             'term' => $term,
             'siteId' => $siteId,
             'elementId' => $elementId,
+            'documentKey' => $documentKey,
             'frequency' => $frequency,
             'language' => $language,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')) {
-            $values['documentKey'] = $documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_terms}}');
 
         // Upsert avoids duplicate-key failures when collation-equivalent terms collide.
         $this->db->createCommand()->upsert(
@@ -467,9 +452,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
     public function getTermDocuments(string $term, int $siteId): array
     {
         $rows = (new Query())
-            ->select($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')
-                ? ['siteId', 'documentKey', 'frequency']
-                : ['siteId', 'elementId', 'frequency'])
+            ->select(['siteId', 'documentKey', 'frequency'])
             ->from('{{%searchmanager_search_terms}}')
             ->where([
                 'indexHandle' => $this->indexHandle,
@@ -480,7 +463,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
 
         $docs = [];
         foreach ($rows as $row) {
-            $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
+            $docId = $row['siteId'] . ':' . $row['documentKey'];
             $docs[$docId] = (int)$row['frequency'];
         }
 
@@ -497,9 +480,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
         }
 
         $rows = (new Query())
-            ->select($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')
-                ? ['term', 'siteId', 'documentKey', 'frequency']
-                : ['term', 'siteId', 'elementId', 'frequency'])
+            ->select(['term', 'siteId', 'documentKey', 'frequency'])
             ->from('{{%searchmanager_search_terms}}')
             ->where([
                 'indexHandle' => $this->indexHandle,
@@ -510,7 +491,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
 
         $byTerm = [];
         foreach ($rows as $row) {
-            $docId = $row['siteId'] . ':' . ($row['documentKey'] ?? $row['elementId']);
+            $docId = $row['siteId'] . ':' . $row['documentKey'];
             $byTerm[$row['term']][$docId] = (int)$row['frequency'];
         }
 
@@ -531,12 +512,9 @@ class MySqlStorage implements DocumentKeyStorageInterface
             'indexHandle' => $this->indexHandle,
             'term' => $term,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_terms}}', 'documentKey')) {
-            $condition['documentKey'] = $documentKey;
-        } else {
-            $condition['elementId'] = (int)$documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_terms}}');
 
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_terms}}',
@@ -624,20 +602,16 @@ class MySqlStorage implements DocumentKeyStorageInterface
     {
         // Normalize searchText for prefix matching (lowercase)
         $searchText = mb_strtolower(trim($title));
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_elements}}');
 
-        $columns = $hasDocumentKey
-            ? '`indexHandle`, `siteId`, `elementId`, `documentKey`, `title`, `elementType`, `searchText`, `documentData`'
-            : '`indexHandle`, `siteId`, `elementId`, `title`, `elementType`, `searchText`, `documentData`';
+        $columns = '`indexHandle`, `siteId`, `elementId`, `documentKey`, `title`, `elementType`, `searchText`, `documentData`';
         $sql = "REPLACE INTO {{%searchmanager_search_elements}}
                 (" . $columns . ") VALUES
                 (" . $this->db->quoteValue($this->indexHandle) . ", "
                 . (int)$siteId . ", "
                 . (int)$elementId . ", ";
-        if ($hasDocumentKey) {
-            $sql .= $this->db->quoteValue($documentKey) . ", ";
-        }
-        $sql .= $this->db->quoteValue($title) . ", "
+        $sql .= $this->db->quoteValue($documentKey) . ", "
+                . $this->db->quoteValue($title) . ", "
                 . $this->db->quoteValue($elementType) . ", "
                 . $this->db->quoteValue($searchText) . ", "
                 . ($documentData !== null ? $this->db->quoteValue($documentData) : 'NULL') . ")";
@@ -711,9 +685,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey')) {
-            return $this->getElementsByIds($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_elements}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'elementId', 'title', 'elementType', 'documentData'])
@@ -789,12 +761,10 @@ class MySqlStorage implements DocumentKeyStorageInterface
             return;
         }
 
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_titles}}');
 
         // Use REPLACE INTO to handle duplicates
-        $columns = $hasDocumentKey
-            ? '`indexHandle`, `siteId`, `elementId`, `documentKey`, `term`'
-            : '`indexHandle`, `siteId`, `elementId`, `term`';
+        $columns = '`indexHandle`, `siteId`, `elementId`, `documentKey`, `term`';
         $sql = "REPLACE INTO {{%searchmanager_search_titles}}
                 (" . $columns . ") VALUES ";
 
@@ -804,10 +774,8 @@ class MySqlStorage implements DocumentKeyStorageInterface
                 . $this->db->quoteValue($this->indexHandle) . ", "
                 . (int)$siteId . ", "
                 . (int)$elementId . ", ";
-            if ($hasDocumentKey) {
-                $row .= $this->db->quoteValue($documentKey) . ", ";
-            }
-            $row .= $this->db->quoteValue($term) . ")";
+            $row .= $this->db->quoteValue($documentKey) . ", "
+                . $this->db->quoteValue($term) . ")";
             $valueStrings[] = $row;
         }
 
@@ -871,9 +839,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
             return [];
         }
 
-        if (!$this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey')) {
-            return $this->getTitleTermsBatch($siteId, array_map('intval', $documentKeys));
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_titles}}');
 
         $rows = (new Query())
             ->select(['documentKey', 'term'])
@@ -906,12 +872,9 @@ class MySqlStorage implements DocumentKeyStorageInterface
         $condition = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_titles}}', 'documentKey')) {
-            $condition['documentKey'] = $documentKey;
-        } else {
-            $condition['elementId'] = (int)$documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_titles}}');
 
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_titles}}',
@@ -1091,7 +1054,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
             return;
         }
 
-        $hasDocumentKey = $this->hasColumn('{{%searchmanager_search_compounds}}', 'documentKey');
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_compounds}}');
         $rows = [];
         foreach ($suggestions as $suggestion) {
             $rows[] = [
@@ -1112,15 +1075,13 @@ class MySqlStorage implements DocumentKeyStorageInterface
                 'indexHandle' => $row[0],
                 'siteId' => $row[1],
                 'elementId' => $row[2],
+                'documentKey' => $row[3],
                 'suggestion' => $row[4],
                 'normalizedSuggestion' => $row[5],
                 'tokenKey' => $row[6],
                 'frequency' => $row[7],
                 'language' => $row[8],
             ];
-            if ($hasDocumentKey) {
-                $insert['documentKey'] = $row[3];
-            }
 
             $this->db->createCommand()->upsert(
                 '{{%searchmanager_search_compounds}}',
@@ -1138,6 +1099,18 @@ class MySqlStorage implements DocumentKeyStorageInterface
     private function pageDocumentKey(int $siteId, int $elementId): string
     {
         return SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
+    }
+
+    private function requireDocumentKeyColumn(string $table): void
+    {
+        if ($this->hasColumn($table, 'documentKey')) {
+            return;
+        }
+
+        throw new \RuntimeException(sprintf(
+            'Search Manager storage table %s is missing documentKey. Reinstall Search Manager or run the documented ALTER for the current Install.php schema.',
+            $table,
+        ));
     }
 
     private function hasColumn(string $table, string $column): bool
@@ -1166,12 +1139,9 @@ class MySqlStorage implements DocumentKeyStorageInterface
         $condition = [
             'indexHandle' => $this->indexHandle,
             'siteId' => $siteId,
+            'documentKey' => $documentKey,
         ];
-        if ($this->hasColumn('{{%searchmanager_search_compounds}}', 'documentKey')) {
-            $condition['documentKey'] = $documentKey;
-        } else {
-            $condition['elementId'] = (int)$documentKey;
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_compounds}}');
 
         $this->db->createCommand()->delete(
             '{{%searchmanager_search_compounds}}',
@@ -1184,9 +1154,7 @@ class MySqlStorage implements DocumentKeyStorageInterface
      */
     public function getDocumentKeysByParent(int $siteId, int $elementId): array
     {
-        if (!$this->hasColumn('{{%searchmanager_search_elements}}', 'documentKey')) {
-            return [$this->pageDocumentKey($siteId, $elementId)];
-        }
+        $this->requireDocumentKeyColumn('{{%searchmanager_search_elements}}');
 
         return array_map('strval', (new Query())
             ->select(['documentKey'])

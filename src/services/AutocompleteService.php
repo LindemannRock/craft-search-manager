@@ -11,8 +11,11 @@ namespace lindemannrock\searchmanager\services;
 use Craft;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
+use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\search\CompoundSuggestionExtractor;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
+use lindemannrock\searchmanager\search\storage\ElementSuggestionStorageInterface;
 use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\search\TermNormalizer;
 use lindemannrock\searchmanager\search\Tokenizer;
@@ -428,12 +431,12 @@ class AutocompleteService extends Component
             return [];
         }
 
-        // Check if storage supports element suggestions (MySqlStorage does)
-        if (!method_exists($storage, 'getElementSuggestions')) {
-            $this->logWarning('Storage does not support element suggestions, falling back to term suggestions');
-            // Fallback to term-based suggestions
-            $terms = $this->suggest($query, $indexHandle, $options);
-            return array_map(fn($term) => ['text' => $term, 'type' => 'term', 'id' => null], $terms);
+        if (!$storage instanceof ElementSuggestionStorageInterface) {
+            $this->logError('Storage does not support element suggestions', [
+                'index' => $indexHandle,
+                'storage' => get_class($storage),
+            ]);
+            return [];
         }
 
         // Get element suggestions from storage
@@ -482,8 +485,7 @@ class AutocompleteService extends Component
                 return null;
             }
 
-            // Check if backend supports storage (internal backends like MySQL, Redis, File)
-            if (!method_exists($backend, 'getStorage')) {
+            if (!$backend instanceof StorageBackedBackendInterface) {
                 $this->logWarning('Backend does not support direct storage access', [
                     'index' => $indexHandle,
                     'backend' => $backend->getName(),
@@ -530,8 +532,7 @@ class AutocompleteService extends Component
                 return [];
             }
 
-            // Check if backend supports autocomplete
-            if (!method_exists($backend, 'autocomplete') || !method_exists($backend, 'supportsAutocomplete')) {
+            if (!$backend instanceof AutocompleteBackendInterface) {
                 $this->logWarning('Backend does not support autocomplete', [
                     'index' => $indexHandle,
                     'backend' => $backend->getName(),

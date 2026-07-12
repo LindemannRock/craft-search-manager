@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\variables;
 
 use lindemannrock\searchmanager\helpers\TwigSearchOptionsHelper;
+use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\SearchManager;
 
@@ -98,7 +99,8 @@ class BackendVariableProxy
 
         $options = TwigSearchOptionsHelper::normalizeAutocompleteLimitOptions($options);
 
-        if (!method_exists($this->backend, 'supportsAutocomplete') || !method_exists($this->backend, 'autocomplete')) {
+        if (!$this->backend instanceof AutocompleteBackendInterface) {
+            \Craft::warning('suggest() is not supported by ' . $this->backend->getName() . ' backend', 'search-manager');
             return [];
         }
 

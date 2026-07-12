@@ -17,19 +17,10 @@ use lindemannrock\searchmanager\models\SearchIndex;
  */
 class SearchRecordProjectionHelper
 {
-    private const PROVIDER_ONLY_FIELDS = [
-        '_contentClean',
-        '_fields',
-        'body',
-        'description',
-        'excerpt',
-        'headings',
-        'sectionBody',
-        'thumbnail',
-    ];
+    public const SEARCHABLE_TEXT_FIELDS = ['title', 'content', '_bodyClean', 'url'];
+    public const TYPESENSE_QUERY_BY_WEIGHTS = [5, 3, 1, 1];
 
-    private const LOCAL_ONLY_FIELDS = [
-        '_contentClean',
+    private const NON_STORED_FIELDS = [
         '_fields',
         'body',
         'description',
@@ -45,7 +36,7 @@ class SearchRecordProjectionHelper
      */
     public static function externalRecord(string $indexName, array $data): array
     {
-        $record = self::project($indexName, $data, self::PROVIDER_ONLY_FIELDS);
+        $record = self::project($indexName, $data, self::NON_STORED_FIELDS);
         if (isset($record['_bodyWithCode'], $record['_bodyClean']) && self::sameText($record['_bodyWithCode'], $record['_bodyClean'])) {
             unset($record['_bodyWithCode']);
         }
@@ -65,7 +56,7 @@ class SearchRecordProjectionHelper
      */
     public static function localDocumentData(string $indexName, array $data): array
     {
-        return self::project($indexName, $data, self::LOCAL_ONLY_FIELDS);
+        return self::project($indexName, $data, self::NON_STORED_FIELDS);
     }
 
     /**
@@ -82,6 +73,24 @@ class SearchRecordProjectionHelper
             $data['content'] ?? null,
             $data['_bodyClean'] ?? null,
         ]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function providerSearchableAttributes(): array
+    {
+        return self::SEARCHABLE_TEXT_FIELDS;
+    }
+
+    public static function typesenseQueryBy(): string
+    {
+        return implode(',', self::SEARCHABLE_TEXT_FIELDS);
+    }
+
+    public static function typesenseQueryByWeights(): string
+    {
+        return implode(',', self::TYPESENSE_QUERY_BY_WEIGHTS);
     }
 
     /**

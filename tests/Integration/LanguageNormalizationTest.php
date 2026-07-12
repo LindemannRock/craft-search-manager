@@ -11,8 +11,10 @@ declare(strict_types=1);
 namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\interfaces\BackendInterface;
+use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\SearchEngine;
+use lindemannrock\searchmanager\search\storage\StorageInterface;
 use lindemannrock\searchmanager\search\StopWords;
 use lindemannrock\searchmanager\services\BackendService;
 use lindemannrock\searchmanager\SearchManager;
@@ -219,7 +221,7 @@ final class LanguageRecordingBackendService extends BackendService
     }
 }
 
-final class LanguageRecordingBackend implements BackendInterface
+final class LanguageRecordingBackend implements BackendInterface, StorageBackedBackendInterface
 {
     /** @var list<array{indexName: string, query: string, options: array<string, mixed>}> */
     public array $searchCalls = [];
@@ -280,8 +282,12 @@ final class LanguageRecordingBackend implements BackendInterface
         return ['hits' => [], 'total' => 0];
     }
 
-    public function getStorage(string $indexHandle): ?RecordingStorage
+    public function getStorage(string $indexHandle): StorageInterface
     {
+        if ($this->storage === null) {
+            throw new \RuntimeException('No test storage configured.');
+        }
+
         return $this->storage;
     }
 

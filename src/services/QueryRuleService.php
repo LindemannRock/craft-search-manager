@@ -13,6 +13,7 @@ use craft\db\Query;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\models\QueryRule;
+use lindemannrock\searchmanager\SearchManager;
 use yii\base\Component;
 
 /**
@@ -89,7 +90,12 @@ class QueryRuleService extends Component
      */
     public function save(QueryRule $rule): bool
     {
-        return $rule->save();
+        $saved = $rule->save();
+        if ($saved) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
+        }
+
+        return $saved;
     }
 
     /**
@@ -98,7 +104,12 @@ class QueryRuleService extends Component
      */
     public function delete(QueryRule $rule): bool
     {
-        return $rule->delete();
+        $deleted = $rule->delete();
+        if ($deleted) {
+            SearchManager::$plugin->backend->clearAllSearchCache();
+        }
+
+        return $deleted;
     }
 
     /**

@@ -175,7 +175,7 @@ class HtmlSectionSplitter
         $document['_sectionBodyWithCode'] = $sectionBodyWithCode;
         $document['_headings'] = [];
         $document['headings'] = '';
-        unset($document['_bodyWithCode'], $document['_contentClean']);
+        unset($document['_bodyWithCode']);
 
         $document['content'] = self::joinContentParts($contentParts);
 

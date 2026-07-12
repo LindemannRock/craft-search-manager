@@ -11,6 +11,7 @@ namespace lindemannrock\searchmanager\backends;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\interfaces\AutocompleteBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use Typesense\Client;
 
@@ -22,7 +23,7 @@ use Typesense\Client;
  *
  * @since 5.0.0
  */
-class TypesenseBackend extends BaseBackend
+class TypesenseBackend extends BaseBackend implements AutocompleteBackendInterface
 {
     /**
      * Search Manager options that must not be forwarded to Typesense.
@@ -333,8 +334,8 @@ class TypesenseBackend extends BaseBackend
             $searchParams = array_diff_key($options, array_flip(self::INTERNAL_SEARCH_OPTIONS));
             $searchParams['q'] = $query;
             // Search all common string fields for consistency with other backends
-            $searchParams['query_by'] = $searchParams['query_by'] ?? 'title,content,_bodyClean,url';
-            $searchParams['query_by_weights'] = $searchParams['query_by_weights'] ?? '5,3,1,1';
+            $searchParams['query_by'] = $searchParams['query_by'] ?? SearchRecordProjectionHelper::typesenseQueryBy();
+            $searchParams['query_by_weights'] = $searchParams['query_by_weights'] ?? SearchRecordProjectionHelper::typesenseQueryByWeights();
             $searchParams['include_fields'] = $searchParams['include_fields']
                 ?? implode(',', SearchRecordProjectionHelper::searchProjectionFields($this->retrievableFieldsForIndex($indexName, $options)));
 
@@ -439,8 +440,8 @@ class TypesenseBackend extends BaseBackend
 
             $results = $client->collections[$fullIndexName]->documents->search([
                 'q' => '*',
-                'query_by' => 'title,content,_bodyClean,url',
-                'query_by_weights' => '5,3,1,1',
+                'query_by' => SearchRecordProjectionHelper::typesenseQueryBy(),
+                'query_by_weights' => SearchRecordProjectionHelper::typesenseQueryByWeights(),
                 'filter_by' => self::siteIdFilter($siteId, $this->elementIdFilter($elementIds)),
                 'per_page' => max(20, count($elementIds) * 20),
             ]);
@@ -602,8 +603,8 @@ class TypesenseBackend extends BaseBackend
                 $searchRequests['searches'][] = array_merge([
                     'collection' => $indexName,
                     'q' => $query['query'] ?? '',
-                    'query_by' => $params['query_by'] ?? 'title,content,_bodyClean,url',
-                    'query_by_weights' => $params['query_by_weights'] ?? '5,3,1,1',
+                    'query_by' => $params['query_by'] ?? SearchRecordProjectionHelper::typesenseQueryBy(),
+                    'query_by_weights' => $params['query_by_weights'] ?? SearchRecordProjectionHelper::typesenseQueryByWeights(),
                 ], $params);
             }
 

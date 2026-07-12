@@ -15,6 +15,7 @@ use lindemannrock\base\helpers\BooleanHelper;
 use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\models\WidgetConfig;
@@ -300,6 +301,7 @@ class WidgetsController extends Controller
             'widgetApiKeyScopes' => $this->getWidgetApiKeyScopes($widgetApiKeys),
             'selectedApiKey' => $this->getSelectedWidgetApiKey($widgetConfig, $widgetApiKeys),
             'hasWidgetUsableApiKeys' => !empty($widgetApiKeys),
+            'snippetOptions' => SnippetOptionsHelper::widgetDefaults(),
             'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             'defaultWidgetHandle' => $settings->defaultWidgetHandle,
             'isDefaultFromConfig' => $this->isDefaultWidgetFromConfig(),

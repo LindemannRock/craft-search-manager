@@ -31,7 +31,7 @@ use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
  *
  * @since 5.0.0
  */
-class FileStorage implements DocumentKeyStorageInterface
+class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStorageInterface
 {
     use LoggingTrait;
 

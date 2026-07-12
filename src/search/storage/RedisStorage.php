@@ -29,7 +29,7 @@ use lindemannrock\logginglibrary\traits\LoggingTrait;
  *
  * @since 5.0.0
  */
-class RedisStorage implements DocumentKeyStorageInterface
+class RedisStorage implements DocumentKeyStorageInterface, ElementSuggestionStorageInterface
 {
     use LoggingTrait;
 

@@ -13,6 +13,7 @@ use craft\web\Controller;
 use lindemannrock\searchmanager\helpers\CanonicalHitPipeline;
 use lindemannrock\searchmanager\helpers\SearchDebugAccessHelper;
 use lindemannrock\searchmanager\helpers\SearchHitPresenter;
+use lindemannrock\searchmanager\helpers\SnippetOptionsHelper;
 use lindemannrock\searchmanager\helpers\TrackingMetadataHelper;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\SearchIndex;
@@ -529,10 +530,10 @@ class ApiController extends Controller
 
         if (!empty($results['hits'])) {
             $results['hits'] = CanonicalHitPipeline::presentHits($results['hits'], $query, $searchedIndexHandles, [
-                'snippetMode' => (string) $request->getParam('snippetMode', 'balanced'),
-                'snippetLength' => (int) $request->getParam('snippetLength', 150),
-                'showCodeSnippets' => (bool) $request->getParam('showCodeSnippets', false),
-                'parseMarkdownSnippets' => (bool) $request->getParam('parseMarkdownSnippets', false),
+                'snippetMode' => (string) $request->getParam('snippetMode', SnippetOptionsHelper::DEFAULT_MODE),
+                'snippetLength' => (int) $request->getParam('snippetLength', SnippetOptionsHelper::DEFAULT_LENGTH),
+                'showCodeSnippets' => (bool) $request->getParam('showCodeSnippets', SnippetOptionsHelper::DEFAULT_SHOW_CODE),
+                'parseMarkdownSnippets' => (bool) $request->getParam('parseMarkdownSnippets', SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN),
                 'hideResultsWithoutUrl' => (bool) $request->getParam('hideResultsWithoutUrl', false),
                 'retrievableFieldsByIndex' => SearchIndex::retrievableFieldsByIndex($searchedIndexHandles, $requestedRetrievableFields),
             ]);

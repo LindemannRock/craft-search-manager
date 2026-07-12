@@ -12,6 +12,7 @@ use Craft;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SearchRecordProjectionHelper;
 use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\interfaces\StorageBackedBackendInterface;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\search\LanguageNormalizer;
 use lindemannrock\searchmanager\search\QueryParser;
@@ -32,7 +33,7 @@ use lindemannrock\searchmanager\SearchManager;
  *
  * @since 5.0.0
  */
-abstract class AbstractSearchEngineBackend extends BaseBackend
+abstract class AbstractSearchEngineBackend extends BaseBackend implements StorageBackedBackendInterface
 {
     /**
      * @var array<string, SearchEngine> Search engine instances per index
