@@ -160,53 +160,6 @@ class SearchHitPresenter
     }
 
     /**
-     * @param array<string, mixed> $results
-     * @return array<string, mixed>
-     */
-    /**
-     * @param array<string, list<string>> $retrievableFieldsByIndex
-     */
-    public static function presentResults(
-        array $results,
-        bool $includeQueryRuleDebug = false,
-        array $retrievableFieldsByIndex = [],
-        bool $includeSnippetDebug = false,
-    ): array {
-        if (empty($results['hits']) || !is_array($results['hits'])) {
-            return $results;
-        }
-
-        foreach ($results['hits'] as &$hit) {
-            if (is_array($hit)) {
-                $hit = self::present(
-                    $hit,
-                    $includeQueryRuleDebug,
-                    self::retrievableFieldsForHit($hit, $retrievableFieldsByIndex),
-                    $includeSnippetDebug,
-                );
-            }
-        }
-        unset($hit);
-
-        return $results;
-    }
-
-    /**
-     * @param array<string, mixed> $hit
-     * @param array<string, list<string>> $retrievableFieldsByIndex
-     * @return list<string>|null
-     */
-    private static function retrievableFieldsForHit(array $hit, array $retrievableFieldsByIndex): ?array
-    {
-        $index = $hit['index'] ?? $hit['_index'] ?? null;
-        if (!is_string($index) || $index === '') {
-            return null;
-        }
-
-        return $retrievableFieldsByIndex[$index] ?? null;
-    }
-
-    /**
      * @param mixed $value
      * @return list<string>
      */

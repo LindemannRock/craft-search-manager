@@ -10,17 +10,12 @@ namespace lindemannrock\searchmanager\models;
 
 use Craft;
 use craft\base\Model;
-use craft\db\Query;
-use craft\helpers\Db;
-use craft\helpers\StringHelper;
-use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 
 /**
  * Backend Settings Model
  *
- * Stores configuration for each search backend (Algolia, Meilisearch, MySQL, Typesense)
- * Database-backed model ({{%searchmanager_backend_settings}} table)
+ * Validates backend configuration shapes used by legacy form helpers and tests.
  *
  * @since 5.0.0
  */
@@ -31,12 +26,6 @@ class BackendSettings extends Model
     // =========================================================================
     // PROPERTIES
     // =========================================================================
-
-    /**
-     * @var int|null
-     * @since 5.28.0
-     */
-    public ?int $id = null;
 
     /**
      * @var string Backend type (algolia|meilisearch|mysql|typesense)
@@ -186,194 +175,6 @@ class BackendSettings extends Model
 
             return array_key_exists($field, $backendConfig);
         } catch (\Throwable $e) {
-            return false;
-        }
-    }
-
-    // =========================================================================
-    // DATABASE OPERATIONS
-    // =========================================================================
-
-    /**
-     * Load backend settings from database with config file override
-     *
-     * @param string $backend Backend name
-     * @return self
-     */
-    public static function loadFromDatabase(string $backend): self
-    {
-        $settings = new self();
-        $settings->backend = $backend;
-
-        try {
-            $row = (new Query())
-                ->from('{{%searchmanager_backend_settings}}')
-                ->where(['backend' => $backend])
-                ->one();
-
-            if ($row) {
-                $settings->id = (int)$row['id'];
-                $settings->enabled = (bool)$row['enabled'];
-                $settings->config = json_decode($row['config'], true) ?? [];
-            }
-        } catch (\Throwable $e) {
-            LoggingService::log('Failed to load backend settings from database', 'error', 'search-manager', [
-                'backend' => $backend,
-                'error' => $e->getMessage(),
-            ]);
-        }
-
-        // Apply config file overrides
-        try {
-            $config = Craft::$app->getConfig()->getConfigFromFile('search-manager');
-            $backends = $config['backends'] ?? [];
-            $configOverrides = $backends[$backend] ?? [];
-
-            if (!empty($configOverrides)) {
-                $settings->config = array_merge($settings->config, $configOverrides);
-            }
-        } catch (\Throwable $e) {
-            // Ignore config errors, use database settings
-        }
-
-        return $settings;
-    }
-
-    /**
-     * Find backend settings by backend name
-     *
-     * @param string $backend
-     * @return self|null
-     */
-    public static function findByBackend(string $backend): ?self
-    {
-        try {
-            $row = (new Query())
-                ->from('{{%searchmanager_backend_settings}}')
-                ->where(['backend' => $backend])
-                ->one();
-
-            if (!$row) {
-                return null;
-            }
-
-            $model = new self();
-            $model->id = (int)$row['id'];
-            $model->backend = $row['backend'];
-            $model->enabled = (bool)$row['enabled'];
-            $model->config = json_decode($row['config'], true) ?? [];
-
-            return $model;
-        } catch (\Throwable $e) {
-            LoggingService::log('Failed to load backend settings', 'error', 'search-manager', ['error' => $e->getMessage()]);
-            return null;
-        }
-    }
-
-    /**
-     * Get all backend settings
-     *
-     * @return self[]
-     */
-    public static function findAll(): array
-    {
-        try {
-            $rows = (new Query())
-                ->from('{{%searchmanager_backend_settings}}')
-                ->orderBy(['backend' => SORT_ASC])
-                ->all();
-
-            $models = [];
-            foreach ($rows as $row) {
-                $model = new self();
-                $model->id = (int)$row['id'];
-                $model->backend = $row['backend'];
-                $model->enabled = (bool)$row['enabled'];
-                $model->config = json_decode($row['config'], true) ?? [];
-                $models[] = $model;
-            }
-
-            return $models;
-        } catch (\Throwable $e) {
-            LoggingService::log('Failed to load backend settings', 'error', 'search-manager', ['error' => $e->getMessage()]);
-            return [];
-        }
-    }
-
-    /**
-     * Save backend settings to database
-     *
-     * @return bool
-     */
-    public function save(): bool
-    {
-        if (!$this->validate()) {
-            $this->logError('Backend settings validation failed', [
-                'backend' => $this->backend,
-                'errors' => $this->getErrors(),
-            ]);
-            return false;
-        }
-
-        try {
-            try {
-                $encodedConfig = json_encode($this->config, JSON_THROW_ON_ERROR);
-            } catch (\JsonException $e) {
-                $this->logError('Failed to encode backend settings config', [
-                    'backend' => $this->backend,
-                    'error' => $e->getMessage(),
-                ]);
-                return false;
-            }
-
-            if ($this->id) {
-                // Update existing
-                $result = Craft::$app->getDb()
-                    ->createCommand()
-                    ->update(
-                        '{{%searchmanager_backend_settings}}',
-                        [
-                            'enabled' => (int)$this->enabled,
-                            'config' => $encodedConfig,
-                            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
-                        ],
-                        ['id' => $this->id]
-                    )
-                    ->execute();
-
-                return $result !== false;
-            } else {
-                // Insert new (or upsert based on backend)
-                Craft::$app->getDb()
-                    ->createCommand()
-                    ->upsert(
-                        '{{%searchmanager_backend_settings}}',
-                        [
-                            'backend' => $this->backend,
-                            'enabled' => (int)$this->enabled,
-                            'config' => $encodedConfig,
-                            'dateCreated' => Db::prepareDateForDb(new \DateTime()),
-                            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
-                            'uid' => StringHelper::UUID(),
-                        ],
-                        [
-                            'enabled' => (int)$this->enabled,
-                            'config' => $encodedConfig,
-                            'dateUpdated' => Db::prepareDateForDb(new \DateTime()),
-                        ]
-                    )
-                    ->execute();
-
-                // Get the ID
-                $this->id = (int)Craft::$app->getDb()->getLastInsertID();
-
-                return true;
-            }
-        } catch (\Throwable $e) {
-            $this->logError('Failed to save backend settings', [
-                'backend' => $this->backend,
-                'error' => $e->getMessage(),
-            ]);
             return false;
         }
     }

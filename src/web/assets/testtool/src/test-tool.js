@@ -902,7 +902,7 @@
                             <div class="sm-test-diagnostic-card-header">
                                 <div class="sm-test-diagnostic-primary">
                                     <div class="sm-test-diagnostic-title">
-                                        <a href="${p.elementEditUrl}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
+                                        <a href="${safeUrlAttribute(p.elementEditUrl) || '#'}" target="_blank">${Craft.escapeHtml(p.elementTitle)}</a>
                                         <span class="sm-test-diagnostic-meta">
                                             <span>${T.position}: #${p.position}</span>
                                             <span>ID: ${p.elementId}</span>
@@ -969,7 +969,7 @@
                     ${data.rules.map(r => {
                         let effectHtml = Craft.escapeHtml(r.effectDescription);
                         if (r.actionType === 'redirect' && r.elementInfo) {
-                            effectHtml = T.redirectToElement.replace('{link}', `<a href="${r.elementInfo.cpEditUrl}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`);
+                            effectHtml = T.redirectToElement.replace('{link}', `<a href="${safeUrlAttribute(r.elementInfo.cpEditUrl) || '#'}" target="_blank">${Craft.escapeHtml(r.elementInfo.title)}</a>`);
                         }
                         const actionLabel = T.actionLabels[r.actionType] || Craft.escapeHtml(r.actionType);
                         const actionClass = actionClasses[r.actionType] || 'gray';
@@ -986,7 +986,7 @@
                             <article class="sm-test-diagnostic-card">
                                 <div class="sm-test-diagnostic-card-header">
                                     <div class="sm-test-diagnostic-title">
-                                        <a href="${r.editUrl}" target="_blank">${Craft.escapeHtml(r.name)}</a>
+                                        <a href="${safeUrlAttribute(r.editUrl) || '#'}" target="_blank">${Craft.escapeHtml(r.name)}</a>
                                         ${targetMeta ? `<span class="sm-test-diagnostic-meta"><span>${targetMeta}</span></span>` : ''}
                                     </div>
                                     ${resultStatus ? `<div class="sm-test-diagnostic-hit"><span class="sm-test-diagnostic-label">${T.hitLabel}</span>${resultStatus}</div>` : ''}

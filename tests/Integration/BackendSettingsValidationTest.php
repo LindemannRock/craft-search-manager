@@ -10,41 +10,17 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
-use Craft;
-use craft\db\Query;
 use lindemannrock\searchmanager\models\BackendSettings;
 use lindemannrock\searchmanager\tests\TestCase;
 
 /**
- * Pins legacy backend settings validation on save.
+ * Pins legacy backend settings validation.
  *
  * @since 5.53.0
  */
 final class BackendSettingsValidationTest extends TestCase
 {
-    private const TABLE = '{{%searchmanager_backend_settings}}';
-
-    private bool $createdTable = false;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->ensureLegacyTable();
-        $this->deleteTestRows();
-    }
-
-    protected function tearDown(): void
-    {
-        $this->deleteTestRows();
-
-        if ($this->createdTable) {
-            Craft::$app->getDb()->createCommand()->dropTable(self::TABLE)->execute();
-        }
-
-        parent::tearDown();
-    }
-
-    public function testInvalidDisabledBackendSettingsFailToSave(): void
+    public function testInvalidDisabledBackendSettingsFailValidation(): void
     {
         $settings = new BackendSettings();
         $settings->backend = 'algolia';
@@ -54,13 +30,12 @@ final class BackendSettingsValidationTest extends TestCase
             'adminApiKey' => '',
         ];
 
-        self::assertFalse($settings->save());
+        self::assertFalse($settings->validate());
         self::assertSame(['Application ID cannot be blank.'], $settings->getErrors('applicationId'));
         self::assertSame(['Admin API Key cannot be blank.'], $settings->getErrors('apiKey'));
-        self::assertSame(0, $this->countBackendSettingsRows());
     }
 
-    public function testInvalidEnabledBackendSettingsFailToSave(): void
+    public function testInvalidEnabledBackendSettingsFailValidation(): void
     {
         $settings = new BackendSettings();
         $settings->backend = 'algolia';
@@ -70,13 +45,12 @@ final class BackendSettingsValidationTest extends TestCase
             'adminApiKey' => '',
         ];
 
-        self::assertFalse($settings->save());
+        self::assertFalse($settings->validate());
         self::assertSame(['Application ID cannot be blank.'], $settings->getErrors('applicationId'));
         self::assertSame(['Admin API Key cannot be blank.'], $settings->getErrors('apiKey'));
-        self::assertSame(0, $this->countBackendSettingsRows());
     }
 
-    public function testValidDisabledBackendSettingsStillSave(): void
+    public function testValidDisabledBackendSettingsPassValidation(): void
     {
         $settings = new BackendSettings();
         $settings->backend = 'algolia';
@@ -86,69 +60,7 @@ final class BackendSettingsValidationTest extends TestCase
             'adminApiKey' => 'test-admin-api-key',
         ];
 
-        self::assertTrue($settings->save());
+        self::assertTrue($settings->validate());
         self::assertFalse($settings->hasErrors());
-
-        $row = (new Query())
-            ->from(self::TABLE)
-            ->where(['backend' => 'algolia'])
-            ->one();
-
-        self::assertIsArray($row);
-        self::assertSame(0, (int)$row['enabled']);
-        self::assertSame($settings->config, json_decode((string)$row['config'], true));
-    }
-
-    public function testJsonEncodingFailureFailsWithoutPersistingInvalidConfig(): void
-    {
-        $settings = new BackendSettings();
-        $settings->backend = 'mysql';
-        $settings->enabled = true;
-        $settings->config = ['invalid' => NAN];
-
-        self::assertFalse($settings->save());
-        self::assertSame(0, $this->countBackendSettingsRows('mysql'));
-    }
-
-    private function ensureLegacyTable(): void
-    {
-        $db = Craft::$app->getDb();
-
-        if ($db->tableExists(self::TABLE)) {
-            return;
-        }
-
-        $db->createCommand()->createTable(self::TABLE, [
-            'id' => 'pk',
-            'backend' => 'varchar(50) NOT NULL',
-            'enabled' => 'boolean NOT NULL DEFAULT 0',
-            'config' => 'text NULL',
-            'dateCreated' => 'datetime NOT NULL',
-            'dateUpdated' => 'datetime NOT NULL',
-            'uid' => 'varchar(36) NOT NULL',
-        ])->execute();
-
-        $db->createCommand()->createIndex('idx_searchmanager_backend_settings_backend', self::TABLE, ['backend'], true)->execute();
-        $this->createdTable = true;
-    }
-
-    private function deleteTestRows(): void
-    {
-        if (!Craft::$app->getDb()->tableExists(self::TABLE)) {
-            return;
-        }
-
-        Craft::$app->getDb()
-            ->createCommand()
-            ->delete(self::TABLE, ['backend' => ['algolia', 'mysql']])
-            ->execute();
-    }
-
-    private function countBackendSettingsRows(string $backend = 'algolia'): int
-    {
-        return (int)(new Query())
-            ->from(self::TABLE)
-            ->where(['backend' => $backend])
-            ->count();
     }
 }

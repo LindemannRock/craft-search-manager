@@ -28,6 +28,11 @@ class Highlighter
     use LoggingTrait;
 
     /**
+     * @since 5.53.0
+     */
+    public const ALLOWED_TAGS = ['mark', 'em', 'strong', 'b', 'i', 'span'];
+
+    /**
      * @var string HTML tag to wrap highlighted terms
      */
     private string $tag = 'mark';
@@ -56,9 +61,8 @@ class Highlighter
     {
         $this->setLoggingHandle('search-manager');
 
-        $allowedTags = ['mark', 'em', 'strong', 'b', 'i', 'span'];
         $tag = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $config['tag'] ?? 'mark') ?: 'mark');
-        $this->tag = in_array($tag, $allowedTags, true) ? $tag : 'mark';
+        $this->tag = in_array($tag, self::ALLOWED_TAGS, true) ? $tag : 'mark';
         $this->class = htmlspecialchars($config['class'] ?? '', ENT_QUOTES, 'UTF-8');
         $this->snippetLength = $config['snippetMaxLength'] ?? 200;
         $this->maxSnippets = $config['maxSnippets'] ?? 3;

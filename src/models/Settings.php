@@ -21,6 +21,7 @@ use lindemannrock\base\traits\SettingsConfigTrait;
 use lindemannrock\base\traits\SettingsDisplayNameTrait;
 use lindemannrock\base\traits\SettingsPersistenceTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
+use lindemannrock\searchmanager\search\Highlighter;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -505,6 +506,7 @@ class Settings extends Model
             [['bm25B', 'similarityThreshold'], 'number', 'min' => 0.0, 'max' => 1.0],
             [['titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor'], 'number', 'min' => 1.0, 'max' => 20.0],
             [['ngramSizes', 'highlightTag'], 'string'],
+            [['highlightTag'], 'in', 'range' => Highlighter::ALLOWED_TAGS],
             [['trackingAllowedOrigins'], 'safe'],
             [['highlightClass', 'defaultLanguage'], 'string', 'skipOnEmpty' => true],
             [['defaultBackendHandle', 'defaultWidgetHandle'], 'string', 'max' => 255, 'skipOnEmpty' => true],

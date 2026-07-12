@@ -12,6 +12,7 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\Settings;
+use lindemannrock\searchmanager\search\Highlighter;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -45,5 +46,25 @@ final class SettingsValidationTest extends IntegrationTestCase
         $settings->indexPrefix = $prefix;
 
         self::assertSame($valid, $settings->validate(['indexPrefix']));
+    }
+
+    public function testHighlightTagRejectsUnsafeMarkup(): void
+    {
+        $settings = new Settings();
+        $settings->highlightTag = 'svg onload=alert(1)';
+
+        self::assertFalse($settings->validate(['highlightTag']));
+        self::assertNotSame([], $settings->getErrors('highlightTag'));
+    }
+
+    public function testHighlightTagAcceptsHighlighterAllowlist(): void
+    {
+        foreach (Highlighter::ALLOWED_TAGS as $tag) {
+            $settings = new Settings();
+            $settings->highlightTag = $tag;
+
+            self::assertTrue($settings->validate(['highlightTag']), $tag);
+            self::assertSame([], $settings->getErrors('highlightTag'), $tag);
+        }
     }
 }

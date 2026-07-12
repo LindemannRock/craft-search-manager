@@ -124,36 +124,9 @@ class BackendService extends Component
             }
         }
 
-        // Fallback: try treating defaultHandle as a backend type directly (backwards compatibility)
-        $this->logDebug('Configured backend not found, trying as backend type', ['handle' => $defaultHandle]);
+        $this->logWarning('Configured default backend not found or disabled', ['handle' => $defaultHandle]);
 
-        try {
-            $backend = match ($defaultHandle) {
-                'algolia' => new AlgoliaBackend(),
-                'file' => new FileBackend(),
-                'meilisearch' => new MeilisearchBackend(),
-                'mysql' => new MySqlBackend(),
-                'pgsql' => new PostgreSqlBackend(),
-                'redis' => new RedisBackend(),
-                'typesense' => new TypesenseBackend(),
-                default => null,
-            };
-
-            if ($backend && !$backend->isAvailable()) {
-                $this->logWarning('Backend is not available', [
-                    'backend' => $defaultHandle,
-                    'status' => $backend->getStatus(),
-                ]);
-            }
-
-            return $backend;
-        } catch (\Throwable $e) {
-            $this->logError('Failed to create backend', [
-                'backend' => $defaultHandle,
-                'error' => $e->getMessage(),
-            ]);
-            return null;
-        }
+        return null;
     }
 
     /**

@@ -101,7 +101,7 @@ abstract class BaseBackend extends Component implements BackendInterface
     /**
      * Get backend settings
      *
-     * Priority: ConfiguredBackend settings > Config file > Database settings
+     * Priority: ConfiguredBackend settings > Config file
      *
      * @return array Backend configuration
      */
@@ -134,19 +134,11 @@ abstract class BaseBackend extends Component implements BackendInterface
             ]);
         }
 
-        // Fallback to database settings
-        $backendSettings = \lindemannrock\searchmanager\models\BackendSettings::findByBackend($this->getName());
-        $config = $backendSettings ? $backendSettings->config : [];
-
-        $sensitiveKeys = ['apiKey', 'adminApiKey', 'searchApiKey', 'password', 'secret'];
-        $safeConfig = array_diff_key($config, array_flip($sensitiveKeys));
-        $this->logDebug('Loaded backend settings', [
+        $this->logDebug('No backend settings found', [
             'backend' => $this->getName(),
-            'config' => $safeConfig,
-            'redactedKeys' => array_values(array_intersect(array_keys($config), $sensitiveKeys)),
         ]);
 
-        return $config;
+        return [];
     }
 
     /**
