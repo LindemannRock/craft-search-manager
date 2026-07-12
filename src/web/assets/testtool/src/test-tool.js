@@ -343,27 +343,7 @@
             function ancestorBreadcrumb(value) {
                 const ancestors = normalizedAncestors(value);
 
-                return ancestors.length > 0 ? ancestors.map(ancestor => ancestor.title).join(' > ') : '';
-            }
-
-            function renderDebugAncestors(label, value) {
-                const breadcrumb = ancestorBreadcrumb(value);
-
-                return breadcrumb ? renderDebugPill(label, breadcrumb) : '';
-            }
-
-            function renderHitHierarchyMeta(hit) {
-                const rows = [];
-                const breadcrumb = ancestorBreadcrumb(hit.ancestors);
-                if (breadcrumb) {
-                    rows.push(`<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.breadcrumbLabel)}</span> ${escapeDisplay(truncateDisplay(breadcrumb, 96))}</span>`);
-                }
-
-                if (hit.folderPath) {
-                    rows.push(`<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.folderPathLabel)}</span> <code>${escapeDisplay(truncateDisplay(hit.folderPath, 96))}</code></span>`);
-                }
-
-                return rows.join('');
+                return ancestors.length > 0 ? ancestors.map(ancestor => ancestor.title).join(' › ') : '';
             }
 
             function renderMetaPill(label, value) {
@@ -372,6 +352,64 @@
                 }
 
                 return `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(label)}</span> ${escapeDisplay(truncateDisplay(value, 96))}</span>`;
+            }
+
+            function labelText(label) {
+                return String(label || '').replace(/[:：]$/, '');
+            }
+
+            function friendlyDebugLabel(key) {
+                const labels = {
+                    ancestors: T.breadcrumbLabel,
+                    assetKind: T.assetKindLabel,
+                    backendId: T.backendIdLabel,
+                    categoryGroup: T.categoryGroupLabel,
+                    categoryGroupHandle: T.categoryGroupHandleLabel,
+                    categoryIds: T.categoryIdsLabel,
+                    cpEditUrl: T.cpEditUrlLabel,
+                    docCategory: T.documentCategoryLabel,
+                    documentKey: T.documentKeyLabel,
+                    documentType: T.documentTypeLabel,
+                    elementId: T.elementIdLabel,
+                    elementType: T.elementTypeLabel,
+                    entrySection: T.entrySectionLabel,
+                    entrySectionHandle: T.entrySectionHandleLabel,
+                    entrySectionType: T.entrySectionTypeLabel,
+                    extension: T.extensionLabel,
+                    fields: T.customFieldsLabel,
+                    filename: T.filenameLabel,
+                    folderPath: T.folderPathLabel,
+                    headings: T.headingsLabel,
+                    index: T.indexLabel,
+                    indexElementType: T.indexElementTypeLabel,
+                    language: T.languageLabel,
+                    level: T.levelLabel,
+                    matchedIn: T.matchedInLabel,
+                    productType: T.productTypeLabel,
+                    score: T.scoreLabel,
+                    sectionAnchor: T.anchorLabel,
+                    sectionLevel: T.levelLabel,
+                    sectionType: T.sectionTypeLabel,
+                    site: T.siteLabel,
+                    siteId: T.siteIdLabel,
+                    size: T.sizeLabel,
+                    source: T.sourceLabel,
+                    title: T.titleLabel,
+                    transformerClass: T.transformerClassLabel,
+                    type: T.typeLabel,
+                    url: T.urlLabel,
+                    width: T.widthLabel,
+                    height: T.heightLabel,
+                };
+
+                if (labels[key]) {
+                    return labelText(labels[key]);
+                }
+
+                return String(key || '')
+                    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+                    .replace(/[_-]+/g, ' ')
+                    .replace(/\b\w/g, letter => letter.toUpperCase());
             }
 
             function fieldRowsFromFields(fields) {
@@ -423,59 +461,179 @@
                 </div>`;
             }
 
-            function renderHitFields(hit) {
-                const fieldRows = fieldRowsFromFields(hit.fields).map(renderCustomField).filter(Boolean).join('');
+            function renderFieldsRow(label, fields) {
+                const fieldRows = fieldRowsFromFields(fields).map(renderCustomField).filter(Boolean).join('');
                 if (!fieldRows) {
                     return '';
                 }
 
                 return `<div class="sm-test-indexed-row">
-                    <span class="sm-test-indexed-label">${T.customFieldsLabel}</span>
+                    <span class="sm-test-indexed-label">${escapeDisplay(labelText(label))}</span>
                     <div class="sm-test-indexed-custom-fields">${fieldRows}</div>
                 </div>`;
             }
 
-            function renderIndexedDocumentDebug(hit) {
-                const debug = hit._indexedDocument;
-                if (!debug || typeof debug !== 'object') {
+            function isPlainObject(value) {
+                return value && typeof value === 'object' && !Array.isArray(value);
+            }
+
+            function isEmptyDebugValue(value) {
+                if (value === undefined || value === null || value === '') {
+                    return true;
+                }
+
+                if (Array.isArray(value)) {
+                    return value.length === 0;
+                }
+
+                return isPlainObject(value) && Object.keys(value).length === 0;
+            }
+
+            function debugScalar(value) {
+                if (typeof value === 'boolean') {
+                    return value ? T.yesLabel : T.noLabel;
+                }
+
+                if (typeof value === 'number') {
+                    return Number.isInteger(value) ? String(value) : value.toFixed(2);
+                }
+
+                return String(value);
+            }
+
+            function debugObjectSummary(value) {
+                return Object.entries(value)
+                    .map(([key, item]) => {
+                        if (isEmptyDebugValue(item)) {
+                            return null;
+                        }
+
+                        if (Array.isArray(item)) {
+                            const list = item.map(debugScalar).join(', ');
+                            return list ? `${friendlyDebugLabel(key)}: ${list}` : null;
+                        }
+
+                        if (isPlainObject(item)) {
+                            return `${friendlyDebugLabel(key)}: ${debugObjectSummary(item)}`;
+                        }
+
+                        return `${friendlyDebugLabel(key)}: ${debugScalar(item)}`;
+                    })
+                    .filter(Boolean)
+                    .join(' · ');
+            }
+
+            function debugDisplayValue(value) {
+                if (Array.isArray(value)) {
+                    return value.map(item => isPlainObject(item) ? debugObjectSummary(item) : debugScalar(item)).filter(Boolean).join(', ');
+                }
+
+                if (isPlainObject(value)) {
+                    return debugObjectSummary(value);
+                }
+
+                return debugScalar(value);
+            }
+
+            function renderDataRow(label, value) {
+                if (isEmptyDebugValue(value)) {
                     return '';
                 }
 
-                const commerce = debug.commerce && typeof debug.commerce === 'object' ? debug.commerce : {};
-                const elementKind = debug.elementKind && typeof debug.elementKind === 'object' ? debug.elementKind : {};
-                const productType = commerce.productType && typeof commerce.productType === 'object' ? commerce.productType : null;
-                const parentProduct = commerce.parentProduct && typeof commerce.parentProduct === 'object' ? commerce.parentProduct : null;
-                const customFields = fieldRowsFromFields(hit.fields);
-                const parentUrl = parentProduct ? safeUrlAttribute(parentProduct.url) : null;
-                const parentUrlText = parentProduct && parentProduct.url ? escapeDisplay(truncateDisplay(parentProduct.url, 64)) : '';
-
-                const rows = [
-                    renderDebugPill(T.transformerClassLabel, debug.transformerClass),
-                    renderDebugPill(T.indexElementTypeLabel, debug.indexElementType),
-                    renderDebugPill(T.hitLabel, debug.documentKey),
-                    renderDebugPill(T.documentTypeLabel, debug.documentType),
-                    elementKind.entrySection ? renderDebugPill(T.sectionLabel, [elementKind.entrySection, elementKind.entrySectionHandle ? `(${elementKind.entrySectionHandle})` : '', elementKind.entrySectionType ? `[${elementKind.entrySectionType}]` : ''].filter(Boolean).join(' ')) : '',
-                    elementKind.volume ? renderDebugPill(T.volumeLabel, [elementKind.volume, elementKind.volumeHandle ? `(${elementKind.volumeHandle})` : ''].filter(Boolean).join(' ')) : '',
-                    elementKind.categoryGroup ? renderDebugPill(T.groupLabel, [elementKind.categoryGroup, elementKind.categoryGroupHandle ? `(${elementKind.categoryGroupHandle})` : ''].filter(Boolean).join(' ')) : '',
-                    renderDebugPill(T.levelLabel, elementKind.level),
-                    renderDebugAncestors(T.breadcrumbLabel, elementKind.ancestors),
-                    renderDebugPill(T.folderPathLabel, elementKind.folderPath),
-                    productType ? renderDebugPill(T.productTypeLabel, [productType.name, productType.handle ? `(${productType.handle})` : ''].filter(Boolean).join(' ')) : '',
-                    renderDebugList(T.variantSkusLabel, commerce.variantSkus),
-                    renderDebugList(T.variantOptionsLabel, commerce.variantOptions),
-                    parentProduct ? `<div class="sm-test-indexed-row">
-                        <span class="sm-test-indexed-label">${T.parentProductLabel}</span>
-                        <span class="sm-test-indexed-value"><strong>${escapeDisplay(truncateDisplay(parentProduct.title || '-', 72))}</strong>${parentProduct.slug ? ` <code>${escapeDisplay(truncateDisplay(parentProduct.slug, 56))}</code>` : ''}${parentUrl ? ` <a class="sm-test-parent-link" href="${parentUrl}" target="_blank">${parentUrlText}</a>` : ''}</span>
-                    </div>` : '',
-                ].filter(Boolean);
-
-                if (customFields.length > 0) {
-                    const customFieldRows = customFields.map(renderCustomField).filter(Boolean).join('');
-                    rows.push(`<div class="sm-test-indexed-row">
-                        <span class="sm-test-indexed-label">${T.customFieldsLabel}</span>
-                        <div class="sm-test-indexed-custom-fields">${customFieldRows}</div>
-                    </div>`);
+                const displayValue = debugDisplayValue(value);
+                if (!displayValue) {
+                    return '';
                 }
+
+                return `<div class="sm-test-indexed-row">
+                    <span class="sm-test-indexed-label">${escapeDisplay(labelText(label))}</span>
+                    <strong class="sm-test-indexed-value">${escapeDisplay(truncateDisplay(displayValue, 240))}</strong>
+                </div>`;
+            }
+
+            function renderHeadingsRow(label, headings) {
+                if (!Array.isArray(headings) || headings.length === 0) {
+                    return '';
+                }
+
+                const headingRows = headings.map(heading => {
+                    if (!heading || typeof heading !== 'object') {
+                        return '';
+                    }
+
+                    const level = heading.level || 2;
+                    const title = heading.title || '';
+                    const snippet = heading.snippet || '';
+
+                    return `<div class="sm-test-heading-row">
+                        <span class="sm-test-heading-tag">${escapeDisplay('h' + level)}</span>${escapeDisplay(title)}${snippet ? `<span class="sm-test-heading-snippet">${escapeDisplay(truncateDisplay(snippet, 160))}</span>` : ''}
+                    </div>`;
+                }).filter(Boolean).join('');
+
+                return headingRows ? `<div class="sm-test-indexed-row">
+                    <span class="sm-test-indexed-label">${escapeDisplay(labelText(label))}</span>
+                    <div class="sm-test-headings sm-test-headings--indexed">${headingRows}</div>
+                </div>` : '';
+            }
+
+            function mergeDebugData(target, source) {
+                if (!isPlainObject(source)) {
+                    return;
+                }
+
+                Object.entries(source).forEach(([key, value]) => {
+                    if (isEmptyDebugValue(value)) {
+                        return;
+                    }
+
+                    if ((key === 'elementKind' || key === 'commerce') && isPlainObject(value)) {
+                        mergeDebugData(target, value);
+                        return;
+                    }
+
+                    if (!Object.prototype.hasOwnProperty.call(target, key)) {
+                        target[key] = value;
+                    }
+                });
+            }
+
+            function indexedDocumentData(hit) {
+                const data = {};
+
+                Object.entries(hit || {}).forEach(([key, value]) => {
+                    if (key.startsWith('_')) {
+                        return;
+                    }
+
+                    data[key] = value;
+                });
+
+                mergeDebugData(data, hit && hit._indexedDocument);
+
+                return data;
+            }
+
+            function renderIndexedDocumentDebug(hit) {
+                if (!isPlainObject(hit && hit._indexedDocument)) {
+                    return '';
+                }
+
+                const data = indexedDocumentData(hit);
+                const rows = Object.entries(data).map(([key, value]) => {
+                    if (key === 'ancestors') {
+                        return renderDataRow(T.breadcrumbLabel, ancestorBreadcrumb(value));
+                    }
+
+                    if (key === 'fields') {
+                        return renderFieldsRow(T.customFieldsLabel, value);
+                    }
+
+                    if (key === 'headings') {
+                        return renderHeadingsRow(T.headingsLabel, value);
+                    }
+
+                    return renderDataRow(friendlyDebugLabel(key), value);
+                }).filter(Boolean);
 
                 if (rows.length === 0) {
                     return '';
@@ -530,26 +688,6 @@
                 const value = String(label || '');
 
                 return /[:：]$/.test(value) ? value : `${value}:`;
-            }
-
-            function resultContext(hit, normalizedType) {
-                if (normalizedType === 'entry' && hit.entrySection) {
-                    return {label: T.sectionLabel, value: hit.entrySection};
-                }
-
-                if (normalizedType === 'asset' && hit.volume) {
-                    return {label: T.volumeLabel, value: hit.volume};
-                }
-
-                if (normalizedType === 'category' && hit.categoryGroup) {
-                    return {label: T.groupLabel, value: hit.categoryGroup};
-                }
-
-                if ((normalizedType === 'product' || normalizedType === 'variant') && hit.productType) {
-                    return {label: T.productTypeLabel, value: hit.productType};
-                }
-
-                return null;
             }
 
             function renderSafeLinkOrText(url, label) {
@@ -894,7 +1032,6 @@
         <div><strong>${T.executionLabel}</strong> ${data.executionTime}ms</div>
         <div><strong>${T.cacheLabel}</strong> ${data.cacheEnabled ? (data.cacheHit ? T.hit : T.miss) : T.disabled}${data.cacheDriver ? ' (' + data.cacheDriver + ')' : ''}</div>
         <div><strong>${T.queryUsedLabel}</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
-        <div><strong>${T.modeLabel}</strong> ${data.liveComparison ? T.liveComparisonMode : T.publicRestMode}</div>
     </div>
 </div>
 `;
@@ -916,33 +1053,8 @@
                             const urlText = rawUrl ? escapeDisplay(rawUrl) : '';
                             const isPromoted = hit.promoted === true;
                             const isBoosted = hit.boosted === true;
-                            const matchedIn = hit.matchedIn && hit.matchedIn.length > 0 ? hit.matchedIn.map(escapeDisplay).join(', ') : null;
-                            const indexHandle = hit.index || hit._index ? escapeDisplay(hit.index || hit._index) : null;
-                            const elementIdDisplay = hit.elementId ? escapeDisplay(hit.elementId) : '';
-                            const backendIdDisplay = hit.backendId ? escapeDisplay(hit.backendId) : '';
                             const rawType = hit.type || T.entry;
-                            const type = escapeDisplay(rawType);
-                            const normalizedType = String(rawType || '').toLowerCase();
-                            const context = resultContext(hit, normalizedType);
-                            const contextLabel = context ? context.label : '';
-                            const contextValue = context ? context.value : '';
-                            const contextMeta = contextValue ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}</span>` : '';
-                            const hierarchyMeta = renderHitHierarchyMeta(hit);
-                            const pageTitleMeta = hasSectionHit && hit.title && hit.title !== rawTitle ? renderMetaPill(T.titleLabel, hit.title) : '';
-                            const sectionMeta = hasSectionHit ? [
-                                renderMetaPill(T.sectionTypeLabel, hit.sectionType),
-                                renderMetaPill(T.anchorLabel, hit.sectionAnchor),
-                                renderMetaPill(T.levelLabel, hit.sectionLevel),
-                            ].join('') : '';
-                            const siteName = escapeDisplay(hit.siteName || hit.site || T.unknown);
-                            const language = escapeDisplay(hit.language || '??');
-                            const matchedHeadings = hit.headings || [];
-                            const matchedTermsData = hit.matchedTerms && typeof hit.matchedTerms === 'object' ? hit.matchedTerms : {};
-                            const matchedTerms = [
-                                ...(Array.isArray(matchedTermsData.title) ? matchedTermsData.title : []),
-                                ...(Array.isArray(matchedTermsData.content) ? matchedTermsData.content : []),
-                            ];
-                            const matchedPhrases = hit.matchedPhrases || [];
+                            const siteName = hit.siteName || hit.site || T.unknown;
                             const score = hit.score !== undefined && hit.score !== null ? Number(hit.score).toFixed(2) : T.naValue;
                             const cardClass = isPromoted ? ' sm-test-result-card--promoted' : (isBoosted ? ' sm-test-result-card--boosted' : '');
 
@@ -964,31 +1076,14 @@
                 </div>
             </div>
             <div class="sm-test-meta">
-                ${elementIdDisplay ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel('ID')}</span> #${elementIdDisplay}</span>` : ''}
-                ${backendIdDisplay ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.hitLabel)}</span> <code>${backendIdDisplay}</code></span>` : ''}
-                <span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.typeLabel)}</span> ${type}</span>
-                ${pageTitleMeta}
-                ${sectionMeta}
-                ${contextMeta}
-                ${hierarchyMeta}
-                ${indexHandle ? `<span class="sm-test-meta-item"><span class="sm-test-meta-label">${formatMetaLabel(T.indexLabel)}</span> <code>${indexHandle}</code></span>` : ''}
-                <span class="sm-test-site-badge"><span class="sm-test-meta-label">${formatMetaLabel(T.siteLabel)}</span> ${siteName} (${language})</span>
+                ${renderMetaPill(T.typeLabel, rawType)}
+                ${renderMetaPill(T.siteLabel, siteName)}
             </div>
-            ${matchedIn ? `<div class="sm-test-match-line"><strong>${T.matchedInLabel}</strong> <code>${matchedIn}</code></div>` : ''}
             ${displayText ? `<div class="sm-test-description">${displayText}${rawDisplayText.length > 400 ? '...' : ''}</div>` : ''}
-            ${matchedHeadings.length > 0 ? `<div class="sm-test-headings">
-                <div class="sm-test-headings-title">${T.matchedHeadings}</div>
-                ${matchedHeadings.map(h => `<div class="sm-test-heading-row"><span class="sm-test-heading-tag">${Craft.escapeHtml('h' + (h.level || 2))}</span>${Craft.escapeHtml(h.title || '')}${h.snippet ? `<span class="sm-test-heading-snippet">${h.snippet}</span>` : ''}</div>`).join('')}
-            </div>` : ''}
-            ${matchedTerms.length > 0 || matchedPhrases.length > 0 ? `<div class="sm-test-terms">
-                ${matchedTerms.length > 0 ? `<strong>${T.termsLabel}</strong> ${matchedTerms.map(t => '<code class="sm-test-term">' + Craft.escapeHtml(t) + '</code>').join(' ')}` : ''}
-                ${matchedPhrases.length > 0 ? `${matchedTerms.length > 0 ? ' &bull; ' : ''}<strong>${T.phrasesLabel}</strong> ${matchedPhrases.map(p => '<code class="sm-test-phrase">' + Craft.escapeHtml(p) + '</code>').join(' ')}` : ''}
-            </div>` : ''}
-            ${renderHitFields(hit)}
             ${hit._snippet ? `<div class="sm-test-debug-strip">
                 <span><span class="sm-test-debug-label">${T.snippetMatchedIn}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetSource || '-')}</strong></span>
                 <span><span class="sm-test-debug-label">${T.snippetMode}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetMode || '-')}</strong></span>
-                <span><span class="sm-test-debug-label">${T.snippetFrom}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetFrom || '-')}</strong></span>
+                <span><span class="sm-test-debug-label">${T.snippetSource}</span> <strong class="sm-test-debug-value">${Craft.escapeHtml(hit._snippet.snippetFrom || '-')}</strong></span>
                 ${hit._snippet.fullContentLength ? `<span><span class="sm-test-debug-label">${T.snippetContent}</span> <strong class="sm-test-debug-value">${(hit._snippet.fullContentLength === 1 ? T.charsSingular : T.charsPlural).replace('{count}', hit._snippet.fullContentLength.toLocaleString())}</strong></span>` : ''}
             </div>` : ''}
             ${renderLiveComparison(hit)}

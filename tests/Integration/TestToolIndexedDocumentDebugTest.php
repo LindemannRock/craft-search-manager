@@ -222,28 +222,27 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringNotContainsString('_indexedDocument', $searchHitType);
     }
 
-    public function testResultCardUsesTypeSpecificContextMetadataLabels(): void
+    public function testResultCardUsesSlimPublicCardAndElementIdContract(): void
     {
         $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
         foreach ([
-            'function resultContext(hit, normalizedType)',
-            "normalizedType === 'entry' && hit.entrySection",
-            "normalizedType === 'asset' && hit.volume",
-            "normalizedType === 'category' && hit.categoryGroup",
-            "normalizedType === 'product' || normalizedType === 'variant'",
-            'return {label: T.sectionLabel, value: hit.entrySection};',
-            'return {label: T.volumeLabel, value: hit.volume};',
-            'return {label: T.groupLabel, value: hit.categoryGroup};',
-            'return {label: T.productTypeLabel, value: hit.productType};',
-            'const context = resultContext(hit, normalizedType);',
+            'function hitElementId(hit)',
+            'const raw = hit.elementId;',
             'function formatMetaLabel(label)',
-            '<span class="sm-test-meta-label">${formatMetaLabel(contextLabel)}</span> ${escapeDisplay(contextValue)}',
-            '<span class="sm-test-meta-label">${formatMetaLabel(\'ID\')}</span> #${elementIdDisplay}',
-            '<span class="sm-test-meta-label">${formatMetaLabel(T.hitLabel)}</span> <code>${backendIdDisplay}</code>',
-            '${contextMeta}',
+            "const hasSectionHit = ['heading', 'intro', 'promoted-page'].includes(String(hit.sectionType || ''));",
+            'const rawTitle = hasSectionHit ? (hit.sectionTitle || hit.title || T.untitled) : (hit.title || T.untitled);',
+            'const rawUrl = hasSectionHit ? (hit.sectionUrl || hit.url) : hit.url;',
+            'const rawType = hit.type || T.entry;',
+            'const siteName = hit.siteName || hit.site || T.unknown;',
+            'renderMetaPill(T.typeLabel, rawType)',
+            'renderMetaPill(T.siteLabel, siteName)',
             'const rawDisplayText = rawSnippet;',
             'const displayText = rawSnippet ? smHighlight(rawSnippet.substring(0, 400), query, descTerms) : \'\';',
+            '<strong class="sm-test-title">${title}</strong>',
+            'class="sm-test-signals"',
+            '${renderLiveComparison(hit)}',
+            '${renderIndexedDocumentDebug(hit)}',
         ] as $needle) {
             self::assertStringContainsString($needle, $source);
         }
@@ -251,11 +250,20 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         self::assertStringNotContainsString('<span class="sm-test-meta-label">${T.sectionLabel}</span> ${section}', $source);
         self::assertStringNotContainsString('hit.productTypeName', $source);
         self::assertStringNotContainsString("isCommerceHit ? hit.section : ''", $source);
+        self::assertStringNotContainsString('hit.id', $source);
         self::assertStringNotContainsString('hit.objectID || hit.id', $source);
         self::assertStringNotContainsString('const contextValue = isCommerceHit ? productType : hit.section;', $source);
+        self::assertStringNotContainsString('function resultContext(hit, normalizedType)', $source);
+        self::assertStringNotContainsString('formatMetaLabel(\'ID\')', $source);
+        self::assertStringNotContainsString('backendIdDisplay', $source);
+        self::assertStringNotContainsString('${contextMeta}', $source);
+        self::assertStringNotContainsString('${hierarchyMeta}', $source);
+        self::assertStringNotContainsString('${sectionMeta}', $source);
+        self::assertStringNotContainsString('${renderHitFields(hit)}', $source);
+        self::assertStringNotContainsString('matchedIn ? `<div class="sm-test-match-line"', $source);
+        self::assertStringNotContainsString('matchedTerms.length > 0 || matchedPhrases.length > 0', $source);
         self::assertStringNotContainsString("const rawExcerpt = data.enriched ? '' : (hit.excerpt || hit.content || '');", $source);
         self::assertStringNotContainsString("const rawDisplayText = rawDescription || hit.excerpt || hit.content || '';", $source);
-        self::assertStringContainsString('renderIndexedDocumentDebug(hit)', $source);
     }
 
     public function testIndexedDocumentDebugUsesTypeSpecificContractMetadata(): void
@@ -278,15 +286,26 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         }
 
         foreach ([
-            'const elementKind = debug.elementKind && typeof debug.elementKind === \'object\' ? debug.elementKind : {};',
-            'renderDebugPill(T.sectionLabel, [elementKind.entrySection',
-            'renderDebugPill(T.volumeLabel, [elementKind.volume',
-            'renderDebugPill(T.groupLabel, [elementKind.categoryGroup',
-            'renderDebugPill(T.levelLabel, elementKind.level)',
-            'renderDebugAncestors(T.breadcrumbLabel, elementKind.ancestors)',
-            'renderDebugPill(T.folderPathLabel, elementKind.folderPath)',
-            'const hierarchyMeta = renderHitHierarchyMeta(hit);',
-            '${hierarchyMeta}',
+            'function friendlyDebugLabel(key)',
+            'entrySection: T.entrySectionLabel',
+            'entrySectionHandle: T.entrySectionHandleLabel',
+            'entrySectionType: T.entrySectionTypeLabel',
+            'categoryGroup: T.categoryGroupLabel',
+            'categoryGroupHandle: T.categoryGroupHandleLabel',
+            'docCategory: T.documentCategoryLabel',
+            'categoryIds: T.categoryIdsLabel',
+            'function indexedDocumentData(hit)',
+            'Object.entries(hit || {}).forEach(([key, value]) => {',
+            'mergeDebugData(data, hit && hit._indexedDocument);',
+            "if ((key === 'elementKind' || key === 'commerce') && isPlainObject(value)) {",
+            "if (key === 'ancestors') {",
+            'return renderDataRow(T.breadcrumbLabel, ancestorBreadcrumb(value));',
+            "if (key === 'fields') {",
+            'return renderFieldsRow(T.customFieldsLabel, value);',
+            "if (key === 'headings') {",
+            'return renderHeadingsRow(T.headingsLabel, value);',
+            'return renderDataRow(friendlyDebugLabel(key), value);',
+            "return ancestors.length > 0 ? ancestors.map(ancestor => ancestor.title).join(' › ') : '';",
         ] as $needle) {
             self::assertStringContainsString($needle, $assetSource);
         }
@@ -313,37 +332,37 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
 
         foreach ([
             'function renderIndexedDocumentDebug(hit)',
-            'const debug = hit._indexedDocument;',
-            'renderDebugPill(T.transformerClassLabel, debug.transformerClass)',
-            'renderDebugPill(T.indexElementTypeLabel, debug.indexElementType)',
-            'renderDebugPill(T.hitLabel, debug.documentKey)',
-            'renderDebugPill(T.documentTypeLabel, debug.documentType)',
-            'renderDebugList(T.variantSkusLabel, commerce.variantSkus)',
-            'renderDebugList(T.variantOptionsLabel, commerce.variantOptions)',
-            'safeUrlAttribute(parentProduct.url)',
+            'if (!isPlainObject(hit && hit._indexedDocument)) {',
+            'function renderDataRow(label, value)',
+            'function renderHeadingsRow(label, headings)',
+            'function renderFieldsRow(label, fields)',
+            'function debugDisplayValue(value)',
+            'function mergeDebugData(target, source)',
+            'transformerClass: T.transformerClassLabel',
+            'indexElementType: T.indexElementTypeLabel',
+            'documentKey: T.documentKeyLabel',
+            'documentType: T.documentTypeLabel',
+            'assetKind: T.assetKindLabel',
+            'filename: T.filenameLabel',
+            'width: T.widthLabel',
+            'height: T.heightLabel',
+            'source: T.sourceLabel',
             'escapeDisplay(truncateDisplay(field.label, 32))',
             'escapeDisplay(truncateDisplay(field.value, 96))',
             'function renderCustomField(field)',
             'function fieldRowsFromFields(fields)',
-            'function renderHitFields(hit)',
             'Array.isArray(field.children) ? field.children : []',
             "const hasSectionHit = ['heading', 'intro', 'promoted-page'].includes(String(hit.sectionType || ''));",
             'const rawTitle = hasSectionHit ? (hit.sectionTitle || hit.title || T.untitled) : (hit.title || T.untitled);',
             'const rawUrl = hasSectionHit ? (hit.sectionUrl || hit.url) : hit.url;',
             'const url = safeUrlAttribute(rawUrl);',
-            'const pageTitleMeta = hasSectionHit && hit.title && hit.title !== rawTitle ? renderMetaPill(T.titleLabel, hit.title) : \'\';',
-            'renderMetaPill(T.sectionTypeLabel, hit.sectionType)',
-            'renderMetaPill(T.anchorLabel, hit.sectionAnchor)',
-            'renderMetaPill(T.levelLabel, hit.sectionLevel)',
-            '${pageTitleMeta}',
-            '${sectionMeta}',
+            'renderMetaPill(T.typeLabel, rawType)',
+            'renderMetaPill(T.siteLabel, siteName)',
             'class="sm-test-indexed-custom-group"',
             'class="sm-test-indexed-custom-field-label"',
             'class="sm-test-indexed-custom-child"',
             'escapeDisplay(truncateDisplay(child.label, 32))',
             'escapeDisplay(truncateDisplay(child.value, 96))',
-            'const customFields = fieldRowsFromFields(hit.fields);',
-            '${renderHitFields(hit)}',
             '<details class="sm-test-indexed-debug">',
             '<summary>${T.indexedDocumentLabel}</summary>',
             'class="sm-test-indexed-row"',
@@ -384,6 +403,13 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'sm-test-thumb',
             '<img src="${hit.thumbnail}',
             '<a href="${hit.url}',
+            'renderDebugPill(T.transformerClassLabel, debug.transformerClass)',
+            'renderDebugList(T.variantSkusLabel, commerce.variantSkus)',
+            'safeUrlAttribute(parentProduct.url)',
+            'Object.keys(hit)',
+            'formatMetaLabel(\'ID\')',
+            '${renderHitFields(hit)}',
+            '${sectionMeta}',
         ] as $needle) {
             self::assertStringNotContainsString($needle, $source);
         }
