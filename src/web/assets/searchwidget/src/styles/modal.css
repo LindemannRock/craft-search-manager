@@ -54,6 +54,7 @@
 :host([data-theme="dark"]) {
     --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
     --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
+    --sm-modal-shadow: var(--sm-modal-shadow-dark, 0 25px 50px -12px rgba(0, 0, 0, 0.5));
 
     --sm-header-bg: var(--sm-header-bg-dark, transparent);
     --sm-header-border-color: var(--sm-header-border-color-dark, #374151);

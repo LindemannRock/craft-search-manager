@@ -262,6 +262,9 @@
     --sm-result-border-color: var(--sm-result-border-color-dark, #374151);
     --sm-selected-bg: var(--sm-result-active-bg-dark, #4b5563);
     --sm-selected-border: var(--sm-result-active-border-color-dark, #3b82f6);
+    --sm-result-active-text-color: var(--sm-result-active-text-color-dark, var(--sm-text-primary));
+    --sm-result-active-desc-color: var(--sm-result-active-desc-color-dark, var(--sm-text-secondary));
+    --sm-result-active-muted-color: var(--sm-result-active-muted-color-dark, var(--sm-text-muted));
 
     --sm-promoted-bg: var(--sm-promoted-bg-dark, #2563eb);
     --sm-promoted-color: var(--sm-promoted-color-dark, #ffffff);
@@ -891,6 +894,7 @@
 :host([data-theme="dark"]) {
     --sm-modal-bg: var(--sm-modal-bg-dark, #1f2937);
     --sm-modal-border: var(--sm-modal-border-color-dark, #374151);
+    --sm-modal-shadow: var(--sm-modal-shadow-dark, 0 25px 50px -12px rgba(0, 0, 0, 0.5));
 
     --sm-header-bg: var(--sm-header-bg-dark, transparent);
     --sm-header-border-color: var(--sm-header-border-color-dark, #374151);
