@@ -663,6 +663,7 @@ class WidgetConfig extends Model
             [['handle'], 'match', 'pattern' => '/^[a-zA-Z][a-zA-Z0-9_-]*$/', 'message' => Craft::t('search-manager', 'Handle must start with a letter and contain only letters, numbers, underscores, and hyphens.')],
             [['handle'], 'validateUniqueHandle'],
             [['type'], 'in', 'range' => WidgetStyle::WIDGET_TYPES],
+            [['type'], 'validateImplementedType'],
             [['enabled'], 'boolean'],
             [['settings'], 'validateSettings'],
         ];
@@ -677,6 +678,16 @@ class WidgetConfig extends Model
             'excludeId' => $this->id,
         ])) {
             $this->addError($attribute, Craft::t('search-manager', 'Handle must be unique.'));
+        }
+    }
+
+    /**
+     * Validate that the selected widget type is implemented in this release.
+     */
+    public function validateImplementedType(string $attribute): void
+    {
+        if ($this->type !== WidgetStyle::TYPE_MODAL) {
+            $this->addError($attribute, Craft::t('search-manager', 'Only modal widgets are available in this version.'));
         }
     }
 

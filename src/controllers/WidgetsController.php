@@ -955,6 +955,7 @@ class WidgetsController extends Controller
                 'widgetStyle' => $widgetStyle,
                 'isNew' => !$styleId,
                 'defaultStyles' => $defaultStyles,
+                'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             ]);
             return null;
         }
@@ -965,6 +966,7 @@ class WidgetsController extends Controller
                 'widgetStyle' => $widgetStyle,
                 'isNew' => !$styleId,
                 'defaultStyles' => $defaultStyles,
+                'widgetTypeOptions' => $this->getWidgetTypeOptions(),
             ]);
             return null;
         }
@@ -1168,13 +1170,23 @@ class WidgetsController extends Controller
     /**
      * Get widget type options for select fields
      *
-     * @return array<int, array{value: string, label: string}>
+     * @return array<int, array{value: string, label: string, disabled?: bool}>
      */
     private function getWidgetTypeOptions(): array
     {
         $options = [];
         foreach (WidgetStyle::WIDGET_TYPE_LABELS as $value => $label) {
-            $options[] = ['value' => $value, 'label' => Craft::t('search-manager', $label)];
+            $translatedLabel = Craft::t('search-manager', $label);
+            $option = ['value' => $value, 'label' => $translatedLabel];
+
+            if ($value !== WidgetStyle::TYPE_MODAL) {
+                $option['label'] = Craft::t('search-manager', '{label} (Coming soon)', [
+                    'label' => $translatedLabel,
+                ]);
+                $option['disabled'] = true;
+            }
+
+            $options[] = $option;
         }
         return $options;
     }

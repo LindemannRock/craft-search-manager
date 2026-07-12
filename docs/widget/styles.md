@@ -8,15 +8,13 @@ Widget configs control **behavior** (debounce, max results, hotkey, etc.) while 
 
 Each widget config can reference a style preset via `styleHandle`. If no style is linked, the widget uses the built-in WCAG 2.1 AA compliant defaults.
 
-## Widget Types
+## Widget Type
 
-Each style has a `type` that determines how the widget renders:
+Each style has a `type` that determines which widget surface it supports. For this release, use the modal widget type:
 
 | Type | Constant | Description |
 |------|----------|-------------|
 | Modal | `modal` | CMD+K overlay — opens on top of the page with a backdrop |
-| Search Page | `page` | Full page — renders inline as a dedicated search page |
-| Inline Search | `inline` | Compact search bar embedded directly in the page |
 
 ## Creating Styles
 

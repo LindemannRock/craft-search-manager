@@ -6,7 +6,7 @@ Search Manager includes a ready-to-use search widget for your frontend. It's bui
 
 - **WCAG 2.1 AA compliant** — tested with axe-core, all default colors meet 4.5:1 contrast ratio
 - **Keyboard navigation** — arrow keys, Enter, Escape, configurable hotkey (default: CMD+K / Ctrl+K)
-- **Three widget types** — modal (CMD+K overlay), search page (full page), and inline search
+- **Modal search widget** — CMD+K overlay with backdrop, focus handling, and scroll locking
 - **Light & dark themes** — built-in theme support with customizable colors
 - **Reusable style presets** — define [Widget Styles](styles.md) once and share across configs
 - **Recent searches** — optional search history stored locally
@@ -33,15 +33,13 @@ Search Manager includes a ready-to-use search widget for your frontend. It's bui
 
 That's it — the widget renders a trigger button and the search modal. Press CMD+K (or click the button) to open it.
 
-## Widget Types
+## Widget Type
 
-Each widget config has a `type` that controls how it renders:
+Each widget config has a `type`. For this release, use the modal widget type:
 
 | Type | Description |
 |------|-------------|
 | `modal` | CMD+K overlay — the default. Opens on top of the page with a backdrop. |
-| `page` | Full search page — renders inline as a full-page search experience. |
-| `inline` | Inline search — embeds a compact search bar directly in the page. |
 
 Set the type in the CP when creating a widget config, or in the config file:
 
@@ -49,10 +47,6 @@ Set the type in the CP when creating a widget config, or in the config file:
 'widgets' => [
     'main-search' => [
         'type' => 'modal',
-        // ...
-    ],
-    'docs-search' => [
-        'type' => 'page',
         // ...
     ],
 ],

@@ -269,7 +269,7 @@ Widget configurations define how the frontend search widget appears and behaves:
 'widgets' => [
     'brand-search' => [
         'name' => 'Brand Search',
-        'type' => 'modal',     // 'modal', 'page', or 'inline'
+        'type' => 'modal',     // supported widget type
         'enabled' => true,
         'styleHandle' => 'brand-dark',  // Link to a widget style preset
         'settings' => [

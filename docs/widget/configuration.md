@@ -40,24 +40,10 @@ Define widget configs in `config/search-manager.php`:
             ],
         ],
     ],
-    'docs-search' => [
-        'name' => 'Documentation Search',
-        'type' => 'page',
-        'settings' => [
-            'behavior' => [
-                'resultLayout' => 'hierarchical',
-                'hierarchyGroupBy' => '',
-                'hierarchyStyle' => 'tree',
-                'hierarchyDisplay' => 'unified',
-                'maxHeadingsPerResult' => 5,
-                'snippetMode' => 'deep',
-            ],
-        ],
-    ],
 ],
 ```
 
-Config-defined widgets show a "Config" badge in the CP and cannot be edited there. Database-defined widgets show a "Database" badge and are fully editable.
+Config-defined widgets show a "Config" badge in the CP and cannot be edited there. Database-defined widgets show a "Database" badge and are fully editable. The supported widget `type` is `modal`; other type values are rejected during validation or config loading.
 
 ## Twig Parameters
 

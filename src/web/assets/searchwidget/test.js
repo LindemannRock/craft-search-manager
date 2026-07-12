@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const esbuild = require('esbuild');
+const { chromium } = require('@playwright/test');
 
 const DIST_DIR = path.join(__dirname, 'dist');
 const SRC_DIR = path.join(__dirname, 'src');
@@ -358,7 +359,133 @@ try {
     test('Renderer split-hit tests execute', false);
 }
 
-// Summary
-console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
+async function waitForWidgets(page, ids) {
+    await page.waitForFunction((widgetIds) => widgetIds.every((id) => {
+        const widget = document.getElementById(id);
+        return widget?.shadowRoot?.querySelector('.sm-trigger');
+    }), ids);
+}
 
-process.exit(failed > 0 ? 1 : 0);
+async function getWidgetStates(page, ids) {
+    return page.evaluate((widgetIds) => {
+        const states = {
+            bodyOverflow: document.body.style.overflow,
+        };
+
+        for (const id of widgetIds) {
+            const widget = document.getElementById(id);
+            const backdrop = widget.shadowRoot.querySelector('.sm-backdrop');
+            const trigger = widget.shadowRoot.querySelector('.sm-trigger');
+
+            states[id] = {
+                open: widget.state.get('isOpen') === true && backdrop.hidden === false,
+                expanded: trigger.getAttribute('aria-expanded'),
+            };
+        }
+
+        return states;
+    }, ids);
+}
+
+async function dispatchSharedHotkey(page) {
+    await page.evaluate(() => {
+        document.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'k',
+            ctrlKey: true,
+            metaKey: true,
+            bubbles: true,
+            cancelable: true,
+        }));
+    });
+}
+
+async function runWidgetInstanceBehaviorTests() {
+    if (!fs.existsSync(mainFile)) {
+        test('Widget instance behavior tests can load dist file', false);
+        return;
+    }
+
+    let browser = null;
+
+    try {
+        browser = await chromium.launch();
+        const page = await browser.newPage();
+
+        await page.setContent(`
+            <!doctype html>
+            <html>
+                <body>
+                    <search-modal id="widget-a" hotkey="k"></search-modal>
+                    <search-modal id="widget-b" hotkey="k"></search-modal>
+                </body>
+            </html>
+        `);
+        await page.addScriptTag({ path: mainFile });
+        await waitForWidgets(page, ['widget-a', 'widget-b']);
+
+        await page.evaluate(() => {
+            document.getElementById('widget-a').shadowRoot.querySelector('.sm-trigger').click();
+        });
+        let states = await getWidgetStates(page, ['widget-a', 'widget-b']);
+        test('Opening first widget locks body scroll', states['widget-a'].open && !states['widget-b'].open && states.bodyOverflow === 'hidden');
+
+        await page.evaluate(() => {
+            document.getElementById('widget-b').shadowRoot.querySelector('.sm-trigger').click();
+        });
+        states = await getWidgetStates(page, ['widget-a', 'widget-b']);
+        test('Opening second widget closes first and keeps body scroll locked', !states['widget-a'].open && states['widget-b'].open && states.bodyOverflow === 'hidden');
+        test('Replacing widgets updates trigger aria-expanded state', states['widget-a'].expanded === 'false' && states['widget-b'].expanded === 'true');
+
+        await dispatchSharedHotkey(page);
+        states = await getWidgetStates(page, ['widget-a', 'widget-b']);
+        test('Shared hotkey closes the active widget without opening another instance', !states['widget-a'].open && !states['widget-b'].open && states.bodyOverflow === '');
+
+        await dispatchSharedHotkey(page);
+        states = await getWidgetStates(page, ['widget-a', 'widget-b']);
+        test('Shared hotkey opens one matching widget when none are open', states['widget-a'].open && !states['widget-b'].open && states.bodyOverflow === 'hidden');
+
+        await page.evaluate(() => {
+            document.getElementById('widget-b').open({ source: 'test' });
+        });
+        states = await getWidgetStates(page, ['widget-a', 'widget-b']);
+        test('Programmatic open replaces the currently open widget', !states['widget-a'].open && states['widget-b'].open && states.bodyOverflow === 'hidden');
+
+        await page.setContent(`
+            <!doctype html>
+            <html>
+                <body>
+                    <search-modal id="solo-widget" hotkey="k"></search-modal>
+                </body>
+            </html>
+        `);
+        await waitForWidgets(page, ['solo-widget']);
+
+        await page.evaluate(() => {
+            document.getElementById('solo-widget').shadowRoot.querySelector('.sm-trigger').click();
+        });
+        states = await getWidgetStates(page, ['solo-widget']);
+        const singleOpen = states['solo-widget'].open && states.bodyOverflow === 'hidden';
+
+        await page.evaluate(() => {
+            document.getElementById('solo-widget').shadowRoot.querySelector('.sm-trigger').click();
+        });
+        states = await getWidgetStates(page, ['solo-widget']);
+        test('Single-instance trigger behavior still toggles open and closed', singleOpen && !states['solo-widget'].open && states.bodyOverflow === '');
+    } catch (error) {
+        console.error(error);
+        test('Widget instance behavior tests execute', false);
+    } finally {
+        if (browser) {
+            await browser.close();
+        }
+    }
+}
+
+(async () => {
+    await runWidgetInstanceBehaviorTests();
+
+    // Summary
+    console.log(`\nResults: ${passed} passed, ${failed} failed\n`);
+
+    process.exit(failed > 0 ? 1 : 0);
+})();

@@ -18,7 +18,9 @@ use lindemannrock\base\helpers\ConfigFileHelper as BaseConfigFileHelper;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\models\ApiKey;
 use lindemannrock\searchmanager\models\WidgetConfig;
+use lindemannrock\searchmanager\models\WidgetStyle;
 use yii\base\Component;
+use yii\base\InvalidConfigException;
 
 /**
  * Widget Config Service
@@ -90,6 +92,12 @@ class WidgetConfigService extends Component
         $widgetConfig->handle = $handle;
         $widgetConfig->name = $configData['name'] ?? ucfirst($handle);
         $widgetConfig->type = $configData['type'] ?? 'modal';
+        if ($widgetConfig->type !== WidgetStyle::TYPE_MODAL) {
+            throw new InvalidConfigException(Craft::t('search-manager', 'Widget "{handle}" uses unsupported type "{type}". Only modal widgets are available in this version.', [
+                'handle' => $handle,
+                'type' => $widgetConfig->type,
+            ]));
+        }
         $widgetConfig->enabled = BooleanHelper::normalize($configData['enabled'] ?? null, true);
         $widgetConfig->source = 'config';
         $widgetConfig->styleHandle = $configData['styleHandle'] ?? null;

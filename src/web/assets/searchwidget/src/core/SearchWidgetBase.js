@@ -54,6 +54,9 @@ import {
 
 const PAGE_HIGHLIGHT_STYLE_ID = 'sm-page-highlight-style';
 const PAGE_HIGHLIGHT_REGISTRY = '__smPageHighlightRegistry';
+const HOTKEY_HANDLED_FLAG = '__searchManagerHotkeyHandled';
+
+let activeOpenWidget = null;
 
 /**
  * Abstract base class for search widgets
@@ -240,6 +243,8 @@ class SearchWidgetBase extends HTMLElement {
      * Subclasses should call super.disconnectedCallback() to ensure cleanup.
      */
     disconnectedCallback() {
+        this.unregisterOpenWidget();
+
         // Invalidate any in-flight search (its response is discarded as stale)
         this.searchSequence++;
 
@@ -248,6 +253,68 @@ class SearchWidgetBase extends HTMLElement {
             clearTimeout(this.debounceTimer);
             this.debounceTimer = null;
         }
+    }
+
+    // =========================================================================
+    // OPEN WIDGET REGISTRY
+    // =========================================================================
+
+    /**
+     * Register this widget as the only open widget instance on the page.
+     *
+     * @protected
+     */
+    registerOpenWidget() {
+        if (activeOpenWidget && activeOpenWidget !== this && typeof activeOpenWidget.close === 'function') {
+            activeOpenWidget.close({
+                reason: 'replace',
+                replacedBy: this,
+                source: 'replace',
+            });
+        }
+
+        activeOpenWidget = this;
+    }
+
+    /**
+     * Clear this widget from the shared open-widget registry.
+     *
+     * @protected
+     */
+    unregisterOpenWidget() {
+        if (activeOpenWidget === this) {
+            activeOpenWidget = null;
+        }
+    }
+
+    /**
+     * Claim a global hotkey event once per keypress.
+     *
+     * If the currently open widget shares this hotkey, it owns the press so
+     * repeated shared hotkeys close the active widget instead of opening a
+     * later instance in the same bubbling pass.
+     *
+     * @protected
+     * @param {KeyboardEvent} event
+     * @param {string} hotkey
+     * @returns {boolean}
+     */
+    claimHotkeyEvent(event, hotkey) {
+        if (event[HOTKEY_HANDLED_FLAG]) {
+            return false;
+        }
+
+        if (
+            activeOpenWidget
+            && activeOpenWidget !== this
+            && activeOpenWidget.state?.get('isOpen')
+            && activeOpenWidget.config?.hotkey?.toLowerCase() === hotkey
+        ) {
+            return false;
+        }
+
+        event[HOTKEY_HANDLED_FLAG] = true;
+        return true;
     }
 
     /**

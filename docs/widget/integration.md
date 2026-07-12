@@ -225,6 +225,10 @@ You can include multiple widgets with different configs on the same page:
 } %}
 ```
 
+Only one search modal can be open at a time. Opening a widget from its trigger, an external trigger, or the JavaScript `open()` method closes any other open widget first, using the normal close behavior so focus, ARIA state, body scroll locking, and backdrop state stay consistent.
+
+If multiple widgets share the same hotkey, the currently open matching widget owns the next keypress and closes. If none of the matching widgets are open, the first matching widget on the page opens. Opening a different widget by click or script replaces the active one.
+
 ## Hierarchical Results
 
 For documentation sites, use the hierarchical result layout to group results and show matched headings:

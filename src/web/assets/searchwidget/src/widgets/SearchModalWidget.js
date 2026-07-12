@@ -47,6 +47,7 @@ class SearchModalWidget extends SearchWidgetBase {
 
         // Modal-specific state
         this.externalTrigger = null;
+        this.previouslyFocused = null;
 
         // Bind modal-specific methods
         this.open = this.open.bind(this);
@@ -54,6 +55,9 @@ class SearchModalWidget extends SearchWidgetBase {
         this.toggle = this.toggle.bind(this);
         this.handleGlobalKeydown = this.handleGlobalKeydown.bind(this);
         this.handleBackdropClick = this.handleBackdropClick.bind(this);
+        this.handleTriggerClick = this.handleTriggerClick.bind(this);
+        this.handleExternalTriggerClick = this.handleExternalTriggerClick.bind(this);
+        this.handleCloseClick = this.handleCloseClick.bind(this);
     }
 
     /**
@@ -89,6 +93,13 @@ class SearchModalWidget extends SearchWidgetBase {
      * Called when element is removed from DOM
      */
     disconnectedCallback() {
+        if (this.state.get('isOpen')) {
+            this.close({
+                reason: 'disconnect',
+                source: 'disconnect',
+                restoreFocus: false,
+            });
+        }
         super.disconnectedCallback();
         this.detachEventListeners();
     }
@@ -109,7 +120,7 @@ class SearchModalWidget extends SearchWidgetBase {
             <style>${styles}</style>
 
             <!-- Trigger button -->
-            <button class="sm-trigger" part="trigger" aria-label="Open search" ${showTrigger ? '' : 'style="display: none;"'}>
+            <button class="sm-trigger" part="trigger" aria-label="Open search" aria-haspopup="dialog" aria-expanded="false" ${showTrigger ? '' : 'style="display: none;"'}>
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <circle cx="11" cy="11" r="8"/>
                     <path d="m21 21-4.35-4.35"/>
@@ -251,10 +262,10 @@ class SearchModalWidget extends SearchWidgetBase {
      */
     attachEventListeners() {
         // Trigger button
-        this.elements.trigger.addEventListener('click', this.toggle);
+        this.elements.trigger.addEventListener('click', this.handleTriggerClick);
 
         // Close button
-        this.elements.close.addEventListener('click', this.close);
+        this.elements.close.addEventListener('click', this.handleCloseClick);
 
         // Backdrop click to close
         this.elements.backdrop.addEventListener('click', this.handleBackdropClick);
@@ -271,7 +282,7 @@ class SearchModalWidget extends SearchWidgetBase {
         if (triggerSelector) {
             this.externalTrigger = document.querySelector(triggerSelector);
             if (this.externalTrigger) {
-                this.externalTrigger.addEventListener('click', this.toggle);
+                this.externalTrigger.addEventListener('click', this.handleExternalTriggerClick);
             }
         }
     }
@@ -285,7 +296,7 @@ class SearchModalWidget extends SearchWidgetBase {
 
         // External trigger
         if (this.externalTrigger) {
-            this.externalTrigger.removeEventListener('click', this.toggle);
+            this.externalTrigger.removeEventListener('click', this.handleExternalTriggerClick);
             this.externalTrigger = null;
         }
     }
@@ -297,9 +308,24 @@ class SearchModalWidget extends SearchWidgetBase {
     /**
      * Open the modal
      */
-    open() {
+    open(options = {}) {
+        const source = options.source || 'programmatic';
+
+        if (this.state.get('isOpen')) {
+            requestAnimationFrame(() => {
+                this.elements.input.focus();
+            });
+            return;
+        }
+
+        this.previouslyFocused = document.activeElement instanceof HTMLElement
+            ? document.activeElement
+            : null;
+
+        this.registerOpenWidget();
         this.state.set({ isOpen: true });
         this.elements.backdrop.hidden = false;
+        this.elements.trigger.setAttribute('aria-expanded', 'true');
 
         // Clear previous state
         this.elements.input.value = '';
@@ -323,15 +349,19 @@ class SearchModalWidget extends SearchWidgetBase {
         }
 
         // Dispatch open event
-        this.dispatchWidgetEvent('open', { source: 'programmatic' });
+        this.dispatchWidgetEvent('open', { source });
     }
 
     /**
      * Close the modal
      */
-    close() {
+    close(options = {}) {
+        const wasOpen = this.state.get('isOpen');
+
         this.state.set({ isOpen: false });
         this.elements.backdrop.hidden = true;
+        this.elements.trigger.setAttribute('aria-expanded', 'false');
+        this.unregisterOpenWidget();
 
         // Restore body scroll
         if (this.config.preventBodyScroll) {
@@ -341,19 +371,55 @@ class SearchModalWidget extends SearchWidgetBase {
         // Reset analytics tracking (allows new search session to be tracked)
         this.resetAnalyticsTracking();
 
+        if (wasOpen && options.restoreFocus !== false && this.previouslyFocused?.isConnected) {
+            this.previouslyFocused.focus();
+        }
+        this.previouslyFocused = null;
+
         // Dispatch close event
-        this.dispatchWidgetEvent('close');
+        if (wasOpen) {
+            this.dispatchWidgetEvent('close', {
+                reason: options.reason || 'programmatic',
+                source: options.source || 'programmatic',
+            });
+        }
     }
 
     /**
      * Toggle modal open/close
      */
-    toggle() {
+    toggle(options = {}) {
         if (this.state.get('isOpen')) {
-            this.close();
+            this.close({
+                reason: options.reason || 'toggle',
+                source: options.source || 'toggle',
+            });
         } else {
-            this.open();
+            this.open({
+                source: options.source || 'toggle',
+            });
         }
+    }
+
+    /**
+     * Handle the built-in trigger button.
+     */
+    handleTriggerClick() {
+        this.toggle({ source: 'trigger' });
+    }
+
+    /**
+     * Handle a configured external trigger.
+     */
+    handleExternalTriggerClick() {
+        this.toggle({ source: 'external-trigger' });
+    }
+
+    /**
+     * Handle the modal close button.
+     */
+    handleCloseClick() {
+        this.close({ reason: 'close-button', source: 'close-button' });
     }
 
     // =========================================================================
@@ -372,14 +438,17 @@ class SearchModalWidget extends SearchWidgetBase {
 
         // Hotkey to open (Cmd/Ctrl + K)
         if (modifier && e.key.toLowerCase() === hotkey) {
+            if (!this.claimHotkeyEvent(e, hotkey)) {
+                return;
+            }
             e.preventDefault();
-            this.toggle();
+            this.toggle({ source: 'hotkey' });
         }
 
         // Escape to close
         if (e.key === 'Escape' && this.state.get('isOpen')) {
             e.preventDefault();
-            this.close();
+            this.close({ reason: 'escape', source: 'escape' });
         }
     }
 
@@ -388,7 +457,7 @@ class SearchModalWidget extends SearchWidgetBase {
      * @protected
      */
     handleEscape() {
-        this.close();
+        this.close({ reason: 'escape', source: 'keyboard' });
     }
 
     /**
@@ -399,7 +468,7 @@ class SearchModalWidget extends SearchWidgetBase {
     handleBackdropClick(e) {
         // Only close if clicking the backdrop itself, not the modal
         if (e.target === this.elements.backdrop) {
-            this.close();
+            this.close({ reason: 'backdrop', source: 'backdrop' });
         }
     }
 
@@ -418,7 +487,7 @@ class SearchModalWidget extends SearchWidgetBase {
      * @param {string|number} id - Result ID
      */
     onResultSelected(url, title, id) {
-        this.close();
+        this.close({ reason: 'result-selected', source: 'result-selected' });
     }
 
     // =========================================================================
