@@ -61,6 +61,24 @@ final class FileStorageRegressionTest extends TestCase
         self::assertStringContainsString('ftruncate($handle, 0)', $matches[0]);
     }
 
+    public function testFileReadsUseSharedLockAndStillRoundTripJsonData(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/search/storage/FileStorage.php');
+        self::assertIsString($source);
+
+        $body = $this->methodBody($source, 'readFile');
+        self::assertStringContainsString('@fopen($path, \'rb\')', $body);
+        self::assertStringContainsString('flock($handle, LOCK_SH)', $body);
+        self::assertStringContainsString('stream_get_contents($handle)', $body);
+        self::assertStringContainsString('flock($handle, LOCK_UN)', $body);
+        self::assertStringNotContainsString('file_get_contents(', $body);
+
+        $storage = $this->makeStorage();
+        $storage->storeTermDocument('shared-lock', 1, 101, 3);
+
+        self::assertSame(['1:101' => 3], $storage->getTermDocuments('shared-lock', 1));
+    }
+
     public function testConcurrentTermDocumentStoresPreserveBothPostings(): void
     {
         $storage = $this->makeStorage();

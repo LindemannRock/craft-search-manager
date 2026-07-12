@@ -1308,11 +1308,21 @@ class FileStorage implements DocumentKeyStorageInterface, ElementSuggestionStora
      */
     private function readFile(string $path)
     {
-        if (!file_exists($path)) {
+        $handle = @fopen($path, 'rb');
+        if ($handle === false) {
             return null;
         }
 
-        $contents = @file_get_contents($path);
+        try {
+            if (!flock($handle, LOCK_SH)) {
+                return null;
+            }
+
+            $contents = stream_get_contents($handle);
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
 
         if ($contents === false || $contents === '') {
             return null;
