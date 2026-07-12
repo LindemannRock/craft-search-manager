@@ -107,8 +107,8 @@ Search arguments:
 | `skipAnalytics` | `Boolean` | Set to `true` to avoid recording a search analytics row. |
 | `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
 | `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
-| `showCodeSnippets` | `Boolean` | Include block-level code in snippets. Inline code text is always preserved. |
-| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from snippet display text without changing indexed content. |
+| `showCodeSnippets` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
+| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from page and section snippet display text without changing indexed content. |
 | `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
@@ -164,7 +164,7 @@ Common hit fields:
 | `matchedIn` | Provider match-location metadata for indexed fields that matched the query. This can be populated even when `matchedTerms` is empty. |
 | `matchedTerms` | Matched query terms grouped into stable `title` and `content` lists. Empty lists resolve as `[]`. |
 | `matchedPhrases` | Exact phrases matched by phrase queries. Empty lists resolve as `[]`. |
-| `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body; `null` when no eligible snippet source contains the query. |
+| `snippet` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body, or a leading fallback preview when the hit has eligible snippet text but no query-term context. |
 | `headings` | Non-null list of `SearchManagerHeading` objects with `title`, `id`, `level`, `url`, and a query-centered plain-text `snippet` from that heading section when available. Split section hits return an empty list. |
 | `boosted` / `promoted` | Query-rule boost and promotion flags when present. |
 
@@ -410,13 +410,13 @@ Snippet arguments:
 |----------|------|-------|
 | `snippetMode` | `String` | `early`, `balanced`, or `deep`. Defaults to `balanced`. |
 | `snippetLength` | `Int` | Defaults to `150`, clamped to `50`–`1000`. |
-| `showCodeSnippets` | `Boolean` | Include block-level code in snippets. Inline code text is always preserved. |
-| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from snippet display text without changing indexed content. |
+| `showCodeSnippets` | `Boolean` | Allow snippets to use block-level code from page or section bodies. Inline code text is always preserved. |
+| `parseMarkdownSnippets` | `Boolean` | Clean Markdown markers from page and section snippet display text without changing indexed content. |
 | `highlightTag` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `highlightClass` | `String` | Reserved for client renderers. Indexed snippets are returned as plain text. |
 | `hideResultsWithoutUrl` | `Boolean` | Exclude indexed results that do not have a URL. |
 
-`snippet` and `headings.snippet` are plain text. Apply highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values, then from the indexed clean body.
+`snippet` and `headings.snippet` are plain text. Apply highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values, then from the indexed clean body. If no eligible source contains the query term, Search Manager falls back to leading code-free body text, then the first eligible prose field.
 
 ## Autocomplete
 

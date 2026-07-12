@@ -66,8 +66,8 @@ GET /actions/search-manager/api/search
 |-----------|---------|-------------|
 | `snippetMode` | `balanced` | Snippet positioning: `early`, `balanced`, or `deep` |
 | `snippetLength` | `150` | Max snippet length in characters (50–1000) |
-| `showCodeSnippets` | `0` | Include block-level code in snippets; inline code text is always preserved |
-| `parseMarkdownSnippets` | `0` | Clean Markdown markers from snippet display text without changing indexed content |
+| `showCodeSnippets` | `0` | Allow snippets to use block-level code from page or section bodies; inline code text is always preserved |
+| `parseMarkdownSnippets` | `0` | Clean Markdown markers from page and section snippet display text without changing indexed content |
 | `hideResultsWithoutUrl` | `0` | Exclude results that have no URL |
 
 ### Response
@@ -221,7 +221,7 @@ Search returns one canonical hit shape:
 }
 ```
 
-`snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in the private snippet source, then from the dedicated indexed clean body. Snippet source selection is independent of `retrievableFields`, so a field can be omitted from `fields` and still produce a snippet. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If no eligible field or body text contains the query, `snippet` is `null`.
+`snippet` and `headings.*.snippet` are plain text. Apply any highlighting in the frontend. The top-level `snippet` is derived from eligible searchable custom field values in the private snippet source, then from the dedicated indexed clean body. Snippet source selection is independent of `retrievableFields`, so a field can be omitted from `fields` and still produce a snippet. Heading snippets are dynamic excerpts from the matching heading section in the indexed clean body. Title, slug, URL, SKU, native identity values, and the flattened content bag are not used as snippet sources. If the query matches the result but no eligible snippet source contains the query term, Search Manager falls back to leading code-free body text, then the first eligible prose field. `snippet` is `null` only when no eligible body or field text exists.
 
 For split SourceDoc and AutoTransformer-family indices, each returned hit is a flat section hit, not a grouped page result. Intro and heading section hits share `elementId` with the parent element, but each has a unique `backendId` and section metadata. `sectionType` is `intro`, `heading`, or `promoted-page`; `promoted-page` is used only for injected promotions on a split index. `snippet` is generated only from that section's own indexed body, and `headings` is empty because the hit is already the section. Headingless elements in a split-enabled index remain normal page-mode hits. Client code can group section hits by `elementId`, `url`, or page title when it wants a page-with-sections display.
 
@@ -281,7 +281,7 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 | `docCategory` | `string` | Docs Manager navigation category when the hit is a SourceDoc. |
 | `sourceId` | `int` | Source document or transformer-provided source ID when available. |
 | `fields` | `object` | Retrievable custom field values keyed by field handle. Values are indexed content, not translated UI labels. Empty field payloads are `{}`. |
-| `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body. `null` when no eligible snippet source contains the query. |
+| `snippet` | `string\|null` | Match-centered plain-text excerpt from the best matching eligible custom field or indexed clean body, or a leading fallback preview when the result has eligible snippet text but no query-term context. |
 | `headings` | `array` | Public heading results as `{title, id, level, url, snippet}` objects for whole-page records. Split section hits return an empty array. |
 | `matchedIn` | `array<string>` | Provider match-location metadata for indexed fields that matched the query. This can be present even when `matchedTerms` is empty. |
 | `matchedTerms` | `object` | Matched query terms grouped into stable `title` and `content` arrays. |

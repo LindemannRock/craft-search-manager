@@ -240,7 +240,7 @@ class WidgetConfig extends Model
     }
 
     /**
-     * Maximum heading children to display per result
+     * Maximum heading children to display per page block
      *
      * @since 5.39.0
      */
@@ -711,7 +711,7 @@ class WidgetConfig extends Model
         $this->validateIntField($s, 'behavior', 'debounce', Craft::t('search-manager', 'Debounce'), 0, 2000);
         $this->validateIntField($s, 'behavior', 'minChars', Craft::t('search-manager', 'Minimum Characters'), 1, 10);
         $this->validateIntField($s, 'behavior', 'maxResults', Craft::t('search-manager', 'Maximum Results'), 1, 100);
-        $this->validateIntField($s, 'behavior', 'maxHeadingsPerResult', Craft::t('search-manager', 'Max Headings per Result'), 1, 50);
+        $this->validateIntField($s, 'behavior', 'maxHeadingsPerResult', Craft::t('search-manager', 'Max Headings per Page Block'), 1, 50);
         if (BooleanHelper::normalize($s['behavior']['showRecent'] ?? true, true)) {
             $this->validateIntField($s, 'behavior', 'maxRecentSearches', Craft::t('search-manager', 'Max Recent Searches'), 1, 50);
         }

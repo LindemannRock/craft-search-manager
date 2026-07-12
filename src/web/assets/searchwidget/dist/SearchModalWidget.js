@@ -490,7 +490,7 @@
 }
 
 /* =========================================================================
-   HIERARCHICAL RESULTS (Algolia DocSearch-style)
+   HIERARCHICAL RESULTS
    ========================================================================= */
 
 /* Group wrapper */
@@ -625,7 +625,7 @@
 }
 
 /* =========================================================================
-   UNIFIED HIERARCHY DISPLAY (Starlight-style)
+   UNIFIED HIERARCHY DISPLAY
    The outer block IS the card. Inner items are borderless rows with
    border-top dividers. All children forced flat (depth 0). Hover covers
    the full child-row (including connector gutter), not the inner item.

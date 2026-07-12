@@ -166,6 +166,34 @@ class IndexedSnippetService extends Component
             }
         }
 
+        if ($best === null) {
+            $fallbackBodyText = $this->codeFreeBodySnippetText($hit, $parseMarkdownSnippets);
+            if ($fallbackBodyText !== '') {
+                $plainSnippet = $this->leadingSnippet($fallbackBodyText, $snippetLength);
+                if ($plainSnippet !== null) {
+                    $isSectionHit = $this->isSplitSectionHit($hit);
+                    $best = $this->snippetCandidate(
+                        handle: $isSectionHit ? 'sectionBody' : 'body',
+                        snippet: $plainSnippet,
+                        matchedTerms: [],
+                        source: $isSectionHit ? 'section-body-fallback' : 'body-fallback',
+                        position: 0,
+                        preferred: true,
+                        fullContentLength: mb_strlen($fallbackBodyText),
+                    );
+                }
+            }
+        }
+
+        if ($best === null) {
+            $best = $this->buildFieldFallbackSnippet(
+                $fieldValues,
+                $snippetLength,
+                $showCodeSnippets,
+                $parseMarkdownSnippets,
+            );
+        }
+
         if ($best === null && $this->isSplitSectionHit($hit) && $bodyText !== '') {
             $plainSnippet = $this->leadingSnippet($bodyText, $snippetLength);
             if ($plainSnippet !== null) {
@@ -192,6 +220,59 @@ class IndexedSnippetService extends Component
         return [
             'snippet' => is_array($best) ? (string)$best['snippet'] : null,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $fieldValues
+     * @return array{handle: string, snippet: string, matchedTerms: list<string>, score: int, position: int, preferred: bool, source: string, fullContentLength: int}|null
+     */
+    private function buildFieldFallbackSnippet(
+        array $fieldValues,
+        int $snippetLength,
+        bool $showCodeSnippets,
+        bool $parseMarkdownSnippets,
+    ): ?array {
+        foreach ($fieldValues as $handle => $value) {
+            if (!is_string($handle) || $handle === '') {
+                continue;
+            }
+
+            $text = $this->fieldValueToString($value);
+            if ($text === '' || !$this->isEligibleSnippetField($handle, $text, $showCodeSnippets, $parseMarkdownSnippets)) {
+                continue;
+            }
+
+            $plainText = $this->htmlToPlainText($text, $showCodeSnippets, $parseMarkdownSnippets);
+            $plainSnippet = $this->leadingSnippet($plainText, $snippetLength);
+            if ($plainSnippet === null) {
+                continue;
+            }
+
+            return $this->snippetCandidate(
+                handle: $handle,
+                snippet: $plainSnippet,
+                matchedTerms: [],
+                source: 'fields-fallback',
+                position: 0,
+                preferred: $this->isPreferredSnippetHandle($handle),
+                fullContentLength: mb_strlen($plainText),
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string, mixed> $hit
+     */
+    private function codeFreeBodySnippetText(array $hit, bool $parseMarkdownSnippets): string
+    {
+        $body = $this->stringValueFromMixed($hit['_bodyClean'] ?? null);
+        if ($body === '') {
+            return '';
+        }
+
+        return $this->htmlToPlainText($body, false, $parseMarkdownSnippets);
     }
 
     /**

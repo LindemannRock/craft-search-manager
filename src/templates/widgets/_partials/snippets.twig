@@ -2,7 +2,7 @@
 
 {{ forms.lightswitchField({
 	label: 'Show Code Snippets'|t('search-manager'),
-	instructions: 'Show code blocks in result descriptions'|t('search-manager'),
+	instructions: 'Allow snippets to use block-level code from page and section bodies.'|t('search-manager'),
 	id: 'behavior-showCodeSnippets',
 	name: 'settings[behavior][showCodeSnippets]',
 	on: widgetConfig.isShowCodeSnippetsEnabled(),
@@ -10,8 +10,8 @@
 
 {{ forms.selectField({
 	label: 'Snippet Mode'|t('search-manager'),
-	instructions: 'How result description snippets are generated. "Early" shows the beginning, "balanced" centers on the match, "deep" shows the most relevant section.'|t('search-manager'),
-	tip: 'Default: balanced. Use "early" for blog posts, "deep" for documentation.'|t('search-manager'),
+	instructions: 'How snippets choose a passage from eligible fields, page bodies, or split section bodies.'|t('search-manager'),
+	tip: 'Default: balanced. Use "early" for leading previews, "deep" for long documentation.'|t('search-manager'),
 	id: 'behavior-snippetMode',
 	name: 'settings[behavior][snippetMode]',
 	value: widgetConfig.getSnippetMode(),
@@ -25,7 +25,7 @@
 
 {{ forms.textField({
 	label: 'Snippet Length'|t('search-manager'),
-	instructions: 'Maximum character length for result description snippets'|t('search-manager'),
+	instructions: 'Maximum character length for page and section snippets'|t('search-manager'),
 	tip: 'Min: 50, Max: 1000 characters. Default: 150. Longer snippets show more context but use more space.'|t('search-manager'),
 	id: 'behavior-snippetLength',
 	name: 'settings[behavior][snippetLength]',
@@ -38,8 +38,8 @@
 
 {{ forms.lightswitchField({
 	label: 'Parse Markdown Snippets'|t('search-manager'),
-	instructions: 'Parse markdown formatting before building description snippets'|t('search-manager'),
-	tip: 'Enable when indexing markdown content (e.g., documentation pages) for cleaner snippet text.'|t('search-manager'),
+	instructions: 'Clean Markdown markers from page and section snippet display text.'|t('search-manager'),
+	tip: 'Enable for Markdown-heavy content, such as documentation pages. This does not change indexed content.'|t('search-manager'),
 	id: 'behavior-parseMarkdownSnippets',
 	name: 'settings[behavior][parseMarkdownSnippets]',
 	on: widgetConfig.isParseMarkdownSnippetsEnabled(),

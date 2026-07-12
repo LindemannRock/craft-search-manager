@@ -109,7 +109,7 @@
 {# Debug mode - shows index handle, score, element ID for each result #}
 {% set debug = debug ?? false %}
 
-{# Hierarchical display - Algolia DocSearch-style grouped results with heading children #}
+{# Hierarchical display - parent results with optional heading children #}
 {% set resultLayout = resultLayout ?? widgetConfig.getResultLayout() %}
 {% set hierarchyGroupBy = hierarchyGroupBy ?? widgetConfig.getHierarchyGroupBy() %}
 {% set hierarchyStyle = hierarchyStyle ?? widgetConfig.getHierarchyStyle() %}

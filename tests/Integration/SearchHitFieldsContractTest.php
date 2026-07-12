@@ -927,10 +927,142 @@ final class SearchHitFieldsContractTest extends TestCase
             'showCodeSnippets' => true,
         ]);
 
-        self::assertNull($off['snippet']);
+        self::assertSame('Install ShortLink Manager before configuring your project.', $off['snippet'] ?? null);
         self::assertStringNotContainsString('ddev composer require', (string)($off['headings'][0]['snippet'] ?? ''));
         self::assertStringContainsString('ddev composer require lindemannrock/craft-shortlink-manager', (string)$on['snippet']);
         self::assertStringContainsString('ddev composer require lindemannrock/craft-shortlink-manager', (string)($on['headings'][0]['snippet'] ?? ''));
+    }
+
+    public function testMainSnippetFallsBackToCodeFreeBodyWhenQueryMatchesCodeOnly(): void
+    {
+        $hit = [
+            'id' => 906,
+            'elementId' => 906,
+            'siteId' => 1,
+            'title' => 'ShortLink Installation',
+            'url' => 'https://example.test/docs/shortlink-manager/get-started/installation',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_bodyClean' => 'Install ShortLink Manager before configuring your project. Review the settings page after installation.',
+            '_bodyWithCode' => 'Install ShortLink Manager before configuring your project. ddev composer require lindemannrock/craft-shortlink-manager',
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['ddev'],
+            ],
+        ];
+        $debugMeta = [];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'docs', [
+            'snippetLength' => 120,
+            'showCodeSnippets' => false,
+        ], $debugMeta);
+
+        self::assertSame(
+            'Install ShortLink Manager before configuring your project. Review the settings page after installation.',
+            $result['snippet'] ?? null,
+        );
+        self::assertSame('body-fallback', $debugMeta['snippetSource'] ?? null);
+        self::assertSame('body', $debugMeta['snippetFrom'] ?? null);
+    }
+
+    public function testMainSnippetFallsBackToFirstEligibleFieldWhenBodyHasNoProse(): void
+    {
+        $hit = [
+            'type' => 'entry',
+            'elementType' => 'entry',
+            '_snippetFields' => [
+                'slug' => 'not-a-preview',
+                'summary' => 'This field preview explains the page when the indexed body has no prose.',
+            ],
+            'matchedTerms' => [
+                'content' => ['missingneedle'],
+            ],
+        ];
+        $debugMeta = [];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'missingneedle', 'entries', [
+            'snippetLength' => 120,
+            'showCodeSnippets' => false,
+        ], $debugMeta);
+
+        self::assertSame('This field preview explains the page when the indexed body has no prose.', $result['snippet'] ?? null);
+        self::assertSame('fields-fallback', $debugMeta['snippetSource'] ?? null);
+        self::assertSame('summary', $debugMeta['snippetFrom'] ?? null);
+    }
+
+    public function testMainSnippetStaysNullWhenNoEligibleSnippetTextExists(): void
+    {
+        $hit = [
+            'type' => 'entry',
+            'elementType' => 'entry',
+            '_snippetFields' => [
+                'slug' => 'short-code',
+                'url' => 'https://example.test',
+            ],
+            '_bodyWithCode' => 'ddev composer require lindemannrock/craft-search-manager',
+            'matchedTerms' => [
+                'content' => ['ddev'],
+            ],
+        ];
+        $debugMeta = [];
+
+        $result = SearchManager::$plugin->indexedSnippets->prepareHitSnippets($hit, 'ddev', 'entries', [
+            'snippetLength' => 120,
+            'showCodeSnippets' => false,
+        ], $debugMeta);
+
+        self::assertNull($result['snippet'] ?? null);
+        self::assertSame('none', $debugMeta['snippetSource'] ?? null);
+        self::assertSame('none', $debugMeta['snippetFrom'] ?? null);
+    }
+
+    public function testRestAndGraphQlReturnSameMainSnippetBodyFallback(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        if ($pair === null) {
+            $this->markTestSkipped('No enabled entry index available.');
+        }
+
+        [$index, $entry] = $pair;
+        $hit = [
+            'objectID' => $entry->id,
+            'elementId' => $entry->id,
+            'siteId' => $entry->siteId,
+            'title' => 'ShortLink Installation',
+            'url' => 'https://example.test/docs/shortlink-manager/get-started/installation',
+            'type' => 'source-doc',
+            'elementType' => 'source-doc',
+            '_bodyClean' => 'Install ShortLink Manager before configuring your project. Review the settings page after installation.',
+            '_bodyWithCode' => 'Install ShortLink Manager before configuring your project. ddev composer require lindemannrock/craft-shortlink-manager',
+            'matchedTerms' => [
+                'title' => [],
+                'content' => ['ddev'],
+            ],
+        ];
+        $stub = $this->installStubBackend();
+
+        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
+        $restHit = $this->runApiSearch($index->handle, $entry->siteId, 0, 'ddev', [
+            'snippetLength' => 120,
+            'showCodeSnippets' => false,
+        ])->data['hits'][0] ?? [];
+
+        $stub->searchResponse = ['hits' => [$hit], 'total' => 1];
+        $graphql = SearchResolver::resolveSearch(null, [
+            'query' => 'ddev',
+            'indices' => [$index->handle],
+            'siteId' => $entry->siteId,
+            'snippetLength' => 120,
+            'showCodeSnippets' => false,
+        ], null, $this->createMock(ResolveInfo::class));
+        $graphqlHit = $graphql['hits'][0] ?? [];
+
+        self::assertEquals($restHit, $graphqlHit);
+        self::assertSame(
+            'Install ShortLink Manager before configuring your project. Review the settings page after installation.',
+            $restHit['snippet'] ?? null,
+        );
+        self::assertStringNotContainsString('ddev composer require', (string)($restHit['snippet'] ?? ''));
     }
 
     public function testSplitSourceDocCodeIncludedSectionBodyIsSelectedOnlyWhenCodeSnippetsAreEnabled(): void

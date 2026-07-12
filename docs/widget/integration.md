@@ -241,11 +241,11 @@ For documentation sites, use the hierarchical result layout to group results and
 } %}
 ```
 
-With split SourceDoc or AutoTransformer-family indices, the same hierarchical layout groups flat section hits back under their parent element. Intro hits can provide the parent snippet, heading hits render as children, and promoted page hits render at the parent level.
+With split SourceDoc or AutoTransformer-family indices, the same hierarchical layout groups flat section hits back under their parent element. Intro hits can provide the parent snippet, heading hits render as children, and promoted page hits render at the parent level. `maxHeadingsPerResult` limits heading children per page block: the widget keeps the highest-scoring heading hits first, then restores document order for display.
 
 ### Snippet Modes
 
-Control how snippets are extracted from content:
+Control how snippets are extracted from eligible fields, page bodies, and split section bodies:
 
 ```twig
 {% include 'search-manager/_widget/search-modal' with {

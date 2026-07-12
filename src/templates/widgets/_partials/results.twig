@@ -28,7 +28,7 @@
 
 {{ forms.selectField({
 	label: 'Result Layout'|t('search-manager'),
-	instructions: 'How results are displayed. Hierarchical groups results with heading children (Algolia DocSearch style).'|t('search-manager'),
+	instructions: 'How results are displayed. Hierarchical can group split section hits back under their page.'|t('search-manager'),
 	id: 'behavior-resultLayout',
 	name: 'settings[behavior][resultLayout]',
 	value: widgetConfig.getResultLayout(),
@@ -44,7 +44,7 @@
 <div id="result-layout-default"{% if widgetConfig.getResultLayout() != 'default' %} class="hidden"{% endif %}>
 	{{ forms.lightswitchField({
 		label: 'Group Results'|t('search-manager'),
-		instructions: 'Group search results by type/section'|t('search-manager'),
+		instructions: 'Group flat results by source, Entry section, or type.'|t('search-manager'),
 		id: 'behavior-groupResults',
 		name: 'settings[behavior][groupResults]',
 		on: widgetConfig.isGroupResultsEnabled(),
@@ -54,7 +54,7 @@
 <div id="result-layout-hierarchical"{% if widgetConfig.getResultLayout() != 'hierarchical' %} class="hidden"{% endif %}>
 	{{ forms.selectField({
 		label: 'Hierarchy Display'|t('search-manager'),
-		instructions: 'Individual shows each result as its own card. Unified wraps each page and its headings in a single card (Starlight-style).'|t('search-manager'),
+		instructions: 'Individual shows each parent result as its own card. Unified wraps each page block and its heading children in one card.'|t('search-manager'),
 		id: 'behavior-hierarchyDisplay',
 		name: 'settings[behavior][hierarchyDisplay]',
 		value: widgetConfig.getHierarchyDisplay(),
@@ -66,9 +66,9 @@
 	}) }}
 
 	{{ forms.textField({
-		label: 'Max Headings per Result'|t('search-manager'),
-		instructions: 'Maximum number of heading children to display per result'|t('search-manager'),
-		tip: 'Min: 1, Max: 50. Default: 3. Set higher to show more heading anchors per document.'|t('search-manager'),
+		label: 'Max Headings per Page Block'|t('search-manager'),
+		instructions: 'Maximum heading children shown for each page block. Split hits are selected by score, then displayed in document order.'|t('search-manager'),
+		tip: 'Min: 1, Max: 50. Default: 3. Set higher to show more heading anchors per page.'|t('search-manager'),
 		id: 'behavior-maxHeadingsPerResult',
 		name: 'settings[behavior][maxHeadingsPerResult]',
 		value: widgetConfig.getMaxHeadingsPerResult(),
@@ -80,12 +80,12 @@
 
 	{{ forms.textField({
 		label: 'Group By Field'|t('search-manager'),
-		instructions: 'Document field to group hierarchical results by (e.g., "section", "category"). Leave empty for default "section".'|t('search-manager'),
-		tip: 'Max: 64 characters. Must match a field name in your indexed documents.'|t('search-manager'),
+		instructions: 'Document field to group hierarchical results by, such as "source", "entrySection", or "docCategory". Leave empty for the default source → entrySection → type chain.'|t('search-manager'),
+		tip: 'Max: 64 characters. Must match a public field in indexed hits.'|t('search-manager'),
 		id: 'behavior-hierarchyGroupBy',
 		name: 'settings[behavior][hierarchyGroupBy]',
 		value: widgetConfig.getHierarchyGroupBy(),
-		placeholder: 'section',
+		placeholder: 'source',
 		errors: widgetConfig.getErrors('settings.behavior.hierarchyGroupBy')
 	}) }}
 </div>

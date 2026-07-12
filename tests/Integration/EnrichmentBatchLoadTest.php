@@ -381,7 +381,7 @@ final class EnrichmentBatchLoadTest extends TestCase
         self::assertArrayNotHasKey('highlights', $result);
     }
 
-    public function testTitleOnlyMatchWithoutFieldContentReturnsNullSnippet(): void
+    public function testTitleOnlyMatchFallsBackToFieldSnippet(): void
     {
         $result = $this->invokeFieldSnippet([
             'title' => 'Eco Shirt',
@@ -394,7 +394,7 @@ final class EnrichmentBatchLoadTest extends TestCase
             ],
         ], 'eco');
 
-        self::assertNull($result['snippet']);
+        self::assertSame('Soft cotton for everyday wear.', $result['snippet']);
     }
 
     public function testBodyOnlyMatchReturnsPlainSnippet(): void

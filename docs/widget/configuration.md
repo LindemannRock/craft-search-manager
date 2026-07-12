@@ -118,7 +118,7 @@ Override settings per-include:
 | `minChars` | `int` | `2` | Minimum characters before searching (1-10) |
 | `showRecent` | `bool` | `true` | Show recent search history |
 | `maxRecentSearches` | `int` | `5` | Maximum recent searches to store (1-50) |
-| `groupResults` | `bool` | `true` | Group results by source, Entry section, or type |
+| `groupResults` | `bool` | `true` | Group flat results by `source`, `entrySection`, or `type` |
 | `hotkey` | `string` | `'k'` | Keyboard shortcut key |
 | `hideResultsWithoutUrl` | `bool` | `false` | Hide results without a URL |
 | `preventBodyScroll` | `bool` | `true` | Prevent body scroll when open |
@@ -131,8 +131,8 @@ Override settings per-include:
 | `resultLayout` | `string` | `'default'` | Result layout: `'default'` or `'hierarchical'` |
 | `hierarchyGroupBy` | `string` | `''` | Field to group hierarchical results by. Leave empty for the default `source` → `entrySection` → `type` chain. |
 | `hierarchyStyle` | `string` | `'tree'` | Hierarchy display style: `'tree'` (indented + connectors), `'flat'` (no indentation + connectors), or `'none'` (no indentation, no connectors) |
-| `hierarchyDisplay` | `string` | `'individual'` | Card mode: `'individual'` (each result is its own card) or `'unified'` (page and headings share one card, Starlight-style) |
-| `maxHeadingsPerResult` | `int` | `3` | Maximum heading children shown per result (1-50) |
+| `hierarchyDisplay` | `string` | `'individual'` | Card mode: `'individual'` (each parent result is its own card) or `'unified'` (page block and heading children share one card) |
+| `maxHeadingsPerResult` | `int` | `3` | Maximum heading children shown per page block (1-50). Split hits are selected by score, then displayed in document order. |
 
 When a searched split-capable index uses split sections, `resultLayout: 'default'` renders each section hit as its own result. `resultLayout: 'hierarchical'` groups split section hits by parent element, orders parents by their best matching section score, uses an intro hit as the parent snippet only when that intro hit is present, and renders kept heading hits as children in document order. `maxHeadingsPerResult` keeps the highest-scoring heading children before restoring document order for display.
 
@@ -140,10 +140,10 @@ When a searched split-capable index uses split sections, `resultLayout: 'default
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `snippetMode` | `string` | `'balanced'` | Snippet extraction: `'early'`, `'balanced'`, or `'deep'` |
-| `snippetLength` | `int` | `150` | Maximum snippet length in characters (50-1000) |
-| `showCodeSnippets` | `bool` | `false` | Include block-level code in result snippets; inline code text is always preserved |
-| `parseMarkdownSnippets` | `bool` | `false` | Clean Markdown markers from snippet display text without changing indexed content |
+| `snippetMode` | `string` | `'balanced'` | Snippet passage choice for eligible fields, page bodies, and split section bodies: `'early'`, `'balanced'`, or `'deep'` |
+| `snippetLength` | `int` | `150` | Maximum snippet length in characters for page and section snippets (50-1000) |
+| `showCodeSnippets` | `bool` | `false` | Allow snippets to use block-level code from page or section bodies; inline code text is always preserved |
+| `parseMarkdownSnippets` | `bool` | `false` | Clean Markdown markers from page and section snippet display text without changing indexed content |
 | `resultTitleLines` | `int` | `1` | Title line clamp count (1-5) |
 | `resultDescLines` | `int` | `1` | Description line clamp count (1-5) |
 

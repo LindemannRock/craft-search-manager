@@ -19,10 +19,10 @@
  * @param {string} options.siteId - Optional site ID
  * @param {number} options.maxResults - Maximum results to return
  * @param {boolean} options.hideResultsWithoutUrl - Hide results without URLs
- * @param {boolean} options.showCodeSnippets - Allow code in result snippets
+ * @param {boolean} options.showCodeSnippets - Allow block-level code in page or section snippets
  * @param {string} options.snippetMode - Snippet mode: early | balanced | deep
  * @param {number} options.snippetLength - Max snippet length
- * @param {boolean} options.parseMarkdownSnippets - Parse markdown before snippets
+ * @param {boolean} options.parseMarkdownSnippets - Clean Markdown markers before displaying snippets
  * @param {boolean} options.debug - Request debug metadata (overrides devMode default)
  * @param {string} options.apiKey - Public API key sent as X-Search-Manager-Key (required when requireApiKey is on)
  * @param {AbortSignal} options.signal - AbortController signal
@@ -250,9 +250,9 @@ export function trackSearch({ endpoint, query, indices = [], resultsCount = 0, t
 }
 
 /**
- * Group results by source, entry section, or type
+ * Group results by source, Entry section, or type
  * @param {Array} results - Array of search results
- * @returns {Object} - Results grouped by type
+ * @returns {Object} - Results grouped by field value
  */
 export function groupResultsByType(results) {
     const groups = {};

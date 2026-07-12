@@ -284,13 +284,13 @@ Widget configurations define how the frontend search widget appears and behaves:
                 'maxResults' => 10,
                 'hotkey' => 'k',
                 'resultLayout' => 'default',      // 'default' or 'hierarchical'
-                'hierarchyGroupBy' => '',          // Field for grouping (e.g., 'section')
+                'hierarchyGroupBy' => '',          // Empty = source -> entrySection -> type
                 'hierarchyStyle' => 'tree',        // 'tree', 'flat', or 'none'
                 'hierarchyDisplay' => 'individual', // 'individual' or 'unified'
-                'maxHeadingsPerResult' => 3,       // Heading children per result (1-50)
-                'snippetMode' => 'balanced',       // 'early', 'balanced', or 'deep'
-                'showCodeSnippets' => false,       // Include block-level code in snippets
-                'parseMarkdownSnippets' => false,  // Clean markdown markers from snippet text
+                'maxHeadingsPerResult' => 3,       // Heading children per page block (1-50)
+                'snippetMode' => 'balanced',       // Passage choice for page/section snippets
+                'showCodeSnippets' => false,       // Allow block-level code in page/section snippets
+                'parseMarkdownSnippets' => false,  // Clean Markdown markers from snippet display text
             ],
             'analytics' => [
                 'source' => 'header-search',

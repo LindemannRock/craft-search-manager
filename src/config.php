@@ -707,25 +707,30 @@ return [
          *     - maxResults: Max results to show, capped at 100 (default: 10)
          *     - showRecent: Show recent searches (default: true)
          *     - maxRecentSearches: Max recent searches stored (default: 5)
-         *     - groupResults: Group results by section/type (default: true)
+         *     - groupResults: Group flat results by source, Entry section, or type (default: true)
          *     - hotkey: Keyboard shortcut key, e.g. 'k' for Cmd/Ctrl+K (default: 'k')
          *     - hideResultsWithoutUrl: Hide results that don't have a URL (default: false)
          *     - showLoadingIndicator: Show spinner while searching (default: true)
          *     - preventBodyScroll: Prevent page scroll when modal is open (default: true)
          *     - resultLayout: 'default' (flat list) or 'hierarchical' (parent/child) (default: 'default')
-         *     - hierarchyDisplay: 'individual' (each result as card) or 'unified' (page + headings
-         *       in one card, Starlight-style) (default: 'individual')
+         *     - hierarchyDisplay: 'individual' (each parent as card) or 'unified' (page block +
+         *       heading children in one card) (default: 'individual')
          *     - hierarchyStyle: 'tree' (indented + connectors), 'flat' (no indentation + connectors),
          *       'none' (no indentation, no connectors) (default: 'tree')
-         *     - maxHeadingsPerResult: Max heading children per result, 1-50 (default: 3)
-         *     - hierarchyGroupBy: Field to group hierarchical results by, e.g. 'source', 'entrySection', or 'docCategory' (default: '')
-         *     - showCodeSnippets: Include block-level code in result snippets (default: false)
-         *     - snippetMode: How snippets find the best passage — 'early' (first match),
-         *       'balanced' (best density), 'deep' (exhaustive scan) (default: 'balanced')
+         *     - maxHeadingsPerResult: Max heading children per page block, 1-50. Split hits are
+         *       selected by score, then displayed in document order (default: 3)
+         *     - hierarchyGroupBy: Field to group hierarchical results by, e.g. 'source',
+         *       'entrySection', or 'docCategory'. Empty uses source -> entrySection -> type
+         *     - showCodeSnippets: Allow snippets to use block-level code from page or section bodies
+         *       (default: false)
+         *     - snippetMode: How snippets find the best passage from fields, page bodies, or split
+         *       section bodies: 'early', 'balanced', or 'deep' (default: 'balanced')
          *     - resultTitleLines: Max lines for result title, 1-5 (default: 1)
          *     - resultDescLines: Max lines for result description, 1-5 (default: 1)
-         *     - snippetLength: Snippet length in characters, 50-1000 (default: 150)
-         *     - parseMarkdownSnippets: Clean Markdown markers from snippet display text (default: false)
+         *     - snippetLength: Snippet length in characters for page and section snippets, 50-1000
+         *       (default: 150)
+         *     - parseMarkdownSnippets: Clean Markdown markers from page and section snippet display
+         *       text without changing indexed content (default: false)
          *     - highlightDestinationPage: Highlight search terms on destination page after
          *       navigating from a result (default: true)
          *     - persistQueryInUrl: Append search query to destination URL (default: true)

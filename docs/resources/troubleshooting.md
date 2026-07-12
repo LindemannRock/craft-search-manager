@@ -246,7 +246,7 @@ Typesense requires explicit `query_by` to search custom fields. The default sear
 
 In hierarchical search results, heading children show query-centered snippets from the heading's section in the indexed clean body. If a heading has no snippet:
 
-- **No query match in that section**: The heading can still appear because the page matched, but its `snippet` stays `null` unless the heading section contains the query term.
+- **No query match in that section**: The heading can still appear because the page matched. When the heading section has text but no query-term context, Search Manager shows the section opening; `snippet` stays `null` only when the indexed section text is empty.
 - **Heading boundary not found in the indexed body**: Heading metadata is matched back to the clean body at request time. Rebuild the index if headings or body content changed.
 - **Snippet settings are restrictive**: `snippetMode`, `snippetLength`, and `parseMarkdownSnippets` apply to heading snippets the same way they apply to the main snippet.
 

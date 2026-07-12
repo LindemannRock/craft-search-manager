@@ -10,7 +10,7 @@ Search Manager includes a ready-to-use search widget for your frontend. It's bui
 - **Light & dark themes** — built-in theme support with customizable colors
 - **Reusable style presets** — define [Widget Styles](styles.md) once and share across configs
 - **Recent searches** — optional search history stored locally
-- **Grouped results** — group results by type/section with hierarchical layout option
+- **Grouped results** — group flat results by source, Entry section, type, or another public hit field
 - **Heading matching** — show matched headings under results for documentation sites
 - **Split section rendering** — split SourceDoc and AutoTransformer-family hits can render as parent rows with matched heading children in hierarchical layouts
 - **Snippet modes** — early, balanced, or deep snippet extraction

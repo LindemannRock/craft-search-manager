@@ -17,7 +17,7 @@ import { appendQueryParam } from './UrlUtils.js';
 /**
  * @typedef {Object} RenderOptions
  * @property {string} listboxId - ARIA listbox ID for accessibility
- * @property {boolean} groupResults - Whether to group by type/section
+ * @property {boolean} groupResults - Whether to group flat results by source, Entry section, or type
  * @property {boolean} enableHighlighting - Whether to highlight matches
  * @property {string} highlightTag - HTML tag for highlights (default: 'mark')
  * @property {string} highlightClass - Additional CSS class for highlights
@@ -70,7 +70,7 @@ export function renderResults(results, query, options = {}) {
         return '';
     }
 
-    // Hierarchical layout (Algolia DocSearch-style)
+    // Hierarchical layout can group split section hits back under their page.
     if (resultLayout === 'hierarchical') {
         return renderHierarchicalResults(results, query, options);
     }
@@ -565,10 +565,10 @@ function hashIcon() {
 }
 
 /**
- * Render results in hierarchical layout (Algolia DocSearch-style)
+ * Render results in hierarchical layout.
  *
- * Groups results by a configurable field and shows matched headings
- * as indented child items with connecting lines.
+ * Groups results by a configurable public field and can show split section
+ * heading hits as child items.
  *
  * @param {SearchResult[]} results - Search results array
  * @param {string} query - The search query (for highlighting)

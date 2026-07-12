@@ -19,7 +19,7 @@
  * @property {number} minChars - Minimum characters before search
  * @property {boolean} showRecent - Show recent searches
  * @property {number} maxRecentSearches - Max recent searches to store
- * @property {boolean} groupResults - Group results by type/section
+ * @property {boolean} groupResults - Group flat results by source, Entry section, or type
  * @property {string} siteId - Site ID filter
  * @property {string} searchEndpoint - Search API endpoint (internal)
  * @property {string} trackClickEndpoint - Click tracking endpoint (internal)
@@ -30,7 +30,7 @@
  * @property {string} highlightTag - HTML tag for highlights
  * @property {string} highlightClass - CSS class for highlights
  * @property {boolean} hideResultsWithoutUrl - Hide URL-less results
- * @property {boolean} showCodeSnippets - Allow code in result snippets
+ * @property {boolean} showCodeSnippets - Allow block-level code in page or section snippets
  * @property {string} snippetMode - Snippet mode: early | balanced | deep
  * @property {Object} styles - Custom style values
  * @property {Object} promotions - Promotion display config
@@ -104,12 +104,12 @@ export const BASE_DEFAULTS = {
     queryParamName: 'smq',
     highlightDestinationPage: true,
     destinationHighlightSelector: 'main, article, [data-search-content]',
-    // Hierarchical result display (Algolia DocSearch-style)
-    resultLayout: 'default', // 'default' | 'grouped' | 'hierarchical'
+    // Hierarchical result display for parent results and split section hits
+    resultLayout: 'default', // 'default' | 'hierarchical'
     hierarchyGroupBy: '',    // Field to group by (e.g., 'source', 'entrySection', 'docCategory', 'categoryGroup')
     hierarchyStyle: 'tree',  // 'tree' (indented + connectors) | 'flat' (same depth + connectors) | 'none' (same depth, no connectors)
-    hierarchyDisplay: 'individual', // 'individual' (each result is its own card) | 'unified' (page + headings share one card)
-    maxHeadingsPerResult: 3, // Max heading children per result
+    hierarchyDisplay: 'individual', // 'individual' (each parent is its own card) | 'unified' (page block + headings share one card)
+    maxHeadingsPerResult: 3, // Max heading children per page block
     styles: {},
     promotions: {
         showBadge: true,
