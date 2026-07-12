@@ -82,7 +82,6 @@ GET /actions/search-manager/api/search
             "promoted": true,
             "position": 1,
             "score": null,
-            "elementType": "product",
             "type": "product",
             "productType": "Clothing",
             "productTypeHandle": "clothing",
@@ -106,7 +105,6 @@ GET /actions/search-manager/api/search
             "siteId": 1,
             "backendId": "456_1",
             "score": 45.23,
-            "elementType": "entry",
             "type": "entry",
             "entrySection": "Blog",
             "entrySectionHandle": "blog",
@@ -165,7 +163,6 @@ Search returns one canonical hit shape:
                 { "id": 10, "title": "Guides" }
             ],
             "level": 2,
-            "elementType": "entry",
             "type": "entry",
             "fields": {
                 "intro": "Install and configure the plugin",
@@ -204,7 +201,6 @@ Search returns one canonical hit shape:
             "size": 123456,
             "width": 600,
             "height": 600,
-            "elementType": "asset",
             "type": "asset",
             "fields": {},
             "score": 12.4,
@@ -253,7 +249,6 @@ For split SourceDoc and AutoTransformer-family indices, each returned hit is a f
 | `dateCreated` | `int` | Indexed creation timestamp when available. |
 | `dateUpdated` | `int` | Indexed update timestamp when available. |
 | `score` | `float\|null` | Optional backend-specific relevance signal. Built-in backends return Search Manager's BM25 score; Meilisearch and Typesense map provider ranking values when available; Algolia may omit a comparable score; promoted items can be `null`. |
-| `elementType` | `string` | Stable lowercase document kind. Matches `type`. |
 | `type` | `string` | Stable lowercase document kind: `entry`, `product`, `variant`, `asset`, `category`, `user`, or `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
 | Naming rule |  | Hit keys use Craft-native names; a kind prefix is used only where the bare word would be ambiguous within this contract (`entrySection*`, `assetKind`, `categoryGroup*`, `docCategory`). |
 | `source` | `string` | Source name for SourceDoc and custom source-backed hits. |

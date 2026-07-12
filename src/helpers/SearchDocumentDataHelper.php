@@ -37,7 +37,6 @@ class SearchDocumentDataHelper
             'elementId' => $element->id,
             'backendId' => $backendId,
             'type' => $documentType,
-            'elementType' => $documentType,
             'title' => self::title($element),
             'slug' => self::stringValue($element, 'slug'),
             'url' => $element->url ?? '',

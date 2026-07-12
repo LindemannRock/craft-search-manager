@@ -27,7 +27,7 @@ Backend setup still matters. Search Manager can generate the right filter syntax
 - Meilisearch custom filter fields must be listed in `filterableAttributes`.
 - Typesense custom filter fields must exist in the collection schema with filtering support.
 
-For Algolia, Search Manager automatically configures only its built-in filter fields: `siteId`, `elementType`, and `type`. Fields like `brand`, `category`, `price`, or `inStock` must be added in Algolia before those filters can work.
+For Algolia, Search Manager automatically configures only its built-in filter fields: `siteId`, `elementId`, and `type`. Fields like `brand`, `category`, `price`, or `inStock` must be added in Algolia before those filters can work.
 
 ## Filtering Search Results
 
@@ -79,7 +79,7 @@ Entry section metadata is separate from the document kind:
 
 | Field | Meaning |
 |-------|---------|
-| `type` / `elementType` | Stable document kind, for example `entry` |
+| `type` | Stable document kind, for example `entry` |
 | `section` | Human-readable section name |
 | `sectionHandle` | Entry section handle |
 | `sectionType` | Entry section type: `single`, `channel`, or `structure` |
@@ -88,16 +88,15 @@ Commerce metadata is also separate from the document kind:
 
 | Field | Meaning |
 |-------|---------|
-| `type` / `elementType` | `product` or `variant` |
+| `type` | `product` or `variant` |
 | `productType` | Human-readable Commerce product type name |
 | `productTypeHandle` | Commerce product type handle |
 
 When changing a transformer document type or metadata shape, rebuild the affected index so stored search documents match the current contract.
 
-You can override the document kind in a custom transformer, but keep `type` and `elementType` aligned:
+You can override the document kind in a custom transformer by setting `type`. Filtering and faceting target this same field:
 
 ```php
-$data['elementType'] = 'custom-type';
 $data['type'] = 'custom-type';
 ```
 

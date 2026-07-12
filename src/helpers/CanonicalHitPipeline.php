@@ -50,9 +50,7 @@ class CanonicalHitPipeline
                     'parseMarkdownSnippets' => $options['parseMarkdownSnippets'] ?? SnippetOptionsHelper::DEFAULT_PARSE_MARKDOWN,
                     'title' => is_string($hit['title'] ?? null) ? $hit['title'] : '',
                     'url' => is_string($hit['url'] ?? null) ? $hit['url'] : '',
-                    'documentType' => is_string($hit['type'] ?? null)
-                        ? $hit['type']
-                        : (is_string($hit['elementType'] ?? null) ? $hit['elementType'] : ''),
+                    'documentType' => is_string($hit['type'] ?? null) ? $hit['type'] : '',
                 ],
                 $snippetDebug,
             );

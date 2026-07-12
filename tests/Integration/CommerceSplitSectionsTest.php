@@ -85,7 +85,6 @@ final class CommerceSplitSectionsTest extends TestCase
 
         $metadataKeys = array_values(array_filter([
             'type',
-            'elementType',
             'productType',
             'productTypeHandle',
             'variantSkus',

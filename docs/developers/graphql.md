@@ -36,7 +36,6 @@ query {
       siteId
       site
       language
-      elementType
       source
       entrySection
       entrySectionHandle
@@ -133,7 +132,6 @@ Common hit fields:
 | `elementId` | Numeric Craft element ID. Use this for Craft element queries and URLs. Split section hits share this parent page identity. |
 | `backendId` | Unique Search Manager backend document ID, usually `{elementId}_{siteId}` for page hits and `{elementId}_{siteId}_{sectionId}` for split section hits. Treat hits as unique by `backendId`. |
 | `siteId` / `site` / `language` | Site ID, site handle, and site language from the indexed document. |
-| `elementType` | Stable lowercase document kind. Matches `type`. |
 | `type` | Stable lowercase document kind used by Search Manager filters and widgets. Built-in values are `entry`, `product`, `variant`, `asset`, `category`, `user`, and `source-doc`. Split section hits keep the parent document kind, such as `entry` or `source-doc`. |
 | Naming rule | Hit keys use Craft-native names; a kind prefix is used only where the bare word would be ambiguous within this contract (`entrySection*`, `assetKind`, `categoryGroup*`, `docCategory`). |
 | `source` | Source name for SourceDoc and custom source-backed hits. |
@@ -252,7 +250,7 @@ query {
 }
 ```
 
-For Algolia filters, use Algolia filter syntax and make sure custom filter fields are configured in Algolia `attributesForFaceting`. Search Manager automatically configures the built-in filter fields it owns, such as `siteId`, `elementType`, and `type`.
+For Algolia filters, use Algolia filter syntax and make sure custom filter fields are configured in Algolia `attributesForFaceting`. Search Manager automatically configures the built-in filter fields it owns, such as `siteId` and `type`.
 
 ```graphql
 query {

@@ -78,14 +78,14 @@ class AutoTransformer extends BaseTransformer
         $data = $this->getCommonData($element);
 
         // Set element-kind metadata for grouping (hierarchical layout, groupResults).
-        $kindMetadata = SearchElementKindMetadataHelper::metadata($element, $data['elementType']);
+        $kindMetadata = SearchElementKindMetadataHelper::metadata($element, $data['type']);
         $data = array_merge($data, $kindMetadata);
 
         $data = array_merge($data, $this->getHierarchyMetadata($element));
 
         $contentBag = $this->autoContentHelper->collect($element);
         $searchableContent = $contentBag['parts'];
-        if ($data['elementType'] === 'asset') {
+        if ($data['type'] === 'asset') {
             self::appendUniqueSearchableTerm($searchableContent, $kindMetadata['assetKind'] ?? null);
             self::appendUniqueSearchableTerm($searchableContent, $kindMetadata['extension'] ?? null);
         }

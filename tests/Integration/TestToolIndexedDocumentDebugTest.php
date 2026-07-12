@@ -55,7 +55,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
             'site' => 'default',
             'siteName' => 'Default',
             'language' => 'en-US',
-            'elementType' => 'product',
+            'type' => 'product',
             'productType' => 'Clothing',
             'productTypeHandle' => 'clothing',
             'variantSkus' => ['SKU-1', 'SKU-2'],
@@ -107,7 +107,7 @@ final class TestToolIndexedDocumentDebugTest extends TestCase
         $hit = [
             'id' => 456,
             'siteId' => 1,
-            'elementType' => 'variant',
+            'type' => 'variant',
             'productType' => 'Clothing',
             'productTypeHandle' => 'clothing',
             'variantOptions' => ['Size: L'],

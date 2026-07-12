@@ -389,7 +389,7 @@ class SettingsController extends Controller
             $debug['documentKey'] = $documentKey;
         }
 
-        $documentType = $this->settingsTestScalarDebugValue($hit['elementType'] ?? $hit['type'] ?? null);
+        $documentType = $this->settingsTestScalarDebugValue($hit['type'] ?? null);
         if ($documentType !== null) {
             $debug['documentType'] = $documentType;
         }
@@ -418,7 +418,7 @@ class SettingsController extends Controller
      */
     private function settingsTestElementKindDebug(array $hit): array
     {
-        $type = strtolower((string)($hit['elementType'] ?? $hit['type'] ?? ''));
+        $type = strtolower((string)($hit['type'] ?? ''));
 
         if ($type === 'entry') {
             return $this->settingsTestFilterElementKindDebug([
@@ -875,7 +875,7 @@ class SettingsController extends Controller
             return true;
         }
 
-        $type = (string)($hit['elementType'] ?? $hit['type'] ?? '');
+        $type = (string)($hit['type'] ?? '');
 
         return in_array($type, ['product', 'variant', CommerceElementTypeHelper::productElementType(), CommerceElementTypeHelper::variantElementType()], true);
     }

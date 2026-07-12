@@ -78,7 +78,6 @@ class SearchCommerceDocumentHelper
         }
 
         $data['type'] = 'product';
-        $data['elementType'] = 'product';
         $data['slug'] = self::stringValue($product, ['slug']);
         $data['productType'] = self::stringValue($productType, ['name', 'getName']);
         $data['productTypeHandle'] = self::stringValue($productType, ['handle', 'getHandle']);
@@ -130,7 +129,6 @@ class SearchCommerceDocumentHelper
         $variantOptions = self::variantOptionStrings($variant);
 
         $data['type'] = 'variant';
-        $data['elementType'] = 'variant';
         $data['sku'] = self::stringValue($variant, ['sku', 'getSku']);
         $data['variantTitle'] = self::stringValue($variant, ['title', 'getTitle']);
         $data['variantOptions'] = $variantOptions;

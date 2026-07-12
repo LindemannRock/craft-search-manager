@@ -858,17 +858,21 @@ class MeilisearchBackend extends BaseBackend implements AutocompleteBackendInter
 
             // Get current filterable attributes
             $currentFilterable = $index->getFilterableAttributes();
+            $cleanedFilterable = array_values(array_filter(
+                $currentFilterable,
+                static fn($attribute): bool => $attribute !== 'elementType',
+            ));
 
             // Required filterable attributes for Search Manager
-            $requiredFilterable = ['siteId', 'elementId', 'elementType', 'type'];
+            $requiredFilterable = ['siteId', 'elementId', 'type'];
             $requiredSearchable = SearchRecordProjectionHelper::providerSearchableAttributes();
 
             // Check if already configured
-            $missingAttributes = array_diff($requiredFilterable, $currentFilterable);
+            $missingAttributes = array_diff($requiredFilterable, $cleanedFilterable);
 
-            if (!empty($missingAttributes)) {
+            if (!empty($missingAttributes) || $cleanedFilterable !== $currentFilterable) {
                 // Add missing attributes while preserving existing ones
-                $newFilterable = array_values(array_unique(array_merge($currentFilterable, $requiredFilterable)));
+                $newFilterable = array_values(array_unique(array_merge($cleanedFilterable, $requiredFilterable)));
                 $index->updateFilterableAttributes($newFilterable);
 
                 $this->logInfo('Configured Meilisearch filterable attributes', [

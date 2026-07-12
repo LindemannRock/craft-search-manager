@@ -95,7 +95,7 @@ final class AutoTransformerNativeFieldTest extends TestCase
         $data = (new AutoTransformer())->transform($entry);
 
         self::assertSame('entry', $data['type'] ?? null);
-        self::assertSame('entry', $data['elementType'] ?? null);
+        self::assertArrayNotHasKey('elementType', $data);
         self::assertSame($section->name, $data['entrySection'] ?? null);
         self::assertSame($section->handle, $data['entrySectionHandle'] ?? null);
         self::assertSame($section->type, $data['entrySectionType'] ?? null);
@@ -103,7 +103,6 @@ final class AutoTransformerNativeFieldTest extends TestCase
         self::assertArrayNotHasKey('sectionHandle', $data);
         self::assertArrayNotHasKey('sectionType', $data);
         self::assertNotSame($section->handle, $data['type'] ?? null);
-        self::assertNotSame($section->handle, $data['elementType'] ?? null);
         self::assertNotSame($section->type, $data['type'] ?? null);
     }
 

@@ -88,7 +88,7 @@ final class CommerceTransformerTest extends TestCase
 
         self::assertSame(101, $data['elementId']);
         self::assertSame('product', $data['type']);
-        self::assertSame('product', $data['elementType']);
+        self::assertArrayNotHasKey('elementType', $data);
         self::assertSame('Trail Sneaker', $data['title']);
         self::assertSame('trail-sneaker', $data['slug']);
         self::assertSame('https://example.test/products/trail-sneaker', $data['url']);
@@ -131,7 +131,7 @@ final class CommerceTransformerTest extends TestCase
         self::assertSame(301, $data['elementId']);
         self::assertSame(1, $data['siteId']);
         self::assertSame('variant', $data['type']);
-        self::assertSame('variant', $data['elementType']);
+        self::assertArrayNotHasKey('elementType', $data);
         self::assertSame('SKU-RED', $data['sku']);
         self::assertSame('Red Sneaker', $data['variantTitle']);
         self::assertSame('Trail Sneaker', $data['productTitle']);
@@ -160,7 +160,8 @@ final class CommerceTransformerTest extends TestCase
 
         $data = (new CommerceTransformer())->transform($product);
 
-        self::assertSame('product', $data['elementType']);
+        self::assertSame('product', $data['type']);
+        self::assertArrayNotHasKey('elementType', $data);
         self::assertSame('Shoes', $data['productType']);
         self::assertSame('shoes', $data['productTypeHandle']);
         self::assertArrayNotHasKey('productTypeName', $data);

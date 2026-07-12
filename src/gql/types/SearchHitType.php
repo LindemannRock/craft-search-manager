@@ -51,7 +51,6 @@ class SearchHitType extends ObjectType
         return [
             'backendId' => ['name' => 'backendId', 'type' => Type::string(), 'description' => 'The unique backend-native hit ID. Split section hits share element id but keep distinct backend ids.'],
             'elementId' => ['name' => 'elementId', 'type' => Type::int(), 'description' => 'The element ID.'],
-            'elementType' => ['name' => 'elementType', 'type' => Type::string(), 'description' => 'The stable lowercase document kind.'],
             'siteId' => ['name' => 'siteId', 'type' => Type::int(), 'description' => 'The site ID.'],
             'site' => ['name' => 'site', 'type' => Type::string(), 'description' => 'The site handle.'],
             'language' => ['name' => 'language', 'type' => Type::string(), 'description' => 'The indexed site language.'],

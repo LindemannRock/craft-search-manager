@@ -88,7 +88,7 @@ class TransformEvent extends Event
      * remove sensitive content, or enrich the document before indexing.
      *
      * Common fields: `title`, `content`, `excerpt`, `url`, `siteId`,
-     * `elementType`, `_headings`, etc.
+     * `type`, `_headings`, etc.
      */
     public ?array $document = null;
 }

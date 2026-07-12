@@ -55,7 +55,7 @@ class IndexedSnippetService extends Component
             : $this->stringValueFromMixed($hit['url'] ?? null);
         $documentType = is_string($options['documentType'] ?? null)
             ? strtolower((string)$options['documentType'])
-            : strtolower((string)($hit['type'] ?? $hit['elementType'] ?? ''));
+            : strtolower((string)($hit['type'] ?? ''));
 
         $fieldSnippet = $this->buildFieldSnippet(
             $hit,

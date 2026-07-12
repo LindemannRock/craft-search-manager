@@ -88,7 +88,7 @@ Algolia requires filter fields to be listed in `attributesForFaceting` before th
 Search Manager automatically adds the attributes needed for its built-in filters:
 
 - `filterOnly(siteId)`
-- `filterOnly(elementType)`
+- `filterOnly(elementId)`
 - `filterOnly(type)`
 
 Custom filters are different. If your templates, API callers, or GraphQL queries filter by fields such as `brand`, `category`, `price`, `inStock`, `region`, or `vehicleType`, add those fields to `attributesForFaceting` in Algolia.

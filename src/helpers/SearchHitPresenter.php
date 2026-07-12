@@ -62,6 +62,7 @@ class SearchHitPresenter
         unset(
             $hit['id'],
             $hit['objectID'],
+            $hit['elementType'],
             $hit['section'],
             $hit['sectionHandle'],
             $hit['group'],
@@ -102,7 +103,6 @@ class SearchHitPresenter
             'url',
             'dateCreated',
             'dateUpdated',
-            'elementType',
             'type',
             'source',
             'docCategory',

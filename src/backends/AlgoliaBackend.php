@@ -762,25 +762,28 @@ class AlgoliaBackend extends BaseBackend implements AutocompleteBackendInterface
             // Get current settings
             $currentSettings = $client->getSettings($indexName);
             $currentFacets = $currentSettings['attributesForFaceting'] ?? [];
+            $cleanedFacets = array_values(array_filter(
+                $currentFacets,
+                static fn($facet): bool => $facet !== 'filterOnly(elementType)',
+            ));
 
             // Required filterable attributes for Search Manager
             // Using filterOnly() to allow filtering without facet counts
-            $requiredFacets = ['filterOnly(siteId)', 'filterOnly(elementId)', 'filterOnly(elementType)', 'filterOnly(type)'];
             $requiredSearchable = SearchRecordProjectionHelper::providerSearchableAttributes();
 
             // Check if already configured (normalize for comparison)
-            $normalizedCurrent = array_map(fn($f) => str_replace('filterOnly(', '', str_replace(')', '', $f)), $currentFacets);
+            $normalizedCurrent = array_map(fn($f) => str_replace('filterOnly(', '', str_replace(')', '', $f)), $cleanedFacets);
             $missingFacets = [];
-            foreach (['siteId', 'elementId', 'elementType', 'type'] as $attr) {
+            foreach (['siteId', 'elementId', 'type'] as $attr) {
                 if (!in_array($attr, $normalizedCurrent, true)) {
                     $missingFacets[] = 'filterOnly(' . $attr . ')';
                 }
             }
 
             $settingsUpdate = [];
-            if (!empty($missingFacets)) {
+            if (!empty($missingFacets) || $cleanedFacets !== $currentFacets) {
                 // Add missing facets while preserving existing ones
-                $newFacets = array_values(array_unique(array_merge($currentFacets, $missingFacets)));
+                $newFacets = array_values(array_unique(array_merge($cleanedFacets, $missingFacets)));
                 $settingsUpdate['attributesForFaceting'] = $newFacets;
 
                 $this->logInfo('Configured Algolia filterable attributes', [

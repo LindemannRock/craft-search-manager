@@ -209,8 +209,8 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                 throw new \InvalidArgumentException('Document must have either "elementId", "id", or "objectID" field');
             }
 
-            // Get element type: from data, or derive from index name
-            $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
+            // Local storage still names this metadata "elementType"; public documents use "type".
+            $elementType = $data['type'] ?? $this->deriveElementType($indexName, $data);
             $documentKey = SearchHitIdentityHelper::documentId($data) ?? SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
             // Use SearchEngine to index
@@ -272,7 +272,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                 if ($elementId === null) {
                     continue;
                 }
-                $elementType = $data['elementType'] ?? $this->deriveElementType($indexName, $data);
+                $elementType = $data['type'] ?? $this->deriveElementType($indexName, $data);
                 $documentKey = SearchHitIdentityHelper::documentId($data) ?? SearchHitIdentityHelper::pageDocumentId($elementId, $siteId);
 
                 if ($engine->indexDocumentWithKeyResult($siteId, $elementId, $documentKey, $title, $content)['success']) {
@@ -344,7 +344,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                             'elementId' => $elementId,
                             'backendId' => (string)$documentKey,
                             'type' => $elementType,
-                            'elementType' => $elementType,
                             'siteId' => $resolvedSiteId,
                         ]);
                     }
@@ -366,7 +365,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                     'elementId' => $elementId,
                     'backendId' => SearchHitIdentityHelper::pageDocumentId($elementId, $resolvedSiteId),
                     'type' => $elementType,
-                    'elementType' => $elementType,
                     'siteId' => $resolvedSiteId,
                 ]);
             }
@@ -721,7 +719,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                 'backendId' => $backendId,
                 'score' => $data['score'],
                 'type' => $elementType,
-                'elementType' => $elementType,
                 'siteId' => $siteId,
             ]);
 
@@ -825,7 +822,6 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
                 'backendId' => $backendId,
                 'score' => $score,
                 'type' => $elementType,
-                'elementType' => $elementType,
                 'siteId' => $siteId,
             ]);
 
@@ -862,7 +858,7 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
             ? $elementInfo['documentData']
             : [];
 
-        foreach ([$documentData['type'] ?? null, $documentData['elementType'] ?? null, $elementInfo['elementType'] ?? null] as $candidate) {
+        foreach ([$documentData['type'] ?? null, $elementInfo['elementType'] ?? null] as $candidate) {
             if (is_string($candidate) && trim($candidate) !== '') {
                 return strtolower(trim($candidate));
             }
@@ -880,10 +876,13 @@ abstract class AbstractSearchEngineBackend extends BaseBackend implements Storag
     {
         $documentData = is_array($elementInfo['documentData'] ?? null) ? $elementInfo['documentData'] : [];
         $hit = array_merge($baseHit, $documentData);
-        $documentType = $this->documentTypeFromElementInfo(['elementType' => $baseHit['elementType'] ?? null, 'documentData' => $hit]);
+        $documentType = $this->documentTypeFromElementInfo([
+            'elementType' => $elementInfo['elementType'] ?? null,
+            'documentData' => $hit,
+        ]);
 
         $hit['type'] = $documentType;
-        $hit['elementType'] = $documentType;
+        unset($hit['elementType']);
 
         return $hit;
     }

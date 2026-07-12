@@ -128,7 +128,6 @@ final class SearchHitSectionIdentityContractTest extends TestCase
             'page entry' => $base,
             'page product' => array_merge($base, [
                 'type' => 'product',
-                'elementType' => 'product',
                 'entrySection' => null,
                 'entrySectionHandle' => null,
                 'entrySectionType' => null,
@@ -177,6 +176,7 @@ final class SearchHitSectionIdentityContractTest extends TestCase
             self::assertArrayNotHasKey('group', $hit, $label);
             self::assertArrayNotHasKey('groupHandle', $hit, $label);
             self::assertArrayNotHasKey('category', $hit, $label);
+            self::assertArrayNotHasKey('elementType', $hit, $label);
             self::assertArrayNotHasKey('_testInternal', $hit, $label);
         }
 

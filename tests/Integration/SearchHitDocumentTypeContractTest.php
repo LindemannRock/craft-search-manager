@@ -26,7 +26,7 @@ use lindemannrock\searchmanager\transformers\BaseTransformer;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
- * Locks indexed hit type and elementType semantics.
+ * Locks indexed hit type semantics.
  *
  * @since 5.53.0
  */
@@ -49,7 +49,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
 
         self::assertSame(123, $data['elementId'] ?? null);
         self::assertSame('entry', $data['type'] ?? null);
-        self::assertSame('entry', $data['elementType'] ?? null);
+        self::assertArrayNotHasKey('elementType', $data);
         self::assertSame($site->handle, $data['site'] ?? null);
         self::assertSame($site->language, $data['language'] ?? null);
     }
@@ -85,7 +85,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         self::assertSame('#123', $transformer->transform($user)['title'] ?? null);
     }
 
-    public function testLocalBackendHitMergeKeepsTransformerDocumentKindOverStoredElementType(): void
+    public function testLocalBackendHitMergeKeepsTransformerDocumentKindOverStorageMetadata(): void
     {
         $backend = $this->localBackend();
         $method = new \ReflectionMethod($backend, 'buildSearchHit');
@@ -94,7 +94,6 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         $hit = $method->invoke($backend, [
             'elementType' => 'testsection',
             'documentData' => [
-                'elementType' => 'entry',
                 'type' => 'entry',
                 'entrySection' => 'Test Section',
                 'entrySectionHandle' => 'testSection',
@@ -105,11 +104,10 @@ final class SearchHitDocumentTypeContractTest extends TestCase
             'elementId' => 123,
             'siteId' => 1,
             'type' => 'testsection',
-            'elementType' => 'testsection',
         ]);
 
         self::assertSame('entry', $hit['type'] ?? null);
-        self::assertSame('entry', $hit['elementType'] ?? null);
+        self::assertArrayNotHasKey('elementType', $hit);
         self::assertSame('Test Section', $hit['entrySection'] ?? null);
         self::assertSame('testSection', $hit['entrySectionHandle'] ?? null);
         self::assertSame('structure', $hit['entrySectionType'] ?? null);
@@ -125,7 +123,6 @@ final class SearchHitDocumentTypeContractTest extends TestCase
             'elementType' => 'entry',
             'documentData' => [
                 'elementId' => 123,
-                'elementType' => 'entry',
                 'type' => 'entry',
                 'title' => 'Public title',
                 'slug' => 'public-slug',
@@ -135,13 +132,63 @@ final class SearchHitDocumentTypeContractTest extends TestCase
             'elementId' => 123,
             'siteId' => 1,
             'type' => 'entry',
-            'elementType' => 'entry',
         ]);
 
         self::assertSame('Public title', $hit['title'] ?? null);
         self::assertSame('public-slug', $hit['slug'] ?? null);
         self::assertArrayNotHasKey('_title', $hit);
         self::assertArrayNotHasKey('_slug', $hit);
+        self::assertArrayNotHasKey('elementType', $hit);
+    }
+
+    public function testCustomTransformerTypeRoundTripsAndFiltersWithoutElementType(): void
+    {
+        $backend = $this->localBackend();
+        $buildHit = new \ReflectionMethod($backend, 'buildSearchHit');
+        $buildHit->setAccessible(true);
+        $matchesTypeFilter = new \ReflectionMethod($backend, 'matchesTypeFilter');
+        $matchesTypeFilter->setAccessible(true);
+
+        $hit = $buildHit->invoke($backend, [
+            'elementType' => 'entry',
+            'documentData' => [
+                'elementId' => 321,
+                'type' => 'recipe',
+                'title' => 'Recipe',
+            ],
+        ], [
+            'elementId' => 321,
+            'siteId' => 1,
+            'type' => 'entry',
+        ]);
+
+        self::assertSame('recipe', $hit['type'] ?? null);
+        self::assertArrayNotHasKey('elementType', $hit);
+        self::assertTrue($matchesTypeFilter->invoke($backend, (string)$hit['type'], 'recipe'));
+        self::assertFalse($matchesTypeFilter->invoke($backend, (string)$hit['type'], 'entry'));
+    }
+
+    public function testCustomTransformerLegacyElementTypeDoesNotPromoteToType(): void
+    {
+        $backend = $this->localBackend();
+        $method = new \ReflectionMethod($backend, 'buildSearchHit');
+        $method->setAccessible(true);
+
+        $hit = $method->invoke($backend, [
+            'elementType' => 'entry',
+            'documentData' => [
+                'elementId' => 321,
+                'elementType' => 'recipe',
+                'title' => 'Recipe',
+            ],
+        ], [
+            'elementId' => 321,
+            'siteId' => 1,
+            'type' => 'entry',
+        ]);
+
+        self::assertSame('entry', $hit['type'] ?? null);
+        self::assertArrayNotHasKey('elementType', $hit);
     }
 
     public function testTypeFilterUsesCanonicalLowercaseDocumentKind(): void
@@ -159,7 +206,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         $fields = SearchHitType::getFieldDefinitions();
 
         self::assertSame('The stable lowercase document kind.', $fields['type']['description'] ?? null);
-        self::assertSame('The stable lowercase document kind.', $fields['elementType']['description'] ?? null);
+        self::assertArrayNotHasKey('elementType', $fields);
         self::assertArrayHasKey('snippet', $fields);
         self::assertArrayNotHasKey('description', $fields);
         self::assertArrayNotHasKey('thumbnail', $fields);
@@ -237,6 +284,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
         ]);
 
         self::assertSame('asset', $asset['type'] ?? null);
+        self::assertArrayNotHasKey('elementType', $asset);
         self::assertSame('Uploads', $asset['volume'] ?? null);
         self::assertSame('Hero.jpg', $asset['filename'] ?? null);
         self::assertSame('image', $asset['assetKind'] ?? null);
@@ -264,6 +312,7 @@ final class SearchHitDocumentTypeContractTest extends TestCase
             ]);
 
             self::assertSame($slug, $hit['slug'] ?? null, $kind);
+            self::assertArrayNotHasKey('elementType', $hit, $kind);
             self::assertNotSame('', $hit['slug'] ?? '', $kind);
             self::assertArrayNotHasKey('filename', $hit, $kind);
             self::assertArrayNotHasKey('assetKind', $hit, $kind);
@@ -271,6 +320,33 @@ final class SearchHitDocumentTypeContractTest extends TestCase
             self::assertArrayNotHasKey('size', $hit, $kind);
             self::assertArrayNotHasKey('width', $hit, $kind);
             self::assertArrayNotHasKey('height', $hit, $kind);
+        }
+    }
+
+    public function testPresenterStripsLegacyElementTypeAcrossContractShapes(): void
+    {
+        $shapes = [
+            'page entry' => ['type' => 'entry', 'entrySection' => 'News'],
+            'asset' => ['type' => 'asset', 'filename' => 'hero.jpg', 'assetKind' => 'image'],
+            'category' => ['type' => 'category', 'categoryGroup' => 'Topics'],
+            'product' => ['type' => 'product', 'productType' => 'Shoes'],
+            'source-doc' => ['type' => 'source-doc', 'source' => 'Docs', 'docCategory' => 'Guides'],
+            'split section' => ['type' => 'entry', 'sectionType' => 'heading', 'sectionId' => 'install'],
+            'promoted' => ['type' => 'entry', 'promoted' => true, 'position' => 1],
+        ];
+
+        foreach ($shapes as $label => $shape) {
+            $hit = SearchHitPresenter::present(array_merge([
+                'elementId' => 123,
+                'siteId' => 1,
+                'backendId' => '123_1_' . str_replace(' ', '-', $label),
+                'title' => $label,
+                'url' => '/test',
+                'elementType' => $shape['type'],
+            ], $shape));
+
+            self::assertSame($shape['type'], $hit['type'] ?? null, $label);
+            self::assertArrayNotHasKey('elementType', $hit, $label);
         }
     }
 

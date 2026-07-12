@@ -361,7 +361,7 @@ final class GraphqlSearchTest extends TestCase
 
         $response = SearchResolver::resolveSearch(null, [
             'query' => 'coffee',
-            'filters' => 'elementType:=`entry`',
+            'filters' => 'type:=`entry`',
         ], null, $this->createMock(\GraphQL\Type\Definition\ResolveInfo::class));
 
         $this->assertSame(0, $response['total']);

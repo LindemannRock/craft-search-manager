@@ -475,7 +475,7 @@ class QueryRuleService extends Component
      */
     private function isCategoryHit(array $result): bool
     {
-        $type = $result['type'] ?? ($result['elementType'] ?? null);
+        $type = $result['type'] ?? null;
 
         return is_string($type) && strtolower($type) === 'category';
     }
