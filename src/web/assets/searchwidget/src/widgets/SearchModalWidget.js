@@ -29,7 +29,7 @@
  */
 
 import SearchWidgetBase from '../core/SearchWidgetBase.js';
-import { getObservedAttributes } from '../core/ConfigParser.js';
+import { getObservedAttributes, parseConfig } from '../core/ConfigParser.js';
 import { escapeHtml } from '../modules/Highlighter.js';
 import baseStyles from '../styles/base.css';
 import modalStyles from '../styles/modal.css';
@@ -102,6 +102,60 @@ class SearchModalWidget extends SearchWidgetBase {
         }
         super.disconnectedCallback();
         this.detachEventListeners();
+    }
+
+    /**
+     * Keep live attribute updates safe after the widget has rendered.
+     *
+     * Full shadow-DOM rebuilds replace internal nodes, so listeners need to be
+     * detached and reattached around render. Open modals stay open so callers
+     * can update attributes without interrupting the search session.
+     *
+     * @param {string} name - Attribute name
+     * @param {string|null} oldValue - Previous value
+     * @param {string|null} newValue - New value
+     */
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (oldValue === newValue || this.shadowRoot.children.length === 0) {
+            return;
+        }
+
+        if (name === 'theme') {
+            this.config = parseConfig(this, this.widgetType);
+            this.shadowRoot.host.setAttribute('data-theme', this.config.theme);
+            this.applyCustomStyles();
+            return;
+        }
+
+        const wasOpen = this.state.get('isOpen');
+        const query = this.state.get('query') || '';
+
+        this.detachEventListeners();
+        this.config = parseConfig(this, this.widgetType);
+        this.render();
+        this.attachEventListeners();
+
+        if (!wasOpen) {
+            return;
+        }
+
+        this.registerOpenWidget();
+        this.elements.backdrop.hidden = false;
+        this.elements.trigger.setAttribute('aria-expanded', 'true');
+        this.elements.input.value = query;
+
+        this.renderResultsContent();
+        this.updateLoadingVisual();
+        this.updateDebugToolbar();
+        this.updateSelectionVisual();
+
+        document.body.style.overflow = this.config.preventBodyScroll ? 'hidden' : '';
+
+        requestAnimationFrame(() => {
+            if (this.isConnected) {
+                this.elements.input.focus();
+            }
+        });
     }
 
     // =========================================================================
@@ -291,6 +345,21 @@ class SearchModalWidget extends SearchWidgetBase {
      * Detach modal-specific event listeners
      */
     detachEventListeners() {
+        // Internal shadow-DOM listeners
+        if (this.elements.trigger) {
+            this.elements.trigger.removeEventListener('click', this.handleTriggerClick);
+        }
+        if (this.elements.close) {
+            this.elements.close.removeEventListener('click', this.handleCloseClick);
+        }
+        if (this.elements.backdrop) {
+            this.elements.backdrop.removeEventListener('click', this.handleBackdropClick);
+        }
+        if (this.elements.input) {
+            this.elements.input.removeEventListener('input', this.handleInput);
+            this.elements.input.removeEventListener('keydown', this.handleKeydown);
+        }
+
         // Global hotkey listener
         document.removeEventListener('keydown', this.handleGlobalKeydown);
 

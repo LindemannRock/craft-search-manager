@@ -471,6 +471,76 @@ async function runWidgetInstanceBehaviorTests() {
         });
         states = await getWidgetStates(page, ['solo-widget']);
         test('Single-instance trigger behavior still toggles open and closed', singleOpen && !states['solo-widget'].open && states.bodyOverflow === '');
+
+        await page.setContent(`
+            <!doctype html>
+            <html>
+                <body>
+                    <button id="external-trigger" type="button">External search</button>
+                    <search-modal
+                        id="live-widget"
+                        hotkey="k"
+                        show-trigger="false"
+                        trigger-selector="#external-trigger"
+                    ></search-modal>
+                    <search-modal id="registry-widget" hotkey="j"></search-modal>
+                </body>
+            </html>
+        `);
+        await waitForWidgets(page, ['live-widget', 'registry-widget']);
+
+        await page.evaluate(() => {
+            document.getElementById('live-widget').setAttribute('theme', 'dark');
+            document.getElementById('external-trigger').click();
+        });
+        states = await getWidgetStates(page, ['live-widget', 'registry-widget']);
+        test('Theme attribute updates keep the external trigger attached', states['live-widget'].open && states.bodyOverflow === 'hidden');
+
+        await page.evaluate(() => {
+            document.getElementById('live-widget').close({ source: 'test' });
+            document.getElementById('live-widget').setAttribute('placeholder', 'Updated search');
+            document.getElementById('external-trigger').click();
+        });
+        states = await getWidgetStates(page, ['live-widget', 'registry-widget']);
+        test('Full attribute re-render keeps the external trigger attached', states['live-widget'].open && !states['registry-widget'].open && states.bodyOverflow === 'hidden');
+
+        await page.evaluate(() => {
+            document.getElementById('live-widget').close({ source: 'test' });
+            document.getElementById('live-widget').setAttribute('placeholder', 'Hotkey search');
+        });
+        await dispatchSharedHotkey(page);
+        states = await getWidgetStates(page, ['live-widget', 'registry-widget']);
+        test('Full attribute re-render keeps the hotkey listener attached', states['live-widget'].open && !states['registry-widget'].open && states.bodyOverflow === 'hidden');
+
+        const preserved = await page.evaluate(async () => {
+            const widget = document.getElementById('live-widget');
+            widget.shadowRoot.querySelector('.sm-input').value = 'alpha';
+            widget.shadowRoot.querySelector('.sm-input').dispatchEvent(new Event('input', { bubbles: true }));
+            widget.setAttribute('placeholder', 'Still open');
+            await new Promise(resolve => requestAnimationFrame(resolve));
+
+            return {
+                open: widget.state.get('isOpen') === true && widget.shadowRoot.querySelector('.sm-backdrop').hidden === false,
+                query: widget.state.get('query'),
+                inputValue: widget.shadowRoot.querySelector('.sm-input').value,
+                focused: widget.shadowRoot.activeElement === widget.shadowRoot.querySelector('.sm-input'),
+                overflow: document.body.style.overflow,
+            };
+        });
+        test('Attribute changes while open preserve modal state, query, focus, and scroll lock', preserved.open && preserved.query === 'alpha' && preserved.inputValue === 'alpha' && preserved.focused && preserved.overflow === 'hidden');
+
+        await page.evaluate(() => {
+            document.getElementById('registry-widget').open({ source: 'test' });
+        });
+        states = await getWidgetStates(page, ['live-widget', 'registry-widget']);
+        test('Registry remains consistent after attribute-driven re-render', !states['live-widget'].open && states['registry-widget'].open && states.bodyOverflow === 'hidden');
+
+        await page.evaluate(() => {
+            document.getElementById('live-widget').setAttribute('placeholder', 'Closed after rebuild');
+            document.getElementById('external-trigger').click();
+        });
+        states = await getWidgetStates(page, ['live-widget', 'registry-widget']);
+        test('Single-instance replace behavior still works after attribute-driven re-render', states['live-widget'].open && !states['registry-widget'].open && states.bodyOverflow === 'hidden');
     } catch (error) {
         console.error(error);
         test('Widget instance behavior tests execute', false);

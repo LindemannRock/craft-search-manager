@@ -69,6 +69,20 @@ Override specific settings without creating a config:
 } %}
 ```
 
+## Live Attribute Updates
+
+The rendered `<search-modal>` element watches its configuration attributes. You can update attributes after the widget has mounted, and the modal will re-read its configuration without losing its trigger wiring:
+
+```javascript
+const widget = document.querySelector('search-modal');
+
+widget.setAttribute('placeholder', 'Search products...');
+widget.setAttribute('theme', 'dark');
+widget.setAttribute('trigger-selector', '#mobile-search-trigger');
+```
+
+If the modal is open while an attribute changes, it stays open and keeps the current query. Styling-only changes such as `theme` apply without rebuilding the modal DOM; structural changes re-render the widget and reconnect the internal controls, external trigger, hotkey, and document-level listeners.
+
 ## Custom Trigger Button
 
 Replace the built-in trigger with your own design:
