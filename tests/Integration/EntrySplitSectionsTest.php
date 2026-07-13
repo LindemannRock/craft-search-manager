@@ -295,30 +295,37 @@ final class EntrySplitSectionsTest extends TestCase
         $expectedCount = $testIndex->getExpectedCount();
         $testIndex->updateStats(0);
 
-        SearchManager::$plugin->indexing->indexElementNow($entry);
-        $firstKeepSet = $this->lastKeepSet($stub->calls);
-        self::assertNotEmpty($firstKeepSet);
-        self::assertContainsOnly('string', $firstKeepSet);
-        $refreshedIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
-        self::assertNotNull($refreshedIndex);
-        self::assertSame(
-            $expectedCount,
-            $refreshedIndex->documentCount,
-            'Direct split-section indexing must refresh documentCount from the expected element count.',
-        );
+        $this->withOnlySearchIndices([$testIndex], function () use ($entry, $expectedCount, $originalRichText, $stub): void {
+            SearchManager::$plugin->indexing->indexElementNow($entry);
+            $firstKeepSet = $this->lastKeepSet($stub->calls);
+            self::assertNotEmpty($firstKeepSet);
+            self::assertContainsOnly('string', $firstKeepSet);
+            $refreshedIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
+            self::assertNotNull($refreshedIndex);
+            self::assertSame(
+                $expectedCount,
+                $refreshedIndex->documentCount,
+                'Direct split-section indexing must refresh documentCount from the expected element count.',
+            );
 
-        $entry->setFieldValue('richText', '<p>Edited intro text.</p><h2>Replacement Heading</h2><p>Replacement body text.</p>');
-        SearchManager::$plugin->indexing->indexElementNow($entry);
-        $secondKeepSet = $this->lastKeepSet($stub->calls);
-
-        self::assertContains(SearchHitIdentityHelper::sectionDocumentId((int)$entry->id, (int)$entry->siteId, 'replacement-heading'), $secondKeepSet);
-        self::assertNotSame($firstKeepSet, $secondKeepSet);
-        foreach ($firstKeepSet as $oldKey) {
-            if (str_ends_with($oldKey, '_intro')) {
-                continue;
+            $secondKeepSet = [];
+            try {
+                $entry->setFieldValue('richText', '<p>Edited intro text.</p><h2>Replacement Heading</h2><p>Replacement body text.</p>');
+                SearchManager::$plugin->indexing->indexElementNow($entry);
+                $secondKeepSet = $this->lastKeepSet($stub->calls);
+            } finally {
+                $entry->setFieldValue('richText', $originalRichText);
             }
-            self::assertNotContains($oldKey, $secondKeepSet);
-        }
+
+            self::assertContains(SearchHitIdentityHelper::sectionDocumentId((int)$entry->id, (int)$entry->siteId, 'replacement-heading'), $secondKeepSet);
+            self::assertNotSame($firstKeepSet, $secondKeepSet);
+            foreach ($firstKeepSet as $oldKey) {
+                if (str_ends_with($oldKey, '_intro')) {
+                    continue;
+                }
+                self::assertNotContains($oldKey, $secondKeepSet);
+            }
+        });
     }
 
     /**

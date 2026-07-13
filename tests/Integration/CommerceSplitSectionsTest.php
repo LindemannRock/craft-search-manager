@@ -233,28 +233,35 @@ final class CommerceSplitSectionsTest extends TestCase
         $original = $product->getFieldValue($headingFieldHandle);
         $stub = $this->installStubBackend();
         $this->saveTestIndex(CommerceElementTypeHelper::productElementType(), ['*']);
+        $testIndex = SearchIndex::findByHandle(self::INDEX_HANDLE);
+        self::assertNotNull($testIndex);
 
-        SearchManager::$plugin->indexing->indexElementNow($product);
-        $firstKeepSet = $this->lastKeepSet($stub->calls);
-        self::assertNotEmpty($firstKeepSet);
+        $this->withOnlySearchIndices([$testIndex], function () use ($product, $headingFieldHandle, $original, $stub): void {
+            SearchManager::$plugin->indexing->indexElementNow($product);
+            $firstKeepSet = $this->lastKeepSet($stub->calls);
+            self::assertNotEmpty($firstKeepSet);
 
-        $product->setFieldValue($headingFieldHandle, '<p>Edited product intro.</p><h2>Replacement Product Heading</h2><p>Replacement product body.</p>');
-        SearchManager::$plugin->indexing->indexElementNow($product);
-        $secondKeepSet = $this->lastKeepSet($stub->calls);
-
-        $product->setFieldValue($headingFieldHandle, $original);
-
-        self::assertContains(
-            SearchHitIdentityHelper::sectionDocumentId((int)$product->id, (int)$product->siteId, 'replacement-product-heading'),
-            $secondKeepSet,
-        );
-        self::assertNotSame($firstKeepSet, $secondKeepSet);
-        foreach ($firstKeepSet as $oldKey) {
-            if (str_ends_with($oldKey, '_intro')) {
-                continue;
+            $secondKeepSet = [];
+            try {
+                $product->setFieldValue($headingFieldHandle, '<p>Edited product intro.</p><h2>Replacement Product Heading</h2><p>Replacement product body.</p>');
+                SearchManager::$plugin->indexing->indexElementNow($product);
+                $secondKeepSet = $this->lastKeepSet($stub->calls);
+            } finally {
+                $product->setFieldValue($headingFieldHandle, $original);
             }
-            self::assertNotContains($oldKey, $secondKeepSet);
-        }
+
+            self::assertContains(
+                SearchHitIdentityHelper::sectionDocumentId((int)$product->id, (int)$product->siteId, 'replacement-product-heading'),
+                $secondKeepSet,
+            );
+            self::assertNotSame($firstKeepSet, $secondKeepSet);
+            foreach ($firstKeepSet as $oldKey) {
+                if (str_ends_with($oldKey, '_intro')) {
+                    continue;
+                }
+                self::assertNotContains($oldKey, $secondKeepSet);
+            }
+        });
     }
 
     public function testSplitSectionsSupportResolvesCommerceAndProjectTransformerFamilies(): void

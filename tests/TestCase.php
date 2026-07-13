@@ -12,6 +12,7 @@ namespace lindemannrock\searchmanager\tests;
 
 use Craft;
 use craft\base\ElementInterface;
+use craft\db\Query;
 use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
@@ -40,10 +41,16 @@ abstract class TestCase extends IntegrationTestCase
     protected PendingSyncRepository $repository;
     protected PendingSyncProcessor $processor;
 
+    /**
+     * @var array<int, array{documentCount: mixed, lastIndexed: mixed, dateUpdated: mixed}>
+     */
+    private array $searchIndexStatsSnapshot = [];
+
     protected function setUp(): void
     {
         parent::setUp();
         SearchIndex::clearCache();
+        $this->snapshotSearchIndexStats();
         $this->repository = SearchManager::$plugin->pendingSyncs;
         $this->processor = SearchManager::$plugin->pendingSyncProcessor;
         $this->truncateBuffer();
@@ -51,11 +58,15 @@ abstract class TestCase extends IntegrationTestCase
 
     protected function tearDown(): void
     {
-        $this->truncateBuffer();
-        SearchIndex::clearCache();
-        // Parent restores swapped components (including any StubBackend) after
-        // our buffer cleanup runs against the real DB.
-        parent::tearDown();
+        try {
+            $this->truncateBuffer();
+            $this->restoreSearchIndexStats();
+            SearchIndex::clearCache();
+        } finally {
+            // Parent restores swapped components (including any StubBackend)
+            // after our plugin-local cleanup runs against the real DB.
+            parent::tearDown();
+        }
     }
 
     /**
@@ -83,6 +94,70 @@ abstract class TestCase extends IntegrationTestCase
             ->createCommand()
             ->delete('{{%searchmanager_pending_syncs}}', '1=1')
             ->execute();
+    }
+
+    protected function fetchSearchIndexStatsByHandle(string $handle): ?array
+    {
+        $row = (new Query())
+            ->select(['documentCount', 'lastIndexed', 'dateUpdated'])
+            ->from('{{%searchmanager_indices}}')
+            ->where(['handle' => $handle])
+            ->one();
+
+        return $row === false ? null : $row;
+    }
+
+    /**
+     * Limit SearchIndex::findAll() to a test-owned set while direct indexing.
+     *
+     * This keeps indexElementNow() from fanning out into real CP indices when a
+     * test only means to exercise its marker index. The cache is restored
+     * immediately after the callback.
+     *
+     * @param list<SearchIndex> $indices
+     * @template T
+     * @param callable(): T $callback
+     * @return T
+     */
+    protected function withOnlySearchIndices(array $indices, callable $callback): mixed
+    {
+        $property = new \ReflectionProperty(SearchIndex::class, 'allCache');
+        $property->setAccessible(true);
+        $original = $property->getValue();
+        $property->setValue(null, $indices);
+
+        try {
+            return $callback();
+        } finally {
+            $property->setValue(null, $original);
+        }
+    }
+
+    private function snapshotSearchIndexStats(): void
+    {
+        $rows = (new Query())
+            ->select(['id', 'documentCount', 'lastIndexed', 'dateUpdated'])
+            ->from('{{%searchmanager_indices}}')
+            ->all();
+
+        $this->searchIndexStatsSnapshot = [];
+        foreach ($rows as $row) {
+            $this->searchIndexStatsSnapshot[(int)$row['id']] = [
+                'documentCount' => $row['documentCount'],
+                'lastIndexed' => $row['lastIndexed'],
+                'dateUpdated' => $row['dateUpdated'],
+            ];
+        }
+    }
+
+    private function restoreSearchIndexStats(): void
+    {
+        foreach ($this->searchIndexStatsSnapshot as $id => $row) {
+            Craft::$app->getDb()
+                ->createCommand()
+                ->update('{{%searchmanager_indices}}', $row, ['id' => $id])
+                ->execute();
+        }
     }
 
     /**
