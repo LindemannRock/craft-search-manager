@@ -14,6 +14,8 @@ use craft\elements\db\ElementQuery;
 use craft\search\SearchQuery;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
+use lindemannrock\searchmanager\helpers\SearchSiteScopeHelper;
+use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 
 /**
@@ -53,15 +55,6 @@ class CraftSearchAdapter extends \craft\services\Search
      */
     public function searchElements(ElementQuery $query): array
     {
-        // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
-        $backendType = $this->getDefaultBackendType();
-        if (!in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'])) {
-            $this->logDebug('Native search replacement not supported for external backends, falling back', [
-                'backend' => $backendType,
-            ]);
-            return parent::searchElements($query);
-        }
-
         $searchQuery = $query->search;
 
         if (empty($searchQuery)) {
@@ -74,16 +67,29 @@ class CraftSearchAdapter extends \craft\services\Search
             'siteId' => $query->siteId,
         ]);
 
-        // Get index handle for this element type/site
-        $indexHandle = $this->getIndexHandleForQuery($query);
+        // Get index for this element type/site
+        $index = $this->getIndexForQuery($query);
 
-        if (!$indexHandle) {
+        if (!$index) {
             $this->logDebug('No index found for query, falling back to native search', [
                 'elementType' => $query->elementType,
                 'siteId' => $query->siteId,
             ]);
 
             // Fall back to Craft's native search
+            return parent::searchElements($query);
+        }
+
+        $indexHandle = $index->handle;
+        $backend = SearchManager::$plugin->backend->getBackendForIndex($indexHandle);
+        $backendType = $backend?->getName();
+
+        // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
+        if ($backend === null || !in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'], true)) {
+            $this->logDebug('Native search replacement not supported for resolved index backend, falling back', [
+                'index' => $indexHandle,
+                'backend' => $backendType,
+            ]);
             return parent::searchElements($query);
         }
 
@@ -96,23 +102,25 @@ class CraftSearchAdapter extends \craft\services\Search
                 $indexHandle,
                 $parsedQuery,
                 [
-                    'siteId' => $query->siteId ?? 1,
+                    'siteId' => SearchSiteScopeHelper::normalize($query->siteId),
                 ]
             );
 
             // Convert to Craft's expected format: ["elementId-siteId" => score]
             $elementScores = [];
-            $siteId = $query->siteId ?? 1;
 
             if (isset($results['hits']) && !empty($results['hits'])) {
                 foreach ($results['hits'] as $i => $hit) {
                     $elementId = SearchHitIdentityHelper::elementId($hit);
+                    $hitSiteId = isset($hit['siteId']) && is_numeric($hit['siteId'])
+                        ? (int)$hit['siteId']
+                        : null;
 
-                    if ($elementId !== null) {
+                    if ($elementId !== null && $hitSiteId !== null) {
                         // Use actual score from search results
                         $score = $hit['score'] ?? (count($results['hits']) - $i);
                         // Craft expects format: "elementId-siteId" (e.g., "794-1")
-                        $key = $elementId . '-' . $siteId;
+                        $key = $elementId . '-' . $hitSiteId;
                         $elementScores[$key] = $score;
                     }
                 }
@@ -152,8 +160,8 @@ class CraftSearchAdapter extends \craft\services\Search
     public function indexElementAttributes(ElementInterface $element, ?array $fieldHandles = null): bool
     {
         // Only works for built-in backends (MySQL, PostgreSQL, Redis, File)
-        $backendType = $this->getDefaultBackendType();
-        if (!in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'])) {
+        $backendType = SearchManager::$plugin->backend->getActiveBackend()?->getName();
+        if (!in_array($backendType, ['mysql', 'pgsql', 'redis', 'file'], true)) {
             $this->logDebug('Native search replacement not supported for external backends, falling back', [
                 'backend' => $backendType,
             ]);
@@ -207,11 +215,11 @@ class CraftSearchAdapter extends \craft\services\Search
     // =========================================================================
 
     /**
-     * Get index handle for an element query
+     * Get index for an element query.
      */
-    private function getIndexHandleForQuery(ElementQuery $query): ?string
+    private function getIndexForQuery(ElementQuery $query): ?SearchIndex
     {
-        $indices = \lindemannrock\searchmanager\models\SearchIndex::findAll();
+        $indices = SearchIndex::findAll();
         $elementType = $query->elementType;
         $siteId = $query->siteId;
 
@@ -235,7 +243,7 @@ class CraftSearchAdapter extends \craft\services\Search
                 }
             }
 
-            return $index->handle;
+            return $index;
         }
 
         return null;
@@ -257,26 +265,5 @@ class CraftSearchAdapter extends \craft\services\Search
         }
 
         return '';
-    }
-
-    /**
-     * Get the default backend type from configured backends
-     */
-    private function getDefaultBackendType(): string
-    {
-        $settings = SearchManager::$plugin->getSettings();
-        $defaultHandle = $settings->defaultBackendHandle;
-
-        if (!$defaultHandle) {
-            return 'file'; // Fallback to file if no default configured
-        }
-
-        $configuredBackend = \lindemannrock\searchmanager\models\ConfiguredBackend::findByHandle($defaultHandle);
-        if ($configuredBackend) {
-            return $configuredBackend->backendType;
-        }
-
-        // Fallback: might be a backend type directly for backwards compatibility
-        return $defaultHandle;
     }
 }

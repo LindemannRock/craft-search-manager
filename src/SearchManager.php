@@ -1141,7 +1141,6 @@ class SearchManager extends Plugin
             PluginHelper::applyConfigOverridesToSettings($settings, 'search-manager', [
                 'indices',
                 'backends',
-                'transformers',
             ]);
         } catch (\Throwable $e) {
             $this->logError('Failed to apply config overrides', [
