@@ -184,19 +184,6 @@ return [
         // 'cacheDuration' => 3600,
 
         /**
-         * Only cache popular queries
-         * Default: false
-         */
-        // 'cachePopularQueriesOnly' => false,
-
-        /**
-         * Threshold for popular queries (search count)
-         * Only applies when cachePopularQueriesOnly is true
-         * Default: 5
-         */
-        // 'popularQueryThreshold' => 5,
-
-        /**
          * Clear cache when elements are saved
          * Disable for high-traffic sites to reduce cache thrashing
          * Default: true
@@ -983,8 +970,6 @@ return [
         'cacheDuration' => 7200, // 2 hours (optimize for performance)
         'autocompleteCacheDuration' => 600, // 10 minutes
         'deviceDetectionCacheDuration' => 86400, // 24 hours (user agents rarely change)
-        'cachePopularQueriesOnly' => true, // Save cache space
-        'popularQueryThreshold' => 3, // Cache after 3 searches
         'cacheWarmingQueryCount' => 100, // Warm more queries in production
         'clearCacheOnSave' => true, // Keep cache fresh
         'statusSyncInterval' => 15, // Check for scheduled entries every 15 min

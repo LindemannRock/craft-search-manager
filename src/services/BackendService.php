@@ -675,19 +675,7 @@ class BackendService extends Component
         // 3. Cache RAW results (BEFORE promotions) so promotions can be applied fresh
         // This ensures disabled/expired promotions are immediately excluded
         if ($settings->enableCache && !$backendFailed && !$includeQueryRuleDebug) {
-            if ($settings->cachePopularQueriesOnly) {
-                if ($this->_isQueryPopularForCache($query, $settings->popularQueryThreshold, $indexName, $siteId)) {
-                    $this->_saveToCache($indexName, $query, $options, $results);
-                } else {
-                    $this->logDebug('Query not popular enough to cache', [
-                        'query' => $query,
-                        'threshold' => $settings->popularQueryThreshold,
-                    ]);
-                }
-            } else {
-                // Cache everything
-                $this->_saveToCache($indexName, $query, $options, $results);
-            }
+            $this->_saveToCache($indexName, $query, $options, $results);
         }
 
         unset($results['_failed']);
@@ -1385,45 +1373,6 @@ class BackendService extends Component
         if (is_dir($cachePath)) {
             \craft\helpers\FileHelper::clearDirectory($cachePath);
             $this->logInfo('Cleared all search cache (File)');
-        }
-    }
-
-    /**
-     * Determine whether the query has reached the popular-query cache threshold.
-     *
-     * Uses a bounded row probe instead of an exact all-time COUNT. The current
-     * search is still treated as a pending +1 because analytics is tracked after
-     * the cache write decision.
-     */
-    private function _isQueryPopularForCache(string $query, int $threshold, string $indexName, ?int $siteId): bool
-    {
-        if ($threshold <= 1) {
-            return true;
-        }
-
-        try {
-            $normalizedQuery = QueryNormalizer::forCacheIdentity($query);
-            $rowsNeededBeforeCurrentSearch = $threshold - 1;
-
-            $matchingRows = (new \craft\db\Query())
-                ->select(['id'])
-                ->from('{{%searchmanager_analytics}}')
-                ->where([
-                    'normalizedQuery' => $normalizedQuery,
-                    'indexHandle' => $indexName,
-                ])
-                ->andFilterWhere(['siteId' => $siteId])
-                ->limit($rowsNeededBeforeCurrentSearch)
-                ->column();
-
-            return count($matchingRows) >= $rowsNeededBeforeCurrentSearch;
-        } catch (\Throwable $e) {
-            $this->logError('Failed to check popular-query cache threshold', [
-                'query' => $query,
-                'threshold' => $threshold,
-                'error' => $e->getMessage(),
-            ]);
-            return false;
         }
     }
 }

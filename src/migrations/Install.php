@@ -152,8 +152,6 @@ class Install extends Migration
             'enableCache' => $this->boolean()->notNull()->defaultValue(true),
             'cacheDuration' => $this->integer()->notNull()->defaultValue(3600),
             'cacheStorageMethod' => $this->string(10)->notNull()->defaultValue('file')->comment('Cache storage method: file or redis'),
-            'cachePopularQueriesOnly' => $this->boolean()->notNull()->defaultValue(false),
-            'popularQueryThreshold' => $this->integer()->notNull()->defaultValue(5),
             'clearCacheOnSave' => $this->boolean()->notNull()->defaultValue(true),
             'statusSyncInterval' => $this->integer()->notNull()->defaultValue(15),
             // Cache Warming Settings
@@ -464,8 +462,6 @@ class Install extends Migration
             'autocompleteCacheDuration' => 300,
             'enableCache' => 1,
             'cacheDuration' => 3600,
-            'cachePopularQueriesOnly' => 0,
-            'popularQueryThreshold' => 5,
             'clearCacheOnSave' => 1,
             'statusSyncInterval' => 15,
             // Base plugin overrides — seeded null so cascade falls through to base config / defaults.

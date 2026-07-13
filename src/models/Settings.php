@@ -241,16 +241,6 @@ class Settings extends Model
     public string $cacheStorageMethod = 'file';
 
     /**
-     * @var bool Only cache popular queries
-     */
-    public bool $cachePopularQueriesOnly = false;
-
-    /**
-     * @var int Threshold for popular queries (search count)
-     */
-    public int $popularQueryThreshold = 5;
-
-    /**
      * @var bool Clear search cache when elements are saved
      */
     public bool $clearCacheOnSave = true;
@@ -402,7 +392,6 @@ class Settings extends Model
             'enableGeoDetection',
             'cacheDeviceDetection',
             'enableCache',
-            'cachePopularQueriesOnly',
             'clearCacheOnSave',
             'enableStopWords',
             'highlightResultsEnabled',
@@ -431,7 +420,6 @@ class Settings extends Model
             'deviceDetectionCacheDuration',
             'maxFuzzyCandidates',
             'cacheDuration',
-            'popularQueryThreshold',
             'statusSyncInterval',
             'snippetMaxLength',
             'maxSnippets',
@@ -474,11 +462,11 @@ class Settings extends Model
         return array_merge([
             [['indexPrefix'], 'string', 'max' => 50],
             [['indexPrefix'], 'match', 'pattern' => '/^[a-zA-Z0-9_-]+$/', 'skipOnEmpty' => true, 'message' => Craft::t('search-manager', 'Index Prefix may contain only letters, numbers, underscores, and hyphens.')],
-            [['autoIndex', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'cachePopularQueriesOnly', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'highlightResultsEnabled', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
+            [['autoIndex', 'replaceNativeSearch', 'requireApiKey', 'enableAnalytics', 'enableCache', 'clearCacheOnSave', 'anonymizeIpAddress', 'enableGeoDetection', 'cacheDeviceDetection', 'enableStopWords', 'highlightResultsEnabled', 'enableAutocomplete', 'autocompleteFuzzy', 'enableAutocompleteCache', 'enableCacheWarming'], 'boolean'],
             [['statusSyncInterval'], 'integer', 'min' => 0, 'max' => 1440],
             [['ipHashSalt'], 'string', 'min' => 32, 'skipOnEmpty' => true],
             [['cacheStorageMethod'], 'in', 'range' => ['file', 'redis']],
-            [['batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'popularQueryThreshold', 'deviceDetectionCacheDuration', 'snippetMaxLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
+            [['batchSize', 'maxFuzzyCandidates', 'cacheDuration', 'deviceDetectionCacheDuration', 'snippetMaxLength', 'maxSnippets', 'autocompleteMinLength', 'autocompleteLimit'], 'integer', 'min' => 1],
             [['lastIndexedDebounceSeconds'], 'integer', 'min' => 0, 'max' => 3600],
             [['syncBatchSize'], 'integer', 'min' => 1, 'max' => 1000],
             [['batchFlushInterval'], 'integer', 'min' => 0, 'max' => 300],
@@ -495,7 +483,6 @@ class Settings extends Model
             [['cacheDuration'], 'integer', 'min' => 60, 'max' => 86400],
             [['autocompleteCacheDuration'], 'integer', 'min' => 60, 'max' => 3600],
             [['deviceDetectionCacheDuration'], 'integer', 'min' => 60, 'max' => 604800],
-            [['popularQueryThreshold'], 'integer', 'min' => 2, 'max' => 1000],
             [['bm25K1'], 'number', 'min' => 0.1, 'max' => 5.0],
             [['bm25B', 'similarityThreshold'], 'number', 'min' => 0.0, 'max' => 1.0],
             [['titleBoostFactor', 'exactMatchBoostFactor', 'phraseBoostFactor'], 'number', 'min' => 1.0, 'max' => 20.0],
@@ -549,8 +536,6 @@ class Settings extends Model
             'enableCache' => Craft::t('search-manager', 'Cache Search Results'),
             'cacheDuration' => Craft::t('search-manager', 'Search Results Cache Duration'),
             'cacheStorageMethod' => Craft::t('search-manager', 'Cache Storage Method'),
-            'cachePopularQueriesOnly' => Craft::t('search-manager', 'Cache Popular Queries Only'),
-            'popularQueryThreshold' => Craft::t('search-manager', 'Popular Query Threshold'),
             'clearCacheOnSave' => Craft::t('search-manager', 'Clear Cache on Element Save'),
             'enableCacheWarming' => Craft::t('search-manager', 'Enable Cache Warming'),
             'cacheWarmingQueryCount' => Craft::t('search-manager', 'Popular Queries to Warm'),

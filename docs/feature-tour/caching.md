@@ -59,23 +59,12 @@ Good for: multi-server setups, edge networks (Servd, Platform.sh), sites handlin
 
 If Redis cache storage is selected but Craft's `cache` component is not Redis-backed, Search Manager logs a cache-component warning and falls back to file-based cache clearing where possible. Configure Redis in `config/app.php`, or switch `cacheStorageMethod` back to `file`.
 
-## Popular Queries Only
+## Bounding Cache Storage
 
-By default, every unique query is cached. For sites with many unique searches, you can limit caching to frequently-searched queries:
+Search Manager caches each unique search result until its TTL expires or the cache is cleared. On busy sites, storage limits are best handled by the cache layer rather than delaying cache writes inside Search Manager.
 
-```php
-'cachePopularQueriesOnly' => false,
-'popularQueryThreshold' => 5,  // Cache after 5 searches
-```
-
-When enabled, a query must be searched at least N times before it gets cached. This saves storage space while still caching the queries that matter most.
-
-```text
-Query: "craft cms"
-Search #1–4: Not cached (below threshold)
-Search #5: Cached!
-Search #6+: Served from cache
-```
+> [!NOTE]
+> For Redis-backed cache storage, set a Redis `maxmemory` limit with an `allkeys-lfu` or `allkeys-lru` eviction policy so frequently-used entries stay hot while long-tail queries are evicted under memory pressure. File and database cache storage are bounded by `cacheDuration` TTL and normal cache clearing.
 
 ## Cache Invalidation
 
@@ -141,7 +130,7 @@ Typical response times for a MySQL/PostgreSQL backend with an index of 1,000–1
 
 Uncached times increase with index size — a 50,000-element index may take 300–500ms per query on MySQL. Caching eliminates this for repeated queries.
 
-Sites where users frequently search the same terms (e.g., product catalogs, documentation) typically see cache hit rates of 70–90%. Sites with highly unique queries (e.g., support ticket search) see lower hit rates — consider `cachePopularQueriesOnly` to avoid caching one-off queries.
+Sites where users frequently search the same terms (e.g., product catalogs, documentation) typically see cache hit rates of 70–90%. Sites with highly unique queries (e.g., support ticket search) see lower hit rates; use a shorter `cacheDuration` or Redis memory eviction if you need tighter storage bounds.
 
 > [!TIP]
 > Start with file-based caching. Switch to Redis only if you run multiple servers or need shared cache across load-balanced instances.

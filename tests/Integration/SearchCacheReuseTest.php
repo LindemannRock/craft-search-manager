@@ -10,10 +10,12 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
 use craft\helpers\StringHelper;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Local regression coverage for the backend search cache as used by public
@@ -26,27 +28,29 @@ use lindemannrock\searchmanager\tests\TestCase;
  * it for both.
  *
  * Each test uses a nonsense marker query (matches no content, no query rule /
- * promotion / synonym) and `skipAnalytics` so it isolates pure cache behaviour
- * without writing analytics rows. Caching is forced on and popular-only off for
- * the duration; both are restored in tearDown.
+ * promotion / synonym). Caching is forced on for the duration and restored in
+ * tearDown.
  *
  * @since 5.47.0
  */
 final class SearchCacheReuseTest extends TestCase
 {
     private bool $originalEnableCache = true;
-    private bool $originalPopularOnly = false;
     private ?string $indexHandle = null;
+    private ?object $originalRequest = null;
+
+    /** @var list<string> */
+    private array $testQueries = [];
 
     protected function setUp(): void
     {
         parent::setUp();
 
+        $this->originalRequest = Craft::$app->getRequest();
+
         $settings = SearchManager::$plugin->getSettings();
         $this->originalEnableCache = $settings->enableCache;
-        $this->originalPopularOnly = $settings->cachePopularQueriesOnly;
         $settings->enableCache = true;
-        $settings->cachePopularQueriesOnly = false;
 
         // A real enabled index with a working backend, via the shared helper.
         $pair = $this->findWorkingIndexAndElement();
@@ -61,10 +65,15 @@ final class SearchCacheReuseTest extends TestCase
     {
         $settings = SearchManager::$plugin->getSettings();
         $settings->enableCache = $this->originalEnableCache;
-        $settings->cachePopularQueriesOnly = $this->originalPopularOnly;
 
         if ($this->indexHandle !== null) {
             SearchManager::$plugin->backend->clearAllSearchCache();
+        }
+
+        $this->deleteTestAnalyticsRows();
+
+        if ($this->originalRequest !== null) {
+            Craft::$app->set('request', $this->originalRequest);
         }
 
         parent::tearDown();
@@ -99,13 +108,27 @@ final class SearchCacheReuseTest extends TestCase
     {
         // Deterministic within a test, unique across runs; matches no real
         // content/rule/promotion so only cache behaviour is exercised.
-        return '__smcachetest_' . StringHelper::UUID();
+        $query = '__smcachetest_' . StringHelper::UUID();
+        $this->testQueries[] = $query;
+
+        return $query;
     }
 
     private function search(string $handle, string $query, array $options): array
     {
-        // Every call skips analytics so the test never writes analytics rows.
         return SearchManager::$plugin->backend->search($handle, $query, $options + ['skipAnalytics' => true]);
+    }
+
+    private function deleteTestAnalyticsRows(): void
+    {
+        if ($this->testQueries === []) {
+            return;
+        }
+
+        Craft::$app->getDb()
+            ->createCommand()
+            ->delete('{{%searchmanager_analytics}}', ['query' => $this->testQueries])
+            ->execute();
     }
 
     // 1. Cache is written on first search and reused on the identical repeat.
@@ -123,6 +146,91 @@ final class SearchCacheReuseTest extends TestCase
         $this->assertSame(0, $second['meta']['took'], 'cache hit reports took=0');
         $this->assertSame($first['total'], $second['total'], 'total unchanged on cache hit');
         $this->assertEquals($first['hits'], $second['hits'], 'hits unchanged on cache hit');
+    }
+
+    /**
+     * @return array<string, array{0: bool}>
+     */
+    public static function skipAnalyticsProvider(): array
+    {
+        return [
+            'records analytics' => [false],
+            'skips analytics' => [true],
+        ];
+    }
+
+    // 1b. Cache writes are independent of analytics recording.
+    #[DataProvider('skipAnalyticsProvider')]
+    public function testBrandNewQueryCachesOnFirstSearchRegardlessOfAnalyticsOptOut(bool $skipAnalytics): void
+    {
+        $handle = $this->requireIndex();
+        $query = $this->markerQuery();
+        $options = [
+            'limit' => 10,
+            'skipAnalytics' => $skipAnalytics,
+        ];
+
+        if (!$skipAnalytics) {
+            Craft::$app->set('request', new \craft\web\Request());
+        }
+
+        $first = SearchManager::$plugin->backend->search($handle, $query, $options);
+        $this->assertFalse($first['meta']['cached'], 'first search must be a cache miss and write the cache');
+
+        $second = SearchManager::$plugin->backend->search($handle, $query, $options);
+        $this->assertTrue($second['meta']['cached'], 'second identical search must hit cache regardless of skipAnalytics');
+        $this->assertSame(0, $second['meta']['took'], 'cache hit reports took=0');
+    }
+
+    public function testBackendServiceNoLongerContainsPopularCacheGate(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/services/BackendService.php');
+
+        self::assertIsString($source);
+        self::assertStringNotContainsString('cachePopularQueriesOnly', $source);
+        self::assertStringNotContainsString('popularQueryThreshold', $source);
+        self::assertStringNotContainsString('_isQueryPopularForCache', $source);
+        self::assertStringNotContainsString('Query not popular enough to cache', $source);
+        self::assertStringContainsString('if ($settings->enableCache && !$backendFailed && !$includeQueryRuleDebug) {', $source);
+        self::assertStringContainsString('$this->_saveToCache($indexName, $query, $options, $results);', $source);
+    }
+
+    public function testSettingsModelNoLongerExposesPopularCacheSettings(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/models/Settings.php');
+
+        self::assertIsString($source);
+        self::assertStringNotContainsString('public bool $cachePopularQueriesOnly', $source);
+        self::assertStringNotContainsString('public int $popularQueryThreshold', $source);
+        self::assertStringNotContainsString("'cachePopularQueriesOnly'", $source);
+        self::assertStringNotContainsString("'popularQueryThreshold'", $source);
+        self::assertArrayNotHasKey('cachePopularQueriesOnly', SearchManager::$plugin->getSettings()->attributeLabels());
+        self::assertArrayNotHasKey('popularQueryThreshold', SearchManager::$plugin->getSettings()->attributeLabels());
+    }
+
+    public function testInstallSchemaNoLongerCreatesPopularCacheColumns(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/migrations/Install.php');
+
+        self::assertIsString($source);
+        self::assertStringNotContainsString("'cachePopularQueriesOnly'", $source);
+        self::assertStringNotContainsString("'popularQueryThreshold'", $source);
+        self::assertStringContainsString("'enableCache' => \$this->boolean()->notNull()->defaultValue(true)", $source);
+        self::assertStringContainsString("'cacheDuration' => \$this->integer()->notNull()->defaultValue(3600)", $source);
+        self::assertStringContainsString("'clearCacheOnSave' => \$this->boolean()->notNull()->defaultValue(true)", $source);
+    }
+
+    public function testCacheSettingsTemplateNoLongerRendersPopularCacheFields(): void
+    {
+        $source = file_get_contents(dirname(__DIR__, 2) . '/src/templates/settings/cache.twig');
+
+        self::assertIsString($source);
+        self::assertStringNotContainsString('cachePopularQueriesOnly', $source);
+        self::assertStringNotContainsString('popularQueryThreshold', $source);
+        self::assertStringNotContainsString('popular-query-threshold-settings', $source);
+        self::assertStringNotContainsString('Cache Popular Queries Only', $source);
+        self::assertStringContainsString("id: 'enableCache'", $source);
+        self::assertStringContainsString("id: 'cacheDuration'", $source);
     }
 
     // 2a. Analytics / attribution-only options must NOT fragment the cache.

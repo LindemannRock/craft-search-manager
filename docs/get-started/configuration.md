@@ -173,13 +173,14 @@ The IP hash salt is typically set via `.env` as `SEARCH_MANAGER_IP_SALT` — the
 | `enableCache` | `bool` | `true` | Enable search results caching |
 | `cacheDuration` | `int` | `3600` | Cache TTL in seconds (default: 1 hour) |
 | `cacheStorageMethod` | `string` | `'file'` | Storage: `file` or `redis` |
-| `cachePopularQueriesOnly` | `bool` | `false` | Only cache queries searched N+ times |
-| `popularQueryThreshold` | `int` | `5` | Searches needed before caching |
 | `clearCacheOnSave` | `bool` | `true` | Clear cache when elements are saved |
 | `enableCacheWarming` | `bool` | `true` | Pre-cache popular queries after rebuild |
 | `cacheWarmingQueryCount` | `int` | `50` | Number of queries to warm (10–200) |
 | `enableAutocompleteCache` | `bool` | `true` | Cache autocomplete suggestions separately |
 | `autocompleteCacheDuration` | `int` | `300` | Autocomplete cache TTL (default: 5 min) |
+
+> [!NOTE]
+> To bound cache storage on busy sites, configure Redis with a `maxmemory` limit and an `allkeys-lfu` or `allkeys-lru` eviction policy. Redis will keep frequently-used cache entries and evict long-tail entries under memory pressure. File and database cache storage are bounded by `cacheDuration` TTL.
 
 Saving any settings section from the CP clears both the search-results cache and the autocomplete cache. This keeps scoring, language, indexing, and backend-related setting changes from serving stale cached results. Element save/delete cache clearing is still controlled separately by `clearCacheOnSave`.
 
