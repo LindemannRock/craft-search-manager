@@ -119,6 +119,21 @@
                 queryrulesSection.hidden = !showQueryRules.checked;
             }
 
+            function renderCacheStatus(data) {
+                const status = data && typeof data.cacheStatus === 'string' ? data.cacheStatus : '';
+                if (status === 'bypassed') {
+                    return T.bypassed;
+                }
+                if (!data || !data.cacheEnabled) {
+                    return T.disabled;
+                }
+                if (status === 'hit') {
+                    return T.hit;
+                }
+
+                return T.miss;
+            }
+
             showAutocomplete.addEventListener('change', updateSectionVisibility);
             showPromotions.addEventListener('change', updateSectionVisibility);
             showQueryRules.addEventListener('change', updateSectionVisibility);
@@ -1009,9 +1024,13 @@
                         `;
                     }).join('')}
                 </div>
+                <p class="sm-test-query-rules-cache-note"><strong>${T.noteLabel}</strong> ${T.queryRuleCacheBypassNote}</p>
             `;
                 } else {
-                    container.innerHTML = `<p class="light">${T.noQueryRules.replace('{query}', Craft.escapeHtml(query))}</p>`;
+                    container.innerHTML = `
+                <p class="light">${T.noQueryRules.replace('{query}', Craft.escapeHtml(query))}</p>
+                <p class="sm-test-query-rules-cache-note"><strong>${T.noteLabel}</strong> ${T.queryRuleCacheBypassNote}</p>
+            `;
                 }
             }
 
@@ -1030,7 +1049,7 @@
     <div class="sm-test-summary-grid">
         <div><strong>${T.backendLabel}</strong> ${Craft.escapeHtml(data.backend)}</div>
         <div><strong>${T.executionLabel}</strong> ${data.executionTime}ms</div>
-        <div><strong>${T.cacheLabel}</strong> ${data.cacheEnabled ? (data.cacheHit ? T.hit : T.miss) : T.disabled}${data.cacheDriver ? ' (' + data.cacheDriver + ')' : ''}</div>
+        <div><strong>${T.cacheLabel}</strong> ${renderCacheStatus(data)}${data.cacheDriver ? ' (' + data.cacheDriver + ')' : ''}</div>
         <div><strong>${T.queryUsedLabel}</strong> <code>${Craft.escapeHtml(typeof data.queryUsed === 'string' ? data.queryUsed : query)}</code></div>
     </div>
 </div>

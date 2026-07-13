@@ -10,8 +10,13 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
+use craft\web\Request;
+use craft\web\Response;
 use lindemannrock\searchmanager\controllers\SettingsController;
+use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
+use lindemannrock\searchmanager\tests\Stubs\StubBackend;
 use PHPUnit\Framework\Attributes\CoversClass;
 
 /**
@@ -20,6 +25,28 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(SettingsController::class)]
 final class SettingsControllerTestToolBatchingTest extends TestCase
 {
+    private ?object $originalRequest = null;
+    private ?object $originalResponse = null;
+    private ?string $originalRequestMethod = null;
+
+    protected function tearDown(): void
+    {
+        if ($this->originalRequest !== null) {
+            Craft::$app->set('request', $this->originalRequest);
+            $this->originalRequest = null;
+        }
+        if ($this->originalResponse !== null) {
+            Craft::$app->set('response', $this->originalResponse);
+            $this->originalResponse = null;
+        }
+        if ($this->originalRequestMethod !== null) {
+            $_SERVER['REQUEST_METHOD'] = $this->originalRequestMethod;
+            $this->originalRequestMethod = null;
+        }
+
+        parent::tearDown();
+    }
+
     public function testCleanupAnalyticsRequiresJsonAcceptAfterPostGate(): void
     {
         $body = $this->controllerMethodBody('actionCleanupAnalytics');
@@ -121,6 +148,39 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         self::assertStringNotContainsString('SearchHitPresenter::present($hit, $includeQueryRuleDebug)', $body);
     }
 
+    public function testSearchTestToolReturnsTriStateCacheStatus(): void
+    {
+        $stub = $this->installStubBackend();
+
+        $miss = $this->postTestSearch($stub, [
+            'hits' => [],
+            'total' => 0,
+            'meta' => ['cached' => false, 'cacheDriver' => 'file'],
+        ], false);
+        self::assertSame('miss', $miss['cacheStatus'] ?? null);
+        self::assertArrayNotHasKey('cacheHit', $miss);
+
+        $hit = $this->postTestSearch($stub, [
+            'hits' => [],
+            'total' => 0,
+            'meta' => ['cached' => true, 'cacheDriver' => 'file'],
+        ], false);
+        self::assertSame('hit', $hit['cacheStatus'] ?? null);
+        self::assertArrayNotHasKey('cacheHit', $hit);
+
+        $bypassed = $this->postTestSearch($stub, [
+            'hits' => [],
+            'total' => 0,
+            'meta' => ['cached' => false, 'cacheDriver' => 'file'],
+        ], true);
+        self::assertSame('bypassed', $bypassed['cacheStatus'] ?? null);
+        self::assertArrayNotHasKey('cacheHit', $bypassed);
+
+        $searchCalls = $stub->callsFor('search');
+        self::assertFalse($searchCalls[0]['items'][0]['options']['includeQueryRuleDebug'] ?? false);
+        self::assertSame(true, $searchCalls[2]['items'][0]['options']['includeQueryRuleDebug'] ?? null);
+    }
+
     private function controllerMethodBody(string $method): string
     {
         $sourceFile = dirname(__DIR__, 2) . '/src/controllers/SettingsController.php';
@@ -145,5 +205,65 @@ final class SettingsControllerTestToolBatchingTest extends TestCase
         $this->assertIsString($contents);
 
         return $contents;
+    }
+
+    /**
+     * @param array<string, mixed> $searchResponse
+     * @return array<string, mixed>
+     */
+    private function postTestSearch(StubBackend $stub, array $searchResponse, bool $includeQueryRuleDebug): array
+    {
+        $this->withPostJson([
+            'query' => '__cache_status_test__',
+            'indexHandle' => '__missing_index__',
+            'includeQueryRuleDebug' => $includeQueryRuleDebug,
+        ]);
+        $this->withSettingsManagerPermissions();
+
+        $stub->searchResponse = $searchResponse;
+        Craft::$app->getResponse()->data = null;
+
+        $controller = new SettingsController('settings', SearchManager::$plugin);
+        $response = $controller->actionTestSearch();
+        $data = $response->data;
+
+        self::assertIsArray($data);
+        self::assertSame(true, $data['success'] ?? null);
+
+        return $data;
+    }
+
+    /**
+     * @param array<string, mixed> $params
+     */
+    private function withPostJson(array $params): void
+    {
+        if ($this->originalRequest === null) {
+            $this->originalRequest = Craft::$app->getRequest();
+            Craft::$app->set('request', new Request([
+                'enableCookieValidation' => false,
+                'enableCsrfValidation' => false,
+            ]));
+        }
+        if ($this->originalResponse === null) {
+            $this->originalResponse = Craft::$app->getResponse();
+            Craft::$app->set('response', new Response());
+        }
+        if ($this->originalRequestMethod === null) {
+            $this->originalRequestMethod = $_SERVER['REQUEST_METHOD'] ?? 'GET';
+        }
+
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        Craft::$app->getRequest()->setBodyParams($params);
+        Craft::$app->getRequest()->getHeaders()->set('Accept', 'application/json');
+    }
+
+    private function withSettingsManagerPermissions(): void
+    {
+        $user = $this->createTestUser('__sm_cache_status_user_', [
+            'admin' => true,
+        ]);
+        $this->grantPermissions($user, ['accessCp', 'searchManager:manageSettings']);
+        $this->actingAs($user);
     }
 }

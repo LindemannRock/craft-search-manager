@@ -365,6 +365,12 @@
     margin-top: 6px;
 }
 
+.sm-test-query-rules-cache-note {
+    margin: 16px 0 0;
+    color: #4b5563;
+    font-size: 13px;
+}
+
 .sm-test-term {
     padding: 1px 4px;
     border-radius: 2px;

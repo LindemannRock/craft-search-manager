@@ -274,7 +274,10 @@ class SettingsController extends Controller
             $backendName = $backend ? $backend->getName() : 'unknown';
 
             // Check if result was actually cached from metadata
-            $cached = $results['meta']['cached'] ?? false;
+            $cached = (bool)($results['meta']['cached'] ?? false);
+            $cacheStatus = $includeQueryRuleDebug
+                ? 'bypassed'
+                : ($cached ? 'hit' : 'miss');
             $cacheDriver = $results['meta']['cacheDriver'] ?? null;
 
             // Get settings for highlighting and cache info
@@ -317,7 +320,7 @@ class SettingsController extends Controller
                 'backend' => $backendName,
                 'executionTime' => $executionTime,
                 'cacheEnabled' => $settings->enableCache ?? false,
-                'cacheHit' => $cached,
+                'cacheStatus' => $cacheStatus,
                 'cacheDriver' => $cacheDriver,
                 'wildcard' => $wildcard,
                 'queryUsed' => $query,

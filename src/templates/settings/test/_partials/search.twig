@@ -191,6 +191,7 @@
     <h3 class="first">{{ "Matched Query Rules"|t('search-manager') }}</h3>
     <div id="queryrules-results">
         <p class="light">{{ "Run a search to see which query rules apply"|t('search-manager') }}</p>
+        <p class="sm-test-query-rules-cache-note"><strong>{{ "Note:"|t('search-manager') }}</strong> {{ "Query rule testing bypasses the search cache so debug output reflects a live search."|t('search-manager') }}</p>
     </div>
 </div>
 
@@ -224,6 +225,9 @@ window.lrSearchManagerTestToolInit({
         failedClearAutocompleteCache: {{ 'Failed to clear autocomplete cache'|t('search-manager')|json_encode|raw }},
         hit: {{ 'Hit'|t('search-manager')|json_encode|raw }},
         miss: {{ 'Miss'|t('search-manager')|json_encode|raw }},
+        bypassed: {{ 'Bypassed'|t('search-manager')|json_encode|raw }},
+        noteLabel: {{ 'Note:'|t('search-manager')|json_encode|raw }},
+        queryRuleCacheBypassNote: {{ 'Query rule testing bypasses the search cache so debug output reflects a live search.'|t('search-manager')|json_encode|raw }},
         disabled: {{ 'Disabled'|t('search-manager')|json_encode|raw }},
         queryLabel: {{ 'Query:'|t('search-manager')|json_encode|raw }},
         foundLabel: {{ 'Found:'|t('search-manager')|json_encode|raw }},

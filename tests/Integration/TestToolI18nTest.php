@@ -56,6 +56,9 @@ final class TestToolI18nTest extends TestCase
             "noResults: {{ 'No results found for \"{query}\"'|t('search-manager')|json_encode|raw }}",
             "promotionsNote: {{ 'Note: Promotions only appear in search results on sites where the element is live (green).'|t('search-manager')|json_encode|raw }}",
             "backendLabel: {{ 'Backend:'|t('search-manager')|json_encode|raw }}",
+            "bypassed: {{ 'Bypassed'|t('search-manager')|json_encode|raw }}",
+            "noteLabel: {{ 'Note:'|t('search-manager')|json_encode|raw }}",
+            "queryRuleCacheBypassNote: {{ 'Query rule testing bypasses the search cache so debug output reflects a live search.'|t('search-manager')|json_encode|raw }}",
             "redirectToElement: {{ 'Redirect to {link}'|t('search-manager')|json_encode|raw }}",
             "redirectRuleMatched: {{ 'Redirect rule matched'|t('search-manager')|json_encode|raw }}",
             "productionRedirectNotice: {{ 'Production search would redirect this query.'|t('search-manager')|json_encode|raw }}",
@@ -99,6 +102,9 @@ final class TestToolI18nTest extends TestCase
             'data.error || T.unknownError',
             'return renderDataRow(T.breadcrumbLabel, ancestorBreadcrumb(value));',
             'return renderFieldsRow(T.customFieldsLabel, value);',
+            'renderCacheStatus(data)',
+            '<strong>${T.noteLabel}</strong> ${T.queryRuleCacheBypassNote}',
+            '${T.queryRuleCacheBypassNote}',
         ] as $needle) {
             self::assertStringContainsString($needle, $js);
         }
@@ -249,6 +255,10 @@ final class TestToolI18nTest extends TestCase
         $source = $this->readPluginFile('src/web/assets/testtool/src/test-tool.js');
 
         self::assertStringContainsString('const shouldFetchQueryRules = showQueryRules.checked || (searchData && searchData.redirect);', $source);
+        self::assertStringContainsString("includeQueryRuleDebug: showQueryRules.checked,", $source);
+        self::assertStringContainsString("if (status === 'bypassed') {", $source);
+        self::assertStringContainsString('return T.bypassed;', $source);
+        self::assertStringNotContainsString('data.cacheHit', $source);
         self::assertStringContainsString('if (queryRulesData && showQueryRules.checked) {', $source);
         self::assertStringContainsString('displayQueryRules(queryRulesData, query, searchData);', $source);
         self::assertStringContainsString('displaySearchResults(searchData, query, queryRulesData);', $source);
