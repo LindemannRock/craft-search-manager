@@ -103,7 +103,7 @@ Handles element indexing operations.
 
 ### `indexElement(element, queue)`
 
-Index a single element. By default, uses the queue if `queueEnabled` is true.
+Index a single element. By default, uses the pending-sync buffer if `queueEnabled` is true; `BatchSyncJob` drains that buffer so rapid repeated saves collapse into one pending row per index/site/element/op.
 
 ```php
 use lindemannrock\searchmanager\SearchManager;
@@ -114,7 +114,7 @@ SearchManager::$plugin->indexing->indexElement($entry);
 // Force immediate indexing (bypass queue)
 SearchManager::$plugin->indexing->indexElement($entry, false);
 
-// Force queue-based indexing
+// Force pending-sync buffer indexing
 SearchManager::$plugin->indexing->indexElement($entry, true);
 ```
 
@@ -132,14 +132,6 @@ Rebuild a specific index — clears all data and re-indexes all matching element
 
 ```php
 SearchManager::$plugin->indexing->rebuildIndex('entries-en');
-```
-
-### `removeElement(element)`
-
-Remove an element from all applicable indices.
-
-```php
-SearchManager::$plugin->indexing->removeElement($entry);
 ```
 
 ### `batchIndex(elements, indexHandle)`

@@ -15,10 +15,10 @@ use lindemannrock\searchmanager\events\IndexEvent;
 use lindemannrock\searchmanager\helpers\SearchElementAvailabilityHelper;
 use lindemannrock\searchmanager\helpers\SearchHitIdentityHelper;
 use lindemannrock\searchmanager\helpers\SplitSectionDocumentHelper;
-use lindemannrock\searchmanager\jobs\IndexElementJob;
 use lindemannrock\searchmanager\jobs\RebuildIndexJob;
 use lindemannrock\searchmanager\models\SearchIndex;
 use lindemannrock\searchmanager\SearchManager;
+use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
 use lindemannrock\searchmanager\traits\ElementTypeGuardTrait;
 use yii\base\Component;
 
@@ -67,17 +67,13 @@ class IndexingService extends Component
             $queue = SearchManager::$plugin->getSettings()->queueEnabled;
         }
 
-        // Queue the indexing operation
         if ($queue) {
-            Craft::$app->getQueue()->push(new IndexElementJob([
-                'elementId' => $element->id,
-                'elementType' => get_class($element),
-                'siteId' => $element->siteId,
-            ]));
+            $queued = SearchManager::$plugin->pendingSyncs->queueForElement($element, PendingSyncRepository::OP_UPSERT);
 
-            $this->logDebug('Queued element for indexing', [
+            $this->logDebug('Queued element for pending sync', [
                 'elementId' => $element->id,
                 'elementType' => get_class($element),
+                'rows' => $queued,
             ]);
 
             return true;
@@ -308,82 +304,6 @@ class IndexingService extends Component
                     'indexHandle' => $index->handle,
                     'error' => $e->getMessage(),
                 ]);
-            }
-        }
-
-        return $success;
-    }
-
-    /**
-     * Remove an element from all matching indices
-     *
-     * @param ElementInterface $element
-     * @return bool
-     */
-    public function removeElement(ElementInterface $element): bool
-    {
-        // Iterate all indices matching elementType + site WITHOUT the criteria
-        // filter — criteria is irrelevant for removal, and filtering by it would
-        // skip deletions when the element's fields changed such that it no
-        // longer qualifies (e.g. status fields, custom filters).
-        $elementClass = get_class($element);
-        $siteId = (int) $element->siteId;
-        $success = true;
-
-        foreach ($this->getAllIndices() as $index) {
-            if (!$index->enabled) {
-                continue;
-            }
-            if ($index->elementType !== $elementClass) {
-                continue;
-            }
-            if (!$index->appliesToSiteId($siteId)) {
-                continue;
-            }
-
-            try {
-                $deleteResult = $index->usesSplitSections()
-                    ? [
-                        'success' => SearchManager::$plugin->backend->deleteOrphanDocuments($index->handle, (int)$element->id, $siteId, []),
-                        'existed' => null,
-                    ]
-                    : SearchManager::$plugin->backend->deleteWithResult($index->handle, $element->id, $siteId);
-
-                if (!$deleteResult['success']) {
-                    $success = false;
-                    continue;
-                }
-
-                if ($deleteResult['existed'] !== true) {
-                    $this->logDebug('Document not in index, skipping removal', [
-                        'elementId' => $element->id,
-                        'siteId' => $siteId,
-                        'indexHandle' => $index->handle,
-                    ]);
-                    continue;
-                }
-
-                if (SearchManager::$plugin->getSettings()->clearCacheOnSave) {
-                    SearchManager::$plugin->backend->clearSearchCache($index->handle);
-                    SearchManager::$plugin->autocomplete->clearCache($index->handle);
-                }
-
-                SearchIndex::decrementDocumentCount($index->handle);
-                SearchIndex::touchLastIndexedDebounced($index->handle);
-
-                $this->logInfo('Element removed from index', [
-                    'elementId' => $element->id,
-                    'siteId' => $siteId,
-                    'indexHandle' => $index->handle,
-                ]);
-            } catch (\Throwable $e) {
-                $this->logError('Failed to remove element from index', [
-                    'elementId' => $element->id,
-                    'siteId' => $siteId,
-                    'indexHandle' => $index->handle,
-                    'error' => $e->getMessage(),
-                ]);
-                $success = false;
             }
         }
 

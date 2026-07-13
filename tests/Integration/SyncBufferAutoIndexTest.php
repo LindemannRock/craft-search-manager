@@ -10,8 +10,11 @@ declare(strict_types=1);
 
 namespace lindemannrock\searchmanager\tests\Integration;
 
+use Craft;
 use craft\events\ElementEvent;
 use craft\services\Elements;
+use lindemannrock\searchmanager\adapters\CraftSearchAdapter;
+use lindemannrock\searchmanager\jobs\BatchSyncJob;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\tests\TestCase;
 use yii\base\Event;
@@ -109,6 +112,51 @@ final class SyncBufferAutoIndexTest extends TestCase
         );
     }
 
+    public function testNativeSearchSavePathQueuesOnePendingRowWhenAutoIndexIsDisabledAndQueueEnabled(): void
+    {
+        $pair = $this->findWorkingIndexAndElement();
+        $this->assertNotNull($pair, 'Test install must have at least one enabled Entry index with a matching element.');
+
+        [$index, $element] = $pair;
+        $backend = $this->installStubBackend();
+        $adapter = new CraftSearchAdapter();
+        $existingBatchJobs = $this->countQueueRows('BatchSyncJob');
+
+        $this->withIndexingSettings(false, true, function() use ($adapter, $element): void {
+            $this->assertTrue($adapter->indexElementAttributes($element));
+            $this->assertTrue($adapter->indexElementAttributes($element));
+        });
+
+        $this->assertSame(
+            1,
+            $this->countPendingRows([
+                'indexHandle' => $index->handle,
+                'elementId' => (int) $element->id,
+                'siteId' => (int) $element->siteId,
+            ]),
+            'Two rapid native-search save callbacks must collapse into one pending-sync row.',
+        );
+        $this->assertLessThanOrEqual(
+            1,
+            $this->countQueueRows('BatchSyncJob') - $existingBatchJobs,
+            'Two rapid native-search save callbacks must not enqueue two BatchSyncJob rows.',
+        );
+
+        (new BatchSyncJob())->execute(Craft::$app->queue);
+
+        $this->assertNull(
+            $this->fetchPendingRow($index->handle, (int) $element->id, (int) $element->siteId),
+            'BatchSyncJob must drain the pending row from the native-search save path.',
+        );
+        $this->assertNotEmpty(
+            array_filter(
+                $backend->calls,
+                static fn(array $call): bool => $call['method'] === 'batchIndex' && $call['indexName'] === $index->handle,
+            ),
+            'BatchSyncJob must process the queued row through the backend batch writer.',
+        );
+    }
+
     /**
      * @param callable(): void $callback
      */
@@ -123,5 +171,36 @@ final class SyncBufferAutoIndexTest extends TestCase
         } finally {
             $settings->autoIndex = $original;
         }
+    }
+
+    /**
+     * @param callable(): void $callback
+     */
+    private function withIndexingSettings(bool $autoIndex, bool $queueEnabled, callable $callback): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+        $originalAutoIndex = $settings->autoIndex;
+        $originalQueueEnabled = $settings->queueEnabled;
+
+        $settings->autoIndex = $autoIndex;
+        $settings->queueEnabled = $queueEnabled;
+
+        try {
+            $callback();
+        } finally {
+            $settings->autoIndex = $originalAutoIndex;
+            $settings->queueEnabled = $originalQueueEnabled;
+        }
+    }
+
+    private function countQueueRows(string $jobClass): int
+    {
+        return (int) (new \craft\db\Query())
+            ->from('{{%queue}}')
+            ->where(['like', 'job', 'searchmanager'])
+            ->andWhere(['like', 'job', $jobClass])
+            ->andWhere(['fail' => false])
+            ->andWhere(['timeUpdated' => null])
+            ->count();
     }
 }

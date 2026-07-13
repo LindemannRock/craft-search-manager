@@ -47,15 +47,16 @@ final class AuditBatch6PerformanceTest extends TestCase
         );
     }
 
-    public function testRemoveElementUsesDeleteResultContractInsteadOfDocumentExistsProbe(): void
+    public function testIndexElementQueuePathUsesPendingSyncBuffer(): void
     {
         $source = $this->readPluginSource('src/services/IndexingService.php');
-        $body = $this->methodBody($source, 'removeElement', 'public');
+        $body = $this->methodBody($source, 'indexElement', 'public');
 
-        self::assertStringContainsString('->deleteWithResult($index->handle, $element->id, $siteId)', $body);
-        self::assertStringContainsString('->deleteOrphanDocuments($index->handle, (int)$element->id, $siteId, [])', $body);
-        self::assertStringNotContainsString('->documentExists(', $body);
-        self::assertStringNotContainsString('->delete($index->handle, $element->id, $siteId)', $body);
+        self::assertStringContainsString('use lindemannrock\\searchmanager\\services\\sync\\PendingSyncRepository;', $source);
+        self::assertStringContainsString('$queued = SearchManager::$plugin->pendingSyncs->queueForElement', $body);
+        self::assertStringContainsString('->queueForElement($element, PendingSyncRepository::OP_UPSERT)', $body);
+        self::assertStringNotContainsString('IndexElementJob', $source);
+        self::assertStringNotContainsString('Craft::$app->getQueue()->push', $body);
     }
 
     public function testCleanupOnlyDecrementsDocumentCountWhenDeleteResultConfirmsExistingDocument(): void
@@ -71,17 +72,12 @@ final class AuditBatch6PerformanceTest extends TestCase
         );
     }
 
-    public function testRemoveElementOnlyDecrementsDocumentCountWhenDeleteResultConfirmsExistingDocument(): void
+    public function testIndexingServiceHasNoLegacyRemoveElementPath(): void
     {
         $source = $this->readPluginSource('src/services/IndexingService.php');
-        $body = $this->methodBody($source, 'removeElement', 'public');
 
-        self::assertStringContainsString('if ($deleteResult[\'existed\'] !== true) {', $body);
-        self::assertStringContainsString('SearchIndex::decrementDocumentCount($index->handle);', $body);
-        self::assertLessThan(
-            strpos($body, 'SearchIndex::decrementDocumentCount($index->handle);'),
-            strpos($body, 'if ($deleteResult[\'existed\'] !== true) {'),
-        );
+        self::assertStringNotContainsString('public function removeElement(', $source);
+        self::assertStringNotContainsString('Remove an element from all matching indices', $source);
     }
 
     public function testStubBackendDeleteWithResultReportsExistenceAndDeletesIdempotently(): void

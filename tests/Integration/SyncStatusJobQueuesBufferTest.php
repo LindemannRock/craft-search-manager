@@ -24,7 +24,7 @@ use lindemannrock\searchmanager\tests\TestCase;
  * NOT a direct call to a backend.
  *
  * Before the conversion, `SyncStatusJob` called
- * `IndexingService::indexElement()` / `removeElement()` directly. All sync
+ * per-element indexing/removal APIs directly. All sync
  * paths now flow through `PendingSyncRepository::queueForElement()` so the
  * `BatchSyncJob` drains a single buffer.
  *
