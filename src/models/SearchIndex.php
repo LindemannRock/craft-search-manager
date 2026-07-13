@@ -20,6 +20,7 @@ use lindemannrock\base\helpers\SlugHandleHelper;
 use lindemannrock\logginglibrary\services\LoggingService;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
 use lindemannrock\searchmanager\helpers\RedisConnectionHelper;
+use lindemannrock\searchmanager\interfaces\BackendInterface;
 use lindemannrock\searchmanager\interfaces\TransformerInterface;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\traits\ConfigSourceTrait;
@@ -998,6 +999,7 @@ class SearchIndex extends Model
 
         $db = Craft::$app->getDb();
         $originalId = $this->id;
+        $previousRow = $this->id ? $this->existingPersistenceRow() : null;
         $transaction = $db->beginTransaction();
 
         try {
@@ -1032,6 +1034,7 @@ class SearchIndex extends Model
 
                 $this->saveIndexSites($this->getSiteIds());
                 $transaction->commit();
+                $this->clearPreviousStorageAfterIdentityChange($previousRow);
                 self::clearCache();
                 return true;
             } else {
@@ -1063,6 +1066,84 @@ class SearchIndex extends Model
             ]);
             return false;
         }
+    }
+
+    /**
+     * @return array{handle: string, backend: string|null}|null
+     */
+    private function existingPersistenceRow(): ?array
+    {
+        $row = (new Query())
+            ->select(['handle', 'backend'])
+            ->from('{{%searchmanager_indices}}')
+            ->where(['id' => $this->id])
+            ->one();
+
+        if ($row === false) {
+            return null;
+        }
+
+        return [
+            'handle' => (string)$row['handle'],
+            'backend' => $row['backend'] !== null && $row['backend'] !== '' ? (string)$row['backend'] : null,
+        ];
+    }
+
+    /**
+     * @param array{handle: string, backend: string|null}|null $previousRow
+     */
+    private function clearPreviousStorageAfterIdentityChange(?array $previousRow): void
+    {
+        if ($previousRow === null) {
+            return;
+        }
+
+        $previousHandle = $previousRow['handle'];
+        $previousBackend = $previousRow['backend'];
+        $currentBackend = $this->backend ?: null;
+
+        if ($previousHandle === $this->handle && $previousBackend === $currentBackend) {
+            return;
+        }
+
+        $backend = $this->createBackendForStoredHandle($previousBackend);
+        if ($backend === null) {
+            $this->logWarning('Unable to clear previous index storage after index identity change', [
+                'previousHandle' => $previousHandle,
+                'previousBackend' => $previousBackend,
+                'currentHandle' => $this->handle,
+                'currentBackend' => $currentBackend,
+            ]);
+            $this->updateStats(0);
+            return;
+        }
+
+        if (!$backend->clearIndex($previousHandle)) {
+            $this->logWarning('Previous index storage clear reported failure after index identity change', [
+                'previousHandle' => $previousHandle,
+                'previousBackend' => $previousBackend,
+                'currentHandle' => $this->handle,
+                'currentBackend' => $currentBackend,
+            ]);
+        }
+
+        $this->updateStats(0);
+    }
+
+    private function createBackendForStoredHandle(?string $backendHandle): ?BackendInterface
+    {
+        $backendService = SearchManager::$plugin->backend;
+
+        if ($backendHandle === null || $backendHandle === '') {
+            return $backendService->getActiveBackend();
+        }
+
+        $configuredBackend = ConfiguredBackend::findByHandle($backendHandle);
+        if ($configuredBackend !== null) {
+            return $backendService->createBackendFromConfig($configuredBackend);
+        }
+
+        return $backendService->getBackend($backendHandle);
     }
 
     /**

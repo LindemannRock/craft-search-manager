@@ -626,8 +626,7 @@ class IndicesController extends Controller
 
             // Build full index name with prefix
             $settings = SearchManager::$plugin->getSettings();
-            $prefix = $settings->indexPrefix ?? '';
-            $fullIndexName = $prefix . $index->handle;
+            $fullIndexName = $settings->getFullIndexName($index->handle);
 
             // Find matching index by full name (with prefix)
             $backendCount = 0;

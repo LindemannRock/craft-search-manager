@@ -40,21 +40,15 @@ final class DuplicateCpObjectsTest extends TestCase
     private ?object $originalRequest = null;
     private ?object $originalResponse = null;
     private ?string $originalRequestMethod = null;
-    private ?string $originalDefaultWidgetHandle = null;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->originalDefaultWidgetHandle = SearchManager::$plugin->getSettings()->defaultWidgetHandle;
         $this->purgeRows();
     }
 
     protected function tearDown(): void
     {
-        $settings = SearchManager::$plugin->getSettings();
-        $settings->defaultWidgetHandle = $this->originalDefaultWidgetHandle;
-        $settings->saveToDatabase();
-
         if ($this->originalRequest !== null) {
             Craft::$app->set('request', $this->originalRequest);
         }

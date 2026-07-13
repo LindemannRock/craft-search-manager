@@ -1213,6 +1213,7 @@ class SettingsController extends Controller
 
         SearchManager::$plugin->backend->clearAllSearchCache();
         SearchManager::$plugin->autocomplete->clearCache();
+        SearchManager::$plugin->deviceDetection->clearCache();
 
         $this->logInfo('Settings saved successfully');
         Craft::$app->getSession()->setNotice(Craft::t('search-manager', 'Settings saved'));

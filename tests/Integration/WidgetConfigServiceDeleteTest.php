@@ -26,7 +26,6 @@ use PHPUnit\Framework\Attributes\CoversClass;
 final class WidgetConfigServiceDeleteTest extends TestCase
 {
     private string $prefix = 'sm-widget-delete-guard';
-    private ?string $originalDefaultWidgetHandle = null;
     private ?object $originalWidgetConfigService = null;
     /**
      * @var array<int, bool>
@@ -36,7 +35,6 @@ final class WidgetConfigServiceDeleteTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->originalDefaultWidgetHandle = SearchManager::$plugin->getSettings()->defaultWidgetHandle;
         $this->disableExistingWidgets();
         $this->deleteTestRows();
     }
@@ -46,10 +44,6 @@ final class WidgetConfigServiceDeleteTest extends TestCase
         $this->deleteTestRows();
         $this->restoreWidgetConfigService();
         $this->restoreExistingWidgets();
-
-        $settings = SearchManager::$plugin->getSettings();
-        $settings->defaultWidgetHandle = $this->originalDefaultWidgetHandle;
-        $settings->saveToDatabase();
 
         parent::tearDown();
     }

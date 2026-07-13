@@ -9,6 +9,7 @@
 namespace lindemannrock\searchmanager\services;
 
 use craft\base\Component;
+use lindemannrock\base\helpers\CacheHelper;
 use lindemannrock\base\helpers\PluginHelper;
 use lindemannrock\base\traits\DeviceDetectionTrait;
 use lindemannrock\logginglibrary\traits\LoggingTrait;
@@ -77,6 +78,22 @@ class DeviceDetectionService extends Component
     public function isDesktop(array $deviceInfo): bool
     {
         return ($deviceInfo['deviceType'] ?? 'desktop') === 'desktop';
+    }
+
+    /**
+     * Clear cached device detection results.
+     */
+    public function clearCache(): void
+    {
+        $settings = SearchManager::$plugin->getSettings();
+
+        if ($settings->cacheStorageMethod === 'redis') {
+            CacheHelper::clearTrackedRedisKeys(SearchManager::$plugin->id, 'device');
+        } else {
+            CacheHelper::clearCacheFiles(PluginHelper::getCachePath(SearchManager::$plugin, 'device'));
+        }
+
+        $this->deviceDetection = null;
     }
 
     /**

@@ -15,6 +15,7 @@ use craft\base\ElementInterface;
 use craft\db\Query;
 use lindemannrock\base\testing\IntegrationTestCase;
 use lindemannrock\searchmanager\models\SearchIndex;
+use lindemannrock\searchmanager\models\Settings;
 use lindemannrock\searchmanager\SearchManager;
 use lindemannrock\searchmanager\services\sync\PendingSyncProcessor;
 use lindemannrock\searchmanager\services\sync\PendingSyncRepository;
@@ -46,11 +47,17 @@ abstract class TestCase extends IntegrationTestCase
      */
     private array $searchIndexStatsSnapshot = [];
 
+    /**
+     * @var array<string, mixed>|null
+     */
+    private ?array $settingsRowSnapshot = null;
+
     protected function setUp(): void
     {
         parent::setUp();
         SearchIndex::clearCache();
         $this->snapshotSearchIndexStats();
+        $this->snapshotSettingsRow();
         $this->repository = SearchManager::$plugin->pendingSyncs;
         $this->processor = SearchManager::$plugin->pendingSyncProcessor;
         $this->truncateBuffer();
@@ -61,6 +68,7 @@ abstract class TestCase extends IntegrationTestCase
         try {
             $this->truncateBuffer();
             $this->restoreSearchIndexStats();
+            $this->restoreSettingsRow();
             SearchIndex::clearCache();
         } finally {
             // Parent restores swapped components (including any StubBackend)
@@ -102,6 +110,16 @@ abstract class TestCase extends IntegrationTestCase
             ->select(['documentCount', 'lastIndexed', 'dateUpdated'])
             ->from('{{%searchmanager_indices}}')
             ->where(['handle' => $handle])
+            ->one();
+
+        return $row === false ? null : $row;
+    }
+
+    protected function fetchSettingsRow(): ?array
+    {
+        $row = (new Query())
+            ->from('{{%searchmanager_settings}}')
+            ->where(['id' => 1])
             ->one();
 
         return $row === false ? null : $row;
@@ -158,6 +176,30 @@ abstract class TestCase extends IntegrationTestCase
                 ->update('{{%searchmanager_indices}}', $row, ['id' => $id])
                 ->execute();
         }
+    }
+
+    private function snapshotSettingsRow(): void
+    {
+        $this->settingsRowSnapshot = $this->fetchSettingsRow();
+    }
+
+    private function restoreSettingsRow(): void
+    {
+        if ($this->settingsRowSnapshot === null) {
+            return;
+        }
+
+        $row = $this->settingsRowSnapshot;
+        unset($row['id']);
+
+        Craft::$app->getDb()
+            ->createCommand()
+            ->update('{{%searchmanager_settings}}', $row, ['id' => 1])
+            ->execute();
+
+        $settings = SearchManager::$plugin->getSettings();
+        $freshSettings = Settings::loadFromDatabase();
+        $settings->setAttributes($freshSettings->getAttributes(), false);
     }
 
     /**

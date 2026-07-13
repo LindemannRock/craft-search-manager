@@ -791,8 +791,7 @@ class AutocompleteService extends Component
         $settings = SearchManager::$plugin->getSettings();
         $fullIndexHandle = null;
         if ($indexHandle !== null) {
-            $indexPrefix = $settings->indexPrefix ?? '';
-            $fullIndexHandle = $indexPrefix . $indexHandle;
+            $fullIndexHandle = $settings->getFullIndexName($indexHandle);
         }
 
         if ($settings->cacheStorageMethod === 'redis') {
