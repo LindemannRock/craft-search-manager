@@ -12,9 +12,11 @@ namespace lindemannrock\searchmanager\tests\Integration;
 
 use lindemannrock\searchmanager\controllers\AnalyticsController;
 use lindemannrock\searchmanager\controllers\BackendsController;
+use lindemannrock\searchmanager\controllers\IndicesController;
 use lindemannrock\searchmanager\controllers\PromotionsController;
 use lindemannrock\searchmanager\controllers\QueryRulesController;
 use lindemannrock\searchmanager\controllers\SettingsController;
+use lindemannrock\searchmanager\controllers\UtilitiesController;
 use lindemannrock\searchmanager\tests\TestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 
@@ -25,7 +27,9 @@ use PHPUnit\Framework\Attributes\CoversClass;
 #[CoversClass(QueryRulesController::class)]
 #[CoversClass(AnalyticsController::class)]
 #[CoversClass(BackendsController::class)]
+#[CoversClass(IndicesController::class)]
 #[CoversClass(SettingsController::class)]
+#[CoversClass(UtilitiesController::class)]
 final class ControllerMessageI18nTest extends TestCase
 {
     public function testDeleteJsonFailureMessagesUseStaticTranslationKeys(): void
@@ -165,6 +169,49 @@ final class ControllerMessageI18nTest extends TestCase
         );
     }
 
+    public function testAudit350ExceptionMessagesAreDevModeGated(): void
+    {
+        $this->assertControllerMethodContains(
+            'IndicesController.php',
+            'actionSyncCount',
+            "'error' => Craft::\$app->getConfig()->getGeneral()->devMode",
+        );
+        $this->assertControllerMethodContains(
+            'IndicesController.php',
+            'actionSyncCount',
+            ": Craft::t('search-manager', 'Failed to sync count')",
+        );
+        $this->assertControllerMethodNotContains(
+            'IndicesController.php',
+            'actionSyncCount',
+            "Craft::t('search-manager', 'Failed to sync count: {error}'",
+        );
+
+        $clearRedisStorage = $this->controllerMethodBody('UtilitiesController.php', 'clearRedisStorage');
+        self::assertStringContainsString("\$this->logError('Failed to clear Redis storage'", $clearRedisStorage);
+        self::assertStringContainsString("'error' => Craft::\$app->getConfig()->getGeneral()->devMode", $clearRedisStorage);
+        self::assertStringContainsString(": Craft::t('search-manager', 'Failed to clear {type} storage'", $clearRedisStorage);
+        self::assertStringNotContainsString("Craft::t('search-manager', 'Redis connection failed: {error}'", $clearRedisStorage);
+
+        foreach (['getDatabaseStats' => 'database', 'getRedisStats' => 'Redis'] as $method => $label) {
+            $methodBody = $this->controllerMethodBody('UtilitiesController.php', $method);
+            self::assertStringContainsString("\$this->logError('Failed to get {$label} storage stats'", $methodBody);
+            self::assertStringContainsString("'error' => Craft::\$app->getConfig()->getGeneral()->devMode", $methodBody);
+            self::assertStringContainsString(": Craft::t('search-manager', 'Failed to get storage statistics')", $methodBody);
+        }
+    }
+
+    public function testControllerResponseExceptionMessagesRequireDevModeGate(): void
+    {
+        foreach ($this->controllerResponseGetMessageSites() as $site) {
+            self::assertStringContainsString(
+                'getConfig()->getGeneral()->devMode',
+                $site['context'],
+                $site['location'] . ' returns an exception message without the CP devMode gate.',
+            );
+        }
+    }
+
     private function assertControllerMethodContains(string $filename, string $method, string $needle): void
     {
         self::assertStringContainsString($needle, $this->controllerMethodBody($filename, $method));
@@ -181,14 +228,67 @@ final class ControllerMessageI18nTest extends TestCase
         $this->assertIsString($source);
 
         preg_match(
-            '/public function ' . preg_quote($method, '/') . '\(\): Response\s+\{(?<body>.*?)(?:\n    \}|\n    public function )/s',
+            '/(?:public|private|protected) function ' . preg_quote($method, '/') . '\(.*?^    \}$/ms',
             $source,
             $matches,
         );
 
-        $body = $matches['body'] ?? '';
+        $body = $matches[0] ?? '';
         $this->assertNotSame('', $body, $method . ' body should be captured.');
 
         return $body;
+    }
+
+    /**
+     * @return list<array{location: string, context: string}>
+     */
+    private function controllerResponseGetMessageSites(): array
+    {
+        $controllerFiles = glob(dirname(__DIR__, 2) . '/src/controllers/*.php') ?: [];
+        $sites = [];
+
+        foreach ($controllerFiles as $path) {
+            $source = file_get_contents($path);
+            self::assertIsString($source);
+
+            preg_match_all('/\$[a-zA-Z_]\w*->getMessage\(\)/', $source, $matches, PREG_OFFSET_CAPTURE);
+
+            foreach ($matches[0] as [$match, $offset]) {
+                if ($this->isLogBoundGetMessage($source, $offset)) {
+                    continue;
+                }
+
+                $line = substr_count(substr($source, 0, $offset), "\n") + 1;
+                $sites[] = [
+                    'location' => basename($path) . ':' . $line,
+                    'context' => substr(
+                        $source,
+                        max(0, $offset - 180),
+                        strlen($match) + 360,
+                    ),
+                ];
+            }
+        }
+
+        self::assertNotEmpty($sites, 'Controller response-bound getMessage() sites should be enumerated.');
+
+        return $sites;
+    }
+
+    private function isLogBoundGetMessage(string $source, int $offset): bool
+    {
+        $beforeOffset = substr($source, 0, $offset);
+
+        preg_match_all('/\$this->log[A-Z][A-Za-z]*\(/', $beforeOffset, $matches, PREG_OFFSET_CAPTURE);
+        $lastMatch = end($matches[0]);
+        $lastLog = $lastMatch === false ? false : $lastMatch[1];
+
+        if ($lastLog === false) {
+            return false;
+        }
+
+        $lastStatementEnd = strrpos($beforeOffset, "]);");
+
+        return $lastStatementEnd === false || $lastLog > $lastStatementEnd;
     }
 }

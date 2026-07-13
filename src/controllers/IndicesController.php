@@ -691,9 +691,9 @@ class IndicesController extends Controller
 
             return $this->asJson([
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Failed to sync count: {error}', [
-                    'error' => $e->getMessage(),
-                ]),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Failed to sync count'),
             ]);
         }
     }

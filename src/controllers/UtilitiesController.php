@@ -585,9 +585,15 @@ class UtilitiesController extends Controller
                 'deletedKeys' => $deletedKeys,
             ];
         } catch (\Throwable $e) {
+            $this->logError('Failed to clear Redis storage', [
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'success' => false,
-                'error' => Craft::t('search-manager', 'Redis connection failed: {error}', ['error' => $e->getMessage()]),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Failed to clear {type} storage', ['type' => 'Redis']),
             ];
         }
     }
@@ -672,9 +678,15 @@ class UtilitiesController extends Controller
                 'totalRows' => $documentRows + $termRows + $compoundRows,
             ];
         } catch (\Throwable $e) {
+            $this->logError('Failed to get database storage stats', [
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'available' => false,
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Failed to get storage statistics'),
             ];
         }
     }
@@ -724,10 +736,16 @@ class UtilitiesController extends Controller
                 'keyCount' => count($keys),
             ];
         } catch (\Throwable $e) {
+            $this->logError('Failed to get Redis storage stats', [
+                'error' => $e->getMessage(),
+            ]);
+
             return [
                 'available' => false,
                 'status' => 'connection_failed',
-                'error' => $e->getMessage(),
+                'error' => Craft::$app->getConfig()->getGeneral()->devMode
+                    ? $e->getMessage()
+                    : Craft::t('search-manager', 'Failed to get storage statistics'),
             ];
         }
     }

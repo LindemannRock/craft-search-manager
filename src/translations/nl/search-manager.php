@@ -303,7 +303,6 @@ return [
     'User does not have permission to view analytics for this site.' => 'De gebruiker heeft geen toestemming om analyses voor deze site te bekijken.',
     'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.' => 'De export was beperkt tot de eerste {limit} rijen. Verklein het datumbereik om een kleinere dataset te exporteren.',
     'Count synced for "{name}": {count} documents' => 'Aantal gesynchroniseerd voor "{name}": {count} documenten',
-    'Failed to sync count: {error}' => 'Synchroniseren van aantal mislukt: {error}',
     'Delete {count} backend? This cannot be undone.' => '{count} backend verwijderen? Dit kan niet ongedaan worden gemaakt.',
     'Delete {count} backends? This cannot be undone.' => '{count} backends verwijderen? Dit kan niet ongedaan worden gemaakt.',
     'Deleted {count} backends' => '{count} backends verwijderd',
@@ -381,7 +380,6 @@ return [
     'PostgreSQL backend requires Craft to use PostgreSQL. Your installation uses MySQL.' => 'De PostgreSQL-backend vereist dat Craft PostgreSQL gebruikt. Uw installatie gebruikt MySQL.',
     'Redis extension is not installed.' => 'De Redis-extensie is niet geïnstalleerd.',
     'Redis is not configured.' => 'Redis is niet geconfigureerd.',
-    'Redis connection failed: {error}' => 'Redis-verbinding mislukt: {error}',
     'No backend configured for this index' => 'Geen backend geconfigureerd voor deze index',
 
     // Settings: General

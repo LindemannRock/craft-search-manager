@@ -303,7 +303,6 @@ return [
     'User does not have permission to view analytics for this site.' => 'ليس لدى المستخدم صلاحية لعرض تحليلات هذا الموقع.',
     'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.' => 'اقتصر التصدير على أول {limit} صف. قلّص نطاق التاريخ لتصدير مجموعة بيانات أصغر.',
     'Count synced for "{name}": {count} documents' => 'تمت مزامنة العدد لـ "{name}": {count} مستندات',
-    'Failed to sync count: {error}' => 'فشل في مزامنة العدد: {error}',
     'Delete {count} backend? This cannot be undone.' => 'حذف {count} واجهة خلفية؟ لا يمكن التراجع عن هذا الإجراء.',
     'Delete {count} backends? This cannot be undone.' => 'حذف {count} واجهات خلفية؟ لا يمكن التراجع عن هذا الإجراء.',
     'Deleted {count} backends' => 'تم حذف {count} واجهات خلفية',
@@ -381,7 +380,6 @@ return [
     'PostgreSQL backend requires Craft to use PostgreSQL. Your installation uses MySQL.' => 'تتطلب الواجهة الخلفية PostgreSQL من Craft استخدام PostgreSQL. يستخدم تثبيتك MySQL.',
     'Redis extension is not installed.' => 'امتداد Redis غير مثبت.',
     'Redis is not configured.' => 'لم يتم تكوين Redis.',
-    'Redis connection failed: {error}' => 'فشل اتصال Redis: {error}',
     'No backend configured for this index' => 'لم يتم تكوين واجهة خلفية لهذا الفهرس',
 
     // Settings: General

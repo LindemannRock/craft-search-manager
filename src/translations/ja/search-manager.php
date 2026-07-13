@@ -303,7 +303,6 @@ return [
     'User does not have permission to view analytics for this site.' => 'ユーザーにこのサイトのアナリティクスを表示する権限がありません。',
     'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.' => 'エクスポートは最初の {limit} 行に制限されました。より小さいデータセットをエクスポートするには、日付範囲を絞り込んでください。',
     'Count synced for "{name}": {count} documents' => '「{name}」のカウントを同期しました: {count} ドキュメント',
-    'Failed to sync count: {error}' => 'カウントの同期に失敗しました: {error}',
     'Delete {count} backend? This cannot be undone.' => '{count} 件のバックエンドを削除しますか？この操作は元に戻せません。',
     'Delete {count} backends? This cannot be undone.' => '{count} 件のバックエンドを削除しますか？この操作は元に戻せません。',
     'Deleted {count} backends' => '{count} 件のバックエンドを削除しました',
@@ -381,7 +380,6 @@ return [
     'PostgreSQL backend requires Craft to use PostgreSQL. Your installation uses MySQL.' => 'PostgreSQL バックエンドには Craft が PostgreSQL を使用する必要があります。お使いのインストールは MySQL を使用しています。',
     'Redis extension is not installed.' => 'Redis エクステンションがインストールされていません。',
     'Redis is not configured.' => 'Redis が設定されていません。',
-    'Redis connection failed: {error}' => 'Redis 接続に失敗しました: {error}',
     'No backend configured for this index' => 'このインデックスにバックエンドが設定されていません',
 
     // Settings: General

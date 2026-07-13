@@ -303,7 +303,6 @@ return [
     'User does not have permission to view analytics for this site.' => 'L\'utente non dispone dell\'autorizzazione per visualizzare le analisi di questo sito.',
     'Export was limited to the first {limit} rows. Narrow the date range to export a smaller dataset.' => 'L\'esportazione è stata limitata alle prime {limit} righe. Restringi l\'intervallo di date per esportare un set di dati più piccolo.',
     'Count synced for "{name}": {count} documents' => 'Conteggio sincronizzato per «{name}»: {count} documenti',
-    'Failed to sync count: {error}' => 'Impossibile sincronizzare il conteggio: {error}',
     'Delete {count} backend? This cannot be undone.' => 'Eliminare {count} backend? Questa azione non può essere annullata.',
     'Delete {count} backends? This cannot be undone.' => 'Eliminare {count} backend? Questa azione non può essere annullata.',
     'Deleted {count} backends' => 'Eliminati {count} backend',
@@ -381,7 +380,6 @@ return [
     'PostgreSQL backend requires Craft to use PostgreSQL. Your installation uses MySQL.' => 'Il backend PostgreSQL richiede che Craft utilizzi PostgreSQL. La tua installazione utilizza MySQL.',
     'Redis extension is not installed.' => 'L\'estensione Redis non è installata.',
     'Redis is not configured.' => 'Redis non è configurato.',
-    'Redis connection failed: {error}' => 'Connessione a Redis fallita: {error}',
     'No backend configured for this index' => 'Nessun backend configurato per questo indice',
 
     // Settings: General
